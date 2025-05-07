@@ -1,0 +1,406 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{76EDAE9E-175E-4A23-94C4-B171F85C8F76}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>HyCADTool</RootNamespace>
+    <AssemblyName>HyCADTool</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autodesk.AutoCAD.Interop">
+      <HintPath>..\..\..\Rebuild\MyCad\reference\Autodesk.AutoCAD.Interop.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Autodesk.AutoCAD.Interop.Common">
+      <HintPath>..\..\..\Rebuild\MyCad\reference\Autodesk.AutoCAD.Interop.Common.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="01%28平面标注尺寸%29\BaseDimension.cs" />
+    <Compile Include="01%28平面标注尺寸%29\BaseDimHelper - 复制.cs" />
+    <Compile Include="01%28平面标注尺寸%29\BaseDimHelper.cs" />
+    <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper - 复制.cs" />
+    <Compile Include="01%28平面标注尺寸%29\Test.cs" />
+    <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper.cs" />
+    <Compile Include="Annotation\AnnotationFramework.cs" />
+    <Compile Include="Annotation\AutoCADDimensionHelper.cs" />
+    <Compile Include="Annotation\ClusterAnnotator.cs" />
+    <Compile Include="Annotation\DimensionLayerGrouper.cs" />
+    <Compile Include="Commands\3d\hy3G_Generate.cs" />
+    <Compile Include="Commands\3d\hy3CS_CreateSection.cs" />
+    <Compile Include="Commands\Dcel - 复制.cs" />
+    <Compile Include="Commands\HyDim.cs" />
+    <Compile Include="Commands\Hyab_AnchorBolt\hyabA_Align.cs" />
+    <Compile Include="Commands\HYab - 复制.cs" />
+    <Compile Include="Commands\HyMbr\HYMBR_CreateLayoutViewports - 复制.cs" />
+    <Compile Include="Commands\HYRps_HY_ReplacePolygonsByIntersection.cs" />
+    <Compile Include="Commands\HYRp_ReplacePolygon - clip2.cs" />
+    <Compile Include="Commands\HYRp_ReplacePolygon.cs" />
+    <Compile Include="Commands\HyDim\hydimA_AddVertexAtIntersections.cs" />
+    <Compile Include="Commands\Hyab_AnchorBolt\hyabC_Calculat.cs" />
+    <Compile Include="Commands\HyDim\hydimS_SplitDimensionAtLine.cs" />
+    <Compile Include="Commands\Hyab_AnchorBolt\hyabR_RectSection.cs" />
+    <Compile Include="Commands\HyDc\hyDcP_Poly.cs" />
+    <Compile Include="Commands\HyDc\HyDcL_Line.cs" />
+    <Compile Include="Config\PointsClusterConfig.cs" />
+    <Compile Include="GeometryUtils\AxisIntersectionMapper.cs" />
+    <Compile Include="Models\Cluster\ClusterResult.cs" />
+    <Compile Include="Models\Cluster\ClusterConfig.cs" />
+    <Compile Include="Models\Cluster\CreateDimensionsForCluster - 复制.cs" />
+    <Compile Include="Models\Enum\Direction.cs" />
+    <Compile Include="Models\Cluster\Cluster.cs" />
+    <Compile Include="00\Dim.cs" />
+    <Compile Include="Commands\hyAxis\hyAxis_AlignedAxisText.cs" />
+    <Compile Include="00\EquipmentFoundation\EF_Commands.cs" />
+    <Compile Include="00\EquipmentFoundation\EF_Core Methods.cs" />
+    <Compile Include="00\EquipmentFoundation\EF_ExtensionDictionary.cs" />
+    <Compile Include="00\EquipmentFoundation\EF_GeometryUtilities.cs" />
+    <Compile Include="00\EquipmentFoundation\EF_Models.cs" />
+    <Compile Include="Commands\Hyz\HYz_GroupCirclesZ - 复制.cs" />
+    <Compile Include="Commands\Hyz\HYz_PlacePileAndVoronoiWithLloydOptimization.cs" />
+    <Compile Include="Commands\Hyz\HYz_GroupCirclesZ.cs" />
+    <Compile Include="Commands\HYc2_block2leader.cs" />
+    <Compile Include="Commands\HYc2_block_color.cs" />
+    <Compile Include="Commands\HyMbr\CreateMBR - DrawTitleBlock.cs" />
+    <Compile Include="Commands\HyMbr\HYMBR_CreateLayoutViewports.cs" />
+    <Compile Include="Commands\HyMbr\CreateMBR.cs" />
+    <Compile Include="Commands\PanelCommand - 复制.cs" />
+    <Compile Include="Commands\RaftThicknessBybolted.cs" />
+    <Compile Include="Commands\HyDim\hydims.cs" />
+    <Compile Include="Commands\hybg\hybgTCE_TextsCreatElevation.cs" />
+    <Compile Include="Commands\hybg\hybgR_RotateElevation.cs" />
+    <Compile Include="Commands\hybg\hybgu_UpdateElevationText.cs" />
+    <Compile Include="Commands\OverKill\OverKill - Core.cs" />
+    <Compile Include="Commands\OverKill\OverKill.cs" />
+    <Compile Include="Commands\PanelCommand.cs" />
+    <Compile Include="Commands\hybg\hybg.cs" />
+    <Compile Include="Commands\Reinforcement.cs" />
+    <Compile Include="Commands\hyAxis\AlignTextToLine.cs" />
+    <Compile Include="Commands\Hyab_AnchorBolt\hyabCD_ChangeDisPlay.cs" />
+    <Compile Include="Commands\Hyab_AnchorBolt\hyabCT_CreateAnchorBoltTable.cs" />
+    <Compile Include="Commands\Hyab_AnchorBolt\hyab.cs" />
+    <Compile Include="Config\BaseConfig - 复制 - 复制.cs" />
+    <Compile Include="Commands\BaseReinCommands\BR05allCommand.cs" />
+    <Compile Include="Commands\BaseReinCommands\BR06Command.cs" />
+    <Compile Include="Commands\BaseReinCommands\BR05Command .cs" />
+    <Compile Include="Commands\BaseReinCommands\BR04Command.cs" />
+    <Compile Include="Commands\BaseReinCommands\BR03Command.cs" />
+    <Compile Include="Commands\BaseReinCommands\BR02Command.cs" />
+    <Compile Include="Commands\BaseReinCommands\BR01Command.cs" />
+    <Compile Include="Commands\BreakCrues\BreakLines.cs" />
+    <Compile Include="Commands\BreakCrues\BreakCruesCommand.cs" />
+    <Compile Include="Commands\hyExport\hyex_MarkdownTable.cs" />
+    <Compile Include="Commands\DetectClosedRegions.cs" />
+    <Compile Include="Commands\ReinCommands\ReinCommand02 - 复制.cs" />
+    <Compile Include="Commands\ReinCommands\ReinCommand03.cs" />
+    <Compile Include="Commands\ReinCommands\ReinCommand04.cs" />
+    <Compile Include="Commands\ReinCommands\ReinCommand05 - 复制.cs" />
+    <Compile Include="Commands\ReinCommands\ReinCommand01.cs" />
+    <Compile Include="Commands\Dcel.cs" />
+    <Compile Include="Commands\SelectReinText.cs" />
+    <Compile Include="Commands\hyExport\hydl_DrawLinesOnEachLayer.cs" />
+    <Compile Include="Config\BaseConfigData.cs" />
+    <Compile Include="Config\ConfigManager.cs" />
+    <Compile Include="Config\LayerConfigManager.cs" />
+    <Compile Include="Config\MainPlugin - 复制 - 复制.cs" />
+    <Compile Include="Config\MainPlugin - 复制.cs" />
+    <Compile Include="Converter\Clipper2Converter - 复制.cs" />
+    <Compile Include="HelpClass\Axis\AnchorBolt - Class - 复制.cs" />
+    <Compile Include="HelpClass\Axis\AnchorBolt - Class.cs" />
+    <Compile Include="HelpClass\Axis\AnchorBolt.cs" />
+    <Compile Include="HelpClass\CAD\AcTv.cs" />
+    <Compile Include="HelpClass\DCEL\DCEL.cs" />
+    <Compile Include="HelpClass\DCEL\DcelDraw.cs" />
+    <Compile Include="HelpClass\DCEL\DCELFactory.cs" />
+    <Compile Include="HelpClass\Elevation3d\CrossSection - 复制 - 复制 - 复制 - 复制.cs" />
+    <Compile Include="HelpClass\Elevation3d\CrossSection - 复制 - 复制 - 复制.cs" />
+    <Compile Include="HelpClass\Elevation3d\CrossSection - 复制 - 复制.cs" />
+    <Compile Include="HelpClass\Elevation3d\SectionLine - 复制 - 复制.cs" />
+    <Compile Include="HelpClass\Elevation3d\SectionLine - 复制.cs" />
+    <Compile Include="HelpClass\Elevation3d\SectionLine.cs" />
+    <Compile Include="HelpClass\Elevation3d\CrossSection - 复制.cs" />
+    <Compile Include="HelpClass\Elevation3d\WallData - 复制.cs" />
+    <Compile Include="HelpClass\ElevationSymbol\bf\ElevationGeometry.cs" />
+    <Compile Include="HelpClass\ElevationSymbol\bf\ElevationSymbol Fun.cs" />
+    <Compile Include="HelpClass\ElevationSymbol\bf\ElevationSymbolMain.cs" />
+    <Compile Include="HelpClass\ElevationSymbol\ElevationSymbol.cs" />
+    <Compile Include="HelpClass\ElevationSymbol\bf\ElevationTextManager.cs" />
+    <Compile Include="HelpClass\ElevationSymbol\bf\IElevationSymbol.cs" />
+    <Compile Include="HelpClass\Elevation3d\CrossSection.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator - CalculateGeometry.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator - Core.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator - AnalyzeBoundary.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator - Get.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator_fun_CrossSection - core.cs" />
+    <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator_fun_CrossSection.cs" />
+    <Compile Include="HelpClass\Elevation3d\GeometryData.cs" />
+    <Compile Include="HelpClass\Elevation3d\Jion - core.cs" />
+    <Compile Include="HelpClass\Elevation3d\Jion.cs" />
+    <Compile Include="HelpClass\Elevation3d\WallData.cs" />
+    <Compile Include="HelpClass\Jig\HookJigSeg.cs" />
+    <Compile Include="HelpClass\Jig\HookJig.cs" />
+    <Compile Include="HelpClass\Jig\PolylineJig.cs" />
+    <Compile Include="HelpClass\CAD\Comparer.cs" />
+    <Compile Include="HelpClass\Pile\PileConfig.cs" />
+    <Compile Include="HelpClass\Pile\StandardArea\A3_CircularStandardArea .cs" />
+    <Compile Include="HelpClass\Pile\StandardArea\A5_GeometryUtils - 复制 - 复制.cs" />
+    <Compile Include="HelpClass\Pile\StandardArea\A5_GeometryUtils - 复制.cs" />
+    <Compile Include="HelpClass\Pile\StandardArea\A5_GeometryUtils.cs" />
+    <Compile Include="HelpClass\Pile\StandardArea\A2_RectangularStandardArea.cs" />
+    <Compile Include="HelpClass\Pile\StandardArea\A1_StandardAreaBase.cs" />
+    <Compile Include="HelpClass\Pile\MinArea.cs" />
+    <Compile Include="Converter\NetTopologySuiteConverter.cs" />
+    <Compile Include="HelpClass\Pile\BasePile.cs" />
+    <Compile Include="HelpClass\Rec.cs" />
+    <Compile Include="HelpClass\RecT.cs" />
+    <Compile Include="HelpClass\RowCols.cs" />
+    <Compile Include="HelpClass\CAD\TextBoxHelper.cs" />
+    <Compile Include="HelpClass\CAD\TypeConverter.cs" />
+    <Compile Include="HelpClass\Section\Section - 复制 - 复制.cs" />
+    <Compile Include="HelpClass\Section\Section - 复制.cs" />
+    <Compile Include="HelpClass\Section\Section.cs" />
+    <Compile Include="HelpClass\TitleBlock\LayoutPacking - 复制.cs" />
+    <Compile Include="HelpClass\TitleBlock\LayoutPacking.cs" />
+    <Compile Include="HelpClass\TitleBlock\TitleBlock.cs" />
+    <Compile Include="Interfaces\IAreaFactory.cs" />
+    <Compile Include="Interfaces\ICadService.cs.cs" />
+    <Compile Include="Interfaces\IConfigService.cs" />
+    <Compile Include="Config\MainPlugin.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\AreaFactory.cs" />
+    <Compile Include="Services\AutoCadService - 复制.cs" />
+    <Compile Include="Services\AutoCadService.cs" />
+    <Compile Include="Services\ConfigService.cs" />
+    <Compile Include="00\SimpleLogger.cs" />
+    <Compile Include="test - 复制.cs" />
+    <Compile Include="test.cs" />
+    <Compile Include="00\TestCommand.cs" />
+    <Compile Include="TestFunction\CreateOptimizedBoundingPolygonFromPolygons4c.cs" />
+    <Compile Include="TestFunction\GroupBySpatialProximity4b.cs" />
+    <Compile Include="TestFunction\DrawBoundingPolyline4a.cs" />
+    <Compile Include="TestFunction\SelectFromSpecificLayers4.cs" />
+    <Compile Include="TestFunction\JoinReinforcment.cs" />
+    <Compile Include="TestFunction\MergeBox.cs" />
+    <Compile Include="TestFunction\DrawReinforcement.cs" />
+    <Compile Include="TestFunction\SelectFiniteElementGrid_Parallel_DIC _del3.cs" />
+    <Compile Include="TestFunction\SelectFiniteElementGrid_Parallel_DIC.cs" />
+    <Compile Include="TestFunction\SelectFiniteElementGrid_Parallel .cs" />
+    <Compile Include="TestFunction\SelectFiniteElementGrid.cs" />
+    <Compile Include="TestFunction\OptimizeBasemap1.cs" />
+    <Compile Include="TestFunction\SelectNoUseText2.cs" />
+    <Compile Include="TestFunction\Test_SelectUseless.cs" />
+    <Compile Include="TestFunction\Test_ClosedRegionDetection.cs" />
+    <Compile Include="Tools\ChangeType\IdsToEntities.cs" />
+    <Compile Include="Tools\ChangeType\DicToConcurrentDic.cs" />
+    <Compile Include="Tools\ChangeType\Point2dTo3d.cs" />
+    <Compile Include="Models\Cluster\ClusterDimOptions.cs" />
+    <Compile Include="Models\Cluster\ClusterDim .cs" />
+    <Compile Include="Models\Cluster\CreateDimensionsForCluster.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\AR000_a00- 复制.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\AR000_a1.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\AR000_a3.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\AR000_a2.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR00_BaseReinSetting.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\AR000_SelectPillarPiers.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR03_SelectFiniteElementGrid_Parallel_DIC _del.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR04_bGroupBySpatialProximity4b.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR04_dCreatePillarPiers.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR04_cCreateOptimizedBoundingPolygonFromPolygons4c.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR04_aDrawBoundingPolyline4a.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR01_OptimizeBasemap.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR051_Reinforcement .cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR052_Reinforcement - 复制.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR052_Reinforcement.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR053_Reinforcement.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR061_PolyDim.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR062_PolyDim.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR063_PolyDim.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR06_PolyDim.cs" />
+    <Compile Include="Tools\CreatEntity\BaseRein\BR02_SelectNoUseText2.cs" />
+    <Compile Include="Tools\CreatEntity\CrossSectionalDrawing\BreakLines.cs" />
+    <Compile Include="Tools\CreatEntity\CrossSectionalDrawing\BreakCurves.cs" />
+    <Compile Include="00\DimensionForReinforcement - 复制.cs" />
+    <Compile Include="Tools\CreatEntity\Dim\DimensionForReinforcement.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementFun.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementMain - 复制.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementMain.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsF.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsE.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsD.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsC.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsB.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsA.cs" />
+    <Compile Include="Tools\Envelope\Envelope - 复制.cs" />
+    <Compile Include="Tools\Envelope\DeleteduplicateEdge.cs" />
+    <Compile Include="Tools\GeometryUtils\GeometryUtils - 2.cs" />
+    <Compile Include="Tools\GeometryUtils\GeometryUtils - 1.cs" />
+    <Compile Include="Tools\GptModifyTool\DimensionTool - 复制 - 复制.cs" />
+    <Compile Include="Tools\GptModifyTool\DimensionTool - 复制.cs" />
+    <Compile Include="Tools\GptModifyTool\Intersection.cs" />
+    <Compile Include="Tools\GptModifyTool\MleaderTool.cs" />
+    <Compile Include="Tools\GptModifyTool\ProcessEntities.cs" />
+    <Compile Include="Tools\GptModifyTool\TableStyle.cs" />
+    <Compile Include="Tools\GptModifyTool\TextTool.cs" />
+    <Compile Include="Tools\GptModifyTool\ToSpaceTool - 复制.cs" />
+    <Compile Include="Tools\input\GetPoly.cs" />
+    <Compile Include="Tools\InsideOrOutside\IsPointInsidePolyline.cs" />
+    <Compile Include="Tools\PileLayout\HelpFunGird.cs" />
+    <Compile Include="Tools\PileLayout\HelpFunVoronoi.cs" />
+    <Compile Include="Tools\PileLayout\a.cs" />
+    <Compile Include="Tools\PileLayout\s1.cs" />
+    <Compile Include="Tools\PileLayout\p.cs" />
+    <Compile Include="Tools\PileLayout\Pile.cs" />
+    <Compile Include="Tools\PileLayout\V2.cs" />
+    <Compile Include="Tools\PileLayout\V1.cs" />
+    <Compile Include="Tools\PileLayout\Grid - 复制 - 复制 - 复制.cs" />
+    <Compile Include="Tools\PileLayout\Grid - 复制 - 复制.cs" />
+    <Compile Include="Tools\PileLayout\Quadtree.cs" />
+    <Compile Include="Tools\PileLayout\Grid.cs" />
+    <Compile Include="Tools\SelectTool\NewSelectFunction - 复制.cs" />
+    <Compile Include="Tools\SelectTool\NewSelectFunction.cs" />
+    <Compile Include="Tools\SelectTool\SelectDic.cs" />
+    <Compile Include="Tools\TransactionBatchProcessor.cs" />
+    <Compile Include="Tools\template.cs" />
+    <Compile Include="Tools\Envelope\Envelope.cs" />
+    <Compile Include="Tools\GptModifyTool\DeleteByObjectIDs.cs" />
+    <Compile Include="Tools\GptModifyTool\ChangeEntityProperty.cs" />
+    <Compile Include="Tools\GptModifyTool\ChangePosition.cs" />
+    <Compile Include="Tools\GptModifyTool\ComparerTool.cs" />
+    <Compile Include="Tools\GptModifyTool\CreatSolid.cs" />
+    <Compile Include="Tools\GptModifyTool\DimensionTool.cs" />
+    <Compile Include="Tools\GptModifyTool\DimTool.cs" />
+    <Compile Include="Tools\GptModifyTool\FileTool.cs" />
+    <Compile Include="Tools\GptModifyTool\GeneralTool.cs" />
+    <Compile Include="Tools\GptModifyTool\LayerPropertiesExport.cs" />
+    <Compile Include="Tools\GptModifyTool\LayerTool.cs" />
+    <Compile Include="Tools\GptModifyTool\LineTool.cs" />
+    <Compile Include="Tools\GptModifyTool\PointTool.cs" />
+    <Compile Include="Tools\GptModifyTool\PolyTool.cs" />
+    <Compile Include="Tools\GptModifyTool\SetCurrentStyles.cs" />
+    <Compile Include="Tools\GptModifyTool\ToSpaceTool.cs" />
+    <Compile Include="Tools\input\GetUserPoint.cs" />
+    <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
+    <Compile Include="Tools\SelectTool\SelectTrue.cs" />
+    <Compile Include="ViewModels\ViewModelLocator.cs" />
+    <Compile Include="ViewModels\BaseDimensionPanelViewModel.cs" />
+    <Compile Include="ViewModels\ClusterAndBasePanelViewModel.cs" />
+    <Compile Include="ViewModels\PilePanelViewModel.cs" />
+    <Compile Include="ViewModels\PointsClusterPanelViewModel - 复制.cs" />
+    <Compile Include="ViewModels\PointsClusterPanelViewModel.cs" />
+    <Compile Include="Views\BaseReinPanel.xaml.cs">
+      <DependentUpon>BaseReinPanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ClusterAndBasePanel.xaml.cs">
+      <DependentUpon>ClusterAndBasePanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\FilterPanel.xaml.cs">
+      <DependentUpon>FilterPanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\InverseBooleanConverter.cs" />
+    <Compile Include="Views\PilePanel.xaml.cs">
+      <DependentUpon>PilePanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ReinPanel.xaml.cs">
+      <DependentUpon>ReinPanel.xaml</DependentUpon>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET">
+      <Version>24.3.0</Version>
+    </PackageReference>
+    <PackageReference Include="Clipper2">
+      <Version>1.4.0</Version>
+    </PackageReference>
+    <PackageReference Include="FSharp.Core">
+      <Version>8.0.301</Version>
+    </PackageReference>
+    <PackageReference Include="NetTopologySuite">
+      <Version>2.5.0</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.3</Version>
+    </PackageReference>
+    <PackageReference Include="RectanglePacker">
+      <Version>1.1.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\LibraryResources.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Page Include="Views\BaseReinPanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ClusterAndBasePanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\FilterPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\PilePanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ReinPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="01%28平面标注尺寸%29\Readme.md" />
+    <None Include="Annotation\ReadMe.md" />
+    <None Include="Config\config.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Tools\Cluster\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

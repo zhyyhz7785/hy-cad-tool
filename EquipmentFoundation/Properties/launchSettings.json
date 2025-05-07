@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "EquipmentFoundation": {
+      "commandName": "Project"
+    },
+    "配置文件 1": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2025\\acad.exe",
+      "workingDirectory": "E:\\BaiduSyncdisk\\Code\\CSharp\\Rebuild1framwork\\HyCADtoolGpt\\EquipmentFoundation\\bin\\Debug\\net8.0-windows"
+    }
+  }
+}
