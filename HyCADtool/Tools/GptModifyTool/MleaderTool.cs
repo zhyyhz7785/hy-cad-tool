@@ -211,32 +211,7 @@ namespace HyCADTool.Tools
             ml.MText = mt;
             return ml;
         }
-        //public static MLeader AddMleaderSinglePoint(this Point3d point, Point3d endPoint, string content)
-        //{
-        //    var db = Application.DocumentManager.MdiActiveDocument.Database;
-        //    // 创建 MLeader 对象
-        //    MLeader ml = new MLeader();
-        //    // 创建引线组和引线
-        //    int leaderIndex = ml.AddLeader();
-        //    int leaderLineIndex = ml.AddLeaderLine(leaderIndex);
-        //        // 添加起点和终点
-        //    ml.AddFirstVertex(leaderLineIndex, point);
-        //     ml.AddLastVertex(leaderLineIndex, endPoint);
-
-        //    // 5设置引线样式为系统当前样式
-        //    ml.MLeaderStyle = db.MLeaderstyle;
-        //    // 设置标注字体
-        //    MText mt = new MText();
-        //    mt.TextStyleId = ml.TextStyleId;
-        //    mt.Color = ml.TextColor;
-        //    mt.TextHeight = ml.TextHeight;
-        //    mt.Contents = content;
-        //    //var angle = ChangeLineRotationForMleader(line.Angle);
-        //    //var angle = line.Angle;
-        //    //mt.Rotation = angle;
-        //    ml.MText = mt;
-        //    return ml;
-        //}
+       
 
 
         public static MLeader AddMleaderSinglePoint(this Point3d point, Point3d endPoint, string content)

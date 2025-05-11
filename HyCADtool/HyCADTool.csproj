@@ -298,7 +298,6 @@
     <Compile Include="Tools\PileLayout\Quadtree.cs" />
     <Compile Include="Tools\PileLayout\Grid.cs" />
     <Compile Include="Tools\SelectTool\NewSelectFunction - 复制.cs" />
-    <Compile Include="Tools\SelectTool\NewSelectFunction.cs" />
     <Compile Include="Tools\SelectTool\SelectDic.cs" />
     <Compile Include="Tools\TransactionBatchProcessor.cs" />
     <Compile Include="Tools\template.cs" />
@@ -318,7 +317,6 @@
     <Compile Include="Tools\GptModifyTool\PointTool.cs" />
     <Compile Include="Tools\GptModifyTool\PolyTool.cs" />
     <Compile Include="Tools\GptModifyTool\SetCurrentStyles.cs" />
-    <Compile Include="Tools\GptModifyTool\ToSpaceTool.cs" />
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
     <Compile Include="Tools\SelectTool\SelectTrue.cs" />

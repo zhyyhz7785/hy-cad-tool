@@ -247,6 +247,7 @@ namespace HyCADTool.Tools
                     // 返回图层的 ObjectId
                     return layerTable[layerName];
                 }
+                
                 else
                 {
                     throw new System.Exception($"图层 '{layerName}' 不存在。");
