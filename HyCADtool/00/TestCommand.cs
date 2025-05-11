@@ -237,7 +237,7 @@ namespace HyCADTool
                     //HyCommand.ReplacePolygonByIntersectionBatch();
                     // HyCommand.CreateDCELPolylinesFromLines();
                     // HyCommand.DrawRaftThicknessText();
-                    //HyCommand.CreateViewportsFromModelBounds();asdfasdfasdf
+                    //HyCommand.CreateViewportsFromModelBounds();121212
                     PointClusterHelper.AnnotateClustersTest();
                     ed.WriteMessage("\nabcde\n");
                 });
