@@ -225,6 +225,7 @@ namespace HyCADTool
                     // HyCommand.DrawRaftThicknessText();
                     //HyCommand.CreateViewportsFromModelBounds();
                     PointClusterHelper.AnnotateClustersTest();
+                    //PointClusterHelper.GenerateBoltDimensions();
                     ed.WriteMessage("\nabcde\n");
                 });
             }

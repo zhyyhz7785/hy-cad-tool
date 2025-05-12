@@ -8,28 +8,43 @@ namespace HyCADTool.GeoUtils
 {
     public class AxisIntersectionMapper
     {
-        /// <summary>
-        /// 将每个 ClusterResult 映射到最近的轴线交点
-        /// </summary>
-        public Dictionary<ClusterResult, Point3d> MapClustersToIntersections(
-            List<ClusterResult> clusters,
-            List<Line> xAxes,
-            List<Line> yAxes)
+        public Dictionary<ClusterResult, Tuple<Point3d, Point3d>> MapClustersToIntersections(
+      List<ClusterResult> clusters,
+      List<Line> xAxes,
+      List<Line> yAxes)
         {
-            var result = new Dictionary<ClusterResult, Point3d>();
+            var result = new Dictionary<ClusterResult, Tuple<Point3d, Point3d>>();
+
             foreach (var cluster in clusters)
             {
                 var center = cluster.Center;
                 var nearestX = GetNearestAxis(xAxes, center, vertical: false);
                 var nearestY = GetNearestAxis(yAxes, center, vertical: true);
                 var intersection = new Point3d(nearestY.StartPoint.X, nearestX.StartPoint.Y, 0);
-                result[cluster] = intersection;
+
+                // 取左下角点
+                var minPt = cluster.EnvelopeExtents.MinPoint;
+
+                // 点1：交点X，左下Y；点2：左下X，交点Y
+                var pt1 = new Point3d(intersection.X, minPt.Y, 0);
+                var pt2 = new Point3d(minPt.X, intersection.Y, 0);
+
+                result[cluster] = Tuple.Create(pt1, pt2);
+
                 // 添加 MBR 内部的额外交点
                 var internalPts = FindIntersectionsInside(cluster, xAxes, yAxes);
                 cluster.AdditionalIntersections.AddRange(internalPts);
             }
-            return result;
+
+            // 排序逻辑：按 pt1.x, pt1.y 升序
+            var sorted = result.OrderBy(kv => kv.Value.Item1.X)
+                               .ThenBy(kv => kv.Value.Item1.Y)
+                               .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            return sorted;
         }
+
+
         private Line GetNearestAxis(List<Line> axes, Point3d center, bool vertical)
         {
             if (axes == null || axes.Count == 0)

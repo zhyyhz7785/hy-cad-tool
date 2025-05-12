@@ -59,7 +59,7 @@
     <Compile Include="01%28平面标注尺寸%29\BaseDimension.cs" />
     <Compile Include="01%28平面标注尺寸%29\BaseDimHelper - 复制.cs" />
     <Compile Include="01%28平面标注尺寸%29\BaseDimHelper.cs" />
-    <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper - 复制.cs" />
+    <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper_Fun.cs" />
     <Compile Include="01%28平面标注尺寸%29\Test.cs" />
     <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper.cs" />
     <Compile Include="Annotation\AnnotationFramework.cs" />

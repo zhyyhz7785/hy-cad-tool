@@ -353,6 +353,12 @@ namespace HyCADTool.HelpClass
                     new Point3d(minX, minY, 0),
                     new Point3d(maxX, maxY, 0)
                 );
+                cluster.EnvelopeExpandedPolyline = CreateRectPolyline(
+                     new Extents3d(
+                         new Point3d(minX - GlobalMargin, minY - GlobalMargin, 0),
+                         new Point3d(maxX + GlobalMargin, maxY + GlobalMargin, 0)
+                     ));
+                cluster.EnvelopeExpandedPolyline.ToSpace();
             }
             // 提示输入比例系数
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
