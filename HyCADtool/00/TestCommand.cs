@@ -14,7 +14,6 @@ using HyCADTool.Tools;
 using System;
 using HyCADTool;
 using HyCADTool.Config;
-
 //   ^\s*(?=\r?$)\n   (删除空行正则表达式）
 //Cad查询数据命令   (setq ent (entsel)) (setq ent_data (car ent)) (setq ent_data (entget ent_data))
 [assembly: CommandClass(typeof(HyCADTool.TestCommand))]
@@ -28,13 +27,9 @@ namespace HyCADTool
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
-
-
-
             try
             {
                 SimpleLogger.LogElapsedTime("star1", () =>
-
                 {
                     //var filter = AcTv.Or(AcTv.And(AcTv.Polyline, "柱".GetLayerFilter()), AcTv.DBText).Getfilter();asdfaaa
                     //var dic = EtGpt.SelectToDic(filter, "选择Polyline");
@@ -149,18 +144,14 @@ namespace HyCADTool
                     // a.GenerateWalls();
                     //  var a = new Commands();
                     //a.Create2DSectionXY();
-
                     //var a = new WallConnectionTest();
                     //a.TestHandleWallConnection();
-
                     //  CreateSection.CreateSectionAndMove();
                     //HyCommand.LineOverkill();
                     // HyCommand.DeleteSelectedObjects();
                     //HyCommand.LineOverkillCommand();
-
                     //var a = new HelpClass.CreatBase.ElevationModelGenerator();
                     //a.GenerateCrossSection();
-
                     //HyCommand.AlignTextToLineByDistance();
                     // HyCommand.AttachAnchorBoltToCircles();
                     //HyCommand.ToggleAnchorBoltDisplay();
@@ -175,22 +166,17 @@ namespace HyCADTool
                     //HyCommand.HighlightBoltData();
                     // HyCommand.HighlightBoltDataCommand();
                     // HyCommand.CreateAxisTableCommand();
-
                     //GetEquipment();
                     //var a= db.SelectAEntity<Polyline>();
                     //DimensionForReinforcement.GenerateDimension(a);
                     //HyCommand.SortPolylinePoints();
                     //var a = BaseDimension.Create();
                     // a.BPs.ToSpace();
-
                     //a.A_APs.ToSpace();
                     //a.B_APs.ToSpace();
-
                     //var a = new EnvelopeCluster();
                     //a.RunClusterEnvelopeCommand();
                     //var helper = new BaseDimHelper();
-
-
                     // var halper = new BaseDimHelper();
                     //var a = new ElevationModelGenerator();
                     //a.GenerateWalls();
@@ -247,9 +233,5 @@ namespace HyCADTool
                 ed.WriteMessage($"\n{ex}\n");
             }
         }
-
-
-
-        
     }
 }

@@ -8,7 +8,6 @@
 //using System;
 //using System.Collections.Generic;
 //using System.Linq;
-
 //namespace HyCADTool.Tools
 //{
 //    public static partial class EtGpt
@@ -24,20 +23,15 @@
 //        {
 //            var dims = new List<RotatedDimension>();
 //            if (points == null || points.Count < 2) return dims;
-
 //            var groupedPoints = isXAxis
 //                ? GroupPointsForX(points)
 //                : GroupPointsForY(points);
-
 //            if (groupedPoints.Count < 2) return dims;
-
 //            double offsetBase = 5 * options.Scale;
 //            double minDist = 3 * options.Scale;
-
 //            DimensionFor direction = isXAxis
 //                ? (options.XDirectionIsUp ? DimensionFor.ForUp : DimensionFor.ForDown)
 //                : (options.YDirectionIsRight ? DimensionFor.ForRight : DimensionFor.ForLeft);
-
 //            for (int i = 0; i < groupedPoints.Count - 1; i++)
 //            {
 //                var p1 = groupedPoints[i];
@@ -45,17 +39,13 @@
 //                double dist = isXAxis
 //                    ? Math.Abs(p2.X - p1.X)
 //                    : Math.Abs(p2.Y - p1.Y);
-
 //                double offset = dist < minDist ? 2 * offsetBase : offsetBase;
-
 //                var dim = GetDimByTwoPoints(p1, p2, offset, direction, true);
 //                dim.LayerId = layerId;
 //                dims.Add(dim);
 //            }
-
 //            return dims;
 //        }
-
 //        /// <summary>
 //        /// 生成一组点的双方向标注（用于一般点聚类，如螺栓聚类）
 //        /// </summary>
@@ -67,13 +57,10 @@
 //        {
 //            var dims = new List<RotatedDimension>();
 //            if (points == null || points.Count < 2) return dims;
-
 //            dims.AddRange(CreateDimensionsForClusterSingleSide(points, true, layerIdX, options));  // X方向
 //            dims.AddRange(CreateDimensionsForClusterSingleSide(points, false, layerIdY, options)); // Y方向
-
 //            return dims;
 //        }
-
 //        // 内部辅助分组方法
 //        private static List<Point3d> GroupPointsForX(List<Point3d> points)
 //        {
@@ -83,7 +70,6 @@
 //                .OrderBy(p => p.X)
 //                .ToList();
 //        }
-
 //        private static List<Point3d> GroupPointsForY(List<Point3d> points)
 //        {
 //            return points
@@ -92,6 +78,5 @@
 //                .OrderBy(p => p.Y)
 //                .ToList();
 //        }
-       
 //    }
 //}

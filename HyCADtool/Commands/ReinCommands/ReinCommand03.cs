@@ -10,7 +10,6 @@ namespace HyCADTool.Command
         ///截断钢筋
         public static void MleaderRein()
         {
-
             EtGpt.SetCurrentLayer("00_hy_3公共_标注3_引线");
             var psL = EtGpt.GetReinPoints();
             if (psL == null)

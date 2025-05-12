@@ -14,10 +14,8 @@ namespace HyCADTool.Tools
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
-
             Database db = doc.Database;
             Editor ed = doc.Editor;
-
             try
             {
                 using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -39,7 +37,6 @@ namespace HyCADTool.Tools
             editor.Regen();
             SafeRefreshLayerUsage();
         }
-
         public static void SafeRefreshLayerUsage()
         {
             try
@@ -47,7 +44,6 @@ namespace HyCADTool.Tools
                 Document doc = Application.DocumentManager.MdiActiveDocument;
                 Database db = doc?.Database;
                 if (db == null) return;
-
                 Application.DocumentManager.ExecuteInCommandContextAsync(async (o) =>
                 {
                     try
@@ -66,11 +62,9 @@ namespace HyCADTool.Tools
                 // 忽略
             }
         }
-
         public static void RefreshLayerUsage(this Database db)
         {
             if (db == null) return;
-
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
                 LayerTable layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
@@ -81,8 +75,6 @@ namespace HyCADTool.Tools
                 tr.Commit();
             }
         }
-
-
         /// <summary>
         /// 创建一个新图层。
         /// </summary>
@@ -100,7 +92,6 @@ namespace HyCADTool.Tools
             db = db ?? doc.Database;
             // 如果未提供ed，则从活动文档获取
             ed = ed ?? doc.Editor;
-
             var id = new ObjectId();       // 初始化图层ID
                                            // 获取文档锁
             using (DocumentLock docLock = doc.LockDocument())
@@ -247,7 +238,6 @@ namespace HyCADTool.Tools
                     // 返回图层的 ObjectId
                     return layerTable[layerName];
                 }
-                
                 else
                 {
                     throw new System.Exception($"图层 '{layerName}' 不存在。");

@@ -2,7 +2,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using System;
 using System.Collections.Generic;
-
 namespace HyCADTool.Tools
 {
     public static class TransactionBatchProcessor
@@ -15,7 +14,6 @@ namespace HyCADTool.Tools
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc?.Database;
             if (db == null || objectIds == null) return;
-
             foreach (var id in objectIds)
             {
                 using (Transaction tr = db.TransactionManager.StartTransaction())

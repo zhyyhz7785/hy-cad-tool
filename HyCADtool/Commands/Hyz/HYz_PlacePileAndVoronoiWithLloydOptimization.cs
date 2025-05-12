@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-
 namespace HyCADTool.Command
 {
     public static partial class HyCommand
@@ -18,7 +17,6 @@ namespace HyCADTool.Command
         ///选择yjk墙体水平配筋 《输入值的处理
         public static void PlacePileAndVoronoiWithLloydOptimization()
         {
-
             EtGpt.PlacePileAndVoronoiWithLloydOptimization();
         }
     }

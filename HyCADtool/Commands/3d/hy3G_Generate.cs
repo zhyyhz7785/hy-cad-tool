@@ -9,7 +9,6 @@ namespace HyCADTool.Command
         public static void ElevationModelGenerato()
         {
             var a = new ElevationModelGenerator();
-
             a.GenerateWalls();
             a.GenerateRaftAndBase();
         }

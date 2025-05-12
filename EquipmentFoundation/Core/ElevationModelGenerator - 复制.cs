@@ -6,7 +6,6 @@
 //using System;
 //using System.Collections.Generic;
 //using System.Linq;
-
 //namespace EquipmentFoundation
 //{
 //    public partial class ElevationModelGenerator
@@ -18,7 +17,6 @@
 //            var db = HostApplicationServices.WorkingDatabase;
 //            string warningLayerName = "00ElevationWarnings";
 //            string textLayerName = "00_hy_3公共_标注4_标高";
-
 //            using (var tr = db.TransactionManager.StartTransaction())
 //            {
 //                var layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
@@ -28,7 +26,6 @@
 //                    tr.Commit();
 //                    return input;
 //                }
-
 //                if (!layerTable.Has(warningLayerName))
 //                {
 //                    layerTable.UpgradeOpen();
@@ -40,7 +37,6 @@
 //                    layerTable.Add(newLayer);
 //                    tr.AddNewlyCreatedDBObject(newLayer, true);
 //                }
-
 //                var selOpts = new PromptSelectionOptions { MessageForAdding = "\n请选择封闭的 Polyline、标高文本和螺栓: " };
 //                var filter = new SelectionFilter(new TypedValue[]
 //                {
@@ -57,14 +53,11 @@
 //                    tr.Commit();
 //                    return input;
 //                }
-
 //                ed.WriteMessage($"\n找到 {selRes.Value.Count} 个对象。\n");
-
 //                var outerPolylines = new List<Polyline>();
 //                var innerPolylines = new List<Polyline>();
 //                var texts = new List<DBText>();
 //                var circles = new List<Circle>();
-
 //                // 分类选择的对象
 //                foreach (ObjectId id in selRes.Value.GetObjectIds())
 //                {
@@ -85,12 +78,10 @@
 //                        circles.Add(circle);
 //                    }
 //                }
-
 //                // 赋值到 GeometryInput
 //                input.OuterContours = outerPolylines;
 //                input.InnerPolygons = innerPolylines;
 //                input.Bolts = circles;
-
 //                if (input.OuterContours.Count == 0)
 //                {
 //                    ed.WriteMessage("\n错误: 未在 'dcelOuter' 图层中找到封闭的 Polyline，请检查图纸并添加外轮廓。\n");
@@ -103,7 +94,6 @@
 //                    tr.Commit();
 //                    return input;
 //                }
-
 //                // 处理标高
 //                var polygonElevations = new Dictionary<Polyline, List<double>>();
 //                foreach (var text in texts)
@@ -124,7 +114,6 @@
 //                        }
 //                    }
 //                }
-
 //                var btr = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(db), OpenMode.ForWrite);
 //                bool hasErrors = false;
 //                foreach (var polyline in innerPolylines)
@@ -150,20 +139,17 @@
 //                        input.Elevations[polyline] = polygonElevations[polyline].First();
 //                    }
 //                }
-
 //                if (hasErrors)
 //                {
 //                    ed.WriteMessage("\n命令中止: 图纸中存在错误，请查看 '00ElevationWarnings' 图层并修正问题后重试。\n");
 //                    tr.Commit();
 //                    return input;
 //                }
-
 //                ed.WriteMessage($"\n选择统计: OuterContours={input.OuterContours.Count}, InnerPolygons={input.InnerPolygons.Count}, Elevations={input.Elevations.Count}, Bolts={input.Bolts.Count}\n");
 //                tr.Commit();
 //            }
 //            return input;
 //        }
-
 //        // 辅助方法（从原代码迁移）
 //        private bool IsValidPolyline(Polyline polyline)
 //        {
@@ -176,26 +162,21 @@
 //                    var seg1End = polyline.GetPoint3dAt(i + 1);
 //                    var seg2Start = polyline.GetPoint3dAt(j);
 //                    var seg2End = polyline.GetPoint3dAt((j + 1) % polyline.NumberOfVertices);
-
 //                    if (AreLinesIntersecting(seg1Start, seg1End, seg2Start, seg2End))
 //                        return false;
 //                }
 //            }
 //            return true;
 //        }
-
 //        private bool AreLinesIntersecting(Point3d p1, Point3d p2, Point3d q1, Point3d q2)
 //        {
 //            // 简单线段相交检测
 //            double denom = (q2.Y - q1.Y) * (p2.X - p1.X) - (q2.X - q1.X) * (p2.Y - p1.Y);
 //            if (Math.Abs(denom) < Tolerance.Global.EqualPoint) return false;
-
 //            double ua = ((q2.X - q1.X) * (p1.Y - q1.Y) - (q2.Y - q1.Y) * (p1.X - q1.X)) / denom;
 //            double ub = ((p2.X - p1.X) * (p1.Y - q1.Y) - (p2.Y - p1.Y) * (p1.X - q1.X)) / denom;
-
 //            return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
 //        }
-
 //        private void AddWarningEntity(BlockTableRecord btr, Transaction tr, Polyline polyline, string layerName, string message)
 //        {
 //            var centroid = GetPolylineCentroid(polyline);
@@ -209,7 +190,6 @@
 //            btr.AppendEntity(text);
 //            tr.AddNewlyCreatedDBObject(text, true);
 //        }
-
 //        private Point3d GetPolylineCentroid(Polyline polyline)
 //        {
 //            double xSum = 0, ySum = 0;
@@ -222,7 +202,6 @@
 //            }
 //            return new Point3d(xSum / n, ySum / n, 0);
 //        }
-
 //        private double ParseExtrudeDistance(string text)
 //        {
 //            if (string.IsNullOrEmpty(text) || text.Contains("%%P0.000") || text == "0.000" || text.Contains("±"))
@@ -231,7 +210,6 @@
 //            var match = System.Text.RegularExpressions.Regex.Match(text, pattern);
 //            return match.Success && double.TryParse(match.Value, out double distance) ? distance * 1000 : 0.0;
 //        }
-
 //        private bool IsPointInsidePolygon(Point3d point, Polyline polyline)
 //        {
 //            int intersections = 0;

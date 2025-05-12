@@ -7,7 +7,6 @@
 //using System;
 //using System.Collections.Generic;
 //using Exception = Autodesk.AutoCAD.Runtime.Exception;
-
 //namespace HyCADTool.HelpClass.CreatBase
 //{
 //    public static class CreateSection
@@ -24,13 +23,11 @@
 //                { "00_hy_fillGeometry", 5 },       // 蓝色
 //                { "00_hy_section", 6 }             // 洋红
 //            };
-
 //            foreach (var layer in layerSettings)
 //            {
 //                EtGpt.CreateLayer(layer.Key, layer.Value); // 假设 EtGpt 是工具类
 //            }
 //        }
-
 //        // 获取用户输入的位移距离
 //        private static double GetDisplacement(Editor ed)
 //        {
@@ -40,7 +37,6 @@
 //            PromptDoubleResult pdr = ed.GetDouble(pdo);
 //            return pdr.Status == PromptStatus.OK ? pdr.Value : 6000;
 //        }
-
 //        // 创建变换矩阵
 //        private static Matrix3d GetTransformation(bool isXDirection, double displacement, int index)
 //        {
@@ -55,28 +51,23 @@
 //                return Matrix3d.Displacement(moveVector) * Matrix3d.Rotation(-Math.PI / 2, Vector3d.YAxis, Point3d.Origin);
 //            }
 //        }
-
 //        // 创建剖面并移动
 //        private static void GenerateSection(Database db, Transaction tr, Editor ed, List<SectionLine> sectionLines, double displacement)
 //        {
 //            BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
 //            BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
-
 //            foreach (var sl in sectionLines)
 //            {
 //                Line line = sl.LineX ?? sl.LineY;
 //                if (line == null) continue;
-
 //                // 创建剖面点集合
 //                Point3dCollection sectionPoints = new Point3dCollection { line.StartPoint, line.EndPoint };
 //                Section section = new Section(sectionPoints, Vector3d.ZAxis);
 //                section.Layer = "00_hy_section";
 //                btr.AppendEntity(section);
 //                tr.AddNewlyCreatedDBObject(section, true);
-
 //                // 添加符号
 //                sl.AddSymbols(db, tr, btr);
-
 //                // 选择 3D 对象
 //                PromptSelectionOptions pso = new PromptSelectionOptions();
 //                pso.MessageForAdding = $"\n请选择第 {sl.Index + 1} 条剖切线对应的 3D 对象: ";
@@ -91,7 +82,6 @@
 //                SelectionFilter filter = new SelectionFilter(filterList);
 //                PromptSelectionResult psr = ed.GetSelection(pso, filter);
 //                if (psr.Status != PromptStatus.OK) continue;
-
 //                // 生成剖面几何
 //                ObjectIdCollection entityIds = new ObjectIdCollection(psr.Value.GetObjectIds());
 //                Matrix3d transformation = GetTransformation(sl.LineX != null, displacement, sl.Index);
@@ -103,7 +93,6 @@
 //                        Array sectionGeometry, backgroundGeometry, foregroundGeometry, curveGeometry, fillGeometry;
 //                        section.GenerateSectionGeometry(entity, out sectionGeometry, out backgroundGeometry,
 //                            out foregroundGeometry, out curveGeometry, out fillGeometry);
-
 //                        AssignGeometryToLayer(sectionGeometry, "00_hy_sectionGeometry", transformation, btr, tr);
 //                        AssignGeometryToLayer(backgroundGeometry, "00_hy_backgroundGeometry", transformation, btr, tr);
 //                        AssignGeometryToLayer(foregroundGeometry, "00_hy_foregroundGeometry", transformation, btr, tr);
@@ -113,7 +102,6 @@
 //                }
 //            }
 //        }
-
 //        // 分配几何到图层
 //        private static void AssignGeometryToLayer(Array geometry, string layerName, Matrix3d transformation,
 //            BlockTableRecord btr, Transaction tr)
@@ -132,7 +120,6 @@
 //                }
 //            }
 //        }
-
 //        // 命令整合
 //        [CommandMethod("CreateSectionCommand")]
 //        public static void CreateSectionCommand()
@@ -140,7 +127,6 @@
 //            Document doc = Application.DocumentManager.MdiActiveDocument;
 //            Database db = doc.Database;
 //            Editor ed = doc.Editor;
-
 //            try
 //            {
 //                using (Transaction tr = db.TransactionManager.StartTransaction())

@@ -2,7 +2,6 @@ using Autodesk.AutoCAD.Colors;              // AutoCAD颜色支持
 using Autodesk.AutoCAD.DatabaseServices;    // AutoCAD数据库服务
 using Autodesk.AutoCAD.Geometry;
 using System.Text.RegularExpressions;            // AutoCAD几何工具
-
 namespace CadUtils
 {
     /// <summary>
@@ -19,9 +18,7 @@ namespace CadUtils
         {
             if (db == null) throw new ArgumentNullException(nameof(db));         // 检查数据库是否为空
             if (tr == null) throw new ArgumentNullException(nameof(tr));         // 检查事务是否为空
-
             var layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForWrite) as LayerTable; // 获取图层表
-
             // 定义所需图层
             string[] requiredLayers = { "Walls", "Base", "Section" };
             foreach (var layerName in requiredLayers)                           // 遍历图层名称
@@ -51,14 +48,11 @@ namespace CadUtils
             if (db == null) throw new ArgumentNullException(nameof(db));         // 检查数据库是否为空
             if (tr == null) throw new ArgumentNullException(nameof(tr));         // 检查事务是否为空
             if (string.IsNullOrEmpty(layer)) throw new ArgumentException("图层名称不能为空", nameof(layer)); // 检查图层名称
-
             var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable; // 获取块表
             var btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord; // 获取模型空间
-
             polyline.TransformBy(Matrix3d.Displacement(basePoint.GetAsVector())); // 移动到基准点
             polyline.Normal = normalVector;                                     // 设置法向量
             polyline.Layer = layer;                                             // 设置图层
-
             btr.AppendEntity(polyline);                                         // 添加到模型空间
             tr.AddNewlyCreatedDBObject(polyline, true);                         // 提交新对象
         }
@@ -66,12 +60,10 @@ namespace CadUtils
         {
             int intersections = 0;
             int nvert = pline.NumberOfVertices;
-
             for (int i = 0, j = nvert - 1; i < nvert; j = i++)
             {
                 Point3d pi = pline.GetPoint3dAt(i);
                 Point3d pj = pline.GetPoint3dAt(j);
-
                 if (((pi.Y > point.Y) != (pj.Y > point.Y)) &&
                     (point.X < (pj.X - pi.X) * (point.Y - pi.Y) / (pj.Y - pi.Y) + pi.X))
                 {
@@ -115,7 +107,6 @@ namespace CadUtils
             }
             return (intersections % 2) == 1; // 奇数次交叉表示在内部
         }
-
         // 辅助方法：添加警告实体
         public static void AddWarningEntity(BlockTableRecord btr, Transaction tr, Polyline polyline, string layerName, string message)
         {
@@ -135,7 +126,6 @@ namespace CadUtils
             tr.AddNewlyCreatedDBObject(warningPline, true);
         }
         // 辅助方法：解析标高值
-
         // 辅助方法：检查 Polyline 是否有效（简单检查自相交）
         public static bool IsValidPolyline(Polyline polyline)
         {
@@ -163,8 +153,6 @@ namespace CadUtils
             }
             return new Point3d(xSum / n, ySum / n, 0); // 简单平均质心
         }
-
-
         // 辅助方法：解析标高值
         public static double ParseExtrudeDistance(string text)
         {
@@ -174,30 +162,16 @@ namespace CadUtils
             Match match = Regex.Match(text, pattern);
             return match.Success && double.TryParse(match.Value, out double distance) ? distance * 1000 : 0.0;
         }
-
-
-
         public static Tuple<Vector3d, double> CalculateTransformParameters(Polyline sectionLine, double offsetDistance)
         {
             var startPoint = sectionLine.GetPoint3dAt(0);
             var endPoint = sectionLine.GetPoint3dAt(sectionLine.NumberOfVertices - 1);
             Vector3d direction = endPoint - startPoint;
             direction = direction.GetNormal();
-
             Vector3d normalVector = direction.CrossProduct(Vector3d.ZAxis).GetNormal();
             normalVector = normalVector * offsetDistance;
-
             double angle = Math.Atan2(direction.Y, direction.X);
             return new Tuple<Vector3d, double>(normalVector, angle);
         }
-
-
-
-
-
-
-
-
     }
-
 }

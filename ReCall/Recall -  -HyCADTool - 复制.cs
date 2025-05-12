@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
-
 [assembly: CommandClass(typeof(HyCADTool.ReCall.ReCallClass))]
 namespace HyCADTool.ReCall
 {
@@ -18,13 +17,11 @@ namespace HyCADTool.ReCall
         private static readonly string TargetDllName = "HyCADTool.dll";
         private static readonly string TempDllName = "HyCADTool_temp.dll";
         private static readonly string NugetPackagesRelativePath = ".nuget\\packages";
-
         // 其他字段保持不变
         private Action Cmd1Action { get; set; }
         private static string DependenciesPath;
         private static string NugetPackagesPath;
         private static readonly Dictionary<string, Assembly> AssemblyCache = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
-
         [CommandMethod("C2")]
         public void Reload()
         {
@@ -35,13 +32,11 @@ namespace HyCADTool.ReCall
                 string pluginFolder = Path.Combine(rootDir, PluginFolderRelativePath);
                 string targetPath = Path.Combine(pluginFolder, TargetDllName);
                 string tempPath = Path.Combine(Path.GetTempPath(), TempDllName);
-
                 if (!File.Exists(targetPath))
                 {
                     editor.WriteMessage($"\n找不到目标文件: {targetPath}");
                     return;
                 }
-
                 AssemblyCache.Clear();
                 HandleTempFile(tempPath, targetPath, editor);
                 DependenciesPath = pluginFolder;
@@ -57,17 +52,14 @@ namespace HyCADTool.ReCall
                 editor.WriteMessage($"\n加载插件失败: {ex.Message}");
             }
         }
-
         [CommandMethod("C1")]
         public void Cmd1() => Cmd1Action?.Invoke();
-
         private static string GetRootDirectory(FileInfo fileInfo, int levelsUp)
         {
             var dir = fileInfo.Directory;
             for (int i = 0; i < levelsUp && dir != null; i++) dir = dir.Parent;
             return dir?.FullName ?? throw new InvalidOperationException("无法获取根目录");
         }
-
         private static void HandleTempFile(string tempPath, string targetPath, Editor editor)
         {
             try
@@ -94,7 +86,6 @@ namespace HyCADTool.ReCall
             }
             File.Copy(targetPath, tempPath, true);
         }
-
         private void LoadPlugin(string pluginPath, out Action cmdAction)
         {
             var editor = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -115,7 +106,6 @@ namespace HyCADTool.ReCall
                 throw;
             }
         }
-
         private static Assembly ResolveAssemblyHandler(object sender, ResolveEventArgs args)
         {
             if (args.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase)) return null;
@@ -145,7 +135,6 @@ namespace HyCADTool.ReCall
             return null;
         }
     }
-
     public static class ResourceManager
     {
         public static Assembly ResourceAssembly { get; set; }

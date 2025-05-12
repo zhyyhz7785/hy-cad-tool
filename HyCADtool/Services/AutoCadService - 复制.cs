@@ -6,7 +6,6 @@ using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
 using System.IO;
-
 namespace HyCADTool.Services
 {
     public class AutoCadService : Interfaces.ICadService
@@ -15,7 +14,6 @@ namespace HyCADTool.Services
         {
             // 构造函数不再初始化 _editor 和 _db，改为在每个方法中动态获取
         }
-
         private Document GetActiveDocument()
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
@@ -25,7 +23,6 @@ namespace HyCADTool.Services
             }
             return doc;
         }
-
         public void WriteMessage(string message)
         {
             try
@@ -38,7 +35,6 @@ namespace HyCADTool.Services
                 throw new InvalidOperationException($"无法写入消息: {ex.Message}", ex);
             }
         }
-
         public Polyline SelectPolyline()
         {
             try
@@ -51,12 +47,10 @@ namespace HyCADTool.Services
                 throw new InvalidOperationException($"无法选择多段线: {ex.Message}", ex);
             }
         }
-
         public void CreateMultipleLayers(params (string layerName, short colorIndex)[] layerInfos)
         {
             var doc = GetActiveDocument();
             var db = doc.Database;
-
             try
             {
                 using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -89,17 +83,14 @@ namespace HyCADTool.Services
                 throw new InvalidOperationException($"无法创建图层: {ex.Message}", ex);
             }
         }
-
         public void SetLayer(Entity entity, string newLayerName)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
             if (string.IsNullOrEmpty(newLayerName))
                 throw new ArgumentNullException(nameof(newLayerName));
-
             var db = entity.Database ?? GetActiveDocument().Database;
             ObjectId layerId;
-
             try
             {
                 using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -127,12 +118,10 @@ namespace HyCADTool.Services
                 throw new InvalidOperationException($"无法设置图层: {ex.Message}", ex);
             }
         }
-
         public void DrawEntities(IEnumerable<Entity> entities, string layerName)
         {
             var doc = GetActiveDocument();
             var db = doc.Database;
-
             try
             {
                 using (var tr = db.TransactionManager.StartTransaction())
@@ -153,12 +142,10 @@ namespace HyCADTool.Services
                 throw new InvalidOperationException($"无法绘制实体: {ex.Message}", ex);
             }
         }
-
         public void CreateTable(Point3d insertionPoint, string csvFilePath, double scale)
         {
             var doc = GetActiveDocument();
             var db = doc.Database;
-
             try
             {
                 using (var tr = db.TransactionManager.StartTransaction())

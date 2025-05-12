@@ -16,10 +16,8 @@ namespace HyCADTool.HelpClass.TitleBlock
         double BottomMargin { get; }
         double SignWidth { get; }
         double SignHeight { get; }
-
         Polyline GetInnerFrame(Point3d basePoint);
     }
-
     // 标准图框实现类
     public class StandardTitleBlock : ITitleBlock
     {
@@ -32,7 +30,6 @@ namespace HyCADTool.HelpClass.TitleBlock
         public double BottomMargin { get; }
         public double SignWidth { get; }
         public double SignHeight { get; }
-
         public StandardTitleBlock(
             string name, double width, double height,
             double left, double right, double top, double bottom,
@@ -48,12 +45,10 @@ namespace HyCADTool.HelpClass.TitleBlock
             SignWidth = signW;
             SignHeight = signH;
         }
-
         public Polyline GetInnerFrame(Point3d basePoint)
         {
             var pt1 = new Point2d(basePoint.X + LeftMargin, basePoint.Y + BottomMargin);
             var pt2 = new Point2d(basePoint.X + Width - RightMargin, basePoint.Y + Height - TopMargin);
-
             var poly = new Polyline(4);
             poly.AddVertexAt(0, new Point2d(pt1.X, pt1.Y), 0, 0, 0);
             poly.AddVertexAt(1, new Point2d(pt2.X, pt1.Y), 0, 0, 0);
@@ -63,9 +58,7 @@ namespace HyCADTool.HelpClass.TitleBlock
             poly.ConstantWidth = 0.5; // 设置多段线全局宽度
             return poly;
         }
-
     }
-
     // 工厂类
     public static class TitleBlockFactory
     {
@@ -79,42 +72,34 @@ namespace HyCADTool.HelpClass.TitleBlock
             { "A1", (841, 594, 25, 10, 10, 10, 180, 50) },
             { "A0", (1189, 841, 25, 10, 10, 10, 180, 60) }
         };
-
             if (!configs.ContainsKey(size))
                 throw new ArgumentException($"未定义图纸类型: {size}");
-
             var (w, h, l, t, r, b, sw, sh) = configs[size];
-
             if (w >= h)
                 w *= lengthScale;
             else
                 h *= lengthScale;
-
             return new StandardTitleBlock(size, w, h, l, r, t, b, sw, sh);
         }
     }
-
     // 图框绘图器
     public static class TitleBlockDrawer
     {
         public static void DrawTitleBlock(Transaction tr, BlockTableRecord btr, ITitleBlock tb, Database db, Point3d basePoint)
         {
             var layerId = Tools.EtGpt.CreateLayer("00_hy_图框", 7, db);
-
             // 外框
             var outer = CreateRect(
                 new Point2d(basePoint.X, basePoint.Y),
                 new Point2d(basePoint.X + tb.Width, basePoint.Y + tb.Height),
                 LineWeight.LineWeight018, layerId);
             btr.AppendEntity(outer); tr.AddNewlyCreatedDBObject(outer, true);
-
             // 内框
             var inner = CreateRect(
                 new Point2d(basePoint.X + tb.LeftMargin, basePoint.Y + tb.BottomMargin),
                 new Point2d(basePoint.X + tb.Width - tb.RightMargin, basePoint.Y + tb.Height - tb.TopMargin),
                 LineWeight.LineWeight050, layerId);
             btr.AppendEntity(inner); tr.AddNewlyCreatedDBObject(inner, true);
-
             // 图签位置
             double sx = basePoint.X + tb.Width - tb.RightMargin - tb.SignWidth;
             double sy = basePoint.Y + tb.BottomMargin;
@@ -122,7 +107,6 @@ namespace HyCADTool.HelpClass.TitleBlock
                 new Point2d(sx, sy), new Point2d(sx + tb.SignWidth, sy + tb.SignHeight),
                 LineWeight.ByLineWeightDefault, layerId);
             btr.AppendEntity(sign); tr.AddNewlyCreatedDBObject(sign, true);
-
             var label = new DBText
             {
                 Position = new Point3d(sx + tb.SignWidth / 2, sy + tb.SignHeight / 2, 0),
@@ -136,7 +120,6 @@ namespace HyCADTool.HelpClass.TitleBlock
             label.AdjustAlignment(db);
             btr.AppendEntity(label); tr.AddNewlyCreatedDBObject(label, true);
         }
-
         private static Polyline CreateRect(Point2d pt1, Point2d pt2, LineWeight lw, ObjectId layerId)
         {
             var pl = new Polyline(4);
@@ -154,5 +137,4 @@ namespace HyCADTool.HelpClass.TitleBlock
             return pl;
         }
     }
-
 }

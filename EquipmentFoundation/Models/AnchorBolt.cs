@@ -21,7 +21,6 @@ namespace EquipmentFoundation.Models
         public int A { get; set; }
         public int NutHeight { get; set; }
         public int BoltLength { get; set; }
-
         public AnchorBolt(string model, int d, int d1, int v, int h1, int h2, int e, int g, int a, int nutHeight, int boltLength)
         {
             Model = model;
@@ -36,7 +35,6 @@ namespace EquipmentFoundation.Models
             NutHeight = nutHeight;
             BoltLength = boltLength;
         }
-
         public override string ToString()
         {
             return $"型号: {Model}\n" +
@@ -52,7 +50,6 @@ namespace EquipmentFoundation.Models
                    $"丝长: {BoltLength} mm";
         }
     }
-
     public static class AnchorBoltFactory
     {
         public static AnchorBolt CreateBolt(string model)
@@ -72,6 +69,4 @@ namespace EquipmentFoundation.Models
             }
         }
     }
-
-    
 }

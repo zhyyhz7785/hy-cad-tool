@@ -4,7 +4,6 @@ using Autodesk.AutoCAD.Geometry;
 using EquipmentFoundation.Models;
 using System;
 using System.Collections.Generic;
-
 namespace EquipmentFoundation
 {
     public partial class ElevationModelGenerator
@@ -14,10 +13,8 @@ namespace EquipmentFoundation
         {
             if (boundaryConditions == null) throw new ArgumentNullException(nameof(boundaryConditions));
             if (geometryDatas == null) throw new ArgumentNullException(nameof(geometryDatas));
-
             var resultGeometryDataList = new List<GeometryData>();
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-
             foreach (var geomData in geometryDatas)
             {
                 if (geomData == null || geomData.Polygon == null)
@@ -25,12 +22,10 @@ namespace EquipmentFoundation
                     ed?.WriteMessage("\n警告: GeometryData 或其 Polygon 为 null，跳过处理。");
                     continue;
                 }
-
                 // 使用 GeometryData 中的 Elevation 属性，而不是外部 ElevationsDic
                 double elevation = geomData.Elevation;
                 var newGeomData = new GeometryData(geomData.Polygon, 0); // 创建新的 GeometryData 实例
                 newGeomData.Elevation = elevation;
-
                 var conditions = boundaryConditions.ContainsKey(geomData.Polygon) ? boundaryConditions[geomData.Polygon] : null;
                 if (conditions != null)
                 {
@@ -47,12 +42,10 @@ namespace EquipmentFoundation
             }
             return resultGeometryDataList;
         }
-
         private void CalculateBaseAndWallThickness(List<GeometryData> geometryDatas)
         {
             if (geometryDatas == null) throw new ArgumentNullException(nameof(geometryDatas));
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-
             foreach (var geomData in geometryDatas)
             {
                 if (geomData == null)
@@ -75,14 +68,12 @@ namespace EquipmentFoundation
                 geomData.UpdateWallIndex();
             }
         }
-
         private void CalculateWallThickness(GeometryData geomData)
         {
             if (geomData?.Walls == null) return;
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
             const double minThickness = 200;
             var updatedWalls = new List<WallData>();
-
             foreach (var wall in geomData.Walls)
             {
                 if (!wall.Boundary.IsWall)
@@ -112,18 +103,14 @@ namespace EquipmentFoundation
             geomData.Walls.Clear();
             geomData.Walls.AddRange(updatedWalls);
         }
-
         private double CalculateSpan(GeometryData geomData)
         {
             if (geomData?.Walls == null || geomData.Walls.Count == 0)
                 return geomData?.Polygon.Length ?? 0;
-
             var edges = geomData.Walls.Select(w => w.Edge).ToList();
             if (edges.Count < 2) return geomData.Polygon.Length;
-
             double edgeLength = edges.Min(e => e.Length);
             double intersectionSpan = double.MaxValue;
-
             for (int i = 0; i < edges.Count - 1; i++)
             {
                 for (int j = i + 1; j < edges.Count; j++)
@@ -139,7 +126,6 @@ namespace EquipmentFoundation
             double span2 = intersectionSpan == double.MaxValue ? span1 : intersectionSpan;
             return UseAverageSpan ? (span1 + span2) / 2 : Math.Max(span1, span2);
         }
-
         private double CalculateBaseThickness(double span, AnchorBolt bolt)
         {
             double spanBasedThickness = span / 10;

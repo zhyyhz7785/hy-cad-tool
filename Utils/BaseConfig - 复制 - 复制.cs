@@ -77,23 +77,18 @@ namespace CadUtils
         {
             public static string Name => $"0_Hy_{BaseConfig.Scale}_Table";
             public static string TextStyleName => TextStyleConfig.Name;
-
             // 表格行设置
             public static double TitleRowHeight { get; } = 8;   // 标题行高度
             public static double DataRowHeight { get; } = 6;     // 数据行高度
-
             // 颜色索引 (ACI颜色)
             public static int TitleRowColorIndex { get; } = 1;   // 红色标题行
             public static int DataRowColorIndex { get; } = 7;   // 白色数据行
-
             // 对齐方式
             public static CellAlignment TitleHorizontalAlignment { get; } = CellAlignment.MiddleCenter;
             public static CellAlignment DataHorizontalAlignment { get; } = CellAlignment.MiddleLeft;
-
             // 边距设置
             public static double CellHorizontalMargin { get; } = 0.5;
             public static double CellVerticalMargin { get; } = 0.3;
-
             // 网格线设置
             public static double GridLineWeight { get; } = 0.15; // 线宽(mm)
             public static int GridColorIndex { get; } = 7;       // 白色网格线

@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 namespace HyRetainingWallSolver.Tools
 {
     public static partial class HyUtils
@@ -19,7 +18,6 @@ namespace HyRetainingWallSolver.Tools
         {
             entity.UpgradeOpen();
             DBDictionary extDict;
-
             if (entity.ExtensionDictionary.IsValid)
             {
                 extDict = tr.GetObject(entity.ExtensionDictionary, OpenMode.ForWrite) as DBDictionary;
@@ -29,14 +27,12 @@ namespace HyRetainingWallSolver.Tools
                 entity.CreateExtensionDictionary();
                 extDict = tr.GetObject(entity.ExtensionDictionary, OpenMode.ForWrite) as DBDictionary;
             }
-
             string jsonData = JsonConvert.SerializeObject(data);
             Xrecord xrec = new Xrecord { Data = new ResultBuffer(new TypedValue((int)DxfCode.Text, jsonData)) };
             if (extDict.Contains(key)) extDict.Remove(key);
             extDict.SetAt(key, xrec);
             tr.AddNewlyCreatedDBObject(xrec, true);
         }
-
         public static T ReadFromExtensionDictionary<T>(Transaction tr, Entity entity, string key, Editor ed) where T : class
         {
             if (entity.ExtensionDictionary.IsValid &&
@@ -56,7 +52,6 @@ namespace HyRetainingWallSolver.Tools
             }
             return null;
         }
-
         public static int FindSegmentIndex(List<WallBoundary> boundaries, LineSegment3d seg)
         {
             for (int i = 0; i < boundaries.Count; i++)
@@ -71,7 +66,6 @@ namespace HyRetainingWallSolver.Tools
             }
             return -1;
         }
-
         public static (Polyline Polyline, Point3d ClosestPoint, double Parameter, LineSegment3d SelectedSegment)? GetPolylineInfo(string peoString)
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
@@ -83,14 +77,11 @@ namespace HyRetainingWallSolver.Tools
                 peo.SetRejectMessage("\n请选择一个多段线对象。");
                 peo.AddAllowedClass(typeof(Polyline), true);
                 peo.AllowNone = true;
-
                 PromptEntityResult per = ed.GetEntity(peo);
                 if (per.Status != PromptStatus.OK)
                     return null;
-
                 ObjectId plId = per.ObjectId;
                 Point3d selPt = per.PickedPoint;
-
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     Polyline pl = tr.GetObject(plId, OpenMode.ForRead) as Polyline;
@@ -99,7 +90,6 @@ namespace HyRetainingWallSolver.Tools
                         ed.WriteMessage("\n选择的对象不是有效的多段线。\n");
                         return null;
                     }
-
                     Point3d closestPoint = pl.GetClosestPointTo(selPt, false);
                     double parameter = pl.GetParameterAtPoint(closestPoint);
                     int segmentIndex = GetSegmentIndexAt(pl, parameter);
@@ -114,7 +104,6 @@ namespace HyRetainingWallSolver.Tools
                 return null;
             }
         }
-
         public static int GetSegmentIndexAt(Polyline pline, double param)
         {
             int count = pline.NumberOfVertices;
@@ -130,9 +119,7 @@ namespace HyRetainingWallSolver.Tools
             return count - 1;
         }
         // ... 前略
-
         // ... 前略
-
         public static void DrawFixedSymbol(Line baseLine, BlockTableRecord btr, Transaction tr, double scale)
         {
             Vector3d direction = (baseLine.EndPoint - baseLine.StartPoint).GetNormal();
@@ -140,7 +127,6 @@ namespace HyRetainingWallSolver.Tools
             double spacing = scale;
             double totalLength = baseLine.Length;
             int count = (int)(totalLength / spacing);
-
             for (int i = 0; i <= count; i++)
             {
                 Point3d origin = baseLine.StartPoint + direction.MultiplyBy(i * spacing);
@@ -151,7 +137,6 @@ namespace HyRetainingWallSolver.Tools
                 tr.AddNewlyCreatedDBObject(symbol, true);
             }
         }
-
         public static void DrawHingedSymbol(Line baseLine, BlockTableRecord btr, Transaction tr, double scale)
         {
             Vector3d direction = (baseLine.EndPoint - baseLine.StartPoint).GetNormal();
@@ -159,7 +144,6 @@ namespace HyRetainingWallSolver.Tools
             double spacing = 2 * scale;
             double totalLength = baseLine.Length;
             int count = (int)(totalLength / spacing);
-
             for (int i = 0; i <= count; i++)
             {
                 Point3d center = baseLine.StartPoint + direction.MultiplyBy(i * spacing);

@@ -3,7 +3,6 @@
 //using Autodesk.AutoCAD.Geometry;
 //using System;
 //using System.Collections.Generic;
-
 //namespace HyCADTool.HelpClass.CreatBase
 //{
 //    public class SectionLine
@@ -13,29 +12,23 @@
 //        public int Index { get; set; }  // 排序索引
 //        public double Scale { get; set; } // 缩放比例
 //        public bool InsertSymbol { get; set; } // 是否插入符号
-
 //        // 构造函数
 //        public SectionLine()
 //        {
 //            Scale = 50; // 默认缩放比例
 //            InsertSymbol = true; // 默认插入符号
 //        }
-
 //        // 方法1：选择图形并赋值 LineX 和 LineY
 //        public static List<SectionLine> SelectLines(Editor ed)
 //        {
 //            List<SectionLine> sectionLines = new List<SectionLine>();
-
 //            PromptSelectionOptions pso = new PromptSelectionOptions();
 //            pso.MessageForAdding = "\n请选择剖切线 (直线): ";
 //            pso.AllowDuplicates = false;
-
 //            TypedValue[] filter = new TypedValue[] { new TypedValue((int)DxfCode.Start, "LINE") };
 //            SelectionFilter selFilter = new SelectionFilter(filter);
 //            PromptSelectionResult psr = ed.GetSelection(pso, selFilter);
-
 //            if (psr.Status != PromptStatus.OK) return sectionLines;
-
 //            foreach (ObjectId objId in psr.Value.GetObjectIds())
 //            {
 //                using (Transaction tr = ed.Document.Database.TransactionManager.StartTransaction())
@@ -56,7 +49,6 @@
 //            }
 //            return sectionLines;
 //        }
-
 //        // 方法2：对 LineX 和 LineY 排序并赋值 Index
 //        public static void SortAndIndexLines(List<SectionLine> sectionLines)
 //        {
@@ -76,39 +68,32 @@
 //                }
 //                return xCompare;
 //            });
-
 //            for (int i = 0; i < sectionLines.Count; i++)
 //            {
 //                sectionLines[i].Index = i;
 //            }
 //        }
-
 //        public void AddSymbols(Database db, Transaction tr, BlockTableRecord btr)
 //        {
 //            if (!InsertSymbol || (LineX == null && LineY == null)) return;
-
 //            Line line = LineX ?? LineY;
 //            bool isXDirection = LineX != null;
 //            string label = isXDirection ? (Index + 1).ToString() : ((char)('A' + Index)).ToString();
 //            double textHeight = 3 * Scale;
 //            double extensionLength = 5 * Scale;
-
 //            // 计算直线角度
 //            Vector3d direction = line.EndPoint - line.StartPoint;
 //            double angle = Math.Atan2(direction.Y, direction.X);
-
 //            // 在两端添加符号
 //            foreach (var point in new[] { line.StartPoint, line.EndPoint })
 //            {
 //                // 计算短直线方向（沿直线方向向外延伸）
 //                Vector3d extDir = (point == line.StartPoint ? -direction : direction).GetNormal() * extensionLength;
-
 //                // 创建短直线
 //                Line extLine = new Line(point, point + extDir);
 //                extLine.Layer = "00_hy_section";
 //                btr.AppendEntity(extLine);
 //                tr.AddNewlyCreatedDBObject(extLine, true);
-
 //                // 创建文字
 //                // 使用 Vector3d.Cross 静态方法计算叉积
 //                Point3d textPos = point + extDir + Vector3d.ZAxis.CrossProduct(direction).GetNormal() * textHeight * 0.5;

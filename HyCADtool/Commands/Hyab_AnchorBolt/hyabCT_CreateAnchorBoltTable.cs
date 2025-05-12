@@ -7,11 +7,8 @@ using HyCADTool.Config;
 using HyCADTool.Models;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-
-
 using System.Linq;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
-
 namespace HyCADTool.Command
 {
     public static partial class HyCommand
@@ -22,23 +19,18 @@ namespace HyCADTool.Command
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
-
             try
             {
                 BaseConfig.InitializeStyle(); // 初始化样式
-
                 // 选择螺栓对象
                 var boltIds = SelectBoltObjects(ed);
                 if (boltIds == null) return;
-
                 // 获取螺栓数据
                 var (boltData, boltTypeCounts) = GetBoltData(db, boltIds, ed);
                 if (boltData.Count == 0) return;
-
                 // 获取表格插入点
                 Point3d? insertPoint = GetTableInsertPoint(ed);
                 if (!insertPoint.HasValue) return;
-
                 // 创建并填充表格
                 CreateAndPopulateTable(db, ed, boltData, boltTypeCounts, insertPoint.Value);
             }
@@ -48,7 +40,6 @@ namespace HyCADTool.Command
                 throw;
             }
         }
-
         // 1. 选择螺栓对象
         private static ObjectId[] SelectBoltObjects(Editor ed)
         {
@@ -56,7 +47,6 @@ namespace HyCADTool.Command
             TypedValue[] filter = { new TypedValue((int)DxfCode.Start, "CIRCLE,INSERT") };
             SelectionFilter sf = new SelectionFilter(filter);
             PromptSelectionResult selRes = ed.GetSelection(selOpts, sf);
-
             if (selRes.Status != PromptStatus.OK)
             {
                 ed.WriteMessage("\n选择已取消。");
@@ -64,31 +54,25 @@ namespace HyCADTool.Command
             }
             return selRes.Value.GetObjectIds();
         }
-
         // 2. 获取螺栓数据和统计
         private static (List<(Point3d Position, AnchorBolt Bolt)>, Dictionary<string, int>) GetBoltData(Database db, ObjectId[] boltIds, Editor ed)
         {
             var boltData = new List<(Point3d, AnchorBolt)>();
             var boltTypeCounts = new Dictionary<string, int>();
-
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
                 foreach (ObjectId objId in boltIds)
                 {
                     Entity ent = tr.GetObject(objId, OpenMode.ForRead) as Entity;
                     if (ent == null || !ent.ExtensionDictionary.IsValid) continue;
-
                     DBDictionary extDict = tr.GetObject(ent.ExtensionDictionary, OpenMode.ForRead) as DBDictionary;
                     if (!extDict.Contains("AnchorBolt")) continue;
-
                     Xrecord xRec = tr.GetObject(extDict.GetAt("AnchorBolt"), OpenMode.ForRead) as Xrecord;
                     string jsonData = xRec.Data.AsArray()[0].Value.ToString();
                     AnchorBolt bolt = JsonConvert.DeserializeObject<AnchorBolt>(jsonData);
                     if (bolt == null) continue;
-
                     Point3d position = ent is Circle circle ? circle.Center : (ent as BlockReference).Position;
                     boltData.Add((position, bolt));
-
                     // 修正：使用 ContainsKey 检查键是否存在
                     if (!boltTypeCounts.ContainsKey(bolt.Model))
                     {
@@ -98,7 +82,6 @@ namespace HyCADTool.Command
                 }
                 tr.Commit();
             }
-
             if (boltData.Count == 0)
             {
                 ed.WriteMessage("\n错误: 未找到有效的螺栓数据。");
@@ -107,10 +90,8 @@ namespace HyCADTool.Command
             {
                 ed.WriteMessage($"\n找到 {boltData.Count} 个有效螺栓对象，型号数: {boltTypeCounts.Count}");
             }
-
             return (boltData, boltTypeCounts);
         }
-
         // 3. 获取表格插入点
         private static Point3d? GetTableInsertPoint(Editor ed)
         {
@@ -123,7 +104,6 @@ namespace HyCADTool.Command
             }
             return ppr.Value;
         }
-
         // 4. 创建并填充表格
         private static void CreateAndPopulateTable(Database db, Editor ed, List<(Point3d Position, AnchorBolt Bolt)> boltData,
             Dictionary<string, int> boltTypeCounts, Point3d insertPoint)
@@ -132,19 +112,15 @@ namespace HyCADTool.Command
             {
                 BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                 BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
-
                 Table table = InitializeTable(db, insertPoint, boltData.Count, boltTypeCounts.Count);
                 table.Layer = "00_hy_4公共_表格";
-
                 PopulateTableContent(table, boltData, boltTypeCounts, ed);
-
                 btr.AppendEntity(table);
                 tr.AddNewlyCreatedDBObject(table, true);
                 tr.Commit();
             }
             ed.WriteMessage($"\n成功创建包含 {boltData.Count} 个螺栓的表格！");
         }
-
         // 5. 初始化表格结构
         private static Table InitializeTable(Database db, Point3d position, int boltCount, int typeCount)
         {
@@ -153,11 +129,9 @@ namespace HyCADTool.Command
                 Position = position,
                 TableStyle = db.Tablestyle
             };
-
             int totalRows = 1 + 1 + typeCount + 1 + boltCount; // 标题 + 统计标题 + 统计行 + 表头 + 数据行
             int totalCols = 14; // 型号 + 11属性 + X/Y坐标 + 数量
             table.SetSize(totalRows, totalCols);
-
             double textHeight = BaseConfig.TextStyleConfig.TextSize * BaseConfig.Scale;
             for (int i = 0; i < table.Rows.Count; i++)
             {
@@ -168,7 +142,6 @@ namespace HyCADTool.Command
             {
                 table.Columns[j].Width = 3 * textHeight;
             }
-
             if (BaseConfig.TextStyleId != ObjectId.Null)
             {
                 for (int i = 0; i < table.Rows.Count; i++)
@@ -179,10 +152,8 @@ namespace HyCADTool.Command
             {
                 Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage("\n警告: 文字样式未初始化，使用默认样式。");
             }
-
             return table;
         }
-
         // 6. 填充表格内容
         private static void PopulateTableContent(Table table, List<(Point3d Position, AnchorBolt Bolt)> boltData,
             Dictionary<string, int> boltTypeCounts, Editor ed)
@@ -191,12 +162,10 @@ namespace HyCADTool.Command
             table.Cells[0, 0].TextString = "地脚螺栓规格表";
             table.Cells[0, 0].Alignment = CellAlignment.MiddleCenter;
             table.MergeCells(CellRange.Create(table, 0, 0, 0, 13));
-
             // 统计标题
             table.Cells[1, 0].TextString = "螺栓类型统计";
             table.Cells[1, 0].Alignment = CellAlignment.MiddleCenter;
             table.MergeCells(CellRange.Create(table, 1, 0, 1, 13));
-
             // 统计详情
             int rowIndex = 2;
             foreach (var typeCount in boltTypeCounts)
@@ -206,14 +175,12 @@ namespace HyCADTool.Command
                 table.MergeCells(CellRange.Create(table, rowIndex, 0, rowIndex, 13));
                 rowIndex++;
             }
-
             // 表头
             string[] headers = { "型号", "螺栓孔径(mm)", "螺栓直径(mm)", "螺帽总长(mm)", "螺栓长度(mm)", "栓底间距(mm)",
                 "开孔直径(mm)", "垫层厚度(mm)", "垫板厚度(mm)", "开孔深度(mm)", "丝长(mm)", "X坐标(mm)", "Y坐标(mm)", "数量" };
             for (int j = 0; j < headers.Length; j++)
                 table.Cells[rowIndex, j].TextString = headers[j];
             rowIndex++;
-
             // 数据
             var groupedBoltData = boltData.GroupBy(b => b.Bolt.Model);
             foreach (var group in groupedBoltData)
@@ -239,7 +206,6 @@ namespace HyCADTool.Command
                     rowIndex++;
                 }
             }
-
             // 设置居中对齐
             for (int i = 1; i < table.Rows.Count; i++)
                 for (int j = 0; j < table.Columns.Count; j++)

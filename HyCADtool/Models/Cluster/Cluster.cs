@@ -10,11 +10,8 @@ using NetTopologySuite.Geometries;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace HyCADTool.HelpClass
 {
-
-
     /// <summary>
     /// 轮廓聚类处理类
     /// </summary>
@@ -27,9 +24,7 @@ namespace HyCADTool.HelpClass
         {
             return ClusterResults ?? new List<ClusterResult>();
         }
-
         public List<ClusterResult> ClusterResults { get; set; }
-
         /// <summary>
         /// 聚类轮廓命令入口
         /// </summary>
@@ -41,7 +36,6 @@ namespace HyCADTool.HelpClass
             Database db = doc.Database;
             Editor ed = doc.Editor;
             Transaction tr = doc.TransactionManager.StartTransaction();
-
             try
             {
                 // 步骤1: 获取点集合
@@ -51,13 +45,10 @@ namespace HyCADTool.HelpClass
                     ed.WriteMessage("\n没有选择点或未找到有效点，操作取消。");
                     return;
                 }
-
                 // 步骤2: 创建配置并设置图层
                 var config = CreateClusterConfig(doc, ed);
-
                 // 步骤3: 执行聚类并生成轮廓
                 int clusterCount = ProcessClustersAndGenerateEnvelopes(inputPoints, config, db);
-
                 // 步骤4: 输出结果信息
                 ed.WriteMessage($"\n共生成 {clusterCount} 个聚类区域。");
             }
@@ -66,7 +57,6 @@ namespace HyCADTool.HelpClass
                 ed.WriteMessage($"\n执行聚类轮廓命令时出错: {ex.Message}");
             }
         }
-
         /// <summary>
         /// 创建聚类配置
         /// </summary>
@@ -74,7 +64,6 @@ namespace HyCADTool.HelpClass
         {
             string clusterLayerName = "00_hy_基础_聚类轮廓";
             ObjectId clusterLayerId = EtGpt.CreateLayer(clusterLayerName, 123, doc.Database, ed);
-
             return new ClusterConfig
             {
                 //EpsilonX = 6000.0,
@@ -86,7 +75,6 @@ namespace HyCADTool.HelpClass
                 ClusterLayerId = clusterLayerId
             };
         }
-
         /// <summary>
         /// 处理聚类并生成轮廓多段线
         /// </summary>
@@ -96,20 +84,15 @@ namespace HyCADTool.HelpClass
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
                 var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
-
                 // 执行DBSCAN聚类
                 var clusters = PerformDBSCAN(points, config);
                 ClusterResults = clusters;
-
                 // 生成并插入轮廓多段线
                 count = InsertEnvelopePolylinesFromClusters(clusters, config, tr, btr);
-
                 tr.Commit();
             }
             return count;
         }
-
-
         /// <summary>
         /// 根据聚类结果生成轮廓多段线并添加到图形中
         /// </summary>
@@ -117,28 +100,22 @@ namespace HyCADTool.HelpClass
         {
             int count = 0;
             var factory = NtsGeometryServices.Instance.CreateGeometryFactory();
-
             foreach (var cluster in clusters)
             {
                 // 跳过空聚类
                 if (cluster.Points.Count == 0) continue;
-
                 // 使用NetTopologySuite计算包络矩形
                 var coordinates = cluster.Points.Select(p => new Coordinate(p.X, p.Y)).ToArray();
                 var geom = factory.CreateMultiPointFromCoords(coordinates);
                 var env = geom.EnvelopeInternal;
-
                 // 创建轮廓多段线
                 var pline = CreateEnvelopePolyline(env);
-
                 // 设置图层
                 if (!config.ClusterLayerId.IsNull)
                     pline.LayerId = config.ClusterLayerId;
-
                 // 将多段线添加到模型空间
                 btr.AppendEntity(pline);
                 tr.AddNewlyCreatedDBObject(pline, true);
-
                 // 保存轮廓多段线到聚类结果中
                 cluster.EnvelopePolyline = pline;
                 // 新增：记录 MBR 范围
@@ -147,10 +124,8 @@ namespace HyCADTool.HelpClass
                     new Point3d(env.MaxX, env.MaxY, 0));
                 count++;
             }
-
             return count;
         }
-
         /// <summary>
         /// 从包络盒创建多段线
         /// </summary>
@@ -164,7 +139,6 @@ namespace HyCADTool.HelpClass
             pline.Closed = true;
             return pline;
         }
-
         /// <summary>
         /// 执行DBSCAN聚类算法
         /// </summary>
@@ -174,34 +148,28 @@ namespace HyCADTool.HelpClass
             var visited = new HashSet<Point3d>();
             var pointClusterMap = new Dictionary<Point3d, int>();
             var results = new List<ClusterResult>();
-
             // 遍历所有点执行聚类
             foreach (var pt in points)
             {
                 // 已访问的点跳过
                 if (visited.Contains(pt)) continue;
                 visited.Add(pt);
-
                 // 获取邻居点
                 var neighbors = GetNeighbors(pt, points, config.EpsilonX, config.EpsilonY);
-
                 // 如果邻居点数量小于最小值，标记为噪声点
                 if (neighbors.Count < config.MinPoints)
                 {
                     pointClusterMap[pt] = -1; // 标记为噪声点
                     continue;
                 }
-
                 // 创建新聚类并扩展
                 var cluster = new ClusterResult { ClusterId = clusterId };
                 ExpandCluster(pt, neighbors, cluster, points, visited, pointClusterMap, config);
                 results.Add(cluster);
                 clusterId++;
             }
-
             return results;
         }
-
         /// <summary>
         /// 扩展聚类
         /// </summary>
@@ -212,23 +180,19 @@ namespace HyCADTool.HelpClass
             // 将当前点添加到聚类中
             cluster.Points.Add(pt);
             clusterMap[pt] = cluster.ClusterId;
-
             // 遍历所有邻居点
             for (int i = 0; i < neighbors.Count; i++)
             {
                 var np = neighbors[i];
-
                 // 处理未访问的点
                 if (!visited.Contains(np))
                 {
                     visited.Add(np);
                     var newNeighbors = GetNeighbors(np, allPoints, config.EpsilonX, config.EpsilonY);
-
                     // 如果邻居点数量达到阈值，将新邻居添加到扩展列表中
                     if (newNeighbors.Count >= config.MinPoints)
                         neighbors.AddRange(newNeighbors.Except(neighbors));
                 }
-
                 // 如果点未被分配到聚类，将其添加到当前聚类
                 if (!clusterMap.ContainsKey(np))
                 {
@@ -237,7 +201,6 @@ namespace HyCADTool.HelpClass
                 }
             }
         }
-
         /// <summary>
         /// 获取在指定矩形范围内的邻居点
         /// </summary>
@@ -248,7 +211,6 @@ namespace HyCADTool.HelpClass
                 Math.Abs(p.Y - center.Y) <= epsY / 2
             ).ToList();
         }
-
         /// <summary>
         /// 获取用户选择的点集合
         /// </summary>
@@ -258,29 +220,24 @@ namespace HyCADTool.HelpClass
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
-
             // 创建选择过滤器，只选择点 (DXF代码 0 为对象类型)
             TypedValue[] filterList = new TypedValue[]
             {
                 new TypedValue(0, "POINT") // 只选择 DBPoint 对象
             };
             SelectionFilter filter = new SelectionFilter(filterList);
-
             // 创建点集合
             List<Point3d> points = new List<Point3d>();
-
             try
             {
                 // 提示用户选择点
                 PromptSelectionResult selectionResult = ed.GetSelection(filter);
-
                 // 检查选择结果
                 if (selectionResult.Status != PromptStatus.OK)
                 {
                     ed.WriteMessage("\n未选择任何点或操作取消");
                     return points; // 返回空集合
                 }
-
                 // 锁定文档并开始事务
                 using (DocumentLock docLock = doc.LockDocument())
                 {
@@ -297,11 +254,9 @@ namespace HyCADTool.HelpClass
                                 points.Add(dbPoint.Position);
                             }
                         }
-
                         trans.Commit();
                     }
                 }
-
                 ed.WriteMessage($"\n成功选择了 {points.Count} 个点");
                 return points;
             }
@@ -311,7 +266,5 @@ namespace HyCADTool.HelpClass
                 return points; // 返回空集合
             }
         }
-
-
     }
 }

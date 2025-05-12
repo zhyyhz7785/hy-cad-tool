@@ -65,7 +65,6 @@ namespace CadUtils
         public static int GetTrueLineWeight(this Entity entity)
         {
             int lineWeight = (int)entity.LineWeight;
-
             using (Transaction trans = entity.Database.TransactionManager.StartTransaction())
             {
                 if (entity.LineWeight == LineWeight.ByLayer)

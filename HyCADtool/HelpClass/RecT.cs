@@ -311,19 +311,15 @@ namespace HyCADTool
             }
             return lines;
         }
-
-
         public static Point3dCollection GetIntersectionPointsByPolyBoundaryClipper(this Line line, Polyline boundary)
         {
             var points = new Point3dCollection();
-
             // 转换为Clipper2的路径格式
             var linePath = new PathD(new[]
             {
             new PointD(line.StartPoint.X, line.StartPoint.Y),
             new PointD(line.EndPoint.X, line.EndPoint.Y)
         });
-
             var boundaryPath = new PathD();
             for (int i = 0; i < boundary.NumberOfVertices; i++)
             {
@@ -336,14 +332,12 @@ namespace HyCADTool
                 var firstPt = boundary.GetPoint3dAt(0);
                 boundaryPath.Add(new PointD(firstPt.X, firstPt.Y));
             }
-
             // 执行交集计算
             var solution = new PathsD();
             ClipperD clipper = new ClipperD();
             clipper.AddSubject(linePath);
             clipper.AddClip(boundaryPath);
             clipper.Execute(ClipType.Intersection, FillRule.NonZero, solution);
-
             // 收集交点
             foreach (var path in solution)
             {
@@ -352,14 +346,11 @@ namespace HyCADTool
                     points.Add(new Point3d(pt.x, pt.y, 0));
                 }
             }
-
             return points;
         }
-
         public static Point3dCollection GetIntersectionPointsByPolyBoundaryNTS(this Line line, Polyline boundary)
         {
             var points = new Point3dCollection();
-
             // 创建NTS几何对象
             var gf = NetTopologySuite.Geometries.GeometryFactory.Default;
             var lineCoords = new Coordinate[]
@@ -368,7 +359,6 @@ namespace HyCADTool
         new Coordinate(line.EndPoint.X, line.EndPoint.Y)
             };
             var lineGeom = gf.CreateLineString(lineCoords);
-
             var boundaryCoords = new Coordinate[boundary.NumberOfVertices + 1];
             for (int i = 0; i < boundary.NumberOfVertices; i++)
             {
@@ -378,7 +368,6 @@ namespace HyCADTool
             // 闭合边界
             boundaryCoords[boundary.NumberOfVertices] = boundaryCoords[0];
             var boundaryGeom = gf.CreatePolygon(boundaryCoords);
-
             // 计算交点
             var intersection = lineGeom.Intersection(boundaryGeom);
             if (intersection != null)
@@ -388,10 +377,8 @@ namespace HyCADTool
                     points.Add(new Point3d(coord.X, coord.Y, 0));
                 }
             }
-
             return points;
         }
-
         public static double[] GetRangeNumbers(double end, int number, out double separation)
         {
             var start = 0.0;

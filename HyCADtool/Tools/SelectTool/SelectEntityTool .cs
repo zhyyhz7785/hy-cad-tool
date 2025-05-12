@@ -93,7 +93,6 @@ namespace HyCADTool.Tools
         //}
         public static ObjectId[] SelectWithFilter(this SelectionFilter filter, Document doc, Editor ed)
         {
-
             try
             {
                 // 锁定文档

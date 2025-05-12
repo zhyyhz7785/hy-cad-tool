@@ -141,7 +141,6 @@ namespace HyCADTool.HelpClass.CreatBase
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
-
             // 检查 GeometryData 的 Polyline 是否包含螺栓
             using (var tr = db.TransactionManager.StartTransaction())
             {
@@ -154,7 +153,6 @@ namespace HyCADTool.HelpClass.CreatBase
                         tr.Commit();
                         return defaultThickness;
                     }
-
                     // 筛选图纸中的螺栓（Circle）
                     TypedValue[] filterList = new TypedValue[]
                     {
@@ -162,12 +160,10 @@ namespace HyCADTool.HelpClass.CreatBase
                         new TypedValue((int)DxfCode.LayerName, "00_Hy_螺栓*")
                     };
                     SelectionFilter filter = new SelectionFilter(filterList);
-
                     // 获取模型空间中的所有螺栓
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
                     List<double> boltHeights = new List<double>();
-
                     foreach (ObjectId objId in btr)
                     {
                         var circle = tr.GetObject(objId, OpenMode.ForRead) as Circle;
@@ -189,7 +185,6 @@ namespace HyCADTool.HelpClass.CreatBase
                             }
                         }
                     }
-
                     if (boltHeights.Count > 0)
                     {
                         // 计算平均 H1 + 150mm

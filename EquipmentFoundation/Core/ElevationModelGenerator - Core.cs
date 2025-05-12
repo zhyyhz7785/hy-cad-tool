@@ -107,7 +107,6 @@ namespace EquipmentFoundation
             if (per.Status != PromptStatus.OK) return null;
             return tr.GetObject(per.ObjectId, OpenMode.ForRead) as Line;
         }
-
         private Tuple<Vector3d, double> CalculateTransformParameters(Line acadLine, double offsetDistance)
         {
             Vector3d lineVector = acadLine.EndPoint - acadLine.StartPoint;
@@ -121,21 +120,17 @@ namespace EquipmentFoundation
             return (point.X - sectionLine.StartPoint.X) * Math.Cos(angle) +
                    (point.Y - sectionLine.StartPoint.Y) * Math.Sin(angle);
         }
-
         private static Tuple<Vector3d, double> CalculateTransformParameters(Polyline sectionLine, double offsetDistance)
         {
             var startPoint = sectionLine.GetPoint3dAt(0);
             var endPoint = sectionLine.GetPoint3dAt(sectionLine.NumberOfVertices - 1);
             Vector3d direction = endPoint - startPoint;
             direction = direction.GetNormal();
-
             Vector3d normalVector = direction.CrossProduct(Vector3d.ZAxis).GetNormal();
             normalVector = normalVector * offsetDistance;
-
             double angle = Math.Atan2(direction.Y, direction.X);
             return new Tuple<Vector3d, double>(normalVector, angle);
         }
-
         /// <summary>
         /// 将 Polyline 绘制到 AutoCAD
         /// </summary>
@@ -143,26 +138,21 @@ namespace EquipmentFoundation
         {
             BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
             BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
-
             polyline.Layer = layer;
             Matrix3d transform = Matrix3d.Displacement(normalVector) *
                                 Matrix3d.Displacement(new Vector3d(basePoint.X, basePoint.Y, 0));
             polyline.TransformBy(transform);
-
             btr.AppendEntity(polyline);
             tr.AddNewlyCreatedDBObject(polyline, true);
         }
-
         private static bool IsPointInside(Polyline pline, Point3d point)
         {
             int intersections = 0;
             int nvert = pline.NumberOfVertices;
-
             for (int i = 0, j = nvert - 1; i < nvert; j = i++)
             {
                 Point3d pi = pline.GetPoint3dAt(i);
                 Point3d pj = pline.GetPoint3dAt(j);
-
                 if (((pi.Y > point.Y) != (pj.Y > point.Y)) &&
                     (point.X < (pj.X - pi.X) * (point.Y - pi.Y) / (pj.Y - pi.Y) + pi.X))
                 {
@@ -171,8 +161,5 @@ namespace EquipmentFoundation
             }
             return (intersections % 2) == 1; // 奇数次相交表示点在内部
         }
-
-
-
     }
 }

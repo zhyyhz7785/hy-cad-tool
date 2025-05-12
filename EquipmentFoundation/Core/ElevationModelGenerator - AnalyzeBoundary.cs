@@ -12,22 +12,18 @@ namespace EquipmentFoundation
         {
             var boundaryConditions = new Dictionary<Polyline, List<BoundaryCondition>>();
             double tolerance = 0.001;
-
             foreach (var polygon in input.InnerPolygons)
             {
                 var conditions = new List<BoundaryCondition>();
                 int numVertices = polygon.NumberOfVertices;
-
                 for (int i = 0; i < numVertices; i++)
                 {
                     Point3d startPoint = polygon.GetPoint3dAt(i);
                     Point3d endPoint = polygon.GetPoint3dAt((i + 1) % numVertices);
                     var edge = new Line(startPoint, endPoint);
-
                     bool isSoilBoundary = false;
                     Polyline adjacentPolygon = null;
                     Line coincidentEdge = null;
-
                     foreach (var outer in input.OuterContours)
                     {
                         for (int j = 0; j < outer.NumberOfVertices; j++)
@@ -44,7 +40,6 @@ namespace EquipmentFoundation
                         }
                         if (isSoilBoundary) break;
                     }
-
                     if (!isSoilBoundary)
                     {
                         foreach (var otherPolygon in input.InnerPolygons)
@@ -65,7 +60,6 @@ namespace EquipmentFoundation
                             if (adjacentPolygon != null) break;
                         }
                     }
-
                     var isWall = BoundaryCondition.DetermineIsWall(polygon, input.Elevations);
                     conditions.Add(new BoundaryCondition(edge, isSoilBoundary, adjacentPolygon, isWall, coincidentEdge));
                 }

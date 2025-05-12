@@ -5,7 +5,6 @@ using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace HyCADTool
 {
     public static partial class DimensionForReinforcement
@@ -158,14 +157,7 @@ namespace HyCADTool
         public static RotatedDimension[] GetLeftRightDimInside()
         {
             var cols = LineIntersectionsListUpDownSS.GetLength(1);
-
-
-
-
             var boundLinePri = LineIntersectionsListUpDownSS.GetDimensionByCol(0);
-
-
-
             var lDPriR = boundLinePri.GetBoundXYFromEntities(RecT.MaxMinPoint.xmax);
             var dimIns = new List<RotatedDimension[]>();
             var dimsMid = new List<RotatedDimension>();
@@ -175,12 +167,9 @@ namespace HyCADTool
             {
                 //左侧开始
                 var boundLineMid = LineIntersectionsListUpDownSS.GetDimensionByCol(i);
-
-
                 var lDMidL = boundLineMid.GetBoundXYFromEntities(RecT.MaxMinPoint.xmin);
                 var lDMidR = boundLineMid.GetBoundXYFromEntities(RecT.MaxMinPoint.xmax);
                 var boundLineNext = LineIntersectionsListUpDownSS.GetDimensionByCol(i + 1);
-
                 var lDNextL = boundLineNext.GetBoundXYFromEntities(RecT.MaxMinPoint.xmin);
                 if (lDMidL - lDPriR > lDNextL - lDMidR)
                 {
@@ -273,26 +262,20 @@ namespace HyCADTool
             //SecantLineLeftRightS.ChangeEntitiesProperty(x => x.LayerId = a);//临时
             //1 得到分割线           
             var lines = GetAllSecantLineLeftRight();
-
             SecantLineLeftRightS = lines;
-
             // SecantLineLeftRightS.ChangeEntitiesProperty(x => x.LayerId = a);//临时
-
             //SecantLineLeftRightS.ToSpace();//临时
             //2 得到交线 （得到交线行列[,]）           
             var cols = LineIntersectionsListLeftRightSS.GetLength(1);
-
             //3 得到标注轮廓线
             var boundDownLine = LineIntersectionsListLeftRightSS.GetDimensionLeftRight(0)
                 .SortLineSEPointForDIm();
             // boundDownLine.ChangeEntitiesProperty(x => x.LayerId = a);//临时
             //boundDownLine.ToSpace();//临时
-
             var boundUpLine = LineIntersectionsListLeftRightSS.GetDimensionByCol(cols - 1)
                 .SortLineSEPointForDIm();
             //boundUpLine.ChangeEntitiesProperty(x => x.LayerId = b);//临时
             //boundUpLine.ToSpace();//临时
-
             //  4得到 （标注点）（标注）
             var pointsDown = boundDownLine.GetDimensionPoints(DimensionFor.ForDown);
             PointsDown = pointsDown;
@@ -529,12 +512,10 @@ namespace HyCADTool
             {
                 throw new ArgumentNullException("secantLinePri or Boundary cannot be null.");
             }
-
             double height = secantLinePri.EndPoint.Y;
             int countPri = secantLinePri.GetIntersectionPointsByPolyBoundary(Boundary).Count;
             int countNext = countPri;
             Line SecantLineNext;
-
             // 处理 IntersectionsShortestLine 为空的情况
             if (IntersectionsShortestLine == null)
             {
@@ -543,7 +524,6 @@ namespace HyCADTool
                 SecantLineNext = GetSecantLineX(height);
                 return SecantLineNext;
             }
-
             // 正常情况下的迭代逻辑
             SecantLineNext = new Line();
             while (countPri == countNext && height <= IntersectionsShortestLine.EndPoint.Y)
@@ -552,7 +532,6 @@ namespace HyCADTool
                 SecantLineNext = GetSecantLineX(height);
                 countNext = SecantLineNext.GetIntersectionPointsByPolyBoundary(Boundary).Count;
             }
-
             return SecantLineNext;
         }
         public static Line[] GetAllSecantLineX()
@@ -573,7 +552,6 @@ namespace HyCADTool
                 //  2 的到 割线同边界的交线
                 var lineIntersections = Boundary.GetIntersectionLineByPoints(ptcool);
                 lineIntersections = lineIntersections.SortLineByX();
-
                 lineIntersectionsList.Add(lineIntersections);
                 //  3 交线方向统一;
                 ChangeLineXDirection(lineIntersections);
@@ -678,7 +656,6 @@ namespace HyCADTool
             {
                 //  1 得到割线点集合
                 // var ptcool = secantLinePri.GetIntersectionPointsByPolyBoundary(Boundary);
-
                 // var ptcool = secantLinePri.GetIntersectionPointsByPolyBoundary(Boundary);
                 var ptcool = secantLinePri.GetIntersectionPointsByPolyBoundaryNTS(Boundary);
                 //  2 的到 割线同边界的交线

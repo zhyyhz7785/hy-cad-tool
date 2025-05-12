@@ -7,7 +7,6 @@ using HyCADTool.Config;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace HyCADTool.Tools
 {
     public static partial class EtGpt
@@ -21,7 +20,6 @@ namespace HyCADTool.Tools
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
             var db = doc.Database;
-
             using (var docLock = doc.LockDocument())
             {
                 using (var trans = db.TransactionManager.StartTransaction())
@@ -30,12 +28,10 @@ namespace HyCADTool.Tools
                     {
                         var bt = (BlockTable)trans.GetObject(db.BlockTableId, OpenMode.ForRead);
                         var btr = (BlockTableRecord)trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
-
                         // 创建临时标注
                         Point3d p1 = new Point3d(0, 0, 0);
                         Point3d p2 = new Point3d(100, 0, 0);
                         Point3d dimLinePoint = new Point3d(50, -10, 0);
-
                         var tempDim = new RotatedDimension
                         {
                             XLine1Point = p1,
@@ -44,13 +40,10 @@ namespace HyCADTool.Tools
                             Rotation = 0,
                             DimensionStyle = db.Dimstyle
                         };
-
                         // 插入并立即删除
                         var dimId = btr.AppendEntity(tempDim);
                         trans.AddNewlyCreatedDBObject(tempDim, true);
-
                         tempDim.Erase(); // 标记为删除
-
                         trans.Commit();
                     }
                     catch (System.Exception ex)
@@ -84,10 +77,8 @@ namespace HyCADTool.Tools
                 Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage("\n点数量不足，无法生成标注。");
                 return new List<RotatedDimension>();
             }
-
             var db = Application.DocumentManager.MdiActiveDocument.Database;
             var sortedPoints = points.ToArray();
-
             switch (direction)
             {
                 case DimensionFor.ForLeft:
@@ -103,28 +94,21 @@ namespace HyCADTool.Tools
                     sortedPoints = sortedPoints.OrderByDescending(p => p.X).ToArray();
                     break;
             }
-
             var dims = new List<RotatedDimension>();
-
             double d = offsetDist * BaseConfig.Scale; // 保持您原来的缩放策略
-
             for (int i = 0; i < sortedPoints.Length - 1; i++)
             {
                 var p1 = sortedPoints[i];
                 var p2 = sortedPoints[i + 1];
-
                 double angle = (direction == DimensionFor.ForLeft || direction == DimensionFor.ForRight) ? Math.PI / 2 : 0;
                 var offsetVec = (direction == DimensionFor.ForLeft || direction == DimensionFor.ForRight)
                     ? new Vector3d(0, d, 0)
                     : new Vector3d(d, 0, 0);
-
                 Point3d dimLinePoint;
-
                 if (direction == DimensionFor.ForLeft || direction == DimensionFor.ForDown)
                     dimLinePoint = p1 - offsetVec;
                 else
                     dimLinePoint = p2 + offsetVec;
-
                 var dim = new RotatedDimension
                 {
                     XLine1Point = p1,
@@ -134,17 +118,12 @@ namespace HyCADTool.Tools
                     DimensionStyle = db.Dimstyle,
                     LayerId = layerId
                 };
-
                 if (isEqualLength)
                     dim.DimVEqualLength();
-
                 dims.Add(dim);
             }
-
             return dims;
         }
-
-
         #region 1. 标注创建工具
         /// <summary>
         /// 根据两个点创建旋转标注
@@ -181,7 +160,6 @@ namespace HyCADTool.Tools
             if (isEqualLength) dim.DimVEqualLength();
             return dim;
         }
-
         public static RotatedDimension[] CreateOrderedDimensions(
     this Point3d[] points,
     DimensionFor dimDirection,
@@ -193,13 +171,11 @@ namespace HyCADTool.Tools
             Database db = doc.Database;
             Editor ed = doc.Editor;
             var d = offsetDist * BaseConfig.Scale;
-
             if (points.Length < 2)
             {
                 ed.WriteMessage("\n错误：点数不足，无法创建标注。");
                 return Array.Empty<RotatedDimension>();
             }
-
             // 根据方向排序点位
             Point3d[] sortedPoints;
             switch (dimDirection)
@@ -220,34 +196,23 @@ namespace HyCADTool.Tools
                     sortedPoints = points;
                     break;
             }
-
             // 创建标注数组
             RotatedDimension[] dimensions = new RotatedDimension[sortedPoints.Length - 1];
-
             for (int i = 0; i < sortedPoints.Length - 1; i++)
             {
                 Point3d p1 = sortedPoints[i];
                 Point3d p2 = sortedPoints[i + 1];
-
                 RotatedDimension dim = GetDimByTwoPoints(p1, p2, d, dimDirection, isEqualLength);
                 dim.DimensionStyle = db.Dimstyle;
-
                 // ✨ 新增：如果传入了layerId，则在此处设置
                 if (!layerId.IsNull)
                 {
                     dim.LayerId = layerId;
                 }
-
                 dimensions[i] = dim;
             }
-
             return dimensions;
         }
-
-
-
-
-
         /// <summary>
         /// 根据多条线段批量创建标注
         /// </summary>
@@ -262,7 +227,6 @@ namespace HyCADTool.Tools
             }
             return dims.ToArray();
         }
-
         /// <summary>
         /// 根据实体边界创建标注
         /// </summary>
@@ -298,7 +262,6 @@ namespace HyCADTool.Tools
             return dim;
         }
         #endregion
-
         #region 2. 线段处理工具
         /// <summary>
         /// 调整直线起点终点以满足坐标系正向要求
@@ -322,7 +285,6 @@ namespace HyCADTool.Tools
             }
             return line;
         }
-
         /// <summary>
         /// 批量调整直线起点终点以满足坐标系正向要求
         /// </summary>
@@ -336,7 +298,6 @@ namespace HyCADTool.Tools
             return lineOut.ToArray();
         }
         #endregion
-
         #region 3. 标注修改工具
         /// <summary>
         /// 删除标注点相同的重复标注
@@ -345,7 +306,6 @@ namespace HyCADTool.Tools
         {
             return list.GroupBy(x => x, new DimEqualityComparer()).Select(x => x.Key);
         }
-
         /// <summary>
         /// 删除测量值为零的标注
         /// </summary>
@@ -359,7 +319,6 @@ namespace HyCADTool.Tools
             }
             return list.ToArray();
         }
-
         /// <summary>
         /// 删除距离过近的平行标注
         /// </summary>
@@ -382,7 +341,6 @@ namespace HyCADTool.Tools
             }
             return dimsOut.ToArray();
         }
-
         /// <summary>
         /// 调整标注竖线长度为等长
         /// </summary>
@@ -412,7 +370,6 @@ namespace HyCADTool.Tools
             }
             return dims.ToArray();
         }
-
         /// <summary>
         /// 根据基准标注对齐其他标注的位置
         /// </summary>
@@ -426,7 +383,6 @@ namespace HyCADTool.Tools
             return dims.ToArray();
         }
         #endregion
-
         #region 4. 标注属性扩展工具
         /// <summary>
         /// 使所有标注的竖线长度相等
@@ -442,7 +398,6 @@ namespace HyCADTool.Tools
             }
             return list.ToArray();
         }
-
         /// <summary>
         /// 使单个标注的两条竖线长度相等
         /// </summary>
@@ -468,7 +423,6 @@ namespace HyCADTool.Tools
             return dim;
         }
         #endregion
-
         #region 5. 标注查询工具
         /// <summary>
         /// 获取方向相同且数量最多的标注集合
@@ -480,7 +434,6 @@ namespace HyCADTool.Tools
             var rotationMaxCount = dicCount.LastOrDefault().Key;
             return dims.Where(x => x.Rotation == rotationMaxCount).ToArray();
         }
-
         /// <summary>
         /// 判断多个标注是否在同一直线上
         /// </summary>
@@ -501,7 +454,6 @@ namespace HyCADTool.Tools
             return true;
         }
         #endregion
-
         #region 6. 标注分割工具
         /// <summary>
         /// 用直线分割标注(用于添加轴线)
@@ -546,7 +498,6 @@ namespace HyCADTool.Tools
             oldRoDim.ChangeEntitiesPropertyInDb(x => x.Erase());
             return list.ToArray();
         }
-
         /// <summary>
         /// 用多条直线分割标注
         /// </summary>
@@ -559,7 +510,6 @@ namespace HyCADTool.Tools
             return dims.ToArray();
         }
         #endregion
-
         #region 7. 多重引线工具
         /// <summary>
         /// 从多重引线获取文本对象
@@ -575,7 +525,6 @@ namespace HyCADTool.Tools
             };
             return mt;
         }
-
         /// <summary>
         /// 获取多重引线文本的各种镜像位置
         /// </summary>
@@ -603,7 +552,6 @@ namespace HyCADTool.Tools
             };
         }
         #endregion
-
         #region 8. 依赖方法
         /// <summary>
         /// 修改标注线的长度
@@ -619,7 +567,6 @@ namespace HyCADTool.Tools
             dim.XLine2Point = dim.XLine2Point + vec2.GetNormal() * length2;
             return dim;
         }
-
         /// <summary>
         /// 修改标注竖线的长度
         /// </summary>
@@ -634,7 +581,6 @@ namespace HyCADTool.Tools
             dim.XLine2Point = pIntersection2 + vec2.GetNormal() * length2;
             return dim;
         }
-
         /// <summary>
         /// 查找竖线最短的标注
         /// </summary>
@@ -656,7 +602,6 @@ namespace HyCADTool.Tools
             }
             return shortDim;
         }
-
         /// <summary>
         /// 查找竖线最长的标注
         /// </summary>
@@ -678,7 +623,6 @@ namespace HyCADTool.Tools
             }
             return longDim;
         }
-
         /// <summary>
         /// 根据竖线长度排序单个标注
         /// </summary>
@@ -694,7 +638,6 @@ namespace HyCADTool.Tools
             }
             return dim;
         }
-
         /// <summary>
         /// 根据竖线长度排序多个标注
         /// </summary>
@@ -707,7 +650,6 @@ namespace HyCADTool.Tools
             }
             return list.ToArray();
         }
-
         /// <summary>
         /// 计算两个平行标注之间的距离
         /// </summary>
@@ -719,7 +661,6 @@ namespace HyCADTool.Tools
             var seg2 = new LineSegment3d(dim2Ps[0], dim2Ps[1]);
             return seg1.GetDistanceTo(seg2);
         }
-
         /// <summary>
         /// 判断两个标注是否平行
         /// </summary>
@@ -731,7 +672,6 @@ namespace HyCADTool.Tools
             var vec2 = (dim1Ps[1] - dim2Ps[1]).GetNormal();
             return vec1.IsEqualTo(vec2, BaseConfig.ToleranceVec);
         }
-
         /// <summary>
         /// 获取标注竖线的长度
         /// </summary>
@@ -742,7 +682,6 @@ namespace HyCADTool.Tools
             var pIntersection2 = dimPoints[1];
             return new double[] { pIntersection1.DistanceTo(dim.XLine1Point), pIntersection2.DistanceTo(dim.XLine2Point) };
         }
-
         /// <summary>
         /// 获取标注线与竖线的交点
         /// </summary>
@@ -754,7 +693,6 @@ namespace HyCADTool.Tools
             var pIntersection2 = xline.GetClosestPointTo(dim.XLine2Point, vecDim.RotateBy(Math.PI / 2, Vector3d.ZAxis), true);
             return new Point3d[] { pIntersection1, pIntersection2 };
         }
-
         /// <summary>
         /// 获取多重引线文本的镜像位置
         /// </summary>
@@ -771,7 +709,6 @@ namespace HyCADTool.Tools
             entMirror.ChangeEntityPropertyInDb(x => x.Erase());
             return poly;
         }
-
         /// <summary>
         /// 获取镜像后的多重引线对象
         /// </summary>
@@ -789,7 +726,6 @@ namespace HyCADTool.Tools
         }
         #endregion
     }
-
     #region 辅助类
     public class DimEqualityComparer : IEqualityComparer<RotatedDimension>
     {
@@ -802,21 +738,18 @@ namespace HyCADTool.Tools
             return a.XLine1Point.IsEqualTo(b.XLine1Point, BaseConfig.TolerancePoint) &&
                    a.XLine2Point.IsEqualTo(b.XLine2Point, BaseConfig.TolerancePoint);
         }
-
         public int GetHashCode(RotatedDimension dim)
         {
             string hCode = dim.XLine1Point.X.ToString() + dim.XLine1Point.Y.ToString() +
                           dim.XLine2Point.X.ToString() + dim.XLine2Point.Y.ToString();
             return hCode.GetHashCode();
         }
-
         public static RotatedDimension GetSamePointDim(RotatedDimension dim)
         {
             Point3d[] dimOrder = new Point3d[] { dim.XLine1Point, dim.XLine2Point }.OrderBy(p => p.X).ThenBy(p => p.Y).ToArray();
             return new RotatedDimension { XLine1Point = dimOrder[0], XLine2Point = dimOrder[1] };
         }
     }
-
     public class DimParallelComparer : IEqualityComparer<RotatedDimension>
     {
         public bool Equals(RotatedDimension x, RotatedDimension y)
@@ -826,7 +759,6 @@ namespace HyCADTool.Tools
             return (x.Rotation - y.Rotation) < BaseConfig.ToleranceDouble &&
                    (x.Measurement - y.Measurement) < BaseConfig.ToleranceDouble;
         }
-
         public int GetHashCode(RotatedDimension dim)
         {
             string hCode = dim.Rotation.ToString("N6") + dim.Measurement.ToString("N6");

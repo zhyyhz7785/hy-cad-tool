@@ -8,7 +8,6 @@ using HyCADTool.Tools;
 using System.Collections.Generic;
 using System.Linq;
 using Face = HyCADTool.HelpClass.DCEL.Face;
-
 namespace HyCADTool.Command
 {
     public static partial class HyCommand
@@ -22,7 +21,6 @@ namespace HyCADTool.Command
             List<Line> lines = new List<Line>();
             Dictionary<ObjectId, string> lineLayers = new Dictionary<ObjectId, string>();
             List<ObjectId> lineIds = new List<ObjectId>();
-
             // 获取直线
             if (inputLines != null && inputLines.Count > 0)
             {
@@ -54,7 +52,6 @@ namespace HyCADTool.Command
                     ed.WriteMessage("\n未选择任何直线。");
                     return;
                 }
-
                 using (Transaction tr = doc.TransactionManager.StartTransaction())
                 {
                     foreach (SelectedObject selObj in res.Value)
@@ -73,20 +70,16 @@ namespace HyCADTool.Command
                     tr.Commit();
                 }
             }
-
             // 检查直线列表是否为空
             if (lines.Count == 0)
             {
                 ed.WriteMessage("\n没有可用的直线来生成 DCEL。");
                 return;
             }
-
             // 利用直线创建 DCEL
             DCEL dcel = DCELFactory.CreateFromCurves(lines.Cast<Curve>().ToList());
-
             // 绘制外轮廓面
             DrawOuterFacesInAutoCAD(dcel, lineLayers, lineIds);
-
             // 删除原始直线
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
@@ -98,7 +91,6 @@ namespace HyCADTool.Command
                 tr.Commit();
             }
         }
-
         private static void DrawOuterFacesInAutoCAD(DCEL dcel, Dictionary<ObjectId, string> lineLayers, List<ObjectId> lineIds)
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
@@ -107,7 +99,6 @@ namespace HyCADTool.Command
             {
                 BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 BlockTableRecord btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
-
                 // 确保所有相关图层存在
                 LayerTable lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 HashSet<string> uniqueLayers = new HashSet<string>(lineLayers.Values);
@@ -124,13 +115,11 @@ namespace HyCADTool.Command
                         tr.AddNewlyCreatedDBObject(newLayer, true);
                     }
                 }
-
                 // 绘制外轮廓面
                 foreach (Face face in dcel.OuterFaces)
                 {
                     var halfedges = face.Components;
                     var vertices = halfedges.Select(p => p.StartVertex.Position.Point3dTo2d()).ToList();
-
                     if (vertices.Count > 0)
                     {
                         // 找到与该面相关的原始直线的图层
@@ -149,7 +138,6 @@ namespace HyCADTool.Command
                                 }
                             }
                         }
-
                         // 创建封闭多段线
                         Polyline polyline = new Polyline(vertices.Count);
                         polyline.Layer = layerName; // 使用匹配的图层

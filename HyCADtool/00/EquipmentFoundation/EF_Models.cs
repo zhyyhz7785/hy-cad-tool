@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-
 namespace HyCADTool.Models
 {
     public class AnchorBolt
@@ -23,7 +22,6 @@ namespace HyCADTool.Models
         public int A { get; set; }
         public int NutHeight { get; set; }
         public int BoltLength { get; set; }
-
         public AnchorBolt(string model, int d, int d1, int v, int h1, int h2, int e, int g, int a, int nutHeight, int boltLength)
         {
             Model = model;
@@ -38,7 +36,6 @@ namespace HyCADTool.Models
             NutHeight = nutHeight;
             BoltLength = boltLength;
         }
-
         public override string ToString()
         {
             return $"型号: {Model}\n" +
@@ -54,7 +51,6 @@ namespace HyCADTool.Models
                    $"丝长: {BoltLength} mm";
         }
     }
-
     public static class AnchorBoltFactory
     {
         public static AnchorBolt CreateBolt(string model)
@@ -74,7 +70,6 @@ namespace HyCADTool.Models
             }
         }
     }
-
     [Serializable]
     public class AxisData
     {
@@ -84,13 +79,11 @@ namespace HyCADTool.Models
         [JsonIgnore]
         public Dictionary<Guid, ObjectId> EntityIdMap { get; set; } = new Dictionary<Guid, ObjectId>(); // 运行时缓存
         public (double X, double Y) IntersectionPoint { get; set; }
-
         public void RebuildEntityIdMap(Database db, Transaction tr, Editor ed)
         {
             EntityIdMap.Clear();
             var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
             var btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead) as BlockTableRecord;
-
             foreach (ObjectId objId in btr)
             {
                 var entity = tr.GetObject(objId, OpenMode.ForRead) as Entity;
@@ -105,7 +98,6 @@ namespace HyCADTool.Models
             }
         }
     }
-
     [Serializable]
     public class BaseData
     {
@@ -114,18 +106,15 @@ namespace HyCADTool.Models
         public int SerialNumber { get; set; }
         [JsonProperty("BoltIds")]
         public List<Guid> BoltIds { get; set; } = new List<Guid>();
-
         [JsonConstructor]
         public BaseData()
         {
             Id = Guid.NewGuid();
         }
-
         public void AddBoltId(Guid boltId)
         {
             BoltIds.Add(boltId);
         }
-
         public Polyline GetPolyline(Database db, Transaction tr, Editor ed)
         {
             var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
@@ -143,7 +132,6 @@ namespace HyCADTool.Models
             }
             return null;
         }
-
         public Circle GetCircle(Database db, Transaction tr, Editor ed, Guid boltId)
         {
             var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
@@ -162,24 +150,20 @@ namespace HyCADTool.Models
             return null;
         }
     }
-
     [Serializable]
     public class BoltData
     {
         [JsonProperty("Id")]
         public Guid Id { get; set; }
         public string Model { get; set; }
-
         public AnchorBolt GetAnchorBolt()
         {
             return AnchorBoltFactory.CreateBolt(Model);
         }
-
         public BoltData()
         {
             Id = Guid.NewGuid();
         }
-
         public Circle GetCircle(Database db, Transaction tr, Editor ed)
         {
             var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
@@ -198,7 +182,6 @@ namespace HyCADTool.Models
             return null;
         }
     }
-
     [Serializable]
     public class EquipmentData
     {
@@ -208,7 +191,6 @@ namespace HyCADTool.Models
         public double LateralForce { get; set; }
         public double HorizontalForce { get; set; }
         public double VerticalForce { get; set; }
-
         public EquipmentData(int number, string equipmentName, double weight, double lateralForce, double horizontalForce, double verticalForce)
         {
             Number = number;
@@ -218,32 +200,26 @@ namespace HyCADTool.Models
             HorizontalForce = horizontalForce;
             VerticalForce = verticalForce;
         }
-
         public EquipmentData() { }
     }
-
     public class EquipmentDataManager
     {
         private readonly List<EquipmentData> _equipmentList;
         private readonly string _filePath = @"E:\BaiduSyncdisk\Code\testResult\00equipment_data.md";
-
         public EquipmentDataManager()
         {
             _equipmentList = new List<EquipmentData>();
             LoadFromMarkdown(_filePath);
         }
-
         public void LoadFromMarkdown(string filePath)
         {
             if (!File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found.", filePath);
-
             _equipmentList.Clear();
             var lines = File.ReadAllLines(filePath);
             for (int i = 2; i < lines.Length; i++)
             {
                 var columns = lines[i].Split('|').Select(col => col.Trim()).ToArray();
                 if (columns.Length < 7) continue;
-
                 if (int.TryParse(columns[1], out int number) &&
                     double.TryParse(columns[3], out double weight) &&
                     double.TryParse(columns[4], out double lateralForce) &&
@@ -254,26 +230,21 @@ namespace HyCADTool.Models
                 }
             }
         }
-
         public void SaveToMarkdown(string filePath)
         {
             var sb = new StringBuilder();
             sb.AppendLine("| 序号 | 设备名称 | 设备重量G (kg) | 横向力矩G (kgM) | 水平力G (kg) | 垂直力G (kg) |");
             sb.AppendLine("|------|----------|---------------|----------------|-------------|-------------|");
-
             foreach (var equipment in _equipmentList.OrderBy(e => e.Number))
             {
                 sb.AppendLine($"| {equipment.Number} | {equipment.EquipmentName} | {equipment.Weight} | {equipment.LateralForce} | {equipment.HorizontalForce} | {equipment.VerticalForce} |");
             }
-
             File.WriteAllText(filePath, sb.ToString());
         }
-
         public EquipmentData GetEquipmentByNumber(int number)
         {
             return _equipmentList.FirstOrDefault(e => e.Number == number);
         }
-
         public List<EquipmentData> GetAllEquipment()
         {
             return _equipmentList.ToList();

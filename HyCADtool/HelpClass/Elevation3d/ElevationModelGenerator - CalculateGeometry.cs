@@ -5,9 +5,6 @@ using HyCADTool.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-
-
 namespace HyCADTool.HelpClass.CreatBase
 {
     public partial class ElevationModelGenerator

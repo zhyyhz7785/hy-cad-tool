@@ -22,7 +22,6 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel Margin="5,10,5,5" Background="#3b4453">
-
         <!--  螺栓聚类绘制  -->
         <Expander Margin="0,0,0,5" Header="螺栓聚类绘制" IsExpanded="True">
             <StackPanel>
@@ -30,7 +29,6 @@
                 <Button Margin="0,2" Command="{Binding PointsClusterVM.DrawConvexHullsCommand}" Content="绘制螺栓凸包" />
                 <Button Margin="0,2" Command="{Binding PointsClusterVM.GenerateBoltDimensionsCommand}" Content="标注螺栓仅外包框" />
                 <Separator Margin="0,5,0,5" />
-
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
@@ -39,7 +37,6 @@
                     <TextBlock Text="比例" />
                     <TextBox Grid.Column="1" Text="{Binding PointsClusterVM.Scale, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
@@ -48,7 +45,6 @@
                     <TextBlock Text="EpsilonX" />
                     <TextBox Grid.Column="1" Text="{Binding PointsClusterVM.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
@@ -57,7 +53,6 @@
                     <TextBlock Text="EpsilonY" />
                     <TextBox Grid.Column="1" Text="{Binding PointsClusterVM.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
@@ -66,7 +61,6 @@
                     <TextBlock Text="最小点数" />
                     <TextBox Grid.Column="1" Text="{Binding PointsClusterVM.MinPoints, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <Separator Margin="0,5,0,5" />
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -78,13 +72,11 @@
                 </Grid>
             </StackPanel>
         </Expander>
-
         <!--  基础点标注  -->
         <Expander Header="基础点标注" IsExpanded="True">
             <StackPanel>
                 <Button Margin="0,2" Command="{Binding BaseDimVM.GenerateBaseDimensionsCommand}" Content="生成基础标注" />
                 <Separator Margin="0,5,0,5" />
-
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
@@ -93,7 +85,6 @@
                     <TextBlock Text="比例" />
                     <TextBox Grid.Column="1" Text="{Binding BaseDimVM.Scale, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <!--  X方向ClusterConfig  -->
                 <TextBlock Margin="0,5,0,2" Text="X方向聚类参数" />
                 <Grid>
@@ -112,7 +103,6 @@
                     <TextBlock Text="EpsilonY" />
                     <TextBox Grid.Column="1" Text="{Binding BaseDimVM.ClusterConfigX_EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <!--  Y方向ClusterConfig  -->
                 <TextBlock Margin="0,5,0,2" Text="Y方向聚类参数" />
                 <Grid>
@@ -131,16 +121,12 @@
                     <TextBlock Text="EpsilonY" />
                     <TextBox Grid.Column="1" Text="{Binding BaseDimVM.ClusterConfigY_EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-
                 <!--  交点开关  -->
                 <Grid Margin="0,5,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
-
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="是否绘制" />
-
-
                 </Grid>
                 <!--  交点与聚类轮廓控制  -->
                 <Grid Margin="0,5,0,0">
@@ -148,23 +134,19 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
-                       
                     </Grid.ColumnDefinitions>
-
                     <!--  输出基础点与交点  -->
                     <CheckBox Grid.Column="0"
                               Margin="5,0,5,0"
                               VerticalAlignment="Center"
                               Content="交点"
                               IsChecked="{Binding BaseDimVM.IsPointsToSpace}" />                  
-
                     <!--  是否绘制X向聚类轮廓  -->
                     <CheckBox Grid.Column="1"
                               Margin="5,0,5,0"
                               VerticalAlignment="Center"
                               Content="X轮廓"
                               IsChecked="{Binding BaseDimVM.DrawClusterX}" />
-
                     <!--  是否绘制Y向聚类轮廓  -->
                     <CheckBox Grid.Column="2"
                               Margin="5,0,5,0"
@@ -172,10 +154,6 @@
                               Content="Y轮廓"
                               IsChecked="{Binding BaseDimVM.DrawClusterY}" />
                 </Grid>
-
-
-
-
                 <!--  过滤重复尺寸容差  -->
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -187,6 +165,5 @@
                 </Grid>
             </StackPanel>
         </Expander>
-
     </StackPanel>
 </UserControl>

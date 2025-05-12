@@ -6,7 +6,6 @@ using Autodesk.AutoCAD.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 [assembly: CommandClass(typeof(HyCADTool.Command.HyCommand))]
 namespace HyCADTool.Command
 {
@@ -15,7 +14,6 @@ namespace HyCADTool.Command
         // 统一的容差设置
         private const double TOLERANCE = 0.001; // 可根据需要调整此值
         private const double MIN_LENGTH_THRESHOLD = 0.1; // 最小长度阈值，可根据需要调整
-
         [CommandMethod("hybc")]
         public static void BreakCurvesAtIntersections()
         {
@@ -32,7 +30,6 @@ namespace HyCADTool.Command
                 new TypedValue((int)DxfCode.Start, "LINE,ARC,LWPOLYLINE,POLYLINE,SPLINE")
             });
             PromptSelectionResult selRes = ed.GetSelection(selOpts, filter);
-
             // 检查选择结果
             if (selRes.Status != PromptStatus.OK)
             {
@@ -46,7 +43,6 @@ namespace HyCADTool.Command
                 }
                 return; // 直接退出方法
             }
-
             // 检查是否选择了对象
             ObjectId[] selectedCurves = selRes.Value.GetObjectIds();
             if (selectedCurves == null || selectedCurves.Length == 0)
@@ -54,7 +50,6 @@ namespace HyCADTool.Command
                 ed.WriteMessage("\n未选择任何有效的曲线对象。");
                 return; // 直接退出方法
             }
-
             // 开始事务
             using (Transaction trans = doc.Database.TransactionManager.StartTransaction())
             {
@@ -177,7 +172,6 @@ namespace HyCADTool.Command
                 trans.Commit();
             }
         }
-
         // 辅助方法：检查点是否在曲线上
         private static bool IsPointOnCurve(Curve curve, Point3d point)
         {
@@ -196,7 +190,6 @@ namespace HyCADTool.Command
             return param >= curve.StartParam - TOLERANCE &&
                    param <= curve.EndParam + TOLERANCE;
         }
-
         // 辅助方法：获取点在曲线上的参数
         private static double GetParameterAtPoint(Curve curve, Point3d point)
         {
@@ -209,7 +202,6 @@ namespace HyCADTool.Command
                 return double.NaN;
             }
         }
-
         // 辅助方法：获取曲线的指定参数范围的段
         private static Curve GetCurveSegment(Curve curve, double paramStart, double paramEnd)
         {

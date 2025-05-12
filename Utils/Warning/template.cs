@@ -1,11 +1,9 @@
 ﻿using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-
 namespace CadUtils
 {
     public static partial class EtGpt
     {
-
         public static void AddWarningEntity(BlockTableRecord btr, Transaction tr, Polyline polyline, string layerName, string message)
         {
             Point3d centroid = GeometryUtils.GetPolylineCentroid(polyline); // 计算质心

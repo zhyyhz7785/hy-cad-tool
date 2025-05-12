@@ -7,7 +7,6 @@
 //using System;
 //using System.Collections.Generic;
 //using System.Linq;
-
 //namespace HyCADTool.Command
 //{
 //    public class AnchorBolt
@@ -23,7 +22,6 @@
 //        public int A { get; set; }       // 垫板厚度 (mm)
 //        public int NutHeight { get; set; } // 开孔深度 (mm)
 //        public int BoltLength { get; set; } // 丝长 (mm)
-
 //        public AnchorBolt(string model, int d, int d1, int v, int h1, int h2, int e, int g, int a, int nutHeight, int boltLength)
 //        {
 //            Model = model;
@@ -38,7 +36,6 @@
 //            NutHeight = nutHeight;
 //            BoltLength = boltLength;
 //        }
-
 //        public override string ToString()
 //        {
 //            return $"型号: {Model}\n" +
@@ -54,7 +51,6 @@
 //                   $"丝长: {BoltLength} mm";
 //        }
 //    }
-
 //    public static class AnchorBoltFactory
 //    {
 //        public static AnchorBolt CreateBolt(string model)
@@ -93,9 +89,7 @@
 //            public int Number { get; set; } 
 //            public List<BaseData> Bases { get; set; } = new List<BaseData>();
 //            public List<BoltData> Bolts { get; set; } = new List<BoltData>(); // 未使用
-
 //        }
-
 //        [Serializable]
 //        public class BaseData
 //        {
@@ -103,16 +97,13 @@
 //            public int Number { get; set; }
 //            [JsonProperty("Id")]
 //            private string IdHandle { get; set; } = null; // 默认值 null
-
 //            [JsonIgnore]
 //            public ObjectId Id
 //            {
 //                get => GetObjectIdFromHandle(IdHandle);
 //                set => IdHandle = value.IsNull ? null : value.Handle.ToString();
 //            }
-
 //            public List<BoltData> Bolts { get; set; } = new List<BoltData>();
-
 //            private ObjectId GetObjectIdFromHandle(string handle)
 //            {
 //                if (string.IsNullOrEmpty(handle)) return ObjectId.Null;
@@ -124,14 +115,12 @@
 //                }
 //            }
 //        }
-
 //        [Serializable]
 //        public class BoltData
 //        {
 //            // 使用 Handle 存储 ObjectId 的值，供序列化使用
 //            [JsonProperty("Id")]
 //            private string IdHandle { get; set; }
-
 //            // 提供给 AutoCAD 使用的 ObjectId 属性（不参与序列化）
 //            [JsonIgnore]
 //            public ObjectId Id
@@ -139,21 +128,17 @@
 //                get => GetObjectIdFromHandle(IdHandle);
 //                set => IdHandle = value.IsNull ? null : value.Handle.ToString();
 //            }
-
 //            public string Model { get; set; } // 型号，与 AnchorBolt 的 Model 对应
-
 //            // 获取对应的 AnchorBolt 对象
 //            public AnchorBolt GetAnchorBolt()
 //            {
 //                return AnchorBoltFactory.CreateBolt(Model);
 //            }
-
 //            // 从 Handle 恢复 ObjectId 的方法
 //            private ObjectId GetObjectIdFromHandle(string handle)
 //            {
 //                if (string.IsNullOrEmpty(handle))
 //                    return ObjectId.Null;
-
 //                using (var db = HostApplicationServices.WorkingDatabase)
 //                {
 //                    if (db != null && db.TryGetObjectId(new Handle(Convert.ToInt64(handle, 16)), out ObjectId id))
@@ -162,11 +147,9 @@
 //                }
 //            }
 //        }
-
 //        public class BoltEntityData
 //        {
 //            public string GUID { get; set; } // 螺栓 GUID
 //        }
-
 //    }
 //}

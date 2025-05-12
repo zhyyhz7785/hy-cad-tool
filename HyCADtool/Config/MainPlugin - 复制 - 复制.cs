@@ -19,7 +19,6 @@ namespace HyCADTool
         public MainPlugin()
         {
            // EtGpt.PrewarmAnnotation();
-
             _cadService = new AutoCadService();
             _configService = new ConfigService();
             _areaFactory = new AreaFactory(_cadService, _configService);

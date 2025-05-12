@@ -46,7 +46,6 @@ namespace HyCADTool.Command
                 foreach (ObjectId lineId in selectedLines)
                 {
                     Line line = trans.GetObject(lineId, OpenMode.ForRead) as Line;
-
                     if (line != null)
                     {
                         lineObjects[lineId] = line;

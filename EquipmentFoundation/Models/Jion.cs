@@ -52,23 +52,18 @@ namespace EquipmentFoundation.Models
             Vector3d normal1 = dir1.GetNormal().RotateBy(Math.PI / 2, Vector3d.ZAxis);
             Point3d p12 = p11 + normal1 * thickness1;
             Point3d p13 = p14 + normal1 * thickness1;
-
             Point3d p21 = q2.StartPoint;
             Point3d p24 = q2.EndPoint;
             Vector3d dir2 = p24 - p21;
             Vector3d normal2 = dir2.GetNormal().RotateBy(Math.PI / 2, Vector3d.ZAxis);
             Point3d p22 = p21 + normal2 * thickness2;
             Point3d p23 = p24 + normal2 * thickness2;
-
             Point3d? j1Clockwise = GetIntersectionPointNullable(p13, p13 + dir1, p22, p22 + dir2);
             //Point3d? j2 = GetIntersectionPointNullable(p23, p22, p14, p13);
             //Point3d? j3 = GetIntersectionPointNullable(p13, p12, p22, p21);
             Point3d? j2 = j1Clockwise;
             Point3d? j3 = j1Clockwise;
             Point3d? j1CounterClockwise = j1Clockwise;
-
-
-
             bool isClockwise = angle >= 0;
             if (isClockwise)
             {
@@ -190,7 +185,6 @@ namespace EquipmentFoundation.Models
             }
             else
             {
-
                 Polyline qj = j3.HasValue ? CreateBufferPolyline(p14, p13, j3.Value, p22) : CreateBufferPolyline(p14, p13, p22);
                 qb1 = UnionPolylines(qb1, qj);
                 qb2 = UnionPolylines(qb2, qj);
@@ -338,40 +332,28 @@ namespace EquipmentFoundation.Models
             buffer.Closed = true;
             return buffer;
         }
-
-
-
-
-
         //public static Polyline UnionPolylines(Polyline poly1, Polyline poly2)
         //{
         //    // 1. 将 AutoCAD Polyline 转换为 Clipper2Lib 的 Paths64
         //    Paths64 path1 = ConvertPolylineToPath(poly1);
         //    Paths64 path2 = ConvertPolylineToPath(poly2);
-
         //    // 2. 设置 Clipper2Lib 执行器
         //    Clipper64 clipper = new Clipper64();
-
         //    // 3. 添加主体和裁剪路径
         //    clipper.AddSubject(path1);
         //    clipper.AddClip(path2);
-
         //    // 4. 执行并集操作
         //    Paths64 solution = new Paths64();
         //    clipper.Execute(ClipType.Union, FillRule.NonZero, solution);
-
         //    // 5. 将结果转换回 AutoCAD Polyline
         //    var doc = Application.DocumentManager.MdiActiveDocument;
         //    var db = doc.Database;
-
         //    using (var tr = db.TransactionManager.StartTransaction())
         //    {
         //        var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
-
         //        Polyline result = ConvertPathToPolyline(solution[0]); // 假设取第一个结果路径
         //        btr.AppendEntity(result);
         //        tr.AddNewlyCreatedDBObject(result, true);
-
         //        tr.Commit();
         //        return result;
         //    }
@@ -381,18 +363,14 @@ namespace EquipmentFoundation.Models
             // 1. 将 AutoCAD Polyline 转换为 Clipper2Lib 的 Paths64
             Paths64 path1 = ConvertPolylineToPath(poly1);
             Paths64 path2 = ConvertPolylineToPath(poly2);
-
             // 2. 设置 Clipper2Lib 执行器
             Clipper64 clipper = new Clipper64();
-
             // 3. 添加主体和裁剪路径
             clipper.AddSubject(path1);
             clipper.AddClip(path2);
-
             // 4. 执行并集操作
             Paths64 solution = new Paths64();
             clipper.Execute(ClipType.Union, FillRule.NonZero, solution);
-
             // 5. 将结果转换回 Polyline，不直接输入到 AutoCAD
             if (solution.Count > 0)
             {
@@ -408,7 +386,6 @@ namespace EquipmentFoundation.Models
         {
             Paths64 path = new Paths64();
             Path64 points = new Path64();
-
             for (int i = 0; i < poly.NumberOfVertices; i++)
             {
                 Point3d pt = poly.GetPoint3dAt(i);
@@ -416,21 +393,17 @@ namespace EquipmentFoundation.Models
                 long y = (long)(pt.Y * 10000);
                 points.Add(new Point64(x, y));
             }
-
             // 使用 Count - 1 替代 ^1
             if (poly.Closed && points.Count > 0 && points[0] != points[points.Count - 1])
             {
                 points.Add(points[0]);
             }
-
             path.Add(points);
             return path;
         }
-
         private static Polyline ConvertPathToPolyline(Path64 path)
         {
             Polyline poly = new Polyline();
-
             for (int i = 0; i < path.Count; i++)
             {
                 Point64 pt = path[i];
@@ -438,11 +411,8 @@ namespace EquipmentFoundation.Models
                 double y = pt.Y / 10000.0;
                 poly.AddVertexAt(i, new Point2d(x, y), 0, 0, 0);
             }
-
             poly.Closed = true;
             return poly;
         }
-
-
     }
 }

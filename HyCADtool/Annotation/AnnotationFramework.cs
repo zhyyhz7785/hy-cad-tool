@@ -8,7 +8,6 @@ using HyCADTool.Models.Cluster;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace HyCADTool.Annotation
 {
     /// <summary>
@@ -28,12 +27,9 @@ namespace HyCADTool.Annotation
             // 步骤 1：建立 cluster → 最近交点 + 附加交点 映射
             var mapper = new AxisIntersectionMapper();
             var mapping = mapper.MapClustersToIntersections(clusterResults, xAxes, yAxes);
-
             // 步骤 2：根据点集合完成自动标注
             var annotator = new ClusterAnnotator(scale);
             annotator.Annotate(mapping);
         }
-        
-
     }
 }

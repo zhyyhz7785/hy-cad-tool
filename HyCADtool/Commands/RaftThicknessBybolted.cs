@@ -7,7 +7,6 @@ using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Models;
 using HyCADTool.Utilities;
 using System.Collections.Generic;
-
 namespace HyCADTool.Command
 {
     public static partial class HyCommand
@@ -22,7 +21,6 @@ namespace HyCADTool.Command
             Database db = doc.Database;
             Editor ed = doc.Editor;
             List<Dictionary<Polyline, double>> result = new List<Dictionary<Polyline, double>>();
-
             try
             {
                 // 定义过滤器，同时选择多段线和螺栓
@@ -34,7 +32,6 @@ namespace HyCADTool.Command
                     new TypedValue((int)DxfCode.Operator, "OR>")
                 };
                 SelectionFilter filter = new SelectionFilter(filterList);
-
                 PromptSelectionOptions selOpts = new PromptSelectionOptions
                 {
                     MessageForAdding = "\n请选择多段线和地脚螺栓 (圆): "
@@ -46,15 +43,12 @@ namespace HyCADTool.Command
                     ed.WriteMessage("\n选择取消或未选中任何对象。");
                     return result;
                 }
-
                 ed.WriteMessage($"\n选中了 {selRes.Value.Count} 个对象。");
-
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     // 分离多段线和螺栓
                     var polylineList = new List<Polyline>();
                     var circleList = new List<Circle>();
-
                     foreach (SelectedObject selObj in selRes.Value)
                     {
                         Entity ent = tr.GetObject(selObj.ObjectId, OpenMode.ForRead) as Entity;
@@ -69,9 +63,7 @@ namespace HyCADTool.Command
                             ed.WriteMessage($"\n找到螺栓圆，图层: {circle.Layer}");
                         }
                     }
-
                     ed.WriteMessage($"\n找到 {polylineList.Count} 个多段线和 {circleList.Count} 个螺栓。");
-
                     // 处理每个多段线
                     foreach (Polyline polyline in polylineList)
                     {
@@ -84,7 +76,6 @@ namespace HyCADTool.Command
                                 containedCircles.Add(circle);
                             }
                         }
-
                         // 计算最大 h1
                         double maxH1 = 0.0;
                         foreach (Circle circle in containedCircles)
@@ -95,10 +86,8 @@ namespace HyCADTool.Command
                                 maxH1 = anchorBolt.H1;
                             }
                         }
-
                         // 计算厚度
                         double thickness = maxH1 > 0 ? maxH1 + 100: 0.0; // 如果没有有效螺栓，厚度为 0
-
                         // 将多段线和厚度存入字典
                         Dictionary<Polyline, double> polyThickness = new Dictionary<Polyline, double>
                         {
@@ -106,7 +95,6 @@ namespace HyCADTool.Command
                         };
                         result.Add(polyThickness);
                     }
-
                     tr.Commit();
                 }
             }
@@ -114,10 +102,8 @@ namespace HyCADTool.Command
             {
                 ed.WriteMessage($"\n错误: {ex.Message}");
             }
-
             return result;
         }
-
         /// <summary>
         /// AutoCAD 命令：在多段线形心处绘制筏板厚度文本
         /// </summary>
@@ -127,7 +113,6 @@ namespace HyCADTool.Command
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
-
             try
             {
                 // 获取比例因子
@@ -142,7 +127,6 @@ namespace HyCADTool.Command
                     return;
                 }
                 double scale = scaleRes.Value;
-
                 // 调用方法获取多段线和厚度
                 List<Dictionary<Polyline, double>> raftData = RaftThicknessBybolted();
                 if (raftData.Count == 0)
@@ -150,7 +134,6 @@ namespace HyCADTool.Command
                     ed.WriteMessage("\n未选择有效的多段线或螺栓，无法生成厚度文本。");
                     return;
                 }
-
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     // 获取或创建图层
@@ -166,11 +149,9 @@ namespace HyCADTool.Command
                         lt.Add(ltr);
                         tr.AddNewlyCreatedDBObject(ltr, true);
                     }
-
                     // 获取模型空间
                     BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                     BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
-
                     // 为每个多段线创建文本
                     foreach (var dict in raftData)
                     {
@@ -178,10 +159,8 @@ namespace HyCADTool.Command
                         {
                             Polyline polyline = pair.Key;
                             double thickness = pair.Value;
-
                             // 计算形心
                             Point3d centroid = polyline.GetCentroid();
-
                             // 创建 DBText
                             using (DBText text = new DBText())
                             {
@@ -191,16 +170,13 @@ namespace HyCADTool.Command
                                 text.TextString = $"T={thickness:F0}"; // 厚度取整
                                 text.Layer = layerName;  // 设置图层
                                 // 使用默认文字样式（Standard）
-
                                 btr.AppendEntity(text);
                                 tr.AddNewlyCreatedDBObject(text, true);
                             }
                         }
                     }
-
                     tr.Commit();
                 }
-
                 ed.WriteMessage($"\n成功为 {raftData.Count} 个多段线添加厚度文本！");
             }
             catch (System.Exception ex)
@@ -209,7 +185,6 @@ namespace HyCADTool.Command
             }
         }
     }
-
     // 扩展方法：计算多段线的形心
     public static class PolylineExtensions
     {
@@ -218,26 +193,21 @@ namespace HyCADTool.Command
             double area = 0.0;
             double xSum = 0.0;
             double ySum = 0.0;
-
             int n = polyline.NumberOfVertices;
             for (int i = 0; i < n; i++)
             {
                 Point2d p1 = polyline.GetPoint2dAt(i);
                 Point2d p2 = polyline.GetPoint2dAt((i + 1) % n);
-
                 double cross = p1.X * p2.Y - p2.X * p1.Y;
                 area += cross;
                 xSum += (p1.X + p2.X) * cross;
                 ySum += (p1.Y + p2.Y) * cross;
             }
-
             area /= 2.0;
             if (area == 0) return polyline.GetPoint3dAt(0); // 防止除以零
-
             double x = xSum / (6.0 * area);
             double y = ySum / (6.0 * area);
             return new Point3d(x, y, polyline.Elevation);
         }
     }
-
 }

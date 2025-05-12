@@ -13,9 +13,7 @@ namespace HyCADTool.Command
         ///选择yjk墙体水平配筋 《输入值的处理
         public static void DimPoly()
         {
-
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
-
             var poly = EtGpt.SelectAEntity<Polyline>(db);
             DimensionForReinforcement.GenerateDimension(poly);
         }
@@ -25,16 +23,13 @@ namespace HyCADTool.Command
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
-
             var filter = AcTv.Polyline.Getfilter();
             var polyIds = EtGpt.SelectWithFilter(filter, doc, ed);
-
             if (polyIds == null || polyIds.Length == 0)
             {
                 ed.WriteMessage("\nSelection canceled or no polylines selected. Exiting.\n");
                 return;
             }
-
             foreach (var polyId in polyIds)
             {
                 var poly = (Polyline)polyId.IdToEntity();

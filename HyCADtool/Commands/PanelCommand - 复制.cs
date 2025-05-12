@@ -8,9 +8,7 @@ using HyCADTool.Services;
 using HyCADTool.Views;
 using System.Windows.Threading;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
-
 [assembly: CommandClass(typeof(HyCommand))]
-
 namespace HyCADTool.Command
 {
     /// <summary>
@@ -22,7 +20,6 @@ namespace HyCADTool.Command
         private static ICadService _cadService;
         private static IAreaFactory _areaFactory;
         private static IConfigService _configService;
-
         /// <summary>
         /// 初始化依赖服务（在插件加载时调用）
         /// </summary>
@@ -32,7 +29,6 @@ namespace HyCADTool.Command
             _configService = new ConfigService();
             _areaFactory = new AreaFactory(_cadService, _configService);
         }
-
         /// <summary>
         /// 显示 HY 面板的命令，通过 PaletteSet 显示钢筋、过滤器、基础钢筋、桩、螺栓聚类与标注等 WPF 控件。
         /// </summary>
@@ -46,7 +42,6 @@ namespace HyCADTool.Command
                 {
                     InitializeServices();
                 }
-
                 if (Dispatcher.CurrentDispatcher.CheckAccess())
                 {
                     DisplayPalette(ed);
@@ -61,7 +56,6 @@ namespace HyCADTool.Command
                 ed.WriteMessage($"\n显示面板失败: {ex.Message}");
             }
         }
-
         /// <summary>
         /// 创建并显示 PaletteSet 面板，添加各个 WPF 控件。
         /// </summary>
@@ -74,16 +68,13 @@ namespace HyCADTool.Command
                 {
                     Style = PaletteSetStyles.ShowAutoHideButton | PaletteSetStyles.ShowCloseButton | PaletteSetStyles.Snappable
                 };
-
                 ps.AddVisual("钢筋", new ReinPanel());
                 ps.AddVisual("过滤器", new FilterPanel());
                 ps.AddVisual("基础钢筋", new BaseReinPanel());
                 ps.AddVisual("桩", new PilePanel(_cadService, _areaFactory, _configService));
-
                 // ★ 新增面板：螺栓聚类与基础点标注
                 ps.AddVisual("螺栓聚类与基础标注", new ClusterAndBasePanel());
             }
-
             ps.Visible = true;
             ed.WriteMessage("\nHY 面板显示成功。");
         }

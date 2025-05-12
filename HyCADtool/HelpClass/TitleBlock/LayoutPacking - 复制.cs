@@ -7,7 +7,6 @@ using HyCADTool.HelpClass.TitleBlock;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace HyCADTool.Command
 {
     public static partial class HyCommand
@@ -22,7 +21,6 @@ namespace HyCADTool.Command
             public int SequenceNumber { get; set; }
             public Point2d NewPosition { get; set; }
         }
-
         private class Rectangle
         {
             public double X { get; set; }
@@ -30,7 +28,6 @@ namespace HyCADTool.Command
             public double Width { get; set; }
             public double Height { get; set; }
         }
-
         private class EmptySpace
         {
             public double X { get; set; }
@@ -39,14 +36,12 @@ namespace HyCADTool.Command
             public double Height { get; set; }
             public double Area => Width * Height;
         }
-
         private class RectanglePacker
         {
             private readonly double _containerWidth;
             private readonly double _containerHeight;
             private readonly List<Rectangle> _placedRectangles;
             private readonly List<EmptySpace> _emptySpaces;
-
             public RectanglePacker(double containerWidth, double containerHeight)
             {
                 _containerWidth = containerWidth;
@@ -57,24 +52,20 @@ namespace HyCADTool.Command
                     new EmptySpace { X = 0, Y = 0, Width = containerWidth, Height = containerHeight }
                 };
             }
-
             public bool TryPack(double width, double height, out Point2d position)
             {
                 position = new Point2d(0, 0);
-
                 // 按照从上到下（Y坐标从小到大），从左到右（X坐标从小到大）查找合适的位置
                 var orderedSpaces = _emptySpaces
                     .OrderBy(s => s.Y)
                     .ThenBy(s => s.X)
                     .ToList();
-
                 foreach (var space in orderedSpaces)
                 {
                     if (space.Width >= width && space.Height >= height)
                     {
                         // 找到合适的空间，放置矩形
                         position = new Point2d(space.X, space.Y);
-
                         // 添加已放置矩形
                         _placedRectangles.Add(new Rectangle
                         {
@@ -83,10 +74,8 @@ namespace HyCADTool.Command
                             Width = width,
                             Height = height
                         });
-
                         // 更新空间
                         _emptySpaces.Remove(space);
-
                         // 分割空间：右侧空间
                         if (space.Width > width)
                         {
@@ -98,7 +87,6 @@ namespace HyCADTool.Command
                                 Height = space.Height
                             });
                         }
-
                         // 分割空间：底部空间
                         if (space.Height > height)
                         {
@@ -110,36 +98,29 @@ namespace HyCADTool.Command
                                 Height = space.Height - height
                             });
                         }
-
                         // 优化：合并相邻空间
                         OptimizeEmptySpaces();
-
                         return true;
                     }
                 }
-
                 return false;
             }
-
             public List<EmptySpace> GetEmptySpaces()
             {
                 return _emptySpaces.Where(s => s.Area > 0.01).ToList();
             }
-
             private void OptimizeEmptySpaces()
             {
                 // 简单实现：移除面积过小的空间
                 _emptySpaces.RemoveAll(s => s.Width < 0.1 || s.Height < 0.1);
             }
         }
-
         [CommandMethod("HY_PackViewports")]
         public static void PackViewports()
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
-
             try
             {
                 using (Transaction trans = db.TransactionManager.StartTransaction())
@@ -152,17 +133,13 @@ namespace HyCADTool.Command
                         trans.Abort();
                         return;
                     }
-
                     // 获取图框信息
                     ITitleBlock titleBlock = TitleBlockFactory.Create(frameType);
                     double frameWidth = titleBlock.Width - titleBlock.LeftMargin - titleBlock.RightMargin;
                     double frameHeight = titleBlock.Height - titleBlock.TopMargin - titleBlock.BottomMargin;
-
                     ed.WriteMessage($"\n图框内部尺寸: {frameWidth} x {frameHeight}");
-
                     // 创建矩形打包器
                     RectanglePacker packer = new RectanglePacker(frameWidth, frameHeight);
-
                     // 获取所有视口
                     List<ViewportInfo> viewports = GetViewportsFromLayer(db, trans, "00_hy_2公共_视口");
                     if (viewports.Count == 0)
@@ -171,16 +148,13 @@ namespace HyCADTool.Command
                         trans.Abort();
                         return;
                     }
-
                     ed.WriteMessage($"\n找到 {viewports.Count} 个视口");
-
                     // 按X坐标排序并分配序列号
                     viewports = viewports.OrderBy(v => v.MinX).ToList();
                     for (int i = 0; i < viewports.Count; i++)
                     {
                         viewports[i].SequenceNumber = i + 1;
                     }
-
                     // 第一轮：按序列顺序放置视口
                     List<ViewportInfo> unplacedViewports = new List<ViewportInfo>();
                     foreach (var viewport in viewports)
@@ -196,7 +170,6 @@ namespace HyCADTool.Command
                             ed.WriteMessage($"\n视口 {viewport.SequenceNumber} 无法放置");
                         }
                     }
-
                     // 询问用户是否填充空闲空间
                     if (unplacedViewports.Count > 0)
                     {
@@ -205,7 +178,6 @@ namespace HyCADTool.Command
                         kwordOpts.Keywords.Add("否");
                        // kwordOpts.DefaultValue = "是";
                         PromptResult kwordRes = ed.GetKeywords(kwordOpts);
-
                         if (kwordRes.Status == PromptStatus.OK && kwordRes.StringResult == "是")
                         {
                             // 第二轮：尝试填充空白区域
@@ -214,7 +186,6 @@ namespace HyCADTool.Command
                             {
                                 ViewportInfo bestFit = null;
                                 double bestFitScore = 0;
-
                                 foreach (var viewport in unplacedViewports)
                                 {
                                     if (viewport.Width <= space.Width && viewport.Height <= space.Height)
@@ -228,7 +199,6 @@ namespace HyCADTool.Command
                                         }
                                     }
                                 }
-
                                 if (bestFit != null)
                                 {
                                     bestFit.NewPosition = new Point2d(space.X, space.Y);
@@ -238,10 +208,8 @@ namespace HyCADTool.Command
                             }
                         }
                     }
-
                     // 应用视口位置
                     ApplyViewportPositions(db, trans, viewports.Where(v => v.NewPosition != null).ToList(), titleBlock);
-
                     ed.WriteMessage($"\n成功放置 {viewports.Count - unplacedViewports.Count} 个视口");
                     if (unplacedViewports.Count > 0)
                     {
@@ -255,7 +223,6 @@ namespace HyCADTool.Command
                 ed.WriteMessage($"\n错误: {ex.Message}");
             }
         }
-
         private static string GetFrameType(Editor ed)
         {
             PromptKeywordOptions opts = new PromptKeywordOptions("\n请选择图框类型:");
@@ -266,15 +233,12 @@ namespace HyCADTool.Command
             opts.Keywords.Add("A4");
             //opts.DefaultValue = "A1";
             opts.AllowNone = false;
-
             PromptResult res = ed.GetKeywords(opts);
             return res.Status == PromptStatus.OK ? res.StringResult : string.Empty;
         }
-
         private static List<ViewportInfo> GetViewportsFromLayer(Database db, Transaction trans, string layerName)
         {
             List<ViewportInfo> viewports = new List<ViewportInfo>();
-
             // 获取当前空间
             BlockTableRecord paperSpace = trans.GetObject(db.CurrentSpaceId, OpenMode.ForRead) as BlockTableRecord;
             if (paperSpace != null)
@@ -294,7 +258,6 @@ namespace HyCADTool.Command
                                 double height = viewport.Height;
                                 Point3d center = viewport.CenterPoint;
                                 double minX = center.X - width / 2;
-
                                 viewports.Add(new ViewportInfo
                                 {
                                     Id = objectId,
@@ -308,10 +271,8 @@ namespace HyCADTool.Command
                     }
                 }
             }
-
             return viewports;
         }
-
         private static void ApplyViewportPositions(Database db, Transaction trans, List<ViewportInfo> viewports, ITitleBlock titleBlock)
         {
             try
@@ -327,7 +288,6 @@ namespace HyCADTool.Command
                             titleBlock.BottomMargin + viewportInfo.NewPosition.Y + viewportInfo.Height / 2,
                             0
                         );
-
                         viewport.CenterPoint = newCenter;
                     }
                 }

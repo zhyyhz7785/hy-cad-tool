@@ -188,7 +188,6 @@ namespace CadUtils
                         {
                             DBPoint dbPoint = new DBPoint(point)
                             {
-
                             };
                             dbPoint.SetDatabaseDefaults();
                             ids.Add(btr.AppendEntity(dbPoint));
@@ -215,12 +214,10 @@ namespace CadUtils
             db = db ?? Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
             var ids = new ObjectIdCollection();
-
             // 设置点的显示样式和大小
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
             Application.SetSystemVariable("PDMODE", pdMode);
             Application.SetSystemVariable("PDSIZE", pdSize);
-
             // 锁定文档以确保线程安全
             using (DocumentLock docLock = doc.LockDocument())
             {
@@ -233,7 +230,6 @@ namespace CadUtils
                         var blkTbl = trans.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                         // 获取模型空间块表记录
                         var btr = trans.GetObject(blkTbl[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
-
                         // 检查并处理图层
                         LayerTable lt = trans.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
                         if (!lt.Has(layerName))
@@ -255,7 +251,6 @@ namespace CadUtils
                             LayerTableRecord ltr = trans.GetObject(lt[layerName], OpenMode.ForWrite) as LayerTableRecord;
                             ltr.Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex);
                         }
-
                         // 将每个点添加到图形中
                         foreach (var point in points)
                         {
@@ -264,12 +259,10 @@ namespace CadUtils
                                 Layer = layerName,
                                 Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex) // 直接使用输入的colorIndex
                             };
-
                             dbPoint.SetDatabaseDefaults();
                             ids.Add(btr.AppendEntity(dbPoint));
                             trans.AddNewlyCreatedDBObject(dbPoint, true);
                         }
-
                         // 提交事务
                         trans.Commit();
                     }
@@ -284,7 +277,6 @@ namespace CadUtils
             }
             return ids;
         }
-
         public static ObjectId ToSpace(this Point3d point, string layerName = "Hy_Points", short colorIndex = 4, int pdMode = 3, double pdSize = -5, Database db = null)
         {
             // 获取当前活动文档的数据库，如果未提供

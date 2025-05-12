@@ -4,7 +4,6 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using EquipmentFoundation.Models;
 using HyCADTool.Utilities;
-
 namespace EquipmentFoundation
 {
     public partial class ElevationModelGenerator
@@ -16,7 +15,6 @@ namespace EquipmentFoundation
             var db = HostApplicationServices.WorkingDatabase;
             string warningLayerName = "00ElevationWarnings";
             string textLayerName = "00_hy_3公共_标注4_标高";
-
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 var layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
@@ -26,7 +24,6 @@ namespace EquipmentFoundation
                     tr.Commit();
                     return input;
                 }
-
                 if (!layerTable.Has(warningLayerName))
                 {
                     layerTable.UpgradeOpen();
@@ -38,7 +35,6 @@ namespace EquipmentFoundation
                     layerTable.Add(newLayer);
                     tr.AddNewlyCreatedDBObject(newLayer, true);
                 }
-
                 var selOpts = new PromptSelectionOptions { MessageForAdding = "\n请选择封闭的 Polyline、标高文本和螺栓: " };
                 var filter = new SelectionFilter(new TypedValue[]
                 {
@@ -55,14 +51,11 @@ namespace EquipmentFoundation
                     tr.Commit();
                     return input;
                 }
-
                 ed.WriteMessage($"\n找到 {selRes.Value.Count} 个对象。\n");
-
                 var outerPolylines = new List<Polyline>();
                 var innerPolylines = new List<Polyline>();
                 var texts = new List<DBText>();
                 var circles = new List<Circle>();
-
                 // 分类选择的对象
                 foreach (ObjectId id in selRes.Value.GetObjectIds())
                 {
@@ -83,12 +76,10 @@ namespace EquipmentFoundation
                         circles.Add(circle);
                     }
                 }
-
                 // 赋值到 GeometryInput
                 input.OuterContours = outerPolylines;
                 input.InnerPolygons = innerPolylines;
                 input.Bolts = circles;
-
                 if (input.OuterContours.Count == 0)
                 {
                     ed.WriteMessage("\n错误: 未在 'dcelOuter' 图层中找到封闭的 Polyline，请检查图纸并添加外轮廓。\n");
@@ -101,7 +92,6 @@ namespace EquipmentFoundation
                     tr.Commit();
                     return input;
                 }
-
                 // 处理标高
                 var polygonElevations = new Dictionary<Polyline, List<double>>();
                 foreach (var text in texts)
@@ -122,7 +112,6 @@ namespace EquipmentFoundation
                         }
                     }
                 }
-
                 var btr = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(db), OpenMode.ForWrite);
                 bool hasErrors = false;
                 foreach (var polyline in innerPolylines)
@@ -148,14 +137,12 @@ namespace EquipmentFoundation
                         input.Elevations[polyline] = polygonElevations[polyline].First();
                     }
                 }
-
                 if (hasErrors)
                 {
                     ed.WriteMessage("\n命令中止: 图纸中存在错误，请查看 '00ElevationWarnings' 图层并修正问题后重试。\n");
                     tr.Commit();
                     return input;
                 }
-
                 ed.WriteMessage($"\n选择统计: OuterContours={input.OuterContours.Count}, InnerPolygons={input.InnerPolygons.Count}, Elevations={input.Elevations.Count}, Bolts={input.Bolts.Count}\n");
                 tr.Commit();
             }
@@ -167,7 +154,6 @@ namespace EquipmentFoundation
             var boundaryConditions = AnalyzeBoundaryConditions(input);
             var geometryDataList = new List<GeometryData>();
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-
             foreach (var polygon in input.InnerPolygons)
             {
                 double elevation = input.Elevations.ContainsKey(polygon) ? input.Elevations[polygon] : 0.0;
@@ -175,13 +161,11 @@ namespace EquipmentFoundation
                 {
                     Elevation = elevation // 标高赋值
                 };
-
                 if (!input.Elevations.ContainsKey(polygon))
                 {
                     Point3d centroid = GetPolylineCentroid(polygon);
                     ed?.WriteMessage($"\n警告: 多边形 {centroid} 未找到标高，设为默认值 0.0。\n");
                 }
-
                 var conditions = boundaryConditions.ContainsKey(polygon) ? boundaryConditions[polygon] : null;
                 if (conditions != null)
                 {
@@ -203,7 +187,6 @@ namespace EquipmentFoundation
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
-
             // 检查 GeometryData 的 Polyline 是否包含螺栓
             using (var tr = db.TransactionManager.StartTransaction())
             {
@@ -216,7 +199,6 @@ namespace EquipmentFoundation
                         tr.Commit();
                         return defaultThickness;
                     }
-
                     // 筛选图纸中的螺栓（Circle）
                     TypedValue[] filterList = new TypedValue[]
                     {
@@ -224,12 +206,10 @@ namespace EquipmentFoundation
                         new TypedValue((int)DxfCode.LayerName, "00_Hy_螺栓*")
                     };
                     SelectionFilter filter = new SelectionFilter(filterList);
-
                     // 获取模型空间中的所有螺栓
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
                     List<double> boltHeights = new List<double>();
-
                     foreach (ObjectId objId in btr)
                     {
                         var circle = tr.GetObject(objId, OpenMode.ForRead) as Circle;
@@ -251,7 +231,6 @@ namespace EquipmentFoundation
                             }
                         }
                     }
-
                     if (boltHeights.Count > 0)
                     {
                         // 计算平均 H1 + 150mm

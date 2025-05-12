@@ -23,7 +23,6 @@ namespace CadUtils
             db = db ?? doc.Database;
             // 如果未提供ed，则从活动文档获取
             ed = ed ?? doc.Editor;
-
             var id = new ObjectId();       // 初始化图层ID
                                            // 获取文档锁
             using (DocumentLock docLock = doc.LockDocument())

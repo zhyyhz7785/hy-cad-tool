@@ -32,7 +32,6 @@ namespace EquipmentFoundation
         public bool IsInitialized { get; set; } = false;
         public TopFixity TopFixityOption { get; set; } = TopFixity.Cantilever;
         #endregion
-
         public ElevationModelGenerator()
         {
             Bufferid1 = EtGpt.CreateLayer("00_Hy_buffer_1", 36);
@@ -42,15 +41,11 @@ namespace EquipmentFoundation
             Bufferid_Region = EtGpt.CreateLayer("00_Hy_buffer_Bufferid_Region", 66);
             Bufferid_Base = EtGpt.CreateLayer("00_Hy_buffer_Bufferid_Base", 137);
             Bufferid_Wall = EtGpt.CreateLayer("00_Hy_buffer_Bufferid_Wall", 253);
-            
-
         }
-
         public void GenerateModel()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n开始生成3D模型...\n");
-
             // 1. 从 AutoCAD 选择数据并填充 GeometryInput
             var input = SelectGeometryInputFromAutoCAD();
             if (input.InnerPolygons.Count == 0)
@@ -58,7 +53,6 @@ namespace EquipmentFoundation
                 ed.WriteMessage("\n错误: 未选择任何封闭的多边形，模型生成中止。\n");
                 return;
             }
-
             // 2. 先转换为 GeometryData，包含标高数据
             var geometryDatas = ConvertToGeometryData(input);
             if (geometryDatas.Count == 0)
@@ -66,7 +60,6 @@ namespace EquipmentFoundation
                 ed.WriteMessage("\n错误: 未生成有效的 GeometryData（可能缺少标高数据），模型生成中止。\n");
                 return;
             }
-
             // 3. 检查标高数据是否有效
             bool hasValidElevation = false;
             foreach (var geomData in geometryDatas)
@@ -82,16 +75,13 @@ namespace EquipmentFoundation
                 ed.WriteMessage("\n错误: 所有 GeometryData 的标高均为 0 或未赋值，模型生成中止。\n");
                 return;
             }
-
             // 4. 计算厚度和边界条件
             CalculateBaseAndWallThickness(geometryDatas);
-
             // 5. 生成3D图形
             using (var tr = HostApplicationServices.WorkingDatabase.TransactionManager.StartTransaction())
             {
                 var bt = (BlockTable)tr.GetObject(HostApplicationServices.WorkingDatabase.BlockTableId, OpenMode.ForRead);
                 var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
-
                 var anchorBolt = AnchorBoltFactory.CreateBolt("1");
                 foreach (var geomData in geometryDatas)
                 {
@@ -99,12 +89,10 @@ namespace EquipmentFoundation
                     GenerateRaftAndBase(geometryDatas,400);
                    // GenerateBoltHoles(geomData, btr, tr, anchorBolt);
                 }
-
                 tr.Commit();
                 ed.WriteMessage("\n3D模型生成完成。\n");
             }
         }
-
         private void GenerateWalls(GeometryData geomData, BlockTableRecord btr, Transaction tr)
         {
             foreach (var wall in geomData.Walls.Where(w => w.IsWall))
@@ -115,7 +103,6 @@ namespace EquipmentFoundation
                 tr.AddNewlyCreatedDBObject(solid, true);
             }
         }
-
         private void GenerateBase(GeometryData geomData, BlockTableRecord btr, Transaction tr)
         {
             var solid = CreateBaseSolid(geomData); // 自定义方法生成基础3D实体
@@ -123,7 +110,6 @@ namespace EquipmentFoundation
             btr.AppendEntity(solid);
             tr.AddNewlyCreatedDBObject(solid, true);
         }
-
         private void GenerateBolts(GeometryData geomData, List<Circle> bolts, BlockTableRecord btr, Transaction tr)
         {
             foreach (var bolt in bolts.Where(b => IsPointInsidePolygon(b.Center, geomData.Polygon)))
@@ -134,7 +120,6 @@ namespace EquipmentFoundation
                 tr.AddNewlyCreatedDBObject(solid, true);
             }
         }
-
         private void GenerateEmbeddedPlates(GeometryData geomData, BlockTableRecord btr, Transaction tr)
         {
             // 假设预埋板基于螺栓位置生成
@@ -146,7 +131,6 @@ namespace EquipmentFoundation
                 tr.AddNewlyCreatedDBObject(solid, true);
             }
         }
-
         // 占位方法，需根据实际需求实现
         private Solid3d CreateWallSolid(WallData wall) => new Solid3d();
         private Solid3d CreateBaseSolid(GeometryData geomData) => new Solid3d();

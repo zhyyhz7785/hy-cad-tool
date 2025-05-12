@@ -10,7 +10,6 @@
         public static double MarginDown = 300;
         public static double MarginLeft = 300;
         public static double MarginRight = 300;
-
         public static double DistanceThreshold = 6000; // 用于 BaseDimension
         public static bool IsPointsToSpace = true;
         public static bool DrawClusterX = true;

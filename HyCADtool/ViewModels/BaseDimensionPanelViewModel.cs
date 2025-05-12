@@ -4,7 +4,6 @@ using HyCADTool.Models.Cluster;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-
 namespace HyCADTool.ViewModels
 {
     public class BaseDimensionPanelViewModel : INotifyPropertyChanged
@@ -17,12 +16,8 @@ namespace HyCADTool.ViewModels
         private double _clusterConfigY_EpsilonY = 9000;
         private double _distanceThreshold = 6000;
         private bool _isPointsToSpace = true;
-      
         private bool _drawClusterX = true;
         private bool _drawClusterY = true;
-
-
-
         public bool DrawClusterX
         {
             get => _drawClusterX;
@@ -36,7 +31,6 @@ namespace HyCADTool.ViewModels
                 }
             }
         }
-
         public bool DrawClusterY
         {
             get => _drawClusterY;
@@ -50,7 +44,6 @@ namespace HyCADTool.ViewModels
                 }
             }
         }
-
         public bool IsPointsToSpace
         {
             get => _isPointsToSpace;
@@ -64,17 +57,13 @@ namespace HyCADTool.ViewModels
                 }
             }
         }
-
         public double Scale { get => _scale; set { _scale = value; OnPropertyChanged(); } }
         public double ClusterConfigX_EpsilonX { get => _clusterConfigX_EpsilonX; set { _clusterConfigX_EpsilonX = value; OnPropertyChanged(); } }
         public double ClusterConfigX_EpsilonY { get => _clusterConfigX_EpsilonY; set { _clusterConfigX_EpsilonY = value; OnPropertyChanged(); } }
         public double ClusterConfigY_EpsilonX { get => _clusterConfigY_EpsilonX; set { _clusterConfigY_EpsilonX = value; OnPropertyChanged(); } }
         public double ClusterConfigY_EpsilonY { get => _clusterConfigY_EpsilonY; set { _clusterConfigY_EpsilonY = value; OnPropertyChanged(); } }
         public double DistanceThreshold { get => _distanceThreshold; set { _distanceThreshold = value; OnPropertyChanged(); } }
-       
-
         public ICommand GenerateBaseDimensionsCommand { get; }
-
         public BaseDimensionPanelViewModel()
         {
             GenerateBaseDimensionsCommand = new RelayCommand(GenerateBaseDimensions);
@@ -84,13 +73,11 @@ namespace HyCADTool.ViewModels
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
-
             try
             {
                 using (doc.LockDocument())
                 {
                     _helper = BaseDimHelper.Create(); // ★ 初始化并赋值到字段
-
                     _helper.Scale = Scale;
                     _helper.ClusterConfigX = new ClusterConfig
                     {
@@ -109,7 +96,6 @@ namespace HyCADTool.ViewModels
                     _helper.DrawClusterX = DrawClusterX;
                     _helper.DrawClusterY = DrawClusterY;
                     _helper.RunAll();
-                   
                 }
             }
             catch (System.Exception ex)
@@ -117,10 +103,6 @@ namespace HyCADTool.ViewModels
                 ed.WriteMessage($"\n生成基础标注时出错: {ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}");
             }
         }
-
-
-
-
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

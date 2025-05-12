@@ -98,7 +98,6 @@ namespace HyCADTool.HelpClass.CreatBase
         public GeometryData(Polyline polygon, double baseThickness)
         {
             Polygon = polygon ?? throw new ArgumentNullException(nameof(polygon));
-
             Walls = new List<WallData>();
             BaseThickness = baseThickness;
             _wallIndex = new Dictionary<Line, WallData>(new LineEqualityComparer());

@@ -2,7 +2,6 @@
 using NetTopologySuite.Geometries;
 using System;
 using System.Collections.Generic;
-
 namespace HyCADTool.HelpClass
 {
     /// <summary>
@@ -27,18 +26,15 @@ namespace HyCADTool.HelpClass
                 cadService.WriteMessage("\n警告：Polyline 不闭合");
                 return null;
             }
-
             // 获取多边形外环的坐标点
             Coordinate[] coords = polygon.ExteriorRing.Coordinates;
             Coordinate p0 = coords[0]; // 左下角
             Coordinate p1 = coords[1]; // 右下角
             Coordinate p2 = coords[2]; // 右上角
             Coordinate p3 = coords[3]; // 左上角
-
             // 计算原始矩形的宽度（X方向）和高度（Y方向）
             double originalWidth = p1.X - p0.X;
             double originalHeight = p3.Y - p0.Y;
-
             // 检查边距是否过大（左右边距之和不能超过宽度，上下边距之和不能超过高度）
             if (margin.left + margin.right >= originalWidth || margin.up + margin.down >= originalHeight)
             {
@@ -48,21 +44,17 @@ namespace HyCADTool.HelpClass
                 cadService.WriteMessage("\n请调整 margin 使其小于边长");
                 return null;
             }
-
             // 计算内缩后矩形的四个顶点坐标
             Coordinate newP0 = new Coordinate(p0.X + margin.left, p0.Y + margin.down); // 新左下角
             Coordinate newP1 = new Coordinate(p1.X - margin.right, p1.Y + margin.down); // 新右下角
             Coordinate newP2 = new Coordinate(p2.X - margin.right, p2.Y - margin.up); // 新右上角
             Coordinate newP3 = new Coordinate(p3.X + margin.left, p3.Y - margin.up); // 新左上角
-
             // 创建新坐标数组，闭合多边形（首尾坐标相同）
             Coordinate[] newCoords = { newP0, newP1, newP2, newP3, newP0 };
-
             // 使用 GeometryFactory 创建新的内缩矩形多边形
             var geometryFactory = new GeometryFactory();
             return geometryFactory.CreatePolygon(newCoords);
         }
-
         /// <summary>
         /// 计算矩形网格布置的尺寸，用于桩的矩形排列。
         /// 根据多边形面积、桩面积和布置率，确定网格的行数和列数。
@@ -79,20 +71,16 @@ namespace HyCADTool.HelpClass
             var contour = standardArea.Contour;
             var inputDisplacementRate = standardArea.InputDisplacementRate;
             var pileArea = pile.PileArea;
-
             // 计算理论需要的总桩数：多边形面积 * 位移率 / 桩面积，向上取整
             double calculatedTotalPiles = Math.Ceiling(contour.Area * inputDisplacementRate / pileArea);
-
             // 获取多边形外环顶点
             Coordinate[] vertices = contour.ExteriorRing.Coordinates;
             Coordinate p0 = vertices[0]; // 左下角
             Coordinate p1 = vertices[1]; // 右下角
             Coordinate p3 = vertices[3]; // 左上角
-
             // 计算矩形的宽度（X方向）和高度（Y方向）
             double lX = p1.X - p0.X;
             double lY = p3.Y - p0.Y;
-
             // 检查矩形尺寸是否有效
             if (lX <= 0 || lY <= 0)
             {
@@ -101,7 +89,6 @@ namespace HyCADTool.HelpClass
                 nY = 0;
                 return;
             }
-
             // 根据矩形的宽高比例，确定网格的行数和列数
             if (lX > lY)
             {
@@ -110,7 +97,6 @@ namespace HyCADTool.HelpClass
                 nY = (int)((d % 1 <= pileArrangeRate) ? Math.Floor(d) : Math.Ceiling(d)); // 根据布置率决定取整
                 nY = Math.Max(1, nY); // 确保至少为1
                 nX = Math.Max(1, (int)Math.Ceiling(calculatedTotalPiles / nY)); // 根据总桩数计算 X 方向网格数
-                
             }
             else
             {
@@ -119,10 +105,8 @@ namespace HyCADTool.HelpClass
                 nX = (int)((d % 1 <= pileArrangeRate) ? Math.Floor(d) : Math.Ceiling(d)); // 根据布置率决定取整
                 nX = Math.Max(1, nX); // 确保至少为1
                 nY = Math.Max(1, (int)Math.Ceiling(calculatedTotalPiles / nX)); // 根据总桩数计算 Y 方向网格数
-                
             }
         }
-
         /// <summary>
         /// 计算梅花形（交错）网格布置的尺寸，用于桩的梅花形排列。
         /// 根据多边形面积、桩面积和布置率，确定网格的行数和列数，优化桩总数。
@@ -138,7 +122,6 @@ namespace HyCADTool.HelpClass
             // 获取多边形轮廓和输入位移率
             var contour = standardArea.Contour;
             var inputDisplacementRate = standardArea.InputDisplacementRate;
-
             // 验证多边形是否有效
             if (contour == null || contour.Area <= 0)
             {
@@ -147,22 +130,18 @@ namespace HyCADTool.HelpClass
                 nY = 0;
                 return;
             }
-
             double pileArea = pile.PileArea; // 获取桩面积
             double smallRectArea = pileArea / inputDisplacementRate; // 计算每个桩占用的小矩形面积
             double ss = Math.Sqrt(smallRectArea); // 小矩形的边长
             double totalPiles = Math.Ceiling(contour.Area / smallRectArea); // 理论需要的总桩数
-
             // 获取多边形外环顶点
             Coordinate[] vertices = contour.ExteriorRing.Coordinates;
             Coordinate p0 = vertices[0]; // 左下角
             Coordinate p1 = vertices[1]; // 右下角
             Coordinate p3 = vertices[3]; // 左上角
-
             // 计算矩形的宽度（X方向）和高度（Y方向）
             double lX = p1.X - p0.X;
             double lY = p3.Y - p0.Y;
-
             // 检查矩形尺寸是否有效
             if (lX <= 0 || lY <= 0)
             {
@@ -171,12 +150,10 @@ namespace HyCADTool.HelpClass
                 nY = 0;
                 return;
             }
-
             int bestNX = 0, bestNY = 0;
             int minPiles = int.MaxValue;
             int maxX = (int)(lX / ss); // X方向最大网格数
             int maxY = (int)(lY / ss); // Y方向最大网格数
-
             // 根据宽高比例，优化梅花形网格
             if (lX > lY)
             {
@@ -231,7 +208,6 @@ namespace HyCADTool.HelpClass
                     }
                 }
             }
-
             // 输出最终网格尺寸和桩总数
             nX = bestNX;
             nY = bestNY;
@@ -239,7 +215,6 @@ namespace HyCADTool.HelpClass
             nX = nX + 1; nY = nY + 1;
             cadService.WriteMessage($"\n第二种情况：nX = {nX}, nY = {nY}, 桩总数 = {finalPiles}, 目标桩数 = {totalPiles}");
         }
-
         /// <summary>
         /// 生成矩形网格的多边形，用于划分输入多边形为小矩形网格。
         /// 同时返回网格点、形心和单元尺寸。
@@ -258,25 +233,20 @@ namespace HyCADTool.HelpClass
             List<Polygon> rectangles = new List<Polygon>();
             points = new List<Point>();
             centroids = new List<Point>();
-
             // 验证输入参数
             if (polygon == null || polygon.Area <= 0 || nX <= 0 || nY <= 0)
             {
                 throw new ArgumentException("输入的 Polygon 无效或 nX/nY 计算错误");
             }
-
             // 获取多边形外环顶点
             Coordinate[] vertices = polygon.ExteriorRing.Coordinates;
             Coordinate p0 = vertices[0]; // 左下角
             double lX = vertices[1].X - p0.X; // 矩形宽度
             double lY = vertices[3].Y - p0.Y; // 矩形高度
-
             GeometryFactory gf = new GeometryFactory();
-
             // 计算每个网格单元的宽度和高度（初始值）
             cellWidth = lX / Math.Max(nX, 1);
             cellHeight = lY / Math.Max(nY, 1);
-
             // 情况 1: nX = 1 且 nY = 1（单个桩，位于多边形中心）
             if (nX == 1 && nY == 1)
             {
@@ -284,21 +254,16 @@ namespace HyCADTool.HelpClass
                 double centerX = p0.X + lX / 2;
                 double centerY = p0.Y + lY / 2;
                 Point centerPoint = new Point(centerX, centerY, 0);
-
                 // 添加中心点到 points 和 centroids
                 points.Add(centerPoint);
                 centroids.Add(centerPoint);
-
                 // 添加整个多边形作为唯一的小矩形
                 rectangles.Add(polygon);
-
                 return rectangles;
             }
-
             // 情况 2: nX = 1（单列网格）
             if (nX == 1 && nY >= 1)
             {
-                
                 nY = nY - 1;
                 // 重新计算网格单元的宽度和高度
                 cellWidth = lX / Math.Max(nX, 1);
@@ -310,7 +275,6 @@ namespace HyCADTool.HelpClass
                     double y = p0.Y + i * cellHeight; // Y 坐标每次增加 cellHeight
                     points.Add(new Point(x, y, 0));
                 }
-
                 // 生成小矩形多边形和形心
                 for (int i = 0; i < nY; i++)
                 {
@@ -319,18 +283,14 @@ namespace HyCADTool.HelpClass
                     Coordinate bottomRight = new Coordinate(p0.X + lX, p0.Y + i * cellHeight);
                     Coordinate topRight = new Coordinate(p0.X + lX, p0.Y + (i + 1) * cellHeight);
                     Coordinate topLeft = new Coordinate(p0.X, p0.Y + (i + 1) * cellHeight);
-
                     // 创建小矩形的坐标数组（闭合）
                     Coordinate[] rectCoords = { bottomLeft, bottomRight, topRight, topLeft, bottomLeft };
                     rectangles.Add(gf.CreatePolygon(rectCoords));
-
                     // 形心为当前网格点（桩中心）
                     centroids.Add(points[i]);
                 }
-
                 return rectangles;
             }
-
             // 情况 3: nY = 1（单行网格）
             if (nY == 1 && nX >= 1)
             {
@@ -345,7 +305,6 @@ namespace HyCADTool.HelpClass
                     double y = p0.Y + lY / 2; // Y 坐标固定在高度中点
                     points.Add(new Point(x, y, 0));
                 }
-
                 // 生成小矩形多边形和形心
                 for (int j = 0; j < nX; j++)
                 {
@@ -354,15 +313,12 @@ namespace HyCADTool.HelpClass
                     Coordinate bottomRight = new Coordinate(p0.X + (j + 1) * cellWidth, p0.Y);
                     Coordinate topRight = new Coordinate(p0.X + (j + 1) * cellWidth, p0.Y + lY);
                     Coordinate topLeft = new Coordinate(p0.X + j * cellWidth, p0.Y + lY);
-
                     // 创建小矩形的坐标数组（闭合）
                     Coordinate[] rectCoords = { bottomLeft, bottomRight, topRight, topLeft, bottomLeft };
                     rectangles.Add(gf.CreatePolygon(rectCoords));
-
                     // 形心为当前网格点（桩中心）
                     centroids.Add(points[j]);
                 }
-
                 return rectangles;
             }
             if (nY >= 1 && nX >= 1)
@@ -384,7 +340,6 @@ namespace HyCADTool.HelpClass
                         points.Add(new Point(x, y, 0));
                     }
                 }
-
                 // Step 2: 生成小矩形多边形和形心
                 for (int i = 0; i < nY; i++)
                 {
@@ -395,32 +350,23 @@ namespace HyCADTool.HelpClass
                         int indexBR = indexBL + 1;             // 右下角
                         int indexTR = indexBL + (nX + 1) + 1;  // 右上角
                         int indexTL = indexBL + (nX + 1);      // 左上角
-
                         // 获取四个顶点的坐标
                         Coordinate bottomLeft = new Coordinate(points[indexBL].X, points[indexBL].Y);
                         Coordinate bottomRight = new Coordinate(points[indexBR].X, points[indexBR].Y);
                         Coordinate topRight = new Coordinate(points[indexTR].X, points[indexTR].Y);
                         Coordinate topLeft = new Coordinate(points[indexTL].X, points[indexTL].Y);
-
                         // 创建小矩形的坐标数组（闭合）
                         Coordinate[] rectCoords = new Coordinate[] { bottomLeft, bottomRight, topRight, topLeft, bottomLeft };
-
                         // 计算形心坐标（四个顶点的平均值）
                         double centroidX = (bottomLeft.X + bottomRight.X + topRight.X + topLeft.X) / 4;
                         double centroidY = (bottomLeft.Y + bottomRight.Y + topRight.Y + topLeft.Y) / 4;
                         centroids.Add(new Point(centroidX, centroidY, 0));
-
                         // 创建并添加小矩形多边形
                         rectangles.Add(gf.CreatePolygon(rectCoords));
                     }
                 }
             }               
-                       
-
-           
-
             return rectangles;
         }
-
     }
 }

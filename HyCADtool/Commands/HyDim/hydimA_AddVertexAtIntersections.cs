@@ -7,7 +7,6 @@ using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace HyCADTool.Command
 {
     public static partial class HyCommand
@@ -18,7 +17,6 @@ namespace HyCADTool.Command
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
-
             try
             {
                 // 创建选择过滤器，只允许选择多段线和直线
@@ -29,23 +27,17 @@ namespace HyCADTool.Command
             new TypedValue((int)DxfCode.Start, "LINE"),
             new TypedValue((int)DxfCode.Operator, "or>")
                 };
-
                 SelectionFilter filter = new SelectionFilter(filterList);
-
                 // 提示用户选择对象
                 PromptSelectionResult selResult = ed.GetSelection(filter);
-
                 if (selResult.Status != PromptStatus.OK)
                     return;
-
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     // 获取选择集中的所有对象
                     ObjectId[] selectedIds = selResult.Value.GetObjectIds();
-
                     // 存储所有直线和多段线的列表
                     List<Entity> entities = new List<Entity>();
-
                     foreach (ObjectId id in selectedIds)
                     {
                         Entity ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
@@ -54,20 +46,17 @@ namespace HyCADTool.Command
                             entities.Add(ent);
                         }
                     }
-
                     // 查找所有交点并处理
                     for (int i = 0; i < entities.Count; i++)
                     {
                         for (int j = i + 1; j < entities.Count; j++)
                         {
                             Point3dCollection intersectionPoints = new Point3dCollection();
-
                             entities[i].IntersectWith(entities[j],
                                 Intersect.OnBothOperands,
                                 intersectionPoints,
                                 IntPtr.Zero,
                                 IntPtr.Zero);
-
                             // 处理每个交点
                             foreach (Point3d pt in intersectionPoints)
                             {
@@ -83,10 +72,8 @@ namespace HyCADTool.Command
                             }
                         }
                     }
-
                     tr.Commit();
                 }
-
                 ed.Regen();
             }
             catch (System.Exception ex)
@@ -94,16 +81,13 @@ namespace HyCADTool.Command
                 ed.WriteMessage($"\n错误: {ex.Message}");
             }
         }
-
         // 在多段线上的指定点添加顶点
         private static void AddVertexToPolyline(Polyline pline, Point3d pt, Transaction tr)
         {
             pline.UpgradeOpen();
-
             // 找到最近的顶点索引
             int closestIndex = 0;
             double minDist = double.MaxValue;
-
             for (int i = 0; i < pline.NumberOfVertices; i++)
             {
                 Point3d vertex = pline.GetPoint3dAt(i);
@@ -114,21 +98,18 @@ namespace HyCADTool.Command
                     closestIndex = i;
                 }
             }
-
             // 找到插入点所在的线段
             int segmentIndex = -1;
             for (int i = 0; i < pline.NumberOfVertices - 1; i++)
             {
                 Point3d p1 = pline.GetPoint3dAt(i);
                 Point3d p2 = pline.GetPoint3dAt(i + 1);
-
                 if (IsPointOnSegment(pt, p1, p2))
                 {
                     segmentIndex = i;
                     break;
                 }
             }
-
             if (segmentIndex >= 0)
             {
                 // 在指定位置添加新顶点
@@ -139,20 +120,16 @@ namespace HyCADTool.Command
                     0); // 结束宽度
             }
         }
-
         // 判断点是否在线段上
         private static bool IsPointOnSegment(Point3d pt, Point3d p1, Point3d p2)
         {
             double tolerance = Tolerance.Global.EqualPoint;
-
             // 计算点到直线的距离
             double dist = new LineSegment3d(p1, p2).GetDistanceTo(pt);
-
             // 检查点是否在线段范围内
             double length = p1.DistanceTo(p2);
             double d1 = p1.DistanceTo(pt);
             double d2 = p2.DistanceTo(pt);
-
             return dist <= tolerance && d1 <= length + tolerance && d2 <= length + tolerance;
         }
     }
