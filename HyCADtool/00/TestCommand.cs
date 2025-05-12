@@ -36,7 +36,7 @@ namespace HyCADTool
                 SimpleLogger.LogElapsedTime("star1", () =>
 
                 {
-                    //var filter = AcTv.Or(AcTv.And(AcTv.Polyline, "柱".GetLayerFilter()), AcTv.DBText).Getfilter();asdfa
+                    //var filter = AcTv.Or(AcTv.And(AcTv.Polyline, "柱".GetLayerFilter()), AcTv.DBText).Getfilter();asdfaaa
                     //var dic = EtGpt.SelectToDic(filter, "选择Polyline");
                     //var PillarPiers = dic.Values
                     //.OfType<Polyline>()
