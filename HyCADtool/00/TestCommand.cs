@@ -36,7 +36,7 @@ namespace HyCADTool
                 SimpleLogger.LogElapsedTime("star1", () =>
 
                 {
-                    //var filter = AcTv.Or(AcTv.And(AcTv.Polyline, "柱".GetLayerFilter()), AcTv.DBText).Getfilter();
+                    //var filter = AcTv.Or(AcTv.And(AcTv.Polyline, "柱".GetLayerFilter()), AcTv.DBText).Getfilter();asdf
                     //var dic = EtGpt.SelectToDic(filter, "选择Polyline");
                     //var PillarPiers = dic.Values
                     //.OfType<Polyline>()
@@ -237,7 +237,7 @@ namespace HyCADTool
                     //HyCommand.ReplacePolygonByIntersectionBatch();
                     // HyCommand.CreateDCELPolylinesFromLines();
                     // HyCommand.DrawRaftThicknessText();
-                    //HyCommand.CreateViewportsFromModelBounds();121212asdf
+                    //HyCommand.CreateViewportsFromModelBounds();
                     PointClusterHelper.AnnotateClustersTest();
                     ed.WriteMessage("\nabcde\n");
                 });
