@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

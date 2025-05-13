@@ -2,8 +2,8 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
-[assembly: CommandClass(typeof(HyCADTool.Command.HyCommand))]
-namespace HyCADTool.Command
+[assembly: CommandClass(typeof(HyCADTool.Commands.HyCommand))]
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

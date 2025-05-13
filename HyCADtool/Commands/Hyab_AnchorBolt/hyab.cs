@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Models;
 using Newtonsoft.Json;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

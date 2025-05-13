@@ -5,8 +5,8 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Tools;
 using System;
-[assembly: CommandClass(typeof(HyCADTool.Command.HyCommand))]
-namespace HyCADTool.Command
+[assembly: CommandClass(typeof(HyCADTool.Commands.HyCommand))]
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

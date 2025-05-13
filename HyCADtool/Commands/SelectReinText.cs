@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using System.Text.RegularExpressions;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

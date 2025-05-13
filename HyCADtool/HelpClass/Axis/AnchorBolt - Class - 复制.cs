@@ -1,4 +1,4 @@
-﻿namespace HyCADTool.Command
+﻿namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

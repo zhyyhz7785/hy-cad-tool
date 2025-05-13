@@ -8,7 +8,7 @@ using HyCADTool.Tools;
 using System.Collections.Generic;
 using System.Linq;
 using Face = HyCADTool.HelpClass.DCEL.Face;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

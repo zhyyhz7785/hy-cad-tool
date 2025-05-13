@@ -1,6 +1,6 @@
 ﻿using Autodesk.AutoCAD.Runtime;
 using HyCADTool.HelpClass.DCEL;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

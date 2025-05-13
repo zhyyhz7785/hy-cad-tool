@@ -60,18 +60,12 @@ namespace HyCADTool.HelpClass
         {
             if (points == null || !points.Any())
                 throw new ArgumentException("输入点集合不能为空。", nameof(points));
-            InputPoints = points;
-            _epsilonX = epsilonX;
-            _epsilonY = epsilonY;
-            _minPoints = minPoints;
-            PerformClustering();
-            GenerateEnvelopes();
         }
         #endregion
         #region 🧠 聚类处理
         private void PerformClustering()
         {
-            var envelopeCluster = new EnvelopeCluster();
+            var envelopeCluster = new Cluster();
             var config = new ClusterConfig
             {
                 EpsilonX = _epsilonX,

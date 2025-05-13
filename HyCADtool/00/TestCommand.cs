@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
-using HyCADTool.Command;
+using HyCADTool.Commands;
 using HyCADTool.HelpClass;
 using HyCADTool.HelpClass.CreatBase;
 using HyCADTool.HelpClass.TitleBlock;
@@ -224,8 +224,10 @@ namespace HyCADTool
                     // HyCommand.CreateDCELPolylinesFromLines();
                     // HyCommand.DrawRaftThicknessText();
                     //HyCommand.CreateViewportsFromModelBounds();
-                    PointClusterHelper.AnnotateClustersTest();
+                   // PointClusterHelper.AnnotateClustersTest();
                     //PointClusterHelper.GenerateBoltDimensions();
+                    //HyCommand.DrawDimensionInputPoints();
+                    HyCommand.TestAxisRegions();
                     ed.WriteMessage("\nabcde\n");
                 });
             }

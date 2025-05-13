@@ -7,8 +7,8 @@ using HyCADTool.HelpClass.Jig;
 using HyCADTool.Tools;
 using System;
 using static HyCADTool.Tools.EtGpt;
-[assembly: CommandClass(typeof(HyCADTool.Command.HyCommand))]
-namespace HyCADTool.Command
+[assembly: CommandClass(typeof(HyCADTool.Commands.HyCommand))]
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

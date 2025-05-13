@@ -56,18 +56,24 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="01%28平面标注尺寸%29\BaseDimension.cs" />
+    <Compile Include="Models\Cluster\Axis - 复制.cs" />
+    <Compile Include="Models\Cluster\DimHelper.cs" />
     <Compile Include="01%28平面标注尺寸%29\BaseDimHelper - 复制.cs" />
+    <Compile Include="Models\Cluster\Axis.cs" />
+    <Compile Include="Models\Cluster\DimPointsAndAxis.cs" />
+    <Compile Include="01%28平面标注尺寸%29\BaseDimension.cs" />
     <Compile Include="01%28平面标注尺寸%29\BaseDimHelper.cs" />
     <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper_Fun.cs" />
     <Compile Include="01%28平面标注尺寸%29\Test.cs" />
     <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper.cs" />
+    <Compile Include="Annotation\DimPointDrawer.cs" />
     <Compile Include="Annotation\AnnotationFramework.cs" />
     <Compile Include="Annotation\AutoCADDimensionHelper.cs" />
     <Compile Include="Annotation\ClusterAnnotator.cs" />
     <Compile Include="Annotation\DimensionLayerGrouper.cs" />
     <Compile Include="Commands\3d\hy3G_Generate.cs" />
     <Compile Include="Commands\3d\hy3CS_CreateSection.cs" />
+    <Compile Include="Commands\DimPointCommands.cs" />
     <Compile Include="Commands\Dcel - 复制.cs" />
     <Compile Include="Commands\HyDim.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabA_Align.cs" />
@@ -84,11 +90,12 @@
     <Compile Include="Commands\HyDc\HyDcL_Line.cs" />
     <Compile Include="Config\PointsClusterConfig.cs" />
     <Compile Include="GeometryUtils\AxisIntersectionMapper.cs" />
+    <Compile Include="Models\Cluster\Cluster - 复制.cs" />
     <Compile Include="Models\Cluster\ClusterResult.cs" />
     <Compile Include="Models\Cluster\ClusterConfig.cs" />
     <Compile Include="Models\Cluster\CreateDimensionsForCluster - 复制.cs" />
     <Compile Include="Models\Enum\Direction.cs" />
-    <Compile Include="Models\Cluster\Cluster.cs" />
+    <Compile Include="Models\Cluster\ClusterClusterFactory.cs" />
     <Compile Include="00\Dim.cs" />
     <Compile Include="Commands\hyAxis\hyAxis_AlignedAxisText.cs" />
     <Compile Include="00\EquipmentFoundation\EF_Commands.cs" />
@@ -234,9 +241,6 @@
     <Compile Include="Tools\ChangeType\IdsToEntities.cs" />
     <Compile Include="Tools\ChangeType\DicToConcurrentDic.cs" />
     <Compile Include="Tools\ChangeType\Point2dTo3d.cs" />
-    <Compile Include="Models\Cluster\ClusterDimOptions.cs" />
-    <Compile Include="Models\Cluster\ClusterDim .cs" />
-    <Compile Include="Models\Cluster\CreateDimensionsForCluster.cs" />
     <Compile Include="Tools\CreatEntity\BaseRein\AR000_a00- 复制.cs" />
     <Compile Include="Tools\CreatEntity\BaseRein\AR000_a1.cs" />
     <Compile Include="Tools\CreatEntity\BaseRein\AR000_a3.cs" />

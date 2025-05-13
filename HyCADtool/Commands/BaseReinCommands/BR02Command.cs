@@ -4,8 +4,8 @@ using Autodesk.AutoCAD.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-[assembly: CommandClass(typeof(HyCADTool.Command.DrawBaseReinforcement))]
-namespace HyCADTool.Command
+[assembly: CommandClass(typeof(HyCADTool.Commands.DrawBaseReinforcement))]
+namespace HyCADTool.Commands
 {
     public static partial class DrawBaseReinforcement
     {

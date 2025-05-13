@@ -1,8 +1,8 @@
 ﻿using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-[assembly: CommandClass(typeof(HyCADTool.Command.DrawBaseReinforcement))]
-namespace HyCADTool.Command
+[assembly: CommandClass(typeof(HyCADTool.Commands.DrawBaseReinforcement))]
+namespace HyCADTool.Commands
 {
     public static partial class DrawBaseReinforcement
     {

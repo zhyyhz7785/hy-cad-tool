@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Utils;
 using System.Collections.Generic;
 using static HyCADTool.Utils.HyCADUtils;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

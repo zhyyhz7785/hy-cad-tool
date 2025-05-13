@@ -16,31 +16,7 @@ namespace HyCADTool.HelpClass
     public partial class PointClusterHelper
     {    
         #region 外包框生成
-        private void GenerateEnvelopes()
-        {
-            EnvelopeRects = new List<Extents3d>();
-            ExpandedRects = new List<Extents3d>();
-            foreach (var cluster in ClusterResults)
-            {
-                if (cluster.Points == null || cluster.Points.Count == 0) continue;
-                double minX = cluster.Points.Min(p => p.X);
-                double maxX = cluster.Points.Max(p => p.X);
-                double minY = cluster.Points.Min(p => p.Y);
-                double maxY = cluster.Points.Max(p => p.Y);
-                var original = new Extents3d(
-                    new Point3d(minX, minY, 0),
-                    new Point3d(maxX, maxY, 0));
-                EnvelopeRects.Add(original);
-                var expand = Expand;
-                var expanded = new Extents3d(
-                    new Point3d(minX - expand.Left, minY - expand.Bottom, 0),
-                    new Point3d(maxX + expand.Right, maxY + expand.Top, 0));
-                ExpandedRects.Add(expanded);
-                // ✨ 新增：生成Polyline并赋值
-                cluster.EnvelopePolyline = CreateRectPolyline(original);
-                cluster.EnvelopeExpandedPolyline = CreateRectPolyline(expanded);
-            }
-        }
+      
         #endregion
         #region 绘制到AutoCAD
         public void DrawExpandedEnvelopes()
@@ -287,7 +263,7 @@ namespace HyCADTool.HelpClass
         {
             var (points, lines) = SelectPointsOrCirclesAndLines();
             if (points.Count == 0 || lines.Count == 0) return;
-            var envelopeCluster = new EnvelopeCluster();
+            var envelopeCluster = new Cluster();
             var config = new ClusterConfig
             {
                 EpsilonX = 1500,
@@ -333,7 +309,7 @@ namespace HyCADTool.HelpClass
                     yAxes.Add(axis);
             }
             // 聚类处理
-            EnvelopeCluster clusterProcessor = new EnvelopeCluster();
+            Cluster clusterProcessor = new Cluster();
             ClusterConfig config = new ClusterConfig
             {
                 EpsilonX = GlobalEpsilonX,

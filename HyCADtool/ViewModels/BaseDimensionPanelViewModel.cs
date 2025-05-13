@@ -15,9 +15,21 @@ namespace HyCADTool.ViewModels
         private double _clusterConfigY_EpsilonX = 600;
         private double _clusterConfigY_EpsilonY = 9000;
         private double _distanceThreshold = 6000;
-        private bool _isPointsToSpace = true;
+        private bool _drawInputPoints = false;
         private bool _drawClusterX = true;
         private bool _drawClusterY = true;
+        public bool DrawInputPoints
+        {
+            get => _drawInputPoints;
+            set
+            {
+                if (_drawInputPoints != value)
+                {
+                    _drawInputPoints = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
         public bool DrawClusterX
         {
             get => _drawClusterX;
@@ -44,19 +56,7 @@ namespace HyCADTool.ViewModels
                 }
             }
         }
-        public bool IsPointsToSpace
-        {
-            get => _isPointsToSpace;
-            set
-            {
-                if (_isPointsToSpace != value)
-                {
-                    _isPointsToSpace = value;
-                    OnPropertyChanged();
-                    if (_helper != null) _helper.IsPointsToSpace = value;
-                }
-            }
-        }
+        
         public double Scale { get => _scale; set { _scale = value; OnPropertyChanged(); } }
         public double ClusterConfigX_EpsilonX { get => _clusterConfigX_EpsilonX; set { _clusterConfigX_EpsilonX = value; OnPropertyChanged(); } }
         public double ClusterConfigX_EpsilonY { get => _clusterConfigX_EpsilonY; set { _clusterConfigX_EpsilonY = value; OnPropertyChanged(); } }
@@ -92,7 +92,7 @@ namespace HyCADTool.ViewModels
                         MinPoints = 1
                     };
                     _helper.DistanceThreshold = DistanceThreshold;
-                    _helper.IsPointsToSpace = IsPointsToSpace;
+                    
                     _helper.DrawClusterX = DrawClusterX;
                     _helper.DrawClusterY = DrawClusterY;
                     _helper.RunAll();

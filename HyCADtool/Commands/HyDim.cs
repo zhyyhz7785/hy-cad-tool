@@ -7,7 +7,7 @@ using HyCADTool.Annotation;
 using HyCADTool.Models;
 using System.Collections.Generic;
 using HyCADTool.Models.Cluster;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand // ✅ 添加 partial
     {

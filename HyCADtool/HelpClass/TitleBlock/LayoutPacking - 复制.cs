@@ -7,7 +7,7 @@ using HyCADTool.HelpClass.TitleBlock;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

@@ -2,14 +2,14 @@
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Windows;
-using HyCADTool.Command;
+using HyCADTool.Commands;
 using HyCADTool.Interfaces;
 using HyCADTool.Services;
 using HyCADTool.Views;
 using System.Windows.Threading;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
 [assembly: CommandClass(typeof(HyCommand))]
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     /// <summary>
     /// 管理 AutoCAD 插件的命令类，提供显示 HY 面板的命令。

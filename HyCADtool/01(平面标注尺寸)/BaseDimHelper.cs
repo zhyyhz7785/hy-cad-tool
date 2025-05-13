@@ -4,6 +4,7 @@
 //using Autodesk.AutoCAD.Geometry;
 //using Clipper2Lib;
 //using HyCADTool.Config;
+//using HyCADTool.Models.Cluster;
 //using HyCADTool.Tools;
 //using System;
 //using System.Collections.Generic;
@@ -14,26 +15,42 @@
 //    public partial class BaseDimHelper
 //    {
 //        #region 属性字段
+//        private bool _isPointsToSpace = false; // 默认true
 //        public bool IsPointsToSpace
 //        {
-//            get => _baseDimension.IsPointsToSpace;
-//            set => _baseDimension.IsPointsToSpace = value;
+//            get => _baseDimension != null ? _baseDimension.IsPointsToSpace : _isPointsToSpace;
+//            set
+//            {
+//                _isPointsToSpace = value;
+//                if (_baseDimension != null)
+//                {
+//                    _baseDimension.IsPointsToSpace = value;
+//                }
+//            }
 //        }
 //        // 【新增】比例
 //        public double Scale { get; set; } = 40.0;
 //        // 【新增】X方向聚类参数（允许外部传递）
 //        public ClusterConfig ClusterConfigX { get; set; } = new ClusterConfig { EpsilonX = 9000, EpsilonY = 600, MinPoints = 1 };
 //        // 【新增】Y方向聚类参数（允许外部传递）
-//        public ClusterConfig ClusterConfigY { get; set; } = new ClusterConfig { EpsilonX = 600, EpsilonY = 9000, MinPoints = 1 };    
+//        public ClusterConfig ClusterConfigY { get; set; } = new ClusterConfig { EpsilonX = 600, EpsilonY = 9000, MinPoints = 1 };
 //        // 【新增】过滤重复标注容差
 //        public double DistanceThreshold { get; set; } = 6000.0;
+//        /// <summary>
+//        /// 是否绘制X方向聚类轮廓到CAD
+//        /// </summary>
+//        public bool DrawClusterX { get; set; } = true;
+//        /// <summary>
+//        /// 是否绘制Y方向聚类轮廓到CAD
+//        /// </summary>
+//        public bool DrawClusterY { get; set; } = true;
 //        public List<Point3d> Points { get; private set; }
 //        public List<List<Point3d>> ClusterPointsX { get; private set; }
 //        public List<List<Point3d>> ClusterPointsY { get; private set; }
 //        public List<ClusterResult> ClusterResultX { get; private set; }
 //        public List<ClusterResult> ClusterResultY { get; private set; }
-//        private readonly BaseDimension _baseDimension;
-//        private readonly EnvelopeCluster _envelopeCluster;
+//        private  BaseDimension _baseDimension;
+//        private readonly Cluster _envelopeCluster;
 //        private readonly Database _db;
 //        private readonly Editor _ed;
 //        private const double MergeDistance = 12000.0;
@@ -49,20 +66,41 @@
 //        {
 //            _db = db;
 //            _ed = ed;
-//            _baseDimension = new BaseDimension();
-//            _envelopeCluster = new EnvelopeCluster();
-//            InitializePoints();
-//            GenerateClusters();
-//            GenerateDimensionsForClusters();
+//           // _baseDimension = new BaseDimension(_isPointsToSpace); // 初始化时同步
+//            _envelopeCluster = new Cluster();
+//            //InitializePoints();
+//            //GenerateClusters();
+//            //GenerateDimensionsForClusters();
+//        }
+//        /// <summary>
+//        /// 延迟初始化 BaseDimension（需要时再真正弹窗选Polyline和轴线）
+//        /// </summary>
+//        private void InitializeBaseDimension()
+//        {
+//            if (_baseDimension == null)
+//            {
+//                _baseDimension = new BaseDimension(_isPointsToSpace); // ★ 只有真正需要时才初始化
+//            }
+//        }
+//        /// <summary>
+//        /// 全流程统一执行：初始化点 → 聚类 → 生成标注
+//        /// </summary>
+//        public void RunAll()
+//        {
+//            InitializePoints();       // 准备点数据
+//            GenerateClusters();       // 聚类
+//            GenerateDimensionsForClusters(); // 标注
 //        }
 //        #endregion
 //        #region 初始化点集合
 //        private void InitializePoints()
 //        {
+//            InitializeBaseDimension(); // ✨ 延迟创建BaseDimension
 //            Points = new List<Point3d>();
 //            Points.AddRange(_baseDimension.BPs ?? new List<Point3d>());
 //            Points.AddRange(_baseDimension.A_APs ?? new List<Point3d>());
 //            Points.AddRange(_baseDimension.B_APs ?? new List<Point3d>());
+//            //Points.AddRange(_baseDimension.ABs ?? new List<Point3d>());
 //            Points = Points.Distinct(new Point3dEqualityComparer(0.0001)).ToList();
 //        }
 //        #endregion
@@ -73,15 +111,29 @@
 //            var configY = ClusterConfigY ?? new ClusterConfig { EpsilonX = 600, EpsilonY = 9000, MinPoints = 1 };
 //            configX.ClusterLayerId = EtGpt.CreateLayer("00_hy_基础_聚类轮廓_X", 123, _db);
 //            configY.ClusterLayerId = EtGpt.CreateLayer("00_hy_基础_聚类轮廓_Y", 124, _db);
-//            ClusterResultX = _envelopeCluster.ProcessClustersAndGenerateEnvelopes(Points, configX, _db) > 0
-//                ? _envelopeCluster.ClusterResults
-//                : new List<ClusterResult>();
-//            ClusterResultY = _envelopeCluster.ProcessClustersAndGenerateEnvelopes(Points, configY, _db) > 0
-//                ? _envelopeCluster.ClusterResults
-//                : new List<ClusterResult>();           
-//                SupplementClusterPoints(ClusterResultX);
-//                SupplementClusterPoints(ClusterResultY);
-//        }     
+//            if (DrawClusterX)
+//            {
+//                ClusterResultX = _envelopeCluster.ProcessClustersAndGenerateEnvelopes(Points, configX, _db) > 0
+//                    ? _envelopeCluster.ClusterResults
+//                    : new List<ClusterResult>();
+//            }
+//            else
+//            {
+//                ClusterResultX = _envelopeCluster.PerformDBSCAN(Points, configX);
+//            }
+//            if (DrawClusterY)
+//            {
+//                ClusterResultY = _envelopeCluster.ProcessClustersAndGenerateEnvelopes(Points, configY, _db) > 0
+//                    ? _envelopeCluster.ClusterResults
+//                    : new List<ClusterResult>();
+//            }
+//            else
+//            {
+//                ClusterResultY = _envelopeCluster.PerformDBSCAN(Points, configY);
+//            }
+//            SupplementClusterPoints(ClusterResultX);
+//            SupplementClusterPoints(ClusterResultY);
+//        }
 //        private void SupplementClusterPoints(List<ClusterResult> clusters)
 //        {
 //            foreach (var cluster in clusters)
@@ -100,109 +152,37 @@
 //            }
 //        }
 //        #endregion
-//        #region 单聚类处理（改为X向和Y向分开）
-//        private List<RotatedDimension> ProcessClusterSingleX(ClusterResult cluster, ObjectId layerId, DimensionFor dimDirection)
-//        {
-//            var dims = new List<RotatedDimension>();
-//            var points = GroupPointsForX(cluster.Points);
-//            if (points.Count < 2) return dims;
-//            double baseY = points.Min(p => p.Y);
-//            points = points.Select(p => new Point3d(p.X, baseY, 0)).ToList();
-//            double defaultOffset = 5 * BaseConfig.Scale;
-//            double distanceThreshold = 3 * BaseConfig.Scale;
-//            for (int i = 0; i < points.Count - 1; i++)
-//            {
-//                var p1 = points[i];
-//                var p2 = points[i + 1];
-//                double dx = Math.Abs(p2.X - p1.X);
-//                double effectiveOffset = defaultOffset;
-//                if (dx < distanceThreshold) effectiveOffset = 2 * defaultOffset;
-//                var dim = EtGpt.GetDimByTwoPoints(p1, p2, effectiveOffset, dimDirection, true);
-//                dim.LayerId = layerId;
-//                dims.Add(dim);
-//            }
-//            return dims;
-//        }
-//        private List<RotatedDimension> ProcessClusterSingleY(ClusterResult cluster, ObjectId layerId, DimensionFor dimDirection)
-//        {
-//            var dims = new List<RotatedDimension>();
-//            var points = GroupPointsForY(cluster.Points);
-//            if (points.Count < 2) return dims;
-//            double baseX = points.Min(p => p.X);
-//            points = points.Select(p => new Point3d(baseX, p.Y, 0)).ToList();
-//            double defaultOffset = 5 * BaseConfig.Scale;
-//            double distanceThreshold = 3 * BaseConfig.Scale;
-//            for (int i = 0; i < points.Count - 1; i++)
-//            {
-//                var p1 = points[i];
-//                var p2 = points[i + 1];
-//                double dy = Math.Abs(p2.Y - p1.Y);
-//                double effectiveOffset = defaultOffset;
-//                if (dy < distanceThreshold) effectiveOffset = 2 * defaultOffset;
-//                var dim = EtGpt.GetDimByTwoPoints(p1, p2, effectiveOffset, dimDirection, true);
-//                dim.LayerId = layerId;
-//                dims.Add(dim);
-//            }
-//            return dims;
-//        }
-//        #endregion
-//        #region Group方法（分开优化）
-//        private List<Point3d> GroupPointsForX(List<Point3d> points)
-//        {
-//            if (points == null || points.Count == 0) return new List<Point3d>();
-//            var groupedByX = points.GroupBy(p => Math.Round(p.X, 4));
-//            var result = new List<Point3d>();
-//            foreach (var group in groupedByX)
-//            {
-//                var minYPoint = group.OrderBy(p => p.Y).First();
-//                result.Add(minYPoint);
-//            }
-//            return result.OrderBy(p => p.X).ToList();
-//        }
-//        private List<Point3d> GroupPointsForY(List<Point3d> points)
-//        {
-//            if (points == null || points.Count == 0) return new List<Point3d>();
-//            var groupedByY = points.GroupBy(p => Math.Round(p.Y, 4));
-//            var result = new List<Point3d>();
-//            foreach (var group in groupedByY)
-//            {
-//                var minXPoint = group.OrderBy(p => p.X).First();
-//                result.Add(minXPoint);
-//            }
-//            return result.OrderBy(p => p.Y).ToList();
-//        }
-//        #endregion
 //        #region 最后统一生成标注
-//        /// <summary>
-//        /// 生成全部聚类区域的标注（包含X向和Y向），统一输出到模型空间
-//        /// </summary>
 //        public void GenerateDimensionsForClusters()
 //        {
 //            var doc = Application.DocumentManager.MdiActiveDocument;
 //            var db = doc.Database;
 //            var layerIdX = EtGpt.CreateLayer("00_hy_3公共_标注2_内x", 93, db);
 //            var layerIdY = EtGpt.CreateLayer("00_hy_3公共_标注2_内y", 45, db);
+//            var options = new ClusterDimOptions
+//            {
+//                Scale = this.Scale,
+//                DistanceThreshold = this.DistanceThreshold,
+//                XDirectionIsUp = false,  // 可扩展设置
+//                YDirectionIsRight = false
+//            };
 //            using (doc.LockDocument())
-//            using (Transaction tr = db.TransactionManager.StartTransaction())
+//            using (var tr = db.TransactionManager.StartTransaction())
 //            {
 //                var allDimensions = new List<RotatedDimension>();
-//                var dimsX = new List<RotatedDimension>();
-//                var dimsY = new List<RotatedDimension>();
-//                // ✨ 处理每个 X向 聚类（ClusterResultX） → 只做 X向标注
+//                // ✨ X方向（单侧）
 //                foreach (var cluster in ClusterResultX)
 //                {
-//                    var dims = EtGpt.CreateDimensionsForCluster(cluster, DimensionFor.ForDown, layerIdX, Scale, DistanceThreshold);
-//                    allDimensions.AddRange(dims);
+//                    allDimensions.AddRange(
+//                        EtGpt.CreateDimensionsForClusterSingleSide(cluster.Points, true, layerIdX, options));
 //                }
+//                // ✨ Y方向（单侧）
 //                foreach (var cluster in ClusterResultY)
 //                {
-//                    var dims = EtGpt.CreateDimensionsForCluster(cluster, DimensionFor.ForLeft, layerIdY, Scale, DistanceThreshold);
-//                    allDimensions.AddRange(dims);
+//                    allDimensions.AddRange(
+//                        EtGpt.CreateDimensionsForClusterSingleSide(cluster.Points, false, layerIdY, options));
 //                }
-//                // ✨ 插入清理逻辑
-//                //double distanceThreshold = 5 * BaseConfig.Scale;
 //                allDimensions = FilterDuplicateDimensions(allDimensions, DistanceThreshold);
-//                // ✨ 统一输出到模型空间
 //                allDimensions.ToSpace(db);
 //                tr.Commit();
 //            }
@@ -291,12 +271,12 @@
 //        #endregion
 //        #region 辅助
 //        private class Point3dEqualityComparer : IEqualityComparer<Point3d>
-//    {
-//        private readonly double _tolerance;
-//        public Point3dEqualityComparer(double tolerance) => _tolerance = tolerance;
-//        public bool Equals(Point3d p1, Point3d p2) => Math.Abs(p1.X - p2.X) <= _tolerance && Math.Abs(p1.Y - p2.Y) <= _tolerance;
-//        public int GetHashCode(Point3d p) => HashCode.Combine((int)(p.X / _tolerance), (int)(p.Y / _tolerance));
+//        {
+//            private readonly double _tolerance;
+//            public Point3dEqualityComparer(double tolerance) => _tolerance = tolerance;
+//            public bool Equals(Point3d p1, Point3d p2) => Math.Abs(p1.X - p2.X) <= _tolerance && Math.Abs(p1.Y - p2.Y) <= _tolerance;
+//            public int GetHashCode(Point3d p) => HashCode.Combine((int)(p.X / _tolerance), (int)(p.Y / _tolerance));
+//        }
+//        #endregion
 //    }
-//    #endregion
-//}
 //}

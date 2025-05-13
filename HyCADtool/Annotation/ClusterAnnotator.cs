@@ -37,33 +37,23 @@ namespace HyCADTool.Annotation
                 Point3d axisPt1 = kv.Value.Item1;
                 Point3d axisPt2 = kv.Value.Item2;
 
-                // 获取点集
-                List<Point3d> annotationPoints1 = cluster.GetAnnotationPoints(axisPt1);
-                List<Point3d> annotationPoints2 = cluster.GetAnnotationPoints(axisPt2);
+                // 获取两个参考点生成的标注点集合
+                var annotationPoints = new List<Point3d>();
+                annotationPoints.AddRange(cluster.GetAnnotationPoints(axisPt1));
+                annotationPoints.AddRange(cluster.GetAnnotationPoints(axisPt2));
 
                 // 去重 + 排序（按 X 升序，Y 次序）
-                annotationPoints1 = annotationPoints1
+                var processedPoints = annotationPoints
                     .Distinct(new EtGpt.Point3dComparer(0.001))
                     .OrderBy(p => p.X)
                     .ThenBy(p => p.Y)
                     .ToList();
 
-                annotationPoints2 = annotationPoints2
-                    .Distinct(new EtGpt.Point3dComparer(0.001))
-                    .OrderBy(p => p.X)
-                    .ThenBy(p => p.Y)
-                    .ToList();
-
-                if (annotationPoints1.Count >= 2)
+                // 至少两个点才能标注
+                if (processedPoints.Count >= 2)
                 {
                     allDims.AddRange(EtGpt.CreateDimensionsForClusterBothSides(
-                        annotationPoints1, layerX, layerY, new ClusterDimOptions { Scale = _scale }));
-                }
-
-                if (annotationPoints2.Count >= 2)
-                {
-                    allDims.AddRange(EtGpt.CreateDimensionsForClusterBothSides(
-                        annotationPoints2, layerX, layerY, new ClusterDimOptions { Scale = _scale }));
+                        processedPoints, layerX, layerY, new ClusterDimOptions { Scale = _scale }));
                 }
             }
 
@@ -72,6 +62,7 @@ namespace HyCADTool.Annotation
                 allDims.ToSpace(db);
             }
         }
+
 
 
     }

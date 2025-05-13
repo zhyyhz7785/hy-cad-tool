@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Config;
 using HyCADTool.HelpClass.ElevationSymbol;
 using System;
-namespace HyCADTool.Command
+namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {

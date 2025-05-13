@@ -15,7 +15,7 @@ namespace HyCADTool.HelpClass
     /// <summary>
     /// 轮廓聚类处理类
     /// </summary>
-    public class EnvelopeCluster
+    public class Cluster
     {
         /// <summary>
         /// 获取聚类结果（供标注等模块调用）
@@ -24,57 +24,8 @@ namespace HyCADTool.HelpClass
         {
             return ClusterResults ?? new List<ClusterResult>();
         }
-        public List<ClusterResult> ClusterResults { get; set; }
-        /// <summary>
-        /// 聚类轮廓命令入口
-        /// </summary>
-        [CommandMethod("CLUSTER_ENVELOPE")]
-        public void RunClusterEnvelopeCommand()
-        {
-            // 获取当前文档和编辑器
-            Document doc = Application.DocumentManager.MdiActiveDocument;
-            Database db = doc.Database;
-            Editor ed = doc.Editor;
-            Transaction tr = doc.TransactionManager.StartTransaction();
-            try
-            {
-                // 步骤1: 获取点集合
-                var inputPoints = GetPointCollection();
-                if (inputPoints.Count == 0)
-                {
-                    ed.WriteMessage("\n没有选择点或未找到有效点，操作取消。");
-                    return;
-                }
-                // 步骤2: 创建配置并设置图层
-                var config = CreateClusterConfig(doc, ed);
-                // 步骤3: 执行聚类并生成轮廓
-                int clusterCount = ProcessClustersAndGenerateEnvelopes(inputPoints, config, db);
-                // 步骤4: 输出结果信息
-                ed.WriteMessage($"\n共生成 {clusterCount} 个聚类区域。");
-            }
-            catch (System.Exception ex)
-            {
-                ed.WriteMessage($"\n执行聚类轮廓命令时出错: {ex.Message}");
-            }
-        }
-        /// <summary>
-        /// 创建聚类配置
-        /// </summary>
-        private ClusterConfig CreateClusterConfig(Document doc, Editor ed)
-        {
-            string clusterLayerName = "00_hy_基础_聚类轮廓";
-            ObjectId clusterLayerId = EtGpt.CreateLayer(clusterLayerName, 123, doc.Database, ed);
-            return new ClusterConfig
-            {
-                //EpsilonX = 6000.0,
-                //EpsilonY = 400.0,
-                EpsilonX = 200,
-                EpsilonY = 6000,
-                MinPoints = 2,
-                ClusterLayerName = clusterLayerName,
-                ClusterLayerId = clusterLayerId
-            };
-        }
+        public List<ClusterResult> ClusterResults { get; set; }       
+      
         /// <summary>
         /// 处理聚类并生成轮廓多段线
         /// </summary>

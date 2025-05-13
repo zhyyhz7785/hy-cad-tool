@@ -1,5 +1,5 @@
 ﻿using Autodesk.AutoCAD.Runtime;
-using HyCADTool.Command;
+using HyCADTool.Commands;
 using HyCADTool.Config;
 using System.Windows;
 using System.Windows.Controls;
