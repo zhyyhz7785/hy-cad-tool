@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Clipper2Lib;
+using HyCADTool.Drawing;
 using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
@@ -11,14 +12,6 @@ using static HyCADTool.Tools.EtGpt;
 
 namespace HyCADTool.Models.Cluster
 {
-    public static class DimPointsAndAxisConfig
-    {
-        public static bool IncludeBPs { get; set; } = true;
-        public static bool IncludeAAPs { get; set; } = true;
-        public static bool IncludeBAPs { get; set; } = true;
-        public static bool IncludeABs { get; set; } = true;
-        public static bool IncludeSteelPlatePs { get; set; } = true;
-    }
     /// <summary>
     /// 提供统一的标注点、轴线输入与分类结构，便于聚类和标注使用。
     /// 图层的创建与图元分类已在初始化逻辑中自动完成。
@@ -31,14 +24,6 @@ namespace HyCADTool.Models.Cluster
         public List<Point3d> ABs { get; private set; } = new List<Point3d>();
         public List<Point3d> SteelPlatePs { get; private set; } = new List<Point3d>();
         public List<Line> AxisLines { get; private set; } = new List<Line>();
-        public List<Point3d> AllPoints =>
-                (DimPointsAndAxisConfig.IncludeBPs ? BPs : Enumerable.Empty<Point3d>())
-                .Concat(DimPointsAndAxisConfig.IncludeAAPs ? A_APs : Enumerable.Empty<Point3d>())
-                .Concat(DimPointsAndAxisConfig.IncludeBAPs ? B_APs : Enumerable.Empty<Point3d>())
-                .Concat(DimPointsAndAxisConfig.IncludeABs ? ABs : Enumerable.Empty<Point3d>())
-                .Concat(DimPointsAndAxisConfig.IncludeSteelPlatePs ? SteelPlatePs : Enumerable.Empty<Point3d>())
-                .Distinct(new Point3dComparer(0.001))
-                .ToList();
         private readonly double _tolerance;
 
         private DimPointsAndAxis(double tolerance = 0.001)
@@ -101,7 +86,8 @@ namespace HyCADTool.Models.Cluster
                             else if (layerName.StartsWith("00_Hy_螺栓_预埋板"))
                             {
                                 var ext = pl.GeometricExtents;
-                                var center = new Point3d((ext.MinPoint.X + ext.MaxPoint.X) / 2, (ext.MinPoint.Y + ext.MaxPoint.Y) / 2, 0);
+                                var center = new Point3d((ext.MinPoint.X + ext.MaxPoint.X) / 2,
+                                                         (ext.MinPoint.Y + ext.MaxPoint.Y) / 2, 0);
                                 SteelPlatePs.Add(center);
                             }
                             break;
@@ -140,7 +126,7 @@ namespace HyCADTool.Models.Cluster
                 for (int i = 0; i < pl.NumberOfVertices; i++)
                     set.Add(pl.GetPoint3dAt(i));
             }
-            return new List<Point3d>(set);
+            return set.ToList();
         }
 
         private List<Point3d> GetAxisSelfIntersections()
@@ -149,11 +135,9 @@ namespace HyCADTool.Models.Cluster
             for (int i = 0; i < AxisLines.Count; i++)
             {
                 for (int j = i + 1; j < AxisLines.Count; j++)
-                {
                     points.UnionWith(GetIntersectionPoints(AxisLines[i], AxisLines[j]));
-                }
             }
-            return new List<Point3d>(points);
+            return points.ToList();
         }
 
         private List<Point3d> GetPolylineAxisIntersections(List<Polyline> polylines)
@@ -161,13 +145,10 @@ namespace HyCADTool.Models.Cluster
             var points = new HashSet<Point3d>(new Point2dEqualityComparer(_tolerance));
             var lines = ExplodePolylinesToLines(polylines);
             foreach (var baseLine in lines)
-            {
                 foreach (var axis in AxisLines)
-                {
                     points.UnionWith(GetIntersectionPoints(baseLine, axis));
-                }
-            }
-            return new List<Point3d>(points);
+
+            return points.ToList();
         }
 
         private List<Line> ExplodePolylinesToLines(List<Polyline> polylines)
@@ -178,9 +159,8 @@ namespace HyCADTool.Models.Cluster
                 var coll = new DBObjectCollection();
                 pl.Explode(coll);
                 foreach (DBObject obj in coll)
-                {
-                    if (obj is Line line) lines.Add(line);
-                }
+                    if (obj is Line line)
+                        lines.Add(line);
             }
             return lines;
         }
@@ -188,18 +168,32 @@ namespace HyCADTool.Models.Cluster
         private List<Point3d> GetIntersectionPoints(Line l1, Line l2)
         {
             var pts = new Point3dCollection();
-            try
-            {
-                l1.IntersectWith(l2, Intersect.OnBothOperands, pts, IntPtr.Zero, IntPtr.Zero);
-            }
+            try { l1.IntersectWith(l2, Intersect.OnBothOperands, pts, IntPtr.Zero, IntPtr.Zero); }
             catch { }
-            return new List<Point3d>(pts.Cast<Point3d>());
+            return pts.Cast<Point3d>().ToList();
         }
 
-        
+        /// <summary>
+        /// 根据 DrawInCad 的绘图配置筛选参与聚类的点集合
+        /// </summary>
+        public List<Point3d> GetFilteredPoints()
+        {
+            var pts = new List<Point3d>();
+            if (DrawInCad.Draw_BPs) pts.AddRange(BPs);
+            if (DrawInCad.Draw_AAPs) pts.AddRange(A_APs);
+            if (DrawInCad.Draw_BAPs) pts.AddRange(B_APs);
+            if (DrawInCad.Draw_ABs) pts.AddRange(ABs);
+            if (DrawInCad.Draw_SteelPlPs) pts.AddRange(SteelPlatePs);
 
-            
-        
+            return pts
+                .Distinct(new Point2dEqualityComparer(_tolerance))
+                .ToList();
+        }
+
+        /// <summary>
+        /// 便捷属性：返回当前配置下用于聚类的点集
+        /// </summary>
+        public List<Point3d> SelectPoints => GetFilteredPoints();
 
         private class Point2dEqualityComparer : IEqualityComparer<Point3d>
         {

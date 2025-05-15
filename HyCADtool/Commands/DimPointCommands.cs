@@ -14,19 +14,17 @@ namespace HyCADTool.Commands
         [CommandMethod("HY_DrawDimPoints")]
         public static void DrawDimensionInputPoints()
         {
-            DimPointsAndAxisConfig.IncludeBPs = false;
-            DimPointsAndAxisConfig.IncludeABs = false;
-            DimPointsAndAxisConfig.IncludeBAPs = false;
-            DimPointsAndAxisConfig.IncludeAAPs = true;
-            DimPointsAndAxisConfig.IncludeSteelPlatePs = true;
+            
             var data = DimPointsAndAxis.GetInput();
+         
             if (data == null)
             {
                 Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage("\n未获取到有效输入。");
                 return;
             }
-            var dims= DimHelper.Run(data.AllPoints);
-            dims.ToSpace();
+            var lines=data.AxisLines;
+            var dims= DimHelper.Build(data.SelectPoints);
+            dims.AllDimensions.ToSpace();
             //DimPointDrawer.Draw(data);
             Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage("\n分类点集已绘制完成。");
         }

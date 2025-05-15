@@ -22,7 +22,7 @@ namespace HyCADTool.Models.Cluster
         public int MinPoints { get; set; } = 3;
 
         /// <summary>是否生成点集的凸包多段线</summary>
-        public bool GenerateConvexHull { get; set; } = false;
+        public bool GenerateConvexHull { get; set; } = true;
 
         /// <summary>聚类轮廓图层名称</summary>
         public string ClusterLayerName { get; set; } = "00_hy_基础_聚类轮廓";

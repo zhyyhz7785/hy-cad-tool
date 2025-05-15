@@ -7,74 +7,7 @@ namespace HyCADTool.Tools
 {
     public static partial class EtGpt
     {
-        /// <summary>
-        /// 强制同步图层使用状态，提升图层管理器（Layer Manager）首次打开速度。
-        /// </summary>
-        public static void ForceSyncLayerUsage()
-        {
-            Document doc = Application.DocumentManager.MdiActiveDocument;
-            if (doc == null) return;
-            Database db = doc.Database;
-            Editor ed = doc.Editor;
-            try
-            {
-                using (Transaction tr = db.TransactionManager.StartTransaction())
-                {
-                    var layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-                    Autodesk.AutoCAD.Internal.LayerUtilities.SetAllLayersUsed(layerTable);
-                    tr.Commit();
-                }
-            }
-            catch (System.Exception ex)
-            {
-                ed.WriteMessage($"\n同步图层使用状态失败: {ex.Message}");
-            }
-        }
-        public static void CompleteInsertFinalize()
-        {
-            var editor = Application.DocumentManager.MdiActiveDocument.Editor;
-            editor.UpdateScreen();
-            editor.Regen();
-            SafeRefreshLayerUsage();
-        }
-        public static void SafeRefreshLayerUsage()
-        {
-            try
-            {
-                Document doc = Application.DocumentManager.MdiActiveDocument;
-                Database db = doc?.Database;
-                if (db == null) return;
-                Application.DocumentManager.ExecuteInCommandContextAsync(async (o) =>
-                {
-                    try
-                    {
-                        LayerTable layerTable = (LayerTable)db.LayerTableId.GetObject(OpenMode.ForRead);
-                        Autodesk.AutoCAD.Internal.LayerUtilities.SetAllLayersUsed(layerTable);
-                    }
-                    catch
-                    {
-                        // 忽略异常，保证系统稳定
-                    }
-                }, null);
-            }
-            catch
-            {
-                // 忽略
-            }
-        }
-        public static void RefreshLayerUsage(this Database db)
-        {
-            if (db == null) return;
-            using (Transaction tr = db.TransactionManager.StartTransaction())
-            {
-                LayerTable layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
-                if (layerTable != null)
-                {
-                    Autodesk.AutoCAD.Internal.LayerUtilities.SetAllLayersUsed(layerTable);
-                }
-                tr.Commit();
-            }
-        }
+     
         /// <summary>
         /// 创建一个新图层。
         /// </summary>

@@ -227,8 +227,11 @@ namespace HyCADTool
                    // PointClusterHelper.AnnotateClustersTest();
                     //PointClusterHelper.GenerateBoltDimensions();
                     //HyCommand.DrawDimensionInputPoints();
-                    HyCommand.TestAxisRegions();
-                    ed.WriteMessage("\nabcde\n");
+                    //HyCommand.TestAxisRegions();
+                  //  HyCommand.AnnotateAxes();
+                   // HyCommand.AnnotateAxes11();
+                    HyCommand.TestDrawInCad();
+                    ed.WriteMessage("\n12\n");
                 });
             }
             catch (Autodesk.AutoCAD.Runtime.Exception ex)
