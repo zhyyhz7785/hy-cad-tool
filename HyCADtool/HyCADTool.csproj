@@ -325,7 +325,7 @@
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
     <Compile Include="Tools\SelectTool\SelectTrue.cs" />
-    <Compile Include="ViewModels\ClusterPanelViewModel.cs" />
+    <Compile Include="ViewModels\ClusterPanelViewModel - 复制.cs" />
     <Compile Include="ViewModels\PilePanelViewModel.cs" />
     <Compile Include="Views\BaseReinPanel.xaml.cs">
       <DependentUpon>BaseReinPanel.xaml</DependentUpon>
@@ -336,6 +336,7 @@
     <Compile Include="Views\FilterPanel.xaml.cs">
       <DependentUpon>FilterPanel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\IntEqualsConverter.cs" />
     <Compile Include="Views\InverseBooleanConverter .cs" />
     <Compile Include="Views\PilePanel.xaml.cs">
       <DependentUpon>PilePanel.xaml</DependentUpon>

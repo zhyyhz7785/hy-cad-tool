@@ -293,5 +293,57 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <!-- CustomComboBox Style -->
+    <!-- PresetRadioButtonStyle Style -->
+
+    <Style TargetType="RadioButton">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="#2e3440"/>
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="Padding" Value="3,2"/>
+        <Setter Property="BorderBrush" Value="#707070"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border Background="{TemplateBinding Background}" 
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="3">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Ellipse x:Name="Dot"
+                                 Width="12" Height="12"
+                                 Stroke="White"
+                                 StrokeThickness="2"
+                                 Fill="Transparent"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Center"
+                                 Margin="4"/>
+                            <TextBlock Grid.Column="1"
+                                   Text="{TemplateBinding Content}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{TemplateBinding Foreground}" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Dot" Property="Fill" Value="#7f4f3f"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="LightGray"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="Gray"/>
+                            <Setter TargetName="Dot" Property="Stroke" Value="Gray"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
 </ResourceDictionary>

@@ -4,23 +4,23 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:HyCADTool.ViewModels"
+             xmlns:helper="clr-namespace:HyCADTool.HelpClass"
+             xmlns:local="clr-namespace:HyCADTool.Views"
              mc:Ignorable="d"
              d:DesignHeight="1800" d:DesignWidth="250"
              Background="#3b4453">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary>
-                    <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Resources/LibraryResources.xaml" />
-                    </ResourceDictionary.MergedDictionaries>
-                </ResourceDictionary>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Resources/LibraryResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+            <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+            <local:IntEqualsConverter x:Key="IntEqualsConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
-    
-    <StackPanel Margin="5,10,5,5" Background="#3b4453">
 
+    <StackPanel Margin="5,10,5,5" Background="#3b4453">
         <Button Margin="0,2" Command="{Binding ExecuteDrawCommand}" Content="生成标注" />
 
         <Grid>
@@ -29,10 +29,9 @@
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
             <TextBlock Text="比例" />
-            <TextBox Grid.Column="1" Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
-        <!-- 聚类参数 -->
         <Expander Header="聚类参数" IsExpanded="True" Margin="0,0,0,10">
             <StackPanel>
                 <TextBlock Margin="0,5,0,2" Text="X方向聚类参数" />
@@ -42,7 +41,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonX" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigX.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -50,7 +49,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonY" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigX.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
                 <TextBlock Margin="0,5,0,2" Text="Y方向聚类参数" />
@@ -60,16 +59,15 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonX" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigY.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
-                
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonY" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigY.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -77,7 +75,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="过滤容差" />
-                    <TextBox Grid.Column="1" Text="{Binding DistanceThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding DistanceThreshold, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -85,10 +83,9 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="最小点数" />
-                    <TextBox Grid.Column="1" Text="{Binding MinPoints, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding MinPoints, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
-                <!-- 扩展边距拆分 -->
                 <TextBlock Margin="0,5,0,2" Text="扩展边距 (单位 mm)" />
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -96,7 +93,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="左边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginLeft, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginLeft, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -104,7 +101,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="上边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginTop, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginTop, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -112,7 +109,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="右边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginRight, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginRight, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -120,19 +117,23 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="下边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginBottom, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginBottom, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
+
+                <TextBlock Margin="0,5,0,2" Text="方案选择" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <CheckBox Content="方案1"  />
-                    <CheckBox Grid.Column="1" Content="方案2"  />
-                    <CheckBox Grid.Column="2" Content="方案3"  />
+                    <RadioButton Grid.Column="0" GroupName="PresetGroup" Content="方案1" 
+                                 IsChecked="{Binding SelectedPreset, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1, Mode=TwoWay}" />
+                    <RadioButton Grid.Column="1" GroupName="PresetGroup" Content="方案2"
+                                 IsChecked="{Binding SelectedPreset, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2, Mode=TwoWay}" />
+                    <RadioButton Grid.Column="2" GroupName="PresetGroup" Content="方案3"
+                                 IsChecked="{Binding SelectedPreset, Converter={StaticResource IntEqualsConverter}, ConverterParameter=3, Mode=TwoWay}" />
                 </Grid>
-                
 
 
                 <!-- 点类 -->

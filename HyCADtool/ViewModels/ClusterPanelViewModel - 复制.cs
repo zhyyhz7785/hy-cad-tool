@@ -19,12 +19,27 @@ namespace HyCADTool.ViewModels
         public ICommand LoadPreset2Command { get; }
         public ICommand LoadPreset3Command { get; }
 
+        private int _selectedPreset = 1;
+        public int SelectedPreset
+        {
+            get => _selectedPreset;
+            set
+            {
+                if (_selectedPreset != value)
+                {
+                    _selectedPreset = value;
+                    OnPropertyChanged();
+                    ApplyPreset(_selectedPreset);
+                }
+            }
+        }
+
         public ClusterPanelViewModel()
         {
             ExecuteDrawCommand = new RelayCommand(ExecuteDraw);
-            LoadPreset1Command = new RelayCommand(() => ApplyPreset(1));
-            LoadPreset2Command = new RelayCommand(() => ApplyPreset(2));
-            LoadPreset3Command = new RelayCommand(() => ApplyPreset(3));
+            LoadPreset1Command = new RelayCommand(() => SelectedPreset = 1);
+            LoadPreset2Command = new RelayCommand(() => SelectedPreset = 2);
+            LoadPreset3Command = new RelayCommand(() => SelectedPreset = 3);
             ApplyPreset(1); // 默认方案1
         }
 
@@ -33,23 +48,17 @@ namespace HyCADTool.ViewModels
             switch (presetId)
             {
                 case 1:
-                    ClusterConfigX.EpsilonX = 9000;
+                    ClusterConfigX.EpsilonX = 6000;
                     ClusterConfigX.EpsilonY = 300;
                     ClusterConfigY.EpsilonX = 300;
-                    ClusterConfigY.EpsilonY = 9000;
+                    ClusterConfigY.EpsilonY = 6000;
                     DistanceThreshold = 6000;
                     MinPoints = 1;
                     ExpandMarginLeft = ExpandMarginRight = ExpandMarginTop = ExpandMarginBottom = 300;
 
-                    IncludeBPs = false;
-                    IncludeAAPs = false;
-                    IncludeBAPs = true;
-                    IncludeABs = true;
-                    IncludeSteelPlatePs = true;
-
                     DrawClusterX = true;
                     DrawClusterY = false;
-                    DrawClusterEnvelopePolyline = true;
+                    DrawClusterEnvelopePolyline = false;
                     DrawClusterExpandedEnvelope = false;
                     DrawClusterHull = false;
                     DrawClusterPts = false;
@@ -63,27 +72,25 @@ namespace HyCADTool.ViewModels
                     DrawABs = false;
                     DrawSteelPlatePs = false;
 
-                    
+                    IncludeBPs = true;
+                    IncludeAAPs = true;
+                    IncludeBAPs = true;
+                    IncludeABs = false;
+                    IncludeSteelPlatePs = false;
                     break;
 
                 case 2:
-                    ClusterConfigX.EpsilonX = 1500;
-                    ClusterConfigX.EpsilonY = 1500;
-                    ClusterConfigY.EpsilonX = 1500;
-                    ClusterConfigY.EpsilonY = 1500;
+                    ClusterConfigX.EpsilonX = 6000;
+                    ClusterConfigX.EpsilonY = 300;
+                    ClusterConfigY.EpsilonX = 300;
+                    ClusterConfigY.EpsilonY = 6000;
                     DistanceThreshold = 6000;
                     MinPoints = 1;
                     ExpandMarginLeft = ExpandMarginRight = ExpandMarginTop = ExpandMarginBottom = 300;
 
-                    IncludeBPs = false;
-                    IncludeAAPs = false;
-                    IncludeBAPs = true;
-                    IncludeABs = true;
-                    IncludeSteelPlatePs = true;
-
                     DrawClusterX = true;
                     DrawClusterY = false;
-                    DrawClusterEnvelopePolyline = true;
+                    DrawClusterEnvelopePolyline = false;
                     DrawClusterExpandedEnvelope = false;
                     DrawClusterHull = false;
                     DrawClusterPts = false;
@@ -96,6 +103,12 @@ namespace HyCADTool.ViewModels
                     DrawBAPs = false;
                     DrawABs = false;
                     DrawSteelPlatePs = false;
+
+                    IncludeBPs = false;
+                    IncludeAAPs = true;
+                    IncludeBAPs = false;
+                    IncludeABs = true;
+                    IncludeSteelPlatePs = true;
                     break;
 
                 case 3:
@@ -107,29 +120,30 @@ namespace HyCADTool.ViewModels
                     MinPoints = 1;
                     ExpandMarginLeft = ExpandMarginRight = ExpandMarginTop = ExpandMarginBottom = 300;
 
-                    DrawClusterX = false;
-                    DrawClusterY = true;
+                    DrawClusterX = true;
+                    DrawClusterY = false;
                     DrawClusterEnvelopePolyline = false;
-                    DrawClusterExpandedEnvelope = true;
-                    DrawClusterHull = true;
-                    DrawClusterPts = true;
+                    DrawClusterExpandedEnvelope = false;
+                    DrawClusterHull = false;
+                    DrawClusterPts = false;
 
-                    DrawDimX = false;
+                    DrawDimX = true;
                     DrawDimY = true;
 
                     DrawBPs = false;
-                    DrawAAPs = true;
-                    DrawBAPs = true;
+                    DrawAAPs = false;
+                    DrawBAPs = false;
                     DrawABs = false;
-                    DrawSteelPlatePs = true;
+                    DrawSteelPlatePs = false;
 
                     IncludeBPs = false;
                     IncludeAAPs = true;
-                    IncludeBAPs = true;
-                    IncludeABs = false;
+                    IncludeBAPs = false;
+                    IncludeABs = true;
                     IncludeSteelPlatePs = true;
                     break;
             }
+
             OnPropertyChanged(nameof(ClusterConfigX));
             OnPropertyChanged(nameof(ClusterConfigY));
         }
@@ -180,12 +194,8 @@ namespace HyCADTool.ViewModels
             }
         }
 
+        public double Scale { get => _scale; set { _scale = value; OnPropertyChanged(); } }
         private double _scale = 40;
-        public double Scale
-        {
-            get => _scale;
-            set { _scale = value; OnPropertyChanged(); }
-        }
 
         public int MinPoints { get => _minPoints; set { _minPoints = value; OnPropertyChanged(); } }
         private int _minPoints = 3;
