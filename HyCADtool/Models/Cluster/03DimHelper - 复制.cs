@@ -1,7 +1,7 @@
 ﻿using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Models.Annotation;
+using HyCADTool.Config;
 using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ namespace HyCADTool.Models.Cluster
     public class DimHelper
     {
         /*─────────────────── 全局/静态配置 ───────────────────*/
-        public static double Scale { get; set; } = 40.0;
+        public static double Scale { get; set; } = BaseConfig.Scale;
         public static double DistanceThreshold { get; set; } = 6000.0;
         public static ClusterConfig ClusterConfigX { get; set; }
             = new ClusterConfig { EpsilonX = 9000, EpsilonY = 300, MinPoints = 1 };

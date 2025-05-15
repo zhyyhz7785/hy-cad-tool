@@ -16,22 +16,22 @@ namespace HyCADTool.Drawing
         /*──────────── ① 总/分项 开关 ────────────*/
         public static bool EnableCadOutput = true;
 
-        public static bool Draw_BPs = true;
-        public static bool Draw_AAPs = true;
-        public static bool Draw_BAPs = true;
-        public static bool Draw_ABs = true;
-        public static bool Draw_SteelPlPs = true;
+        public static bool Draw_BPs = false;
+        public static bool Draw_AAPs = false;
+        public static bool Draw_BAPs = false;
+        public static bool Draw_ABs = false;
+        public static bool Draw_SteelPlPs = false;
 
-        public static bool Draw_AxisCircle = true;
-        public static bool Draw_AxisText = true;
+        public static bool Draw_AxisCircle = false;
+        public static bool Draw_AxisText = false;
 
-        public static bool Draw_RegionFrame = true;
-        public static bool Draw_RegionText = true;
+        public static bool Draw_RegionFrame = false;
+        public static bool Draw_RegionText = false;
 
         public static bool Draw_ClusterEnvelopePolyline = true;
         public static bool Draw_ClusterEnvelopeExpandedPolyline = false;
-        public static bool Draw_ClusterHull = true;
-        public static bool Draw_ClusterPts = true;
+        public static bool Draw_ClusterHull = false;
+        public static bool Draw_ClusterPts = false;
 
         public static bool Draw_DimX = true;
         public static bool Draw_DimY = true;

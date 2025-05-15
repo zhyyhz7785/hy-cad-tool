@@ -230,7 +230,8 @@ namespace HyCADTool
                     //HyCommand.TestAxisRegions();
                   //  HyCommand.AnnotateAxes();
                    // HyCommand.AnnotateAxes11();
-                    HyCommand.TestDrawInCad();
+                    //HyCommand.TestDrawInCad();
+                    HyCommand.ShowPanel();
                     ed.WriteMessage("\n12\n");
                 });
             }

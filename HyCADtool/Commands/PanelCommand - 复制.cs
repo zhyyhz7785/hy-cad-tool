@@ -73,7 +73,8 @@ namespace HyCADTool.Commands
                 ps.AddVisual("基础钢筋", new BaseReinPanel());
                 ps.AddVisual("桩", new PilePanel(_cadService, _areaFactory, _configService));
                 // ★ 新增面板：螺栓聚类与基础点标注
-                ps.AddVisual("螺栓聚类与基础标注", new ClusterAndBasePanel());
+                //ps.AddVisual("螺栓聚类与基础标注", new ClusterAndBasePanel());
+                ps.AddVisual("螺栓聚类与基础标注", new ClusterPanel());
             }
             ps.Visible = true;
             ed.WriteMessage("\nHY 面板显示成功。");

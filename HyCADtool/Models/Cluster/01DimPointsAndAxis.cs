@@ -12,10 +12,21 @@ using static HyCADTool.Tools.EtGpt;
 
 namespace HyCADTool.Models.Cluster
 {
-    /// <summary>
-    /// 提供统一的标注点、轴线输入与分类结构，便于聚类和标注使用。
-    /// 图层的创建与图元分类已在初始化逻辑中自动完成。
-    /// </summary>
+    public static class DimPointsAndAxisConfig
+    {
+        public static bool IncludeBPs { get; set; } = false;
+        public static bool IncludeAAPs { get; set; } = false;
+        public static bool IncludeBAPs { get; set; } = false;
+        public static bool IncludeABs { get; set; } = false;
+        public static bool IncludeSteelPlatePs { get; set; } = false;
+
+
+        public static List<Point3d> SelectPoints(DimPointsAndAxis dpa)
+        {
+            return dpa.GetFilteredPoints();
+        }
+    }
+
     public class DimPointsAndAxis
     {
         public List<Point3d> BPs { get; private set; } = new List<Point3d>();
@@ -25,15 +36,19 @@ namespace HyCADTool.Models.Cluster
         public List<Point3d> SteelPlatePs { get; private set; } = new List<Point3d>();
         public List<Line> AxisLines { get; private set; } = new List<Line>();
         private readonly double _tolerance;
-
+        public List<Point3d> AllPoints =>
+        (DimPointsAndAxisConfig.IncludeBPs ? BPs : Enumerable.Empty<Point3d>())
+        .Concat(DimPointsAndAxisConfig.IncludeAAPs ? A_APs : Enumerable.Empty<Point3d>())
+        .Concat(DimPointsAndAxisConfig.IncludeBAPs ? B_APs : Enumerable.Empty<Point3d>())
+        .Concat(DimPointsAndAxisConfig.IncludeABs ? ABs : Enumerable.Empty<Point3d>())
+        .Concat(DimPointsAndAxisConfig.IncludeSteelPlatePs ? SteelPlatePs : Enumerable.Empty<Point3d>())
+        .Distinct(new Point3dComparer(0.001))
+        .ToList();
         private DimPointsAndAxis(double tolerance = 0.001)
         {
             _tolerance = tolerance;
         }
 
-        /// <summary>
-        /// 静态工厂方法：从用户选择中初始化 DimPointsAndAxis 实例。
-        /// </summary>
         public static DimPointsAndAxis GetInput(double tolerance = 0.001)
         {
             var instance = new DimPointsAndAxis(tolerance);
@@ -173,26 +188,20 @@ namespace HyCADTool.Models.Cluster
             return pts.Cast<Point3d>().ToList();
         }
 
-        /// <summary>
-        /// 根据 DrawInCad 的绘图配置筛选参与聚类的点集合
-        /// </summary>
         public List<Point3d> GetFilteredPoints()
         {
             var pts = new List<Point3d>();
-            if (DrawInCad.Draw_BPs) pts.AddRange(BPs);
-            if (DrawInCad.Draw_AAPs) pts.AddRange(A_APs);
-            if (DrawInCad.Draw_BAPs) pts.AddRange(B_APs);
-            if (DrawInCad.Draw_ABs) pts.AddRange(ABs);
-            if (DrawInCad.Draw_SteelPlPs) pts.AddRange(SteelPlatePs);
+            if (DimPointsAndAxisConfig.IncludeBPs) pts.AddRange(BPs);
+            if (DimPointsAndAxisConfig.IncludeAAPs) pts.AddRange(A_APs);
+            if (DimPointsAndAxisConfig.IncludeBAPs) pts.AddRange(B_APs);
+            if (DimPointsAndAxisConfig.IncludeABs) pts.AddRange(ABs);
+            if (DimPointsAndAxisConfig.IncludeSteelPlatePs) pts.AddRange(SteelPlatePs);
 
             return pts
                 .Distinct(new Point2dEqualityComparer(_tolerance))
                 .ToList();
         }
 
-        /// <summary>
-        /// 便捷属性：返回当前配置下用于聚类的点集
-        /// </summary>
         public List<Point3d> SelectPoints => GetFilteredPoints();
 
         private class Point2dEqualityComparer : IEqualityComparer<Point3d>

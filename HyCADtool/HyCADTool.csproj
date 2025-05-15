@@ -80,7 +80,6 @@
     <Compile Include="Commands\Dcel - 复制.cs" />
     <Compile Include="Commands\HyDim.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabA_Align.cs" />
-    <Compile Include="Commands\HYab - 复制.cs" />
     <Compile Include="Commands\HyMbr\HYMBR_CreateLayoutViewports - 复制.cs" />
     <Compile Include="Commands\HYRps_HY_ReplacePolygonsByIntersection.cs" />
     <Compile Include="Commands\HYRp_ReplacePolygon - clip2.cs" />
@@ -224,8 +223,6 @@
     <Compile Include="Services\AutoCadService.cs" />
     <Compile Include="Services\ConfigService.cs" />
     <Compile Include="00\SimpleLogger.cs" />
-    <Compile Include="test - 复制.cs" />
-    <Compile Include="test.cs" />
     <Compile Include="00\TestCommand.cs" />
     <Compile Include="TestFunction\CreateOptimizedBoundingPolygonFromPolygons4c.cs" />
     <Compile Include="TestFunction\GroupBySpatialProximity4b.cs" />
@@ -328,22 +325,18 @@
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
     <Compile Include="Tools\SelectTool\SelectTrue.cs" />
-    <Compile Include="ViewModels\ViewModelLocator.cs" />
-    <Compile Include="ViewModels\BaseDimensionPanelViewModel.cs" />
-    <Compile Include="ViewModels\ClusterAndBasePanelViewModel.cs" />
+    <Compile Include="ViewModels\ClusterPanelViewModel.cs" />
     <Compile Include="ViewModels\PilePanelViewModel.cs" />
-    <Compile Include="ViewModels\PointsClusterPanelViewModel - 复制.cs" />
-    <Compile Include="ViewModels\PointsClusterPanelViewModel.cs" />
     <Compile Include="Views\BaseReinPanel.xaml.cs">
       <DependentUpon>BaseReinPanel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ClusterAndBasePanel.xaml.cs">
-      <DependentUpon>ClusterAndBasePanel.xaml</DependentUpon>
+    <Compile Include="Views\ClusterPanel.xaml.cs">
+      <DependentUpon>ClusterPanel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\FilterPanel.xaml.cs">
       <DependentUpon>FilterPanel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\InverseBooleanConverter.cs" />
+    <Compile Include="Views\InverseBooleanConverter .cs" />
     <Compile Include="Views\PilePanel.xaml.cs">
       <DependentUpon>PilePanel.xaml</DependentUpon>
     </Compile>
@@ -382,7 +375,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ClusterAndBasePanel.xaml">
+    <Page Include="Views\ClusterPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
