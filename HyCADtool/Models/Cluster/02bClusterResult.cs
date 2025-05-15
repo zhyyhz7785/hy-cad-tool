@@ -6,10 +6,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static HyCADTool.Tools.EtGpt;
 namespace HyCADTool.Models.Cluster
 {
     public class ClusterResult
     {
+        public IEnumerable<Point3d> AllPoints => Points.Concat(AuxiliaryPoints).Distinct(new Point3dComparer(0.001));
+
+        public List<Point3d> AuxiliaryPoints { get; set; } = new List<Point3d>();
+
         /// <summary>聚类ID</summary>
         public int ClusterId { get; set; }
 
@@ -38,16 +43,7 @@ namespace HyCADTool.Models.Cluster
         public Polyline ConvexHullPolyline { get; set; }
 
         /// <summary>聚类中用于标注的全部点（包含 Center 与交点）</summary>
-        public List<Point3d> AllPoints
-        {
-            get
-            {
-                var result = new List<Point3d> { Center };
-                if (AdditionalIntersections?.Count > 0)
-                    result.AddRange(AdditionalIntersections);
-                return result;
-            }
-        }
+     
         public void EnsureUniquePoints(double tolerance)
         {
             if (Points == null || Points.Count <= 1) return;

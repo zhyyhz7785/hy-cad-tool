@@ -59,7 +59,12 @@
     <Compile Include="Commands\DimPointCommands - 复制 - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制.cs" />
+    <Compile Include="Models\Axis\AxisDatas - 复制 - 复制 - 复制.cs" />
+    <Compile Include="Models\Axis\AxisDatas - 复制 - 复制.cs" />
+    <Compile Include="Models\Axis\AxisDatas - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas.cs" />
+    <Compile Include="Models\Cluster\03DimHelper - 复制 - 复制 - 复制.cs" />
+    <Compile Include="Models\Cluster\03DimHelper - 复制 - 复制.cs" />
     <Compile Include="Models\Cluster\03DimHelper - 复制.cs" />
     <Compile Include="Models\Cluster\03DimHelper.cs" />
     <Compile Include="01%28平面标注尺寸%29\BaseDimHelper - 复制.cs" />
@@ -325,7 +330,7 @@
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
     <Compile Include="Tools\SelectTool\SelectTrue.cs" />
-    <Compile Include="ViewModels\ClusterPanelViewModel - 复制.cs" />
+    <Compile Include="ViewModels\ClusterPanelViewModel.cs" />
     <Compile Include="ViewModels\PilePanelViewModel.cs" />
     <Compile Include="Views\BaseReinPanel.xaml.cs">
       <DependentUpon>BaseReinPanel.xaml</DependentUpon>

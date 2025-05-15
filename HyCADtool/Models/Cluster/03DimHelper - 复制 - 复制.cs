@@ -10,26 +10,21 @@
 
 //namespace HyCADTool.Models.Cluster
 //{
+   
+
 //    public class DimHelper
 //    {
-//        /*─────────────────── 全局/静态配置 ───────────────────*/
 //        public static double Scale { get; set; } = BaseConfig.Scale;
 //        public static double DistanceThreshold { get; set; } = 6000.0;
-//        public static ClusterConfig ClusterConfigX { get; set; }
-//            = new ClusterConfig { EpsilonX = 9000, EpsilonY = 300, MinPoints = 1 };
-//        public static ClusterConfig ClusterConfigY { get; set; }
-//            = new ClusterConfig { EpsilonX = 300, EpsilonY = 9000, MinPoints = 1 };
+//        public static ClusterConfig ClusterConfigX { get; set; } = new ClusterConfig { EpsilonX = 9000, EpsilonY = 300, MinPoints = 1 };
+//        public static ClusterConfig ClusterConfigY { get; set; } = new ClusterConfig { EpsilonX = 300, EpsilonY = 9000, MinPoints = 1 };
 
-//        /*─────────────────── 实例数据 ───────────────────────*/
 //        public List<RotatedDimension> DimXs { get; private set; } = new List<RotatedDimension>();
 //        public List<RotatedDimension> DimYs { get; private set; } = new List<RotatedDimension>();
+//        public List<ClusterResult> Clusters { get; private set; } = new List<ClusterResult>();
 //        public List<RotatedDimension> AllDimensions => DimXs.Concat(DimYs).ToList();
 
-//        /*─────────────────── 核心工厂方法 ───────────────────*/
-//        public static DimHelper Build(
-//            List<Point3d> inputPoints,
-//            ClusterConfig cfgX = null,
-//            ClusterConfig cfgY = null)
+//        public static DimHelper Build(List<Point3d> inputPoints, ClusterConfig cfgX = null, ClusterConfig cfgY = null)
 //        {
 //            if (inputPoints == null || inputPoints.Count == 0)
 //                throw new ArgumentException("输入点集不能为空。", nameof(inputPoints));
@@ -38,15 +33,8 @@
 //            cfgX = cfgX ?? ClusterConfigX;
 //            cfgY = cfgY ?? ClusterConfigY;
 
-//            /*— 1. 去重 —*/
-//            List<Point3d> unique =
-//                inputPoints.Distinct(new Point3dComparer(0.0001)).ToList();
+//            List<Point3d> unique = inputPoints.Distinct(new Point3dComparer(0.0001)).ToList();
 
-//            /*— 2. 聚类 —*/
-//            var clustersX = ClusterFactory.Create(unique, cfgX);
-//            var clustersY = ClusterFactory.Create(unique, cfgY);
-
-//            /*— 3. 图层准备 —*/
 //            var db = Application.DocumentManager.MdiActiveDocument.Database;
 //            var idX = CreateLayer("00_hy_3公共_标注2_内x", 93, db);
 //            var idY = CreateLayer("00_hy_3公共_标注2_内y", 45, db);
@@ -59,33 +47,71 @@
 //                YDirectionIsRight = false
 //            };
 
-//            /*— 4. 生成标注 —*/
+//            var clustersX = ClusterFactory.Create(unique, cfgX);
+//            var clustersY = ClusterFactory.Create(unique, cfgY);
+
+//            helper.Clusters.AddRange(clustersX);
+//            helper.Clusters.AddRange(clustersY);
+
 //            foreach (var c in clustersX)
-//                helper.DimXs.AddRange(
-//                    CreateDimensionsForClusterSingleSide(c.Points, true, idX, opt));
+//                helper.DimXs.AddRange(CreateDimensionsForClusterSingleSide(c.Points, true, idX, opt));
 
 //            foreach (var c in clustersY)
-//                helper.DimYs.AddRange(
-//                    CreateDimensionsForClusterSingleSide(c.Points, false, idY, opt));
+//                helper.DimYs.AddRange(CreateDimensionsForClusterSingleSide(c.Points, false, idY, opt));
 
-//            /*— 5. 去重过滤 —*/
-//            var filtered =
-//                FilterDuplicateDimensions(helper.DimXs.Concat(helper.DimYs).ToList(),
-//                                          DistanceThreshold);
+//            var filtered = FilterDuplicateDimensions(helper.DimXs.Concat(helper.DimYs).ToList(), DistanceThreshold);
 
-//            helper.DimXs = filtered
-//                .Where(d => Math.Abs(d.Rotation) < 1e-6)
-//                .ToList();
-//            helper.DimYs = filtered
-//                .Where(d => Math.Abs(Math.Abs(d.Rotation) - Math.PI / 2) < 1e-6)
-//                .ToList();
+//            helper.DimXs = filtered.Where(d => Math.Abs(d.Rotation) < 1e-6).ToList();
+//            helper.DimYs = filtered.Where(d => Math.Abs(Math.Abs(d.Rotation) - Math.PI / 2) < 1e-6).ToList();
 
 //            return helper;
 //        }
 
-//        /*─────────────────── 重复标注过滤 ───────────────────*/
-//        private static List<RotatedDimension> FilterDuplicateDimensions(
-//            List<RotatedDimension> dims, double threshold)
+//        public static DimHelper BuildByRegion(Dictionary<Extents3d, RegionPointInfo> regionPointsMap, ClusterConfig cfgX = null, ClusterConfig cfgY = null)
+//        {
+//            var db = Application.DocumentManager.MdiActiveDocument.Database;
+//            var idX = CreateLayer("00_hy_3公共_标注2_内x", 93, db);
+//            var idY = CreateLayer("00_hy_3公共_标注2_内y", 45, db);
+
+//            var opt = new ClusterDimOptions
+//            {
+//                Scale = Scale,
+//                DistanceThreshold = DistanceThreshold,
+//                XDirectionIsUp = false,
+//                YDirectionIsRight = false
+//            };
+
+//            var result = new DimHelper();
+//            var usedX = cfgX ?? ClusterConfigX;
+//            var usedY = cfgY ?? ClusterConfigY;
+
+//            foreach (var kvp in regionPointsMap)
+//            {
+//                var info = kvp.Value;
+//                var regionPoints = info.Points.Distinct(new Point3dComparer(0.0001)).ToList();
+
+//                var cx = ClusterFactory.Create(regionPoints, usedX);
+//                var cy = ClusterFactory.Create(regionPoints, usedY);
+
+//                result.Clusters.AddRange(cx);
+//                result.Clusters.AddRange(cy);
+
+//                foreach (var c in cx)
+//                    result.DimXs.AddRange(CreateDimensionsForClusterSingleSide(c.Points, true, idX, opt));
+
+//                foreach (var c in cy)
+//                    result.DimYs.AddRange(CreateDimensionsForClusterSingleSide(c.Points, false, idY, opt));
+//            }
+
+//            var filtered = FilterDuplicateDimensions(result.DimXs.Concat(result.DimYs).ToList(), DistanceThreshold);
+
+//            result.DimXs = filtered.Where(d => Math.Abs(d.Rotation) < 1e-6).ToList();
+//            result.DimYs = filtered.Where(d => Math.Abs(Math.Abs(d.Rotation) - Math.PI / 2) < 1e-6).ToList();
+
+//            return result;
+//        }
+
+//        private static List<RotatedDimension> FilterDuplicateDimensions(List<RotatedDimension> dims, double threshold)
 //        {
 //            const double tol = 0.1;
 
@@ -125,8 +151,7 @@
 //                {
 //                    var sameLine = new List<RotatedDimension> { list[cur] };
 //                    int nxt = cur + 1;
-//                    while (nxt < list.Count &&
-//                          Math.Abs(keySelector(list[nxt]) - keySelector(list[cur])) <= threshold)
+//                    while (nxt < list.Count && Math.Abs(keySelector(list[nxt]) - keySelector(list[cur])) <= threshold)
 //                    {
 //                        sameLine.Add(list[nxt]);
 //                        nxt++;

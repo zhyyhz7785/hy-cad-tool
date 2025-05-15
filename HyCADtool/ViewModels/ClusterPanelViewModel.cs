@@ -9,6 +9,8 @@ using Autodesk.AutoCAD.Geometry;
 using System;
 using HyCADTool.Drawing;
 using HyCADTool.Models;
+using Autodesk.AutoCAD.DatabaseServices;
+using System.Linq;
 
 namespace HyCADTool.ViewModels
 {
@@ -148,6 +150,8 @@ namespace HyCADTool.ViewModels
             OnPropertyChanged(nameof(ClusterConfigY));
         }
 
+      
+
         private void ExecuteDraw()
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
@@ -164,28 +168,35 @@ namespace HyCADTool.ViewModels
                         return;
                     }
 
-                    var points = dpa.GetFilteredPoints();
-                    if (points == null || points.Count == 0)
-                    {
-                        ed.WriteMessage("\n未获取到用于聚类的点集。\n");
-                        return;
-                    }
-
                     var axes = AxisDatas.FromLines(dpa.AxisLines, dpa.SelectPoints);
-                    var dimHelper = DimHelper.Build(points);
+                    var pointsMap = axes.PointsMap;
 
+                    // 设置聚类参数
                     ClusterConfigX.ExpandMargins = (ExpandMarginLeft, ExpandMarginTop, ExpandMarginRight, ExpandMarginBottom);
+                    ClusterConfigY.ExpandMargins = (ExpandMarginLeft, ExpandMarginTop, ExpandMarginRight, ExpandMarginBottom);
                     ClusterConfigX.MinPoints = MinPoints;
                     ClusterConfigY.MinPoints = MinPoints;
 
-                    var clusters = new List<ClusterResult>();
-                    if (DrawClusterX)
-                        clusters.AddRange(ClusterFactory.Create(points, ClusterConfigX));
-                    if (DrawClusterY)
-                        clusters.AddRange(ClusterFactory.Create(points, ClusterConfigY));
+                    // ✅ 添加交点（左下点与最接近轴线交点）
+                    foreach (var kv in pointsMap)
+                    {
+                        var regionInfo = kv.Value;
+                        var pts = regionInfo.Points;
 
-                    DrawInCad.Draw(dpa, axes, clusters, dimHelper.AllDimensions);
-                    ed.WriteMessage("\nHY_TestDrawInCad 运行完毕。\n");
+                        if (pts == null || pts.Count == 0)
+                            continue;
+
+                        var minPt = pts.OrderBy(p => p.X).ThenBy(p => p.Y).FirstOrDefault();
+
+                        var xAxis = regionInfo.XAxis;
+                        var yAxis = regionInfo.YAxis;
+                        
+                    }
+
+                    // ⏩ 聚类与标注
+                    var helper = DimHelper.BuildByRegion(pointsMap, ClusterConfigX, ClusterConfigY);
+                    DrawInCad.Draw(dpa, axes, helper.Clusters, helper.AllDimensions);
+                    ed.WriteMessage("\n区域聚类标注完成。\n");
                 }
             }
             catch (Exception ex)
@@ -193,6 +204,8 @@ namespace HyCADTool.ViewModels
                 ed.WriteMessage($"\n致命错误：{ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}\n");
             }
         }
+
+
 
         public double Scale { get => _scale; set { _scale = value; OnPropertyChanged(); } }
         private double _scale = 40;

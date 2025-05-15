@@ -13,7 +13,7 @@
 //        /// <summary>内部比例因子（默认取全局 <see cref="BaseConfig.Scale"/>）。</summary>
 //        public static double Scale { get; set; } = BaseConfig.Scale;
 
-//        /// <summary>用户可调整的“基准直径”。程序实际直径 D = <c>BaseDiameter × Scale</c>。</summary>
+//        /// <summary>用户可调整的"基准直径"。程序实际直径 D = <c>BaseDiameter × Scale</c>。</summary>
 //        public static double BaseDiameter { get; set; } = 8.0;
 
 //        /// <summary>用于绘制圆的实际直径。</summary>
@@ -25,7 +25,9 @@
 //        public int SerialNumber { get; set; }
 //        public (string Label, Circle Circle)? Annotation { get; set; }
 
+//        // 修改判断垂直轴线的逻辑：垂直现在是y轴方向(即StartPoint.Y 与 EndPoint.Y 值不同，而X值基本相同)
 //        public bool IsVertical => Math.Abs(Line.StartPoint.X - Line.EndPoint.X) < 1e-3;
+//        // 位置值保持不变：垂直轴取X值，水平轴取Y值
 //        public double Position => IsVertical ? Line.StartPoint.X : Line.StartPoint.Y;
 
 //        public Axis(Line line)
@@ -36,6 +38,8 @@
 
 //        private Line EnsureDirection(Line line)
 //        {
+//            // 垂直轴线(y向): 确保方向为从下到上(Y值增大的方向)
+//            // 水平轴线(x向): 确保方向为从左到右(X值增大的方向)
 //            bool v = Math.Abs(line.StartPoint.X - line.EndPoint.X) < 1e-3;
 //            if (v && line.StartPoint.Y > line.EndPoint.Y) return new Line(line.EndPoint, line.StartPoint);
 //            if (!v && line.StartPoint.X > line.EndPoint.X) return new Line(line.EndPoint, line.StartPoint);
@@ -45,20 +49,19 @@
 //    public class RegionPointInfo
 //    {
 //        public List<Point3d> Points { get; set; } = new List<Point3d>();
-//        public Axis XAxis { get; set; }
-//        public Axis YAxis { get; set; }
+//        public Axis XAxis { get; set; }  // x向轴线
+//        public Axis YAxis { get; set; }  // y向轴线
 //    }
 
 //    /*───────────────────────────  AxisDatas  ──────────────────────────*/
 //    public class AxisDatas
 //    {
-        
-
 //        /// <summary>实例级比例（文字高度等随之变化）。</summary>
 //        public double Scale { get; }
 
-//        public List<Axis> XAxes { get; } = new List<Axis>();
-//        public List<Axis> YAxes { get; } = new List<Axis>();
+//        // 修改轴线集合命名，使之与方向一致
+//        public List<Axis> YAxes { get; } = new List<Axis>();  // 垂直轴线(y向)集合
+//        public List<Axis> XAxes { get; } = new List<Axis>();  // 水平轴线(x向)集合
 
 //        public Dictionary<string, Extents3d> RegionMap { get; } = new Dictionary<string, Extents3d>();
 //        public Dictionary<string, Point3d> RegionLabels { get; } = new Dictionary<string, Point3d>();
@@ -88,34 +91,36 @@
 //                             .Select(l => new Axis(l))
 //                             .ToList() ?? new List<Axis>();
 
-//            XAxes = axes.Where(a => a.IsVertical).OrderBy(a => a.Position).ToList();
-//            YAxes = axes.Where(a => !a.IsVertical).OrderBy(a => a.Position).ToList();
+//            // 根据方向定义分类轴线：垂直的是y向，水平的是x向
+//            YAxes = axes.Where(a => a.IsVertical).OrderBy(a => a.Position).ToList();
+//            XAxes = axes.Where(a => !a.IsVertical).OrderBy(a => a.Position).ToList();
 
-
-//            double minX = XAxes.Any() ? XAxes.Min(a => a.Position) - OuterExtension.XExtend : -OuterExtension.XExtend;
-//            double maxX = XAxes.Any() ? XAxes.Max(a => a.Position) + OuterExtension.XExtend : OuterExtension.XExtend;
-//            double minY = YAxes.Any() ? YAxes.Min(a => a.Position) - OuterExtension.YExtend : -OuterExtension.YExtend;
-//            double maxY = YAxes.Any() ? YAxes.Max(a => a.Position) + OuterExtension.YExtend : OuterExtension.YExtend;
+//            double minX = YAxes.Any() ? YAxes.Min(a => a.Position) - OuterExtension.XExtend : -OuterExtension.XExtend;
+//            double maxX = YAxes.Any() ? YAxes.Max(a => a.Position) + OuterExtension.XExtend : OuterExtension.XExtend;
+//            double minY = XAxes.Any() ? XAxes.Min(a => a.Position) - OuterExtension.YExtend : -OuterExtension.YExtend;
+//            double maxY = XAxes.Any() ? XAxes.Max(a => a.Position) + OuterExtension.YExtend : OuterExtension.YExtend;
 
 //            /*—— 生成圆与文字 ——*/
+//            // x向轴线标注为数字
 //            for (int i = 0; i < XAxes.Count; i++)
 //            {
 //                var ax = XAxes[i];
 //                ax.SerialNumber = i + 1;
 //                ax.Name = ax.SerialNumber.ToString();
-//                ax.CircleCenter = ComputeAxisCircleCenter(ax, false);
+//                ax.CircleCenter = ComputeAxisCircleCenter(ax, true);
 //                ax.Annotation = (ax.Name, new Circle(ax.CircleCenter, Vector3d.ZAxis, Axis.D / 2.0));
 
 //                AxisCircles.Add(ax.Annotation.Value.Circle);
 //                AxisTexts.Add(CreateText(ax.Name, ax.CircleCenter));
 //            }
 
+//            // y向轴线标注为字母
 //            for (int j = 0; j < YAxes.Count; j++)
 //            {
 //                var ay = YAxes[j];
 //                ay.SerialNumber = j + 1;
 //                ay.Name = GetAlphabeticLabel(j);
-//                ay.CircleCenter = ComputeAxisCircleCenter(ay, true);
+//                ay.CircleCenter = ComputeAxisCircleCenter(ay, false);
 //                ay.Annotation = (ay.Name, new Circle(ay.CircleCenter, Vector3d.ZAxis, Axis.D / 2.0));
 
 //                AxisCircles.Add(ay.Annotation.Value.Circle);
@@ -123,16 +128,16 @@
 //            }
 
 //            /*—— 区域 ——*/
-//            var xRegs = CenteredRegions(XAxes, minY, maxY, true);
-//            var yRegs = CenteredRegions(YAxes, minX, maxX, false);
+//            var yRegs = CenteredRegions(YAxes, minY, maxY, true);   // 垂直轴线(y向)区域
+//            var xRegs = CenteredRegions(XAxes, minX, maxX, false);  // 水平轴线(x向)区域
 
-//            for (int i = 0; i < xRegs.Count; i++)
-//                for (int j = 0; j < yRegs.Count; j++)
+//            for (int i = 0; i < yRegs.Count; i++)
+//                for (int j = 0; j < xRegs.Count; j++)
 //                {
-//                    string name = $"Region_{XAxes[i].Name}_{YAxes[j].Name}";
+//                    string name = $"Region_{YAxes[i].Name}_{XAxes[j].Name}";
 //                    var ext = new Extents3d(
-//                        new Point3d(xRegs[i].MinPoint.X, yRegs[j].MinPoint.Y, 0),
-//                        new Point3d(xRegs[i].MaxPoint.X, yRegs[j].MaxPoint.Y, 0));
+//                        new Point3d(yRegs[i].MinPoint.X, xRegs[j].MinPoint.Y, 0),
+//                        new Point3d(yRegs[i].MaxPoint.X, xRegs[j].MaxPoint.Y, 0));
 
 //                    RegionMap[name] = ext;
 //                    RegionLabels[name] = new Point3d(
@@ -160,20 +165,20 @@
 
 //                if (axes.Count == 1)
 //                {
-//                    double ext = vertical ? OuterExtension.XExtend : OuterExtension.YExtend;
+//                    double ext = vertical ? OuterExtension.YExtend : OuterExtension.XExtend;
 //                    min = p - ext; max = p + ext;
 //                }
 //                else if (i == 0)
 //                {
 //                    double next = axes[i + 1].Position;
-//                    min = p - (vertical ? OuterExtension.XExtend : OuterExtension.YExtend);
+//                    min = p - (vertical ? OuterExtension.YExtend : OuterExtension.XExtend);
 //                    max = (p + next) / 2.0;
 //                }
 //                else if (i == axes.Count - 1)
 //                {
 //                    double prev = axes[i - 1].Position;
 //                    min = (prev + p) / 2.0;
-//                    max = p + (vertical ? OuterExtension.XExtend : OuterExtension.YExtend);
+//                    max = p + (vertical ? OuterExtension.YExtend : OuterExtension.XExtend);
 //                }
 //                else
 //                {
@@ -265,11 +270,11 @@
 //                    if (!map.ContainsKey(best.Value))
 //                    {
 //                        var regionName = RegionMap.FirstOrDefault(kv => kv.Value.Equals(best.Value)).Key;
-//                        var xName = regionName?.Split('_').ElementAtOrDefault(1);
-//                        var yName = regionName?.Split('_').ElementAtOrDefault(2);
+//                        var yName = regionName?.Split('_').ElementAtOrDefault(1);
+//                        var xName = regionName?.Split('_').ElementAtOrDefault(2);
 
-//                        var xAxis = XAxes.FirstOrDefault(a => a.Name == xName);
 //                        var yAxis = YAxes.FirstOrDefault(a => a.Name == yName);
+//                        var xAxis = XAxes.FirstOrDefault(a => a.Name == xName);
 
 //                        map[best.Value] = new RegionPointInfo
 //                        {
@@ -285,7 +290,6 @@
 //            return map;
 //        }
 
-
 //        private static bool IsInside(Extents3d e, Point3d p)
 //            => p.X >= e.MinPoint.X && p.X <= e.MaxPoint.X
 //            && p.Y >= e.MinPoint.Y && p.Y <= e.MaxPoint.Y;
@@ -296,6 +300,5 @@
 //            double dy = Math.Min(Math.Abs(p.Y - e.MinPoint.Y), Math.Abs(p.Y - e.MaxPoint.Y));
 //            return Math.Min(dx, dy);
 //        }
-
 //    }
 //}

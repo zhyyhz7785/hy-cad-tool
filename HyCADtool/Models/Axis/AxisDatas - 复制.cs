@@ -26,7 +26,7 @@
 //        public (string Label, Circle Circle)? Annotation { get; set; }
 
 //        public bool IsVertical => Math.Abs(Line.StartPoint.X - Line.EndPoint.X) < 1e-3;
-//        public double Position => IsVertical ? Line.StartPoint.X : Line.StartPoint.Y;
+//        public double Position => IsVertical ? Line.StartPoint.Y : Line.StartPoint.X; // Swapped X and Y
 
 //        public Axis(Line line)
 //        {
@@ -37,11 +37,12 @@
 //        private Line EnsureDirection(Line line)
 //        {
 //            bool v = Math.Abs(line.StartPoint.X - line.EndPoint.X) < 1e-3;
-//            if (v && line.StartPoint.Y > line.EndPoint.Y) return new Line(line.EndPoint, line.StartPoint);
-//            if (!v && line.StartPoint.X > line.EndPoint.X) return new Line(line.EndPoint, line.StartPoint);
+//            if (v && line.StartPoint.Y > line.EndPoint.Y) return new Line(line.EndPoint, line.StartPoint); // Y direction
+//            if (!v && line.StartPoint.X > line.EndPoint.X) return new Line(line.EndPoint, line.StartPoint); // X direction
 //            return line;
 //        }
 //    }
+
 //    public class RegionPointInfo
 //    {
 //        public List<Point3d> Points { get; set; } = new List<Point3d>();
@@ -52,13 +53,11 @@
 //    /*───────────────────────────  AxisDatas  ──────────────────────────*/
 //    public class AxisDatas
 //    {
-        
-
 //        /// <summary>实例级比例（文字高度等随之变化）。</summary>
 //        public double Scale { get; }
 
-//        public List<Axis> XAxes { get; } = new List<Axis>();
-//        public List<Axis> YAxes { get; } = new List<Axis>();
+//        public List<Axis> XAxes { get; } = new List<Axis>(); // Now horizontal axes
+//        public List<Axis> YAxes { get; } = new List<Axis>(); // Now vertical axes
 
 //        public Dictionary<string, Extents3d> RegionMap { get; } = new Dictionary<string, Extents3d>();
 //        public Dictionary<string, Point3d> RegionLabels { get; } = new Dictionary<string, Point3d>();
@@ -88,9 +87,9 @@
 //                             .Select(l => new Axis(l))
 //                             .ToList() ?? new List<Axis>();
 
-//            XAxes = axes.Where(a => a.IsVertical).OrderBy(a => a.Position).ToList();
-//            YAxes = axes.Where(a => !a.IsVertical).OrderBy(a => a.Position).ToList();
-
+//            // Swap X and Y axis assignments
+//            XAxes = axes.Where(a => !a.IsVertical).OrderBy(a => a.Position).ToList(); // Horizontal
+//            YAxes = axes.Where(a => a.IsVertical).OrderBy(a => a.Position).ToList();  // Vertical
 
 //            double minX = XAxes.Any() ? XAxes.Min(a => a.Position) - OuterExtension.XExtend : -OuterExtension.XExtend;
 //            double maxX = XAxes.Any() ? XAxes.Max(a => a.Position) + OuterExtension.XExtend : OuterExtension.XExtend;
@@ -103,7 +102,7 @@
 //                var ax = XAxes[i];
 //                ax.SerialNumber = i + 1;
 //                ax.Name = ax.SerialNumber.ToString();
-//                ax.CircleCenter = ComputeAxisCircleCenter(ax, false);
+//                ax.CircleCenter = ComputeAxisCircleCenter(ax, false); // Horizontal
 //                ax.Annotation = (ax.Name, new Circle(ax.CircleCenter, Vector3d.ZAxis, Axis.D / 2.0));
 
 //                AxisCircles.Add(ax.Annotation.Value.Circle);
@@ -115,7 +114,7 @@
 //                var ay = YAxes[j];
 //                ay.SerialNumber = j + 1;
 //                ay.Name = GetAlphabeticLabel(j);
-//                ay.CircleCenter = ComputeAxisCircleCenter(ay, true);
+//                ay.CircleCenter = ComputeAxisCircleCenter(ay, true); // Vertical
 //                ay.Annotation = (ay.Name, new Circle(ay.CircleCenter, Vector3d.ZAxis, Axis.D / 2.0));
 
 //                AxisCircles.Add(ay.Annotation.Value.Circle);
@@ -123,8 +122,8 @@
 //            }
 
 //            /*—— 区域 ——*/
-//            var xRegs = CenteredRegions(XAxes, minY, maxY, true);
-//            var yRegs = CenteredRegions(YAxes, minX, maxX, false);
+//            var xRegs = CenteredRegions(XAxes, minY, maxY, false); // Horizontal regions
+//            var yRegs = CenteredRegions(YAxes, minX, maxX, true);  // Vertical regions
 
 //            for (int i = 0; i < xRegs.Count; i++)
 //                for (int j = 0; j < yRegs.Count; j++)
@@ -160,20 +159,20 @@
 
 //                if (axes.Count == 1)
 //                {
-//                    double ext = vertical ? OuterExtension.XExtend : OuterExtension.YExtend;
+//                    double ext = vertical ? OuterExtension.YExtend : OuterExtension.XExtend; // Swapped
 //                    min = p - ext; max = p + ext;
 //                }
 //                else if (i == 0)
 //                {
 //                    double next = axes[i + 1].Position;
-//                    min = p - (vertical ? OuterExtension.XExtend : OuterExtension.YExtend);
+//                    min = p - (vertical ? OuterExtension.YExtend : OuterExtension.XExtend); // Swapped
 //                    max = (p + next) / 2.0;
 //                }
 //                else if (i == axes.Count - 1)
 //                {
 //                    double prev = axes[i - 1].Position;
 //                    min = (prev + p) / 2.0;
-//                    max = p + (vertical ? OuterExtension.XExtend : OuterExtension.YExtend);
+//                    max = p + (vertical ? OuterExtension.YExtend : OuterExtension.XExtend); // Swapped
 //                }
 //                else
 //                {
@@ -184,22 +183,22 @@
 //                }
 
 //                list.Add(vertical
-//                    ? new Extents3d(new Point3d(min, fMin, 0), new Point3d(max, fMax, 0))
-//                    : new Extents3d(new Point3d(fMin, min, 0), new Point3d(fMax, max, 0)));
+//                    ? new Extents3d(new Point3d(fMin, min, 0), new Point3d(fMax, max, 0)) // Swapped X and Y
+//                    : new Extents3d(new Point3d(min, fMin, 0), new Point3d(max, fMax, 0)));
 //            }
 //            return list;
 //        }
 
-//        private static Point3d ComputeAxisCircleCenter(Axis axis, bool horizontal)
+//        private static Point3d ComputeAxisCircleCenter(Axis axis, bool vertical)
 //        {
 //            var pt = axis.Line.StartPoint;
-//            if ((horizontal && pt.X > axis.Line.EndPoint.X) ||
-//                (!horizontal && pt.Y > axis.Line.EndPoint.Y))
+//            if ((vertical && pt.Y > axis.Line.EndPoint.Y) || // Adjusted for Y
+//                (!vertical && pt.X > axis.Line.EndPoint.X))
 //                pt = axis.Line.EndPoint;
 
 //            double off = Axis.D / 2.0;
-//            return horizontal ? new Point3d(pt.X - off, pt.Y, 0)
-//                              : new Point3d(pt.X, pt.Y - off, 0);
+//            return vertical ? new Point3d(pt.X, pt.Y - off, 0) // Adjusted for Y
+//                           : new Point3d(pt.X - off, pt.Y, 0);
 //        }
 
 //        private DBText CreateText(string txt, Point3d pos)
@@ -285,7 +284,6 @@
 //            return map;
 //        }
 
-
 //        private static bool IsInside(Extents3d e, Point3d p)
 //            => p.X >= e.MinPoint.X && p.X <= e.MaxPoint.X
 //            && p.Y >= e.MinPoint.Y && p.Y <= e.MaxPoint.Y;
@@ -296,6 +294,5 @@
 //            double dy = Math.Min(Math.Abs(p.Y - e.MinPoint.Y), Math.Abs(p.Y - e.MaxPoint.Y));
 //            return Math.Min(dx, dy);
 //        }
-
 //    }
 //}
