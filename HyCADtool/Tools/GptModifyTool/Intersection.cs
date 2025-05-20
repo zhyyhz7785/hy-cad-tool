@@ -8,12 +8,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using static HyCADTool.Tools.EtGpt;
+using static HyCADTool.Tools.HyTool;
 using HyCADTool.Log;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         /// <summary>
         /// 交点求解方法选项

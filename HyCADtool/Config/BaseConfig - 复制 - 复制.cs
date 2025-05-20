@@ -43,9 +43,9 @@ namespace HyCADTool.Config
         public static void InitializeStyle()
         {
             // 注意：此方法应由 ReinPanel 或 Reinforcement 在需要时调用
-            TextStyleId = EtGpt.CreateTextStyle(TextStyleConfig.Name);
-            DimStyleID = EtGpt.CreateDimStyle(DimStyleConfig.Name);
-            MleaderStyleId = EtGpt.CreateMLeaderStyle(MLeaderStyleConfig.Name);
+            TextStyleId = HyTool.CreateTextStyle(TextStyleConfig.Name);
+            DimStyleID = HyTool.CreateDimStyle(DimStyleConfig.Name);
+            MleaderStyleId = HyTool.CreateMLeaderStyle(MLeaderStyleConfig.Name);
             //TableStyleId = EtGpt.CreateTableStyle(TableStyleConfig.Name);
             LayerConfigManager.ImportLayersFromMarkdown();
         }

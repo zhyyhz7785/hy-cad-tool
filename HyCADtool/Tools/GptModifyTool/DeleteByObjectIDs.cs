@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static void DeleteByObjectIDs(this List<ObjectId> toBeErased, Document doc, Database db)
         {

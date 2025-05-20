@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static void CreateConvexHull()
         {

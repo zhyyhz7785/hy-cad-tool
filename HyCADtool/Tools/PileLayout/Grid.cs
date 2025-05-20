@@ -7,7 +7,7 @@ using NetTopologySuite.Geometries;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         [CommandMethod("GPT_ADAPTIVE_GRID")]
         public static void CreateAdaptiveGrid()

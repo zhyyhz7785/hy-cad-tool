@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         #region 主要方法
         // 导出图层信息到Markdown
@@ -17,13 +17,13 @@ namespace HyCADTool.Tools
         {
             // 获取图层表记录列表
             List<LayerTableRecord> layerTableRecords = GetLayerTableRecords();
-            var filePath = EtGpt.GetSaveFilePath();
+            var filePath = HyTool.GetSaveFilePath();
             ExportLayerRecordsToMarkdown(layerTableRecords, filePath);
         }
         // 从Markdown导入图层
         public static void ImportLayerRecordsFromMarkdown()
         {
-            var filePath = EtGpt.GetOpenFilePath();
+            var filePath = HyTool.GetOpenFilePath();
             if (string.IsNullOrEmpty(filePath))
             {
                 throw new ArgumentException("文件路径不能为空", nameof(filePath));

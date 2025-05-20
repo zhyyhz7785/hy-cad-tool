@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         #region 图形位置变化
         public static ObjectId MirrorEntCom<T>(this Entity ent, Point3d a, Point3d b) where T : Entity

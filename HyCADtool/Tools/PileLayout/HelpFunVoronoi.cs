@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         /// <summary>
         /// 选择一个闭合多段线，并将其转换为 NetTopologySuite 的 Polygon

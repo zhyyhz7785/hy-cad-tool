@@ -5,7 +5,7 @@ using HyCADTool.Config;
 using System;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         /// <summary>
         /// 创建或更新尺寸样式。

@@ -43,12 +43,12 @@ namespace HyCADTool
             Reinforcement.SetProperties(boundary);
             //
             //EtGpt.CreateMultipleLayers(("01_hy_1钢筋_线钢筋", 1), ("01_hy_2钢筋_点钢筋", 5), ("00_hy_3公共_标注1_外", 3), ("00_hy_3公共_标注3_引线", 92));
-            EtGpt.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            HyTool.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             Reinforcement.SubReinforcementWithAnchorsAddhooks.ToSpace();
-            EtGpt.SetCurrentLayer("01_hy_1钢筋_点钢筋");
+            HyTool.SetCurrentLayer("01_hy_1钢筋_点钢筋");
             Reinforcement.ReduceDotRein.ToSpace();
             //Application.SetSystemVariable("CELWEIGHT", Convert.ToInt16(-1));
-            EtGpt.SetCurrentLayer("00_hy_3公共_标注3_引线");
+            HyTool.SetCurrentLayer("00_hy_3公共_标注3_引线");
             Reinforcement.Mleaders.ToSpace();
         }
         #endregion
@@ -412,7 +412,7 @@ namespace HyCADTool
                     {
                         enxtendSeg02 = enxtendSeg02Backup;
                         //对不满足锚固长度的节点进行标记 i 计数，有多少个不满足锚固的结果
-                        EtGpt.MakeMark(enxtendSeg02.EndPoint, i.ToString(), 120, 100);
+                        HyTool.MakeMark(enxtendSeg02.EndPoint, i.ToString(), 120, 100);
                         i++;
                     }
                     else
@@ -755,7 +755,7 @@ namespace HyCADTool
             var list = new List<Polyline>();
             foreach (var point in points)
             {
-                var poly = EtGpt.CreateSolidCircle(ReinforcementDiameter, point);
+                var poly = HyTool.CreateSolidCircle(ReinforcementDiameter, point);
                 list.Add(poly);
             }
             return list.ToArray();
@@ -770,7 +770,7 @@ namespace HyCADTool
             vec = vec.RotateBy(Math.PI / 2, Vector3d.ZAxis);
             var mPoint = seg.MidPoint;
             var ePoint = mPoint + vec.GetNormal() * separation;
-            var ml = EtGpt.AddMleader(points, Reinforcement.MleaderDistance, content);
+            var ml = HyTool.AddMleader(points, Reinforcement.MleaderDistance, content);
             return ml;
         }
         #endregion

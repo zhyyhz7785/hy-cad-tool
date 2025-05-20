@@ -28,7 +28,7 @@ namespace HyCADTool.HelpClass.CreatBase
     };
             foreach (var layer in layerSettings)
             {
-                EtGpt.CreateLayer(layer.Key, layer.Value);
+                HyTool.CreateLayer(layer.Key, layer.Value);
             }
         }
         // 获取剖面位移距离

@@ -6,7 +6,7 @@ using NetTopologySuite.Geometries;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         /// <summary>
         /// 将AutoCAD的Polyline转换为NTS的Polygon(假设闭合、单一外环)

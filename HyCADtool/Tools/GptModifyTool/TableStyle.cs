@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Config;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static ObjectId CreateTableStyle(string styleName)
         {

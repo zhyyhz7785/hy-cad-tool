@@ -9,7 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static void SelectAndProcess(string message, Func<Database, SelectionSet, ConcurrentDictionary<DBText, ObjectId>> processSelection)
         {

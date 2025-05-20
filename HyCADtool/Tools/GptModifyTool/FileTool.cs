@@ -3,7 +3,7 @@ using System;
 using System.IO;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         // 获取保存文件路径
         public static string GetSaveFilePath(string defaultFileName = null)

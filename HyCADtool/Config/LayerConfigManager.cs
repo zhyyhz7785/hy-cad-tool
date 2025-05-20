@@ -169,7 +169,7 @@ namespace HyCADTool.Config
         // 使用图层名称创建指定图层
         public static void CreateLayer(string layerName)
         {
-            EtGpt.SetCurrentLayer(layerName);
+            HyTool.SetCurrentLayer(layerName);
             layerName.GetLayerId();
             var layers = ReadLayersFromMarkdown();
             if (layers.TryGetValue(layerName, out var layerDef))

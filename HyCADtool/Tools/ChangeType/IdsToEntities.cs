@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static List<T> ConvertToEntities<T>(this IEnumerable<ObjectId> objectIds) where T : Entity
         {

@@ -89,7 +89,7 @@ namespace HyCADTool.Commands
                     var orderedTexts = mtexts.OrderByDescending(m => m.Location.Y).ToList();
                     string combinedContent = string.Join("\\P", orderedTexts.Select(m => m.Contents)); // MText多行内容需使用 \P
                     // 使用您提供的方法生成 MLeader
-                    MLeader mleader =EtGpt.AddMleaderSinglePoint(p1, p2, combinedContent);
+                    MLeader mleader =HyTool.AddMleaderSinglePoint(p1, p2, combinedContent);
                     // 添加到模型空间
                     ms.AppendEntity(mleader);
                     tr.AddNewlyCreatedDBObject(mleader, true);

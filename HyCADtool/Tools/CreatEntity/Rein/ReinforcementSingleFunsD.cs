@@ -14,7 +14,7 @@ namespace HyCADTool
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
-            var a = EtGpt.GetPolylineInfo("\n请选择需要延伸的Polyline对象：");
+            var a = HyTool.GetPolylineInfo("\n请选择需要延伸的Polyline对象：");
             var d = Reinforcement.AnchorageLength;
             if (a != null)
             {

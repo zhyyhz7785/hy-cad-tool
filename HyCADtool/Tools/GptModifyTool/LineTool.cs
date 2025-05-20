@@ -4,7 +4,7 @@ using HyCADTool.Config;
 using System;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         #region 直线相关操作
         public static bool IsParallel(this LineSegment3d seg1, LineSegment3d seg2)

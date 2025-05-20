@@ -42,12 +42,12 @@ namespace HyCADTool.HelpClass.ElevationSymbol
             // 初始化或重用文本样式和图层
             if (_cachedTextStyleId.IsNull)
             {
-                _cachedTextStyleId = EtGpt.CreateTextStyle(TextStyleConfig.Name);
+                _cachedTextStyleId = HyTool.CreateTextStyle(TextStyleConfig.Name);
             }
             _textStyleId = _cachedTextStyleId;
             if (_cachedLayerId.IsNull)
             {
-                _cachedLayerId = EtGpt.CreateLayer("00_hy_3公共_标注4_标高", 140);
+                _cachedLayerId = HyTool.CreateLayer("00_hy_3公共_标注4_标高", 140);
             }
             _layerId = _cachedLayerId;
             UpdateRotation();

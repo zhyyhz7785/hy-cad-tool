@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.Runtime;
 using HyCADTool.HelpClass.Jig;
 using HyCADTool.Tools;
 using System;
-using static HyCADTool.Tools.EtGpt;
+using static HyCADTool.Tools.HyTool;
 [assembly: CommandClass(typeof(HyCADTool.Commands.HyCommand))]
 namespace HyCADTool.Commands
 {
@@ -16,7 +16,7 @@ namespace HyCADTool.Commands
         [CommandMethod("g1")]
         public static void ReinAddAnchor1()
         {
-            EtGpt.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            HyTool.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             HookLength = Reinforcement.HookLength;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
@@ -51,7 +51,7 @@ namespace HyCADTool.Commands
         [CommandMethod("g2")]
         public static void ReinAddAnchor2()
         {
-            EtGpt.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            HyTool.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             HookLength = Reinforcement.HookLength;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
@@ -111,7 +111,7 @@ namespace HyCADTool.Commands
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
-            EtGpt.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            HyTool.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             PolylineJig jig = new PolylineJig();
             jig._offsetDistance = -Reinforcement.ProtectionThickness;
             double hookLength = Reinforcement.HookLength;

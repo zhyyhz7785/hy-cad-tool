@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static ObjectId[] GetEntitiesWithMatchingProperties(Document doc, PromptSelectionResult selectionResult, TypedValue[] filterValues)
         {

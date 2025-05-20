@@ -36,13 +36,13 @@ namespace HyCADTool.HelpClass.CreatBase
         #region 构造函数
         public ElevationModelGenerator()
         {
-            Bufferid1 = EtGpt.CreateLayer("00_Hy_buffer_1", 36);
-            Bufferid2 = EtGpt.CreateLayer("00_Hy_buffer_2", 140);
-            Bufferid3 = EtGpt.CreateLayer("00_Hy_buffer_3", 72);
-            Bufferid4 = EtGpt.CreateLayer("00_Hy_buffer_4", 150);
-            Bufferid_Region = EtGpt.CreateLayer("00_Hy_buffer_Bufferid_Region", 66);
-            Bufferid_Base = EtGpt.CreateLayer("00_Hy_buffer_Bufferid_Base", 137);
-            Bufferid_Wall = EtGpt.CreateLayer("00_Hy_buffer_Bufferid_Wall", 253);
+            Bufferid1 = HyTool.CreateLayer("00_Hy_buffer_1", 36);
+            Bufferid2 = HyTool.CreateLayer("00_Hy_buffer_2", 140);
+            Bufferid3 = HyTool.CreateLayer("00_Hy_buffer_3", 72);
+            Bufferid4 = HyTool.CreateLayer("00_Hy_buffer_4", 150);
+            Bufferid_Region = HyTool.CreateLayer("00_Hy_buffer_Bufferid_Region", 66);
+            Bufferid_Base = HyTool.CreateLayer("00_Hy_buffer_Bufferid_Base", 137);
+            Bufferid_Wall = HyTool.CreateLayer("00_Hy_buffer_Bufferid_Wall", 253);
             try
             {
                 SimpleLogger.LogElapsedTime("ElevationModelGenerator 初始化", Initialize);

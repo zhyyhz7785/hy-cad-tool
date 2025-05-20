@@ -6,7 +6,7 @@ using System;
 using System.Linq;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         #region PolyLine相关操作     
         public static Polyline ResetPolyVertex(this Polyline poly)

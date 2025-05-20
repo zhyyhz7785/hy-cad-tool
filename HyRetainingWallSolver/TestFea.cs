@@ -107,8 +107,8 @@ namespace HyRetainingWallSolver.Command
                     ed.WriteMessage("\n未找到边界条件数据。\n");
                     return;
                 }
-                EtGpt.CreateLayer("HY_Fixed", 1);
-                EtGpt.CreateLayer("HY_Hinged", 3);
+                HyTool.CreateLayer("HY_Fixed", 1);
+                HyTool.CreateLayer("HY_Hinged", 3);
                 BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 BlockTableRecord btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
                 foreach (var boundary in wallData.Boundaries)
@@ -149,8 +149,8 @@ namespace HyRetainingWallSolver.Command
                     return;
                 }
                 // 创建必要图层
-                EtGpt.CreateLayer("HY_Fixed", 1);
-                EtGpt.CreateLayer("HY_Hinged", 3);
+                HyTool.CreateLayer("HY_Fixed", 1);
+                HyTool.CreateLayer("HY_Hinged", 3);
                 BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 BlockTableRecord btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
                 // 删除旧图形（条件：图层为 HY_Fixed 或 HY_Hinged，位于边界附近）
@@ -217,8 +217,8 @@ namespace HyRetainingWallSolver.Command
                 var elements = WallMeshGenerator.GenerateMeshFromPolyline(panel, pline, nx, ny);
                 BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 BlockTableRecord btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
-                EtGpt.CreateLayer("HY_Mesh", 8);
-                EtGpt.CreateLayer("HY_Mesh_Anno", 1);
+                HyTool.CreateLayer("HY_Mesh", 8);
+                HyTool.CreateLayer("HY_Mesh_Anno", 1);
                 HashSet<string> writtenNodes = new HashSet<string>();
                 int nodeId = 1;
                 foreach (var quad in elements)

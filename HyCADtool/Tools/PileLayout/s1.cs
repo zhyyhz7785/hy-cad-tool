@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class EtGpt
+    public static partial class HyTool
     {
         public static void PlacePileAndVoronoiWithLloydOptimization()
         {
