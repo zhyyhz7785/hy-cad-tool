@@ -12,6 +12,8 @@ namespace HyCADTool.Tools
         public static Point3d ConvertPoint2dTo3d(this Point2d point2d)
         {
             return new Point3d(point2d.X, point2d.Y, 0);
+            var a = new Point3d();     
+            
         }
         /// <summary>
         /// 将 Point3d 转换为 Point2d，忽略 Z 坐标
@@ -49,6 +51,14 @@ namespace HyCADTool.Tools
                 points2d.Add(ConvertPoint3dTo2d(point3d));
             }
             return points2d;
+        }
+        public static Point2d Point3dTo2d(this Point3d point3D)
+        {
+            return point3D.Convert2d(new Plane(Point3d.Origin, Vector3d.ZAxis));
+        }
+        public static Point3d Point2dTo3d(this Point2d point2D)
+        {
+            return new Point3d(point2D.X, point2D.Y, 0);
         }
     }
 }

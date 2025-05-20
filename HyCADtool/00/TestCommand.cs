@@ -231,7 +231,8 @@ namespace HyCADTool
                   //  HyCommand.AnnotateAxes();
                    // HyCommand.AnnotateAxes11();
                     //HyCommand.TestDrawInCad();
-                    HyCommand.ShowPanel();
+                   // HyCommand.ShowPanel();
+                    HyCommand.DimPoly();
                     ed.WriteMessage("\n12\n");
                 });
             }
