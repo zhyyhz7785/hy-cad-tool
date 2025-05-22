@@ -2,7 +2,7 @@
 using Autodesk.AutoCAD.Geometry;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
         public static bool IsPointInsidePolyline(Polyline polyline, Point3d point)
         {

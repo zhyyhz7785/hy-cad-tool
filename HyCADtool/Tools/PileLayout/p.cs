@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
         // 主方法，集成所有步骤
         public static void GenerateHexagonsInAutoCAD()

@@ -11,7 +11,7 @@ using System.Linq;
 using Exception = Autodesk.AutoCAD.BoundaryRepresentation.Exception;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
        
         public static MLeader AddMleader(this Point3d[] points, double distance, string content)
@@ -188,7 +188,7 @@ namespace HyCADTool.Tools
             Database db = doc.Database;
             Editor ed = doc.Editor;
             List<Point3d> points = new List<Point3d>();
-            var plResult = HyTool.GetPolylineInfo("请选择一个需要标注多段线对象");
+            var plResult = Et.GetPolylineInfo("请选择一个需要标注多段线对象");
             if (plResult == null)
             {
                 return null;
@@ -223,7 +223,7 @@ namespace HyCADTool.Tools
             Database db = doc.Database;
             Editor ed = doc.Editor;
             List<Point3d> points = new List<Point3d>();
-            var plResult = HyTool.GetPolylineInfo("请选择一个需要标注多段线对象");
+            var plResult = Et.GetPolylineInfo("请选择一个需要标注多段线对象");
             if (plResult == null)
             {
                 return null;

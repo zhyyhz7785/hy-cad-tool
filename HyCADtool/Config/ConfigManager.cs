@@ -1,193 +1,248 @@
-﻿using Newtonsoft.Json;
+﻿using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.Colors;
+using Autodesk.AutoCAD.DatabaseServices;
+using HyCADTool.HelpClass;
+using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
+using System.Linq;
+using System.Text;
+
 namespace HyCADTool.Config
 {
-    // 根配置类，包含现有配置和预留扩展空间
-    public class RootConfig
+    public static class ConfigManager
     {
-        public PileConfigData PileConfigData { get; set; } = new PileConfigData();
-        public BaseConfigData BaseConfigData { get; set; } = new BaseConfigData(); // BaseConfigData 和 PileConfigData 平级
-    }
-    // PileConfigData 配置类
-    public class PileConfigData
-    {
-        public SectionConfig Section { get; set; } = new SectionConfig();
-        public DiameterOrEdgeConfig DiameterOrEdge { get; set; } = new DiameterOrEdgeConfig();
-        public ArrangementTypeConfig ArrangementType { get; set; } = new ArrangementTypeConfig();
-        public PileArrangeRateConfig PileArrangeRate { get; set; } = new PileArrangeRateConfig();
-        public MarginConfig Margin { get; set; } = new MarginConfig();
-        public MinPileCenterDistanceConfig MinPileCenterDistance { get; set; } = new MinPileCenterDistanceConfig();
-        public InputDisplacementRateConfig InputDisplacementRate { get; set; } = new InputDisplacementRateConfig();
-        public InputDistanceFromContourConfig InputDistanceFromContour { get; set; } = new InputDistanceFromContourConfig();
-    }
-    public class SectionConfig
-    {
-        [JsonProperty("default")]
-        public string Default { get; set; } = "Circle";
-        public List<string> Options { get; set; } = new List<string>(); // 空列表，依赖初始化
-    }
-    public class DiameterOrEdgeConfig
-    {
-        [JsonProperty("default")]
-        public double Default { get; set; } = 400.0;
-        public List<double> Range { get; set; } = new List<double>(); // 空列表，依赖初始化
-    }
-    public class ArrangementTypeConfig
-    {
-        [JsonProperty("default")]
-        public string Default { get; set; } = "Rectangle";
-        public List<string> Options { get; set; } = new List<string>(); // 空列表，依赖初始化
-    }
-    public class PileArrangeRateConfig
-    {
-        [JsonProperty("default")]
-        public double Default { get; set; } = 0.5;
-        public List<double> Range { get; set; } = new List<double>(); // 空列表，依赖初始化
-    }
-    public class MarginConfig
-    {
-        [JsonProperty("default")]
-        public MarginDefault Default { get; set; } = new MarginDefault();
-        public MarginRange Range { get; set; } = new MarginRange();
-    }
-    public class MarginDefault
-    {
-        public double Up { get; set; } = 400.0;
-        public double Down { get; set; } = 400.0;
-        public double Left { get; set; } = 400.0;
-        public double Right { get; set; } = 400.0;
-    }
-    public class MarginRange
-    {
-        public double Min { get; set; } = 100.0;
-        public double Max { get; set; } = 1000.0;
-    }
-    public class MinPileCenterDistanceConfig
-    {
-        [JsonProperty("default")]
-        public double Default { get; set; } = 1200.0;
-        public List<double> Range { get; set; } = new List<double>(); // 空列表，依赖初始化
-    }
-    public class InputDisplacementRateConfig
-    {
-        [JsonProperty("default")]
-        public double Default { get; set; } = 0.02;
-        public List<double> Range { get; set; } = new List<double>(); // 空列表，依赖初始化
-    }
-    public class InputDistanceFromContourConfig
-    {
-        [JsonProperty("default")]
-        public double Default { get; set; } = 400.0;
-        public List<double> Range { get; set; } = new List<double>(); // 空列表，依赖初始化
-    }
-    // 优化后的 ConfigManager，支持动态类型处理
-    public class ConfigManager<T> where T : class, new()
-    {
-        private readonly string _filePath;
-        private T _config;
-        private static readonly PropertyInfo[] RootConfigProperties = typeof(RootConfig).GetProperties(); // 缓存反射结果
-        public ConfigManager(string filePath)
+        private static readonly string FolderPath = @"E:\BaiduSyncdisk\Code\testResult";
+        private static readonly string ExCsvFile = Path.Combine(FolderPath, "0ExHyConfig.csv");
+        private static readonly string ConfigCsvFile = Path.Combine(FolderPath, "0HyConfig.csv");
+
+        public static void ExportConfigToCsv()
         {
-            _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
-            LoadConfig();
-        }
-        public T Config => _config;
-        public void LoadConfig()
-        {
-            if (File.Exists(_filePath))
+            Directory.CreateDirectory(FolderPath);
+            var sb = new StringBuilder();
+            sb.AppendLine("Type,Key,SubKey,V1,V2,V3,V4,V5,V6,V7,V8,V9,V10");
+            // BaseConfig
+            sb.AppendLine($"BaseConfig,Scale,,{BaseConfig.Scale}");
+            sb.AppendLine($"BaseConfig,ElevationLength,,{BaseConfig.ElevationLength}");
+
+            foreach (var layer in GetCurrentLayers())
             {
-                try
-                {
-                    string json = File.ReadAllText(_filePath);
-                    var root = JsonConvert.DeserializeObject<RootConfig>(json);
-                    _config = ExtractConfigFromRoot(root) ?? InitializeDefaultConfig();
-                }
-                catch (JsonException ex)
-                {
-                    Console.WriteLine($"Failed to load config: {ex.Message}");
-                    _config = InitializeDefaultConfig();
-                }
+                sb.AppendLine($"Layer,{layer.Name},Common,{layer.ColorIndex},{layer.LineType},{layer.LineWeight}");
             }
-            else
+
+            foreach (var style in GetCurrentTextStyles())
             {
-                _config = InitializeDefaultConfig();
-                SaveConfig();
+                sb.AppendLine($"TextStyle,{style.Name},Common,{style.FontFileName},{style.BigFontFileName},{style.TextSize},{style.XScale}");
             }
-        }
-        public void SaveConfig()
-        {
-            var root = new RootConfig();
-            AssignConfigToRoot(root, _config);
-            var settings = new JsonSerializerSettings
+
+            foreach (var dim in GetCurrentDimStyles())
             {
-                ObjectCreationHandling = ObjectCreationHandling.Replace // 替换现有集合，而不是追加
-            };
-            string json = JsonConvert.SerializeObject(root, Formatting.Indented, settings);
-            File.WriteAllText(_filePath, json);
+                sb.AppendLine($"DimStyle,{dim.Name},Common,{dim.TextStyleName},{dim.Dimtxt},{dim.Dimexo},{dim.Dimexe},{dim.Dimdec},{dim.Dimgap},{dim.Dimasz},{dim.Dimdle},{dim.Dimtdec}");
+            }
+
+            // Pile config
+            var pile = PileConfig.Instance;
+            sb.AppendLine($"Pile,Section,,{pile.Section}");
+            sb.AppendLine($"Pile,DiameterOrEdge,,{pile.DiameterOrEdge}");
+            sb.AppendLine($"Pile,ArrangementType,,{pile.ArrangementType}");
+            sb.AppendLine($"Pile,PileArrangeRate,,{pile.PileArrangeRate}");
+            sb.AppendLine($"Pile,Margin,,{pile.Margin.up},{pile.Margin.down},{pile.Margin.left},{pile.Margin.right}");
+            sb.AppendLine($"Pile,MinPileCenterDistance,,{pile.MinPileCenterDistance}");
+            sb.AppendLine($"Pile,InputDisplacementRate,,{pile.InputDisplacementRate}");
+            sb.AppendLine($"Pile,InputDistanceFromContour,,{pile.InputDistanceFromContour}");
+
+            File.WriteAllText(ExCsvFile, sb.ToString(), Encoding.UTF8);
         }
-        private T ExtractConfigFromRoot(RootConfig root)
+
+        public static void ImportConfigFromCsv(string typeFilter = null, string subKeyFilter = null)
         {
-            if (root == null) return null;
-            // 使用缓存的反射结果动态提取与 T 匹配的属性
-            foreach (var prop in RootConfigProperties)
+            Et.RegisterStandardLinetypes();
+            if (!File.Exists(ConfigCsvFile)) return;
+
+            using (var fs = new FileStream(ConfigCsvFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var reader = new StreamReader(fs, Encoding.UTF8))
             {
-                if (prop.PropertyType == typeof(T))
+                string line;
+                bool skipHeader = true;
+                while ((line = reader.ReadLine()) != null)
                 {
-                    return prop.GetValue(root) as T;
+                    if (skipHeader) { skipHeader = false; continue; }
+                    var parts = line.Split(',').Select(p => p.Trim()).ToArray();
+                    if (parts.Length < 4) continue;
+
+                    var type = parts[0];
+                    var key = parts[1];
+                    var subKey = parts.Length > 2 ? parts[2] : "";
+                    var v = parts.Skip(3).ToArray();
+
+                    if (!string.IsNullOrEmpty(typeFilter) && !string.Equals(type, typeFilter, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (!string.IsNullOrEmpty(subKeyFilter) && !string.Equals(subKey, subKeyFilter, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    switch (type)
+                    {
+                        case "Layer":
+                            if (short.TryParse(v[0], out var color) && Enum.TryParse(v[2], out LineWeight lw))
+                            {
+                                Et.CreateLayer(key, color, v[1], lw);
+                            }
+                            break;
+                        case "TextStyle":
+                            if (double.TryParse(v[2], out var size) && double.TryParse(v[3], out var xscale))
+                            {
+                                Et.CreateTextStyle(key, v[0], v[1], size, xscale);
+                            }
+                            break;
+                        case "Pile":
+                            var pile = PileConfig.Instance;
+                            switch (key)
+                            {
+                                case "Section": pile.Section = Enum.TryParse(v[0], out PileSectionType s) ? s : PileSectionType.Circle; break;
+                                case "DiameterOrEdge": if (double.TryParse(v[0], out var d)) pile.DiameterOrEdge = d; break;
+                                case "ArrangementType": pile.ArrangementType = Enum.TryParse(v[0], out PileArrangementType a) ? a : PileArrangementType.Rectangle; break;
+                                case "PileArrangeRate": if (double.TryParse(v[0], out var r)) pile.PileArrangeRate = r; break;
+                                case "Margin":
+                                    if (v.Length >= 4 && double.TryParse(v[0], out var up) && double.TryParse(v[1], out var down) &&
+                                        double.TryParse(v[2], out var left) && double.TryParse(v[3], out var right))
+                                        pile.Margin = (up, down, left, right);
+                                    break;
+                                case "MinPileCenterDistance": if (double.TryParse(v[0], out var m)) pile.MinPileCenterDistance = m; break;
+                                case "InputDisplacementRate": if (double.TryParse(v[0], out var dr)) pile.InputDisplacementRate = dr; break;
+                                case "InputDistanceFromContour": if (double.TryParse(v[0], out var c)) pile.InputDistanceFromContour = c; break;
+                            }
+                            break;
+                        case "BaseConfig":
+                            switch (key)
+                            {
+                                case "Scale": if (double.TryParse(v[0], out var s)) BaseConfig.Scale = s; break;
+                                case "ElevationLength": if (double.TryParse(v[0], out var el)) BaseConfig.ElevationLength = el; break;
+                            }
+                            break;
+                    }
                 }
             }
-            throw new InvalidOperationException($"No property in RootConfig matches type {typeof(T).Name}");
         }
-        private void AssignConfigToRoot(RootConfig root, T config)
+
+        public static void ImportAllFromCsv() => ImportConfigFromCsv();
+
+        private static List<LayerDefinition> GetCurrentLayers()
         {
-            // 使用缓存的反射结果动态赋值与 T 匹配的属性
-            foreach (var prop in RootConfigProperties)
+            var result = new List<LayerDefinition>();
+            var db = Application.DocumentManager.MdiActiveDocument.Database;
+            using (var tr = db.TransactionManager.StartTransaction())
             {
-                if (prop.PropertyType == typeof(T))
+                var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+                foreach (ObjectId id in lt)
                 {
-                    prop.SetValue(root, config);
-                    return;
+                    var ltr = (LayerTableRecord)tr.GetObject(id, OpenMode.ForRead);
+                    result.Add(new LayerDefinition
+                    {
+                        Name = ltr.Name,
+                        ColorIndex = ltr.Color.ColorIndex,
+                        LineType = GetLinetypeName(ltr),
+                        LineWeight = ltr.LineWeight
+                    });
                 }
+                tr.Commit();
             }
-            throw new InvalidOperationException($"No property in RootConfig matches type {typeof(T).Name}");
+            return result;
         }
-        private T InitializeDefaultConfig()
+
+        private static List<TextStyleDefinition> GetCurrentTextStyles()
         {
-            var config = new T();
-            if (config is PileConfigData pileConfig)
+            var result = new List<TextStyleDefinition>();
+            var db = Application.DocumentManager.MdiActiveDocument.Database;
+            using (var tr = db.TransactionManager.StartTransaction())
             {
-                pileConfig.Section.Options.AddRange(new[] { "Circle", "Square" });
-                pileConfig.DiameterOrEdge.Range.AddRange(new[] { 200.0, 1200.0 });
-                pileConfig.ArrangementType.Options.AddRange(new[] { "Rectangle", "Circular" });
-                pileConfig.PileArrangeRate.Range.AddRange(new[] { 0.0, 1.0 });
-                pileConfig.MinPileCenterDistance.Range.AddRange(new[] { 500.0, 5000.0 });
-                pileConfig.InputDisplacementRate.Range.AddRange(new[] { 0.01, 0.1 });
-                pileConfig.InputDistanceFromContour.Range.AddRange(new[] { 200.0, 1200.0 });
+                var table = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+                foreach (ObjectId id in table)
+                {
+                    var rec = (TextStyleTableRecord)tr.GetObject(id, OpenMode.ForRead);
+                    result.Add(new TextStyleDefinition
+                    {
+                        Name = rec.Name,
+                        FontFileName = rec.FileName,
+                        BigFontFileName = rec.BigFontFileName,
+                        TextSize = rec.TextSize,
+                        XScale = rec.XScale
+                    });
+                }
+                tr.Commit();
             }
-            else if (config is BaseConfigData baseConfig)
+            return result;
+        }
+
+        private static List<DimStyleDefinition> GetCurrentDimStyles()
+        {
+            var result = new List<DimStyleDefinition>();
+            var db = Application.DocumentManager.MdiActiveDocument.Database;
+            using (var tr = db.TransactionManager.StartTransaction())
             {
-                baseConfig.TextStyle.Name = $"0_Hy_{BaseConfigData.Scale}";
-                baseConfig.TextStyle.BigFontFileName = "hztxt.shx";
-                baseConfig.TextStyle.FontFileName = "tssdeng.shx";
-                baseConfig.TextStyle.TextSize = 2.5;
-                baseConfig.TextStyle.TextXScale = 0.7;
-                baseConfig.DimStyle.Name = $"0_Hy_{BaseConfigData.Scale}_Dim";
-                baseConfig.DimStyle.TextStyleName = $"0_Hy_{BaseConfigData.Scale}";
-                baseConfig.DimStyle.Dimtdec = 0;
-                baseConfig.DimStyle.Dimexo = 1.0;
-                baseConfig.DimStyle.Dimexe = 1.0;
-                baseConfig.DimStyle.Dimdle = 0.5;
-                baseConfig.DimStyle.Dimtxt = 2.5;
-                baseConfig.DimStyle.Dimgap = 1.0;
-                baseConfig.DimStyle.Dimasz = 1.0;
-                baseConfig.DimStyle.Dimdec = 0;
-                baseConfig.MLeaderStyle.Name = $"0_Hy_{BaseConfigData.Scale}_Mleader";
-                baseConfig.MLeaderStyle.TextStyleName = $"0_Hy_{BaseConfigData.Scale}";
+                var table = (DimStyleTable)tr.GetObject(db.DimStyleTableId, OpenMode.ForRead);
+                foreach (ObjectId id in table)
+                {
+                    var rec = (DimStyleTableRecord)tr.GetObject(id, OpenMode.ForRead);
+                    result.Add(new DimStyleDefinition
+                    {
+                        Name = rec.Name,
+                        TextStyleName = rec.Dimtxsty.GetObject(OpenMode.ForRead) is TextStyleTableRecord ts ? ts.Name : "",
+                        Dimtxt = rec.Dimtxt,
+                        Dimexo = rec.Dimexo,
+                        Dimexe = rec.Dimexe,
+                        Dimdec = rec.Dimdec,
+                        Dimgap = rec.Dimgap,
+                        Dimasz = rec.Dimasz,
+                        Dimdle = rec.Dimdle,
+                        Dimtdec = rec.Dimtdec
+                    });
+                }
+                tr.Commit();
             }
-            return config;
+            return result;
+        }
+
+        private static string GetLinetypeName(LayerTableRecord layer)
+        {
+            if (!layer.LinetypeObjectId.IsValid) return "Continuous";
+            using (var tr = layer.Database.TransactionManager.StartTransaction())
+            {
+                var ltr = (LinetypeTableRecord)tr.GetObject(layer.LinetypeObjectId, OpenMode.ForRead);
+                tr.Commit();
+                return ltr.Name;
+            }
+        }
+
+        private class LayerDefinition
+        {
+            public string Name { get; set; }
+            public short ColorIndex { get; set; }
+            public string LineType { get; set; }
+            public LineWeight LineWeight { get; set; }
+        }
+
+        private class TextStyleDefinition
+        {
+            public string Name { get; set; }
+            public string FontFileName { get; set; }
+            public string BigFontFileName { get; set; }
+            public double TextSize { get; set; }
+            public double XScale { get; set; }
+        }
+
+        private class DimStyleDefinition
+        {
+            public string Name { get; set; }
+            public string TextStyleName { get; set; }
+            public double Dimtxt { get; set; }
+            public double Dimexo { get; set; }
+            public double Dimexe { get; set; }
+            public int Dimdec { get; set; }
+            public double Dimgap { get; set; }
+            public double Dimasz { get; set; }
+            public double Dimdle { get; set; }
+            public int Dimtdec { get; set; }
         }
     }
 }

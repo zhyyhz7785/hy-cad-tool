@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Tools;
 using System;
+using HyCADTool.Config;
 
 [assembly: CommandClass(typeof(HyCADTool.MainPlugin))]
 
@@ -70,17 +71,8 @@ namespace HyCADTool
         {
             try
             {
-                using (var tr = Application.DocumentManager.MdiActiveDocument.Database.TransactionManager.StartTransaction())
-                {
-                    LayerTable lt = (LayerTable)tr.GetObject(
-                        Application.DocumentManager.MdiActiveDocument.Database.LayerTableId, OpenMode.ForRead);
-
-                    //CreateLayerIfNotExist(lt, tr, "00_hy_0公共_默认", 7);
-                    //CreateLayerIfNotExist(lt, tr, "00_hy_4公共_表格", 7);
-                    //CreateLayerIfNotExist(lt, tr, "00_hy_3公共_标注3_引线", 6);
-
-                    tr.Commit();
-                }
+                BaseConfig.Scale = 30;
+                BaseConfig.InitializeStyle();
             }
             catch (System.Exception ex)
             {

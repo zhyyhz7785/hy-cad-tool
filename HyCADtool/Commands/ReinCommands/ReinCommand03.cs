@@ -10,8 +10,8 @@ namespace HyCADTool.Commands
         ///截断钢筋
         public static void MleaderRein()
         {
-            HyTool.SetCurrentLayer("00_hy_3公共_标注3_引线");
-            var psL = HyTool.GetReinPoints();
+            Et.SetCurrentLayer("00_hy_3公共_标注3_引线");
+            var psL = Et.GetReinPoints();
             if (psL == null)
             {
                 return;
@@ -31,8 +31,8 @@ namespace HyCADTool.Commands
         ///截断钢筋
         public static void MleaderReinOne()
         {
-            HyTool.SetCurrentLayer("00_hy_3公共_标注3_引线");
-            var psL = HyTool.GetReinPoints();
+            Et.SetCurrentLayer("00_hy_3公共_标注3_引线");
+            var psL = Et.GetReinPoints();
             if (psL == null)
             {
                 return;
@@ -49,8 +49,8 @@ namespace HyCADTool.Commands
         ///截断钢筋
         public static void MleaderReinTwo()
         {
-            HyTool.SetCurrentLayer("00_hy_3公共_标注3_引线");
-            var psL = HyTool.GetReinPointsSix();
+            Et.SetCurrentLayer("00_hy_3公共_标注3_引线");
+            var psL = Et.GetReinPointsSix();
             if (psL == null)
             {
                 return;

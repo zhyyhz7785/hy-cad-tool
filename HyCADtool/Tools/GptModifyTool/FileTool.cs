@@ -3,7 +3,7 @@ using System;
 using System.IO;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
         // 获取保存文件路径
         public static string GetSaveFilePath(string defaultFileName = null)

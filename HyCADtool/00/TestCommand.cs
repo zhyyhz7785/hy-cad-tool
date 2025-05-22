@@ -233,9 +233,9 @@ namespace HyCADTool
                     //HyCommand.TestDrawInCad();
                     // HyCommand.ShowPanel();
                     //  HyCommand.DimPoly();
-                    LayerConfigManagerCsv.ExportConfigToCsv();
+                    // ConfigManager.ExportConfigToCsv();
                     //LayerConfigManagerCsv.ImportConfigFromCsv("TextStyle","Common");
-                   
+                    HyCommand.ShowPanel();
                    //HyTool.RegisterStandardLinetypes();
                     ed.WriteMessage("\n12\n");
                 });

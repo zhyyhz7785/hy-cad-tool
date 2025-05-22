@@ -12,8 +12,13 @@ using Exception = Autodesk.AutoCAD.BoundaryRepresentation.Exception;
 
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
+        public static class MLeaderStyleConfig
+        {
+            public static string Name => $"0_Hy_{BaseConfig.Scale}_Mleader";
+            public static string TextStyleName => $"0_Hy_{BaseConfig.Scale}";
+        }
         /// <summary>
         /// 创建或更新引线样式并设置为当前。
         /// </summary>
@@ -51,7 +56,7 @@ namespace HyCADTool.Tools
                         ed.WriteMessage($"\n正在创建引线样式 '{styleName}'。");
                     }
 
-                    SetMleaderStyle(mle, HyTool.TextStyleConfig.Name, BaseConfig.Scale);
+                    SetMleaderStyle(mle, Et.TextStyleConfig.Name, BaseConfig.Scale);
                     db.MLeaderstyle = mleId;
                     ed.WriteMessage($"\n引线样式 '{styleName}' 已设置为当前。");
                     tr.Commit();
@@ -83,7 +88,7 @@ namespace HyCADTool.Tools
             var textStyleRecord = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, textStyleName);
 
             mLeaderStyle.TextStyleId = textStyleRecord.Id;
-            mLeaderStyle.TextHeight = HyTool.TextStyleConfig.TextSize * scale;
+            mLeaderStyle.TextHeight = Et.TextStyleConfig.TextSize * scale;
             mLeaderStyle.TextColor = Color.FromColorIndex(ColorMethod.ByColor, 7);
             mLeaderStyle.TextAttachmentType = TextAttachmentType.AttachmentBottomLine;
             mLeaderStyle.ArrowSize = 2 * scale;

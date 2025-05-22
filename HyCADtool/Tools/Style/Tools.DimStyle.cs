@@ -5,8 +5,21 @@ using HyCADTool.Config;
 using System;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
+        public static class DimStyleConfig
+        {
+            public static string Name => $"0_Hy_{BaseConfig.Scale}_Dim";
+            public static string TextStyleName => $"0_Hy_{BaseConfig.Scale}";
+            public static int Dimtdec { get; } = 0;
+            public static double Dimexo { get; } = 1.0;
+            public static double Dimexe { get; } = 1.0;
+            public static double Dimdle { get; } = 0.5;
+            public static double Dimtxt { get; } = 2.5;
+            public static double Dimgap { get; } = 1.0;
+            public static double Dimasz { get; } = 1.0;
+            public static int Dimdec { get; } = 0;
+        }
         /// <summary>
         /// 创建或更新尺寸样式。
         /// </summary>
@@ -21,7 +34,7 @@ namespace HyCADTool.Tools
             using (DocumentLock docLock = doc.LockDocument())
             {
                 // 获取指定名称的文本样式的 ObjectId
-                var textId = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, HyTool.TextStyleConfig.Name);
+                var textId = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, Et.TextStyleConfig.Name);
                 // 创建或更新尺寸样式
                 dimId = CreateSymbolRecord<DimStyleTable, DimStyleTableRecord>(db.DimStyleTableId, name, s =>
                 {

@@ -213,18 +213,45 @@ namespace HyCADTool.ViewModels
             }
         }
         private bool CanDrawPiles() => Scale > 0 && DiameterOrEdge > 0;
+        //private void ResetToDefaultValues()
+        //{
+        //    Scale = 40.0;
+        //    DiameterOrEdge = 400.0;
+        //    MinPileCenterDistance = 1200.0;
+        //    InputDisplacementRate = 0.02;
+        //    PileArrangeRate = 0.5;
+        //    InputDistanceFromContour = 400.0;
+        //    MarginUp = MarginDown = MarginLeft = MarginRight = 400.0;
+        //    IsRectangular = true;
+        //    IsCirclePile = true;
+        //}
         private void ResetToDefaultValues()
         {
-            Scale = 40.0;
-            DiameterOrEdge = 400.0;
-            MinPileCenterDistance = 1200.0;
-            InputDisplacementRate = 0.02;
-            PileArrangeRate = 0.5;
-            InputDistanceFromContour = 400.0;
-            MarginUp = MarginDown = MarginLeft = MarginRight = 400.0;
-            IsRectangular = true;
-            IsCirclePile = true;
+            // 从 CSV 中导入配置
+            ConfigManager.ImportConfigFromCsv("Pile");
+
+            // 同步 PileConfig.Instance 中的值到 ViewModel
+            var config = PileConfig.Instance;
+
+            Scale = BaseConfig.Scale;
+            DiameterOrEdge = config.DiameterOrEdge;
+            MinPileCenterDistance = config.MinPileCenterDistance;
+            InputDisplacementRate = config.InputDisplacementRate;
+            PileArrangeRate = config.PileArrangeRate;
+            InputDistanceFromContour = config.InputDistanceFromContour;
+
+            MarginUp = config.Margin.up;
+            MarginDown = config.Margin.down;
+            MarginLeft = config.Margin.left;
+            MarginRight = config.Margin.right;
+
+            IsRectangular = config.ArrangementType == PileArrangementType.Rectangle;
+            IsCircular = config.ArrangementType == PileArrangementType.Circular;
+
+            IsCirclePile = config.Section == PileSectionType.Circle;
+            IsRectPile = config.Section == PileSectionType.Square;
         }
+
         private void SyncMargins(double value)
         {
             MarginUp = MarginDown = MarginLeft = MarginRight = value;

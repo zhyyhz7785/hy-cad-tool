@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
         // 通用实体处理方法，在同一个事务和文档锁定下处理每个实体
         public static void ProcessEntities<T>(this IEnumerable<T> entities, Action<T, Transaction> action) where T : Entity

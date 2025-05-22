@@ -3,8 +3,28 @@ using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Config;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
+        public static class TableStyleConfig
+        {
+            public static string Name => $"0_Hy_{BaseConfig.Scale}_Table";
+            public static string TextStyleName => Et.TextStyleConfig.Name;
+            // 表格行设置
+            public static double TitleRowHeight { get; } = 8;   // 标题行高度
+            public static double DataRowHeight { get; } = 6;     // 数据行高度
+            // 颜色索引 (ACI颜色)
+            public static int TitleRowColorIndex { get; } = 1;   // 红色标题行
+            public static int DataRowColorIndex { get; } = 7;   // 白色数据行
+            // 对齐方式
+            public static CellAlignment TitleHorizontalAlignment { get; } = CellAlignment.MiddleCenter;
+            public static CellAlignment DataHorizontalAlignment { get; } = CellAlignment.MiddleLeft;
+            // 边距设置
+            public static double CellHorizontalMargin { get; } = 0.5;
+            public static double CellVerticalMargin { get; } = 0.3;
+            // 网格线设置
+            public static double GridLineWeight { get; } = 0.15; // 线宽(mm)
+            public static int GridColorIndex { get; } = 7;       // 白色网格线
+        }
         public static ObjectId CreateTableStyle(string styleName)
         {
             ObjectId styleId = ObjectId.Null;
@@ -44,8 +64,8 @@ namespace HyCADTool.Tools
                 ObjectId textStyleId = BaseConfig.TextStyleId.IsValid ? BaseConfig.TextStyleId : db.Textstyle;
                 style.SetTextStyle(textStyleId, (int)(RowType.TitleRow | RowType.HeaderRow | RowType.DataRow));
                 // 设置边距（乘以缩放系数）
-                style.HorizontalCellMargin = BaseConfig.TableStyleConfig.CellHorizontalMargin * BaseConfig.Scale;
-                style.VerticalCellMargin = BaseConfig.TableStyleConfig.CellVerticalMargin * BaseConfig.Scale;
+                style.HorizontalCellMargin = Et.TableStyleConfig.CellHorizontalMargin * BaseConfig.Scale;
+                style.VerticalCellMargin = Et.TableStyleConfig.CellVerticalMargin * BaseConfig.Scale;
                 // 设置文本高度
                 style.SetTextHeight(1 * BaseConfig.Scale, (int)RowType.TitleRow);    // 例如 250
                 style.SetTextHeight(1 * BaseConfig.Scale, (int)RowType.HeaderRow);   // 例如 175

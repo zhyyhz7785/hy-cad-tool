@@ -7,7 +7,7 @@ using HyCADTool.Models.Cluster;
 using HyCADTool.Tools;
 using System.Collections.Generic;
 using System.Linq;
-using static HyCADTool.Tools.HyTool;
+using static HyCADTool.Tools.Et;
 
 namespace HyCADTool.Drawing
 {

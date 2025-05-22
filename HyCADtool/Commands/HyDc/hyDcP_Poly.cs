@@ -18,7 +18,7 @@ namespace HyCADTool.Commands
             Database db = doc.Database;
             Editor ed = doc.Editor;
             double d = 100.0; // 默认厚度 100
-            var layerId = HyTool.CreateLayer("00_hy_垫层", 7); // 假设 EtGpt 已定义
+            var layerId = Et.CreateLayer("00_hy_垫层", 7); // 假设 EtGpt 已定义
             try
             {
                 // 提示用户选择多条多段线

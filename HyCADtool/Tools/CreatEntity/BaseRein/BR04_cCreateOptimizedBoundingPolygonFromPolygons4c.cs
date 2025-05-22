@@ -20,7 +20,7 @@ namespace HyCADTool
                 using (Transaction trans = db.TransactionManager.StartTransaction())
                 {
                     // 创建图层
-                    HyTool.SetCurrentLayer(layerName);
+                    Et.SetCurrentLayer(layerName);
                     foreach (var group in groups)
                     {
                         // 获取每组小多边形的最小和最大坐标

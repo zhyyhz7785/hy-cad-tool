@@ -89,11 +89,11 @@ namespace HyCADTool
                             RotatedDimension dim;
                             if (direction == IntersectionsDirection.LeftRight)
                             {
-                                dim = HyTool.GetDimByTwoPoints(startPt, endPt, dimDistance * scale, HyTool.DimensionFor.ForRight, false);
+                                dim = Et.GetDimByTwoPoints(startPt, endPt, dimDistance * scale, Et.DimensionFor.ForRight, false);
                             }
                             else
                             {
-                                dim = HyTool.GetDimByTwoPoints(startPt, endPt, dimDistance * scale, HyTool.DimensionFor.ForDown, false);
+                                dim = Et.GetDimByTwoPoints(startPt, endPt, dimDistance * scale, Et.DimensionFor.ForDown, false);
                             }
                             btr.AppendEntity(dim);
                             tr.AddNewlyCreatedDBObject(dim, true);
@@ -142,7 +142,7 @@ namespace HyCADTool
                             Point3d endPt = intersectionPoints[i + 1];
                             // 根据标注方向创建尺寸标注
                             RotatedDimension dim;
-                            dim = HyTool.GetDimByTwoPoints(startPt, endPt, dimDistance * scale, HyTool.DimensionFor.ForDown, false);
+                            dim = Et.GetDimByTwoPoints(startPt, endPt, dimDistance * scale, Et.DimensionFor.ForDown, false);
                             btr.AppendEntity(dim);
                             tr.AddNewlyCreatedDBObject(dim, true);
                         }

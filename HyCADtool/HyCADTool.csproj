@@ -60,7 +60,9 @@
     <Compile Include="Commands\DimPointCommands - 复制 - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制.cs" />
-    <Compile Include="Config\MainPlugin - 复制 - 复制 - 复制.cs" />
+    <Compile Include="Config\BaseConfig.cs" />
+    <Compile Include="Config\MainPlugin.cs" />
+    <Compile Include="HelpClass\Pile\PileConfig - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制 - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制.cs" />
@@ -97,7 +99,6 @@
     <Compile Include="Commands\Hyab_AnchorBolt\hyabR_RectSection.cs" />
     <Compile Include="Commands\HyDc\hyDcP_Poly.cs" />
     <Compile Include="Commands\HyDc\HyDcL_Line.cs" />
-    <Compile Include="Config\PointsClusterConfig.cs" />
     <Compile Include="GeometryUtils\AxisIntersectionMapper.cs" />
     <Compile Include="Models\Cluster\04DrawInCad.cs" />
     <Compile Include="Models\Cluster\Cluster - 复制.cs" />
@@ -136,7 +137,6 @@
     <Compile Include="Commands\Hyab_AnchorBolt\hyabCD_ChangeDisPlay.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabCT_CreateAnchorBoltTable.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyab.cs" />
-    <Compile Include="Config\BaseConfig - 复制 - 复制.cs" />
     <Compile Include="Commands\BaseReinCommands\BR05allCommand.cs" />
     <Compile Include="Commands\BaseReinCommands\BR06Command.cs" />
     <Compile Include="Commands\BaseReinCommands\BR05Command .cs" />
@@ -156,10 +156,6 @@
     <Compile Include="Commands\Dcel.cs" />
     <Compile Include="Commands\SelectReinText.cs" />
     <Compile Include="Commands\hyExport\hydl_DrawLinesOnEachLayer.cs" />
-    <Compile Include="Config\BaseConfigData.cs" />
-    <Compile Include="Config\ConfigManager.cs" />
-    <Compile Include="Config\LayerConfigManager.cs" />
-    <Compile Include="Config\MainPlugin - 复制 - 复制.cs" />
     <Compile Include="Converter\Clipper2Converter - 复制.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt - Class - 复制.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt - Class.cs" />
@@ -289,8 +285,8 @@
     <Compile Include="Tools\GptModifyTool\Intersection.cs" />
     <Compile Include="Tools\GptModifyTool\MleaderTool.cs" />
     <Compile Include="Tools\GptModifyTool\ProcessEntities.cs" />
-    <Compile Include="Tools\GptModifyTool\TableStyle.cs" />
-    <Compile Include="Tools\Layer\LayerConfigManager.csv - 复制.cs" />
+    <Compile Include="Tools\Style\TableStyle.cs" />
+    <Compile Include="Config\ConfigManager.cs" />
     <Compile Include="Tools\Style\Tools.MleaderStyle.cs" />
     <Compile Include="Tools\Style\Tools.TextStyle.cs" />
     <Compile Include="Tools\GptModifyTool\ToSpaceTool - 复制.cs" />
@@ -403,7 +399,6 @@
   <ItemGroup>
     <None Include="01%28平面标注尺寸%29\Readme.md" />
     <None Include="Annotation\ReadMe.md" />
-    <None Include="Config\config.json" />
     <None Include="Models\Axis\AxisReadme.md" />
   </ItemGroup>
   <ItemGroup>

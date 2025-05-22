@@ -7,7 +7,7 @@ using System;
 
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {       
         public static ObjectId CreateLayer(string layerName, short colorIndex = 7, Database db = null, Editor ed = null)
         {
@@ -55,7 +55,7 @@ namespace HyCADTool.Tools
                     {
                         Name = layerName,
                         Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex),
-                        LinetypeObjectId = HyTool.GetOrCreateLinetypeId(db, lineType, tr),
+                        LinetypeObjectId = Et.GetOrCreateLinetypeId(db, lineType, tr),
                         LineWeight = lineWeight
                     };
                     lt.Add(ltr);

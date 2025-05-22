@@ -30,7 +30,7 @@ namespace HyCADTool
                     Polyline originalPl = tr.GetObject(plId, OpenMode.ForWrite) as Polyline;
                     // 2. 找到包含选择点的段索引
                     Point3d closestPt = originalPl.GetClosestPointTo(selPt, false);
-                    int idx = HyTool.FindSegmentIndex(originalPl, closestPt);
+                    int idx = Et.FindSegmentIndex(originalPl, closestPt);
                     if (idx == -1)
                     {
                         ed.WriteMessage("\n未能找到包含最近点的段。");

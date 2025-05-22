@@ -14,7 +14,7 @@ namespace HyCADTool.Commands
         public static void DimPoly()
         {
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
-            var poly = HyTool.SelectAEntity<Polyline>(db);
+            var poly = Et.SelectAEntity<Polyline>(db);
             DimensionForReinforcement.GenerateDimension(poly);
         }
         [CommandMethod("ddss")]
@@ -24,7 +24,7 @@ namespace HyCADTool.Commands
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
             var filter = AcTv.Polyline.Getfilter();
-            var polyIds = HyTool.SelectWithFilter(filter, doc, ed);
+            var polyIds = Et.SelectWithFilter(filter, doc, ed);
             if (polyIds == null || polyIds.Length == 0)
             {
                 ed.WriteMessage("\nSelection canceled or no polylines selected. Exiting.\n");

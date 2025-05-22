@@ -8,7 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 namespace HyCADTool.Tools
 {
-    public static partial class HyTool
+    public static partial class Et
     {
         public static Dictionary<ObjectId, DBObject> SelectToDic(SelectionFilter filter, string message)
         {
