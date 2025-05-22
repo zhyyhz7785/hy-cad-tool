@@ -43,20 +43,13 @@ namespace HyCADTool.Config
         public static void InitializeStyle()
         {
             // 注意：此方法应由 ReinPanel 或 Reinforcement 在需要时调用
-            TextStyleId = HyTool.CreateTextStyle(TextStyleConfig.Name);
+            TextStyleId = HyTool.CreateTextStyle(HyTool.TextStyleConfig.Name);
             DimStyleID = HyTool.CreateDimStyle(DimStyleConfig.Name);
             MleaderStyleId = HyTool.CreateMLeaderStyle(MLeaderStyleConfig.Name);
             //TableStyleId = EtGpt.CreateTableStyle(TableStyleConfig.Name);
             LayerConfigManager.ImportLayersFromMarkdown();
         }
-        public static class TextStyleConfig
-        {
-            public static string Name => $"0_Hy_{BaseConfig.Scale}";
-            public static string BigFontFileName { get; } = "hztxt.shx";
-            public static string FontFileName { get; } = "tssdeng.shx";
-            public static double TextSize { get; } = 2.5;
-            public static double TextXScale { get; } = 0.7;
-        }
+      
         public static class DimStyleConfig
         {
             public static string Name => $"0_Hy_{BaseConfig.Scale}_Dim";
@@ -78,7 +71,7 @@ namespace HyCADTool.Config
         public static class TableStyleConfig
         {
             public static string Name => $"0_Hy_{BaseConfig.Scale}_Table";
-            public static string TextStyleName => TextStyleConfig.Name;
+            public static string TextStyleName => HyTool. TextStyleConfig.Name;
             // 表格行设置
             public static double TitleRowHeight { get; } = 8;   // 标题行高度
             public static double DataRowHeight { get; } = 6;     // 数据行高度

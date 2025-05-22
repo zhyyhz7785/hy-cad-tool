@@ -11,8 +11,7 @@ namespace HyCADTool.Tools
         /// <returns>转换后的 Point3d</returns>
         public static Point3d ConvertPoint2dTo3d(this Point2d point2d)
         {
-            return new Point3d(point2d.X, point2d.Y, 0);
-            var a = new Point3d();     
+            return new Point3d(point2d.X, point2d.Y, 0);           
             
         }
         /// <summary>

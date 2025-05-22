@@ -60,6 +60,7 @@
     <Compile Include="Commands\DimPointCommands - 复制 - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制.cs" />
+    <Compile Include="Config\MainPlugin - 复制 - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制 - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制.cs" />
@@ -159,7 +160,6 @@
     <Compile Include="Config\ConfigManager.cs" />
     <Compile Include="Config\LayerConfigManager.cs" />
     <Compile Include="Config\MainPlugin - 复制 - 复制.cs" />
-    <Compile Include="Config\MainPlugin - 复制.cs" />
     <Compile Include="Converter\Clipper2Converter - 复制.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt - Class - 复制.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt - Class.cs" />
@@ -222,7 +222,6 @@
     <Compile Include="Interfaces\IAreaFactory.cs" />
     <Compile Include="Interfaces\ICadService.cs.cs" />
     <Compile Include="Interfaces\IConfigService.cs" />
-    <Compile Include="Config\MainPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AreaFactory.cs" />
     <Compile Include="Services\AutoCadService - 复制.cs" />
@@ -291,10 +290,13 @@
     <Compile Include="Tools\GptModifyTool\MleaderTool.cs" />
     <Compile Include="Tools\GptModifyTool\ProcessEntities.cs" />
     <Compile Include="Tools\GptModifyTool\TableStyle.cs" />
-    <Compile Include="Tools\GptModifyTool\TextTool.cs" />
+    <Compile Include="Tools\Layer\LayerConfigManager.csv - 复制.cs" />
+    <Compile Include="Tools\Style\Tools.MleaderStyle.cs" />
+    <Compile Include="Tools\Style\Tools.TextStyle.cs" />
     <Compile Include="Tools\GptModifyTool\ToSpaceTool - 复制.cs" />
     <Compile Include="Tools\input\GetPoly.cs" />
     <Compile Include="Tools\InsideOrOutside\IsPointInsidePolyline.cs" />
+    <Compile Include="Tools\Layer\Tools.Layer.cs" />
     <Compile Include="Tools\PileLayout\HelpFunGird.cs" />
     <Compile Include="Tools\PileLayout\HelpFunVoronoi.cs" />
     <Compile Include="Tools\PileLayout\a.cs" />
@@ -309,6 +311,7 @@
     <Compile Include="Tools\PileLayout\Grid.cs" />
     <Compile Include="Tools\SelectTool\NewSelectFunction - 复制.cs" />
     <Compile Include="Tools\SelectTool\SelectDic.cs" />
+    <Compile Include="Tools\Style\Tools.LineType.cs" />
     <Compile Include="Tools\TransactionBatchProcessor.cs" />
     <Compile Include="Tools\template.cs" />
     <Compile Include="Tools\Envelope\Envelope.cs" />
@@ -317,12 +320,10 @@
     <Compile Include="Tools\GptModifyTool\ChangePosition.cs" />
     <Compile Include="Tools\GptModifyTool\ComparerTool.cs" />
     <Compile Include="Tools\GptModifyTool\CreatSolid.cs" />
-    <Compile Include="Tools\GptModifyTool\DimensionTool.cs" />
-    <Compile Include="Tools\GptModifyTool\DimTool.cs" />
+    <Compile Include="Tools\Style\Tools.DimStyle.cs" />
     <Compile Include="Tools\GptModifyTool\FileTool.cs" />
     <Compile Include="Tools\GptModifyTool\GeneralTool.cs" />
     <Compile Include="Tools\GptModifyTool\LayerPropertiesExport.cs" />
-    <Compile Include="Tools\GptModifyTool\LayerTool.cs" />
     <Compile Include="Tools\GptModifyTool\LineTool.cs" />
     <Compile Include="Tools\GptModifyTool\PointTool.cs" />
     <Compile Include="Tools\GptModifyTool\PolyTool.cs" />
@@ -407,7 +408,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Tools\Cluster\" />
-    <Folder Include="Tools\Style\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

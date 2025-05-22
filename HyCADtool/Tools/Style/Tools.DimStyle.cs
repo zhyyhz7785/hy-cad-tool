@@ -21,7 +21,7 @@ namespace HyCADTool.Tools
             using (DocumentLock docLock = doc.LockDocument())
             {
                 // 获取指定名称的文本样式的 ObjectId
-                var textId = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, BaseConfig.TextStyleConfig.Name);
+                var textId = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, HyTool.TextStyleConfig.Name);
                 // 创建或更新尺寸样式
                 dimId = CreateSymbolRecord<DimStyleTable, DimStyleTableRecord>(db.DimStyleTableId, name, s =>
                 {

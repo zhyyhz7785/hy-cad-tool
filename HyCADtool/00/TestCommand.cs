@@ -224,15 +224,19 @@ namespace HyCADTool
                     // HyCommand.CreateDCELPolylinesFromLines();
                     // HyCommand.DrawRaftThicknessText();
                     //HyCommand.CreateViewportsFromModelBounds();
-                   // PointClusterHelper.AnnotateClustersTest();
+                    // PointClusterHelper.AnnotateClustersTest();
                     //PointClusterHelper.GenerateBoltDimensions();
                     //HyCommand.DrawDimensionInputPoints();
                     //HyCommand.TestAxisRegions();
-                  //  HyCommand.AnnotateAxes();
-                   // HyCommand.AnnotateAxes11();
+                    //  HyCommand.AnnotateAxes();
+                    // HyCommand.AnnotateAxes11();
                     //HyCommand.TestDrawInCad();
-                   // HyCommand.ShowPanel();
-                    HyCommand.DimPoly();
+                    // HyCommand.ShowPanel();
+                    //  HyCommand.DimPoly();
+                    LayerConfigManagerCsv.ExportConfigToCsv();
+                    //LayerConfigManagerCsv.ImportConfigFromCsv("TextStyle","Common");
+                   
+                   //HyTool.RegisterStandardLinetypes();
                     ed.WriteMessage("\n12\n");
                 });
             }

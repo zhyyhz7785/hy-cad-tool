@@ -113,7 +113,7 @@ namespace HyCADTool
                 ("00_hy_表格_索引", 7) // 绿色                
             );
             BaseConfig.Scale = Scale;
-            HyTool.CreateTextStyle(BaseConfig.TextStyleConfig.Name);
+            HyTool.CreateTextStyle(HyTool.TextStyleConfig.Name);
             HyTool.CreateDimStyle(BaseConfig.DimStyleConfig.Name);
             HyTool.CreateMLeaderStyle(BaseConfig.MLeaderStyleConfig.Name);
         }
