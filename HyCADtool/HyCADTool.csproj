@@ -63,6 +63,7 @@
     <Compile Include="Config\BaseConfig.cs" />
     <Compile Include="Config\MainPlugin.cs" />
     <Compile Include="HelpClass\Pile\PileConfig - 复制.cs" />
+    <Compile Include="Interfaces\IEntityFilter.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制 - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制 - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas - 复制.cs" />
@@ -160,7 +161,8 @@
     <Compile Include="HelpClass\Axis\AnchorBolt - Class - 复制.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt - Class.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt.cs" />
-    <Compile Include="HelpClass\CAD\AcTv.cs" />
+    <Compile Include="Tools\SelectTool\FilterManager.cs" />
+    <Compile Include="Tools\SelectTool\AcTv.cs" />
     <Compile Include="HelpClass\DCEL\DCEL.cs" />
     <Compile Include="HelpClass\DCEL\DcelDraw.cs" />
     <Compile Include="HelpClass\DCEL\DCELFactory.cs" />
@@ -285,7 +287,7 @@
     <Compile Include="Tools\GptModifyTool\Intersection.cs" />
     <Compile Include="Tools\GptModifyTool\MleaderTool.cs" />
     <Compile Include="Tools\GptModifyTool\ProcessEntities.cs" />
-    <Compile Include="Tools\Style\TableStyle.cs" />
+    <Compile Include="Tools\Style\Tools.TableStyle.cs" />
     <Compile Include="Config\ConfigManager.cs" />
     <Compile Include="Tools\Style\Tools.MleaderStyle.cs" />
     <Compile Include="Tools\Style\Tools.TextStyle.cs" />
@@ -305,11 +307,7 @@
     <Compile Include="Tools\PileLayout\Grid - 复制 - 复制.cs" />
     <Compile Include="Tools\PileLayout\Quadtree.cs" />
     <Compile Include="Tools\PileLayout\Grid.cs" />
-    <Compile Include="Tools\SelectTool\NewSelectFunction - 复制.cs" />
-    <Compile Include="Tools\SelectTool\SelectDic.cs" />
     <Compile Include="Tools\Style\Tools.LineType.cs" />
-    <Compile Include="Tools\TransactionBatchProcessor.cs" />
-    <Compile Include="Tools\template.cs" />
     <Compile Include="Tools\Envelope\Envelope.cs" />
     <Compile Include="Tools\GptModifyTool\DeleteByObjectIDs.cs" />
     <Compile Include="Tools\GptModifyTool\ChangeEntityProperty.cs" />
@@ -327,6 +325,7 @@
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
     <Compile Include="Tools\SelectTool\SelectTrue.cs" />
+    <Compile Include="ViewModels\FilterPanelViewModel.cs" />
     <Compile Include="ViewModels\ClusterPanelViewModel.cs" />
     <Compile Include="ViewModels\PilePanelViewModel.cs" />
     <Compile Include="Views\BaseReinPanel.xaml.cs">
@@ -335,8 +334,8 @@
     <Compile Include="Views\ClusterPanel.xaml.cs">
       <DependentUpon>ClusterPanel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\FilterPanel.xaml.cs">
-      <DependentUpon>FilterPanel.xaml</DependentUpon>
+    <Compile Include="Views\FilterPanel - 复制.xaml.cs">
+      <DependentUpon>FilterPanel - 复制.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\IntEqualsConverter.cs" />
     <Compile Include="Views\InverseBooleanConverter .cs" />
@@ -382,7 +381,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\FilterPanel.xaml">
+    <Page Include="Views\FilterPanel - 复制.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

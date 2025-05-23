@@ -61,36 +61,7 @@ namespace HyCADTool.Tools
                     return null;
                 }
             }
-        }
-        //public static ObjectId[] SelectWithFilter(this SelectionFilter filter)
-        //{
-        //    // 获取上一步选择的图形类型              
-        //    Document doc = Application.DocumentManager.MdiActiveDocument;
-        //    Editor ed = doc.Editor;
-        //    // 清空预先选择集
-        //    ed.SetImpliedSelection(new ObjectId[0]);
-        //    // 创建PromptSelectionOptions对象，用于设置选择提示
-        //    PromptSelectionOptions opt = new PromptSelectionOptions();
-        //    opt.MessageForAdding = $"\n请选择要过滤图形对象:";
-        //    // 使用选择过滤器获取选择集
-        //    PromptSelectionResult res = ed.GetSelection(opt, filter);
-        //    // 检查选择结果状态
-        //    if (res.Status == PromptStatus.OK)
-        //    {
-        //        // 输出选择的对象数量
-        //        ed.WriteMessage($"选中了 {res.Value.Count} 个满足过滤条件的图形对象。\n");
-        //        // 获取当前的选择集
-        //        SelectionSet ss = res.Value;
-        //        // 将选择集设置为当前选择集，高亮显示图形对象
-        //        ed.SetImpliedSelection(ss);
-        //        return ss.GetObjectIds() ;
-        //    }
-        //    else
-        //    {
-        //        ed.WriteMessage("未能选中任何对象。\n");
-        //        return null;
-        //    }
-        //}
+        }        
         public static ObjectId[] SelectWithFilter(this SelectionFilter filter, Document doc, Editor ed)
         {
             try

@@ -7,7 +7,7 @@ namespace HyCADTool.Config
     public class PileConfig
     {
         private static PileConfig _instance;
-        private static readonly object _lock = new object();
+        private static readonly object _lock = new object(); 
 
         public static PileConfig Instance
         {
