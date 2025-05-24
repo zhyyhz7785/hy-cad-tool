@@ -236,6 +236,7 @@ namespace HyCADTool
                     // ConfigManager.ExportConfigToCsv();
                     //LayerConfigManagerCsv.ImportConfigFromCsv("TextStyle","Common");
                     HyCommand.ShowPanel();
+                   // HyCommand.ExportAll();
                    //HyTool.RegisterStandardLinetypes();
                     ed.WriteMessage("\n12\n");
                 });

@@ -216,7 +216,7 @@ namespace HyCADTool.HelpClass
             foreach (var prop in type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
                 var t = prop.PropertyType;
-                if (t == typeof(int) || t == typeof(double) || t == typeof(bool))
+                if (t == typeof(int) || t == typeof(double)  )
                 {
                     try
                     {
@@ -229,6 +229,7 @@ namespace HyCADTool.HelpClass
             }
             return props;
         }
+
         public static ObjectId[] FilterEntitiesBy(this Document doc, Func<Entity, bool> predicate, ObjectId[] inputIds)
         {
             var result = new List<ObjectId>();
@@ -256,6 +257,67 @@ namespace HyCADTool.HelpClass
             }
 
             return result.ToArray();
+        }
+        public static Func<Entity, bool> BuildEntityPredicate(string propertyName, string op, string value)
+        {
+            return (Entity ent) =>
+            {
+                try
+                {
+                    var prop = ent.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+                    if (prop == null) return false;
+
+                    object actualValue = prop.GetValue(ent);
+                    if (actualValue == null) return false;
+
+                    Type type = prop.PropertyType;
+
+                    if (type == typeof(double))
+                    {
+                        if (!double.TryParse(value, out double target)) return false;
+                        double actual = (double)actualValue;
+                        return Compare(actual, target, op);
+                    }
+                    else if (type == typeof(int))
+                    {
+                        if (!int.TryParse(value, out int target)) return false;
+                        int actual = (int)actualValue;
+                        return Compare(actual, target, op);
+                    }
+                    else if (type == typeof(string))
+                    {
+                        string actual = actualValue.ToString();
+                        return Compare(actual, value, op);
+                    }
+                    else if (type == typeof(bool))
+                    {
+                        if (!bool.TryParse(value, out bool target)) return false;
+                        bool actual = (bool)actualValue;
+                        return Compare(actual, target, op);
+                    }
+
+                    return false;
+                }
+                catch
+                {
+                    return false;
+                }
+            };
+        }
+
+        private static bool Compare<T>(T actual, T target, string op) where T : IComparable
+        {
+            switch (op)
+            {
+                case "=": return actual.CompareTo(target) == 0;
+                case "!=": return actual.CompareTo(target) != 0;
+                case ">": return actual.CompareTo(target) > 0;
+                case "<": return actual.CompareTo(target) < 0;
+                case ">=": return actual.CompareTo(target) >= 0;
+                case "<=": return actual.CompareTo(target) <= 0;
+                case "contains": return actual.ToString().Contains(target.ToString());
+                default: return false;
+            }
         }
 
     }

@@ -60,7 +60,10 @@
     <Compile Include="Commands\DimPointCommands - 复制 - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制.cs" />
+    <Compile Include="Commands\hyExport\ExportEntityPropertiesToCsv - 复制.cs" />
+    <Compile Include="Commands\hyExport\ExportEntityPropertiesToCsv.cs" />
     <Compile Include="Config\BaseConfig.cs" />
+    <Compile Include="Config\FilterablePropertyMetadataProvider.cs" />
     <Compile Include="Config\MainPlugin.cs" />
     <Compile Include="HelpClass\Pile\PileConfig - 复制.cs" />
     <Compile Include="Interfaces\IEntityFilter.cs" />
@@ -368,11 +371,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\LibraryResources.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
     <Page Include="Views\BaseReinPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -402,6 +400,12 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Tools\Cluster\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\LibraryResources.xaml">
+      <SubType>Designer</SubType>
+      <Generator>XamlIntelliSenseFileGenerator</Generator>
+    </Resource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

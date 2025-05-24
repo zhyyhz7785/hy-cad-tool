@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using HyCADTool.Config;
 
 namespace HyCADTool.ViewModels
 {
@@ -20,6 +21,12 @@ namespace HyCADTool.ViewModels
         private readonly Editor _ed = Application.DocumentManager.MdiActiveDocument.Editor;
         private Entity _selectedEntity;
         private ObjectId[] _userSelectedIds = new ObjectId[0];
+        private string _selectedPropertyValue;
+        public string SelectedPropertyValue
+        {
+            get => _selectedPropertyValue;
+            set { _selectedPropertyValue = value; OnPropertyChanged(); }
+        }
 
         public ICommand SelectSingleEntityCommand { get; }
         public ICommand SelectCommand { get; }
@@ -42,7 +49,17 @@ namespace HyCADTool.ViewModels
         public ObservableCollection<string> PropertyFields { get; } = new ObservableCollection<string>();
         public ObservableCollection<string> Operators { get; } = new ObservableCollection<string> { "==", "!=", ">", "<", ">=", "<=" };
         public ObservableCollection<string> ExpressionFilters { get; } = new ObservableCollection<string>();
-        public string SelectedPropertyField { get => _selectedPropertyField; set { _selectedPropertyField = value; OnPropertyChanged(); } }
+        public string SelectedPropertyField
+        {
+            get => _selectedPropertyField;
+            set
+            {
+                _selectedPropertyField = value;
+                OnPropertyChanged();
+                UpdateSelectedPropertyValue(); // 新增方法，提取属性值
+            }
+        }
+
         public string SelectedOperator { get => _selectedOperator; set { _selectedOperator = value; OnPropertyChanged(); } }
         public string InputValue { get => _inputValue; set { _inputValue = value; OnPropertyChanged(); } }
         public string SelectedExpressionFilter { get => _selectedExpressionFilter; set { _selectedExpressionFilter = value; OnPropertyChanged(); } }
@@ -65,11 +82,19 @@ namespace HyCADTool.ViewModels
             {
                 SelectedType = _selectedEntity.GetType().Name.ToChinese();
                 TypeChecked = true;
+
+                // 绑定可筛选属性列表（DisplayName 中文名）
                 PropertyFields.Clear();
-                foreach (var kv in _selectedEntity.GetFilterableProperties())
-                    PropertyFields.Add(kv.Key);
+                var typeName = _selectedEntity.GetType().Name;
+                var props = FilterablePropertyMetadataProvider.GetMetadataList()
+                                .Where(p => p.EntityType == typeName)
+                                .Select(p => $"{p.DisplayName} ({p.PropertyName})");
+
+                foreach (var item in props)
+                    PropertyFields.Add(item);
             }
         }
+
 
         private void ResetFilters()
         {
@@ -111,6 +136,34 @@ namespace HyCADTool.ViewModels
         //    _ed.SetImpliedSelection(new ObjectId[0]);
         //    _ed.SetImpliedSelection(ids.ToArray());
         //}
+        private void UpdateSelectedPropertyValue()
+        {
+            if (_selectedEntity == null || string.IsNullOrWhiteSpace(SelectedPropertyField))
+            {
+                SelectedPropertyValue = string.Empty;
+                return;
+            }
+
+            try
+            {
+                string propertyName = ExtractPropertyName(SelectedPropertyField);
+                var prop = _selectedEntity.GetType().GetProperty(propertyName);
+                if (prop != null)
+                {
+                    var value = prop.GetValue(_selectedEntity);
+                    SelectedPropertyValue = value?.ToString() ?? "(null)";
+                }
+                else
+                {
+                    SelectedPropertyValue = "(属性不存在)";
+                }
+            }
+            catch (Exception ex)
+            {
+                SelectedPropertyValue = $"(读取失败: {ex.Message})";
+            }
+        }
+
         private void SelectWithFilters()
         {
             // 清空之前的选择状态
@@ -194,12 +247,15 @@ namespace HyCADTool.ViewModels
                         case "Boolean":
                             bool bv = bool.Parse(valStr);
                             return Compare(Convert.ToBoolean(value), bv, op);
+                        case "String":
+                            return Compare(value?.ToString(), valStr, op);
                     }
                 }
                 catch { }
                 return false;
             }, ids);
         }
+
 
         private static bool Compare<T>(T a, T b, string op) where T : IComparable<T>
         {
@@ -217,11 +273,26 @@ namespace HyCADTool.ViewModels
 
         private void AddExpressionFilter()
         {
-            if (!string.IsNullOrWhiteSpace(SelectedPropertyField) && !string.IsNullOrWhiteSpace(SelectedOperator) && !string.IsNullOrWhiteSpace(InputValue))
+            if (!string.IsNullOrWhiteSpace(SelectedPropertyField)
+                && !string.IsNullOrWhiteSpace(SelectedOperator)
+                && !string.IsNullOrWhiteSpace(InputValue))
             {
-                ExpressionFilters.Add($"{SelectedPropertyField} {SelectedOperator} {InputValue}");
+                // 提取 PropertyName（去除 DisplayName 部分）
+                string field = ExtractPropertyName(SelectedPropertyField);
+                ExpressionFilters.Add($"{field} {SelectedOperator} {InputValue}");
             }
         }
+        private string ExtractPropertyName(string field)
+        {
+            if (field.Contains("(") && field.Contains(")"))
+            {
+                int start = field.IndexOf('(') + 1;
+                int end = field.IndexOf(')');
+                return field.Substring(start, end - start).Trim();
+            }
+            return field;
+        }
+
 
         private void RemoveExpressionFilter()
         {
