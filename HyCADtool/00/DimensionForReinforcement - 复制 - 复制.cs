@@ -75,7 +75,7 @@ namespace HyCADTool
         #region 设置生成
         public static bool SetProperties(Polyline boundary)
         {
-            Et.SetCurrentLayer("00_hy_3公共_标注1_外");
+            Tools.Tools.SetCurrentLayer("00_hy_3公共_标注1_外");
             var db = Application.DocumentManager.MdiActiveDocument.Database;
             // 1 选择边界            
             if (boundary == null) return false;
@@ -143,7 +143,7 @@ namespace HyCADTool
                 //var lineIntersectionByColLeftRight = LineIntersectionsListUpDownSS.GetDimensionByCol(0);
                 //lineIntersectionByColLeftRight.ChangeEntitiesProperty(x => x.ColorIndex = 1);
                 //lineIntersectionByColLeftRight.ToSpace();
-                Et.SetCurrentLayer("00_hy_3公共_标注1_外");
+                Tools.Tools.SetCurrentLayer("00_hy_3公共_标注1_外");
                 DimLeft.ToSpace();
                 DimUp.ToSpace();
                 DimDown.ToSpace();
@@ -173,8 +173,8 @@ namespace HyCADTool
                 var lDNextL = boundLineNext.GetBoundXYFromEntities(RecT.MaxMinPoint.xmin);
                 if (lDMidL - lDPriR > lDNextL - lDMidR)
                 {
-                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForLeft, true).ToList();
-                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForLeft, true).ToList();
+                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForLeft, true).ToList();
+                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForLeft, true).ToList();
                     // dimsMid = CompareDim(dimsMid, dimsPri);
                     dimIns.Add(dimsMid.ToArray());
                     lDPriR = boundLineMid.GetBoundXYFromEntities(RecT.MaxMinPoint.xmax);
@@ -182,8 +182,8 @@ namespace HyCADTool
                 }
                 else
                 {
-                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForRight, true).ToList();
-                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForRight, true).ToList();
+                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForRight, true).ToList();
+                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForRight, true).ToList();
                     //dimsMid = CompareDim(dimsMid, dimsPri);
                     dimIns.Add(dimsMid.ToArray());
                     lDPriR = boundLineMid.GetBoundXYFromEntities(RecT.MaxMinPoint.xmax);
@@ -216,8 +216,8 @@ namespace HyCADTool
                 var lDNextD = boundLineNext.GetBoundXYFromEntities(RecT.MaxMinPoint.ymin);
                 if (lDMidD - lDPriD > lDNextD - lDMidU)
                 {
-                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForDown, true).ToList();
-                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForDown, true).ToList();
+                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForDown, true).ToList();
+                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForDown, true).ToList();
                     //dimsMid = CompareDim(dimsMid, dimsPri);
                     dimIns.Add(dimsMid.ToArray());
                     lDPriD = boundLineMid.GetBoundXYFromEntities(RecT.MaxMinPoint.xmax);
@@ -225,8 +225,8 @@ namespace HyCADTool
                 }
                 else
                 {
-                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForUp, true).ToList();
-                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Et.DimensionFor.ForUp, true).ToList();
+                    dimsMid = boundLineMid.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForUp, true).ToList();
+                    dimsPri = boundLinePri.GetDimsByLines(DimensionDistanceInside, Tools.DimensionFor.ForUp, true).ToList();
                     //dimsMid = CompareDim(dimsMid, dimsPri);
                     dimIns.Add(dimsMid.ToArray());
                     lDPriD = boundLineMid.GetBoundXYFromEntities(RecT.MaxMinPoint.xmax);
@@ -773,7 +773,7 @@ namespace HyCADTool
                 var linesHorizontal = lineIntersections.Fillarray(countMax);
                 list.Add(linesHorizontal);
             }
-            var resoult = Et.TransformArrayTo2d(list.ToArray());
+            var resoult = Tools.Tools.TransformArrayTo2d(list.ToArray());
             return resoult;
         }
         public static Line[] FlattenList(this IEnumerable<Line[]> lineIntersectionsList)

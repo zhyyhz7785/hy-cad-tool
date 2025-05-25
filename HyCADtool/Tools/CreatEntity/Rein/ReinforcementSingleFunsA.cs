@@ -14,7 +14,7 @@ namespace HyCADTool
         //[CommandMethod("g1")]
         public static void ReinAddAnchor1()
         {
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Tools.Tools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             //HookLength = Reinforcement.HookLength;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
@@ -49,7 +49,7 @@ namespace HyCADTool
         // [CommandMethod("g2")]
         public static void ReinAddAnchor2()
         {
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Tools.Tools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             //HookLength = Reinforcement.HookLength;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
@@ -109,7 +109,7 @@ namespace HyCADTool
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Tools.Tools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             PolylineJig jig = new PolylineJig();
             jig._offsetDistance = Reinforcement.ProtectionThickness;
             if (jig.StartJig() == PromptStatus.OK && jig._points.Count > 1)

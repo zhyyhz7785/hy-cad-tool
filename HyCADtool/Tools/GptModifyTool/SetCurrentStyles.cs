@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         /// <summary>
         /// 设置当前文字样式。

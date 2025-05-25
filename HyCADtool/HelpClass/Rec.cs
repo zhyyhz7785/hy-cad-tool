@@ -177,27 +177,6 @@ namespace HyCADTool.HelpClass
             }
             return vecs;
         }
-        public static Vector3d GetAccurateVec(Polyline basePoly, Polyline movePoly, Vector3d vector)
-        {
-            //  1 找到同移动方向相反方向，通过MovePoly中心点的直线，和MovePoly的交点                          
-            var lineFirstPoint = new Line(movePoly.GetRecCenterPoint(), movePoly.GetRecCenterPoint() - vector.GetNormal());
-            var PointFirst = (Point3d)lineFirstPoint.GetLineInterSectPointUseVec(movePoly);
-            //  2 做一条，从最小相交点 到移动后中心点的直线；
-            var line = new Line(PointFirst, movePoly.GetRecCenterPoint() + vector);
-            ////  3 求直线同BasePoly交点
-            var points = new Point3dCollection();
-            line.IntersectWith(basePoly, Intersect.ExtendArgument, points, IntPtr.Zero, IntPtr.Zero);
-            var p1 = points[0];
-            //  4 求直线同movedPoly交点
-            var movedPoly = movePoly.MoveEnt(vector);
-            var points2 = new Point3dCollection();
-            line.IntersectWith(movedPoly, Intersect.ExtendArgument, points2, IntPtr.Zero, IntPtr.Zero);
-            var p2 = points2[0];
-            //  5 求出两点距离
-            var seg = new LineSegment3d(p1, p2);
-            //   6 将向量长度缩短输出
-            var vecOut = vector.GetNormal() * Math.Abs(vector.Length - seg.Length);
-            return vecOut;
-        }
+      
     }
 }

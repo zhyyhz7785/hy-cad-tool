@@ -16,7 +16,7 @@ namespace HyCADTool.Commands
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
-            var a = Et.GetPolylineInfo("请选择一个需要延伸的多段线对象");
+            var a = Tools.Tools.GetPolylineInfo("请选择一个需要延伸的多段线对象");
             var d = Reinforcement.AnchorageLength;
             if (a != null)
             {

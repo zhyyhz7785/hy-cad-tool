@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         public static List<RotatedDimension> DeleteNearbyParallelDimOptimized(this IEnumerable<RotatedDimension> dims, double angleToleranceDegrees = 3.0, double d = 5000)
         {

@@ -70,7 +70,7 @@ namespace HyCADTool
                 var dic = GetPolylineIntersectionsLeftRight(lines, polylines, InterDirection, AxisExtend);
                 DeletePolylinesInCad(dic);
                 dic = dic.AdjustPolylinesLeftRight(Interval);
-                Et.SetCurrentLayer("00_hy_筏板附加配筋x_标注");
+                Tools.Tools.SetCurrentLayer("00_hy_筏板附加配筋x_标注");
                 AnnotatePolylineIntersectionsLeftRight(dic, 100, DimensionDistanceWithDim, InterDirection);
             }
             else
@@ -78,7 +78,7 @@ namespace HyCADTool
                 var dic = GetPolylineIntersectionsUpDown(lines, polylines, InterDirection, AxisExtend);
                 DeletePolylinesInCad(dic);
                 dic = dic.AdjustPolylinesUpDown(Interval);
-                Et.SetCurrentLayer("00_hy_筏板附加配筋y_标注");
+                Tools.Tools.SetCurrentLayer("00_hy_筏板附加配筋y_标注");
                 AnnotatePolylineIntersectionsUpDown(dic, 100, DimensionDistanceWithDim, InterDirection);
             }
         }

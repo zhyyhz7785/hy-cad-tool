@@ -95,27 +95,27 @@ namespace HyCADTool
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             // 创建所需的图层          
-            Et.CreateMultipleLayers(
-                ("00_hy_配筋轮廓", 143), // 红色
-                 ("00_hy_调整配筋轮廓", 1), // 绿色  
-                ("00_hy_筏板附加配筋x_上", 1), // 红色
-                ("00_hy_筏板附加配筋y_上", 1), // 红色
-                ("00_hy_筏板附加配筋x_下", 20), // 红色
-                ("00_hy_筏板附加配筋y_下", 20), // 红色
-                ("00_hy_筏板附加配筋文字_x", 7), // 白色              
-                ("00_hy_筏板附加配筋文字_y", 7), // 白色              
-                ("00_hy_调整配筋轮廓_上x", 142), // 绿色                
-                ("00_hy_调整配筋轮廓_上y", 72), // 绿色               
-               ("00_hy_调整配筋轮廓_下", 78), // 绿色                
-                ("00_hy_筏板附加配筋x_标注", 3), // 绿色                
-                ("00_hy_筏板附加配筋Y_标注", 3),// 绿色                
-                ("00_hy_表格", 39),// 绿色                
-                ("00_hy_表格_索引", 7) // 绿色                
+            Tools.Tools.CreateMultipleLayers(
+                ((string layerName, short colorIndex))("00_hy_配筋轮廓", 143), // 红色
+                 ((string layerName, short colorIndex))("00_hy_调整配筋轮廓", 1), // 绿色  
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋x_上", 1), // 红色
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋y_上", 1), // 红色
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋x_下", 20), // 红色
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋y_下", 20), // 红色
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋文字_x", 7), // 白色              
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋文字_y", 7), // 白色              
+                ((string layerName, short colorIndex))("00_hy_调整配筋轮廓_上x", 142), // 绿色                
+                ((string layerName, short colorIndex))("00_hy_调整配筋轮廓_上y", 72), // 绿色               
+               ((string layerName, short colorIndex))("00_hy_调整配筋轮廓_下", 78), // 绿色                
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋x_标注", 3), // 绿色                
+                ((string layerName, short colorIndex))("00_hy_筏板附加配筋Y_标注", 3),// 绿色                
+                ((string layerName, short colorIndex))("00_hy_表格", 39),// 绿色                
+                ((string layerName, short colorIndex))("00_hy_表格_索引", 7) // 绿色                
             );
             BaseConfig.Scale = Scale;
-            Et.CreateTextStyle(Et.TextStyleConfig.Name);
-            Et.CreateDimStyle(Et.DimStyleConfig.Name);
-            Et.CreateMLeaderStyle(Et.MLeaderStyleConfig.Name);
+            Tools.Tools.CreateTextStyle(Tools.Tools.TextStyleConfig.Name);
+            Tools.Tools.CreateDimStyle(Tools.Tools.DimStyleConfig.Name);
+            Tools.Tools.CreateMLeaderStyle(Tools.Tools.MLeaderStyleConfig.Name);
         }
     }
 }

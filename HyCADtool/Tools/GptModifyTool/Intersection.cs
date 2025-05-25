@@ -8,12 +8,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using static HyCADTool.Tools.Et;
+using static HyCADTool.Tools.Tools;
 using HyCADTool.Log;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         /// <summary>
         /// 交点求解方法选项

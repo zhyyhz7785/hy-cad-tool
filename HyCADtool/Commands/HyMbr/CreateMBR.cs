@@ -45,7 +45,7 @@ namespace HyCADTool.Commands
             // 基于边界距离进行聚类
             List<List<(ObjectId Id, Extents3d Bounds)>> clusters = ClusterByBoundsDistance(entityBounds, distanceThreshold, ed);
             // 创建或获取目标图层
-            ObjectId layerId = Tools.Et.CreateLayer(TargetLayerName, TargetLayerColor, db, ed);
+            ObjectId layerId = Tools.Tools.CreateLayer(TargetLayerName, TargetLayerColor, db, ed);
             // 为每个聚类生成边界框
             GenerateBoundaryBoxes(db, clusters, expandX, expandY, layerId, ed);
         }

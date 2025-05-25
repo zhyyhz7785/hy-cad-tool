@@ -167,7 +167,7 @@ namespace HyCADTool.Commands
                     string content = item.hasText && includeElevation ? $"{label}\\P标高 = {item.elevation:F3}" : label;
                     var pt = item.circle.Center;
                     var pt2 = new Point3d(pt.X + 5 * scale, pt.Y + 5 * scale, pt.Z);
-                    var mleader = Et.AddMleaderSinglePoint(pt, pt2, content);
+                    var mleader = Tools.Tools.AddMleaderSinglePoint(pt, pt2, content);
                     mleader.Layer = mleaderLayerName;
                     ms.AppendEntity(mleader);
                     tr.AddNewlyCreatedDBObject(mleader, true);

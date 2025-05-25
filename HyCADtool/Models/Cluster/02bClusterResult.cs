@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static HyCADTool.Tools.Et;
+using static HyCADTool.Tools.Tools;
 namespace HyCADTool.Models.Cluster
 {
     public class ClusterResult
@@ -48,7 +48,7 @@ namespace HyCADTool.Models.Cluster
         {
             if (Points == null || Points.Count <= 1) return;
 
-            var comparer = new Et.Point3dComparer(tolerance);
+            var comparer = new Tools.Tools.Point3dComparer(tolerance);
             Points = Points.Distinct(comparer).ToList();
         }
         /// <summary>

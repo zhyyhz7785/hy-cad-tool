@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         #region enum
         public enum DimensionFor

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         /// <summary>
         /// 自定义的Point3d比较器，用于在HashSet中比较点坐标的相等性，考虑误差范围

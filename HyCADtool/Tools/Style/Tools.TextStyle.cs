@@ -6,7 +6,7 @@ using Exception = Autodesk.AutoCAD.Runtime.Exception;
 
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         public static class TextStyleConfig
         {

@@ -891,57 +891,7 @@ namespace HyCADTool
             return 0;
         }
         #endregion
-        public static Polyline ChangeRecPosition(this Polyline basePoly, Polyline moveRec,
-            LineSegment3d segx, LineSegment3d segy, Vector3d range, double angle)
-        {
-            var state = basePoly.GetRecBoundState(moveRec);
-            var positions = moveRec.GetRecPositions(segx, segy, range, angle);
-            var polyOut = new Polyline();
-            if (state == BoundStatus.Intersection)
-            {
-                foreach (var position in positions)
-                {
-                    var stateIn = position.Value.GetRecBoundState(moveRec);
-                    if (stateIn == BoundStatus.Out && stateIn == BoundStatus.In)
-                    {
-                        polyOut = position.Value;
-                        break;
-                    }
-                }
-            }
-            return polyOut;
-        }
-        public static Polyline GetRecGivenPosition(this Polyline baseRec, RecPosition position, Vector3d range, double angle)
-        {
-            var segx = baseRec.GetCenterLineFromRec()[0];
-            var segy = baseRec.GetCenterLineFromRec()[1];
-            var pointc = baseRec.GetRecCenterPoint();
-            var mirrorX = baseRec.MirrorEnt(segx.StartPoint, segx.EndPoint);
-            var mirrorY = baseRec.MirrorEnt(segy.StartPoint, segy.EndPoint);
-            var mirrorXy = mirrorX.MirrorEnt(segy.StartPoint, segy.EndPoint);
-            var distance = baseRec.MoveEnt(range);
-            var rotation = baseRec.RotateEnt(pointc, angle);
-            var poly = new Polyline();
-            switch (position)
-            {
-                case RecPosition.MirrorX:
-                    poly = mirrorX;
-                    break;
-                case RecPosition.MirrorY:
-                    poly = mirrorY;
-                    break;
-                case RecPosition.MirrorXy:
-                    poly = mirrorXy;
-                    break;
-                case RecPosition.Distance:
-                    poly = distance;
-                    break;
-                case RecPosition.Rotation:
-                    poly = rotation;
-                    break;
-            }
-            return poly;
-        }
+  
         public static Dictionary<RecPosition, Polyline> GetRecPositions
             (this Polyline baseRec, LineSegment3d segx, LineSegment3d segy, Vector3d range, double angle = 0)
         {

@@ -17,7 +17,7 @@ namespace HyCADTool.Commands
         ///选择yjk墙体水平配筋 《输入值的处理
         public static void PlacePileAndVoronoiWithLloydOptimization()
         {
-            Et.PlacePileAndVoronoiWithLloydOptimization();
+            Tools.Tools.PlacePileAndVoronoiWithLloydOptimization();
         }
     }
 }

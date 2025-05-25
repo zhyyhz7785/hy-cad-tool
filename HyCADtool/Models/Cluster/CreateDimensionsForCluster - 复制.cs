@@ -11,7 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class Tools
     {
         /// <summary>
         /// 生成一组点单方向的标注（用于基础标注）

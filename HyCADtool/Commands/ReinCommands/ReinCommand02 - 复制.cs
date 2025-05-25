@@ -20,7 +20,7 @@ namespace HyCADTool.Commands
             double d = Reinforcement.HookLength;
             try
             {
-                var pLResult = Et.GetPolylineInfo("\n请选择需要打断的钢筋");
+                var pLResult = Tools.Tools.GetPolylineInfo("\n请选择需要打断的钢筋");
                 if (pLResult == null)
                 {
                     ed.WriteMessage("\n未选择有效的多段线，操作取消。");
