@@ -67,9 +67,6 @@
     <Compile Include="Config\MainPlugin.cs" />
     <Compile Include="HelpClass\Pile\PileConfig - 复制.cs" />
     <Compile Include="Interfaces\IEntityFilter.cs" />
-    <Compile Include="Models\Axis\AxisDatas - 复制 - 复制 - 复制.cs" />
-    <Compile Include="Models\Axis\AxisDatas - 复制 - 复制.cs" />
-    <Compile Include="Models\Axis\AxisDatas - 复制.cs" />
     <Compile Include="Models\Axis\AxisDatas.cs" />
     <Compile Include="Models\Cluster\03DimHelper - 复制 - 复制 - 复制.cs" />
     <Compile Include="Models\Cluster\03DimHelper - 复制 - 复制.cs" />
@@ -212,7 +209,7 @@
     <Compile Include="HelpClass\Rec.cs" />
     <Compile Include="HelpClass\RecT.cs" />
     <Compile Include="HelpClass\RowCols.cs" />
-    <Compile Include="HelpClass\CAD\TextBoxHelper.cs" />
+    <Compile Include="Views\Helper\TextBoxHelper.cs" />
     <Compile Include="HelpClass\CAD\TypeConverter.cs" />
     <Compile Include="HelpClass\Section\Section - 复制 - 复制.cs" />
     <Compile Include="HelpClass\Section\Section - 复制.cs" />
@@ -226,25 +223,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AreaFactory.cs" />
     <Compile Include="Services\AutoCadService - 复制.cs" />
-    <Compile Include="Services\AutoCadService.cs" />
     <Compile Include="Services\ConfigService.cs" />
     <Compile Include="00\SimpleLogger.cs" />
     <Compile Include="00\TestCommand.cs" />
-    <Compile Include="TestFunction\CreateOptimizedBoundingPolygonFromPolygons4c.cs" />
-    <Compile Include="TestFunction\GroupBySpatialProximity4b.cs" />
-    <Compile Include="TestFunction\DrawBoundingPolyline4a.cs" />
-    <Compile Include="TestFunction\SelectFromSpecificLayers4.cs" />
-    <Compile Include="TestFunction\JoinReinforcment.cs" />
-    <Compile Include="TestFunction\MergeBox.cs" />
-    <Compile Include="TestFunction\DrawReinforcement.cs" />
-    <Compile Include="TestFunction\SelectFiniteElementGrid_Parallel_DIC _del3.cs" />
-    <Compile Include="TestFunction\SelectFiniteElementGrid_Parallel_DIC.cs" />
-    <Compile Include="TestFunction\SelectFiniteElementGrid_Parallel .cs" />
-    <Compile Include="TestFunction\SelectFiniteElementGrid.cs" />
-    <Compile Include="TestFunction\OptimizeBasemap1.cs" />
-    <Compile Include="TestFunction\SelectNoUseText2.cs" />
-    <Compile Include="TestFunction\Test_SelectUseless.cs" />
-    <Compile Include="TestFunction\Test_ClosedRegionDetection.cs" />
     <Compile Include="Tools\ChangeType\IdsToEntities.cs" />
     <Compile Include="Tools\ChangeType\Point2dTo3d.cs" />
     <Compile Include="Tools\CreatEntity\BaseRein\AR000_a00- 复制.cs" />
@@ -328,9 +309,9 @@
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
     <Compile Include="Tools\SelectTool\SelectTrue.cs" />
-    <Compile Include="ViewModels\FilterPanelViewModel.cs" />
-    <Compile Include="ViewModels\ClusterPanelViewModel.cs" />
-    <Compile Include="ViewModels\PilePanelViewModel.cs" />
+    <Compile Include="Views\ViewModels\FilterPanelViewModel.cs" />
+    <Compile Include="Views\ViewModels\ClusterPanelViewModel.cs" />
+    <Compile Include="Views\ViewModels\PilePanelViewModel.cs" />
     <Compile Include="Views\BaseReinPanel.xaml.cs">
       <DependentUpon>BaseReinPanel.xaml</DependentUpon>
     </Compile>
@@ -340,8 +321,8 @@
     <Compile Include="Views\FilterPanel - 复制.xaml.cs">
       <DependentUpon>FilterPanel - 复制.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\IntEqualsConverter.cs" />
-    <Compile Include="Views\InverseBooleanConverter .cs" />
+    <Compile Include="Views\Helper\IntEqualsConverter.cs" />
+    <Compile Include="Views\Helper\InverseBooleanConverter .cs" />
     <Compile Include="Views\PilePanel.xaml.cs">
       <DependentUpon>PilePanel.xaml</DependentUpon>
     </Compile>
