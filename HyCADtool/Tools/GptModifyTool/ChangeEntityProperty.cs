@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         public static Dictionary<string, (string Value, string Type)> GetEntityProperties(this Entity entity)
         {

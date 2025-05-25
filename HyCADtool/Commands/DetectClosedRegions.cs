@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using System;
 using System.Collections.Generic;
-using static HyCADTool.Tools.Tools;
+using static HyCADTool.Tools.ZTools;
 [assembly: CommandClass(typeof(HyCADTool.Commands.HyCommand))]
 namespace HyCADTool.Commands
 {

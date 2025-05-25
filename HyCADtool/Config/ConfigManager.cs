@@ -57,7 +57,7 @@ namespace HyCADTool.Config
 
         public static void ImportConfigFromCsv(string typeFilter = null, string subKeyFilter = null)
         {
-            Tools.Tools.RegisterStandardLinetypes();
+            Tools.ZTools.RegisterStandardLinetypes();
             if (!File.Exists(ConfigCsvFile)) return;
 
             using (var fs = new FileStream(ConfigCsvFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
@@ -86,13 +86,13 @@ namespace HyCADTool.Config
                         case "Layer":
                             if (short.TryParse(v[0], out var color) && Enum.TryParse(v[2], out LineWeight lw))
                             {
-                                Tools.Tools.CreateLayer(key, color, v[1], lw);
+                                Tools.ZTools.CreateLayer(key, color, v[1], lw);
                             }
                             break;
                         case "TextStyle":
                             if (double.TryParse(v[2], out var size) && double.TryParse(v[3], out var xscale))
                             {
-                                Tools.Tools.CreateTextStyle(key, v[0], v[1], size, xscale);
+                                Tools.ZTools.CreateTextStyle(key, v[0], v[1], size, xscale);
                             }
                             break;
                         case "Pile":

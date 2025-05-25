@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         /// <summary>
         /// 将 Point2d 转换为 Point3d，Z 坐标默认为 0

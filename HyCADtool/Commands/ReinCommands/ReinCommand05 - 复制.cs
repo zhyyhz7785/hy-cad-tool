@@ -22,7 +22,7 @@ namespace HyCADTool.Commands
             double d = Reinforcement.ProtectionThickness;
             double bendingLineLength = currentBendingLineLength; // 从静态变量获取当前默认值
                                                                  // 步骤1：选择边界多段线
-            var plinfo1 = Tools.Tools.GetPolylineInfo("\n请选择边界Polyline对象（右键点击或按 ESC 取消）：");
+            var plinfo1 = Tools.ZTools.GetPolylineInfo("\n请选择边界Polyline对象（右键点击或按 ESC 取消）：");
             if (!plinfo1.HasValue)
             {
                 ed.WriteMessage("\n用户取消了边界Polyline的选择。操作已中止。");
@@ -82,7 +82,7 @@ namespace HyCADTool.Commands
             // 步骤2：循环选择并延伸Polyline
             while (true)
             {
-                var plinfo2 = Tools.Tools.GetPolylineInfo("\n请选择需要延伸的Polyline对象：");
+                var plinfo2 = Tools.ZTools.GetPolylineInfo("\n请选择需要延伸的Polyline对象：");
                 if (!plinfo2.HasValue)
                 {
                     ed.WriteMessage("\n用户取消了延伸Polyline的选择。操作已中止。");
@@ -96,7 +96,7 @@ namespace HyCADTool.Commands
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     Polyline pline = tr.GetObject(ExtendPline.ObjectId, OpenMode.ForWrite) as Polyline;
-                    bool b = Tools.Tools.IsClosestPointDirectionPositive(ExtendSeg, ExtendP);
+                    bool b = Tools.ZTools.IsClosestPointDirectionPositive(ExtendSeg, ExtendP);
                     Line line1 = new Line(boundaryLineSegment3d.StartPoint, boundaryLineSegment3d.EndPoint);
                     Line line2 = new Line(ExtendSeg.StartPoint, ExtendSeg.EndPoint);
                     Point3dCollection points = new Point3dCollection();

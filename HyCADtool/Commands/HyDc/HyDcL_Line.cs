@@ -16,7 +16,7 @@ namespace HyCADTool.Commands
             Database db = doc.Database;
             Editor ed = doc.Editor;
             double d = 100.0; // 默认厚度 100
-            var id= Tools.Tools.CreateLayer("00_hy_垫层",7);
+            var id= Tools.ZTools.CreateLayer("00_hy_垫层",7);
             try
             {
                 // 提示用户选择一条直线

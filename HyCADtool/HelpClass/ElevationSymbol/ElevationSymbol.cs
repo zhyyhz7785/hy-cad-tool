@@ -42,12 +42,12 @@ namespace HyCADTool.HelpClass.ElevationSymbol
             // 初始化或重用文本样式和图层
             if (_cachedTextStyleId.IsNull)
             {
-                _cachedTextStyleId = Tools.Tools.CreateTextStyle(Tools.Tools.TextStyleConfig.Name);
+                _cachedTextStyleId = Tools.ZTools.CreateTextStyle(Tools.ZTools.TextStyleConfig.Name);
             }
             _textStyleId = _cachedTextStyleId;
             if (_cachedLayerId.IsNull)
             {
-                _cachedLayerId = Tools.Tools.CreateLayer("00_hy_3公共_标注4_标高", 140);
+                _cachedLayerId = Tools.ZTools.CreateLayer("00_hy_3公共_标注4_标高", 140);
             }
             _layerId = _cachedLayerId;
             UpdateRotation();
@@ -86,7 +86,7 @@ namespace HyCADTool.HelpClass.ElevationSymbol
                 LayerId = _layerId,
                 TextStyleId = _textStyleId,
                 Position = RotatePoint(new Point3d(_currentPoint.X + (4 - sqrt2 / 2) * Scale, _currentPoint.Y + sqrt2 * Scale, 0), _currentPoint, _angleRadians),
-                Height = Tools.Tools.TextStyleConfig.TextSize * Scale,
+                Height = Tools.ZTools.TextStyleConfig.TextSize * Scale,
                 WidthFactor = 0.7,
                 TextString = isBasePoint ? $"±{elevation:F3}" : $"{elevation:F3}",
                 HorizontalMode = TextHorizontalMode.TextCenter,
@@ -223,13 +223,13 @@ namespace HyCADTool.HelpClass.ElevationSymbol
             switch (State)
             {
                 case ElevationSymbolState.FlipVertical:
-                    textPos = new Point3d(textPos.X, _currentPoint.Y - (sqrt2 + Tools.Tools.TextStyleConfig.TextSize) * Scale, 0);
+                    textPos = new Point3d(textPos.X, _currentPoint.Y - (sqrt2 + Tools.ZTools.TextStyleConfig.TextSize) * Scale, 0);
                     break;
                 case ElevationSymbolState.FlipHorizontal:
                     textPos = new Point3d(_currentPoint.X - (4 - sqrt2 / 2) * Scale, textPos.Y, 0);
                     break;
                 case ElevationSymbolState.FlipBoth:
-                    textPos = new Point3d(_currentPoint.X - (4 - sqrt2 / 2) * Scale, _currentPoint.Y - (sqrt2 + Tools.Tools.TextStyleConfig.TextSize) * Scale, 0);
+                    textPos = new Point3d(_currentPoint.X - (4 - sqrt2 / 2) * Scale, _currentPoint.Y - (sqrt2 + Tools.ZTools.TextStyleConfig.TextSize) * Scale, 0);
                     break;
             }
             Label.Position = textPos;

@@ -5,7 +5,7 @@ using HyCADTool.Config;
 using System;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         public static class DimStyleConfig
         {
@@ -34,7 +34,7 @@ namespace HyCADTool.Tools
             using (DocumentLock docLock = doc.LockDocument())
             {
                 // 获取指定名称的文本样式的 ObjectId
-                var textId = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, Tools.TextStyleConfig.Name);
+                var textId = GetSymbolRecordFromDbByName<TextStyleTable, TextStyleTableRecord>(db.TextStyleTableId, ZTools.TextStyleConfig.Name);
                 // 创建或更新尺寸样式
                 dimId = CreateSymbolRecord<DimStyleTable, DimStyleTableRecord>(db.DimStyleTableId, name, s =>
                 {

@@ -35,7 +35,7 @@ namespace HyCADTool
                     });
                     // 调用 GroupByContainingPolyline 方法，处理最终的分组和添加逻辑
                     var resultDic = GroupByContainingPolyline(sourceTextAndEnvelopePoly, polyExtendPillarPiers, tr);
-                    Tools.Tools.SetCurrentLayer("00_hy_调整配筋轮廓");
+                    Tools.ZTools.SetCurrentLayer("00_hy_调整配筋轮廓");
                     var polylines = resultDic.Keys.ToList();
                     polylines.ToSpace();
                     // 通过 groupedData 添加需要保留的多边形到数据库中

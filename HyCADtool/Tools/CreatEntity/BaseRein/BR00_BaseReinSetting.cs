@@ -95,7 +95,7 @@ namespace HyCADTool
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             // 创建所需的图层          
-            Tools.Tools.CreateMultipleLayers(
+            Tools.ZTools.CreateMultipleLayers(
                 ((string layerName, short colorIndex))("00_hy_配筋轮廓", 143), // 红色
                  ((string layerName, short colorIndex))("00_hy_调整配筋轮廓", 1), // 绿色  
                 ((string layerName, short colorIndex))("00_hy_筏板附加配筋x_上", 1), // 红色
@@ -113,9 +113,9 @@ namespace HyCADTool
                 ((string layerName, short colorIndex))("00_hy_表格_索引", 7) // 绿色                
             );
             BaseConfig.Scale = Scale;
-            Tools.Tools.CreateTextStyle(Tools.Tools.TextStyleConfig.Name);
-            Tools.Tools.CreateDimStyle(Tools.Tools.DimStyleConfig.Name);
-            Tools.Tools.CreateMLeaderStyle(Tools.Tools.MLeaderStyleConfig.Name);
+            Tools.ZTools.CreateTextStyle(Tools.ZTools.TextStyleConfig.Name);
+            Tools.ZTools.CreateDimStyle(Tools.ZTools.DimStyleConfig.Name);
+            Tools.ZTools.CreateMLeaderStyle(Tools.ZTools.MLeaderStyleConfig.Name);
         }
     }
 }

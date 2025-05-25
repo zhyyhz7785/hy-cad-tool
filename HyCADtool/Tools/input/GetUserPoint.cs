@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         /// <summary>
         /// 获取用户输入的点

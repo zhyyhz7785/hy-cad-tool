@@ -8,7 +8,7 @@ using System.Linq;
 namespace HyCADTool.Tools
 {
     //Cad查询数据命令   (setq ent (entsel)) (setq ent_data (car ent)) (setq ent_data (entget ent_data)) 
-    public static partial class Tools
+    public static partial class ZTools
     {
         public enum CadType
         {

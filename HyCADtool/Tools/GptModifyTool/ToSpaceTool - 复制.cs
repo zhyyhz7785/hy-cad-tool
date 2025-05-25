@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         public static ObjectId ToSpace(this Entity ent, Database db = null, string space = null)
         {

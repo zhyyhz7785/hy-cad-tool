@@ -87,7 +87,7 @@ namespace HyCADTool.HelpClass.TitleBlock
     {
         public static void DrawTitleBlock(Transaction tr, BlockTableRecord btr, ITitleBlock tb, Database db, Point3d basePoint)
         {
-            var layerId = Tools.Tools.CreateLayer("00_hy_图框", 7, db);
+            var layerId = Tools.ZTools.CreateLayer("00_hy_图框", 7, db);
             // 外框
             var outer = CreateRect(
                 new Point2d(basePoint.X, basePoint.Y),

@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         #region 主要方法
         // 导出图层信息到Markdown
@@ -17,13 +17,13 @@ namespace HyCADTool.Tools
         {
             // 获取图层表记录列表
             List<LayerTableRecord> layerTableRecords = GetLayerTableRecords();
-            var filePath = Tools.GetSaveFilePath();
+            var filePath = ZTools.GetSaveFilePath();
             ExportLayerRecordsToMarkdown(layerTableRecords, filePath);
         }
         // 从Markdown导入图层
         public static void ImportLayerRecordsFromMarkdown()
         {
-            var filePath = Tools.GetOpenFilePath();
+            var filePath = ZTools.GetOpenFilePath();
             if (string.IsNullOrEmpty(filePath))
             {
                 throw new ArgumentException("文件路径不能为空", nameof(filePath));

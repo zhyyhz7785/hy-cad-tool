@@ -32,10 +32,10 @@ namespace HyCADTool.Config
 
         public static void InitializeStyle()
         {
-            TextStyleId = Tools.Tools.CreateTextStyle(Tools.Tools.TextStyleConfig.Name);
-            DimStyleID = Tools.Tools.CreateDimStyle(Tools.Tools.DimStyleConfig.Name);
-            MleaderStyleId = Tools.Tools.CreateMLeaderStyle(Tools.Tools.MLeaderStyleConfig.Name);
-            TableStyleId = Tools.Tools.CreateTableStyle(Tools.Tools.TableStyleConfig.Name);
+            TextStyleId = Tools.ZTools.CreateTextStyle(Tools.ZTools.TextStyleConfig.Name);
+            DimStyleID = Tools.ZTools.CreateDimStyle(Tools.ZTools.DimStyleConfig.Name);
+            MleaderStyleId = Tools.ZTools.CreateMLeaderStyle(Tools.ZTools.MLeaderStyleConfig.Name);
+            TableStyleId = Tools.ZTools.CreateTableStyle(Tools.ZTools.TableStyleConfig.Name);
             ConfigManager.ImportConfigFromCsv("Layer", "Common");
             // 添加默认图层（例如 Common 类别）
 

@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 namespace HyCADTool.Tools
 {
-    public static partial class Tools
+    public static partial class ZTools
     {
         public static void PlacePileAndVoronoi()
         {
