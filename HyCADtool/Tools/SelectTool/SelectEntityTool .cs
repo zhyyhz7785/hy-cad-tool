@@ -351,63 +351,165 @@ namespace HyCADTool.Tools
         /// 选择一个实体，获取图形的实例
         /// </summary>
         /// <returns></returns>
-        public static Entity SelectSingleEntity(this Database db)
+        //public static Entity SelectSingleEntity(this Database db)
+        //{
+        //    // 获取当前活动文档和编辑器
+        //    Document doc = Application.DocumentManager.MdiActiveDocument;
+        //    Editor ed = doc.Editor;
+        //    // 锁定文档以确保线程安全和文档一致性
+        //    using (DocumentLock docLock = doc.LockDocument())
+        //    {
+        //        try
+        //        {
+        //            // 提示用户选择一个实体
+        //            ed.WriteMessage("\n请选择一个实体或按 ESC 退出\n");
+        //            // 获取选择结果
+        //            PromptSelectionResult res = ed.GetSelection();
+        //            if (res.Status != PromptStatus.OK)
+        //            {
+        //                // 如果选择结果状态不是 OK，则返回 null 并输出提示信息
+        //                ed.WriteMessage("\n选择已取消或出错\n");
+        //                return null;
+        //            }
+        //            // 获取选中的对象 ID 数组
+        //            ObjectId[] ids = res.Value.GetObjectIds();
+        //            if (ids.Length == 0)
+        //            {
+        //                // 如果没有选中任何实体，输出提示信息并返回 null
+        //                ed.WriteMessage("\n没有选中实体\n");
+        //                return null;
+        //            }
+        //            if (ids.Length > 1)
+        //            {
+        //                // 如果选中了多个实体，输出提示信息并返回 null
+        //                ed.WriteMessage("\n选中多个实体\n");
+        //                return null;
+        //            }
+        //            // 开启事务处理
+        //            using (Transaction trans = db.TransactionManager.StartTransaction())
+        //            {
+        //                // 尝试获取选中的实体对象
+        //                Entity ent = trans.GetObject(ids[0], OpenMode.ForWrite) as Entity;
+        //                if (ent != null)
+        //                {
+        //                    // 如果实体对象不为空，输出提示信息并提交事务
+        //                    ed.WriteMessage($"\n选中单个实体成功，选中 {ent.GetType().Name}\n");
+        //                    trans.Commit();
+        //                    return ent;
+        //                }
+        //            }
+        //        }
+        //        catch (System.Exception ex)
+        //        {
+        //            // 如果捕获到异常，输出错误信息
+        //            ed.WriteMessage($"\n系统错误：{ex.Message}\n");
+        //        }
+        //    }
+        //    // 如果选择过程中出现问题，返回 null
+        //    return null;
+        //}
+        //public static Entity SelectSingleEntity(this Database db)
+        //{
+        //    Document doc = Application.DocumentManager.MdiActiveDocument;
+        //    Editor ed = doc.Editor;
+
+        //    try
+        //    {
+        //        ed.WriteMessage("\n请选择一个实体或按 ESC 退出\n");
+
+        //        // ⚠️ 在未锁文档前获取选择结果
+        //        PromptSelectionResult res = ed.GetSelection();
+        //        if (res.Status != PromptStatus.OK)
+        //        {
+        //            ed.WriteMessage("\n选择已取消或出错\n");
+        //            return null;
+        //        }
+
+        //        ObjectId[] ids = res.Value.GetObjectIds();
+        //        if (ids.Length == 0)
+        //        {
+        //            ed.WriteMessage("\n没有选中实体\n");
+        //            return null;
+        //        }
+        //        if (ids.Length > 1)
+        //        {
+        //            ed.WriteMessage("\n选中多个实体\n");
+        //            return null;
+        //        }
+
+        //        // ✅ 在操作实体之前加锁文档
+        //        using (DocumentLock docLock = doc.LockDocument())
+        //        using (Transaction trans = db.TransactionManager.StartTransaction())
+        //        {
+        //            Entity ent = trans.GetObject(ids[0], OpenMode.ForWrite) as Entity;
+        //            if (ent != null)
+        //            {
+        //                ed.WriteMessage($"\n选中单个实体成功，类型为：{ent.GetType().Name}\n");
+        //                trans.Commit();
+        //                return ent;
+        //            }
+        //        }
+        //    }
+        //    catch (System.Exception ex)
+        //    {
+        //        ed.WriteMessage($"\n系统错误：{ex.Message}\n");
+        //    }
+
+        //    return null;
+        //}
+
+        public static Entity SelectSingleEntity()
         {
-            // 获取当前活动文档和编辑器
+            // 每次调用都从 Application 获取当前活动文档
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed = doc.Editor;
-            // 锁定文档以确保线程安全和文档一致性
-            using (DocumentLock docLock = doc.LockDocument())
+
+            try
             {
-                try
+                ed.WriteMessage("\n请选择一个实体或按 ESC 退出\n");
+
+                // 在未锁文档前获取用户选择
+                PromptSelectionResult res = ed.GetSelection();
+                if (res.Status != PromptStatus.OK)
                 {
-                    // 提示用户选择一个实体
-                    ed.WriteMessage("\n请选择一个实体或按 ESC 退出\n");
-                    // 获取选择结果
-                    PromptSelectionResult res = ed.GetSelection();
-                    if (res.Status != PromptStatus.OK)
-                    {
-                        // 如果选择结果状态不是 OK，则返回 null 并输出提示信息
-                        ed.WriteMessage("\n选择已取消或出错\n");
-                        return null;
-                    }
-                    // 获取选中的对象 ID 数组
-                    ObjectId[] ids = res.Value.GetObjectIds();
-                    if (ids.Length == 0)
-                    {
-                        // 如果没有选中任何实体，输出提示信息并返回 null
-                        ed.WriteMessage("\n没有选中实体\n");
-                        return null;
-                    }
-                    if (ids.Length > 1)
-                    {
-                        // 如果选中了多个实体，输出提示信息并返回 null
-                        ed.WriteMessage("\n选中多个实体\n");
-                        return null;
-                    }
-                    // 开启事务处理
-                    using (Transaction trans = db.TransactionManager.StartTransaction())
-                    {
-                        // 尝试获取选中的实体对象
-                        Entity ent = trans.GetObject(ids[0], OpenMode.ForWrite) as Entity;
-                        if (ent != null)
-                        {
-                            // 如果实体对象不为空，输出提示信息并提交事务
-                            ed.WriteMessage($"\n选中单个实体成功，选中 {ent.GetType().Name}\n");
-                            trans.Commit();
-                            return ent;
-                        }
-                    }
+                    ed.WriteMessage("\n选择已取消或出错\n");
+                    return null;
                 }
-                catch (System.Exception ex)
+
+                ObjectId[] ids = res.Value.GetObjectIds();
+                if (ids.Length == 0)
                 {
-                    // 如果捕获到异常，输出错误信息
-                    ed.WriteMessage($"\n系统错误：{ex.Message}\n");
+                    ed.WriteMessage("\n没有选中实体\n");
+                    return null;
+                }
+                if (ids.Length > 1)
+                {
+                    ed.WriteMessage("\n选中多个实体\n");
+                    return null;
+                }
+
+                // 开始事务操作前加锁
+                using (DocumentLock docLock = doc.LockDocument())
+                using (Transaction trans = doc.TransactionManager.StartTransaction())
+                {
+                    Entity ent = trans.GetObject(ids[0], OpenMode.ForWrite) as Entity;
+                    if (ent != null)
+                    {
+                        ed.WriteMessage($"\n选中单个实体成功，类型为：{ent.GetType().Name}\n");
+                        trans.Commit();
+                        return ent;
+                    }
                 }
             }
-            // 如果选择过程中出现问题，返回 null
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n系统错误：{ex.Message}\n");
+            }
+
             return null;
         }
+
+
         /// <summary>
         /// 选择并返回指定类型的实体。
         /// </summary>

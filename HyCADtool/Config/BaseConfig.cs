@@ -1,4 +1,5 @@
-﻿using Autodesk.AutoCAD.DatabaseServices;
+﻿using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Tools;
 using System;
@@ -32,13 +33,38 @@ namespace HyCADTool.Config
 
         public static void InitializeStyle()
         {
-            TextStyleId = Tools.ZTools.CreateTextStyle(Tools.ZTools.TextStyleConfig.Name);
-            DimStyleID = Tools.ZTools.CreateDimStyle(Tools.ZTools.DimStyleConfig.Name);
-            MleaderStyleId = Tools.ZTools.CreateMLeaderStyle(Tools.ZTools.MLeaderStyleConfig.Name);
-            TableStyleId = Tools.ZTools.CreateTableStyle(Tools.ZTools.TableStyleConfig.Name);
-            ConfigManager.ImportConfigFromCsv("Layer", "Common");
-            // 添加默认图层（例如 Common 类别）
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
 
+            using (doc.LockDocument()) // 锁定当前文档，避免 eLockViolation
+            {
+                var db = doc.Database;
+
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    // 注册文字样式
+                    TextStyleId = Tools.ZTools.CreateTextStyle(Tools.ZTools.TextStyleConfig.Name);
+
+                    // 注册标注样式
+                    DimStyleID = Tools.ZTools.CreateDimStyle(Tools.ZTools.DimStyleConfig.Name);
+
+                    // 注册多重引线样式
+                    MleaderStyleId = Tools.ZTools.CreateMLeaderStyle(Tools.ZTools.MLeaderStyleConfig.Name);
+
+                    // 注册表格样式
+                    TableStyleId = Tools.ZTools.CreateTableStyle(Tools.ZTools.TableStyleConfig.Name);
+
+                    // 注册默认线型（点划线、虚线等）
+                    Tools.ZTools.RegisterStandardLinetypes();
+
+                    // 导入图层配置
+                    //ConfigManager.ImportConfigFromCsv( "Layer", "Common");
+                    ConfigManager.ImportConfigFromCsv();
+
+                    tr.Commit(); // 提交所有更改
+                }
+            }
         }
+
     }
 }

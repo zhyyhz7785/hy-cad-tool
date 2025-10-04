@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Config;
+using HyCADTool.Views;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -187,6 +188,8 @@ namespace HyCADTool.Tools
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
+
+            
             List<Point3d> points = new List<Point3d>();
             var plResult = ZTools.GetPolylineInfo("请选择一个需要标注多段线对象");
             if (plResult == null)
@@ -206,7 +209,7 @@ namespace HyCADTool.Tools
                         return points; // 返回空列表
                     }
                     // 调用方法获取三个点
-                    points = GetPointsAlongPolyline(pl, point, 100, 17.5);
+                    points = GetPointsAlongPolyline(pl, point, 100, Reinforcement.DotReinOffsetOut);
                     tr.Commit();
                 }
                 return points;

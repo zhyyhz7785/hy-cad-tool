@@ -33,7 +33,7 @@ namespace HyCADTool.HelpClass.ElevationSymbol
         public ElevationSymbol(Point3d basePoint, double scale, double d, Editor editor, ElevationSymbolState state = ElevationSymbolState.Normal, double angleDegrees = 0.0)
         {
             BasePoint = basePoint;
-            Scale = BaseConfig.Scale; // 使用全局配置的 Scale
+            Scale = scale;            // 使用全局配置的 Scale
             D = d;
             State = state;
             _currentPoint = basePoint;

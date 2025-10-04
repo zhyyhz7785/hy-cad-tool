@@ -47,6 +47,7 @@ namespace HyCADTool
         public static double MleaderDistance => (ReinPanel.ActivePanel?.MleaderDistance ?? 6.0) * Scale;
         public static double ReinforcementDiameter => (ReinPanel.ActivePanel?.ReinforcementDiameter ?? 0.35) * Scale;
         public static double DotReinOffset => (ReinPanel.ActivePanel?.DotReinOffset ?? 1.35) * Scale;
+        public static double DotReinOffsetOut => (ReinPanel.ActivePanel?.DotReinOffset-1 ?? 0.35) * Scale;
         public static double HookLength => (ReinPanel.ActivePanel?.HookLength ?? 1.0) * Scale;
         public static double ProtectionThickness => (ReinPanel.ActivePanel?.ProtectionThickness ?? 1.0) * Scale;
         public static string[] LayerNames { get; set; }

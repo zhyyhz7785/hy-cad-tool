@@ -62,6 +62,7 @@
     <Compile Include="Commands\DimPointCommands - 复制.cs" />
     <Compile Include="Commands\hyExport\ExportEntityPropertiesToCsv - 复制.cs" />
     <Compile Include="Commands\hyExport\ExportEntityPropertiesToCsv.cs" />
+    <Compile Include="Commands\ReinCommands\ReinOutside.cs" />
     <Compile Include="Config\BaseConfig.cs" />
     <Compile Include="Config\FilterablePropertyMetadataProvider.cs" />
     <Compile Include="Config\MainPlugin.cs" />
@@ -125,7 +126,7 @@
     <Compile Include="Commands\OverKill\OverKill.cs" />
     <Compile Include="Commands\PanelCommand.cs" />
     <Compile Include="Commands\hybg\hybg.cs" />
-    <Compile Include="Commands\Reinforcement.cs" />
+    <Compile Include="Commands\gj.cs" />
     <Compile Include="Commands\hyAxis\AlignTextToLine.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabCD_ChangeDisPlay.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabCT_CreateAnchorBoltTable.cs" />
@@ -153,6 +154,7 @@
     <Compile Include="HelpClass\Axis\AnchorBolt - Class - 复制.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt - Class.cs" />
     <Compile Include="HelpClass\Axis\AnchorBolt.cs" />
+    <Compile Include="Tools\CreatEntity\Rein\ReinforcementOutside.cs" />
     <Compile Include="Tools\SelectTool\FilterManager.cs" />
     <Compile Include="Tools\SelectTool\AcTv.cs" />
     <Compile Include="HelpClass\DCEL\DCEL.cs" />
@@ -273,15 +275,15 @@
     <Compile Include="Tools\GptModifyTool\DeleteByObjectIDs.cs" />
     <Compile Include="Tools\GptModifyTool\ChangeEntityProperty.cs" />
     <Compile Include="Tools\GptModifyTool\ChangePosition.cs" />
-    <Compile Include="Tools\GptModifyTool\ComparerTool.cs" />
+    <Compile Include="Tools\GeometryUtils\ComparerTool.cs" />
     <Compile Include="Tools\GptModifyTool\CreatSolid.cs" />
     <Compile Include="Tools\Style\Tools.DimStyle.cs" />
     <Compile Include="Tools\GptModifyTool\FileTool.cs" />
     <Compile Include="Tools\GptModifyTool\GeneralTool.cs" />
     <Compile Include="Tools\GptModifyTool\LayerPropertiesExport.cs" />
     <Compile Include="Tools\GptModifyTool\LineTool.cs" />
-    <Compile Include="Tools\GptModifyTool\PointTool.cs" />
-    <Compile Include="Tools\GptModifyTool\PolyTool.cs" />
+    <Compile Include="Tools\GeometryUtils\PointTool.cs" />
+    <Compile Include="Tools\GeometryUtils\PolyTool.cs" />
     <Compile Include="Tools\GptModifyTool\SetCurrentStyles.cs" />
     <Compile Include="Tools\input\GetUserPoint.cs" />
     <Compile Include="Tools\SelectTool\SelectEntityTool .cs" />
@@ -355,9 +357,7 @@
     <None Include="01%28平面标注尺寸%29\Readme.md" />
     <None Include="Models\Axis\AxisReadme.md" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Tools\Cluster\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <Resource Include="Resources\LibraryResources.xaml">
       <SubType>Designer</SubType>

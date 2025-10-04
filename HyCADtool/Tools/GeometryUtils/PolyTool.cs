@@ -63,6 +63,31 @@ namespace HyCADTool.Tools
             }
             return poly;
         }
+        /// <summary>
+        /// 确保 Polyline 为顺时针，如不是则反转
+        /// </summary>
+        public static Polyline EnsureClockwise(this Polyline poly)
+        {
+            if (poly == null) return null;
+
+            // 使用代数面积判断
+            double area = poly.GetArea();
+            if (area > 0) // 逆时针
+            {
+                // 重新构建为顺时针
+                var newPoly = new Polyline();
+                int n = poly.NumberOfVertices;
+
+                for (int i = n - 1; i >= 0; i--)
+                {
+                    var pt = poly.GetPoint2dAt(i);
+                    newPoly.AddVertexAt(newPoly.NumberOfVertices, pt, poly.GetBulgeAt(i), 0, 0);
+                }
+                newPoly.Closed = poly.Closed;
+                return newPoly;
+            }
+            return poly; // 已经是顺时针
+        }
         public static Point2d[] GetPolyPoint2ds(this Polyline poly)
         {
             var points = new Point2d[poly.NumberOfVertices];

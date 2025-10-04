@@ -40,9 +40,8 @@ namespace HyCADTool
         }
         public static void GenerateReinforcement(Polyline boundary)
         {
-            Reinforcement.SetProperties(boundary);
-            //
-            //EtGpt.CreateMultipleLayers(("01_hy_1钢筋_线钢筋", 1), ("01_hy_2钢筋_点钢筋", 5), ("00_hy_3公共_标注1_外", 3), ("00_hy_3公共_标注3_引线", 92));
+            Reinforcement.SetProperties(boundary);            
+            ZTools.CreateMultipleLayers(("01_hy_1钢筋_线钢筋", 1), ("01_hy_1钢筋_点钢筋", 5), ("00_hy_3公共_标注1_外", 3), ("00_hy_3公共_标注3_引线", 92));
             Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             Reinforcement.SubReinforcementWithAnchorsAddhooks.ToSpace();
             Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_点钢筋");
