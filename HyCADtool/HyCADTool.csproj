@@ -56,9 +56,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="00\DimensionForReinforcement - 复制 - 复制.cs" />
+    <Compile Include="00\DimensionForReinforcement.cs" />
     <Compile Include="Commands\DimPointCommands - 复制 - 复制 - 复制.cs" />
-    <Compile Include="Commands\DimPointCommands - 复制 - 复制.cs" />
     <Compile Include="Commands\DimPointCommands - 复制.cs" />
     <Compile Include="Commands\hyExport\ExportEntityPropertiesToCsv - 复制.cs" />
     <Compile Include="Commands\hyExport\ExportEntityPropertiesToCsv.cs" />
@@ -66,27 +65,20 @@
     <Compile Include="Config\BaseConfig.cs" />
     <Compile Include="Config\FilterablePropertyMetadataProvider.cs" />
     <Compile Include="Config\MainPlugin.cs" />
-    <Compile Include="HelpClass\Pile\PileConfig - 复制.cs" />
+    <Compile Include="HelpClass\Pile\PileConfig.cs" />
     <Compile Include="Interfaces\IEntityFilter.cs" />
     <Compile Include="Models\Axis\AxisDatas.cs" />
     <Compile Include="Models\Cluster\03DimHelper.cs" />
-    <Compile Include="01%28平面标注尺寸%29\BaseDimHelper - 复制.cs" />
     <Compile Include="Models\Cluster\01DimPointsAndAxis.cs" />
-    <Compile Include="01%28平面标注尺寸%29\BaseDimension.cs" />
-    <Compile Include="01%28平面标注尺寸%29\BaseDimHelper.cs" />
-    <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper_Fun.cs" />
     <Compile Include="01%28平面标注尺寸%29\Test.cs" />
-    <Compile Include="01%28平面标注尺寸%29\PointsClusterHelper.cs" />
     <Compile Include="Commands\3d\hy3G_Generate.cs" />
     <Compile Include="Commands\3d\hy3CS_CreateSection.cs" />
     <Compile Include="Commands\DimPointCommands.cs" />
     <Compile Include="Commands\Dcel - 复制.cs" />
-    <Compile Include="Commands\HyDim.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabA_Align.cs" />
-    <Compile Include="Commands\HyMbr\HYMBR_CreateLayoutViewports - 复制.cs" />
+    <Compile Include="Commands\HyMbr\HYMBR_CreateLayoutViewports.cs" />
     <Compile Include="Commands\HYRps_HY_ReplacePolygonsByIntersection.cs" />
     <Compile Include="Commands\HYRp_ReplacePolygon - clip2.cs" />
-    <Compile Include="Commands\HYRp_ReplacePolygon.cs" />
     <Compile Include="Commands\HyDim\hydimA_AddVertexAtIntersections.cs" />
     <Compile Include="Commands\Hyab_AnchorBolt\hyabC_Calculat.cs" />
     <Compile Include="Commands\HyDim\hydimS_SplitDimensionAtLine.cs" />
@@ -101,22 +93,19 @@
     <Compile Include="Models\Cluster\CreateDimensionsForCluster - 复制.cs" />
     <Compile Include="Models\Enum\Direction.cs" />
     <Compile Include="Models\Cluster\02ClusterClusterFactory.cs" />
-    <Compile Include="00\Dim.cs" />
     <Compile Include="Commands\hyAxis\hyAxis_AlignedAxisText.cs" />
     <Compile Include="00\EquipmentFoundation\EF_Commands.cs" />
     <Compile Include="00\EquipmentFoundation\EF_Core Methods.cs" />
     <Compile Include="00\EquipmentFoundation\EF_ExtensionDictionary.cs" />
     <Compile Include="00\EquipmentFoundation\EF_GeometryUtilities.cs" />
     <Compile Include="00\EquipmentFoundation\EF_Models.cs" />
-    <Compile Include="Commands\Hyz\HYz_GroupCirclesZ - 复制.cs" />
-    <Compile Include="Commands\Hyz\HYz_PlacePileAndVoronoiWithLloydOptimization.cs" />
     <Compile Include="Commands\Hyz\HYz_GroupCirclesZ.cs" />
+    <Compile Include="Commands\Hyz\HYz_PlacePileAndVoronoiWithLloydOptimization.cs" />
     <Compile Include="Commands\HYc2_block2leader.cs" />
     <Compile Include="Commands\HYc2_block_color.cs" />
     <Compile Include="Commands\HyMbr\CreateMBR - DrawTitleBlock.cs" />
-    <Compile Include="Commands\HyMbr\HYMBR_CreateLayoutViewports.cs" />
     <Compile Include="Commands\HyMbr\CreateMBR.cs" />
-    <Compile Include="Commands\PanelCommand - 复制.cs" />
+    <Compile Include="Commands\PanelCommand.cs" />
     <Compile Include="Commands\RaftThicknessBybolted.cs" />
     <Compile Include="Commands\HyDim\hydims.cs" />
     <Compile Include="Commands\hybg\hybgTCE_TextsCreatElevation.cs" />
@@ -124,7 +113,6 @@
     <Compile Include="Commands\hybg\hybgu_UpdateElevationText.cs" />
     <Compile Include="Commands\OverKill\OverKill - Core.cs" />
     <Compile Include="Commands\OverKill\OverKill.cs" />
-    <Compile Include="Commands\PanelCommand.cs" />
     <Compile Include="Commands\hybg\hybg.cs" />
     <Compile Include="Commands\gj.cs" />
     <Compile Include="Commands\hyAxis\AlignTextToLine.cs" />
@@ -150,10 +138,7 @@
     <Compile Include="Commands\Dcel.cs" />
     <Compile Include="Commands\SelectReinText.cs" />
     <Compile Include="Commands\hyExport\hydl_DrawLinesOnEachLayer.cs" />
-    <Compile Include="Converter\Clipper2Converter - 复制.cs" />
-    <Compile Include="HelpClass\Axis\AnchorBolt - Class - 复制.cs" />
-    <Compile Include="HelpClass\Axis\AnchorBolt - Class.cs" />
-    <Compile Include="HelpClass\Axis\AnchorBolt.cs" />
+    <Compile Include="Converter\Clipper2Converter.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementOutside.cs" />
     <Compile Include="Tools\SelectTool\FilterManager.cs" />
     <Compile Include="Tools\SelectTool\AcTv.cs" />
@@ -173,16 +158,12 @@
     <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator_fun_CrossSection - core.cs" />
     <Compile Include="HelpClass\Elevation3d\ElevationModelGenerator_fun_CrossSection.cs" />
     <Compile Include="HelpClass\Elevation3d\GeometryData.cs" />
-    <Compile Include="HelpClass\Elevation3d\Jion - core.cs" />
     <Compile Include="HelpClass\Elevation3d\Jion.cs" />
     <Compile Include="HelpClass\Jig\HookJigSeg.cs" />
     <Compile Include="HelpClass\Jig\HookJig.cs" />
     <Compile Include="HelpClass\Jig\PolylineJig.cs" />
     <Compile Include="HelpClass\CAD\Comparer.cs" />
-    <Compile Include="HelpClass\Pile\PileConfig.cs" />
     <Compile Include="HelpClass\Pile\StandardArea\A3_CircularStandardArea .cs" />
-    <Compile Include="HelpClass\Pile\StandardArea\A5_GeometryUtils - 复制 - 复制.cs" />
-    <Compile Include="HelpClass\Pile\StandardArea\A5_GeometryUtils - 复制.cs" />
     <Compile Include="HelpClass\Pile\StandardArea\A5_GeometryUtils.cs" />
     <Compile Include="HelpClass\Pile\StandardArea\A2_RectangularStandardArea.cs" />
     <Compile Include="HelpClass\Pile\StandardArea\A1_StandardAreaBase.cs" />
@@ -228,21 +209,15 @@
     <Compile Include="Tools\CreatEntity\BaseRein\BR063_PolyDim.cs" />
     <Compile Include="Tools\CreatEntity\BaseRein\BR06_PolyDim.cs" />
     <Compile Include="Tools\CreatEntity\BaseRein\BR02_SelectNoUseText2.cs" />
-    <Compile Include="Tools\CreatEntity\CrossSectionalDrawing\BreakLines.cs" />
     <Compile Include="Tools\CreatEntity\CrossSectionalDrawing\BreakCurves.cs" />
-    <Compile Include="00\DimensionForReinforcement - 复制.cs" />
-    <Compile Include="Tools\CreatEntity\Dim\DimensionForReinforcement.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementFun.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementMain - 复制.cs" />
-    <Compile Include="Tools\CreatEntity\Rein\ReinforcementMain.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsF.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsE.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsD.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsC.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsB.cs" />
     <Compile Include="Tools\CreatEntity\Rein\ReinforcementSingleFunsA.cs" />
-    <Compile Include="Tools\Envelope\Envelope - 复制.cs" />
-    <Compile Include="Tools\Envelope\DeleteduplicateEdge.cs" />
     <Compile Include="Tools\GeometryUtils\GeometryUtils - 2.cs" />
     <Compile Include="Tools\GeometryUtils\GeometryUtils - 1.cs" />
     <Compile Include="Tools\GptModifyTool\DimensionTool - 复制 - 复制.cs" />
@@ -266,12 +241,9 @@
     <Compile Include="Tools\PileLayout\Pile.cs" />
     <Compile Include="Tools\PileLayout\V2.cs" />
     <Compile Include="Tools\PileLayout\V1.cs" />
-    <Compile Include="Tools\PileLayout\Grid - 复制 - 复制 - 复制.cs" />
-    <Compile Include="Tools\PileLayout\Grid - 复制 - 复制.cs" />
     <Compile Include="Tools\PileLayout\Quadtree.cs" />
     <Compile Include="Tools\PileLayout\Grid.cs" />
     <Compile Include="Tools\Style\Tools.LineType.cs" />
-    <Compile Include="Tools\Envelope\Envelope.cs" />
     <Compile Include="Tools\GptModifyTool\DeleteByObjectIDs.cs" />
     <Compile Include="Tools\GptModifyTool\ChangeEntityProperty.cs" />
     <Compile Include="Tools\GptModifyTool\ChangePosition.cs" />
@@ -354,10 +326,11 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <None Include="01%28平面标注尺寸%29\Readme.md" />
     <None Include="Models\Axis\AxisReadme.md" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Tools\CreatEntity\Dim\" />
+  </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\LibraryResources.xaml">
       <SubType>Designer</SubType>

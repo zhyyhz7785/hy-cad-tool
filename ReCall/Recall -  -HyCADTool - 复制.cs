@@ -13,7 +13,7 @@ namespace HyCADTool.ReCall
     {
         // 路径参数 - 可修改的目录设置
         private static readonly string RootLevelsUp = "4"; // 上级目录层数
-        private static readonly string PluginFolderRelativePath = @"HyCADToolGpt\HyCADTool\bin\Debug";
+        private static readonly string PluginFolderRelativePath = @"hy-cad-tool\HyCADTool\bin\Debug";
         private static readonly string TargetDllName = "HyCADTool.dll";
         private static readonly string TempDllName = "HyCADTool_temp.dll";
         private static readonly string NugetPackagesRelativePath = ".nuget\\packages";
