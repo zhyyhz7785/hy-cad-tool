@@ -14,7 +14,7 @@ using HyCADTool.Tools;
 using System;
 using HyCADTool;
 using HyCADTool.Config;
-//   ^\s*(?=\r?$)\n   (删除空行正则表达式）
+//   ^\s*(?=\r?$)\n   (删除空行正则表达式asdf）
 //Cad查询数据命令   (setq ent (entsel)) (setq ent_data (car ent)) (setq ent_data (entget ent_data))
 [assembly: CommandClass(typeof(HyCADTool.TestCommand))]
 namespace HyCADTool
