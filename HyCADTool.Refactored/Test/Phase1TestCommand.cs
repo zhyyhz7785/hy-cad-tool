@@ -1,5 +1,4 @@
 using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
@@ -7,25 +6,20 @@ using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
 using System.Linq;
-using Exception = Autodesk.AutoCAD.Runtime.Exception;
 
-[assembly: CommandClass(typeof(ReCall.Phase1Tests))]
-
-namespace ReCall
+namespace HyCADTool.Refactored.Test
 {
     /// <summary>
     /// 阶段 1 测试命令集
-    /// 用于验证 HyCADTool.Refactored 基础设施功能
+    /// 类似 TestCommand.cs，用于动态加载测试
     /// </summary>
-    public class Phase1Tests
+    public class Phase1TestCommand
     {
         #region 测试 1: 插件加载测试
 
         /// <summary>
         /// 测试插件加载状态和依赖注入容器
-        /// 命令: TestPluginLoad
         /// </summary>
-        [CommandMethod("TestPluginLoad")]
         public static void TestPluginLoad()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -45,7 +39,7 @@ namespace ReCall
                 var styleService = ServiceLocator.Resolve<IStyleService>();
                 ed.WriteMessage("\n✅ IStyleService 已解析");
                 
-                var converter = ServiceLocator.Resolve<HyCADTool.Refactored.Infrastructure.AutoCAD.Converters.IGeometryConverter>();
+                var converter = ServiceLocator.Resolve<Infrastructure.AutoCAD.Converters.IGeometryConverter>();
                 ed.WriteMessage("\n✅ IGeometryConverter 已解析");
                 
                 ed.WriteMessage("\n\n✅ 所有服务解析成功！插件加载正常。\n");
@@ -63,9 +57,7 @@ namespace ReCall
 
         /// <summary>
         /// 测试多边形面积计算
-        /// 命令: TestPolygonArea
         /// </summary>
-        [CommandMethod("TestPolygonArea")]
         public static void TestPolygonArea()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -98,9 +90,7 @@ namespace ReCall
 
         /// <summary>
         /// 测试多边形质心计算
-        /// 命令: TestPolygonCentroid
         /// </summary>
-        [CommandMethod("TestPolygonCentroid")]
         public static void TestPolygonCentroid()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -133,9 +123,7 @@ namespace ReCall
 
         /// <summary>
         /// 测试点在多边形内判断
-        /// 命令: TestPointInPolygon
         /// </summary>
-        [CommandMethod("TestPointInPolygon")]
         public static void TestPointInPolygon()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -178,9 +166,7 @@ namespace ReCall
 
         /// <summary>
         /// 测试图层和样式服务功能
-        /// 命令: TestLayerAndStyleServices
         /// </summary>
-        [CommandMethod("TestLayerAndStyleServices")]
         public static void TestLayerAndStyleServices()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -227,9 +213,7 @@ namespace ReCall
 
         /// <summary>
         /// 测试几何服务并集运算
-        /// 命令: TestGeometryServiceUnion
         /// </summary>
-        [CommandMethod("TestGeometryServiceUnion")]
         public static void TestGeometryServiceUnion()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;
@@ -292,9 +276,7 @@ namespace ReCall
 
         /// <summary>
         /// 运行所有阶段 1 测试
-        /// 命令: RunAllPhase1Tests
         /// </summary>
-        [CommandMethod("RunAllPhase1Tests")]
         public static void RunAllPhase1Tests()
         {
             var ed = Application.DocumentManager.MdiActiveDocument.Editor;

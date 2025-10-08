@@ -75,10 +75,14 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
         /// <returns>服务实例，如果解析失败返回 default(T)</returns>
         public static T TryResolve<T>()
         {
-            T service;
-            if (Container.TryResolve(out service))
-                return service;
-            return default(T);
+            try
+            {
+                return Container.Resolve<T>();
+            }
+            catch
+            {
+                return default(T);
+            }
         }
     }
 }

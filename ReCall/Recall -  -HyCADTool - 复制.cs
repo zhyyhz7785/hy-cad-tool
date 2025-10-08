@@ -13,9 +13,9 @@ namespace HyCADTool.ReCall
     {
         // 路径参数 - 可修改的目录设置
         private static readonly string RootLevelsUp = "4"; // 上级目录层数
-        private static readonly string PluginFolderRelativePath = @"hy-cad-tool\HyCADTool\bin\Debug";
-        private static readonly string TargetDllName = "HyCADTool.dll";
-        private static readonly string TempDllName = "HyCADTool_temp.dll";
+        private static readonly string PluginFolderRelativePath = @"hy-cad-tool\HyCADTool.Refactored\bin\Debug";
+        private static readonly string TargetDllName = "HyCADTool.Refactored.dll";
+        private static readonly string TempDllName = "HyCADTool.Refactored_temp.dll";
         private static readonly string NugetPackagesRelativePath = ".nuget\\packages";
         // 其他字段保持不变
         private Action Cmd1Action { get; set; }
@@ -95,10 +95,11 @@ namespace HyCADTool.ReCall
                 ResourceManager.ResourceAssembly = assembly;
                 AppDomain.CurrentDomain.SetData("HyCADToolAssembly", assembly);
                 editor.WriteMessage($"\n加载程序集: {assembly.FullName}");
-                var type = assembly.GetType("HyCADTool.TestCommand") ?? throw new InvalidOperationException("未找到类型 'TestCommand'");
-                var method = type.GetMethod("Test") ?? throw new InvalidOperationException("未找到方法 'Test'");
-                var instance = Activator.CreateInstance(type) ?? throw new InvalidOperationException("无法实例化 'TestCommand'");
-                cmdAction = () => method.Invoke(instance, null);
+                var type = assembly.GetType("HyCADTool.Refactored.Test.Phase1TestCommand") 
+                    ?? throw new InvalidOperationException("未找到类型 'Phase1TestCommand'");
+                var method = type.GetMethod("RunAllPhase1Tests") 
+                    ?? throw new InvalidOperationException("未找到方法 'RunAllPhase1Tests'");
+                cmdAction = () => method.Invoke(null, null); // 静态方法，不需要实例
             }
             catch (Exception ex)
             {

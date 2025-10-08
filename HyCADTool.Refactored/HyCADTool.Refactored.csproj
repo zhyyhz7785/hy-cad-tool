@@ -102,9 +102,12 @@
     <Compile Include="Infrastructure\AutoCAD\Services\LayerService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\StyleService.cs" />
     
-    <!-- Presentation Layer -->
-    <Compile Include="Presentation\PluginInitializer.cs" />
-  </ItemGroup>
+      <!-- Presentation Layer -->
+      <Compile Include="Presentation\PluginInitializer.cs" />
+      
+      <!-- Test Layer -->
+      <Compile Include="Test\Phase1TestCommand.cs" />
+    </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->
     <None Include="README.md" />
