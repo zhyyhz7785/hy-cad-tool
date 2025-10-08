@@ -74,11 +74,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (!polygonList.Any())
                 return Enumerable.Empty<Polygon2D>();
 
-            // 转换为 Clipper2 路径
-            var paths = polygonList.Select(ConvertToPath64).ToList();
+            // 转换为 Clipper2 路径（统一使用 PathD）
+            var paths = polygonList.Select(ConvertToPathD).ToList();
 
             // 执行并集操作
-            var solution = Clipper.Union(new PathsD(paths.Select(ConvertPath64ToPathD)), FillRule.NonZero);
+            var solution = Clipper.Union(new PathsD(paths), FillRule.NonZero);
 
             // 转换回领域对象
             return solution.Select(path => CreatePolygonFromPathD(path));

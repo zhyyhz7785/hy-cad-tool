@@ -253,10 +253,10 @@ namespace HyCADTool.Refactored.Test
                 {
                     double area = unionResult[0].GetArea();
                     ed.WriteMessage($"\n并集面积: {area:F2}");
-                    ed.WriteMessage($"\n预期面积: 150.00 (两个100平方的正方形，重叠50平方)");
+                    ed.WriteMessage($"\n预期面积: 175.00 (两个100平方的正方形，重叠25平方)");
                     
-                    bool passed = Math.Abs(area - 150.0) < 1.0;
-                    ed.WriteMessage(passed ? "\n✅ 测试通过\n" : $"\n❌ 测试失败（误差: {Math.Abs(area - 150.0):F2}）\n");
+                    bool passed = Math.Abs(area - 175.0) < 1.0;
+                    ed.WriteMessage(passed ? "\n✅ 测试通过\n" : $"\n❌ 测试失败（误差: {Math.Abs(area - 175.0):F2}）\n");
                 }
                 else
                 {
