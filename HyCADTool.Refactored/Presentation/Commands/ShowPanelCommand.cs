@@ -64,22 +64,51 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
         }
 
-        // 以下是未来将要添加的命令占位符：
-
-        /*
+        /// <summary>
+        /// 显示/隐藏钢筋配置面板
+        /// </summary>
         [CommandMethod("HYREIN")]
         public static void ShowReinPanel()
         {
-            var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-            panelManager.TogglePanel<ReinPanel>("钢筋配置", new Guid("A1B2C3D4-E5F6-..."));
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.ReinPanel>(
+                    "钢筋配置", 
+                    new Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890"));
+                ed.WriteMessage("\n钢筋配置面板已切换");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 显示面板失败: {ex.Message}");
+            }
         }
 
+        /// <summary>
+        /// 显示/隐藏过滤器面板
+        /// </summary>
         [CommandMethod("HYFILTER")]
         public static void ShowFilterPanel()
         {
-            var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-            panelManager.TogglePanel<FilterPanel>("图层过滤", new Guid("B2C3D4E5-F6G7-..."));
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.FilterPanel>(
+                    "图形过滤器", 
+                    new Guid("B2C3D4E5-F6A7-8901-BCDE-F23456789012"));
+                ed.WriteMessage("\n图形过滤器面板已切换");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 显示面板失败: {ex.Message}");
+            }
         }
+
+        // 以下是未来将要添加的命令占位符：
+
+        /*
 
         [CommandMethod("HYBASEREIN")]
         public static void ShowBaseReinPanel()

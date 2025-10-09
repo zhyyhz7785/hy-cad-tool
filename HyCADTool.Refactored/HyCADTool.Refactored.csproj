@@ -130,6 +130,18 @@
       <Compile Include="Presentation\Views\Converters\InverseBoolConverter.cs" />
       <Compile Include="Presentation\Views\Converters\EnumDescriptionConverter.cs" />
       
+      <!-- Presentation Layer - ViewModels -->
+      <Compile Include="Presentation\ViewModels\RelayCommand.cs" />
+      <Compile Include="Presentation\ViewModels\FilterPanelViewModel.cs" />
+      
+      <!-- Presentation Layer - Views -->
+      <Compile Include="Presentation\Views\ReinPanel.xaml.cs">
+        <DependentUpon>ReinPanel.xaml</DependentUpon>
+      </Compile>
+      <Compile Include="Presentation\Views\FilterPanel.xaml.cs">
+        <DependentUpon>FilterPanel.xaml</DependentUpon>
+      </Compile>
+      
       <!-- Domain Layer - Services -->
       <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
@@ -158,6 +170,15 @@
   <ItemGroup>
     <!-- XAML Resources -->
     <Page Include="Presentation\Resources\LibraryResources.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <!-- XAML Views -->
+    <Page Include="Presentation\Views\ReinPanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Presentation\Views\FilterPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

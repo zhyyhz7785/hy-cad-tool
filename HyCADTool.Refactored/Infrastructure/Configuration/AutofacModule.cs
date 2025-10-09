@@ -56,7 +56,21 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
-            // TODO: 后续注册面板（ReinPanel, FilterPanel, BaseReinPanel, PilePanel, ClusterPanel）
+            // 面板注册（按需创建，非单例）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.FilterPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // ViewModel 注册（按需创建）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.FilterPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // TODO: 后续注册更多面板（BaseReinPanel, PilePanel, ClusterPanel）
 
             // ===== 阶段 4: OverKill 功能 =====
             

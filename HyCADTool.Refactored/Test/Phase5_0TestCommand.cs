@@ -277,8 +277,51 @@ namespace HyCADTool.Refactored.Test
                 ed.WriteMessage("PanelManager 类型: " + panelManager.GetType().FullName + "\n");
                 ed.WriteMessage("✅ 面板管理器功能正常\n");
 
+                // 测试显示 ReinPanel
+                ed.WriteMessage("\n正在显示 ReinPanel...\n");
+                try
+                {
+                    panelManager.ShowPanel<HyCADTool.Refactored.Presentation.Views.ReinPanel>(
+                        "钢筋配置", 
+                        new System.Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890"));
+                    ed.WriteMessage("✅ ReinPanel 已显示\n");
+                    ed.WriteMessage("提示：请检查 AutoCAD 窗口右侧或左侧是否出现钢筋配置面板\n");
+                }
+                catch (Exception panelEx)
+                {
+                    ed.WriteMessage($"❌ 显示面板失败: {panelEx.Message}\n");
+                    ed.WriteMessage($"详细: {panelEx.StackTrace}\n");
+                }
+
+                // 测试显示 FilterPanel
+                ed.WriteMessage("\n正在显示 FilterPanel...\n");
+                ed.WriteMessage("步骤 1: 准备调用 panelManager.ShowPanel<FilterPanel>()\n");
+                try
+                {
+                    ed.WriteMessage("步骤 2: 开始创建 FilterPanel...\n");
+                    panelManager.ShowPanel<HyCADTool.Refactored.Presentation.Views.FilterPanel>(
+                        "图形过滤器", 
+                        new System.Guid("B2C3D4E5-F6A7-8901-BCDE-F23456789012"));
+                    ed.WriteMessage("步骤 3: ShowPanel 调用成功\n");
+                    ed.WriteMessage("✅ FilterPanel 已显示\n");
+                    ed.WriteMessage("提示：请检查 AutoCAD 窗口四周是否出现图形过滤器面板\n");
+                    ed.WriteMessage("       面板标题应为：图形过滤器\n");
+                    ed.WriteMessage("       该面板采用 MVVM 模式，ViewModel 已通过 DI 注入\n");
+                }
+                catch (Exception panelEx)
+                {
+                    ed.WriteMessage($"\n❌❌❌ 显示 FilterPanel 失败 ❌❌❌\n");
+                    ed.WriteMessage($"错误类型: {panelEx.GetType().Name}\n");
+                    ed.WriteMessage($"错误消息: {panelEx.Message}\n");
+                    if (panelEx.InnerException != null)
+                    {
+                        ed.WriteMessage($"内部异常: {panelEx.InnerException.Message}\n");
+                        ed.WriteMessage($"内部异常堆栈: {panelEx.InnerException.StackTrace}\n");
+                    }
+                    ed.WriteMessage($"堆栈跟踪:\n{panelEx.StackTrace}\n");
+                }
+
                 ed.WriteMessage("\n✅ 测试 4 完成\n");
-                ed.WriteMessage("提示：实际面板将在后续步骤中迁移。\n");
             }
             catch (Exception ex)
             {
