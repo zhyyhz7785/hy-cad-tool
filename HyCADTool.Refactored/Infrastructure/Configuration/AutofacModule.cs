@@ -33,9 +33,13 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IStyleService>()
                 .SingleInstance();
 
+            // 注册配置服务（单例）
+            builder.RegisterType<ConfigurationService>()
+                .As<IConfigurationService>()
+                .SingleInstance();
+
             // TODO: 后续添加更多服务注册
             // - IAnchorBoltRepository
-            // - IConfigService
             // - Application层的 UseCases
         }
     }

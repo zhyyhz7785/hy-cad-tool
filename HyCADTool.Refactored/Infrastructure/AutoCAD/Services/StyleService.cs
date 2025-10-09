@@ -265,6 +265,70 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 }
             }
         }
+
+        public void CreateOrUpdateMLeaderStyle(MLeaderStyleConfig config)
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+                throw new InvalidOperationException("No active document");
+
+            var db = doc.Database;
+
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    var mleaderStyleDict = (DBDictionary)tr.GetObject(db.MLeaderStyleDictionaryId, OpenMode.ForRead);
+
+                    MLeaderStyle mleaderStyle;
+                    bool isNew = false;
+
+                    if (mleaderStyleDict.Contains(config.Name))
+                    {
+                        // 更新现有样式
+                        var styleId = mleaderStyleDict.GetAt(config.Name);
+                        mleaderStyle = (MLeaderStyle)tr.GetObject(styleId, OpenMode.ForWrite);
+                    }
+                    else
+                    {
+                        // 创建新样式
+                        mleaderStyleDict.UpgradeOpen();
+                        mleaderStyle = new MLeaderStyle();
+                        mleaderStyleDict.SetAt(config.Name, mleaderStyle);
+                        tr.AddNewlyCreatedDBObject(mleaderStyle, true);
+                        isNew = true;
+                    }
+
+                    // 设置文本样式（如果存在）
+                    var textStyleTable = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+                    if (textStyleTable.Has(config.TextStyleName))
+                    {
+                        mleaderStyle.TextStyleId = textStyleTable[config.TextStyleName];
+                    }
+
+                    tr.Commit();
+
+                    var action = isNew ? "创建" : "更新";
+                    doc.Editor.WriteMessage($"\n✓ {action}多重引线样式: {config.Name}");
+                }
+                catch (System.Exception ex)
+                {
+                    doc.Editor.WriteMessage($"\n✗ 多重引线样式操作失败: {ex.Message}");
+                    tr.Abort();
+                    throw;
+                }
+            }
+        }
+
+        public bool StyleExists(string styleName)
+        {
+            // 通用方法：检查文本样式或标注样式是否存在
+            return TextStyleExists(styleName) || DimensionStyleExists(styleName);
+        }
     }
 }
 

@@ -36,8 +36,13 @@ namespace HyCADTool.Refactored.Presentation
 
                 WriteMessage("\n✓ 依赖注入容器已初始化");
 
-                // 初始化样式和图层
-                InitializeStylesAndLayers();
+                // 加载配置
+                LoadConfigurations();
+
+                WriteMessage("\n✓ 配置已加载");
+
+                // 初始化样式和图层（现在由配置服务处理）
+                // InitializeStylesAndLayers();
 
                 WriteMessage("\n✓ 样式和图层已初始化");
 
@@ -83,7 +88,33 @@ namespace HyCADTool.Refactored.Presentation
         }
 
         /// <summary>
-        /// 初始化样式和图层
+        /// 加载配置
+        /// </summary>
+        private void LoadConfigurations()
+        {
+            try
+            {
+                var configService = ServiceLocator.Resolve<Domain.Interfaces.IConfigurationService>();
+                configService.LoadAllConfigurations();
+
+                // 显示配置信息
+                var baseConfig = configService.GetBaseConfiguration();
+                WriteMessage($"\n  - Scale: {baseConfig.Scale}");
+                WriteMessage($"\n  - ElevationLength: {baseConfig.ElevationLength}");
+                WriteMessage($"\n  - Tolerance: {baseConfig.ToleranceDouble}");
+
+                var pileConfig = configService.GetPileConfiguration();
+                WriteMessage($"\n  - Pile Diameter: {pileConfig.DiameterOrEdge}mm");
+                WriteMessage($"\n  - Pile Section: {pileConfig.Section}");
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ 配置加载警告：{ex.Message}（使用默认值）");
+            }
+        }
+
+        /// <summary>
+        /// 初始化样式和图层（已由 ConfigurationService 处理，保留此方法以防需要）
         /// </summary>
         private void InitializeStylesAndLayers()
         {

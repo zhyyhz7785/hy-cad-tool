@@ -45,6 +45,19 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// <param name="styleName">样式名称</param>
         /// <returns>如果样式存在返回 true</returns>
         bool DimensionStyleExists(string styleName);
+
+        /// <summary>
+        /// 创建或更新多重引线样式
+        /// </summary>
+        /// <param name="config">多重引线样式配置</param>
+        void CreateOrUpdateMLeaderStyle(MLeaderStyleConfig config);
+
+        /// <summary>
+        /// 检查样式是否存在（通用方法）
+        /// </summary>
+        /// <param name="styleName">样式名称</param>
+        /// <returns>如果样式存在返回 true</returns>
+        bool StyleExists(string styleName);
     }
 }
 

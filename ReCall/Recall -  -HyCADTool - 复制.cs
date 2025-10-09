@@ -20,6 +20,7 @@ namespace HyCADTool.ReCall
         // 其他字段保持不变
         private Action Cmd1Action { get; set; }
         private Action Cmd2Phase2Action { get; set; }
+        private Action Cmd3Phase3Action { get; set; }
         private static string DependenciesPath;
         private static string NugetPackagesPath;
         private static readonly Dictionary<string, Assembly> AssemblyCache = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
@@ -44,11 +45,12 @@ namespace HyCADTool.ReCall
                 NugetPackagesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), NugetPackagesRelativePath);
                 AppDomain.CurrentDomain.AssemblyResolve -= ResolveAssemblyHandler;
                 AppDomain.CurrentDomain.AssemblyResolve += ResolveAssemblyHandler;
-                LoadPlugin(tempPath, out Action cmd1Action, out Action cmd2Phase2Action);
+                LoadPlugin(tempPath, out Action cmd1Action, out Action cmd2Phase2Action, out Action cmd3Phase3Action);
                 Cmd1Action = cmd1Action;
                 Cmd2Phase2Action = cmd2Phase2Action;
+                Cmd3Phase3Action = cmd3Phase3Action;
                 editor.WriteMessage("\n插件加载成功");
-                editor.WriteMessage("\n可用命令: C1 (阶段1测试), C1P2 (阶段2测试)");
+                editor.WriteMessage("\n可用命令: C1 (阶段1测试), C1P2 (阶段2测试), C1P3 (阶段3测试)");
             }
             catch (Exception ex)
             {
@@ -60,6 +62,9 @@ namespace HyCADTool.ReCall
 
         [CommandMethod("C1P2")]
         public void Cmd1Phase2() => Cmd2Phase2Action?.Invoke();
+
+        [CommandMethod("C1P3")]
+        public void Cmd1Phase3() => Cmd3Phase3Action?.Invoke();
         private static string GetRootDirectory(FileInfo fileInfo, int levelsUp)
         {
             var dir = fileInfo.Directory;
@@ -92,7 +97,7 @@ namespace HyCADTool.ReCall
             }
             File.Copy(targetPath, tempPath, true);
         }
-        private void LoadPlugin(string pluginPath, out Action cmd1Action, out Action cmd2Phase2Action)
+        private void LoadPlugin(string pluginPath, out Action cmd1Action, out Action cmd2Phase2Action, out Action cmd3Phase3Action)
         {
             var editor = Application.DocumentManager.MdiActiveDocument.Editor;
             try
@@ -115,6 +120,13 @@ namespace HyCADTool.ReCall
                 var method2 = type2.GetMethod("RunAllPhase2Tests") 
                     ?? throw new InvalidOperationException("未找到方法 'RunAllPhase2Tests'");
                 cmd2Phase2Action = () => method2.Invoke(null, null);
+
+                // 加载 Phase3 测试
+                var type3 = assembly.GetType("HyCADTool.Refactored.Test.Phase3TestCommand") 
+                    ?? throw new InvalidOperationException("未找到类型 'Phase3TestCommand'");
+                var method3 = type3.GetMethod("RunAllPhase3Tests") 
+                    ?? throw new InvalidOperationException("未找到方法 'RunAllPhase3Tests'");
+                cmd3Phase3Action = () => method3.Invoke(null, null);
             }
             catch (Exception ex)
             {

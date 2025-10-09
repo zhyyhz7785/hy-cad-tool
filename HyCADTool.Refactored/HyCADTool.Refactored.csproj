@@ -74,6 +74,7 @@
     <Compile Include="Domain\Interfaces\IGeometryService.cs" />
     <Compile Include="Domain\Interfaces\ILayerService.cs" />
     <Compile Include="Domain\Interfaces\IStyleService.cs" />
+    <Compile Include="Domain\Interfaces\IConfigurationService.cs" />
     
       <!-- Domain Layer - Value Objects (Geometry) -->
       <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
@@ -90,10 +91,19 @@
     <Compile Include="Domain\ValueObjects\Configuration\TextStyleConfig.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\DimensionStyleConfig.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\LayerConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\BaseConfiguration.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\PileConfiguration.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\MLeaderStyleConfig.cs" />
+    
+    <!-- Domain Layer - Enums -->
+    <Compile Include="Domain\Enums\PileEnums.cs" />
     
     <!-- Infrastructure Layer - Configuration -->
     <Compile Include="Infrastructure\Configuration\AutofacModule.cs" />
     <Compile Include="Infrastructure\Configuration\ServiceLocator.cs" />
+    <Compile Include="Infrastructure\Configuration\JsonConfigurationLoader.cs" />
+    <Compile Include="Infrastructure\Configuration\CsvConfigurationLoader.cs" />
+    <Compile Include="Infrastructure\Configuration\ConfigurationService.cs" />
     
     <!-- Infrastructure Layer - AutoCAD Converters -->
     <Compile Include="Infrastructure\AutoCAD\Converters\IGeometryConverter.cs" />
@@ -116,6 +126,7 @@
       <!-- Test Layer -->
       <Compile Include="Test\Phase1TestCommand.cs" />
       <Compile Include="Test\Phase2TestCommand.cs" />
+      <Compile Include="Test\Phase3TestCommand.cs" />
     </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->
