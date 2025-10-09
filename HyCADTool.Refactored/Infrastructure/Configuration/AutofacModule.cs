@@ -5,6 +5,8 @@ using HyCADTool.Refactored.Application.UseCases.OverKill;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories;
+using HyCADTool.Refactored.Presentation;
+using System;
 
 namespace HyCADTool.Refactored.Infrastructure.Configuration
 {
@@ -41,12 +43,20 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IConfigurationService>()
                 .SingleInstance();
 
-            // ===== 阶段 5.0: UI 基础设施（选择服务）=====
+            // ===== 阶段 5.0: UI 基础设施 =====
             
             // 选择服务（单例）
             builder.RegisterType<SelectionService>()
                 .As<ISelectionService>()
                 .SingleInstance();
+
+            // 面板管理器（单例）
+            // PanelManager 接受 IComponentContext 作为构造参数
+            builder.RegisterType<PanelManager>()
+                .AsSelf()
+                .SingleInstance();
+
+            // TODO: 后续注册面板（ReinPanel, FilterPanel, BaseReinPanel, PilePanel, ClusterPanel）
 
             // ===== 阶段 4: OverKill 功能 =====
             

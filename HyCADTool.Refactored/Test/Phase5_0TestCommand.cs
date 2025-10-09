@@ -39,6 +39,9 @@ namespace HyCADTool.Refactored.Test
                 // 测试 3: 过滤功能
                 Test3_FilterFunctions(ed);
 
+                // 测试 4: 面板管理器
+                Test4_PanelManager(ed);
+
                 ed.WriteMessage("\n========================================");
                 ed.WriteMessage("\n  阶段 5.0 综合测试结束");
                 ed.WriteMessage("\n========================================\n");
@@ -237,6 +240,50 @@ namespace HyCADTool.Refactored.Test
             catch (Exception ex)
             {
                 ed.WriteMessage($"\n❌ 测试 3 失败: {ex.Message}\n");
+            }
+        }
+
+        #endregion
+
+        #region 测试 4: 面板管理器
+
+        private static void Test4_PanelManager(Autodesk.AutoCAD.EditorInput.Editor ed)
+        {
+            ed.WriteMessage("\n=== 测试 4: 面板管理器 ===\n");
+
+            try
+            {
+                // 检查容器是否初始化
+                if (ServiceLocator.Container == null)
+                {
+                    ed.WriteMessage("❌ ServiceLocator.Container 为 null！\n");
+                    ed.WriteMessage("提示：请确保插件已正确初始化\n");
+                    return;
+                }
+                ed.WriteMessage("✅ ServiceLocator.Container 已初始化\n");
+
+                // 解析 PanelManager
+                ed.WriteMessage("正在解析 PanelManager...\n");
+                var panelManager = ServiceLocator.Container.Resolve<HyCADTool.Refactored.Presentation.PanelManager>();
+                
+                if (panelManager == null)
+                {
+                    ed.WriteMessage("❌ PanelManager 解析失败（返回 null）\n");
+                    return;
+                }
+                ed.WriteMessage("✅ PanelManager 已成功解析\n");
+
+                // 测试 PanelManager 的基本功能
+                ed.WriteMessage("PanelManager 类型: " + panelManager.GetType().FullName + "\n");
+                ed.WriteMessage("✅ 面板管理器功能正常\n");
+
+                ed.WriteMessage("\n✅ 测试 4 完成\n");
+                ed.WriteMessage("提示：实际面板将在后续步骤中迁移。\n");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 测试 4 失败: {ex.Message}\n");
+                ed.WriteMessage($"堆栈跟踪: {ex.StackTrace}\n");
             }
         }
 

@@ -48,6 +48,7 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AutoCAD.NET">
@@ -118,6 +119,16 @@
     
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />
+      <Compile Include="Presentation\PanelManager.cs" />
+      
+      <!-- Presentation Layer - Commands -->
+      <Compile Include="Presentation\Commands\OverKillCommand.cs" />
+      <Compile Include="Presentation\Commands\ShowPanelCommand.cs" />
+      
+      <!-- Presentation Layer - Converters -->
+      <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />
+      <Compile Include="Presentation\Views\Converters\InverseBoolConverter.cs" />
+      <Compile Include="Presentation\Views\Converters\EnumDescriptionConverter.cs" />
       
       <!-- Domain Layer - Services -->
       <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
@@ -137,9 +148,6 @@
       <Compile Include="Infrastructure\AutoCAD\Repositories\ILineRepository.cs" />
       <Compile Include="Infrastructure\AutoCAD\Repositories\LineRepository.cs" />
       
-      <!-- Presentation Layer - Commands -->
-      <Compile Include="Presentation\Commands\OverKillCommand.cs" />
-      
       <!-- Test Layer -->
       <Compile Include="Test\Phase1TestCommand.cs" />
       <Compile Include="Test\Phase2TestCommand.cs" />
@@ -147,6 +155,13 @@
       <Compile Include="Test\Phase4TestCommand.cs" />
       <Compile Include="Test\Phase5_0TestCommand.cs" />
     </ItemGroup>
+  <ItemGroup>
+    <!-- XAML Resources -->
+    <Page Include="Presentation\Resources\LibraryResources.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->
     <None Include="README.md" />
