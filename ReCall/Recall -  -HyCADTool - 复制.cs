@@ -22,6 +22,7 @@ namespace HyCADTool.ReCall
         private Action Cmd2Phase2Action { get; set; }
         private Action Cmd3Phase3Action { get; set; }
         private Action Cmd4Phase4Action { get; set; }
+        private Action Cmd5Phase50Action { get; set; }
         private static string DependenciesPath;
         private static string NugetPackagesPath;
         private static readonly Dictionary<string, Assembly> AssemblyCache = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
@@ -46,13 +47,14 @@ namespace HyCADTool.ReCall
                 NugetPackagesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), NugetPackagesRelativePath);
                 AppDomain.CurrentDomain.AssemblyResolve -= ResolveAssemblyHandler;
                 AppDomain.CurrentDomain.AssemblyResolve += ResolveAssemblyHandler;
-                LoadPlugin(tempPath, out Action cmd1Action, out Action cmd2Phase2Action, out Action cmd3Phase3Action, out Action cmd4Phase4Action);
+                LoadPlugin(tempPath, out Action cmd1Action, out Action cmd2Phase2Action, out Action cmd3Phase3Action, out Action cmd4Phase4Action, out Action cmd5Phase50Action);
                 Cmd1Action = cmd1Action;
                 Cmd2Phase2Action = cmd2Phase2Action;
                 Cmd3Phase3Action = cmd3Phase3Action;
                 Cmd4Phase4Action = cmd4Phase4Action;
+                Cmd5Phase50Action = cmd5Phase50Action;
                 editor.WriteMessage("\n插件加载成功");
-                editor.WriteMessage("\n可用命令: C1 (阶段1测试), C1P2 (阶段2测试), C1P3 (阶段3测试), C1P4 (阶段4测试)");
+                editor.WriteMessage("\n可用命令: C1 (阶段1测试), C1P2 (阶段2测试), C1P3 (阶段3测试), C1P4 (阶段4测试), C1P50 (阶段5.0测试)");
             }
             catch (Exception ex)
             {
@@ -70,6 +72,9 @@ namespace HyCADTool.ReCall
 
         [CommandMethod("C1P4")]
         public void Cmd1Phase4() => Cmd4Phase4Action?.Invoke();
+
+        [CommandMethod("C1P50")]
+        public void Cmd1Phase50() => Cmd5Phase50Action?.Invoke();
         private static string GetRootDirectory(FileInfo fileInfo, int levelsUp)
         {
             var dir = fileInfo.Directory;
@@ -102,7 +107,7 @@ namespace HyCADTool.ReCall
             }
             File.Copy(targetPath, tempPath, true);
         }
-        private void LoadPlugin(string pluginPath, out Action cmd1Action, out Action cmd2Phase2Action, out Action cmd3Phase3Action, out Action cmd4Phase4Action)
+        private void LoadPlugin(string pluginPath, out Action cmd1Action, out Action cmd2Phase2Action, out Action cmd3Phase3Action, out Action cmd4Phase4Action, out Action cmd5Phase50Action)
         {
             var editor = Application.DocumentManager.MdiActiveDocument.Editor;
             try
@@ -139,6 +144,13 @@ namespace HyCADTool.ReCall
                 var method4 = type4.GetMethod("RunAllPhase4Tests") 
                     ?? throw new InvalidOperationException("未找到方法 'RunAllPhase4Tests'");
                 cmd4Phase4Action = () => method4.Invoke(null, null);
+
+                // 加载 Phase5.0 测试
+                var type50 = assembly.GetType("HyCADTool.Refactored.Test.Phase5_0TestCommand") 
+                    ?? throw new InvalidOperationException("未找到类型 'Phase5_0TestCommand'");
+                var method50 = type50.GetMethod("RunAllPhase50Tests") 
+                    ?? throw new InvalidOperationException("未找到方法 'RunAllPhase50Tests'");
+                cmd5Phase50Action = () => method50.Invoke(null, null);
             }
             catch (Exception ex)
             {

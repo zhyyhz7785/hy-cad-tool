@@ -75,6 +75,7 @@
     <Compile Include="Domain\Interfaces\ILayerService.cs" />
     <Compile Include="Domain\Interfaces\IStyleService.cs" />
     <Compile Include="Domain\Interfaces\IConfigurationService.cs" />
+    <Compile Include="Domain\Interfaces\ISelectionService.cs" />
     
       <!-- Domain Layer - Value Objects (Geometry) -->
       <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
@@ -113,6 +114,7 @@
     <Compile Include="Infrastructure\AutoCAD\Services\AutoCadGeometryService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\LayerService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\StyleService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Services\SelectionService.cs" />
     
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />
@@ -143,6 +145,7 @@
       <Compile Include="Test\Phase2TestCommand.cs" />
       <Compile Include="Test\Phase3TestCommand.cs" />
       <Compile Include="Test\Phase4TestCommand.cs" />
+      <Compile Include="Test\Phase5_0TestCommand.cs" />
     </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->

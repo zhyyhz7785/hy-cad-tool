@@ -41,6 +41,13 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IConfigurationService>()
                 .SingleInstance();
 
+            // ===== 阶段 5.0: UI 基础设施（选择服务）=====
+            
+            // 选择服务（单例）
+            builder.RegisterType<SelectionService>()
+                .As<ISelectionService>()
+                .SingleInstance();
+
             // ===== 阶段 4: OverKill 功能 =====
             
             // 领域服务
