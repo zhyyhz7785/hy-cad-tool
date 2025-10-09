@@ -1,0 +1,450 @@
+<UserControl x:Class="HyCADTool.Refactored.Presentation.Views.BaseReinPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignWidth="230"
+             Background="#3b4453"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
+    <StackPanel Margin="0" Background="#3b4453">
+        <!--  第一分区：基本设置  -->
+        <Expander Margin="5"
+                  Background="#3f4855"
+                  BorderBrush="Gray"
+                  BorderThickness="1"
+                  Header="基本设置"
+                  IsExpanded="True">
+            <Border Background="#3f4855"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    CornerRadius="5">
+                <StackPanel>
+                    <!--  主图形比例  -->
+                    <Grid Margin="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="主图形比例" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                    
+                    <!--  设置样式按钮  -->
+                    <Grid Margin="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Command="{Binding ApplyStyleCommand}"
+                                Content="设置样式"
+                                Foreground="White" />
+                        <Button Grid.Column="1"
+                                Command="{Binding ResetCommand}"
+                                Content="恢复默认值" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <!--  第二分区：操作  -->
+        <Expander Margin="5"
+                  Background="#3f4855"
+                  BorderBrush="Gray"
+                  BorderThickness="1"
+                  Header="操作"
+                  IsExpanded="True">
+            <Border Background="#3f4855"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    CornerRadius="5">
+                <StackPanel>
+                    <Button Command="{Binding StepOneCommand}"
+                            Content="整理底图"
+                            Foreground="White" />
+                    
+                    <!--  过滤值输入  -->
+                    <TextBox Width="auto"
+                             Text="{Binding FilterValues, UpdateSourceTrigger=PropertyChanged}" />
+                    
+                    <Button Command="{Binding StepTwoCommand}"
+                            Content="选择删除"
+                            Foreground="White" />
+                    
+                    <Button Command="{Binding StepFourCommand}"
+                            Content="生成配筋面积" />
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <!--  第三分区：钢筋及配筋区域绘制  -->
+        <Expander Margin="5"
+                  Background="#3f4855"
+                  BorderBrush="Gray"
+                  BorderThickness="1"
+                  Header="钢筋及配筋区域绘制"
+                  IsExpanded="True">
+            <Border Background="#3f4855"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    CornerRadius="5">
+                <StackPanel>
+                    <!--  钢筋方向  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="钢筋方向" />
+                        <ComboBox Grid.Column="1"
+                                  Width="90"
+                                  Height="20"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="x向顶筋" Tag="TopX" />
+                            <ComboBoxItem Content="y向顶筋" Tag="TopY" />
+                            <ComboBoxItem Content="x向底筋" Tag="BottomX" />
+                            <ComboBoxItem Content="y向底筋" Tag="BottomY" />
+                        </ComboBox>
+                    </Grid>
+
+                    <!--  通长钢筋直径和间距  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="通长:" />
+                        <TextBlock Grid.Column="1" Text="直径" />
+                        <TextBox Grid.Column="2"
+                                 IsEnabled="{Binding IsRebarInputEnabled}"
+                                 Text="{Binding RebarDiameter, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="3" 
+                                   Foreground="White" 
+                                   Text="间距" />
+                        <TextBox Grid.Column="4"
+                                 IsEnabled="{Binding IsRebarInputEnabled}"
+                                 Text="{Binding RebarSpacing, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  附加钢筋  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="附加:" />
+                        <TextBlock Grid.Column="1" 
+                                   Foreground="White" 
+                                   Text="直径" />
+                        <TextBox Grid.Column="2"
+                                 Text="{Binding MinAdditionalDiameter, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="3" 
+                                   Foreground="White" 
+                                   Text="间距" />
+                        <TextBox Grid.Column="4"
+                                 Text="{Binding AdditionalSpacing, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  板厚和放大系数  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="板厚" />
+                        <TextBox Grid.Column="1"
+                                 Height="20"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding PlateThickness, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="2" 
+                                   Foreground="White" 
+                                   Text="放大" />
+                        <TextBox Grid.Column="3"
+                                 Height="20"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding ReinforceSafety, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  文字偏移  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="文字：" />
+                        <TextBlock Grid.Column="1" 
+                                   Foreground="White" 
+                                   Text="x平移" />
+                        <TextBox Grid.Column="2"
+                                 Height="20"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding ReinforceTextDistanceX, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="3" 
+                                   Foreground="White" 
+                                   Text="y平移" />
+                        <TextBox Grid.Column="4"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding ReinforceTextDistanceY, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  复选框  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox Grid.Column="0"
+                                  Height="20"
+                                  HorizontalContentAlignment="Center"
+                                  Content="锚固"
+                                  Foreground="White"
+                                  IsChecked="{Binding AddAnchorLength}" />
+                        <CheckBox Grid.Column="1"
+                                  Height="20"
+                                  HorizontalContentAlignment="Center"
+                                  Content="全向"
+                                  Foreground="White"
+                                  IsChecked="{Binding DimAll}" />
+                        <CheckBox Grid.Column="2"
+                                  Height="20"
+                                  HorizontalContentAlignment="Center"
+                                  Content="通筋"
+                                  Foreground="White"
+                                  IsChecked="{Binding ExistingRebar}" />
+                    </Grid>
+
+                    <!--  绘制钢筋按钮  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Button Command="{Binding StepFiveCommand}"
+                                Content="绘制钢筋" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <!--  第四分区：标注配筋区域  -->
+        <Expander Margin="5"
+                  Background="#3f4855"
+                  BorderBrush="Gray"
+                  BorderThickness="1"
+                  Header="标注配筋区域"
+                  IsExpanded="True">
+            <Border Background="#3f4855"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    CornerRadius="5">
+                <StackPanel>
+                    <!--  标注尺寸的取整间隔  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="尺寸取整" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding Interval, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  标注方向  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="标注方向" />
+                        <ComboBox Grid.Column="1"
+                                  Width="90"
+                                  Height="20"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="Y向标注" Tag="LeftRight" />
+                            <ComboBoxItem Content="X向标注" Tag="UpDown" />
+                        </ComboBox>
+                    </Grid>
+
+                    <!--  标注按钮  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Button Command="{Binding StepSixCommand}"
+                                Content="标注配筋区域" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Expander>
+
+        <!--  第五分区：高级设置  -->
+        <Expander Margin="5" 
+                  Header="高级设置">
+            <ScrollViewer Margin="0,5,0,5" 
+                          VerticalScrollBarVisibility="Visible">
+                <StackPanel>
+                    <!--  锚固因子  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="锚固因子" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding AnchorFactor, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  配筋分区参数  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="配筋分区参数" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding ProximityThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  上下钢筋间距  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="上下钢筋间距" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding ReinforceDistance, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  文字到线距离  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="文字到线距离" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding TextToLineDistance, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  弯钩长度  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="弯钩长度" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding HookLength, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  多段线宽度  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="多段线宽度" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding PolylineWidth, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  标注最远距离  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="标注最远距离" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding AxisExtend, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <!--  标注间距  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" 
+                                   Foreground="White" 
+                                   Text="标注间距" />
+                        <TextBox Grid.Column="1"
+                                 Background="#2e3440"
+                                 Foreground="White"
+                                 Text="{Binding DimensionDistanceWithDim, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Expander>
+    </StackPanel>
+</UserControl>
+

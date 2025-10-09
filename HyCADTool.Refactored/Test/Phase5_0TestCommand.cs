@@ -1,9 +1,11 @@
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using Autofac;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation;
 using System;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -41,6 +43,9 @@ namespace HyCADTool.Refactored.Test
 
                 // 测试 4: 面板管理器
                 Test4_PanelManager(ed);
+
+                // 测试 5: BaseReinPanel
+                Test5_BaseReinPanel(ed);
 
                 ed.WriteMessage("\n========================================");
                 ed.WriteMessage("\n  阶段 5.0 综合测试结束");
@@ -326,6 +331,43 @@ namespace HyCADTool.Refactored.Test
             catch (Exception ex)
             {
                 ed.WriteMessage($"\n❌ 测试 4 失败: {ex.Message}\n");
+                ed.WriteMessage($"堆栈跟踪: {ex.StackTrace}\n");
+            }
+        }
+
+        /// <summary>
+        /// 测试 5: BaseReinPanel（完全 MVVM 架构）
+        /// </summary>
+        private static void Test5_BaseReinPanel(Editor ed)
+        {
+            try
+            {
+                ed.WriteMessage("\n=== 测试 5: BaseReinPanel (MVVM 架构) ===\n");
+
+                // 解析 PanelManager
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                ed.WriteMessage("✅ PanelManager 已成功解析\n");
+
+                // 显示 BaseReinPanel
+                ed.WriteMessage("\n正在显示 BaseReinPanel...\n");
+                panelManager.ShowPanel<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>(
+                    "底板钢筋配置", 
+                    new System.Guid("C3D4E5F6-A7B8-9012-CDEF-34567890ABCD"));
+
+                ed.WriteMessage("✅ BaseReinPanel 已显示\n");
+                ed.WriteMessage("\n🎯 验证要点：\n");
+                ed.WriteMessage("   1. 面板标题为：底板钢筋配置\n");
+                ed.WriteMessage("   2. 包含 5 个折叠面板（基本设置、操作、钢筋绘制、标注、高级设置）\n");
+                ed.WriteMessage("   3. 所有 TextBox 支持双向绑定\n");
+                ed.WriteMessage("   4. 通筋复选框控制直径/间距 TextBox 启用状态\n");
+                ed.WriteMessage("   5. 7 个按钮命令可执行（设置样式、恢复默认、6个步骤）\n");
+                ed.WriteMessage("   6. 配置更改自动保存到服务\n");
+
+                ed.WriteMessage("\n✅ 测试 5 完成\n");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 测试 5 失败: {ex.Message}\n");
                 ed.WriteMessage($"堆栈跟踪: {ex.StackTrace}\n");
             }
         }

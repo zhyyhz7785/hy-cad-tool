@@ -106,16 +106,27 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
         }
 
-        // 以下是未来将要添加的命令占位符：
-
-        /*
-
         [CommandMethod("HYBASEREIN")]
         public static void ShowBaseReinPanel()
         {
-            var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-            panelManager.TogglePanel<BaseReinPanel>("底板钢筋", new Guid("C3D4E5F6-G7H8-..."));
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>(
+                    "底板钢筋配置", 
+                    new Guid("C3D4E5F6-A7B8-9012-CDEF-34567890ABCD"));
+                ed.WriteMessage("\n底板钢筋配置面板已切换");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 显示面板失败: {ex.Message}");
+            }
         }
+
+        // 以下是未来将要添加的命令占位符：
+
+        /*
 
         [CommandMethod("HYPILE")]
         public static void ShowPilePanel()

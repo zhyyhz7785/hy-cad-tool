@@ -70,7 +70,20 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .InstancePerDependency();
 
-            // TODO: 后续注册更多面板（BaseReinPanel, PilePanel, ClusterPanel）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // 阶段 5.0.4: BaseReinPanel 及其服务
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            builder.RegisterType<HyCADTool.Refactored.Application.Services.BaseReinforcementService>()
+                .As<IBaseReinforcementService>()
+                .SingleInstance();
+
+            // TODO: 后续注册更多面板（PilePanel, ClusterPanel）
 
             // ===== 阶段 4: OverKill 功能 =====
             
