@@ -1,7 +1,10 @@
 using Autofac;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Domain.Services;
+using HyCADTool.Refactored.Application.UseCases.OverKill;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories;
 
 namespace HyCADTool.Refactored.Infrastructure.Configuration
 {
@@ -38,9 +41,24 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IConfigurationService>()
                 .SingleInstance();
 
+            // ===== 阶段 4: OverKill 功能 =====
+            
+            // 领域服务
+            builder.RegisterType<LineOverKillService>()
+                .AsSelf()
+                .SingleInstance();
+            
+            // 应用用例
+            builder.RegisterType<OverKillUseCase>()
+                .AsSelf()
+                .InstancePerDependency();
+            
+            // 仓储
+            builder.RegisterType<LineRepository>()
+                .As<ILineRepository>()
+                .SingleInstance();
+
             // TODO: 后续添加更多服务注册
-            // - IAnchorBoltRepository
-            // - Application层的 UseCases
         }
     }
 }

@@ -1,4 +1,3 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
@@ -7,6 +6,7 @@ using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
 using System.Linq;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using Exception = Autodesk.AutoCAD.Runtime.Exception;
 
 namespace HyCADTool.Refactored.Test
@@ -25,7 +25,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPolygonOffset()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 1: 多边形偏移 ===");
 
             var geometryService = ServiceLocator.Resolve<IGeometryService>();
@@ -86,7 +86,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestLineOverlap()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 2: 线段重叠检测与合并 ===");
 
             try
@@ -154,7 +154,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPolygonIntersection()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 3: 多边形交集 ===");
 
             var geometryService = ServiceLocator.Resolve<IGeometryService>();
@@ -219,7 +219,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestConvexHull()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 4: 凸包算法 ===");
 
             var geometryService = ServiceLocator.Resolve<IGeometryService>();
@@ -280,7 +280,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestLineSorting()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 5: 线段连通性排序 ===");
 
             try
@@ -356,7 +356,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void RunAllPhase2Tests()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
 
             ed.WriteMessage("\n");
             ed.WriteMessage("\n========================================");

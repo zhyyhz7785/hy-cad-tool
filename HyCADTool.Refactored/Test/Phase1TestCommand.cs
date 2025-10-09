@@ -1,4 +1,3 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
@@ -6,6 +5,7 @@ using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
 using System.Linq;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Test
 {
@@ -22,7 +22,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPluginLoad()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 1: 插件加载状态 ===");
             
             try
@@ -60,7 +60,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPolygonArea()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 2.1: 多边形面积计算 ===");
             
             try
@@ -93,7 +93,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPolygonCentroid()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 2.2: 多边形质心计算 ===");
             
             try
@@ -126,7 +126,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPointInPolygon()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 2.3: 点在多边形内判断 ===");
             
             try
@@ -169,7 +169,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestLayerAndStyleServices()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 3: 图层和样式服务 ===");
             
             var layerService = ServiceLocator.Resolve<ILayerService>();
@@ -216,7 +216,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestGeometryServiceUnion()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             ed.WriteMessage("\n=== 测试 4: 几何服务布尔运算（并集）===");
             
             var geometryService = ServiceLocator.Resolve<IGeometryService>();
@@ -279,7 +279,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void RunAllPhase1Tests()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             
             ed.WriteMessage("\n");
             ed.WriteMessage("\n========================================");

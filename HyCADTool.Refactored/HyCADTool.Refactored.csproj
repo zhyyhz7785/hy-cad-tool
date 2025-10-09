@@ -122,11 +122,27 @@
       <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\ConvexHullAlgorithm.cs" />
+      <Compile Include="Domain\Services\LineOverKillService.cs" />
+      
+      <!-- Application Layer - DTOs -->
+      <Compile Include="Application\DTOs\OverKill\OverKillRequest.cs" />
+      <Compile Include="Application\DTOs\OverKill\OverKillResult.cs" />
+      
+      <!-- Application Layer - UseCases -->
+      <Compile Include="Application\UseCases\OverKill\OverKillUseCase.cs" />
+      
+      <!-- Infrastructure Layer - Repositories -->
+      <Compile Include="Infrastructure\AutoCAD\Repositories\ILineRepository.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Repositories\LineRepository.cs" />
+      
+      <!-- Presentation Layer - Commands -->
+      <Compile Include="Presentation\Commands\OverKillCommand.cs" />
       
       <!-- Test Layer -->
       <Compile Include="Test\Phase1TestCommand.cs" />
       <Compile Include="Test\Phase2TestCommand.cs" />
       <Compile Include="Test\Phase3TestCommand.cs" />
+      <Compile Include="Test\Phase4TestCommand.cs" />
     </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->

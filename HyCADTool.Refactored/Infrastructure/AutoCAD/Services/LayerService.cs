@@ -1,8 +1,8 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
 using HyCADTool.Refactored.Domain.Interfaces;
 using System;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -16,7 +16,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(layerName))
                 throw new ArgumentException("Layer name cannot be null or empty", nameof(layerName));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 
@@ -61,7 +61,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(layerName))
                 throw new ArgumentException("Layer name cannot be null or empty", nameof(layerName));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 
@@ -96,7 +96,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(layerName))
                 return false;
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 return false;
 
@@ -124,7 +124,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(layerName))
                 return false;
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 return false;
 

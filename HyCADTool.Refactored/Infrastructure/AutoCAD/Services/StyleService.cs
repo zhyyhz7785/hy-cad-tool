@@ -1,8 +1,8 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
 using System;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -16,7 +16,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 
@@ -75,7 +75,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 
@@ -143,7 +143,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(styleName))
                 throw new ArgumentException("Style name cannot be null or empty", nameof(styleName));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 
@@ -179,7 +179,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(styleName))
                 throw new ArgumentException("Style name cannot be null or empty", nameof(styleName));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 
@@ -215,7 +215,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(styleName))
                 return false;
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 return false;
 
@@ -243,7 +243,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(styleName))
                 return false;
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 return false;
 
@@ -271,7 +271,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active document");
 

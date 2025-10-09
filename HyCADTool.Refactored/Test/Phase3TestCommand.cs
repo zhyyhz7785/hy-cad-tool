@@ -1,9 +1,9 @@
 using Autodesk.AutoCAD.EditorInput;
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using Exception = System.Exception;
 
 namespace HyCADTool.Refactored.Test
@@ -21,7 +21,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestConfigurationLoading()
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
             ed.WriteMessage("\n=== 测试 1: 配置服务加载 ===");
@@ -57,7 +57,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestBaseConfiguration()
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
             ed.WriteMessage("\n\n=== 测试 2: 基础配置 ===");
@@ -122,7 +122,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestPileConfiguration()
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
             ed.WriteMessage("\n\n=== 测试 3: 桩基配置 ===");
@@ -192,7 +192,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestStyleCreationFromConfig()
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
             ed.WriteMessage("\n\n=== 测试 4: 样式创建 ===");
@@ -251,7 +251,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void TestLayerCreationFromConfig()
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
             ed.WriteMessage("\n\n=== 测试 5: 图层创建 ===");
@@ -305,7 +305,7 @@ namespace HyCADTool.Refactored.Test
         /// </summary>
         public static void RunAllPhase3Tests()
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
             ed.WriteMessage("\n========================================");

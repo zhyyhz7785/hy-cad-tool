@@ -1,9 +1,10 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.ApplicationServices;
 using Autofac;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.PluginInitializer))]
 
@@ -171,8 +172,8 @@ namespace HyCADTool.Refactored.Presentation
         {
             try
             {
-                Application.DocumentManager.DocumentActivated += OnDocumentActivated;
-                Application.DocumentManager.DocumentCreated += OnDocumentCreated;
+                AcApp.DocumentManager.DocumentActivated += OnDocumentActivated;
+                AcApp.DocumentManager.DocumentCreated += OnDocumentCreated;
             }
             catch (System.Exception ex)
             {
@@ -187,8 +188,8 @@ namespace HyCADTool.Refactored.Presentation
         {
             try
             {
-                Application.DocumentManager.DocumentActivated -= OnDocumentActivated;
-                Application.DocumentManager.DocumentCreated -= OnDocumentCreated;
+                AcApp.DocumentManager.DocumentActivated -= OnDocumentActivated;
+                AcApp.DocumentManager.DocumentCreated -= OnDocumentCreated;
             }
             catch
             {
@@ -219,7 +220,7 @@ namespace HyCADTool.Refactored.Presentation
         {
             try
             {
-                var doc = Application.DocumentManager.MdiActiveDocument;
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
                 doc?.Editor?.WriteMessage(message);
             }
             catch
