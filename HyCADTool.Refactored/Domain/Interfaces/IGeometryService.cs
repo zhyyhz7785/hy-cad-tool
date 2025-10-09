@@ -54,6 +54,37 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// <param name="clip">多边形2</param>
         /// <returns>交集结果（可能是多个多边形）</returns>
         IEnumerable<Polygon2D> Intersection(Polygon2D subject, Polygon2D clip);
+
+        /// <summary>
+        /// 计算多边形偏移
+        /// </summary>
+        /// <param name="polygon">原多边形</param>
+        /// <param name="distance">偏移距离（正值向外，负值向内）</param>
+        /// <returns>偏移后的多边形集合</returns>
+        IEnumerable<Polygon2D> Offset(Polygon2D polygon, double distance);
+
+        /// <summary>
+        /// 计算多边形异或（对称差）
+        /// </summary>
+        /// <param name="polygon1">多边形1</param>
+        /// <param name="polygon2">多边形2</param>
+        /// <returns>异或结果</returns>
+        IEnumerable<Polygon2D> Xor(Polygon2D polygon1, Polygon2D polygon2);
+
+        /// <summary>
+        /// 计算点集的凸包
+        /// </summary>
+        /// <param name="points">点集合</param>
+        /// <returns>凸包多边形</returns>
+        Polygon2D ComputeConvexHull(IEnumerable<Point2D> points);
+
+        /// <summary>
+        /// 合并重叠的线段
+        /// </summary>
+        /// <param name="lines">线段集合</param>
+        /// <param name="tolerance">容差</param>
+        /// <returns>合并后的线段列表</returns>
+        List<Line2D> MergeOverlappingLines(IEnumerable<Line2D> lines, double tolerance);
     }
 }
 

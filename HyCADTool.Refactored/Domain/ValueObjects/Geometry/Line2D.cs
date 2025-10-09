@@ -126,6 +126,76 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
 
         #endregion
 
+        /// <summary>
+        /// 获取线段长度
+        /// </summary>
+        public double GetLength()
+        {
+            return Length;
+        }
+
+        /// <summary>
+        /// 判断两条线段是否平行
+        /// </summary>
+        public bool IsParallelTo(Line2D other, double tolerance = 1e-6)
+        {
+            Vector2D v1 = this.Direction;
+            Vector2D v2 = other.Direction;
+            
+            // 叉积接近0表示平行
+            double cross = Math.Abs(v1.Cross(v2));
+            return cross < tolerance;
+        }
+
+        /// <summary>
+        /// 判断两条线段是否共线
+        /// </summary>
+        public bool IsCollinear(Line2D other, double tolerance = 1e-6)
+        {
+            // 首先检查是否平行
+            if (!IsParallelTo(other, tolerance))
+                return false;
+
+            // 检查一个线段的起点是否在另一个线段的延长线上
+            Vector2D v1 = this.Direction;
+            Vector2D v2 = this.StartPoint.VectorTo(other.StartPoint);
+            
+            double cross = Math.Abs(v1.Cross(v2));
+            return cross < tolerance;
+        }
+
+        /// <summary>
+        /// 计算与另一条线段的交点
+        /// 如果没有交点返回 null
+        /// </summary>
+        public Point2D GetIntersection(Line2D other, double tolerance = 1e-6)
+        {
+            double x1 = StartPoint.X, y1 = StartPoint.Y;
+            double x2 = EndPoint.X, y2 = EndPoint.Y;
+            double x3 = other.StartPoint.X, y3 = other.StartPoint.Y;
+            double x4 = other.EndPoint.X, y4 = other.EndPoint.Y;
+
+            double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+
+            // 平行或重合
+            if (Math.Abs(denom) < tolerance)
+                return default;
+
+            double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+            double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+
+            // 检查交点是否在两条线段内
+            if (t >= -tolerance && t <= 1.0 + tolerance && 
+                u >= -tolerance && u <= 1.0 + tolerance)
+            {
+                double ix = x1 + t * (x2 - x1);
+                double iy = y1 + t * (y2 - y1);
+                return new Point2D(ix, iy);
+            }
+
+            return default;
+        }
+
         public override string ToString()
         {
             return $"Line2D[{StartPoint} -> {EndPoint}]";

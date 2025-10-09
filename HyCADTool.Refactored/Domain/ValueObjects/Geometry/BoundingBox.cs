@@ -107,11 +107,11 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         /// <summary>
         /// 计算与另一个边界框的交集
         /// </summary>
-        /// <returns>如果不相交返回 null</returns>
-        public BoundingBox? Intersection(BoundingBox other)
+        /// <returns>如果不相交返回 default</returns>
+        public BoundingBox Intersection(BoundingBox other)
         {
             if (!Intersects(other))
-                return null;
+                return default;
 
             return new BoundingBox(
                 new Point2D(Math.Max(MinPoint.X, other.MinPoint.X), Math.Max(MinPoint.Y, other.MinPoint.Y)),

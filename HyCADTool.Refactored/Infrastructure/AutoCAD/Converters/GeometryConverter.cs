@@ -75,6 +75,42 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Converters
             var end = FromAutoCADPoint3d(acLine.EndPoint).ToPoint2D();
             return new Domain.ValueObjects.Geometry.Line2D(start, end);
         }
+
+        // ========== Circle 转换 ==========
+
+        public Circle ToAutoCADCircle(Domain.ValueObjects.Geometry.Circle2D domainCircle)
+        {
+            var center = ToAutoCADPoint3d(new Domain.ValueObjects.Geometry.Point3D(domainCircle.Center));
+            return new Circle(center, Vector3d.ZAxis, domainCircle.Radius);
+        }
+
+        public Domain.ValueObjects.Geometry.Circle2D FromAutoCADCircle(Circle acCircle)
+        {
+            var center = FromAutoCADPoint3d(acCircle.Center).ToPoint2D();
+            return new Domain.ValueObjects.Geometry.Circle2D(center, acCircle.Radius);
+        }
+
+        // ========== 批量转换 ==========
+
+        public List<Line> ToAutoCADLines(IEnumerable<Domain.ValueObjects.Geometry.Line2D> domainLines)
+        {
+            var result = new List<Line>();
+            foreach (var line in domainLines)
+            {
+                result.Add(ToAutoCADLine(line));
+            }
+            return result;
+        }
+
+        public List<Domain.ValueObjects.Geometry.Line2D> FromAutoCADLines(IEnumerable<Line> acLines)
+        {
+            var result = new List<Domain.ValueObjects.Geometry.Line2D>();
+            foreach (var line in acLines)
+            {
+                result.Add(FromAutoCADLine(line));
+            }
+            return result;
+        }
     }
 }
 

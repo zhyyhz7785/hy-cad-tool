@@ -13,7 +13,7 @@ namespace HyCADTool.Refactored.Test
     /// 阶段 1 测试命令集
     /// 类似 TestCommand.cs，用于动态加载测试
     /// </summary>
-    public class Phase1TestCommand
+    public static class Phase1TestCommand
     {
         #region 测试 1: 插件加载测试
 

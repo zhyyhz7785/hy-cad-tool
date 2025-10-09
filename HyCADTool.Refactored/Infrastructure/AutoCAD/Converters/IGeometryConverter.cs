@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using System.Collections.Generic;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Converters
 {
@@ -53,6 +54,30 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Converters
         /// 将 AutoCAD Line 转换为领域 Line2D
         /// </summary>
         Domain.ValueObjects.Geometry.Line2D FromAutoCADLine(Line acLine);
+
+        // ========== Circle 转换 ==========
+
+        /// <summary>
+        /// 将领域 Circle2D 转换为 AutoCAD Circle
+        /// </summary>
+        Circle ToAutoCADCircle(Domain.ValueObjects.Geometry.Circle2D domainCircle);
+
+        /// <summary>
+        /// 将 AutoCAD Circle 转换为领域 Circle2D
+        /// </summary>
+        Domain.ValueObjects.Geometry.Circle2D FromAutoCADCircle(Circle acCircle);
+
+        // ========== 批量转换 ==========
+
+        /// <summary>
+        /// 批量将领域 Line2D 转换为 AutoCAD Line
+        /// </summary>
+        List<Line> ToAutoCADLines(IEnumerable<Domain.ValueObjects.Geometry.Line2D> domainLines);
+
+        /// <summary>
+        /// 批量将 AutoCAD Line 转换为领域 Line2D
+        /// </summary>
+        List<Domain.ValueObjects.Geometry.Line2D> FromAutoCADLines(IEnumerable<Line> acLines);
     }
 }
 

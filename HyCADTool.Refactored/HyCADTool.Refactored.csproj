@@ -12,6 +12,7 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -74,15 +75,16 @@
     <Compile Include="Domain\Interfaces\ILayerService.cs" />
     <Compile Include="Domain\Interfaces\IStyleService.cs" />
     
-    <!-- Domain Layer - Value Objects (Geometry) -->
-    <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\Point3D.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\Vector2D.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\Vector3D.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\Line2D.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\Polygon2D.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\BoundingBox.cs" />
-    <Compile Include="Domain\ValueObjects\Geometry\Tolerance.cs" />
+      <!-- Domain Layer - Value Objects (Geometry) -->
+      <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Point3D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Vector2D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Vector3D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Line2D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Polygon2D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Circle2D.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\BoundingBox.cs" />
+      <Compile Include="Domain\ValueObjects\Geometry\Tolerance.cs" />
     
     <!-- Domain Layer - Value Objects (Configuration) -->
     <Compile Include="Domain\ValueObjects\Configuration\TextStyleConfig.cs" />
@@ -105,8 +107,15 @@
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />
       
+      <!-- Domain Layer - Services -->
+      <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\ConvexHullAlgorithm.cs" />
+      
       <!-- Test Layer -->
       <Compile Include="Test\Phase1TestCommand.cs" />
+      <Compile Include="Test\Phase2TestCommand.cs" />
     </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->
@@ -115,7 +124,6 @@
     
     <!-- Folder placeholders for future files -->
     <Folder Include="Domain\Entities\" />
-    <Folder Include="Domain\Services\" />
     <Folder Include="Application\UseCases\" />
     <Folder Include="Application\DTOs\" />
     <Folder Include="Application\Interfaces\" />

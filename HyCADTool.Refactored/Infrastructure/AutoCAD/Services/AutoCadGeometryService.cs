@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using Clipper2Lib;
 using System.Collections.Generic;
@@ -110,6 +111,48 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             );
 
             return solution.Select(path => CreatePolygonFromPathD(path));
+        }
+
+        public IEnumerable<Polygon2D> Offset(Polygon2D polygon, double distance)
+        {
+            var path = ConvertToPathD(polygon);
+
+            // 使用 Clipper2 的 InflatePaths 进行偏移
+            var solution = Clipper.InflatePaths(
+                new PathsD { path },
+                distance,
+                JoinType.Miter,
+                EndType.Polygon,
+                2.0  // miterLimit
+            );
+
+            return solution.Select(p => CreatePolygonFromPathD(p));
+        }
+
+        public IEnumerable<Polygon2D> Xor(Polygon2D polygon1, Polygon2D polygon2)
+        {
+            var path1 = ConvertToPathD(polygon1);
+            var path2 = ConvertToPathD(polygon2);
+
+            var solution = Clipper.Xor(
+                new PathsD { path1 },
+                new PathsD { path2 },
+                FillRule.NonZero
+            );
+
+            return solution.Select(path => CreatePolygonFromPathD(path));
+        }
+
+        public Polygon2D ComputeConvexHull(IEnumerable<Point2D> points)
+        {
+            // 调用领域层的 Graham 扫描算法
+            return ConvexHullAlgorithm.GrahamScan(points);
+        }
+
+        public List<Line2D> MergeOverlappingLines(IEnumerable<Line2D> lines, double tolerance)
+        {
+            // 调用领域层的线段合并算法
+            return LineAlgorithms.MergeCollinearLines(lines, tolerance).ToList();
         }
 
         #region Clipper2 转换辅助方法

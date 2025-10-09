@@ -103,6 +103,16 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             return new Vector2D(-v.X, -v.Y);
         }
 
+        /// <summary>
+        /// 向量除法
+        /// </summary>
+        public static Vector2D operator /(Vector2D v, double scalar)
+        {
+            if (Math.Abs(scalar) < 1e-10)
+                throw new DivideByZeroException("Cannot divide vector by zero");
+            return new Vector2D(v.X / scalar, v.Y / scalar);
+        }
+
         #region IEquatable Implementation
 
         public bool Equals(Vector2D other)

@@ -179,6 +179,79 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             return new Polygon2D(reversedVertices, IsClosed);
         }
 
+        /// <summary>
+        /// 计算多边形周长
+        /// </summary>
+        public double GetPerimeter()
+        {
+            double perimeter = 0.0;
+            int n = _vertices.Count;
+
+            for (int i = 0; i < n; i++)
+            {
+                int j = (i + 1) % n;
+                perimeter += _vertices[i].DistanceTo(_vertices[j]);
+            }
+
+            return perimeter;
+        }
+
+        /// <summary>
+        /// 判断多边形是否与线段相交
+        /// </summary>
+        public bool IntersectsWith(Line2D line)
+        {
+            // 检查每条边是否与线段相交
+            foreach (var edge in GetEdges())
+            {
+                if (edge.GetIntersection(line) != null)
+                    return true;
+            }
+
+            // 检查线段端点是否在多边形内
+            if (ContainsPoint(line.StartPoint) || ContainsPoint(line.EndPoint))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// 简化多边形（移除共线的中间顶点）
+        /// </summary>
+        public Polygon2D Simplify(double tolerance = 1e-6)
+        {
+            if (_vertices.Count < 3)
+                return this;
+
+            var simplified = new List<Point2D>();
+            int n = _vertices.Count;
+
+            for (int i = 0; i < n; i++)
+            {
+                Point2D prev = _vertices[(i - 1 + n) % n];
+                Point2D curr = _vertices[i];
+                Point2D next = _vertices[(i + 1) % n];
+
+                // 检查三点是否共线
+                Vector2D v1 = prev.VectorTo(curr);
+                Vector2D v2 = curr.VectorTo(next);
+
+                double cross = Math.Abs(v1.Cross(v2));
+
+                // 如果不共线，保留当前点
+                if (cross > tolerance)
+                {
+                    simplified.Add(curr);
+                }
+            }
+
+            // 确保至少有3个顶点
+            if (simplified.Count < 3)
+                return this;
+
+            return new Polygon2D(simplified, IsClosed);
+        }
+
         public override string ToString()
         {
             return $"Polygon2D[{VertexCount} vertices, Area={GetArea():F2}]";
