@@ -25,13 +25,13 @@
                 <TextBlock Grid.Column="0" Text="主图形比例" />
                 <TextBox x:Name="ScaleText"
                          Grid.Column="1"
-                         Text="40" />
+                         Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
             
             <!-- 操作按钮 -->
-            <Button x:Name="ApplyButton" Content="设置样式" Click="ApplyButton_Click" />
-            <Button x:Name="ResetButton" Content="恢复默认值" Click="ResetButton_Click" />
-            <Button x:Name="DrawButton" Content="绘制" Click="DrawButton_Click" />
+            <Button x:Name="ApplyButton" Content="设置样式" Command="{Binding ApplyStyleCommand}" />
+            <Button x:Name="ResetButton" Content="恢复默认值" Command="{Binding ResetCommand}" />
+            <Button x:Name="DrawButton" Content="绘制" Command="{Binding DrawCommand}" />
             
             <!-- 标注按钮组 -->
             <Grid>
@@ -40,9 +40,9 @@
                     <ColumnDefinition />
                     <ColumnDefinition />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="DIM1Button" Grid.Column="0" Content="标注钢筋" Click="DIM1Button_Click" />
-                <Button x:Name="DIM2Button" Grid.Column="1" Content="标注钢筋" Click="DIM2Button_Click" />
-                <Button x:Name="DIM3Button" Grid.Column="2" Content="标注钢筋" Click="DIM3Button_Click" />
+                <Button x:Name="DIM1Button" Grid.Column="0" Content="标注钢筋" Command="{Binding Dim1Command}" />
+                <Button x:Name="DIM2Button" Grid.Column="1" Content="标注钢筋" Command="{Binding Dim2Command}" />
+                <Button x:Name="DIM3Button" Grid.Column="2" Content="标注钢筋" Command="{Binding Dim3Command}" />
             </Grid>
             
             <!-- 标注参数 -->
@@ -56,9 +56,9 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="标注:" />
                 <TextBlock Grid.Column="1" Text="直径" />
-                <TextBox x:Name="RebarDiameterText" Grid.Column="2" Text="12" />
+                <TextBox x:Name="RebarDiameterText" Grid.Column="2" Text="{Binding RebarDiameter, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Grid.Column="3" Text="间距" />
-                <TextBox x:Name="RebarSpacingText" Grid.Column="4" Text="200" />
+                <TextBox x:Name="RebarSpacingText" Grid.Column="4" Text="{Binding RebarSpacing, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
             
             <!-- 钢筋参数折叠面板 -->
@@ -70,7 +70,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="钢筋锚固长度" />
-                        <TextBox x:Name="AnchorageLengthText" Grid.Column="1" Text="500" />
+                        <TextBox x:Name="AnchorageLengthText" Grid.Column="1" Text="{Binding AnchorageLength, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -79,7 +79,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="点钢筋间距" />
-                        <TextBox x:Name="DotSeparationText" Grid.Column="1" Text="200" />
+                        <TextBox x:Name="DotSeparationText" Grid.Column="1" Text="{Binding DotSeparation, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -88,7 +88,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="钢筋弯折最小长度" />
-                        <TextBox x:Name="BendingLineMinLengthText" Grid.Column="1" Text="150" />
+                        <TextBox x:Name="BendingLineMinLengthText" Grid.Column="1" Text="{Binding BendingLineMinLength, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -97,7 +97,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="锚固钢筋连接长度" />
-                        <TextBox x:Name="AnchorageJoinLengthText" Grid.Column="1" Text="1500" />
+                        <TextBox x:Name="AnchorageJoinLengthText" Grid.Column="1" Text="{Binding AnchorageJoinLength, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -106,7 +106,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="弯钩长度" />
-                        <TextBox x:Name="HookLengthText" Grid.Column="1" Text="1" />
+                        <TextBox x:Name="HookLengthText" Grid.Column="1" Text="{Binding HookLength, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -115,7 +115,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="保护层厚度" />
-                        <TextBox x:Name="ProtectionThicknessText" Grid.Column="1" Text="1" />
+                        <TextBox x:Name="ProtectionThicknessText" Grid.Column="1" Text="{Binding ProtectionThickness, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -124,7 +124,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="点钢直径" />
-                        <TextBox x:Name="ReinforcementDiameterText" Grid.Column="1" Text="0.35" />
+                        <TextBox x:Name="ReinforcementDiameterText" Grid.Column="1" Text="{Binding ReinforcementDiameter, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -133,7 +133,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="点钢偏移" />
-                        <TextBox x:Name="DotReinOffsetText" Grid.Column="1" Text="1.35" />
+                        <TextBox x:Name="DotReinOffsetText" Grid.Column="1" Text="{Binding DotReinOffset, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                 </StackPanel>
             </Expander>
@@ -147,7 +147,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="内侧标注距离" />
-                        <TextBox x:Name="DimensionDistanceInsideText" Grid.Column="1" Text="6" />
+                        <TextBox x:Name="DimensionDistanceInsideText" Grid.Column="1" Text="{Binding DimensionDistanceInside, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -156,7 +156,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="外标注距离" />
-                        <TextBox x:Name="DimensionDistanceOutsideText" Grid.Column="1" Text="14" />
+                        <TextBox x:Name="DimensionDistanceOutsideText" Grid.Column="1" Text="{Binding DimensionDistanceOutside, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -165,7 +165,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="标注间距" />
-                        <TextBox x:Name="DimensionDistanceWithDimText" Grid.Column="1" Text="6" />
+                        <TextBox x:Name="DimensionDistanceWithDimText" Grid.Column="1" Text="{Binding DimensionDistanceWithDim, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -174,7 +174,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="引线距离" />
-                        <TextBox x:Name="MleaderDistanceText" Grid.Column="1" Text="6" />
+                        <TextBox x:Name="MleaderDistanceText" Grid.Column="1" Text="{Binding MleaderDistance, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
                     <Grid>
@@ -183,7 +183,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="允许距离" />
-                        <TextBox x:Name="DimDistanceToleranceText" Grid.Column="1" Text="30" />
+                        <TextBox x:Name="DimDistanceToleranceText" Grid.Column="1" Text="{Binding DimDistanceTolerance, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                 </StackPanel>
             </Expander>

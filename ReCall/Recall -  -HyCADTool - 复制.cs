@@ -54,7 +54,12 @@ namespace HyCADTool.ReCall
                 Cmd4Phase4Action = cmd4Phase4Action;
                 Cmd5Phase50Action = cmd5Phase50Action;
                 editor.WriteMessage("\n插件加载成功");
-                editor.WriteMessage("\n可用命令: C1 (阶段1测试), C1P2 (阶段2测试), C1P3 (阶段3测试), C1P4 (阶段4测试), C1P50 (阶段5.0测试)");
+                editor.WriteMessage("\n可用命令:");
+                editor.WriteMessage("\n  C1    - 当前测试（迭代开发用，仿照原 TestCommand.cs）");
+                editor.WriteMessage("\n  C1P2  - 阶段2综合测试");
+                editor.WriteMessage("\n  C1P3  - 阶段3综合测试");
+                editor.WriteMessage("\n  C1P4  - 阶段4综合测试");
+                editor.WriteMessage("\n  C1P50 - 阶段5.0综合测试（面板集成）");
             }
             catch (Exception ex)
             {
@@ -117,12 +122,12 @@ namespace HyCADTool.ReCall
                 AppDomain.CurrentDomain.SetData("HyCADToolAssembly", assembly);
                 editor.WriteMessage($"\n加载程序集: {assembly.FullName}");
                 
-                // 加载 Phase1 测试
-                var type1 = assembly.GetType("HyCADTool.Refactored.Test.Phase1TestCommand") 
-                    ?? throw new InvalidOperationException("未找到类型 'Phase1TestCommand'");
-                var method1 = type1.GetMethod("RunAllPhase1Tests") 
-                    ?? throw new InvalidOperationException("未找到方法 'RunAllPhase1Tests'");
-                cmd1Action = () => method1.Invoke(null, null);
+                // 【新】加载当前测试命令（RefactoredTestCommand.Test）
+                var typeRefactored = assembly.GetType("HyCADTool.Refactored.Test.RefactoredTestCommand") 
+                    ?? throw new InvalidOperationException("未找到类型 'RefactoredTestCommand'");
+                var methodRefactored = typeRefactored.GetMethod("Test") 
+                    ?? throw new InvalidOperationException("未找到方法 'Test'");
+                cmd1Action = () => methodRefactored.Invoke(null, null);
 
                 // 加载 Phase2 测试
                 var type2 = assembly.GetType("HyCADTool.Refactored.Test.Phase2TestCommand") 

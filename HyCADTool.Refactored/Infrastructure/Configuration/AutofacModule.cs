@@ -101,6 +101,32 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .InstancePerDependency();
 
+            // 原项目接口适配器（用于 PilePanel 和 ClusterPanel 兼容性）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.CadServiceAdapter>()
+                .As<HyCADTool.Interfaces.ICadService>()
+                .SingleInstance();
+
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.AreaFactoryAdapter>()
+                .As<HyCADTool.Interfaces.IAreaFactory>()
+                .SingleInstance();
+
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.ConfigServiceAdapter>()
+                .As<HyCADTool.Interfaces.IConfigService>()
+                .SingleInstance();
+
+            // 阶段 5.0.6: ReinPanel（钢筋面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ReinPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.ReinServiceAdapter>()
+                .As<HyCADTool.Refactored.Domain.Services.IReinService>()
+                .SingleInstance();
+
             // ===== 阶段 4: OverKill 功能 =====
             
             // 领域服务

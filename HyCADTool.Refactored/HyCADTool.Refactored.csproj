@@ -97,6 +97,7 @@
     <Compile Include="Domain\ValueObjects\Configuration\BaseConfiguration.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\PileConfiguration.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\MLeaderStyleConfig.cs" />
+    <Compile Include="Domain\ValueObjects\ReinParameters.cs" />
     
     <!-- Domain Layer - Models (Configuration) -->
     <Compile Include="Domain\Models\Configuration\BaseReinforcementConfig.cs" />
@@ -121,6 +122,15 @@
     <Compile Include="Infrastructure\AutoCAD\Services\StyleService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\SelectionService.cs" />
     
+    <!-- Infrastructure Layer - AutoCAD Adapters (原项目兼容性) -->
+    <Compile Include="Infrastructure\AutoCAD\Adapters\ICadServiceAdapter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Adapters\CadServiceAdapter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Adapters\IAreaFactoryAdapter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Adapters\AreaFactoryAdapter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Adapters\IConfigServiceAdapter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Adapters\ConfigServiceAdapter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Adapters\ReinServiceAdapter.cs" />
+    
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />
       <Compile Include="Presentation\PanelManager.cs" />
@@ -139,6 +149,7 @@
       <Compile Include="Presentation\ViewModels\RelayCommand.cs" />
       <Compile Include="Presentation\ViewModels\FilterPanelViewModel.cs" />
       <Compile Include="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
+      <Compile Include="Presentation\ViewModels\ReinPanelViewModel.cs" />
       <Compile Include="Presentation\ViewModels\PilePanelViewModel.cs" />
       <Compile Include="Presentation\ViewModels\ClusterPanelViewModel.cs" />
       
@@ -165,6 +176,7 @@
       <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\ConvexHullAlgorithm.cs" />
       <Compile Include="Domain\Services\LineOverKillService.cs" />
+      <Compile Include="Domain\Services\IReinService.cs" />
       
       <!-- Application Layer - DTOs -->
       <Compile Include="Application\DTOs\OverKill\OverKillRequest.cs" />
@@ -181,11 +193,13 @@
       <Compile Include="Infrastructure\AutoCAD\Repositories\LineRepository.cs" />
       
       <!-- Test Layer -->
+      <Compile Include="Test\RefactoredTestCommand.cs" />
       <Compile Include="Test\Phase1TestCommand.cs" />
       <Compile Include="Test\Phase2TestCommand.cs" />
       <Compile Include="Test\Phase3TestCommand.cs" />
       <Compile Include="Test\Phase4TestCommand.cs" />
       <Compile Include="Test\Phase5_0TestCommand.cs" />
+      <Compile Include="Test\Phase5_0_6TestCommand.cs" />
     </ItemGroup>
   <ItemGroup>
     <!-- XAML Resources -->
