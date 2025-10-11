@@ -1,0 +1,205 @@
+<UserControl x:Class="HyCADTool.Refactored.Presentation.Views.PilePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignWidth="230"
+             Background="#3b4453"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
+    <StackPanel Margin="5,10,5,5" Background="#3b4453">
+        <StackPanel>
+            <!--  主图形比例  -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="主图形比例" />
+                <TextBox Grid.Column="1"
+                         VerticalAlignment="Top"
+                         Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            
+            <!--  设置样式按钮  -->
+            <Grid>
+                <Button Command="{Binding ApplyCommand}" Content="设置样式" />
+            </Grid>
+            
+            <!--  恢复默认值  -->
+            <Grid>
+                <Button Command="{Binding ResetCommand}" Content="恢复默认值" />
+            </Grid>
+            
+            <!--  布置类型选择  -->
+            <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" Content="矩形布置" IsChecked="{Binding IsRectangular}" />
+                <CheckBox Grid.Column="1" Content="梅花形布置" IsChecked="{Binding IsCircular}" />
+            </Grid>
+            
+            <!--  桩类型选择  -->
+            <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" Content="圆形桩" IsChecked="{Binding IsCirclePile}" />
+                <CheckBox Grid.Column="1" Content="矩形桩" IsChecked="{Binding IsRectPile}" />
+            </Grid>
+            
+            <!--  手控行列  -->
+            <Grid Margin="0,5,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" 
+                          VerticalAlignment="Center" 
+                          Content="手控" 
+                          IsChecked="{Binding ManualControl}"/>
+                <TextBlock Grid.Column="1"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Text="行" />
+                <TextBox Grid.Column="2" 
+                         VerticalAlignment="Center"  
+                         Text="{Binding NY, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Grid.Column="3"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"                           
+                           Text="列" />
+                <TextBox Grid.Column="4" 
+                         VerticalAlignment="Center" 
+                         Text="{Binding NX, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            
+            <!--  绘制桩  -->
+            <Grid Margin="0,5,0,0">
+                <Button Command="{Binding DrawPilesCommand}" Content="绘制桩" />
+            </Grid>
+        </StackPanel>
+        
+        <!--  桩参数  -->
+        <Expander Margin="0,5,0,5" Header="桩参数" IsExpanded="True">
+            <StackPanel Margin="0,5,0,5">
+                <!--  桩直径或边长  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="桩直径/边长" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding DiameterOrEdge, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  最小桩中心距  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Margin="5,5,5,5"
+                               Text="最小桩中心距" />
+                    <TextBox Grid.Column="1"
+                             Margin="5,5,5,5"
+                             Text="{Binding MinPileCenterDistance, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  输入置换率  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="输入置换率" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding InputDisplacementRate, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  桩布置比例  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="桩布置比例" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding PileArrangeRate, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  轮廓距离  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="整体轮廓距离" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding InputDistanceFromContour, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  Margin 上  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="上边距" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding MarginUp, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  Margin 下  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="下边距" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding MarginDown, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  Margin 左  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="左边距" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                
+                <!--  Margin 右  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="右边距" />
+                    <TextBox Grid.Column="1" 
+                             Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </StackPanel>
+        </Expander>
+    </StackPanel>
+</UserControl>
+

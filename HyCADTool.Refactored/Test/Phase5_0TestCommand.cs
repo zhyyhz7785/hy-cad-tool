@@ -47,6 +47,12 @@ namespace HyCADTool.Refactored.Test
                 // 测试 5: BaseReinPanel
                 Test5_BaseReinPanel(ed);
 
+                // 测试 6: PilePanel
+                Test6_PilePanel(ed);
+
+                // 测试 7: ClusterPanel
+                Test7_ClusterPanel(ed);
+
                 ed.WriteMessage("\n========================================");
                 ed.WriteMessage("\n  阶段 5.0 综合测试结束");
                 ed.WriteMessage("\n========================================\n");
@@ -369,6 +375,54 @@ namespace HyCADTool.Refactored.Test
             {
                 ed.WriteMessage($"\n❌ 测试 5 失败: {ex.Message}\n");
                 ed.WriteMessage($"堆栈跟踪: {ex.StackTrace}\n");
+            }
+        }
+
+        private static void Test6_PilePanel(Editor ed)
+        {
+            ed.WriteMessage("\n=== 测试 6: PilePanel ===\n");
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.PilePanel>(
+                    "桩基布置面板（测试）",
+                    new Guid("D4E5F6A7-B8C9-0123-DEF4-567890ABCDEF")
+                );
+                ed.WriteMessage("✅ PilePanel 已显示\n");
+                ed.WriteMessage("\n🎯 验证要点：\n");
+                ed.WriteMessage("   1. 包含桩基布置参数（比例、直径、中心距等）\n");
+                ed.WriteMessage("   2. 布置类型和桩类型复选框互斥\n");
+                ed.WriteMessage("   3. 手控行列输入\n");
+                ed.WriteMessage("   4. 绘制桩按钮可执行\n");
+                ed.WriteMessage("\n✅ 测试 6 完成\n");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 测试 6 失败: {ex.Message}\n");
+            }
+        }
+
+        private static void Test7_ClusterPanel(Editor ed)
+        {
+            ed.WriteMessage("\n=== 测试 7: ClusterPanel ===\n");
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.ClusterPanel>(
+                    "聚类分析面板（测试）",
+                    new Guid("E5F6A7B8-C9D0-1234-EF56-7890ABCDEF12")
+                );
+                ed.WriteMessage("✅ ClusterPanel 已显示\n");
+                ed.WriteMessage("\n🎯 验证要点：\n");
+                ed.WriteMessage("   1. 包含聚类参数设置（X/Y方向Epsilon）\n");
+                ed.WriteMessage("   2. 预设方案按钮（方案1/2/3）\n");
+                ed.WriteMessage("   3. 绘制选项（聚类、标注、调试图形）\n");
+                ed.WriteMessage("   4. 生成标注按钮可执行\n");
+                ed.WriteMessage("\n✅ 测试 7 完成\n");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 测试 7 失败: {ex.Message}\n");
             }
         }
 

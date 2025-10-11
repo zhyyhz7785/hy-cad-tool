@@ -128,6 +128,7 @@
       <!-- Presentation Layer - Commands -->
       <Compile Include="Presentation\Commands\OverKillCommand.cs" />
       <Compile Include="Presentation\Commands\ShowPanelCommand.cs" />
+      <Compile Include="Presentation\Commands\ShowMainPanelCommand.cs" />
       
       <!-- Presentation Layer - Converters -->
       <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />
@@ -138,6 +139,8 @@
       <Compile Include="Presentation\ViewModels\RelayCommand.cs" />
       <Compile Include="Presentation\ViewModels\FilterPanelViewModel.cs" />
       <Compile Include="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
+      <Compile Include="Presentation\ViewModels\PilePanelViewModel.cs" />
+      <Compile Include="Presentation\ViewModels\ClusterPanelViewModel.cs" />
       
       <!-- Presentation Layer - Views -->
       <Compile Include="Presentation\Views\ReinPanel.xaml.cs">
@@ -148,6 +151,12 @@
       </Compile>
       <Compile Include="Presentation\Views\BaseReinPanel.xaml.cs">
         <DependentUpon>BaseReinPanel.xaml</DependentUpon>
+      </Compile>
+      <Compile Include="Presentation\Views\PilePanel.xaml.cs">
+        <DependentUpon>PilePanel.xaml</DependentUpon>
+      </Compile>
+      <Compile Include="Presentation\Views\ClusterPanel.xaml.cs">
+        <DependentUpon>ClusterPanel.xaml</DependentUpon>
       </Compile>
       
       <!-- Domain Layer - Services -->
@@ -194,6 +203,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Presentation\Views\BaseReinPanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Presentation\Views\PilePanel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Presentation\Views\ClusterPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -83,7 +83,23 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IBaseReinforcementService>()
                 .SingleInstance();
 
-            // TODO: 后续注册更多面板（PilePanel, ClusterPanel）
+            // 阶段 5.0.5: PilePanel（迁移自原项目）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // 阶段 5.0.5: ClusterPanel（迁移自原项目）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
+                .AsSelf()
+                .InstancePerDependency();
 
             // ===== 阶段 4: OverKill 功能 =====
             

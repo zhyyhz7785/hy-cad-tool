@@ -124,24 +124,47 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
         }
 
-        // 以下是未来将要添加的命令占位符：
-
-        /*
-
+        /// <summary>
+        /// 显示/隐藏桩基布置面板
+        /// </summary>
         [CommandMethod("HYPILE")]
         public static void ShowPilePanel()
         {
-            var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-            panelManager.TogglePanel<PilePanel>("桩配置", new Guid("D4E5F6G7-H8I9-..."));
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.PilePanel>(
+                    "桩基布置面板", 
+                    new Guid("D4E5F6A7-B8C9-0123-DEF4-567890ABCDEF"));
+                ed.WriteMessage("\n桩基布置面板已切换");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 显示面板失败: {ex.Message}");
+            }
         }
 
+        /// <summary>
+        /// 显示/隐藏聚类分析面板
+        /// </summary>
         [CommandMethod("HYCLUSTER")]
         public static void ShowClusterPanel()
         {
-            var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-            panelManager.TogglePanel<ClusterPanel>("聚类分析", new Guid("E5F6G7H8-I9J0-..."));
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.ClusterPanel>(
+                    "聚类分析面板", 
+                    new Guid("E5F6A7B8-C9D0-1234-EF56-7890ABCDEF12"));
+                ed.WriteMessage("\n聚类分析面板已切换");
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n❌ 显示面板失败: {ex.Message}");
+            }
         }
-        */
     }
 }
 
