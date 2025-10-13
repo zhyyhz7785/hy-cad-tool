@@ -97,6 +97,18 @@
       <Compile Include="Domain\ValueObjects\Geometry\BoundingBox.cs" />
       <Compile Include="Domain\ValueObjects\Geometry\Tolerance.cs" />
     
+    <!-- Domain Layer - Value Objects (Grid) - 阶段 4 -->
+      <Compile Include="Domain\ValueObjects\Grid\RowColValue.cs" />
+    
+    <!-- Domain Layer - Utilities - 阶段 4 -->
+      <Compile Include="Domain\Utilities\EntityTypeMapping.cs" />
+    
+    <!-- Domain Layer - Data Structures - 阶段 4 -->
+      <Compile Include="Domain\DataStructures\DCEL\Vertex.cs" />
+      <Compile Include="Domain\DataStructures\DCEL\HalfEdge.cs" />
+      <Compile Include="Domain\DataStructures\DCEL\Face.cs" />
+      <Compile Include="Domain\DataStructures\DCEL\DCELGraph.cs" />
+    
     <!-- Domain Layer - Value Objects (Configuration - Global) -->
     <Compile Include="Domain\ValueObjects\Configuration\Global\ScaleConfig.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\Global\ToleranceConfig.cs" />
@@ -121,6 +133,10 @@
     
     <!-- Domain Layer - Enums -->
     <Compile Include="Domain\Enums\PileEnums.cs" />
+    
+    <!-- Domain Layer - Entities - 阶段 4 -->
+    <Compile Include="Domain\Entities\Pile\PileEnums.cs" />
+    <Compile Include="Domain\Entities\Pile\Pile.cs" />
     
     <!-- Infrastructure Layer - Configuration -->
     <Compile Include="Infrastructure\Configuration\AutofacModule.cs" />
@@ -148,11 +164,18 @@
     <!-- Infrastructure Layer - AutoCAD Utilities -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\TransactionHelper.cs" />
     <Compile Include="Infrastructure\AutoCAD\Utilities\EntityHelper.cs" />
+    <!-- 阶段 4: 点比较器 -->
+    <Compile Include="Infrastructure\AutoCAD\Utilities\PointComparers.cs" />
     
     <!-- Infrastructure Layer - AutoCAD Extensions -->
     <!-- 阶段 3: 扩展方法（桥接 Domain 算法和 AutoCAD API） -->
     <Compile Include="Infrastructure\AutoCAD\Extensions\PolylineExtensions.cs" />
     <Compile Include="Infrastructure\AutoCAD\Extensions\Point3dExtensions.cs" />
+    
+    <!-- Infrastructure Layer - AutoCAD Interactive - 阶段 4 -->
+    <Compile Include="Infrastructure\AutoCAD\Interactive\PolylineJig.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Interactive\HookJig.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Interactive\HookJigSeg.cs" />
     
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />

@@ -9,6 +9,10 @@ using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules;
 using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using HyCADTool.Refactored.Domain.Services.MathAlgorithms;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Domain.Utilities;
+using HyCADTool.Refactored.Domain.ValueObjects.Grid;
+using HyCADTool.Refactored.Domain.DataStructures.DCEL;
+using HyCADTool.Refactored.Domain.Entities.Pile;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -125,6 +129,46 @@ namespace HyCADTool.Refactored.Test
                 totalTests++;
 
                 if (RunTest("距离计算", TestDistanceCalculator))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                // ===== 阶段 4: HelpClass 层测试 =====
+                _editor.WriteMessage("\n\n【阶段 4】HelpClass 层测试");
+                _editor.WriteMessage("\n" + new string('═', 50));
+                
+                if (RunTest("EntityTypeMapping", TestEntityTypeMapping))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("RowColValue", TestRowColValue))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("DCEL - 基础", TestDCELBasics))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("DCEL - 面", TestDCELFace))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Pile - 圆形", TestCircularPile))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Pile - 方形", TestSquarePile))
                 {
                     passedTests++;
                 }
@@ -590,6 +634,109 @@ namespace HyCADTool.Refactored.Test
             {
                 throw new SysException($"路径长度错误：期望 10，实际 {pathLength}");
             }
+        }
+
+        #endregion
+
+        #region 阶段 4: HelpClass 层测试方法
+
+        /// <summary>
+        /// 测试 EntityTypeMapping（实体类型映射）
+        /// </summary>
+        private void TestEntityTypeMapping()
+        {
+            // 测试 DXF 类型名称转中文
+            string chinese1 = EntityTypeMapping.ToChinese("Line");
+            if (chinese1 != "直线")
+                throw new SysException($"预期 '直线'，实际 '{chinese1}'");
+
+            // 测试中文转 DXF 标签
+            string dxf1 = EntityTypeMapping.ToDxfType("多段线");
+            if (dxf1 != "LWPOLYLINE")
+                throw new SysException($"预期 'LWPOLYLINE'，实际 '{dxf1}'");
+        }
+
+        /// <summary>
+        /// 测试 RowColValue（网格行列值对象）
+        /// </summary>
+        private void TestRowColValue()
+        {
+            var cell1 = new RowColValue<double>(row: 2, col: 3, value: 100.5);
+            
+            if (cell1.Row != 2)
+                throw new SysException($"行索引错误：预期 2，实际 {cell1.Row}");
+
+            // 测试相等性
+            var cell2 = new RowColValue<double>(row: 2, col: 3, value: 100.5);
+            if (!cell1.Equals(cell2))
+                throw new SysException("相同的 RowColValue 应该相等");
+        }
+
+        /// <summary>
+        /// 测试 DCEL 基础功能（顶点和边）
+        /// </summary>
+        private void TestDCELBasics()
+        {
+            var dcel = new DCELGraph();
+
+            var v1 = dcel.AddVertex(new Point2D(0, 0));
+            var v2 = dcel.AddVertex(new Point2D(100, 0));
+
+            if (dcel.Vertices.Count != 2)
+                throw new SysException($"顶点数量错误：预期 2，实际 {dcel.Vertices.Count}");
+
+            var (he1, he2) = dcel.AddEdgePair(v1, v2);
+
+            if (he1.Twin != he2 || he2.Twin != he1)
+                throw new SysException("孪生边关系错误");
+        }
+
+        /// <summary>
+        /// 测试 DCEL 面创建
+        /// </summary>
+        private void TestDCELFace()
+        {
+            var dcel = new DCELGraph();
+
+            var v1 = dcel.AddVertex(new Point2D(0, 0));
+            var v2 = dcel.AddVertex(new Point2D(100, 0));
+            var v3 = dcel.AddVertex(new Point2D(50, 100));
+
+            var (he1, _) = dcel.AddEdgePair(v1, v2);
+            var (he2, _) = dcel.AddEdgePair(v2, v3);
+            var (he3, _) = dcel.AddEdgePair(v3, v1);
+
+            var face = dcel.CreateFace(new List<HalfEdge> { he1, he2, he3 });
+
+            if (face.GetVertexCount() != 3)
+                throw new SysException($"面顶点数错误：预期 3，实际 {face.GetVertexCount()}");
+
+            if (he1.Next != he2 || he2.Next != he3 || he3.Next != he1)
+                throw new SysException("Next 关系错误");
+        }
+
+        /// <summary>
+        /// 测试圆形桩面积计算
+        /// </summary>
+        private void TestCircularPile()
+        {
+            var pile = new Pile(PileSectionType.Circle, diameterOrEdge: 600);
+
+            double expectedArea = System.Math.PI * 300 * 300;
+            if (System.Math.Abs(pile.PileArea - expectedArea) > 0.01)
+                throw new SysException($"圆形桩面积计算错误：预期 {expectedArea:F2}，实际 {pile.PileArea:F2}");
+        }
+
+        /// <summary>
+        /// 测试方形桩面积计算
+        /// </summary>
+        private void TestSquarePile()
+        {
+            var pile = new Pile(PileSectionType.Square, diameterOrEdge: 500);
+
+            double expectedArea = 500 * 500;
+            if (System.Math.Abs(pile.PileArea - expectedArea) > 0.01)
+                throw new SysException($"方形桩面积计算错误：预期 {expectedArea:F2}，实际 {pile.PileArea:F2}");
         }
 
         #endregion

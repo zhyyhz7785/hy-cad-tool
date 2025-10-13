@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using System;
+using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
 {
@@ -11,7 +12,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
     /// </summary>
     public class HookJigSeg : EntityJig
     {
-        private readonly Polyline _polyline;
+        private readonly AcDbPolyline _polyline;
         private readonly Point3d _lastVertex;
         private Point3d _jigPoint;
         private readonly int _numVertices;
@@ -27,7 +28,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
         /// <param name="polyline">要添加弯钩的多段线</param>
         /// <param name="hookLength">弯钩长度（Hook Length）</param>
         /// <param name="seg">边界线段（Boundary Segment）</param>
-        public HookJigSeg(Polyline polyline, double hookLength, LineSegment3d seg) : base(polyline)
+        public HookJigSeg(AcDbPolyline polyline, double hookLength, LineSegment3d seg) : base(polyline)
         {
             _hookLength = hookLength;
             _polyline = polyline;

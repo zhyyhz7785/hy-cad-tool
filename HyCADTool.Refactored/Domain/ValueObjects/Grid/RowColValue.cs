@@ -57,7 +57,15 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Grid
         /// </summary>
         public override int GetHashCode()
         {
-            return HashCode.Combine(Row, Col, Value);
+            // .NET Framework 4.8 不支持 HashCode.Combine，使用传统方式
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + Row.GetHashCode();
+                hash = hash * 23 + Col.GetHashCode();
+                hash = hash * 23 + (Value != null ? Value.GetHashCode() : 0);
+                return hash;
+            }
         }
 
         /// <summary>

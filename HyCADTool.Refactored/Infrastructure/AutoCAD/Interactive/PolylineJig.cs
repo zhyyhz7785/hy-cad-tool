@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.GraphicsInterface;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
 {
@@ -13,7 +14,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
     /// </summary>
     public class PolylineJig : DrawJig
     {
-        private readonly Polyline _polyline;
+        private readonly AcDbPolyline _polyline;
         private readonly Point3dCollection _points;
         private Point3d _currentPoint;
         private readonly double _offsetDistance;
@@ -29,7 +30,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
         /// <param name="offsetDistance">偏移距离（Offset Distance）</param>
         public PolylineJig(double offsetDistance)
         {
-            _polyline = new Polyline();
+            _polyline = new AcDbPolyline();
             _points = new Point3dCollection();
             _offsetDistance = offsetDistance;
         }
