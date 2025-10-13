@@ -34,3 +34,4 @@ namespace HyCADTool.Refactored.Presentation.Commands.Base
             => Success ? $"✓ {Message}" : $"✗ {Message}";
     }
 }
+

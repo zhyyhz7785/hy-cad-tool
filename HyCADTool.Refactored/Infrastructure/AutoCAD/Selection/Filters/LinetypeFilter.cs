@@ -1,21 +1,65 @@
+using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.EditorInput;
+using System.Collections.Generic;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Selection.Filters
 {
-    public class LinetypeFilter : IEntityFilter
+    /// <summary>
+    /// 线型过滤器
+    /// LineType Filter
+    /// </summary>
+    public class LineTypeFilter : IEntityFilter
     {
-        public string Key => "Linetype";
+        public string Key => "LineType";
 
-        public SelectionFilter Build(Entity entity)
+        public ObjectId[] Apply(Entity selectedEntity, ObjectId[] baseIds)
         {
-            if (entity == null || string.IsNullOrEmpty(entity.Linetype)) return null;
-            return new SelectionFilter(new TypedValue[]
+            if (selectedEntity == null)
+                return new ObjectId[0];
+
+            var targetLinetype = GetTrueLinetype(selectedEntity);
+            var doc = Application.DocumentManager.MdiActiveDocument;
+
+            return FilterByLinetype(doc, targetLinetype, baseIds);
+        }
+
+        private ObjectId GetTrueLinetype(Entity ent)
+        {
+            if (ent.Linetype == "ByLayer")
             {
-                new TypedValue((int)DxfCode.LinetypeName, entity.Linetype)
-            });
+                using (var tr = ent.Database.TransactionManager.StartTransaction())
+                {
+                    var layer = (LayerTableRecord)tr.GetObject(ent.LayerId, OpenMode.ForRead);
+                    tr.Commit();
+                    return layer.LinetypeObjectId;
+                }
+            }
+            else if (ent.Linetype == "ByBlock" && ent is BlockReference br)
+            {
+                return br.LinetypeId;
+            }
+            return ent.LinetypeId;
+        }
+
+        private ObjectId[] FilterByLinetype(Document doc, ObjectId targetLinetype, ObjectId[] ids)
+        {
+            var result = new List<ObjectId>();
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
+            {
+                foreach (var id in ids)
+                {
+                    if (tr.GetObject(id, OpenMode.ForRead) is Entity ent)
+                    {
+                        var linetype = GetTrueLinetype(ent);
+                        if (linetype == targetLinetype)
+                        {
+                            result.Add(id);
+                        }
+                    }
+                }
+                tr.Commit();
+            }
+            return result.ToArray();
         }
     }
 }
-
-

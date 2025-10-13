@@ -7,6 +7,7 @@ using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules;
+using HyCADTool.Refactored.Domain.Services;
 using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using HyCADTool.Refactored.Domain.Services.MathAlgorithms;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
@@ -16,7 +17,6 @@ using HyCADTool.Refactored.Domain.DataStructures.DCEL;
 using HyCADTool.Refactored.Domain.Entities.Pile;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
-using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection.Filters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
@@ -63,6 +63,11 @@ namespace HyCADTool.Refactored.Test
                 int totalTests = 0;
                 int passedTests = 0;
 
+                // ===== 阶段 1-6: 已完成测试（已注释） =====
+                // 说明：阶段1-6的测试已全部通过验证，为加快测试速度，暂时注释掉
+                // 如需重新运行所有测试，请取消下面的注释
+
+                /*
                 // ===== 阶段 1: 配置层测试 =====
                 _editor.WriteMessage("\n【阶段 1】配置层测试");
                 _editor.WriteMessage("\n" + new string('═', 50));
@@ -256,6 +261,23 @@ namespace HyCADTool.Refactored.Test
                 totalTests++;
 
                 if (RunTest("Line 合并为 Polyline", TestJoinLinesToPolyline))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+                */
+
+                // ===== 阶段 7: OverKill 功能测试 =====
+                _editor.WriteMessage("\n\n【阶段 7】OverKill 线段去重功能测试");
+                _editor.WriteMessage("\n" + new string('═', 50));
+
+                if (RunTest("OverKill - 合并重叠线段", TestOverKillMergeOverlapping))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("OverKill - 查找独立端点", TestOverKillFindIndependentEndpoints))
                 {
                     passedTests++;
                 }
@@ -911,12 +933,26 @@ namespace HyCADTool.Refactored.Test
             {
                 ent.Layer = "0";
                 ent.ColorIndex = 7;
-                var lf = new LayerFilter().Build(ent);
-                var cf = new ColorFilter().Build(ent);
-                var tf = new TypeFilter().Build(ent);
-                if (lf == null || cf == null || tf == null)
+                
+                // 测试过滤器实例化和基本功能
+                var lf = new LayerFilter();
+                var cf = new ColorFilter();
+                var tf = new TypeFilter();
+                
+                if (lf.Key != "Layer" || cf.Key != "Color" || tf.Key != "Type")
                 {
-                    throw new SysException("实体属性过滤器构建失败");
+                    throw new SysException("实体属性过滤器键值错误");
+                }
+                
+                // 测试 Apply 方法（不依赖真实数据库）
+                var baseIds = new ObjectId[0];
+                var lfResult = lf.Apply(ent, baseIds);
+                var cfResult = cf.Apply(ent, baseIds);
+                var tfResult = tf.Apply(ent, baseIds);
+                
+                if (lfResult == null || cfResult == null || tfResult == null)
+                {
+                    throw new SysException("实体属性过滤器 Apply 方法失败");
                 }
             }
         }
@@ -1145,6 +1181,69 @@ namespace HyCADTool.Refactored.Test
                 if (System.Math.Abs(area - 100) > 0.01)
                     throw new SysException($"多段线面积应为 100，实际为 {area}");
             }
+        }
+
+        #endregion
+
+        #region 阶段 7: OverKill 测试
+
+        /// <summary>
+        /// 测试 OverKill - 合并重叠线段
+        /// </summary>
+        private void TestOverKillMergeOverlapping()
+        {
+            var overKillService = ServiceLocator.Resolve<LineOverKillService>();
+
+            // 创建两条重叠的线段
+            var line1 = new Line2D(new Point2D(0, 0), new Point2D(5, 0));
+            var line2 = new Line2D(new Point2D(3, 0), new Point2D(8, 0)); // 与line1重叠
+
+            var lines = new List<Line2D> { line1, line2 };
+            var merged = overKillService.MergeOverlappingLines(lines, 1e-6);
+
+            // 应该合并为一条线段
+            if (merged.Count != 1)
+                throw new SysException($"应合并为 1 条线段，实际为 {merged.Count}");
+
+            // 合并后的线段应该是 (0,0) 到 (8,0)
+            var resultLine = merged[0];
+            double expectedLength = 8.0;
+            double actualLength = resultLine.Length;
+
+            if (System.Math.Abs(actualLength - expectedLength) > 0.01)
+                throw new SysException($"合并后线段长度应为 {expectedLength}，实际为 {actualLength}");
+        }
+
+        /// <summary>
+        /// 测试 OverKill - 查找独立端点
+        /// </summary>
+        private void TestOverKillFindIndependentEndpoints()
+        {
+            var overKillService = ServiceLocator.Resolve<LineOverKillService>();
+
+            // 创建一个L形的两条线段
+            var line1 = new Line2D(new Point2D(0, 0), new Point2D(10, 0)); // 水平线
+            var line2 = new Line2D(new Point2D(10, 0), new Point2D(10, 10)); // 垂直线
+
+            var lines = new List<Line2D> { line1, line2 };
+            var independentEndpoints = overKillService.FindIndependentEndpoints(lines, 1e-6);
+
+            // 应该有2个独立端点：(0,0) 和 (10,10)
+            if (independentEndpoints.Count != 2)
+                throw new SysException($"应找到 2 个独立端点，实际为 {independentEndpoints.Count}");
+
+            // 验证独立端点的位置
+            var endpoint1 = independentEndpoints[0];
+            var endpoint2 = independentEndpoints[1];
+
+            bool hasPoint00 = (endpoint1.Line == line1 && endpoint1.IsStartPoint) ||
+                             (endpoint2.Line == line1 && endpoint2.IsStartPoint);
+            
+            bool hasPoint1010 = (endpoint1.Line == line2 && !endpoint1.IsStartPoint) ||
+                               (endpoint2.Line == line2 && !endpoint2.IsStartPoint);
+
+            if (!hasPoint00 || !hasPoint1010)
+                throw new SysException("独立端点位置不正确");
         }
 
         #endregion

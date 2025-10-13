@@ -132,3 +132,4 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         ((double X, double Y, double Z) Point1, (double X, double Y, double Z) Point2)? GetUserWindow(string promptMessage = "请选择窗口: ");
     }
 }
+

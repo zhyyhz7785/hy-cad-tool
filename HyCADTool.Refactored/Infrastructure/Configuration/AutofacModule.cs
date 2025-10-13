@@ -6,6 +6,7 @@ using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection;
 using HyCADTool.Refactored.Presentation;
 using System;
 
@@ -164,6 +165,13 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<PolygonAlgorithmService>().As<IPolygonAlgorithmService>().SingleInstance();
             builder.RegisterType<PointAlgorithmService>().As<IPointAlgorithmService>().SingleInstance();
             builder.RegisterType<GeometryConverterService>().As<IGeometryConverterService>().SingleInstance();
+            
+            // === Phase 2.2: 选择服务重构 ===
+            // 注册过滤器管理服务
+            builder.RegisterType<FilterManagerService>().As<IFilterManagerService>().SingleInstance();
+            
+            // 注册高级选择服务
+            builder.RegisterType<AdvancedSelectionService>().As<IAdvancedSelectionService>().SingleInstance();
             
             // TODO: 后续添加更多服务注册
         }

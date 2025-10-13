@@ -177,11 +177,17 @@
       <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterBuilder.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterService.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\EntityFilters\EntityPropertyFilters.cs" />
+      <!-- 阶段 7.2: 重构过滤器系统 -->
+      <Compile Include="Infrastructure\AutoCAD\Selection\IFilterManagerService.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\FilterManagerService.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\IAdvancedSelectionService.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\AdvancedSelectionService.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\Filters\IEntityFilter.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LayerFilter.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\Filters\ColorFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LinetypeFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineTypeFilter.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineWeightFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TransparencyFilter.cs" />
       <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TypeFilter.cs" />
     <!-- 阶段 4: 点比较器 -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\PointComparers.cs" />
@@ -197,6 +203,10 @@
     <Compile Include="Infrastructure\AutoCAD\Extensions\PolylineExtensions.cs" />
     <Compile Include="Infrastructure\AutoCAD\Extensions\Point3dExtensions.cs" />
     <Compile Include="Infrastructure\AutoCAD\Extensions\LineExtensions.cs" />
+    <!-- 阶段 7.2: 类型名称转换器和新扩展方法 -->
+    <Compile Include="Infrastructure\AutoCAD\Extensions\TypeNameConverter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Extensions\GeometryExtensions.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Extensions\SelectionExtensions.cs" />
     
     <!-- Infrastructure Layer - AutoCAD Interactive - 阶段 4 -->
     <Compile Include="Infrastructure\AutoCAD\Interactive\PolylineJig.cs" />
@@ -220,6 +230,8 @@
       
       <!-- Test Layer - 测试运行器（后续阶段持续扩展，ReCall 不需修改） -->
       <Compile Include="Test\TestRunner.cs" />
+      <!-- 阶段 7.2: Phase 2 综合测试命令 -->
+      <Compile Include="Test\TestPhase2Command.cs" />
       
       <!-- Presentation Layer - Converters -->
       <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />

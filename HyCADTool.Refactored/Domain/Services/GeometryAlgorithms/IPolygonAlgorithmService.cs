@@ -242,3 +242,4 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
         List<Point2D> GetIntersectionPoints(Polygon2D polygon, Line2D line, Tolerance tolerance);
     }
 }
+

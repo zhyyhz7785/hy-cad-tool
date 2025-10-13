@@ -324,3 +324,4 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
         public bool IsClockwise { get; set; }
     }
 }
+

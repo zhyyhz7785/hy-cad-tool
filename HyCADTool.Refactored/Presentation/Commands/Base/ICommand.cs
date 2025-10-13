@@ -19,3 +19,4 @@ namespace HyCADTool.Refactored.Presentation.Commands.Base
         Task<bool> ExecuteAsync();
     }
 }
+
