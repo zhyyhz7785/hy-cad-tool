@@ -138,6 +138,32 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         void UnhighlightEntities(ObjectId[] objectIds);
 
         #endregion
+
+        #region 组合过滤（阶段 5 新增）
+
+        /// <summary>
+        /// 使用组合过滤条件执行全选（不提示用户）
+        /// 任意参数为 null/空则忽略该条件
+        /// </summary>
+        ObjectId[] SelectAllWithFilter(
+            string dxfType = null,
+            string layerName = null,
+            short? colorIndex = null,
+            string linetypeName = null,
+            LineWeight? lineWeight = null);
+
+        /// <summary>
+        /// 使用组合过滤条件提示用户选择
+        /// </summary>
+        ObjectId[] SelectEntitiesWithFilter(
+            string prompt,
+            string dxfType = null,
+            string layerName = null,
+            short? colorIndex = null,
+            string linetypeName = null,
+            LineWeight? lineWeight = null);
+
+        #endregion
     }
 }
 

@@ -74,6 +74,11 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
 
             // ===== 阶段 5.0: UI 基础设施 =====
             
+            // 选择过滤服务（单例）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Selection.SelectionFilterService>()
+                .As<ISelectionFilterService>()
+                .SingleInstance();
+
             // 选择服务（单例）
             builder.RegisterType<SelectionService>()
                 .As<ISelectionService>()

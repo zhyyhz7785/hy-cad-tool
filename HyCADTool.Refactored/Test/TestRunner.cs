@@ -13,6 +13,12 @@ using HyCADTool.Refactored.Domain.Utilities;
 using HyCADTool.Refactored.Domain.ValueObjects.Grid;
 using HyCADTool.Refactored.Domain.DataStructures.DCEL;
 using HyCADTool.Refactored.Domain.Entities.Pile;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
+using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection.Filters;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -169,6 +175,86 @@ namespace HyCADTool.Refactored.Test
                 totalTests++;
 
                 if (RunTest("Pile - 方形", TestSquarePile))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                // ===== 阶段 5: 工具层（Selection & Layer）测试 =====
+                _editor.WriteMessage("\n\n【阶段 5】工具层测试");
+                _editor.WriteMessage("\n" + new string('═', 50));
+
+                if (RunTest("SelectionFilterBuilder", TestSelectionFilterBuilder))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("LayerHelper", TestLayerHelperValuesOnly))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("SelectionService 组合过滤", TestSelectionServiceCombinedFilter))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("SelectionFilterService FromEntity", TestSelectionFilterFromEntity))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Entity 属性过滤器（Layer/Color/Type）", TestEntityPropertyFilters))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("LayerHelper 批量样式预览", TestLayerHelperPreviewOnly))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("PolylineExtensions 扩展方法", TestPolylineExtensions))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                // ===== 阶段 6: 几何工具整合测试 =====
+                _editor.WriteMessage("\n\n【阶段 6】几何工具整合测试");
+                _editor.WriteMessage("\n" + new string('═', 50));
+
+                if (RunTest("Polyline 去重顶点", TestPolylineRemoveDuplicates))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Polyline 顺时针/逆时针", TestPolylineClockwise))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Polyline 代数面积", TestPolylineAlgebraicArea))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Line 连接性排序", TestLineSortByConnectivity))
+                {
+                    passedTests++;
+                }
+                totalTests++;
+
+                if (RunTest("Line 合并为 Polyline", TestJoinLinesToPolyline))
                 {
                     passedTests++;
                 }
@@ -737,6 +823,340 @@ namespace HyCADTool.Refactored.Test
             double expectedArea = 500 * 500;
             if (System.Math.Abs(pile.PileArea - expectedArea) > 0.01)
                 throw new SysException($"方形桩面积计算错误：预期 {expectedArea:F2}，实际 {pile.PileArea:F2}");
+        }
+
+        #endregion
+
+        #region 阶段 5: 工具层测试方法
+
+        /// <summary>
+        /// 测试 SelectionFilterBuilder（不执行选择，仅验证 TypedValue 构造）
+        /// </summary>
+        private void TestSelectionFilterBuilder()
+        {
+            var builder = new SelectionFilterBuilder()
+                .ByType("LWPOLYLINE")
+                .ByLayer("0")
+                .ByColorIndex(256) // BYLAYER
+                .ByLinetype("ByLayer")
+                .ByLineWeight(LineWeight.ByLayer);
+
+            var values = builder.BuildValues();
+            if (values == null || values.Length < 3)
+            {
+                throw new SysException("SelectionFilter 构造失败：TypedValue 数量过少");
+            }
+
+            // 简单校验关键键值存在
+            bool hasType = false, hasLayer = false;
+            foreach (var tv in values)
+            {
+                if ((DxfCode)tv.TypeCode == DxfCode.Start && (string)tv.Value == "LWPOLYLINE") hasType = true;
+                if ((DxfCode)tv.TypeCode == DxfCode.LayerName && (string)tv.Value == "0") hasLayer = true;
+            }
+            if (!hasType || !hasLayer)
+            {
+                throw new SysException("SelectionFilter 构造失败：缺少类型或图层条件");
+            }
+        }
+
+        /// <summary>
+        /// 测试 LayerHelper 的只读能力（列出所有图层名称）
+        /// 为避免写库，该测试仅调用 GetAllLayerNames
+        /// </summary>
+        private void TestLayerHelperValuesOnly()
+        {
+            var db = HostApplicationServices.WorkingDatabase;
+            var layers = LayerHelper.GetAllLayerNames(db);
+            if (layers == null || layers.Count == 0)
+            {
+                throw new SysException("无法获取图层列表");
+            }
+        }
+
+        /// <summary>
+        /// 测试 SelectionService 的组合过滤只读路径（SelectAllWithFilter）
+        /// 仅验证调用链不抛异常且返回数组非 null
+        /// </summary>
+        private void TestSelectionServiceCombinedFilter()
+        {
+            var selectionService = ServiceLocator.Resolve<ISelectionService>();
+            var ids = selectionService.SelectAllWithFilter(
+                dxfType: "LWPOLYLINE",
+                layerName: "0",
+                colorIndex: null,
+                linetypeName: null,
+                lineWeight: null);
+            if (ids == null)
+            {
+                throw new SysException("SelectAllWithFilter 返回 null");
+            }
+        }
+
+        /// <summary>
+        /// 测试 SelectionFilterService.BuildFromEntity（只读路径）
+        /// 构建一个临时的 DBText 实例，仅用于读取属性并构建过滤器，不写库
+        /// </summary>
+        private void TestSelectionFilterFromEntity()
+        {
+            var filterService = ServiceLocator.Resolve<ISelectionFilterService>();
+            using (var txt = new DBText())
+            {
+                txt.Layer = "0";
+                txt.ColorIndex = 256;
+                txt.Linetype = "ByLayer";
+                txt.LineWeight = LineWeight.ByLayer;
+                var filter = filterService.BuildFromEntity(txt, byLayer: true, byColor: true, byLinetype: true, byLineWeight: true, byType: false);
+                if (filter == null)
+                {
+                    throw new SysException("BuildFromEntity 返回 null");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 测试基础设施层独立实体属性过滤器（只读）
+        /// </summary>
+        private void TestEntityPropertyFilters()
+        {
+            using (var ent = new DBText())
+            {
+                ent.Layer = "0";
+                ent.ColorIndex = 7;
+                var lf = new LayerFilter().Build(ent);
+                var cf = new ColorFilter().Build(ent);
+                var tf = new TypeFilter().Build(ent);
+                if (lf == null || cf == null || tf == null)
+                {
+                    throw new SysException("实体属性过滤器构建失败");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 测试 LayerHelper 批量样式预览（只读）
+        /// </summary>
+        private void TestLayerHelperPreviewOnly()
+        {
+            var db = HostApplicationServices.WorkingDatabase;
+            var styles = new List<LayerHelper.LayerStyle>
+            {
+                new LayerHelper.LayerStyle{ LayerName = "0", LinetypeName = "ByLayer", LineWeight = LineWeight.ByLayer },
+                new LayerHelper.LayerStyle{ LayerName = "Hy_Test", LinetypeName = "Continuous" }
+            };
+            var preview = LayerHelper.PreviewLayerStyles(db, styles);
+            if (preview == null || preview.Count == 0)
+            {
+                throw new SysException("PreviewLayerStyles 返回空");
+            }
+            if (!preview.ContainsKey("0"))
+            {
+                throw new SysException("预期包含图层 0 的预览结果");
+            }
+        }
+
+        /// <summary>
+        /// 测试 PolylineExtensions 扩展方法（只读，使用临时 Polyline）
+        /// </summary>
+        private void TestPolylineExtensions()
+        {
+            using (var poly = new AcDbPolyline())
+            {
+                poly.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                poly.AddVertexAt(1, new Point2d(10, 0), 0, 0, 0);
+                poly.AddVertexAt(2, new Point2d(10, 10), 0, 0, 0);
+                poly.AddVertexAt(3, new Point2d(0, 10), 0, 0, 0);
+                poly.Closed = true;
+
+                // 测试顶点获取
+                var vertices = poly.GetAllVertices();
+                if (vertices == null || vertices.Length != 4)
+                    throw new SysException("GetAllVertices 返回错误");
+
+                // 测试面积
+                double area = poly.GetArea();
+                if (System.Math.Abs(area - 100) > 0.01)
+                    throw new SysException($"GetArea 错误：期望 100，实际 {area}");
+
+                // 测试周长
+                double perimeter = poly.GetPerimeter();
+                if (System.Math.Abs(perimeter - 40) > 0.01)
+                    throw new SysException($"GetPerimeter 错误：期望 40，实际 {perimeter}");
+
+                // 测试点包含判断
+                bool inside = poly.ContainsPoint(new Point3d(5, 5, 0));
+                if (!inside)
+                    throw new SysException("ContainsPoint 应返回 true（点在内部）");
+
+                bool outside = poly.ContainsPoint(new Point3d(15, 15, 0));
+                if (outside)
+                    throw new SysException("ContainsPoint 应返回 false（点在外部）");
+            }
+        }
+
+        /// <summary>
+        /// 测试 Polyline 去重顶点功能（只读，使用临时 Polyline）
+        /// </summary>
+        private void TestPolylineRemoveDuplicates()
+        {
+            using (var poly = new AcDbPolyline())
+            {
+                // 创建一个有重复首尾顶点的多段线
+                poly.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                poly.AddVertexAt(1, new Point2d(10, 0), 0, 0, 0);
+                poly.AddVertexAt(2, new Point2d(10, 10), 0, 0, 0);
+                poly.AddVertexAt(3, new Point2d(0, 0), 0, 0, 0); // 重复的起点
+
+                if (poly.NumberOfVertices != 4)
+                    throw new SysException("初始顶点数应为 4");
+
+                // 去重
+                poly.RemoveDuplicateVertices();
+
+                if (poly.NumberOfVertices != 3)
+                    throw new SysException($"去重后顶点数应为 3，实际为 {poly.NumberOfVertices}");
+            }
+        }
+
+        /// <summary>
+        /// 测试 Polyline 顺时针/逆时针判断与转换（只读，使用临时 Polyline）
+        /// </summary>
+        private void TestPolylineClockwise()
+        {
+            // 测试逆时针多段线
+            using (var polyCounterclockwise = new AcDbPolyline())
+            {
+                polyCounterclockwise.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                polyCounterclockwise.AddVertexAt(1, new Point2d(10, 0), 0, 0, 0);
+                polyCounterclockwise.AddVertexAt(2, new Point2d(10, 10), 0, 0, 0);
+                polyCounterclockwise.AddVertexAt(3, new Point2d(0, 10), 0, 0, 0);
+                polyCounterclockwise.Closed = true;
+
+                double areaBefore = polyCounterclockwise.GetAlgebraicArea();
+                if (areaBefore <= 0)
+                    throw new SysException("逆时针多段线的代数面积应为正值");
+
+                // 转换为顺时针
+                polyCounterclockwise.EnsureClockwise();
+                double areaAfter = polyCounterclockwise.GetAlgebraicArea();
+                if (areaAfter >= 0)
+                    throw new SysException("转换后应为顺时针（负面积）");
+            }
+
+            // 测试顺时针多段线
+            using (var polyClockwise = new AcDbPolyline())
+            {
+                polyClockwise.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                polyClockwise.AddVertexAt(1, new Point2d(0, 10), 0, 0, 0);
+                polyClockwise.AddVertexAt(2, new Point2d(10, 10), 0, 0, 0);
+                polyClockwise.AddVertexAt(3, new Point2d(10, 0), 0, 0, 0);
+                polyClockwise.Closed = true;
+
+                double areaBefore = polyClockwise.GetAlgebraicArea();
+                if (areaBefore >= 0)
+                    throw new SysException("顺时针多段线的代数面积应为负值");
+
+                // 转换为逆时针
+                polyClockwise.EnsureCounterclockwise();
+                double areaAfter = polyClockwise.GetAlgebraicArea();
+                if (areaAfter <= 0)
+                    throw new SysException("转换后应为逆时针（正面积）");
+            }
+        }
+
+        /// <summary>
+        /// 测试 Polyline 代数面积计算（只读，使用临时 Polyline）
+        /// </summary>
+        private void TestPolylineAlgebraicArea()
+        {
+            using (var poly = new AcDbPolyline())
+            {
+                // 创建一个 10x10 的正方形（逆时针）
+                poly.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                poly.AddVertexAt(1, new Point2d(10, 0), 0, 0, 0);
+                poly.AddVertexAt(2, new Point2d(10, 10), 0, 0, 0);
+                poly.AddVertexAt(3, new Point2d(0, 10), 0, 0, 0);
+                poly.Closed = true;
+
+                double area = poly.GetAlgebraicArea();
+                // 逆时针应为正值，面积为 100
+                if (System.Math.Abs(area - 100) > 0.01)
+                    throw new SysException($"代数面积应为 100，实际为 {area}");
+            }
+
+            using (var poly2 = new AcDbPolyline())
+            {
+                // 创建一个 10x10 的正方形（顺时针）
+                poly2.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                poly2.AddVertexAt(1, new Point2d(0, 10), 0, 0, 0);
+                poly2.AddVertexAt(2, new Point2d(10, 10), 0, 0, 0);
+                poly2.AddVertexAt(3, new Point2d(10, 0), 0, 0, 0);
+                poly2.Closed = true;
+
+                double area = poly2.GetAlgebraicArea();
+                // 顺时针应为负值，面积为 -100
+                if (System.Math.Abs(area + 100) > 0.01)
+                    throw new SysException($"代数面积应为 -100，实际为 {area}");
+            }
+        }
+
+        /// <summary>
+        /// 测试 Line 连接性排序（只读，使用临时 Line）
+        /// </summary>
+        private void TestLineSortByConnectivity()
+        {
+            var lines = new List<Line>
+            {
+                new Line(new Point3d(0, 0, 0), new Point3d(10, 0, 0)),
+                new Line(new Point3d(20, 10, 0), new Point3d(10, 10, 0)), // 反向
+                new Line(new Point3d(10, 0, 0), new Point3d(10, 10, 0)),
+                new Line(new Point3d(10, 10, 0), new Point3d(20, 10, 0))
+            };
+
+            var sorted = lines.SortByConnectivity();
+
+            if (sorted.Count != 4)
+                throw new SysException($"排序后应有 4 条线段，实际为 {sorted.Count}");
+
+            // 检查连接性
+            for (int i = 0; i < sorted.Count - 1; i++)
+            {
+                var end = sorted[i].EndPoint;
+                var nextStart = sorted[i + 1].StartPoint;
+                double dist = end.DistanceTo(nextStart);
+                if (dist > 1e-4)
+                    throw new SysException($"线段 {i} 的终点与线段 {i + 1} 的起点不连接，距离 = {dist}");
+            }
+        }
+
+        /// <summary>
+        /// 测试 Line 合并为 Polyline（只读，使用临时 Line）
+        /// </summary>
+        private void TestJoinLinesToPolyline()
+        {
+            var lines = new List<Line>
+            {
+                new Line(new Point3d(0, 0, 0), new Point3d(10, 0, 0)),
+                new Line(new Point3d(10, 0, 0), new Point3d(10, 10, 0)),
+                new Line(new Point3d(10, 10, 0), new Point3d(0, 10, 0)),
+                new Line(new Point3d(0, 10, 0), new Point3d(0, 0, 0))
+            };
+
+            using (var poly = lines.JoinToPolyline(requireClosed: true))
+            {
+                if (poly == null)
+                    throw new SysException("JoinToPolyline 返回 null");
+
+                if (poly.NumberOfVertices != 4)
+                    throw new SysException($"多段线应有 4 个顶点，实际为 {poly.NumberOfVertices}");
+
+                if (!poly.Closed)
+                    throw new SysException("多段线应为闭合");
+
+                double area = poly.GetArea();
+                if (System.Math.Abs(area - 100) > 0.01)
+                    throw new SysException($"多段线面积应为 100，实际为 {area}");
+            }
         }
 
         #endregion

@@ -79,6 +79,7 @@
     <Compile Include="Domain\Interfaces\IGlobalConfigService.cs" />
     <Compile Include="Domain\Interfaces\IModuleConfigService.cs" />
     <Compile Include="Domain\Interfaces\ISelectionService.cs" />
+    <Compile Include="Domain\Interfaces\ISelectionFilterService.cs" />
     <!-- 阶段 2: 服务层接口 -->
     <Compile Include="Domain\Interfaces\IDrawingService.cs" />
     <Compile Include="Domain\Interfaces\IEditorService.cs" />
@@ -161,9 +162,19 @@
     <Compile Include="Infrastructure\AutoCAD\Services\EditorService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\DatabaseService.cs" />
     
-    <!-- Infrastructure Layer - AutoCAD Utilities -->
+      <!-- Infrastructure Layer - AutoCAD Utilities -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\TransactionHelper.cs" />
     <Compile Include="Infrastructure\AutoCAD\Utilities\EntityHelper.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Utilities\LayerHelper.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterBuilder.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterService.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\EntityFilters\EntityPropertyFilters.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\IEntityFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LayerFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\ColorFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LinetypeFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineWeightFilter.cs" />
+      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TypeFilter.cs" />
     <!-- 阶段 4: 点比较器 -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\PointComparers.cs" />
     
@@ -171,6 +182,7 @@
     <!-- 阶段 3: 扩展方法（桥接 Domain 算法和 AutoCAD API） -->
     <Compile Include="Infrastructure\AutoCAD\Extensions\PolylineExtensions.cs" />
     <Compile Include="Infrastructure\AutoCAD\Extensions\Point3dExtensions.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Extensions\LineExtensions.cs" />
     
     <!-- Infrastructure Layer - AutoCAD Interactive - 阶段 4 -->
     <Compile Include="Infrastructure\AutoCAD\Interactive\PolylineJig.cs" />

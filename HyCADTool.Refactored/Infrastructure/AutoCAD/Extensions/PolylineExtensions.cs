@@ -356,6 +356,104 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
         }
 
         #endregion
+
+        #region 阶段 6: 几何工具整合 - Polyline 操作增强
+
+        /// <summary>
+        /// 移除多段线重复顶点（通常是首尾重复）
+        /// </summary>
+        /// <param name="poly">多段线对象</param>
+        /// <param name="tolerance">判断重复的容差</param>
+        /// <returns>去重后的多段线（原对象）</returns>
+        public static Polyline RemoveDuplicateVertices(
+            this Polyline poly,
+            double tolerance = 1e-6)
+        {
+            if (poly == null || poly.NumberOfVertices < 2)
+                return poly;
+
+            var first = poly.GetPoint3dAt(0);
+            var last = poly.GetPoint3dAt(poly.NumberOfVertices - 1);
+            var tol = new Tolerance(tolerance, tolerance);
+
+            if (first.IsEqualTo(last, tol))
+            {
+                poly.RemoveVertexAt(poly.NumberOfVertices - 1);
+            }
+
+            return poly;
+        }
+
+        /// <summary>
+        /// 确保多段线为顺时针方向（负面积，AutoCAD 坐标系下）
+        /// </summary>
+        /// <param name="poly">多段线对象</param>
+        /// <returns>顺时针的多段线（原对象）</returns>
+        public static Polyline EnsureClockwise(this Polyline poly)
+        {
+            if (poly == null || !poly.Closed)
+                return poly;
+
+            // 使用代数面积判断方向
+            double area = poly.GetAlgebraicArea();
+            if (area > 0) // 逆时针（正面积）
+            {
+                poly.ReverseCurve();
+            }
+
+            return poly;
+        }
+
+        /// <summary>
+        /// 确保多段线为逆时针方向（正面积，AutoCAD 坐标系下）
+        /// </summary>
+        /// <param name="poly">多段线对象</param>
+        /// <returns>逆时针的多段线（原对象）</returns>
+        public static Polyline EnsureCounterclockwise(this Polyline poly)
+        {
+            if (poly == null || !poly.Closed)
+                return poly;
+
+            // 使用代数面积判断方向
+            double area = poly.GetAlgebraicArea();
+            if (area < 0) // 顺时针（负面积）
+            {
+                poly.ReverseCurve();
+            }
+
+            return poly;
+        }
+
+        /// <summary>
+        /// 计算多段线的代数面积（Shoelace 公式）
+        /// </summary>
+        /// <param name="poly">多段线对象</param>
+        /// <returns>代数面积（正值=逆时针，负值=顺时针）</returns>
+        /// <remarks>
+        /// 使用 Shoelace 公式计算有向面积。
+        /// 在 AutoCAD 坐标系（Y 轴向上）：
+        /// - 正值：逆时针（Counter-clockwise）
+        /// - 负值：顺时针（Clockwise）
+        /// </remarks>
+        public static double GetAlgebraicArea(this Polyline poly)
+        {
+            if (poly == null || poly.NumberOfVertices < 3)
+                return 0;
+
+            double sum = 0;
+            int n = poly.NumberOfVertices;
+
+            for (int i = 0; i < n; i++)
+            {
+                var p1 = poly.GetPoint2dAt(i);
+                var p2 = poly.GetPoint2dAt((i + 1) % n);
+                sum += (p1.X * p2.Y - p2.X * p1.Y);
+            }
+
+            return sum / 2.0;
+        }
+
+        #endregion
     }
 }
 

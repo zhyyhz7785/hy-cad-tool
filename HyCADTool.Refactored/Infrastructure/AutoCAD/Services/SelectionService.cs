@@ -20,6 +20,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
     /// </remarks>
     public class SelectionService : ISelectionService
     {
+        private readonly ISelectionFilterService _filterService;
+
+        public SelectionService(ISelectionFilterService filterService)
+        {
+            _filterService = filterService;
+        }
         #region 基础选择方法
 
         /// <summary>
@@ -376,6 +382,56 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n取消高亮失败: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 组合过滤（阶段 5 新增）
+
+        public ObjectId[] SelectAllWithFilter(string dxfType = null, string layerName = null, short? colorIndex = null, string linetypeName = null, LineWeight? lineWeight = null)
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            var ed = doc.Editor;
+
+            try
+            {
+                var filter = _filterService.Build(dxfType, layerName, colorIndex, linetypeName, lineWeight);
+                var result = ed.SelectAll(filter);
+                if (result.Status == PromptStatus.OK)
+                {
+                    return result.Value.GetObjectIds();
+                }
+                return new ObjectId[0];
+            }
+            catch
+            {
+                return new ObjectId[0];
+            }
+        }
+
+        public ObjectId[] SelectEntitiesWithFilter(string prompt, string dxfType = null, string layerName = null, short? colorIndex = null, string linetypeName = null, LineWeight? lineWeight = null)
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            var ed = doc.Editor;
+
+            try
+            {
+                var options = new PromptSelectionOptions
+                {
+                    MessageForAdding = string.IsNullOrEmpty(prompt) ? "\n请选择对象: " : $"\n{prompt}: "
+                };
+                var filter = _filterService.Build(dxfType, layerName, colorIndex, linetypeName, lineWeight);
+                var result = ed.GetSelection(options, filter);
+                if (result.Status == PromptStatus.OK)
+                {
+                    return result.Value.GetObjectIds();
+                }
+                return new ObjectId[0];
+            }
+            catch
+            {
+                return new ObjectId[0];
             }
         }
 
