@@ -1,5 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;

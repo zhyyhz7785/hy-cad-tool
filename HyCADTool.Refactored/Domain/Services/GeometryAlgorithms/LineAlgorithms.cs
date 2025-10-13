@@ -323,7 +323,10 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
         /// <returns>长度 Length</returns>
         public static double GetLength(Line2D line)
         {
-            return PointAlgorithms.Distance(line.StartPoint, line.EndPoint);
+            // TODO: Replace with IPointAlgorithmService
+            var dx = line.EndPoint.X - line.StartPoint.X;
+            var dy = line.EndPoint.Y - line.StartPoint.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>
@@ -334,7 +337,11 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
         /// <returns>中点 Midpoint</returns>
         public static Point2D GetMidpoint(Line2D line)
         {
-            return PointAlgorithms.Midpoint(line.StartPoint, line.EndPoint);
+            // TODO: Replace with IPointAlgorithmService
+            return new Point2D(
+                (line.StartPoint.X + line.EndPoint.X) / 2,
+                (line.StartPoint.Y + line.EndPoint.Y) / 2
+            );
         }
 
         /// <summary>
@@ -439,7 +446,14 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
         public static bool ContainsPoint(Line2D line, Point2D point, double tolerance = 1e-10)
         {
             // 检查距离
-            double distToLine = PointAlgorithms.DistanceToLine(point, line);
+            // TODO: Replace with IPointAlgorithmService.DistanceToLine
+            // 计算点到直线的垂直距离
+            var p1 = line.StartPoint;
+            var p2 = line.EndPoint;
+            var numerator = Math.Abs((p2.Y - p1.Y) * point.X - (p2.X - p1.X) * point.Y + p2.X * p1.Y - p2.Y * p1.X);
+            var denominator = Math.Sqrt(Math.Pow(p2.Y - p1.Y, 2) + Math.Pow(p2.X - p1.X, 2));
+            double distToLine = denominator > 1e-10 ? numerator / denominator : 0;
+            
             if (distToLine > tolerance)
                 return false;
             
@@ -461,7 +475,14 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
         /// <returns>分割后的两条线段 Two split line segments</returns>
         public static (Line2D, Line2D) Split(Line2D line, double parameter)
         {
-            var splitPoint = PointAlgorithms.Lerp(line.StartPoint, line.EndPoint, parameter);
+            // TODO: Replace with IPointAlgorithmService.Lerp
+            // 线性插值计算分割点
+            parameter = Math.Max(0, Math.Min(1, parameter)); // 限制在[0,1]
+            var splitPoint = new Point2D(
+                line.StartPoint.X + parameter * (line.EndPoint.X - line.StartPoint.X),
+                line.StartPoint.Y + parameter * (line.EndPoint.Y - line.StartPoint.Y)
+            );
+            
             return (
                 new Line2D(line.StartPoint, splitPoint),
                 new Line2D(splitPoint, line.EndPoint)

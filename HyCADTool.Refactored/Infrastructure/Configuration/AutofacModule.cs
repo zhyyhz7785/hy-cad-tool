@@ -1,8 +1,9 @@
 using Autofac;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Services;
-using HyCADTool.Refactored.Application.UseCases.OverKill;
+using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories;
 using HyCADTool.Refactored.Presentation;
@@ -36,6 +37,11 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             // 注册样式服务（单例）
             builder.RegisterType<StyleService>()
                 .As<IStyleService>()
+                .SingleInstance();
+
+            // 注册输入服务（单例）
+            builder.RegisterType<InputService>()
+                .As<IInputService>()
                 .SingleInstance();
 
             // ===== 阶段 1: 配置层服务 =====
@@ -141,16 +147,24 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
             
-            // 应用用例
-            builder.RegisterType<OverKillUseCase>()
-                .AsSelf()
-                .InstancePerDependency();
+            // TODO: Application层删除后暂时注释掉
+            // // 应用用例
+            // builder.RegisterType<OverKillUseCase>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
             
             // 仓储
             builder.RegisterType<LineRepository>()
                 .As<ILineRepository>()
                 .SingleInstance();
 
+            // === Phase 2: 几何算法服务注册 ===
+            // 注册 Domain 层几何算法服务
+            builder.RegisterType<LineAlgorithmService>().As<ILineAlgorithmService>().SingleInstance();
+            builder.RegisterType<PolygonAlgorithmService>().As<IPolygonAlgorithmService>().SingleInstance();
+            builder.RegisterType<PointAlgorithmService>().As<IPointAlgorithmService>().SingleInstance();
+            builder.RegisterType<GeometryConverterService>().As<IGeometryConverterService>().SingleInstance();
+            
             // TODO: 后续添加更多服务注册
         }
     }

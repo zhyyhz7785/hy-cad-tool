@@ -235,7 +235,10 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
             for (int i = 0; i < points.Count; i++)
             {
                 int j = (i + 1) % points.Count;
-                perimeter += PointAlgorithms.Distance(points[i], points[j]);
+                // TODO: Replace with IPointAlgorithmService
+                var dx = points[j].X - points[i].X;
+                var dy = points[j].Y - points[i].Y;
+                perimeter += Math.Sqrt(dx * dx + dy * dy);
             }
             
             return perimeter;
@@ -417,7 +420,15 @@ namespace HyCADTool.Refactored.Domain.Services.GeometryAlgorithms
             
             for (int i = startIndex + 1; i < endIndex; i++)
             {
-                double distance = PointAlgorithms.DistanceToLine(points[i], line);
+                // TODO: Replace with IPointAlgorithmService.DistanceToLine
+                // 计算点到直线的距离（垂直距离）
+                var p = points[i];
+                var p1 = line.StartPoint;
+                var p2 = line.EndPoint;
+                var numerator = Math.Abs((p2.Y - p1.Y) * p.X - (p2.X - p1.X) * p.Y + p2.X * p1.Y - p2.Y * p1.X);
+                var denominator = Math.Sqrt(Math.Pow(p2.Y - p1.Y, 2) + Math.Pow(p2.X - p1.X, 2));
+                double distance = numerator / denominator;
+                
                 if (distance > maxDistance)
                 {
                     maxDistance = distance;

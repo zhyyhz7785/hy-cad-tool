@@ -1,30 +1,40 @@
-using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
-
 namespace HyCADTool.Refactored.Domain.Interfaces
 {
     /// <summary>
     /// 样式服务接口（平台无关）
-    /// 定义文本样式、标注样式等的管理操作
+    /// 定义各种AutoCAD样式管理的抽象操作
     /// </summary>
     public interface IStyleService
     {
-        /// <summary>
-        /// 创建或更新文本样式
-        /// </summary>
-        /// <param name="config">文本样式配置</param>
-        void CreateOrUpdateTextStyle(TextStyleConfig config);
+        // === 文字样式 ===
 
         /// <summary>
-        /// 创建或更新标注样式
+        /// 创建文字样式
         /// </summary>
-        /// <param name="config">标注样式配置</param>
-        void CreateOrUpdateDimensionStyle(DimensionStyleConfig config);
+        /// <param name="styleName">样式名称</param>
+        /// <param name="fontName">字体名称</param>
+        /// <param name="bigFontName">大字体名称</param>
+        /// <param name="textHeight">文字高度</param>
+        /// <param name="widthFactor">宽度因子</param>
+        /// <returns>样式ObjectId</returns>
+        string CreateTextStyle(string styleName, string fontName = "tssdeng.shx", string bigFontName = "hztxt.shx", double textHeight = 2.5, double widthFactor = 0.7);
 
         /// <summary>
-        /// 设置当前文本样式
+        /// 设置当前文字样式
         /// </summary>
         /// <param name="styleName">样式名称</param>
         void SetCurrentTextStyle(string styleName);
+
+        // === 标注样式 ===
+
+        /// <summary>
+        /// 创建标注样式
+        /// </summary>
+        /// <param name="styleName">标注样式名称</param>
+        /// <param name="textStyleName">关联的文字样式名称</param>
+        /// <param name="scale">比例因子</param>
+        /// <returns>样式ObjectId</returns>
+        string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0);
 
         /// <summary>
         /// 设置当前标注样式
@@ -32,32 +42,86 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// <param name="styleName">样式名称</param>
         void SetCurrentDimensionStyle(string styleName);
 
-        /// <summary>
-        /// 检查文本样式是否存在
-        /// </summary>
-        /// <param name="styleName">样式名称</param>
-        /// <returns>如果样式存在返回 true</returns>
-        bool TextStyleExists(string styleName);
+        // === 多重引线样式 ===
 
         /// <summary>
-        /// 检查标注样式是否存在
+        /// 创建多重引线样式
         /// </summary>
         /// <param name="styleName">样式名称</param>
-        /// <returns>如果样式存在返回 true</returns>
-        bool DimensionStyleExists(string styleName);
+        /// <param name="textStyleName">关联的文字样式名称</param>
+        /// <returns>样式ObjectId</returns>
+        string CreateMLeaderStyle(string styleName, string textStyleName = null);
 
         /// <summary>
-        /// 创建或更新多重引线样式
-        /// </summary>
-        /// <param name="config">多重引线样式配置</param>
-        void CreateOrUpdateMLeaderStyle(MLeaderStyleConfig config);
-
-        /// <summary>
-        /// 检查样式是否存在（通用方法）
+        /// 设置当前多重引线样式
         /// </summary>
         /// <param name="styleName">样式名称</param>
-        /// <returns>如果样式存在返回 true</returns>
-        bool StyleExists(string styleName);
+        void SetCurrentMLeaderStyle(string styleName);
+
+        // === 线型样式 ===
+
+        /// <summary>
+        /// 加载线型文件
+        /// </summary>
+        /// <param name="linetypeFilePath">线型文件路径</param>
+        /// <param name="linetypeName">要加载的线型名称，null表示加载所有</param>
+        void LoadLinetype(string linetypeFilePath, string linetypeName = null);
+
+        /// <summary>
+        /// 导出线型到文件
+        /// </summary>
+        /// <param name="outputPath">输出文件路径</param>
+        void ExportLinetypesToFile(string outputPath);
+
+        // === 表格样式 ===
+
+        /// <summary>
+        /// 创建表格样式
+        /// </summary>
+        /// <param name="styleName">样式名称</param>
+        /// <param name="textStyleName">关联的文字样式名称</param>
+        /// <returns>样式ObjectId</returns>
+        string CreateTableStyle(string styleName, string textStyleName = null);
+
+        /// <summary>
+        /// 设置当前表格样式
+        /// </summary>
+        /// <param name="styleName">样式名称</param>
+        void SetCurrentTableStyle(string styleName);
+
+        // === 通用样式管理 ===
+
+        /// <summary>
+        /// 检查样式是否存在
+        /// </summary>
+        /// <param name="styleName">样式名称</param>
+        /// <param name="styleType">样式类型</param>
+        /// <returns>样式是否存在</returns>
+        bool StyleExists(string styleName, StyleType styleType);
+
+        /// <summary>
+        /// 删除样式
+        /// </summary>
+        /// <param name="styleName">样式名称</param>
+        /// <param name="styleType">样式类型</param>
+        /// <returns>删除成功返回true</returns>
+        bool DeleteStyle(string styleName, StyleType styleType);
+    }
+
+    /// <summary>
+    /// 样式类型枚举
+    /// </summary>
+    public enum StyleType
+    {
+        /// <summary>文字样式</summary>
+        TextStyle,
+        /// <summary>标注样式</summary>
+        DimensionStyle,
+        /// <summary>多重引线样式</summary>
+        MLeaderStyle,
+        /// <summary>表格样式</summary>
+        TableStyle,
+        /// <summary>线型</summary>
+        Linetype
     }
 }
-

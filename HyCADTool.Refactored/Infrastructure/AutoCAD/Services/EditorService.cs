@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

@@ -1,7 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Refactored.Application.DTOs.OverKill;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
@@ -90,67 +89,68 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories
             }
         }
         
-        /// <summary>
-        /// 创建警告标记（矩形）
-        /// </summary>
-        public void CreateWarningMarkers(
-            Transaction transaction,
-            List<WarningMarker> markers)
-        {
-            if (markers.Count == 0) return;
-            
-            // 确保警告图层存在
-            if (!_layerService.LayerExists("00_HY_警告_红色"))
-            {
-                _layerService.CreateLayer("00_HY_警告_红色", 1);
-            }
-            
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            var db = doc.Database;
-            var btr = GetModelSpace(transaction, db);
-            
-            foreach (var marker in markers)
-            {
-                var rect = CreateWarningRectangle(
-                    marker.Location,
-                    marker.Direction,
-                    marker.Size);
-                
-                rect.Layer = "00_HY_警告_红色";
-                btr.AppendEntity(rect);
-                transaction.AddNewlyCreatedDBObject(rect, true);
-            }
-        }
-        
-        /// <summary>
-        /// 创建警告矩形
-        /// </summary>
-        private Polyline CreateWarningRectangle(
-            Point2D center, 
-            Vector2D direction, 
-            double length)
-        {
-            double width = length / 2;
-            
-            // 计算垂直方向
-            Vector2D perpendicular = new Vector2D(-direction.Y, direction.X);
-            
-            // 计算四个角点
-            Point2D p1 = center.Add(perpendicular * (width / 2)).Subtract(direction * (length / 2));
-            Point2D p2 = center.Add(perpendicular * (width / 2)).Add(direction * (length / 2));
-            Point2D p3 = center.Subtract(perpendicular * (width / 2)).Add(direction * (length / 2));
-            Point2D p4 = center.Subtract(perpendicular * (width / 2)).Subtract(direction * (length / 2));
-            
-            // 创建多段线
-            Polyline rect = new Polyline();
-            rect.AddVertexAt(0, new Point2d(p1.X, p1.Y), 0, 0, 0);
-            rect.AddVertexAt(1, new Point2d(p2.X, p2.Y), 0, 0, 0);
-            rect.AddVertexAt(2, new Point2d(p3.X, p3.Y), 0, 0, 0);
-            rect.AddVertexAt(3, new Point2d(p4.X, p4.Y), 0, 0, 0);
-            rect.Closed = true;
-            
-            return rect;
-        }
+        // TODO: Application层删除后暂时注释掉 WarningMarker 相关功能
+        // /// <summary>
+        // /// 创建警告标记（矩形）
+        // /// </summary>
+        // public void CreateWarningMarkers(
+        //     Transaction transaction,
+        //     List<WarningMarker> markers)
+        // {
+        //     if (markers.Count == 0) return;
+        //     
+        //     // 确保警告图层存在
+        //     if (!_layerService.LayerExists("00_HY_警告_红色"))
+        //     {
+        //         _layerService.CreateLayer("00_HY_警告_红色", 1);
+        //     }
+        //     
+        //     var doc = AcApp.DocumentManager.MdiActiveDocument;
+        //     var db = doc.Database;
+        //     var btr = GetModelSpace(transaction, db);
+        //     
+        //     foreach (var marker in markers)
+        //     {
+        //         var rect = CreateWarningRectangle(
+        //             marker.Location,
+        //             marker.Direction,
+        //             marker.Size);
+        //         
+        //         rect.Layer = "00_HY_警告_红色";
+        //         btr.AppendEntity(rect);
+        //         transaction.AddNewlyCreatedDBObject(rect, true);
+        //     }
+        // }
+        // 
+        // /// <summary>
+        // /// 创建警告矩形
+        // /// </summary>
+        // private Polyline CreateWarningRectangle(
+        //     Point2D center, 
+        //     Vector2D direction, 
+        //     double length)
+        // {
+        //     double width = length / 2;
+        //     
+        //     // 计算垂直方向
+        //     Vector2D perpendicular = new Vector2D(-direction.Y, direction.X);
+        //     
+        //     // 计算四个角点
+        //     Point2D p1 = center.Add(perpendicular * (width / 2)).Subtract(direction * (length / 2));
+        //     Point2D p2 = center.Add(perpendicular * (width / 2)).Add(direction * (length / 2));
+        //     Point2D p3 = center.Subtract(perpendicular * (width / 2)).Add(direction * (length / 2));
+        //     Point2D p4 = center.Subtract(perpendicular * (width / 2)).Subtract(direction * (length / 2));
+        //     
+        //     // 创建多段线
+        //     Polyline rect = new Polyline();
+        //     rect.AddVertexAt(0, new Point2d(p1.X, p1.Y), 0, 0, 0);
+        //     rect.AddVertexAt(1, new Point2d(p2.X, p2.Y), 0, 0, 0);
+        //     rect.AddVertexAt(2, new Point2d(p3.X, p3.Y), 0, 0, 0);
+        //     rect.AddVertexAt(3, new Point2d(p4.X, p4.Y), 0, 0, 0);
+        //     rect.Closed = true;
+        //     
+        //     return rect;
+        // }
         
         /// <summary>
         /// 获取模型空间

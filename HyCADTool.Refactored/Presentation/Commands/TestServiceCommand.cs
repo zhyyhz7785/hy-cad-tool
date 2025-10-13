@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using System.Linq;
 
 namespace HyCADTool.Refactored.Presentation.Commands

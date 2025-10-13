@@ -75,15 +75,12 @@
     <Compile Include="Domain\Interfaces\IGeometryService.cs" />
     <Compile Include="Domain\Interfaces\ILayerService.cs" />
     <Compile Include="Domain\Interfaces\IStyleService.cs" />
+    <Compile Include="Domain\Interfaces\IInputService.cs" />
     <Compile Include="Domain\Interfaces\IConfigurationService.cs" />
     <Compile Include="Domain\Interfaces\IGlobalConfigService.cs" />
     <Compile Include="Domain\Interfaces\IModuleConfigService.cs" />
-    <Compile Include="Domain\Interfaces\ISelectionService.cs" />
+    <!-- 阶段 5: Domain层选择过滤服务接口 -->
     <Compile Include="Domain\Interfaces\ISelectionFilterService.cs" />
-    <!-- 阶段 2: 服务层接口 -->
-    <Compile Include="Domain\Interfaces\IDrawingService.cs" />
-    <Compile Include="Domain\Interfaces\IEditorService.cs" />
-    <Compile Include="Domain\Interfaces\IDatabaseService.cs" />
     <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的接口 -->
     <!-- <Compile Include="Domain\Interfaces\IBaseReinforcementService.cs" /> -->
     
@@ -109,6 +106,16 @@
       <Compile Include="Domain\DataStructures\DCEL\HalfEdge.cs" />
       <Compile Include="Domain\DataStructures\DCEL\Face.cs" />
       <Compile Include="Domain\DataStructures\DCEL\DCELGraph.cs" />
+      
+    <!-- Domain Layer - Services (Geometry Algorithms) - Phase 2 -->
+      <Compile Include="Domain\Services\GeometryAlgorithms\ILineAlgorithmService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithmService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\IPolygonAlgorithmService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithmService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\IPointAlgorithmService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\PointAlgorithmService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\IGeometryConverterService.cs" />
+      <Compile Include="Domain\Services\GeometryAlgorithms\GeometryConverterService.cs" />
     
     <!-- Domain Layer - Value Objects (Configuration - Global) -->
     <Compile Include="Domain\ValueObjects\Configuration\Global\ScaleConfig.cs" />
@@ -156,6 +163,7 @@
     <Compile Include="Infrastructure\AutoCAD\Services\AutoCadGeometryService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\LayerService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\StyleService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Services\InputService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\SelectionService.cs" />
     <!-- 阶段 2: 服务层实现 -->
     <Compile Include="Infrastructure\AutoCAD\Services\DrawingService.cs" />
@@ -177,6 +185,12 @@
       <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TypeFilter.cs" />
     <!-- 阶段 4: 点比较器 -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\PointComparers.cs" />
+    
+    <!-- Infrastructure Layer - AutoCAD Interfaces - 阶段 7 -->
+    <Compile Include="Infrastructure\AutoCAD\Interfaces\ISelectionService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Interfaces\IDrawingService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Interfaces\IDatabaseService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Interfaces\IEditorService.cs" />
     
     <!-- Infrastructure Layer - AutoCAD Extensions -->
     <!-- 阶段 3: 扩展方法（桥接 Domain 算法和 AutoCAD API） -->
@@ -241,7 +255,6 @@
       
       <!-- Domain Layer - Services -->
       <!-- 阶段 3: 几何算法服务 (平台无关) -->
-      <Compile Include="Domain\Services\GeometryAlgorithms\PointAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
@@ -253,13 +266,11 @@
       <Compile Include="Domain\Services\IReinService.cs" />
       
       <!-- Application Layer - DTOs -->
-      <Compile Include="Application\DTOs\OverKill\OverKillRequest.cs" />
-      <Compile Include="Application\DTOs\OverKill\OverKillResult.cs" />
       
-      <!-- Application Layer - UseCases -->
-      <Compile Include="Application\UseCases\OverKill\OverKillUseCase.cs" />
-      
-      <!-- Application Layer - Services -->
+      <!-- Presentation Layer - Commands - 阶段 7 -->
+      <Compile Include="Presentation\Commands\Base\ICommand.cs" />
+      <Compile Include="Presentation\Commands\Base\CommandResult.cs" />
+      <Compile Include="Presentation\Commands\Base\CommandExecutor.cs" />
       <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 Service -->
       <!-- <Compile Include="Application\Services\BaseReinforcementService.cs" /> -->
       
@@ -308,11 +319,8 @@
     
     <!-- Folder placeholders for future files -->
     <Folder Include="Domain\Entities\" />
-    <Folder Include="Application\UseCases\" />
-    <Folder Include="Application\DTOs\" />
-    <Folder Include="Application\Interfaces\" />
-    <Folder Include="Infrastructure\AutoCAD\Persistence\" />
     <Folder Include="Presentation\Commands\" />
+    <Folder Include="Infrastructure\AutoCAD\Persistence\" />
     <Folder Include="Presentation\Panels\" />
     <Folder Include="Shared\Extensions\" />
     <Folder Include="Shared\Helpers\" />

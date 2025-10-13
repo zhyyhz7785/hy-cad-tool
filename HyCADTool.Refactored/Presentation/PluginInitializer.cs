@@ -127,12 +127,20 @@ namespace HyCADTool.Refactored.Presentation
                 // 创建默认文本样式
                 var textStyleConfig = Domain.ValueObjects.Configuration.Global.TextStyleConfig.CreateDefault(
                     "HyCAD_Standard", scale: 1.0);
-                styleService.CreateOrUpdateTextStyle(textStyleConfig);
+                styleService.CreateTextStyle(
+                    textStyleConfig.Name, 
+                    textStyleConfig.FontFileName, 
+                    textStyleConfig.BigFontFileName, 
+                    textStyleConfig.TextSize, 
+                    textStyleConfig.XScale);
 
                 // 创建默认标注样式
                 var dimStyleConfig = Domain.ValueObjects.Configuration.Global.DimensionStyleConfig.CreateDefault(
                     "HyCAD_Dim", "HyCAD_Standard", scale: 1.0);
-                styleService.CreateOrUpdateDimensionStyle(dimStyleConfig);
+                styleService.CreateDimensionStyle(
+                    dimStyleConfig.Name, 
+                    dimStyleConfig.TextStyleName, 
+                    scale: 1.0);
 
                 // 创建常用图层
                 CreateDefaultLayers(layerService);
