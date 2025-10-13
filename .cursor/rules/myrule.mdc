@@ -23,6 +23,6 @@ alwaysApply: true
 **特定指导**：
 
 - **重构技巧：**时刻注意Clean Architecture + DDD + SOLID 原则，且注意 过度工程化（Over-engineering），边界泄漏（Leaky Boundaries）
-- **生成的计划文件统一放入**：Plan目录中
+- **生成的计划文件统一放入**：NewPlan目录中
 - **开发语言**： 主要为C#、python辅助。 强调从 AutoCAD 二次开发与结构力学经验迁移。
 - **复杂问题**：如需澄清，请先提问以确保精准。

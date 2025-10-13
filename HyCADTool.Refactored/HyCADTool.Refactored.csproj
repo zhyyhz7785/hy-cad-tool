@@ -149,6 +149,11 @@
     <Compile Include="Infrastructure\AutoCAD\Utilities\TransactionHelper.cs" />
     <Compile Include="Infrastructure\AutoCAD\Utilities\EntityHelper.cs" />
     
+    <!-- Infrastructure Layer - AutoCAD Extensions -->
+    <!-- 阶段 3: 扩展方法（桥接 Domain 算法和 AutoCAD API） -->
+    <Compile Include="Infrastructure\AutoCAD\Extensions\PolylineExtensions.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Extensions\Point3dExtensions.cs" />
+    
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />
       <Compile Include="Presentation\PanelManager.cs" />
@@ -161,6 +166,8 @@
       <Compile Include="Presentation\Commands\TestConfigCommand.cs" />
       <!-- 阶段 2: 服务层测试命令 -->
       <Compile Include="Presentation\Commands\TestServiceCommand.cs" />
+      <!-- 阶段 3: Domain 算法测试命令 -->
+      <Compile Include="Presentation\Commands\TestDomainAlgorithmsCommand.cs" />
       
       <!-- Test Layer - 测试运行器（后续阶段持续扩展，ReCall 不需修改） -->
       <Compile Include="Test\TestRunner.cs" />
@@ -198,10 +205,15 @@
       </Compile> -->
       
       <!-- Domain Layer - Services -->
+      <!-- 阶段 3: 几何算法服务 (平台无关) -->
+      <Compile Include="Domain\Services\GeometryAlgorithms\PointAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
       <Compile Include="Domain\Services\GeometryAlgorithms\ConvexHullAlgorithm.cs" />
+      <!-- 阶段 3: 数学算法服务 (平台无关) -->
+      <Compile Include="Domain\Services\MathAlgorithms\AngleCalculator.cs" />
+      <Compile Include="Domain\Services\MathAlgorithms\DistanceCalculator.cs" />
       <Compile Include="Domain\Services\LineOverKillService.cs" />
       <Compile Include="Domain\Services\IReinService.cs" />
       

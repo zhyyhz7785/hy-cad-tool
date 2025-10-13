@@ -38,11 +38,19 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         }
 
         /// <summary>
-        /// 点积
+        /// 点积（实例方法）
         /// </summary>
         public double Dot(Vector2D other)
         {
             return X * other.X + Y * other.Y;
+        }
+
+        /// <summary>
+        /// 点积（静态方法）
+        /// </summary>
+        public static double Dot(Vector2D a, Vector2D b)
+        {
+            return a.X * b.X + a.Y * b.Y;
         }
 
         /// <summary>
