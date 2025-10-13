@@ -96,15 +96,15 @@ namespace HyCADTool.Refactored.Presentation
             try
             {
                 var configService = ServiceLocator.Resolve<Domain.Interfaces.IConfigurationService>();
-                configService.LoadAllConfigurations();
+                configService.LoadAll();
 
                 // 显示配置信息
-                var baseConfig = configService.GetBaseConfiguration();
-                WriteMessage($"\n  - Scale: {baseConfig.Scale}");
-                WriteMessage($"\n  - ElevationLength: {baseConfig.ElevationLength}");
-                WriteMessage($"\n  - Tolerance: {baseConfig.ToleranceDouble}");
+                var globalConfig = configService.Global;
+                WriteMessage($"\n  - Scale: {globalConfig.Scale.Default}");
+                WriteMessage($"\n  - ElevationLength: {globalConfig.ElevationLength}");
+                WriteMessage($"\n  - Tolerance: {globalConfig.Tolerance.Double}");
 
-                var pileConfig = configService.GetPileConfiguration();
+                var pileConfig = configService.GetModuleConfig<Domain.ValueObjects.Configuration.Modules.PileConfiguration>("Pile");
                 WriteMessage($"\n  - Pile Diameter: {pileConfig.DiameterOrEdge}mm");
                 WriteMessage($"\n  - Pile Section: {pileConfig.Section}");
             }
@@ -125,12 +125,12 @@ namespace HyCADTool.Refactored.Presentation
                 var layerService = ServiceLocator.Resolve<Domain.Interfaces.ILayerService>();
 
                 // 创建默认文本样式
-                var textStyleConfig = Domain.ValueObjects.Configuration.TextStyleConfig.CreateDefault(
+                var textStyleConfig = Domain.ValueObjects.Configuration.Global.TextStyleConfig.CreateDefault(
                     "HyCAD_Standard", scale: 1.0);
                 styleService.CreateOrUpdateTextStyle(textStyleConfig);
 
                 // 创建默认标注样式
-                var dimStyleConfig = Domain.ValueObjects.Configuration.DimensionStyleConfig.CreateDefault(
+                var dimStyleConfig = Domain.ValueObjects.Configuration.Global.DimensionStyleConfig.CreateDefault(
                     "HyCAD_Dim", "HyCAD_Standard", scale: 1.0);
                 styleService.CreateOrUpdateDimensionStyle(dimStyleConfig);
 

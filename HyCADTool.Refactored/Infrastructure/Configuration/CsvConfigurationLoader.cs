@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules;
 using HyCADTool.Refactored.Domain.Enums;
+
+// LayerConfig 位于 Global 命名空间
+using LayerConfig = HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global.LayerConfig;
 
 namespace HyCADTool.Refactored.Infrastructure.Configuration
 {
@@ -23,13 +27,13 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
         }
 
         /// <summary>
-        /// 加载基础配置
+        /// 加载全局配置（从CSV）
         /// </summary>
-        public BaseConfiguration LoadBaseConfiguration()
+        public GlobalConfiguration LoadGlobalConfiguration()
         {
             var lines = EnsureCsvLoaded();
 
-            double scale = 50.0;
+            double scale = 40.0;
             double elevationLength = 2.0;
 
             foreach (var line in lines.Where(l => l.Type == "BaseConfig"))
@@ -40,7 +44,19 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                     elevationLength = el;
             }
 
-            return new BaseConfiguration(scale, elevationLength);
+            return new GlobalConfiguration
+            {
+                Scale = new ScaleConfig { Default = scale, MinValue = 1.0, MaxValue = 200.0 },
+                Tolerance = ToleranceConfig.CreateDefault(),
+                Paths = PathConfig.CreateDefault(),
+                Styles = new StylesConfig
+                {
+                    TextStyle = LoadTextStyleConfiguration(),
+                    DimensionStyle = LoadDimensionStyleConfiguration(),
+                    MLeaderStyle = LoadMLeaderStyleConfiguration()
+                },
+                ElevationLength = elevationLength
+            };
         }
 
         /// <summary>
@@ -131,6 +147,26 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
         }
 
         /// <summary>
+        /// 加载单个文字样式配置（用于全局配置）
+        /// </summary>
+        private TextStyleConfig LoadTextStyleConfiguration()
+        {
+            var styles = LoadTextStyleConfigurations();
+            // 返回第一个样式或默认样式
+            return styles.FirstOrDefault() ?? TextStyleConfig.CreateDefault("0_Hy_40", 1.0);
+        }
+
+        /// <summary>
+        /// 加载单个标注样式配置（用于全局配置）
+        /// </summary>
+        private DimensionStyleConfig LoadDimensionStyleConfiguration()
+        {
+            var styles = LoadDimensionStyleConfigurations();
+            // 返回第一个样式或默认样式
+            return styles.FirstOrDefault() ?? DimensionStyleConfig.CreateDefault("0_Hy_40_Dim", "0_Hy_40", 1.0);
+        }
+
+        /// <summary>
         /// 加载文字样式配置列表
         /// </summary>
         public List<TextStyleConfig> LoadTextStyleConfigurations()
@@ -193,6 +229,27 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             }
 
             return styles;
+        }
+
+        /// <summary>
+        /// 加载多重引线样式配置
+        /// </summary>
+        private MLeaderStyleConfig LoadMLeaderStyleConfiguration()
+        {
+            var lines = EnsureCsvLoaded();
+            
+            // CSV 中查找 MLeader 样式配置
+            var mleaderLine = lines.FirstOrDefault(l => l.Type == "MLeaderStyle" || l.Type == "MLeader");
+            
+            if (mleaderLine != null && !string.IsNullOrWhiteSpace(mleaderLine.Key))
+            {
+                string styleName = mleaderLine.Key;
+                string textStyleName = !string.IsNullOrWhiteSpace(mleaderLine.V1) ? mleaderLine.V1 : "0_Hy_40";
+                return new MLeaderStyleConfig(styleName, textStyleName);
+            }
+            
+            // 返回默认配置
+            return MLeaderStyleConfig.CreateDefault("0_Hy_40_Mleader", "0_Hy_40");
         }
 
         /// <summary>

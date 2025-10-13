@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Interfaces;
-using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

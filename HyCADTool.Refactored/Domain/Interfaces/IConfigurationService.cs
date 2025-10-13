@@ -1,48 +1,53 @@
-using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 
 namespace HyCADTool.Refactored.Domain.Interfaces
 {
     /// <summary>
-    /// 配置服务接口
-    /// 管理所有应用配置的加载、保存和访问
+    /// 配置服务总接口
+    /// 提供统一的配置访问入口（全局配置 + 模块配置）
     /// </summary>
     public interface IConfigurationService
     {
         /// <summary>
-        /// 获取基础配置
+        /// 获取全局配置
         /// </summary>
-        BaseConfiguration GetBaseConfiguration();
+        GlobalConfiguration Global { get; }
 
         /// <summary>
-        /// 更新基础配置
+        /// 获取指定模块的配置
         /// </summary>
-        void UpdateBaseConfiguration(BaseConfiguration config);
+        T GetModuleConfig<T>(string moduleName) where T : class;
 
         /// <summary>
-        /// 获取桩基配置
+        /// 更新指定模块的配置
         /// </summary>
-        PileConfiguration GetPileConfiguration();
+        void UpdateModuleConfig<T>(string moduleName, T config) where T : class;
 
         /// <summary>
-        /// 更新桩基配置
+        /// 加载所有配置（全局 + 模块）
         /// </summary>
-        void UpdatePileConfiguration(PileConfiguration config);
+        void LoadAll();
 
         /// <summary>
-        /// 加载所有配置
-        /// 策略：JSON 优先 → CSV 兜底 → 默认值
+        /// 保存所有配置（全局 + 模块）
         /// </summary>
-        void LoadAllConfigurations();
+        void SaveAll();
 
         /// <summary>
-        /// 保存所有配置到文件
+        /// 重置所有配置为默认值
         /// </summary>
-        void SaveAllConfigurations();
+        void ResetAll();
+
+        // ========== 便捷访问方法 ==========
 
         /// <summary>
-        /// 验证配置对象的有效性
+        /// 获取当前比例
         /// </summary>
-        bool ValidateConfiguration<T>(T config) where T : class;
+        double GetScale();
+
+        /// <summary>
+        /// 设置当前比例
+        /// </summary>
+        void SetScale(double scale);
     }
 }
-

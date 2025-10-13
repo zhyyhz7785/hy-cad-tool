@@ -76,8 +76,15 @@
     <Compile Include="Domain\Interfaces\ILayerService.cs" />
     <Compile Include="Domain\Interfaces\IStyleService.cs" />
     <Compile Include="Domain\Interfaces\IConfigurationService.cs" />
+    <Compile Include="Domain\Interfaces\IGlobalConfigService.cs" />
+    <Compile Include="Domain\Interfaces\IModuleConfigService.cs" />
     <Compile Include="Domain\Interfaces\ISelectionService.cs" />
-    <Compile Include="Domain\Interfaces\IBaseReinforcementService.cs" />
+    <!-- 阶段 2: 服务层接口 -->
+    <Compile Include="Domain\Interfaces\IDrawingService.cs" />
+    <Compile Include="Domain\Interfaces\IEditorService.cs" />
+    <Compile Include="Domain\Interfaces\IDatabaseService.cs" />
+    <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的接口 -->
+    <!-- <Compile Include="Domain\Interfaces\IBaseReinforcementService.cs" /> -->
     
       <!-- Domain Layer - Value Objects (Geometry) -->
       <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
@@ -90,17 +97,27 @@
       <Compile Include="Domain\ValueObjects\Geometry\BoundingBox.cs" />
       <Compile Include="Domain\ValueObjects\Geometry\Tolerance.cs" />
     
-    <!-- Domain Layer - Value Objects (Configuration) -->
-    <Compile Include="Domain\ValueObjects\Configuration\TextStyleConfig.cs" />
-    <Compile Include="Domain\ValueObjects\Configuration\DimensionStyleConfig.cs" />
-    <Compile Include="Domain\ValueObjects\Configuration\LayerConfig.cs" />
-    <Compile Include="Domain\ValueObjects\Configuration\BaseConfiguration.cs" />
-    <Compile Include="Domain\ValueObjects\Configuration\PileConfiguration.cs" />
-    <Compile Include="Domain\ValueObjects\Configuration\MLeaderStyleConfig.cs" />
+    <!-- Domain Layer - Value Objects (Configuration - Global) -->
+    <Compile Include="Domain\ValueObjects\Configuration\Global\ScaleConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\ToleranceConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\PathConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\TextStyleConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\DimensionStyleConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\MLeaderStyleConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\StylesConfig.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\GlobalConfiguration.cs" />
+    
+    <!-- Domain Layer - Value Objects (Configuration - Modules) -->
+    <Compile Include="Domain\ValueObjects\Configuration\Modules\PileConfiguration.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Modules\FoundationConfiguration.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Modules\ReinforcementConfiguration.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Modules\ElevationConfiguration.cs" />
+    <Compile Include="Domain\ValueObjects\Configuration\Global\LayerConfig.cs" />
     <Compile Include="Domain\ValueObjects\ReinParameters.cs" />
     
     <!-- Domain Layer - Models (Configuration) -->
-    <Compile Include="Domain\Models\Configuration\BaseReinforcementConfig.cs" />
+    <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的配置 -->
+    <!-- <Compile Include="Domain\Models\Configuration\BaseReinforcementConfig.cs" /> -->
     
     <!-- Domain Layer - Enums -->
     <Compile Include="Domain\Enums\PileEnums.cs" />
@@ -108,9 +125,11 @@
     <!-- Infrastructure Layer - Configuration -->
     <Compile Include="Infrastructure\Configuration\AutofacModule.cs" />
     <Compile Include="Infrastructure\Configuration\ServiceLocator.cs" />
+    <Compile Include="Infrastructure\Configuration\GlobalConfigurationService.cs" />
+    <Compile Include="Infrastructure\Configuration\ModuleConfigurationService.cs" />
+    <Compile Include="Infrastructure\Configuration\ConfigurationService.cs" />
     <Compile Include="Infrastructure\Configuration\JsonConfigurationLoader.cs" />
     <Compile Include="Infrastructure\Configuration\CsvConfigurationLoader.cs" />
-    <Compile Include="Infrastructure\Configuration\ConfigurationService.cs" />
     
     <!-- Infrastructure Layer - AutoCAD Converters -->
     <Compile Include="Infrastructure\AutoCAD\Converters\IGeometryConverter.cs" />
@@ -121,15 +140,14 @@
     <Compile Include="Infrastructure\AutoCAD\Services\LayerService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\StyleService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\SelectionService.cs" />
+    <!-- 阶段 2: 服务层实现 -->
+    <Compile Include="Infrastructure\AutoCAD\Services\DrawingService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Services\EditorService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Services\DatabaseService.cs" />
     
-    <!-- Infrastructure Layer - AutoCAD Adapters (原项目兼容性) -->
-    <Compile Include="Infrastructure\AutoCAD\Adapters\ICadServiceAdapter.cs" />
-    <Compile Include="Infrastructure\AutoCAD\Adapters\CadServiceAdapter.cs" />
-    <Compile Include="Infrastructure\AutoCAD\Adapters\IAreaFactoryAdapter.cs" />
-    <Compile Include="Infrastructure\AutoCAD\Adapters\AreaFactoryAdapter.cs" />
-    <Compile Include="Infrastructure\AutoCAD\Adapters\IConfigServiceAdapter.cs" />
-    <Compile Include="Infrastructure\AutoCAD\Adapters\ConfigServiceAdapter.cs" />
-    <Compile Include="Infrastructure\AutoCAD\Adapters\ReinServiceAdapter.cs" />
+    <!-- Infrastructure Layer - AutoCAD Utilities -->
+    <Compile Include="Infrastructure\AutoCAD\Utilities\TransactionHelper.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Utilities\EntityHelper.cs" />
     
       <!-- Presentation Layer -->
       <Compile Include="Presentation\PluginInitializer.cs" />
@@ -137,8 +155,15 @@
       
       <!-- Presentation Layer - Commands -->
       <Compile Include="Presentation\Commands\OverKillCommand.cs" />
-      <Compile Include="Presentation\Commands\ShowPanelCommand.cs" />
-      <Compile Include="Presentation\Commands\ShowMainPanelCommand.cs" />
+      <!-- TODO 阶段2后恢复: 暂时排除依赖被排除面板的命令 -->
+      <!-- <Compile Include="Presentation\Commands\ShowPanelCommand.cs" /> -->
+      <!-- <Compile Include="Presentation\Commands\ShowMainPanelCommand.cs" /> -->
+      <Compile Include="Presentation\Commands\TestConfigCommand.cs" />
+      <!-- 阶段 2: 服务层测试命令 -->
+      <Compile Include="Presentation\Commands\TestServiceCommand.cs" />
+      
+      <!-- Test Layer - 测试运行器（后续阶段持续扩展，ReCall 不需修改） -->
+      <Compile Include="Test\TestRunner.cs" />
       
       <!-- Presentation Layer - Converters -->
       <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />
@@ -148,27 +173,29 @@
       <!-- Presentation Layer - ViewModels -->
       <Compile Include="Presentation\ViewModels\RelayCommand.cs" />
       <Compile Include="Presentation\ViewModels\FilterPanelViewModel.cs" />
-      <Compile Include="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
-      <Compile Include="Presentation\ViewModels\ReinPanelViewModel.cs" />
-      <Compile Include="Presentation\ViewModels\PilePanelViewModel.cs" />
-      <Compile Include="Presentation\ViewModels\ClusterPanelViewModel.cs" />
+      <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 ViewModel -->
+      <!-- <Compile Include="Presentation\ViewModels\BaseReinPanelViewModel.cs" /> -->
+      <!-- <Compile Include="Presentation\ViewModels\ReinPanelViewModel.cs" /> -->
+      <!-- <Compile Include="Presentation\ViewModels\PilePanelViewModel.cs" /> -->
+      <!-- <Compile Include="Presentation\ViewModels\ClusterPanelViewModel.cs" /> -->
       
       <!-- Presentation Layer - Views -->
-      <Compile Include="Presentation\Views\ReinPanel.xaml.cs">
+      <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 View -->
+      <!-- <Compile Include="Presentation\Views\ReinPanel.xaml.cs">
         <DependentUpon>ReinPanel.xaml</DependentUpon>
-      </Compile>
+      </Compile> -->
       <Compile Include="Presentation\Views\FilterPanel.xaml.cs">
         <DependentUpon>FilterPanel.xaml</DependentUpon>
       </Compile>
-      <Compile Include="Presentation\Views\BaseReinPanel.xaml.cs">
+      <!-- <Compile Include="Presentation\Views\BaseReinPanel.xaml.cs">
         <DependentUpon>BaseReinPanel.xaml</DependentUpon>
-      </Compile>
-      <Compile Include="Presentation\Views\PilePanel.xaml.cs">
+      </Compile> -->
+      <!-- <Compile Include="Presentation\Views\PilePanel.xaml.cs">
         <DependentUpon>PilePanel.xaml</DependentUpon>
-      </Compile>
-      <Compile Include="Presentation\Views\ClusterPanel.xaml.cs">
+      </Compile> -->
+      <!-- <Compile Include="Presentation\Views\ClusterPanel.xaml.cs">
         <DependentUpon>ClusterPanel.xaml</DependentUpon>
-      </Compile>
+      </Compile> -->
       
       <!-- Domain Layer - Services -->
       <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
@@ -186,20 +213,12 @@
       <Compile Include="Application\UseCases\OverKill\OverKillUseCase.cs" />
       
       <!-- Application Layer - Services -->
-      <Compile Include="Application\Services\BaseReinforcementService.cs" />
+      <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 Service -->
+      <!-- <Compile Include="Application\Services\BaseReinforcementService.cs" /> -->
       
       <!-- Infrastructure Layer - Repositories -->
       <Compile Include="Infrastructure\AutoCAD\Repositories\ILineRepository.cs" />
       <Compile Include="Infrastructure\AutoCAD\Repositories\LineRepository.cs" />
-      
-      <!-- Test Layer -->
-      <Compile Include="Test\RefactoredTestCommand.cs" />
-      <Compile Include="Test\Phase1TestCommand.cs" />
-      <Compile Include="Test\Phase2TestCommand.cs" />
-      <Compile Include="Test\Phase3TestCommand.cs" />
-      <Compile Include="Test\Phase4TestCommand.cs" />
-      <Compile Include="Test\Phase5_0TestCommand.cs" />
-      <Compile Include="Test\Phase5_0_6TestCommand.cs" />
     </ItemGroup>
   <ItemGroup>
     <!-- XAML Resources -->
@@ -208,38 +227,37 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <!-- XAML Views -->
-    <Page Include="Presentation\Views\ReinPanel.xaml">
+    <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 XAML -->
+    <!-- <Page Include="Presentation\Views\ReinPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
+    </Page> -->
     <Page Include="Presentation\Views\FilterPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Presentation\Views\BaseReinPanel.xaml">
+    <!-- <Page Include="Presentation\Views\BaseReinPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Presentation\Views\PilePanel.xaml">
+    </Page> -->
+    <!-- <Page Include="Presentation\Views\PilePanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Presentation\Views\ClusterPanel.xaml">
+    </Page> -->
+    <!-- <Page Include="Presentation\Views\ClusterPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-  <ItemGroup>
-    <!-- Project References -->
-    <ProjectReference Include="..\HyCADTool\HyCADTool.csproj">
-      <Project>{76EDAE9E-175E-4A23-94C4-B171F85C8F76}</Project>
-      <Name>HyCADTool</Name>
-    </ProjectReference>
+    </Page> -->
   </ItemGroup>
   <ItemGroup>
     <!-- Documentation -->
     <None Include="README.md" />
     <None Include="Docs\PROGRESS.md" />
+    
+    <!-- Configuration file -->
+    <None Include="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     
     <!-- Folder placeholders for future files -->
     <Folder Include="Domain\Entities\" />

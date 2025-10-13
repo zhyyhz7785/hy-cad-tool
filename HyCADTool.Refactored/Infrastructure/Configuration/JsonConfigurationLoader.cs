@@ -1,7 +1,9 @@
 using System;
 using System.IO;
-using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules;
 using HyCADTool.Refactored.Domain.Enums;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace HyCADTool.Refactored.Infrastructure.Configuration
@@ -21,26 +23,181 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
         }
 
         /// <summary>
-        /// 加载基础配置
+        /// 加载全局配置
         /// </summary>
-        public BaseConfiguration LoadBaseConfiguration()
+        public GlobalConfiguration LoadBaseConfiguration()
         {
             EnsureConfigLoaded();
 
             try
             {
-                var baseData = _configData["BaseConfigData"];
-                if (baseData == null)
-                    return BaseConfiguration.CreateDefault();
+                var globalData = _configData["GlobalConfiguration"];
+                if (globalData == null)
+                {
+                    // 兼容旧格式：从 BaseConfigData 加载
+                    return LoadLegacyBaseConfiguration();
+                }
 
-                // JSON 文件中的 BaseConfigData 主要包含样式配置
-                // Scale 和 ElevationLength 使用默认值
-                return BaseConfiguration.CreateDefault();
+                // 加载新格式的全局配置
+                var config = new GlobalConfiguration
+                {
+                    Scale = LoadScaleConfig(globalData["Scale"]),
+                    Tolerance = LoadToleranceConfig(globalData["Tolerance"]),
+                    Paths = LoadPathConfig(globalData["Paths"]),
+                    Styles = LoadStylesConfigFromGlobal(globalData["Styles"]),
+                    ElevationLength = ParseDouble(globalData["ElevationLength"]?.ToString(), 2.0)
+                };
+
+                return config;
             }
-            catch
+            catch (Exception ex)
             {
-                return BaseConfiguration.CreateDefault();
+                System.Diagnostics.Debug.WriteLine($"加载全局配置失败: {ex.Message}");
+                return GlobalConfiguration.CreateDefault();
             }
+        }
+
+        /// <summary>
+        /// 加载旧格式的基础配置（兼容性）
+        /// </summary>
+        private GlobalConfiguration LoadLegacyBaseConfiguration()
+        {
+            var baseData = _configData["BaseConfigData"];
+            if (baseData == null)
+                return GlobalConfiguration.CreateDefault();
+
+            // 从旧格式加载样式配置
+            var textStyle = LoadTextStyleConfiguration();
+            var dimStyle = LoadDimensionStyleConfiguration();
+            var mleaderStyle = LoadMLeaderStyleConfiguration();
+
+            return new GlobalConfiguration
+            {
+                Scale = ScaleConfig.CreateDefault(),
+                Tolerance = ToleranceConfig.CreateDefault(),
+                Paths = PathConfig.CreateDefault(),
+                Styles = new StylesConfig
+                {
+                    TextStyle = textStyle,
+                    DimensionStyle = dimStyle,
+                    MLeaderStyle = mleaderStyle
+                },
+                ElevationLength = 2.0
+            };
+        }
+
+        /// <summary>
+        /// 从全局配置节点加载比例配置
+        /// </summary>
+        private ScaleConfig LoadScaleConfig(JToken scaleData)
+        {
+            if (scaleData == null)
+                return ScaleConfig.CreateDefault();
+
+            return new ScaleConfig
+            {
+                Default = ParseDouble(scaleData["Default"]?.ToString(), 40.0),
+                MinValue = ParseDouble(scaleData["Range"]?[0]?.ToString(), 1.0),
+                MaxValue = ParseDouble(scaleData["Range"]?[1]?.ToString(), 200.0)
+            };
+        }
+
+        /// <summary>
+        /// 从全局配置节点加载容差配置
+        /// </summary>
+        private ToleranceConfig LoadToleranceConfig(JToken toleranceData)
+        {
+            if (toleranceData == null)
+                return ToleranceConfig.CreateDefault();
+
+            return new ToleranceConfig
+            {
+                Double = ParseDouble(toleranceData["Double"]?.ToString(), 1e-2),
+                Vector = ParseDouble(toleranceData["Vector"]?.ToString(), 1e-2),
+                Point = ParseDouble(toleranceData["Point"]?.ToString(), 1e-2)
+            };
+        }
+
+        /// <summary>
+        /// 从全局配置节点加载路径配置
+        /// </summary>
+        private PathConfig LoadPathConfig(JToken pathData)
+        {
+            if (pathData == null)
+                return PathConfig.CreateDefault();
+
+            return new PathConfig
+            {
+                DefaultExportPath = pathData["DefaultExport"]?.ToString() ?? string.Empty,
+                DefaultImportPath = pathData["DefaultImport"]?.ToString() ?? string.Empty,
+                TempFilesPath = pathData["TempFiles"]?.ToString() ?? Path.Combine(Path.GetTempPath(), "HyCADTool"),
+                ConfigDirectory = pathData["ConfigDirectory"]?.ToString() ?? string.Empty
+            };
+        }
+
+        /// <summary>
+        /// 从全局配置节点加载样式配置
+        /// </summary>
+        private StylesConfig LoadStylesConfigFromGlobal(JToken stylesData)
+        {
+            if (stylesData == null)
+                return StylesConfig.CreateDefault();
+
+            var textStyleData = stylesData["TextStyle"];
+            var dimStyleData = stylesData["DimensionStyle"];
+            var mleaderData = stylesData["MLeaderStyle"];
+
+            return new StylesConfig
+            {
+                TextStyle = LoadTextStyleFromToken(textStyleData),
+                DimensionStyle = LoadDimensionStyleFromToken(dimStyleData),
+                MLeaderStyle = LoadMLeaderStyleFromToken(mleaderData)
+            };
+        }
+
+        private TextStyleConfig LoadTextStyleFromToken(JToken data)
+        {
+            if (data == null)
+                return TextStyleConfig.CreateDefault("0_Hy_40", 1.0);
+
+            return new TextStyleConfig
+            {
+                Name = data["Name"]?.ToString() ?? "0_Hy_40",
+                FontFileName = data["FontFileName"]?.ToString() ?? "tssdeng.shx",
+                BigFontFileName = data["BigFontFileName"]?.ToString() ?? "hztxt.shx",
+                TextSize = ParseDouble(data["TextSize"]?.ToString(), 2.5),
+                XScale = ParseDouble(data["XScale"]?.ToString(), 0.7)
+            };
+        }
+
+        private DimensionStyleConfig LoadDimensionStyleFromToken(JToken data)
+        {
+            if (data == null)
+                return DimensionStyleConfig.CreateDefault("0_Hy_40_Dim", "0_Hy_40", 1.0);
+
+            return new DimensionStyleConfig
+            {
+                Name = data["Name"]?.ToString() ?? "0_Hy_40_Dim",
+                TextStyleName = data["TextStyleName"]?.ToString() ?? "0_Hy_40",
+                TextHeight = ParseDouble(data["TextHeight"]?.ToString(), 2.5),
+                ExtensionLineOffset = ParseDouble(data["ExtensionLineOffset"]?.ToString(), 1.0),
+                ExtensionLineExtend = ParseDouble(data["ExtensionLineExtend"]?.ToString(), 1.0),
+                DecimalPlaces = ParseInt(data["DecimalPlaces"]?.ToString(), 0),
+                TextGap = ParseDouble(data["TextGap"]?.ToString(), 1.0),
+                ArrowSize = ParseDouble(data["ArrowSize"]?.ToString(), 1.0),
+                TextDecimalPlaces = ParseInt(data["TextDecimalPlaces"]?.ToString(), 0)
+            };
+        }
+
+        private MLeaderStyleConfig LoadMLeaderStyleFromToken(JToken data)
+        {
+            if (data == null)
+                return MLeaderStyleConfig.CreateDefault("0_Hy_40_Mleader", "0_Hy_40");
+
+            var name = data["Name"]?.ToString() ?? "0_Hy_40_Mleader";
+            var textStyleName = data["TextStyleName"]?.ToString() ?? "0_Hy_40";
+
+            return new MLeaderStyleConfig(name, textStyleName);
         }
 
         /// <summary>
@@ -194,6 +351,30 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             {
                 return MLeaderStyleConfig.CreateDefault("0_Hy_40_Mleader", "0_Hy_40");
             }
+        }
+
+        /// <summary>
+        /// 泛型方法：从JSON文件加载配置对象
+        /// </summary>
+        public T LoadFromFile<T>(string filePath) where T : class
+        {
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"配置文件不存在: {filePath}");
+
+            var json = File.ReadAllText(filePath);
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+
+        /// <summary>
+        /// 泛型方法：保存配置对象到JSON文件
+        /// </summary>
+        public void SaveToFile<T>(T config, string filePath) where T : class
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+
+            var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+            File.WriteAllText(filePath, json);
         }
 
         /// <summary>

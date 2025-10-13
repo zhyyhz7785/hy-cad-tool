@@ -1,4 +1,4 @@
-using HyCADTool.Refactored.Domain.ValueObjects.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 
 namespace HyCADTool.Refactored.Domain.Interfaces
 {

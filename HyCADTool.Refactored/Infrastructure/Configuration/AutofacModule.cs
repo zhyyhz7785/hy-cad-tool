@@ -38,9 +38,38 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IStyleService>()
                 .SingleInstance();
 
-            // 注册配置服务（单例）
+            // ===== 阶段 1: 配置层服务 =====
+            
+            // 注册全局配置服务（单例）
+            builder.RegisterType<GlobalConfigurationService>()
+                .As<IGlobalConfigService>()
+                .SingleInstance();
+
+            // 注册模块配置服务（单例）
+            builder.RegisterType<ModuleConfigurationService>()
+                .As<IModuleConfigService>()
+                .SingleInstance();
+
+            // 注册配置服务总协调（单例）
             builder.RegisterType<ConfigurationService>()
                 .As<IConfigurationService>()
+                .SingleInstance();
+
+            // ===== 阶段 2: 服务层 =====
+            
+            // 绘制服务（单例）
+            builder.RegisterType<DrawingService>()
+                .As<IDrawingService>()
+                .SingleInstance();
+
+            // 编辑器服务（单例）
+            builder.RegisterType<EditorService>()
+                .As<IEditorService>()
+                .SingleInstance();
+
+            // 数据库服务（单例）
+            builder.RegisterType<DatabaseService>()
+                .As<IDatabaseService>()
                 .SingleInstance();
 
             // ===== 阶段 5.0: UI 基础设施 =====
@@ -57,9 +86,10 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .SingleInstance();
 
             // 面板注册（按需创建，非单例）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // TODO 阶段2后恢复: 暂时排除依赖原项目的面板注册
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
             builder.RegisterType<HyCADTool.Refactored.Presentation.Views.FilterPanel>()
                 .AsSelf()
@@ -70,62 +100,34 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .InstancePerDependency();
 
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // TODO 阶段2后恢复: 暂时排除依赖原项目的 ViewModel 和服务
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
-            // 阶段 5.0.4: BaseReinPanel 及其服务
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
-            builder.RegisterType<HyCADTool.Refactored.Application.Services.BaseReinforcementService>()
-                .As<IBaseReinforcementService>()
-                .SingleInstance();
+            // builder.RegisterType<HyCADTool.Refactored.Application.Services.BaseReinforcementService>()
+            //     .As<IBaseReinforcementService>()
+            //     .SingleInstance();
 
-            // 阶段 5.0.5: PilePanel（迁移自原项目）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
-            // 阶段 5.0.5: ClusterPanel（迁移自原项目）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
-                .AsSelf()
-                .InstancePerDependency();
-
-            // 原项目接口适配器（用于 PilePanel 和 ClusterPanel 兼容性）
-            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.CadServiceAdapter>()
-                .As<HyCADTool.Interfaces.ICadService>()
-                .SingleInstance();
-
-            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.AreaFactoryAdapter>()
-                .As<HyCADTool.Interfaces.IAreaFactory>()
-                .SingleInstance();
-
-            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.ConfigServiceAdapter>()
-                .As<HyCADTool.Interfaces.IConfigService>()
-                .SingleInstance();
-
-            // 阶段 5.0.6: ReinPanel（钢筋面板）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ReinPanelViewModel>()
-                .AsSelf()
-                .InstancePerDependency();
-
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
-                .AsSelf()
-                .InstancePerDependency();
-
-            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Adapters.ReinServiceAdapter>()
-                .As<HyCADTool.Refactored.Domain.Services.IReinService>()
-                .SingleInstance();
+            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
+            //     .AsSelf()
+            //     .InstancePerDependency();
 
             // ===== 阶段 4: OverKill 功能 =====
             
