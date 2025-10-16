@@ -25,6 +25,42 @@ namespace HyCADTool.ReCall
     /// </summary>
     public class ReCallClass
     {
+        #region ========== 项目配置参数（更换测试项目时修改这里） ==========
+
+        /// <summary>
+        /// 目标项目名称
+        /// </summary>
+        private const string TARGET_PROJECT_NAME = "HyCADTool.Refactored";
+
+        /// <summary>
+        /// 目标 DLL 文件名（不含路径）
+        /// </summary>
+        private const string TARGET_DLL_NAME = "HyCADTool.Refactored.dll";
+
+        /// <summary>
+        /// 构建配置（Debug 或 Release）
+        /// </summary>
+        private const string BUILD_CONFIGURATION = "Debug";
+
+        /// <summary>
+        /// 从 ReCall.dll 向上移动到解决方案根目录的层级数
+        /// ReCall.dll 位于: hy-cad-tool\ReCall\bin\Debug\ReCall.dll
+        /// 向上3级: Debug -> bin -> ReCall -> hy-cad-tool (根目录)
+        /// </summary>
+        private const int DIRECTORY_LEVELS_UP = 3;
+
+        /// <summary>
+        /// TestRunner 类的完整类型名称（包含命名空间）
+        /// </summary>
+        private const string TEST_RUNNER_TYPE_NAME = "HyCADTool.Refactored.Test.TestRunner";
+
+        /// <summary>
+        /// 要调用的测试方法名称
+        /// </summary>
+        private const string TEST_METHOD_NAME = "RunAllTests";
+
+        #endregion
+
         // 保存 TestRunner.RunAllTests 的委托
         private Action _runAllTestsAction;
 
@@ -65,13 +101,11 @@ namespace HyCADTool.ReCall
                 }
 
                 // 获取解决方案根目录
-                // ReCall.dll 位于: hy-cad-tool\ReCall\bin\Debug\ReCall.dll
-                // 向上3级目录到达 hy-cad-tool 根目录
-                string rootDirectory = GetRootDirectory(adapterFileInfo, 3);
+                string rootDirectory = GetRootDirectory(adapterFileInfo, DIRECTORY_LEVELS_UP);
                 
                 // 定义插件路径（重构项目）
-                var targetFilePath = Path.Combine(rootDirectory, "HyCADTool.Refactored", "bin", "Debug", "HyCADTool.Refactored.dll");
-                var dependenciesPath = Path.Combine(rootDirectory, "HyCADTool.Refactored", "bin", "Debug");
+                var targetFilePath = Path.Combine(rootDirectory, TARGET_PROJECT_NAME, "bin", BUILD_CONFIGURATION, TARGET_DLL_NAME);
+                var dependenciesPath = Path.Combine(rootDirectory, TARGET_PROJECT_NAME, "bin", BUILD_CONFIGURATION);
                 var nugetPackagesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
 
                 ed.WriteMessage($"\n解决方案根目录: {rootDirectory}");
@@ -169,12 +203,12 @@ namespace HyCADTool.ReCall
             ResourceManager.ResourceAssembly = targetAssembly;
 
             // 获取 TestRunner 类型
-            var testRunnerType = targetAssembly.GetType("HyCADTool.Refactored.Test.TestRunner")
-                ?? throw new InvalidOperationException("无法找到类型 'TestRunner'。");
+            var testRunnerType = targetAssembly.GetType(TEST_RUNNER_TYPE_NAME)
+                ?? throw new InvalidOperationException($"无法找到类型 '{TEST_RUNNER_TYPE_NAME}'。");
 
             // 获取 RunAllTests 方法
-            var runAllTestsMethod = testRunnerType.GetMethod("RunAllTests")
-                ?? throw new InvalidOperationException("无法找到方法 'RunAllTests'。");
+            var runAllTestsMethod = testRunnerType.GetMethod(TEST_METHOD_NAME)
+                ?? throw new InvalidOperationException($"无法找到方法 '{TEST_METHOD_NAME}'。");
 
             // 创建 TestRunner 实例
             var testRunnerInstance = Activator.CreateInstance(testRunnerType)

@@ -196,6 +196,37 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             return default;
         }
 
+        /// <summary>
+        /// 获取与另一条线段的无限延长线交点（用于 FILLET R=0）
+        /// 使用参数方程求交点，不限制在线段范围内
+        /// </summary>
+        public Point2D GetIntersectionWithInfiniteLine(Line2D other, double tolerance = 1e-6)
+        {
+            // 参数方程：
+            // Line1: P1 + t × D1
+            // Line2: P2 + s × D2
+            
+            Point2D p1 = this.StartPoint;
+            Vector2D d1 = this.Direction.Normalize();
+            
+            Point2D p2 = other.StartPoint;
+            Vector2D d2 = other.Direction.Normalize();
+            
+            // 向量叉积判断平行
+            double cross = d1.X * d2.Y - d1.Y * d2.X;
+            
+            if (Math.Abs(cross) < tolerance)
+                return default;  // 平行或共线
+            
+            // 求解参数 t
+            double dx = p2.X - p1.X;
+            double dy = p2.Y - p1.Y;
+            double t = (dx * d2.Y - dy * d2.X) / cross;
+            
+            // 计算交点
+            return new Point2D(p1.X + t * d1.X, p1.Y + t * d1.Y);
+        }
+
         public override string ToString()
         {
             return $"Line2D[{StartPoint} -> {EndPoint}]";

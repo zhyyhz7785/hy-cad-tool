@@ -80,6 +80,57 @@ namespace HyCADTool.Refactored.Domain.DataStructures.DCEL
         }
 
         /// <summary>
+        /// 获取半边的长度（Length）
+        /// </summary>
+        /// <returns>边的欧几里得长度</returns>
+        public double GetLength()
+        {
+            var endVertex = GetEndVertex();
+            if (endVertex == null || StartVertex == null)
+                return 0.0;
+
+            return StartVertex.Position.DistanceTo(endVertex.Position);
+        }
+
+        /// <summary>
+        /// 获取半边的方向角（弧度）
+        /// </summary>
+        /// <returns>从起点到终点的角度，范围 [-π, π]</returns>
+        public double GetAngle()
+        {
+            try
+            {
+                var vector = GetVector();
+                return Math.Atan2(vector.Y, vector.X);
+            }
+            catch
+            {
+                return 0.0;
+            }
+        }
+
+        /// <summary>
+        /// 判断是否为边界边（Boundary Edge）
+        /// 边界边的孪生边没有关联的面
+        /// </summary>
+        public bool IsBoundaryEdge()
+        {
+            return Twin?.IncidentFace == null;
+        }
+
+        /// <summary>
+        /// 判断是否已完全初始化
+        /// </summary>
+        public bool IsFullyInitialized()
+        {
+            return StartVertex != null &&
+                   Twin != null &&
+                   Next != null &&
+                   Prev != null &&
+                   IncidentFace != null;
+        }
+
+        /// <summary>
         /// 转换为字符串（用于调试）
         /// </summary>
         public override string ToString()

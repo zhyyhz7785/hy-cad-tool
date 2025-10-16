@@ -70,7 +70,6 @@
   <ItemGroup>
     <!-- Properties -->
     <Compile Include="Properties\AssemblyInfo.cs" />
-    
     <!-- Domain Layer - Interfaces -->
     <Compile Include="Domain\Interfaces\IGeometryService.cs" />
     <Compile Include="Domain\Interfaces\ILayerService.cs" />
@@ -83,40 +82,39 @@
     <Compile Include="Domain\Interfaces\ISelectionFilterService.cs" />
     <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的接口 -->
     <!-- <Compile Include="Domain\Interfaces\IBaseReinforcementService.cs" /> -->
-    
-      <!-- Domain Layer - Value Objects (Geometry) -->
-      <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Point3D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Vector2D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Vector3D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Line2D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Polygon2D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Circle2D.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\BoundingBox.cs" />
-      <Compile Include="Domain\ValueObjects\Geometry\Tolerance.cs" />
-    
+    <!-- Domain Layer - Value Objects (Geometry) -->
+    <Compile Include="Domain\ValueObjects\Geometry\Point2D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Point3D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Vector2D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Vector3D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Line2D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Polygon2D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Circle2D.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\BoundingBox.cs" />
+    <Compile Include="Domain\ValueObjects\Geometry\Tolerance.cs" />
     <!-- Domain Layer - Value Objects (Grid) - 阶段 4 -->
-      <Compile Include="Domain\ValueObjects\Grid\RowColValue.cs" />
-    
+    <Compile Include="Domain\ValueObjects\Grid\RowColValue.cs" />
     <!-- Domain Layer - Utilities - 阶段 4 -->
-      <Compile Include="Domain\Utilities\EntityTypeMapping.cs" />
-    
+    <Compile Include="Domain\Utilities\EntityTypeMapping.cs" />
     <!-- Domain Layer - Data Structures - 阶段 4 -->
-      <Compile Include="Domain\DataStructures\DCEL\Vertex.cs" />
-      <Compile Include="Domain\DataStructures\DCEL\HalfEdge.cs" />
-      <Compile Include="Domain\DataStructures\DCEL\Face.cs" />
-      <Compile Include="Domain\DataStructures\DCEL\DCELGraph.cs" />
-      
+    <Compile Include="Domain\DataStructures\DCEL\Vertex.cs" />
+    <Compile Include="Domain\DataStructures\DCEL\HalfEdge.cs" />
+    <Compile Include="Domain\DataStructures\DCEL\Face.cs" />
+    <Compile Include="Domain\DataStructures\DCEL\DCELGraph.cs" />
     <!-- Domain Layer - Services (Geometry Algorithms) - Phase 2 -->
-      <Compile Include="Domain\Services\GeometryAlgorithms\ILineAlgorithmService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithmService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\IPolygonAlgorithmService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithmService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\IPointAlgorithmService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\PointAlgorithmService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\IGeometryConverterService.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\GeometryConverterService.cs" />
-    
+    <Compile Include="Domain\Services\GeometryAlgorithms\ILineAlgorithmService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithmService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\IPolygonAlgorithmService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithmService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\IPointAlgorithmService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\PointAlgorithmService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\IGeometryConverterService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\GeometryConverterService.cs" />
+    <!-- 阶段 10: 聚类算法服务 -->
+    <Compile Include="Domain\Services\GeometryAlgorithms\IClusteringService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\ClusteringService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\IDCELBuilderService.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\DCELBuilderService.cs" />
     <!-- Domain Layer - Value Objects (Configuration - Global) -->
     <Compile Include="Domain\ValueObjects\Configuration\Global\ScaleConfig.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\Global\ToleranceConfig.cs" />
@@ -126,7 +124,6 @@
     <Compile Include="Domain\ValueObjects\Configuration\Global\MLeaderStyleConfig.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\Global\StylesConfig.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\Global\GlobalConfiguration.cs" />
-    
     <!-- Domain Layer - Value Objects (Configuration - Modules) -->
     <Compile Include="Domain\ValueObjects\Configuration\Modules\PileConfiguration.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\Modules\FoundationConfiguration.cs" />
@@ -134,18 +131,14 @@
     <Compile Include="Domain\ValueObjects\Configuration\Modules\ElevationConfiguration.cs" />
     <Compile Include="Domain\ValueObjects\Configuration\Global\LayerConfig.cs" />
     <Compile Include="Domain\ValueObjects\ReinParameters.cs" />
-    
     <!-- Domain Layer - Models (Configuration) -->
     <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的配置 -->
     <!-- <Compile Include="Domain\Models\Configuration\BaseReinforcementConfig.cs" /> -->
-    
     <!-- Domain Layer - Enums -->
     <Compile Include="Domain\Enums\PileEnums.cs" />
-    
     <!-- Domain Layer - Entities - 阶段 4 -->
     <Compile Include="Domain\Entities\Pile\PileEnums.cs" />
     <Compile Include="Domain\Entities\Pile\Pile.cs" />
-    
     <!-- Infrastructure Layer - Configuration -->
     <Compile Include="Infrastructure\Configuration\AutofacModule.cs" />
     <Compile Include="Infrastructure\Configuration\ServiceLocator.cs" />
@@ -154,11 +147,9 @@
     <Compile Include="Infrastructure\Configuration\ConfigurationService.cs" />
     <Compile Include="Infrastructure\Configuration\JsonConfigurationLoader.cs" />
     <Compile Include="Infrastructure\Configuration\CsvConfigurationLoader.cs" />
-    
     <!-- Infrastructure Layer - AutoCAD Converters -->
     <Compile Include="Infrastructure\AutoCAD\Converters\IGeometryConverter.cs" />
     <Compile Include="Infrastructure\AutoCAD\Converters\GeometryConverter.cs" />
-    
     <!-- Infrastructure Layer - AutoCAD Services -->
     <Compile Include="Infrastructure\AutoCAD\Services\AutoCadGeometryService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\LayerService.cs" />
@@ -169,35 +160,40 @@
     <Compile Include="Infrastructure\AutoCAD\Services\DrawingService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\EditorService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\DatabaseService.cs" />
-    
-      <!-- Infrastructure Layer - AutoCAD Utilities -->
+    <!-- 阶段 11: DCEL 服务实现 -->
+    <Compile Include="Infrastructure\AutoCAD\Services\CurveSegmentExtractor.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Services\DCELRenderer.cs" />
+    <!-- 阶段 8: HYOV 临时标记服务 -->
+    <Compile Include="Infrastructure\AutoCAD\Services\TransientMarkerService.cs" />
+    <!-- Infrastructure Layer - AutoCAD Utilities -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\TransactionHelper.cs" />
     <Compile Include="Infrastructure\AutoCAD\Utilities\EntityHelper.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Utilities\LayerHelper.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterBuilder.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterService.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\EntityFilters\EntityPropertyFilters.cs" />
-      <!-- 阶段 7.2: 重构过滤器系统 -->
-      <Compile Include="Infrastructure\AutoCAD\Selection\IFilterManagerService.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\FilterManagerService.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\IAdvancedSelectionService.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\AdvancedSelectionService.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\IEntityFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LayerFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\ColorFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineTypeFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineWeightFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TransparencyFilter.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TypeFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Utilities\LayerHelper.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterBuilder.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\SelectionFilterService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\EntityFilters\EntityPropertyFilters.cs" />
+    <!-- 阶段 7.2: 重构过滤器系统 -->
+    <Compile Include="Infrastructure\AutoCAD\Selection\IFilterManagerService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\FilterManagerService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\IAdvancedSelectionService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\AdvancedSelectionService.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\IEntityFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LayerFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\ColorFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineTypeFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\LineWeightFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TransparencyFilter.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Selection\Filters\TypeFilter.cs" />
     <!-- 阶段 4: 点比较器 -->
     <Compile Include="Infrastructure\AutoCAD\Utilities\PointComparers.cs" />
-    
     <!-- Infrastructure Layer - AutoCAD Interfaces - 阶段 7 -->
     <Compile Include="Infrastructure\AutoCAD\Interfaces\ISelectionService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Interfaces\IDrawingService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Interfaces\IDatabaseService.cs" />
     <Compile Include="Infrastructure\AutoCAD\Interfaces\IEditorService.cs" />
-    
+    <!-- 阶段 11: DCEL 接口 -->
+    <Compile Include="Infrastructure\AutoCAD\Interfaces\ICurveSegmentExtractor.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Interfaces\IDCELRenderer.cs" />
     <!-- Infrastructure Layer - AutoCAD Extensions -->
     <!-- 阶段 3: 扩展方法（桥接 Domain 算法和 AutoCAD API） -->
     <Compile Include="Infrastructure\AutoCAD\Extensions\PolylineExtensions.cs" />
@@ -207,89 +203,86 @@
     <Compile Include="Infrastructure\AutoCAD\Extensions\TypeNameConverter.cs" />
     <Compile Include="Infrastructure\AutoCAD\Extensions\GeometryExtensions.cs" />
     <Compile Include="Infrastructure\AutoCAD\Extensions\SelectionExtensions.cs" />
-    
+    <!-- 阶段 10: Extents3d 扩展方法 -->
+    <Compile Include="Infrastructure\AutoCAD\Extensions\Extents3dExtensions.cs" />
     <!-- Infrastructure Layer - AutoCAD Interactive - 阶段 4 -->
     <Compile Include="Infrastructure\AutoCAD\Interactive\PolylineJig.cs" />
     <Compile Include="Infrastructure\AutoCAD\Interactive\HookJig.cs" />
     <Compile Include="Infrastructure\AutoCAD\Interactive\HookJigSeg.cs" />
+    <!-- Presentation Layer -->
+    <Compile Include="Presentation\PluginInitializer.cs" />
+    <Compile Include="Presentation\PanelManager.cs" />
+    <!-- Presentation Layer - Commands -->
+    <Compile Include="Presentation\Commands\OverKillCommand.cs" />
+    <!-- 阶段 8-10: 几何工具命令 -->
+    <Compile Include="Presentation\Commands\BreakCurvesCommand.cs" />
+    <Compile Include="Presentation\Commands\MBRCommand.cs" />
+    <!-- 阶段 11: DCEL 命令 -->
+    <Compile Include="Presentation\Commands\DCELCommand.cs" />
     
-      <!-- Presentation Layer -->
-      <Compile Include="Presentation\PluginInitializer.cs" />
-      <Compile Include="Presentation\PanelManager.cs" />
-      
-      <!-- Presentation Layer - Commands -->
-      <Compile Include="Presentation\Commands\OverKillCommand.cs" />
-      <!-- TODO 阶段2后恢复: 暂时排除依赖被排除面板的命令 -->
-      <!-- <Compile Include="Presentation\Commands\ShowPanelCommand.cs" /> -->
-      <!-- <Compile Include="Presentation\Commands\ShowMainPanelCommand.cs" /> -->
-      <Compile Include="Presentation\Commands\TestConfigCommand.cs" />
-      <!-- 阶段 2: 服务层测试命令 -->
-      <Compile Include="Presentation\Commands\TestServiceCommand.cs" />
-      <!-- 阶段 3: Domain 算法测试命令 -->
-      <Compile Include="Presentation\Commands\TestDomainAlgorithmsCommand.cs" />
-      
-      <!-- Test Layer - 测试运行器（后续阶段持续扩展，ReCall 不需修改） -->
-      <Compile Include="Test\TestRunner.cs" />
-      <!-- 阶段 7.2: Phase 2 综合测试命令 -->
-      <Compile Include="Test\TestPhase2Command.cs" />
-      
-      <!-- Presentation Layer - Converters -->
-      <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />
-      <Compile Include="Presentation\Views\Converters\InverseBoolConverter.cs" />
-      <Compile Include="Presentation\Views\Converters\EnumDescriptionConverter.cs" />
-      
-      <!-- Presentation Layer - ViewModels -->
-      <Compile Include="Presentation\ViewModels\RelayCommand.cs" />
-      <Compile Include="Presentation\ViewModels\FilterPanelViewModel.cs" />
-      <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 ViewModel -->
-      <!-- <Compile Include="Presentation\ViewModels\BaseReinPanelViewModel.cs" /> -->
-      <!-- <Compile Include="Presentation\ViewModels\ReinPanelViewModel.cs" /> -->
-      <!-- <Compile Include="Presentation\ViewModels\PilePanelViewModel.cs" /> -->
-      <!-- <Compile Include="Presentation\ViewModels\ClusterPanelViewModel.cs" /> -->
-      
-      <!-- Presentation Layer - Views -->
-      <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 View -->
-      <!-- <Compile Include="Presentation\Views\ReinPanel.xaml.cs">
+    <!-- TODO 阶段2后恢复: 暂时排除依赖被排除面板的命令 -->
+    <!-- <Compile Include="Presentation\Commands\ShowPanelCommand.cs" /> -->
+    <!-- <Compile Include="Presentation\Commands\ShowMainPanelCommand.cs" /> -->
+    <Compile Include="Presentation\Commands\TestConfigCommand.cs" />
+    <!-- 阶段 2: 服务层测试命令 -->
+    <Compile Include="Presentation\Commands\TestServiceCommand.cs" />
+    <!-- 阶段 3: Domain 算法测试命令 -->
+    <Compile Include="Presentation\Commands\TestDomainAlgorithmsCommand.cs" />
+    <!-- Test Layer - 测试运行器（后续阶段持续扩展，ReCall 不需修改） -->
+    <Compile Include="Test\TestRunner.cs" />
+    <!-- 阶段 7.2: Phase 2 综合测试命令 -->
+    <Compile Include="Test\TestPhase2Command.cs" />
+    <!-- Presentation Layer - Converters -->
+    <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />
+    <Compile Include="Presentation\Views\Converters\InverseBoolConverter.cs" />
+    <Compile Include="Presentation\Views\Converters\EnumDescriptionConverter.cs" />
+    <!-- Presentation Layer - ViewModels -->
+    <Compile Include="Presentation\ViewModels\RelayCommand.cs" />
+    <Compile Include="Presentation\ViewModels\FilterPanelViewModel.cs" />
+    <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 ViewModel -->
+    <!-- <Compile Include="Presentation\ViewModels\BaseReinPanelViewModel.cs" /> -->
+    <!-- <Compile Include="Presentation\ViewModels\ReinPanelViewModel.cs" /> -->
+    <!-- <Compile Include="Presentation\ViewModels\PilePanelViewModel.cs" /> -->
+    <!-- <Compile Include="Presentation\ViewModels\ClusterPanelViewModel.cs" /> -->
+    <!-- Presentation Layer - Views -->
+    <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 View -->
+    <!-- <Compile Include="Presentation\Views\ReinPanel.xaml.cs">
         <DependentUpon>ReinPanel.xaml</DependentUpon>
       </Compile> -->
-      <Compile Include="Presentation\Views\FilterPanel.xaml.cs">
-        <DependentUpon>FilterPanel.xaml</DependentUpon>
-      </Compile>
-      <!-- <Compile Include="Presentation\Views\BaseReinPanel.xaml.cs">
+    <Compile Include="Presentation\Views\FilterPanel.xaml.cs">
+      <DependentUpon>FilterPanel.xaml</DependentUpon>
+    </Compile>
+    <!-- <Compile Include="Presentation\Views\BaseReinPanel.xaml.cs">
         <DependentUpon>BaseReinPanel.xaml</DependentUpon>
       </Compile> -->
-      <!-- <Compile Include="Presentation\Views\PilePanel.xaml.cs">
+    <!-- <Compile Include="Presentation\Views\PilePanel.xaml.cs">
         <DependentUpon>PilePanel.xaml</DependentUpon>
       </Compile> -->
-      <!-- <Compile Include="Presentation\Views\ClusterPanel.xaml.cs">
+    <!-- <Compile Include="Presentation\Views\ClusterPanel.xaml.cs">
         <DependentUpon>ClusterPanel.xaml</DependentUpon>
       </Compile> -->
-      
-      <!-- Domain Layer - Services -->
-      <!-- 阶段 3: 几何算法服务 (平台无关) -->
-      <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
-      <Compile Include="Domain\Services\GeometryAlgorithms\ConvexHullAlgorithm.cs" />
-      <!-- 阶段 3: 数学算法服务 (平台无关) -->
-      <Compile Include="Domain\Services\MathAlgorithms\AngleCalculator.cs" />
-      <Compile Include="Domain\Services\MathAlgorithms\DistanceCalculator.cs" />
-      <Compile Include="Domain\Services\LineOverKillService.cs" />
-      <Compile Include="Domain\Services\IReinService.cs" />
-      
-      <!-- Application Layer - DTOs -->
-      
-      <!-- Presentation Layer - Commands - 阶段 7 -->
-      <Compile Include="Presentation\Commands\Base\ICommand.cs" />
-      <Compile Include="Presentation\Commands\Base\CommandResult.cs" />
-      <Compile Include="Presentation\Commands\Base\CommandExecutor.cs" />
-      <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 Service -->
-      <!-- <Compile Include="Application\Services\BaseReinforcementService.cs" /> -->
-      
-      <!-- Infrastructure Layer - Repositories -->
-      <Compile Include="Infrastructure\AutoCAD\Repositories\ILineRepository.cs" />
-      <Compile Include="Infrastructure\AutoCAD\Repositories\LineRepository.cs" />
-    </ItemGroup>
+    <!-- Domain Layer - Services -->
+    <!-- 阶段 3: 几何算法服务 (平台无关) -->
+    <Compile Include="Domain\Services\GeometryAlgorithms\PolygonAlgorithms.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\LineAlgorithms.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\IntersectionAlgorithms.cs" />
+    <Compile Include="Domain\Services\GeometryAlgorithms\ConvexHullAlgorithm.cs" />
+    <!-- 阶段 3: 数学算法服务 (平台无关) -->
+    <Compile Include="Domain\Services\MathAlgorithms\AngleCalculator.cs" />
+    <Compile Include="Domain\Services\MathAlgorithms\DistanceCalculator.cs" />
+    <Compile Include="Domain\Services\LineOverKillService.cs" />
+    <Compile Include="Domain\Services\IReinService.cs" />
+    <!-- Application Layer - DTOs -->
+    <!-- Presentation Layer - Commands - 阶段 7 -->
+    <Compile Include="Presentation\Commands\Base\ICommand.cs" />
+    <Compile Include="Presentation\Commands\Base\CommandResult.cs" />
+    <Compile Include="Presentation\Commands\Base\CommandExecutor.cs" />
+    <!-- TODO 阶段2后恢复: 暂时排除依赖原项目的 Service -->
+    <!-- <Compile Include="Application\Services\BaseReinforcementService.cs" /> -->
+    <!-- Infrastructure Layer - Repositories -->
+    <Compile Include="Infrastructure\AutoCAD\Repositories\ILineRepository.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Repositories\LineRepository.cs" />
+  </ItemGroup>
   <ItemGroup>
     <!-- XAML Resources -->
     <Page Include="Presentation\Resources\LibraryResources.xaml">
@@ -323,15 +316,13 @@
     <!-- Documentation -->
     <None Include="README.md" />
     <None Include="Docs\PROGRESS.md" />
-    
     <!-- Configuration file -->
     <None Include="config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    
     <!-- Folder placeholders for future files -->
-    <Folder Include="Domain\Entities\" />
-    <Folder Include="Presentation\Commands\" />
+  </ItemGroup>
+  <ItemGroup>
     <Folder Include="Infrastructure\AutoCAD\Persistence\" />
     <Folder Include="Presentation\Panels\" />
     <Folder Include="Shared\Extensions\" />
@@ -339,4 +330,3 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
-

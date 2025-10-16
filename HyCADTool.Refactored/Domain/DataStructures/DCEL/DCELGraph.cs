@@ -1,5 +1,6 @@
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HyCADTool.Refactored.Domain.DataStructures.DCEL
 {
@@ -20,19 +21,21 @@ namespace HyCADTool.Refactored.Domain.DataStructures.DCEL
         public List<HalfEdge> HalfEdges { get; private set; }
 
         /// <summary>
-        /// 外部面列表（Outer Faces）
-        /// </summary>
-        public List<Face> OuterFaces { get; private set; }
-
-        /// <summary>
-        /// 内部面列表（Inner Faces）
-        /// </summary>
-        public List<Face> InterFaces { get; private set; }
-
-        /// <summary>
         /// 所有面列表（All Faces）
         /// </summary>
         public List<Face> Faces { get; private set; }
+
+        /// <summary>
+        /// 外部面列表（Outer Faces）
+        /// 动态计算，基于Face.IsOuter属性
+        /// </summary>
+        public IEnumerable<Face> OuterFaces => Faces.Where(f => f.IsOuter);
+
+        /// <summary>
+        /// 内部面列表（Inner Faces）
+        /// 动态计算，基于Face.IsOuter属性
+        /// </summary>
+        public IEnumerable<Face> InnerFaces => Faces.Where(f => !f.IsOuter);
 
         /// <summary>
         /// 构造函数
@@ -41,8 +44,6 @@ namespace HyCADTool.Refactored.Domain.DataStructures.DCEL
         {
             Vertices = new List<Vertex>();
             HalfEdges = new List<HalfEdge>();
-            OuterFaces = new List<Face>();
-            InterFaces = new List<Face>();
             Faces = new List<Face>();
         }
 
@@ -116,8 +117,6 @@ namespace HyCADTool.Refactored.Domain.DataStructures.DCEL
         {
             Vertices.Clear();
             HalfEdges.Clear();
-            OuterFaces.Clear();
-            InterFaces.Clear();
             Faces.Clear();
         }
 
@@ -130,12 +129,92 @@ namespace HyCADTool.Refactored.Domain.DataStructures.DCEL
         }
 
         /// <summary>
+        /// 验证 DCEL 拓扑一致性（Validate Topology）
+        /// </summary>
+        /// <param name="errors">输出错误列表</param>
+        /// <returns>如果验证通过返回 true，否则返回 false</returns>
+        public bool Validate(out List<string> errors)
+        {
+            errors = new List<string>();
+
+            // 1. 验证半边的孪生关系
+            foreach (var he in HalfEdges)
+            {
+                if (he.Twin == null)
+                {
+                    errors.Add($"半边 {he} 缺少孪生边");
+                    continue;
+                }
+
+                if (he.Twin.Twin != he)
+                {
+                    errors.Add($"半边 {he} 的孪生关系不对称");
+                }
+            }
+
+            // 2. 验证面的闭合性
+            foreach (var face in Faces)
+            {
+                if (face.Components == null || face.Components.Count == 0)
+                {
+                    errors.Add($"面 {face} 没有组成半边");
+                    continue;
+                }
+
+                var startEdge = face.Components.FirstOrDefault();
+                if (startEdge == null) continue;
+
+                var currentEdge = startEdge;
+                int count = 0;
+                int maxCount = face.Components.Count * 2; // 防止无限循环
+
+                do
+                {
+                    if (currentEdge.Next == null)
+                    {
+                        errors.Add($"面 {face} 的半边链不完整");
+                        break;
+                    }
+                    currentEdge = currentEdge.Next;
+                    count++;
+                } while (currentEdge != startEdge && count < maxCount);
+
+                if (count >= maxCount)
+                {
+                    errors.Add($"面 {face} 的半边链存在循环");
+                }
+            }
+
+            // 3. 验证顶点的出射边
+            foreach (var vertex in Vertices)
+            {
+                if (vertex.OutgoingHalfedges == null)
+                {
+                    errors.Add($"顶点 {vertex} 的出射边列表为空");
+                    continue;
+                }
+
+                foreach (var he in vertex.OutgoingHalfedges)
+                {
+                    if (he.StartVertex != vertex)
+                    {
+                        errors.Add($"顶点 {vertex} 的出射边 {he} 起点不一致");
+                    }
+                }
+            }
+
+            return errors.Count == 0;
+        }
+
+        /// <summary>
         /// 转换为字符串（用于调试）
         /// </summary>
         public override string ToString()
         {
             var stats = GetStatistics();
-            return $"DCEL Graph: {stats.VertexCount} vertices, {stats.EdgeCount} edges, {stats.FaceCount} faces";
+            var outerCount = OuterFaces.Count();
+            var innerCount = InnerFaces.Count();
+            return $"DCEL Graph: {stats.VertexCount} vertices, {stats.EdgeCount} edges, {stats.FaceCount} faces ({outerCount} outer, {innerCount} inner)";
         }
     }
 }

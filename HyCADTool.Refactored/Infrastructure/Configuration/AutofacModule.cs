@@ -1,13 +1,16 @@
 using Autofac;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Services;
-using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
+
+using HyCADTool.Refactored.Domain.Services.MathAlgorithms;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection;
 using HyCADTool.Refactored.Presentation;
+using HyCADTool.Refactored.Presentation.Commands;
+using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using System;
 
 namespace HyCADTool.Refactored.Infrastructure.Configuration
@@ -172,6 +175,31 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             
             // 注册高级选择服务
             builder.RegisterType<AdvancedSelectionService>().As<IAdvancedSelectionService>().SingleInstance();
+
+            // === 阶段 10: 聚类与边界框服务 ===
+            // 聚类算法服务
+            builder.RegisterType<ClusteringService>().As<IClusteringService>().SingleInstance();
+
+            // === 阶段 11: DCEL 构建服务 ===
+            // DCEL 双连接边表构建服务
+            builder.RegisterType<DCELBuilderService>().As<IDCELBuilderService>().SingleInstance();
+            
+            // DCEL 曲线线段提取服务
+            builder.RegisterType<CurveSegmentExtractor>().As<ICurveSegmentExtractor>().SingleInstance();
+            
+            // DCEL 渲染服务
+            builder.RegisterType<DCELRenderer>().As<IDCELRenderer>().SingleInstance();
+            
+            // DCEL 命令
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Commands.DCELCommand>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // === 阶段 7: OverKill 命令 ===
+            // OverKill 命令（线段清理）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Commands.OverKillCommand>()
+                .AsSelf()
+                .InstancePerDependency();
             
             // TODO: 后续添加更多服务注册
         }

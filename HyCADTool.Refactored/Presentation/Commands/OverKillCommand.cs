@@ -17,18 +17,26 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
-    /// OverKill 命令 - 线段去重合并
-    /// 功能：
-    /// 1. 合并重叠的线段
-    /// 2. 延伸独立端点到最近的线段
-    /// 3. 对无法延伸的端点标记警告
+    /// OverKill 命令 - 基础 OVERKILL 清理（极简版）
+    /// 
+    /// 当前功能（阶段1）：
+    /// 1. 删除完全重复的线段
+    /// 2. 合并部分重叠的共线线段
+    /// 3. 合并端点接触的共线线段
+    /// 
+    /// 不做（符合 AutoCAD OVERKILL 定义）：
+    /// - 在交点处分割（那是 BREAK 命令）
+    /// - FILLET 自动连接（阶段2功能，暂时禁用）
     /// </summary>
     public class OverKillCommand
     {
         private const double DEFAULT_TOLERANCE = 1e-6;
-        private const double DEFAULT_EXTENSION_DISTANCE = 10.0;
+        private const double MIN_EXTENSION_DISTANCE = 10.0;  // 最小延伸距离
+        private const double MAX_EXTENSION_DISTANCE = 500.0; // 最大延伸距离
         private const string WARNING_LAYER = "00_HY_警告_红色";
+        private const string MARKER_LAYER = "00_HY_临时标记";  // 临时标记图层
         private const short WARNING_COLOR = 1; // 红色
+        
 
         private readonly LineOverKillService _overKillService;
         private readonly ILayerService _layerService;
@@ -43,7 +51,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
 
         /// <summary>
-        /// 执行OverKill命令
+        /// HYOV 命令 - 基础版：只做 OVERKILL 清理
         /// </summary>
         [CommandMethod("HYOV")]
         public void Execute()
@@ -54,6 +62,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
+                ed.WriteMessage("\n=== HYOV 命令（基础 OVERKILL 清理） ===");
+                
                 // 1. 获取用户选择的线段
                 var selectionResult = GetLineSelection(ed);
                 if (selectionResult == null || selectionResult.Value.Count == 0)
@@ -70,110 +80,39 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     tr.Commit();
                 }
 
-                if (lineData.Count == 0)
-                {
-                    ed.WriteMessage("\n没有找到有效的线段。");
-                    return;
-                }
-
                 int originalCount = lineData.Count;
-                ed.WriteMessage($"\n已选择 {originalCount} 条线段，开始处理...");
+                ed.WriteMessage($"\n已选择 {originalCount} 条线段");
 
-                // 3. 使用Domain服务处理线段
+                // 3. FILLET 第一步：打断相交直线，删除短线段
                 var domainLines = lineData.Select(x => x.DomainLine).ToList();
+                var brokenLines = _overKillService.BreakAndCleanLines(domainLines, DEFAULT_TOLERANCE, minLength: 1.0);
+                ed.WriteMessage($"\n第1步-打断并清理：{originalCount} → {brokenLines.Count} 线段");
                 
-                // 3.1 合并重叠线段
-                var mergedLines = _overKillService.MergeOverlappingLines(domainLines, DEFAULT_TOLERANCE);
-                ed.WriteMessage($"\n合并重叠线段：{originalCount} → {mergedLines.Count}");
-
-                // 3.2 查找独立端点
-                var independentEndpoints = _overKillService.FindIndependentEndpoints(
-                    mergedLines, DEFAULT_TOLERANCE);
+                // 4. FILLET 第二步：延伸端点距离很近的线段
+                var extendedLines = _overKillService.ExtendNearEndpoints(brokenLines, DEFAULT_TOLERANCE, maxDistance: 10.0);
+                ed.WriteMessage($"\n第2步-端点延伸：{brokenLines.Count} → {extendedLines.Count} 线段");
                 
-                if (independentEndpoints.Count > 0)
-                {
-                    ed.WriteMessage($"\n找到 {independentEndpoints.Count} 个独立端点，尝试延伸...");
-                }
-
-                // 3.3 延伸独立端点
-                var finalLines = new List<Line2D>(mergedLines);
-                var warningPoints = new List<(Point2D Point, Vector2D Direction)>();
-
-                foreach (var (line, isStartPoint) in independentEndpoints)
-                {
-                    var lineIndex = finalLines.IndexOf(line);
-                    if (lineIndex < 0) continue;
-
-                    var otherLines = finalLines.Where((l, i) => i != lineIndex).ToList();
-                    
-                    var (extendedLine, found, intersection) = _overKillService.ExtendToIntersection(
-                        line, isStartPoint, otherLines, DEFAULT_EXTENSION_DISTANCE, DEFAULT_TOLERANCE);
-
-                    if (found)
-                    {
-                        finalLines[lineIndex] = extendedLine;
-                    }
-                    else
-                    {
-                        // 记录需要标记警告的点
-                        Point2D warningPoint = isStartPoint ? line.StartPoint : line.EndPoint;
-                        Vector2D direction = line.Direction.Normalize();
-                        if (isStartPoint)
-                            direction = direction * -1;
-                        warningPoints.Add((warningPoint, direction));
-                    }
-                }
-
-                // 4. 更新图纸
-                using (doc.LockDocument())
-                using (var tr = db.TransactionManager.StartTransaction())
-                {
-                    var btr = GetModelSpace(tr, db);
-                    
-                    // 4.1 删除原有线段
-                    foreach (var (id, _, _) in lineData)
-                    {
-                        var ent = tr.GetObject(id, OpenMode.ForWrite) as Entity;
-                        ent?.Erase();
-                    }
-
-                    // 4.2 创建新线段
-                    foreach (var domainLine in finalLines)
-                    {
-                        var acadLine = domainLine.ToAcadLine();
-                        btr.AppendEntity(acadLine);
-                        tr.AddNewlyCreatedDBObject(acadLine, true);
-                        acadLine.Dispose();
-                    }
-
-                    // 4.3 创建警告标记
-                    if (warningPoints.Count > 0)
-                    {
-                        // 确保警告图层存在
-                        EnsureWarningLayerExists(tr, db);
-
-                        foreach (var (point, direction) in warningPoints)
-                        {
-                            CreateWarningRectangle(tr, btr, point, direction);
-                        }
-
-                        ed.WriteMessage($"\n无法延伸的端点数量：{warningPoints.Count}，已标记警告矩形。");
-                    }
-
-                    tr.Commit();
-                }
-
-                ed.WriteMessage($"\n处理完成！");
-                ed.WriteMessage($"\n  原始线段：{originalCount}");
-                ed.WriteMessage($"\n  最终线段：{finalLines.Count}");
-                ed.WriteMessage($"\n  合并数量：{originalCount - finalLines.Count}");
+                // 5. FILLET 第三步：端点延伸到线段并打断
+                var extendedToLineLines = _overKillService.ExtendEndpointToLine(extendedLines, DEFAULT_TOLERANCE, maxDistance: 10.0);
+                ed.WriteMessage($"\n第3步-端点到线：{extendedLines.Count} → {extendedToLineLines.Count} 线段");
+                
+                // 6. 最终清理：删除完全重复的线段
+                var cleanedLines = _overKillService.RemoveDuplicateLines(extendedToLineLines, DEFAULT_TOLERANCE);
+                
+                // 7. 更新图纸
+                UpdateLines(doc, db, lineData, cleanedLines);
+                
+                // 8. 输出结果
+                ed.WriteMessage($"\n第4步-删除重复：{extendedToLineLines.Count} → {cleanedLines.Count} 线段");
+                ed.WriteMessage($"\n最终结果：{originalCount} → {cleanedLines.Count} 线段");
             }
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n错误：{ex.Message}");
-                ed.WriteMessage($"\n堆栈跟踪：{ex.StackTrace}");
+                ed.WriteMessage($"\n堆栈：{ex.StackTrace}");
             }
         }
+
 
         /// <summary>
         /// 获取用户选择的线段
@@ -223,63 +162,40 @@ namespace HyCADTool.Refactored.Presentation.Commands
             return tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
         }
 
+
         /// <summary>
-        /// 确保警告图层存在
+        /// 更新图纸线段
         /// </summary>
-        private void EnsureWarningLayerExists(Transaction tr, Database db)
+        private void UpdateLines(
+            Autodesk.AutoCAD.ApplicationServices.Document doc,
+            Database db,
+            List<(ObjectId Id, Line AcadLine, Line2D DomainLine)> originalData,
+            List<Line2D> newLines)
         {
-            var lt = tr.GetObject(db.LayerTableId, OpenMode.ForWrite) as LayerTable;
-            
-            if (!lt.Has(WARNING_LAYER))
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
             {
-                var ltr = new LayerTableRecord
-                {
-                    Name = WARNING_LAYER,
-                    Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
-                        Autodesk.AutoCAD.Colors.ColorMethod.ByAci, WARNING_COLOR)
-                };
+                var btr = GetModelSpace(tr, db);
                 
-                lt.Add(ltr);
-                tr.AddNewlyCreatedDBObject(ltr, true);
+                // 删除原有线段
+                foreach (var (id, _, _) in originalData)
+                {
+                    var ent = tr.GetObject(id, OpenMode.ForWrite) as Entity;
+                    ent?.Erase();
+                }
+
+                // 创建新线段
+                foreach (var domainLine in newLines)
+                {
+                    var acadLine = domainLine.ToAcadLine();
+                    btr.AppendEntity(acadLine);
+                    tr.AddNewlyCreatedDBObject(acadLine, true);
+                    acadLine.Dispose();
+                }
+
+                tr.Commit();
             }
         }
 
-        /// <summary>
-        /// 创建警告矩形标记
-        /// </summary>
-        private void CreateWarningRectangle(
-            Transaction tr, 
-            BlockTableRecord btr,
-            Point2D center,
-            Vector2D direction)
-        {
-            const double length = 20 * DEFAULT_EXTENSION_DISTANCE;
-            const double width = length / 2;
-
-            // 转换为AutoCAD类型
-            var center3d = center.ToAcadPoint3d();
-            var direction3d = direction.ToAcadVector3d();
-
-            // 计算垂直方向
-            var perpendicular = direction3d.RotateBy(Math.PI / 2, Vector3d.ZAxis);
-
-            // 计算矩形四个顶点
-            var p1 = center3d + perpendicular * (width / 2) - direction3d * (length / 2);
-            var p2 = center3d + perpendicular * (width / 2) + direction3d * (length / 2);
-            var p3 = center3d - perpendicular * (width / 2) + direction3d * (length / 2);
-            var p4 = center3d - perpendicular * (width / 2) - direction3d * (length / 2);
-
-            // 创建多段线
-            var rect = new Polyline();
-            rect.AddVertexAt(0, new Point2d(p1.X, p1.Y), 0, 0, 0);
-            rect.AddVertexAt(1, new Point2d(p2.X, p2.Y), 0, 0, 0);
-            rect.AddVertexAt(2, new Point2d(p3.X, p3.Y), 0, 0, 0);
-            rect.AddVertexAt(3, new Point2d(p4.X, p4.Y), 0, 0, 0);
-            rect.Closed = true;
-            rect.Layer = WARNING_LAYER;
-
-            btr.AppendEntity(rect);
-            tr.AddNewlyCreatedDBObject(rect, true);
-        }
     }
 }
