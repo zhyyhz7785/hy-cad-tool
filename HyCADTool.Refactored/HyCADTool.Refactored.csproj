@@ -219,7 +219,6 @@
     <Compile Include="Presentation\Commands\MBRCommand.cs" />
     <!-- 阶段 11: DCEL 命令 -->
     <Compile Include="Presentation\Commands\DCELCommand.cs" />
-    
     <!-- TODO 阶段2后恢复: 暂时排除依赖被排除面板的命令 -->
     <!-- <Compile Include="Presentation\Commands\ShowPanelCommand.cs" /> -->
     <!-- <Compile Include="Presentation\Commands\ShowMainPanelCommand.cs" /> -->
@@ -231,7 +230,6 @@
     <!-- Test Layer - 测试运行器（后续阶段持续扩展，ReCall 不需修改） -->
     <Compile Include="Test\TestRunner.cs" />
     <!-- 阶段 7.2: Phase 2 综合测试命令 -->
-    <Compile Include="Test\TestPhase2Command.cs" />
     <!-- Presentation Layer - Converters -->
     <Compile Include="Presentation\Views\Converters\BoolToVisibilityConverter.cs" />
     <Compile Include="Presentation\Views\Converters\InverseBoolConverter.cs" />

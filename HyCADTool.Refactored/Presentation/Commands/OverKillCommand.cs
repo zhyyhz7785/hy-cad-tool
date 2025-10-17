@@ -36,6 +36,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private const string WARNING_LAYER = "00_HY_警告_红色";
         private const string MARKER_LAYER = "00_HY_临时标记";  // 临时标记图层
         private const short WARNING_COLOR = 1; // 红色
+        private const double MARKER_SCALE = 20.0; // 标记放大倍数
         
 
         private readonly LineOverKillService _overKillService;
@@ -83,27 +84,39 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 int originalCount = lineData.Count;
                 ed.WriteMessage($"\n已选择 {originalCount} 条线段");
 
-                // 3. FILLET 第一步：打断相交直线，删除短线段
+                // 3. 预清理：合并重叠和共线线段
                 var domainLines = lineData.Select(x => x.DomainLine).ToList();
-                var brokenLines = _overKillService.BreakAndCleanLines(domainLines, DEFAULT_TOLERANCE, minLength: 1.0);
-                ed.WriteMessage($"\n第1步-打断并清理：{originalCount} → {brokenLines.Count} 线段");
+                var preCleanedLines = _overKillService.MergeOverlappingLines(domainLines, DEFAULT_TOLERANCE, 1);
+                ed.WriteMessage($"\n第0步-预清理：{originalCount} → {preCleanedLines.Count} 线段");
                 
-                // 4. FILLET 第二步：延伸端点距离很近的线段
+                // 4. FILLET 第一步：打断相交直线，删除短线段
+                var brokenLines = _overKillService.BreakAndCleanLines(preCleanedLines, DEFAULT_TOLERANCE, minLength: 1.0);
+                ed.WriteMessage($"\n第1步-打断并清理：{preCleanedLines.Count} → {brokenLines.Count} 线段");
+                
+                // 5. FILLET 第二步：延伸端点距离很近的线段
                 var extendedLines = _overKillService.ExtendNearEndpoints(brokenLines, DEFAULT_TOLERANCE, maxDistance: 10.0);
                 ed.WriteMessage($"\n第2步-端点延伸：{brokenLines.Count} → {extendedLines.Count} 线段");
                 
-                // 5. FILLET 第三步：端点延伸到线段并打断
+                // 6. FILLET 第三步：端点延伸到线段并打断
                 var extendedToLineLines = _overKillService.ExtendEndpointToLine(extendedLines, DEFAULT_TOLERANCE, maxDistance: 10.0);
                 ed.WriteMessage($"\n第3步-端点到线：{extendedLines.Count} → {extendedToLineLines.Count} 线段");
                 
-                // 6. 最终清理：删除完全重复的线段
+                // 7. 最终清理：删除完全重复的线段
                 var cleanedLines = _overKillService.RemoveDuplicateLines(extendedToLineLines, DEFAULT_TOLERANCE);
+                ed.WriteMessage($"\n第4步-删除重复：{extendedToLineLines.Count} → {cleanedLines.Count} 线段");
                 
-                // 7. 更新图纸
+                // 8. 查找并标记独立端点
+                var independentEndpoints = _overKillService.FindIndependentEndpoints(cleanedLines, DEFAULT_TOLERANCE);
+                if (independentEndpoints.Count > 0)
+                {
+                    DrawIndependentEndpointMarkers(doc, db, independentEndpoints);
+                    ed.WriteMessage($"\n找到 {independentEndpoints.Count} 个独立端点，已标记");
+                }
+                
+                // 9. 更新图纸
                 UpdateLines(doc, db, lineData, cleanedLines);
                 
-                // 8. 输出结果
-                ed.WriteMessage($"\n第4步-删除重复：{extendedToLineLines.Count} → {cleanedLines.Count} 线段");
+                // 10. 输出结果
                 ed.WriteMessage($"\n最终结果：{originalCount} → {cleanedLines.Count} 线段");
             }
             catch (System.Exception ex)
@@ -194,6 +207,87 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 }
 
                 tr.Commit();
+            }
+        }
+
+        /// <summary>
+        /// 绘制独立端点标记（长方形，长向平行于直线）
+        /// </summary>
+        private void DrawIndependentEndpointMarkers(
+            Autodesk.AutoCAD.ApplicationServices.Document doc, 
+            Database db, 
+            List<(Point2D Point, Vector2D Direction)> endpoints)
+        {
+            using (doc.LockDocument())
+            using (Transaction trans = db.TransactionManager.StartTransaction())
+            {
+                // 确保标记图层存在
+                EnsureMarkerLayerExists(db, trans);
+                
+                BlockTable bt = trans.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                BlockTableRecord btr = trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+
+                // 标记尺寸：长方形，长边 = 10，短边 = 3，放大倍数 = MARKER_SCALE
+                double longSide = 10.0 * MARKER_SCALE;
+                double shortSide = 3.0 * MARKER_SCALE;
+                
+                foreach (var (point, direction) in endpoints)
+                {
+                    // 计算长方形的四个顶点
+                    // 长边平行于直线方向，短边垂直于直线
+                    Vector2D perpendicular = new Vector2D(-direction.Y, direction.X); // 垂直向量
+                    
+                    Point2D p1 = new Point2D(
+                        point.X - direction.X * longSide / 2 - perpendicular.X * shortSide / 2,
+                        point.Y - direction.Y * longSide / 2 - perpendicular.Y * shortSide / 2
+                    );
+                    Point2D p2 = new Point2D(
+                        point.X + direction.X * longSide / 2 - perpendicular.X * shortSide / 2,
+                        point.Y + direction.Y * longSide / 2 - perpendicular.Y * shortSide / 2
+                    );
+                    Point2D p3 = new Point2D(
+                        point.X + direction.X * longSide / 2 + perpendicular.X * shortSide / 2,
+                        point.Y + direction.Y * longSide / 2 + perpendicular.Y * shortSide / 2
+                    );
+                    Point2D p4 = new Point2D(
+                        point.X - direction.X * longSide / 2 + perpendicular.X * shortSide / 2,
+                        point.Y - direction.Y * longSide / 2 + perpendicular.Y * shortSide / 2
+                    );
+                    
+                    // 创建多段线矩形
+                    Polyline rectangle = new Polyline(4);
+                    rectangle.AddVertexAt(0, new Point2d(p1.X, p1.Y), 0, 0, 0);
+                    rectangle.AddVertexAt(1, new Point2d(p2.X, p2.Y), 0, 0, 0);
+                    rectangle.AddVertexAt(2, new Point2d(p3.X, p3.Y), 0, 0, 0);
+                    rectangle.AddVertexAt(3, new Point2d(p4.X, p4.Y), 0, 0, 0);
+                    rectangle.Closed = true;
+                    rectangle.Layer = MARKER_LAYER;
+                    rectangle.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 1); // 红色
+                    
+                    btr.AppendEntity(rectangle);
+                    trans.AddNewlyCreatedDBObject(rectangle, true);
+                }
+
+                trans.Commit();
+            }
+        }
+
+        /// <summary>
+        /// 确保标记图层存在
+        /// </summary>
+        private void EnsureMarkerLayerExists(Database db, Transaction trans)
+        {
+            LayerTable lt = trans.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
+            
+            if (!lt.Has(MARKER_LAYER))
+            {
+                lt.UpgradeOpen();
+                LayerTableRecord ltr = new LayerTableRecord();
+                ltr.Name = MARKER_LAYER;
+                ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, 1); // 红色
+                lt.Add(ltr);
+                trans.AddNewlyCreatedDBObject(ltr, true);
+                lt.DowngradeOpen();
             }
         }
 

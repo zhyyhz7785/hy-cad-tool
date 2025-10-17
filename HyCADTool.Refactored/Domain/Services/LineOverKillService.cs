@@ -104,7 +104,20 @@ namespace HyCADTool.Refactored.Domain.Services
                 return CheckCollinearMerge(line1, line2, tolerance, out merged);
             }
             
-                return false;
+            // 检查是否为近距离平行线
+            // 使用更宽松的角度容差（0.01弧度 ≈ 0.57度）来判断平行
+            const double angleToleranceForParallel = 0.01;
+            if (line1.IsParallelTo(line2, angleToleranceForParallel))
+            {
+                double distance = CalculateParallelDistance(line1, line2);
+                if (distance <= parallelDistanceThreshold)
+                {
+                    // 距离很近的平行线，强制合并（忽略投影间隙）
+                    return ForceMergeParallelLines(line1, line2, tolerance, out merged);
+                }
+            }
+            
+            return false;
         }
         
         /// <summary>
@@ -174,6 +187,90 @@ namespace HyCADTool.Refactored.Domain.Services
             var sorted = points.OrderBy(p => p.Proj).ToList();
             merged = new Line2D(sorted.First().Point, sorted.Last().Point);
             return true;
+        }
+        
+        /// <summary>
+        /// 强制合并近距离平行线（忽略投影区间间隙）
+        /// 根据线段角度选择合适的投影方向（接近水平用X轴，接近垂直用Y轴）
+        /// </summary>
+        private bool ForceMergeParallelLines(Line2D line1, Line2D line2, double tolerance, out Line2D merged)
+        {
+            merged = default;
+            
+            // 检查线段长度，避免零长度线段
+            if (line1.Length < tolerance || line2.Length < tolerance)
+            {
+                if (line1.Length >= tolerance)
+                {
+                    merged = line1;
+                    return true;
+                }
+                else if (line2.Length >= tolerance)
+                {
+                    merged = line2;
+                    return true;
+                }
+                return false;
+            }
+            
+            // 根据线段角度选择投影方向
+            // 计算线段与X轴的夹角（绝对值）
+            Vector2D dir = line1.Direction.Normalize();
+            double absAngleWithX = Math.Abs(Math.Atan2(dir.Y, dir.X));
+            
+            // 如果角度接近垂直（45° ~ 135°），使用Y轴投影；否则使用X轴投影
+            bool useYProjection = (absAngleWithX > Math.PI / 4 && absAngleWithX < 3 * Math.PI / 4);
+            
+            // 计算4个端点在选定轴上的投影值
+            double proj1Start, proj1End, proj2Start, proj2End;
+            
+            if (useYProjection)
+            {
+                // 使用Y轴投影（适用于垂直线段）
+                proj1Start = line1.StartPoint.Y;
+                proj1End = line1.EndPoint.Y;
+                proj2Start = line2.StartPoint.Y;
+                proj2End = line2.EndPoint.Y;
+            }
+            else
+            {
+                // 使用X轴投影（适用于水平线段）
+                proj1Start = line1.StartPoint.X;
+                proj1End = line1.EndPoint.X;
+                proj2Start = line2.StartPoint.X;
+                proj2End = line2.EndPoint.X;
+            }
+            
+            // 强制合并：取4个端点中投影最小和最大的点（忽略间隙）
+            var points = new[] { 
+                new { Point = line1.StartPoint, Proj = proj1Start },
+                new { Point = line1.EndPoint, Proj = proj1End },
+                new { Point = line2.StartPoint, Proj = proj2Start },
+                new { Point = line2.EndPoint, Proj = proj2End }
+            };
+            
+            var sorted = points.OrderBy(p => p.Proj).ToList();
+            
+            // 使用投影最远的两个端点作为新线段端点
+            merged = new Line2D(sorted.First().Point, sorted.Last().Point);
+            return true;
+        }
+        
+        /// <summary>
+        /// 计算两条平行线之间的距离（点到线段的距离）
+        /// </summary>
+        private double CalculateParallelDistance(Line2D line1, Line2D line2)
+        {
+            // 计算 line1 的两个端点到 line2 的距离
+            double dist1 = DistanceCalculator.PointToLineSegmentDistance(line1.StartPoint, line2.StartPoint, line2.EndPoint);
+            double dist2 = DistanceCalculator.PointToLineSegmentDistance(line1.EndPoint, line2.StartPoint, line2.EndPoint);
+            
+            // 计算 line2 的两个端点到 line1 的距离
+            double dist3 = DistanceCalculator.PointToLineSegmentDistance(line2.StartPoint, line1.StartPoint, line1.EndPoint);
+            double dist4 = DistanceCalculator.PointToLineSegmentDistance(line2.EndPoint, line1.StartPoint, line1.EndPoint);
+            
+            // 返回最小距离（最近的两个点之间的距离）
+            return Math.Min(Math.Min(dist1, dist2), Math.Min(dist3, dist4));
         }
         
         /// <summary>
@@ -321,6 +418,61 @@ namespace HyCADTool.Refactored.Domain.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 查找所有独立端点（没有与其他线段连接的端点）
+        /// </summary>
+        /// <param name="lines">线段集合</param>
+        /// <param name="tolerance">容差</param>
+        /// <returns>独立端点列表（包含端点位置和对应线段的方向）</returns>
+        public List<(Point2D Point, Vector2D Direction)> FindIndependentEndpoints(IEnumerable<Line2D> lines, double tolerance)
+        {
+            var lineList = lines.ToList();
+            var independentEndpoints = new List<(Point2D Point, Vector2D Direction)>();
+            
+            foreach (var line in lineList)
+            {
+                // 检查起点是否独立
+                bool startConnected = false;
+                foreach (var other in lineList)
+                {
+                    if (line.Equals(other)) continue;
+                    
+                    if (other.StartPoint.DistanceTo(line.StartPoint) < tolerance ||
+                        other.EndPoint.DistanceTo(line.StartPoint) < tolerance)
+                    {
+                        startConnected = true;
+                        break;
+                    }
+                }
+                
+                if (!startConnected)
+                {
+                    independentEndpoints.Add((line.StartPoint, line.Direction.Normalize()));
+                }
+                
+                // 检查终点是否独立
+                bool endConnected = false;
+                foreach (var other in lineList)
+                {
+                    if (line.Equals(other)) continue;
+                    
+                    if (other.StartPoint.DistanceTo(line.EndPoint) < tolerance ||
+                        other.EndPoint.DistanceTo(line.EndPoint) < tolerance)
+                    {
+                        endConnected = true;
+                        break;
+                    }
+                }
+                
+                if (!endConnected)
+                {
+                    independentEndpoints.Add((line.EndPoint, line.Direction.Normalize()));
+                }
+            }
+            
+            return independentEndpoints;
         }
 
         /// <summary>
