@@ -163,6 +163,7 @@
     <!-- 阶段 11: DCEL 服务实现 -->
     <Compile Include="Infrastructure\AutoCAD\Services\CurveSegmentExtractor.cs" />
     <Compile Include="Infrastructure\AutoCAD\Services\DCELRenderer.cs" />
+    <Compile Include="Infrastructure\AutoCAD\Services\CurveSegmentService.cs" />
     <!-- 阶段 8: HYOV 临时标记服务 -->
     <Compile Include="Infrastructure\AutoCAD\Services\TransientMarkerService.cs" />
     <!-- Infrastructure Layer - AutoCAD Utilities -->
@@ -214,12 +215,12 @@
     <Compile Include="Presentation\PanelManager.cs" />
     <!-- Presentation Layer - Commands -->
     <Compile Include="Presentation\Commands\OverKillCommand.cs" />
+    <Compile Include="Presentation\Commands\BreakCurvesCommand.cs" />
     <Compile Include="Presentation\Commands\HyovSettings.cs" />
     <Compile Include="Presentation\Commands\HyovSettingsWindow.xaml.cs">
       <DependentUpon>HyovSettingsWindow.xaml</DependentUpon>
     </Compile>
     <!-- 阶段 8-10: 几何工具命令 -->
-    <Compile Include="Presentation\Commands\BreakCurvesCommand.cs" />
     <Compile Include="Presentation\Commands\MBRCommand.cs" />
     <!-- 阶段 11: DCEL 命令 -->
     <Compile Include="Presentation\Commands\DCELCommand.cs" />
@@ -273,6 +274,8 @@
     <Compile Include="Domain\Services\MathAlgorithms\AngleCalculator.cs" />
     <Compile Include="Domain\Services\MathAlgorithms\DistanceCalculator.cs" />
     <Compile Include="Domain\Services\LineOverKillService.cs" />
+    <Compile Include="Domain\Services\CurveBreakService.cs" />
+    <Compile Include="Domain\Services\CurveIntersectionService.cs" />
     <Compile Include="Domain\Services\IReinService.cs" />
     <!-- Application Layer - DTOs -->
     <!-- Presentation Layer - Commands - 阶段 7 -->

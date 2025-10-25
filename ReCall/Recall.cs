@@ -70,7 +70,7 @@ namespace HyCADTool.ReCall
         {
             ("C11", "HyCADTool.Refactored.Presentation.Commands.OverKillCommand", "Execute"),        // HYOV
             ("C12", "HyCADTool.Refactored.Presentation.Commands.OverKillCommand", "ExecuteSettings"), // HYOVSET
-            ("C13", "", ""),  // 预留槽位3
+            ("C13", "HyCADTool.Refactored.Presentation.Commands.BreakCurvesCommand", "Execute"),     // HYBC
             ("C14", "", ""),  // 预留槽位4
             ("C15", "", ""),  // 预留槽位5
             ("C16", "", ""),  // 预留槽位6

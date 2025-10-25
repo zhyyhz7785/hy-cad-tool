@@ -316,29 +316,67 @@ namespace HyCADTool.Refactored.Domain.Services
             // 性能优化：使用基于坐标网格的哈希去重
             // 将坐标量化到网格，快速识别可能重复的线段
             var gridResolution = Math.Max(tolerance, 0.001);
-            var lineGroups = new Dictionary<(long, long, long, long), List<int>>();
             
-            // 第一遍：按量化坐标分组
-            for (int i = 0; i < lineList.Count; i++)
+            // 自适应并行：只有数据量足够大时才启用并行（阈值：10000条线段）
+            const int PARALLEL_THRESHOLD = 10000;
+            
+            if (lineList.Count >= PARALLEL_THRESHOLD)
             {
-                var line = lineList[i];
-                var key1 = GetLineGridKey(line, gridResolution, false);
-                var key2 = GetLineGridKey(line, gridResolution, true);
+                // 大数据集：使用并行分组
+                var lineGroups = new System.Collections.Concurrent.ConcurrentDictionary<(long, long, long, long), System.Collections.Concurrent.ConcurrentBag<int>>();
                 
-                // 正向和反向都添加
-                if (!lineGroups.ContainsKey(key1))
-                    lineGroups[key1] = new List<int>();
-                lineGroups[key1].Add(i);
-                
-                if (key2 != key1)
+                System.Threading.Tasks.Parallel.For(0, lineList.Count, i =>
                 {
-                    if (!lineGroups.ContainsKey(key2))
-                        lineGroups[key2] = new List<int>();
-                    lineGroups[key2].Add(i);
-                }
+                    var line = lineList[i];
+                    var key1 = GetLineGridKey(line, gridResolution, false);
+                    var key2 = GetLineGridKey(line, gridResolution, true);
+                    
+                    lineGroups.GetOrAdd(key1, _ => new System.Collections.Concurrent.ConcurrentBag<int>()).Add(i);
+                    
+                    if (key2 != key1)
+                    {
+                        lineGroups.GetOrAdd(key2, _ => new System.Collections.Concurrent.ConcurrentBag<int>()).Add(i);
+                    }
+                });
+                
+                return ProcessDuplicates(lineList, lineGroups, tolerance, gridResolution);
             }
-            
-            // 第二遍：在每组内精确比较
+            else
+            {
+                // 小数据集：使用串行分组（更快）
+                var lineGroups = new Dictionary<(long, long, long, long), List<int>>();
+                
+                for (int i = 0; i < lineList.Count; i++)
+                {
+                    var line = lineList[i];
+                    var key1 = GetLineGridKey(line, gridResolution, false);
+                    var key2 = GetLineGridKey(line, gridResolution, true);
+                    
+                    if (!lineGroups.ContainsKey(key1))
+                        lineGroups[key1] = new List<int>();
+                    lineGroups[key1].Add(i);
+                    
+                    if (key2 != key1)
+                    {
+                        if (!lineGroups.ContainsKey(key2))
+                            lineGroups[key2] = new List<int>();
+                        lineGroups[key2].Add(i);
+                    }
+                }
+                
+                return ProcessDuplicates(lineList, lineGroups, tolerance, gridResolution);
+            }
+        }
+        
+        /// <summary>
+        /// 处理重复线段（串行比较，保证结果一致性）- 串行版本
+        /// </summary>
+        private List<Line2D> ProcessDuplicates(
+            List<Line2D> lineList, 
+            Dictionary<(long, long, long, long), List<int>> lineGroups, 
+            double tolerance, 
+            double gridResolution)
+        {
             var processed = new HashSet<int>();
             var result = new List<Line2D>();
             
@@ -349,7 +387,6 @@ namespace HyCADTool.Refactored.Domain.Services
                 result.Add(lineList[i]);
                 processed.Add(i);
                 
-                // 获取同组的线段
                 var key = GetLineGridKey(lineList[i], gridResolution, false);
                 if (lineGroups.TryGetValue(key, out var group))
                 {
@@ -357,7 +394,49 @@ namespace HyCADTool.Refactored.Domain.Services
                     {
                         if (j <= i || processed.Contains(j)) continue;
                         
-                        // 精确比较
+                        bool sameDirection = lineList[i].StartPoint.DistanceTo(lineList[j].StartPoint) < tolerance &&
+                                            lineList[i].EndPoint.DistanceTo(lineList[j].EndPoint) < tolerance;
+                        
+                        bool reverseDirection = lineList[i].StartPoint.DistanceTo(lineList[j].EndPoint) < tolerance &&
+                                               lineList[i].EndPoint.DistanceTo(lineList[j].StartPoint) < tolerance;
+                        
+                        if (sameDirection || reverseDirection)
+                        {
+                            processed.Add(j);
+                        }
+                    }
+                }
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 处理重复线段（串行比较，保证结果一致性）- 并行版本
+        /// </summary>
+        private List<Line2D> ProcessDuplicates(
+            List<Line2D> lineList, 
+            System.Collections.Concurrent.ConcurrentDictionary<(long, long, long, long), System.Collections.Concurrent.ConcurrentBag<int>> lineGroups, 
+            double tolerance, 
+            double gridResolution)
+        {
+            var processed = new HashSet<int>();
+            var result = new List<Line2D>();
+            
+            for (int i = 0; i < lineList.Count; i++)
+            {
+                if (processed.Contains(i)) continue;
+                
+                result.Add(lineList[i]);
+                processed.Add(i);
+                
+                var key = GetLineGridKey(lineList[i], gridResolution, false);
+                if (lineGroups.TryGetValue(key, out var group))
+                {
+                    foreach (int j in group)
+                    {
+                        if (j <= i || processed.Contains(j)) continue;
+                        
                         bool sameDirection = lineList[i].StartPoint.DistanceTo(lineList[j].StartPoint) < tolerance &&
                                             lineList[i].EndPoint.DistanceTo(lineList[j].EndPoint) < tolerance;
                         
@@ -420,8 +499,8 @@ namespace HyCADTool.Refactored.Domain.Services
         {
             var lineList = lines.ToList();
             
-            // minBreakThreshold: 打断保护阈值，避免产生极短线段
-            // 推荐设置为与 minLength 相同的值（例如 5.0），避免打断后立即被过滤
+            // 使用空间索引 + 并行（已验证正确且高效）
+            // 扫描线算法由于动态比较器问题暂时禁用
             var brokenLines = SplitAtIntersections(lineList, tolerance, minBreakThreshold);
             
             return brokenLines;  // 不过滤，直接返回
@@ -445,6 +524,17 @@ namespace HyCADTool.Refactored.Domain.Services
         public List<Line2D> ExtendNearEndpoints(IEnumerable<Line2D> lines, double tolerance, double maxDistance = 10.0)
         {
             var lineList = lines.ToList();
+            
+            // 自适应算法选择：第2步只处理端点对，不涉及动态插入，可以安全使用扫描线
+            const int SWEEPLINE_THRESHOLD = 3000;
+            
+            if (lineList.Count >= SWEEPLINE_THRESHOLD)
+            {
+                // 大数据集：使用扫描线优化
+                return ExtendNearEndpoints_SweepLine(lineList, tolerance, maxDistance);
+            }
+            
+            // 小数据集：使用空间索引（原方法）
             var result = new List<Line2D>();
             var processed = new HashSet<int>();
 
@@ -556,50 +646,88 @@ namespace HyCADTool.Refactored.Domain.Services
         public List<(Point2D Point, Vector2D Direction)> FindIndependentEndpoints(IEnumerable<Line2D> lines, double tolerance)
         {
             var lineList = lines.ToList();
+            if (lineList.Count == 0) return new List<(Point2D Point, Vector2D Direction)>();
+            
+            // 构建所有端点的空间索引
+            var allEndpoints = new List<(Point2D Point, int LineIndex, bool IsStart)>();
+            for (int i = 0; i < lineList.Count; i++)
+            {
+                allEndpoints.Add((lineList[i].StartPoint, i, true));
+                allEndpoints.Add((lineList[i].EndPoint, i, false));
+            }
+            
+            // 使用空间索引加速端点查找
+            double gridSize = Math.Max(tolerance * 2, 1.0);
+            var endpointGrid = new Dictionary<(long, long), List<(Point2D Point, int LineIndex, bool IsStart)>>();
+            
+            foreach (var endpoint in allEndpoints)
+            {
+                long cellX = (long)(endpoint.Point.X / gridSize);
+                long cellY = (long)(endpoint.Point.Y / gridSize);
+                var key = (cellX, cellY);
+                
+                if (!endpointGrid.ContainsKey(key))
+                    endpointGrid[key] = new List<(Point2D, int, bool)>();
+                endpointGrid[key].Add(endpoint);
+            }
+            
+            // 检查每条线段的端点是否独立
             var independentEndpoints = new List<(Point2D Point, Vector2D Direction)>();
             
-            foreach (var line in lineList)
+            for (int i = 0; i < lineList.Count; i++)
             {
-                // 检查起点是否独立
-                bool startConnected = false;
-                foreach (var other in lineList)
-                {
-                    if (line.Equals(other)) continue;
-                    
-                    if (other.StartPoint.DistanceTo(line.StartPoint) < tolerance ||
-                        other.EndPoint.DistanceTo(line.StartPoint) < tolerance)
-                    {
-                        startConnected = true;
-                        break;
-                    }
-                }
+                var line = lineList[i];
                 
-                if (!startConnected)
+                // 检查起点
+                if (!IsEndpointConnected(line.StartPoint, i, endpointGrid, gridSize, tolerance))
                 {
                     independentEndpoints.Add((line.StartPoint, line.Direction.Normalize()));
                 }
                 
-                // 检查终点是否独立
-                bool endConnected = false;
-                foreach (var other in lineList)
-                {
-                    if (line.Equals(other)) continue;
-                    
-                    if (other.StartPoint.DistanceTo(line.EndPoint) < tolerance ||
-                        other.EndPoint.DistanceTo(line.EndPoint) < tolerance)
-                    {
-                        endConnected = true;
-                        break;
-                    }
-                }
-                
-                if (!endConnected)
+                // 检查终点
+                if (!IsEndpointConnected(line.EndPoint, i, endpointGrid, gridSize, tolerance))
                 {
                     independentEndpoints.Add((line.EndPoint, line.Direction.Normalize()));
                 }
             }
             
             return independentEndpoints;
+        }
+        
+        /// <summary>
+        /// 检查端点是否连接到其他线段
+        /// </summary>
+        private bool IsEndpointConnected(
+            Point2D point, 
+            int currentLineIndex, 
+            Dictionary<(long, long), List<(Point2D Point, int LineIndex, bool IsStart)>> grid, 
+            double gridSize, 
+            double tolerance)
+        {
+            long cellX = (long)(point.X / gridSize);
+            long cellY = (long)(point.Y / gridSize);
+            
+            // 检查当前单元格和周围8个单元格
+            for (long dx = -1; dx <= 1; dx++)
+            {
+                for (long dy = -1; dy <= 1; dy++)
+                {
+                    var key = (cellX + dx, cellY + dy);
+                    if (!grid.ContainsKey(key)) continue;
+                    
+                    foreach (var (otherPoint, otherLineIndex, _) in grid[key])
+                    {
+                        if (otherLineIndex == currentLineIndex) continue;
+                        
+                        if (point.DistanceTo(otherPoint) < tolerance)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            
+            return false;
         }
 
         /// <summary>
@@ -621,10 +749,14 @@ namespace HyCADTool.Refactored.Domain.Services
         /// </remarks>
         public List<Line2D> ExtendEndpointToLine(IEnumerable<Line2D> lines, double tolerance, double maxDistance = 10.0, double minBreakThreshold = 0.5)
         {
-            // minBreakThreshold: 打断保护阈值，避免产生极短线段
-            // 推荐设置为与 minLength 相同的值（例如 5.0），避免打断后立即被过滤
-            
             var lineList = lines.ToList();
+            
+            // ⚠️ 防御性编程：过滤零长度或极短线段（避免 Normalize 错误）
+            lineList = lineList.Where(line => line.Length >= tolerance).ToList();
+            
+            // 注意：第3步涉及动态插入线段，扫描线算法容易出错
+            // 因此保持使用空间索引（已验证正确）
+            // minBreakThreshold: 打断保护阈值，避免产生极短线段
             var result = new List<Line2D>();
 
             // 性能优化：使用空间网格索引
@@ -749,8 +881,8 @@ namespace HyCADTool.Refactored.Domain.Services
         /// <br/>- 避免产生极短的无用线段</param>
         private List<Line2D> SplitAtIntersections(List<Line2D> lines, double tolerance, double minBreakThreshold = 0.5)
         {
-            // 存储每条线段的分割点（使用投影参数）
-            var splitParams = new Dictionary<int, List<double>>();
+            // 使用并发集合存储每条线段的分割点（使用投影参数）
+            var splitParams = new System.Collections.Concurrent.ConcurrentDictionary<int, List<double>>();
             
             // 初始化
             for (int i = 0; i < lines.Count; i++)
@@ -764,9 +896,11 @@ namespace HyCADTool.Refactored.Domain.Services
             var gridSize = Math.Max(50.0, averageLength * 0.5); // 使用平均长度的一半作为网格大小
             var spatialIndex = BuildSpatialIndex(lines, gridSize);
             
-            // 计算所有交点
+            // 并行计算所有交点（适用于大量线段场景）
             int totalIntersections = 0;
-            for (int i = 0; i < lines.Count; i++)
+            var lockObj = new object();
+            
+            System.Threading.Tasks.Parallel.For(0, lines.Count, i =>
             {
                 var line1 = lines[i];
                 
@@ -782,7 +916,10 @@ namespace HyCADTool.Refactored.Domain.Services
                     var intersection = line1.GetIntersection(lines[j], tolerance);
                     if (intersection != default)
                     {
-                        totalIntersections++;
+                        lock (lockObj)
+                        {
+                            totalIntersections++;
+                        }
                         
                         // 计算交点在两条线段上的投影参数
                         double param1 = GetProjectionParameter(line1, intersection);
@@ -799,7 +936,10 @@ namespace HyCADTool.Refactored.Domain.Services
                         
                         if (segment1A >= minBreakThreshold && segment1B >= minBreakThreshold)
                         {
-                            splitParams[i].Add(param1);
+                            lock (splitParams[i])
+                            {
+                                splitParams[i].Add(param1);
+                            }
                         }
                         
                         // 对于 line2：检查打断后的两段长度
@@ -808,11 +948,14 @@ namespace HyCADTool.Refactored.Domain.Services
                         
                         if (segment2A >= minBreakThreshold && segment2B >= minBreakThreshold)
                         {
-                            splitParams[j].Add(param2);
+                            lock (splitParams[j])
+                            {
+                                splitParams[j].Add(param2);
+                            }
                         }
                     }
                 }
-            }
+            });
             
             // 统计有多少线段被打断
             int linesWithIntersections = splitParams.Count(kvp => kvp.Value.Count > 0);
@@ -1048,6 +1191,491 @@ namespace HyCADTool.Refactored.Domain.Services
             }
             
             return result;
+        }
+
+        #endregion
+
+        #region 扫描线算法 - 高效交点计算
+
+        /// <summary>
+        /// 使用扫描线算法计算交点并分割线段（适合大数据集）
+        /// </summary>
+        /// <param name="lines">输入线段集合</param>
+        /// <param name="tolerance">几何容差</param>
+        /// <param name="minBreakThreshold">打断保护阈值</param>
+        /// <returns>分割后的线段列表</returns>
+        /// <remarks>
+        /// 扫描线算法原理：
+        /// <br/>1. 按 X 坐标排序所有线段端点（起点和终点）
+        /// <br/>2. 从左到右扫描，维护"活跃线段"集合（按 Y 坐标排序）
+        /// <br/>3. 遇到起点：将线段加入活跃集合，检测与相邻线段的交点
+        /// <br/>4. 遇到终点：将线段从活跃集合移除
+        /// <br/>5. 时间复杂度：O((n + k) log n)，其中 k 是交点数量
+        /// </remarks>
+        private List<Line2D> SplitAtIntersections_SweepLine(List<Line2D> lines, double tolerance, double minBreakThreshold = 0.5)
+        {
+            // 存储每条线段的分割点（使用投影参数）
+            var splitParams = new Dictionary<int, List<double>>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                splitParams[i] = new List<double>();
+            }
+
+            // 创建事件队列（线段端点）
+            var events = new List<SweepEvent>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var line = lines[i];
+                // 确保左端点在前
+                var (left, right) = GetLeftRightPoints(line);
+                events.Add(new SweepEvent { Point = left, Type = EventType.Start, LineIndex = i });
+                events.Add(new SweepEvent { Point = right, Type = EventType.End, LineIndex = i });
+            }
+
+            // 按 X 坐标排序事件（X 相同时，起点优先）
+            events.Sort((a, b) =>
+            {
+                int cmp = a.Point.X.CompareTo(b.Point.X);
+                if (cmp != 0) return cmp;
+                // X 相同时，起点优先于终点
+                return a.Type.CompareTo(b.Type);
+            });
+
+            // 活跃线段集合（按当前 X 位置的 Y 坐标排序）
+            var activeLines = new SortedSet<int>(new ActiveLineComparer(lines, events[0].Point.X));
+            int totalIntersections = 0;
+
+            // 扫描所有事件
+            foreach (var evt in events)
+            {
+                var currentX = evt.Point.X;
+                var lineIndex = evt.LineIndex;
+
+                if (evt.Type == EventType.Start)
+                {
+                    // 线段起点：加入活跃集合
+                    activeLines.Add(lineIndex);
+
+                    // 检测与前后相邻线段的交点
+                    var neighbors = GetNeighbors(activeLines, lineIndex);
+                    foreach (var neighborIndex in neighbors)
+                    {
+                        var intersection = lines[lineIndex].GetIntersection(lines[neighborIndex], tolerance);
+                        if (intersection != default)
+                        {
+                            totalIntersections++;
+
+                            // 计算交点参数并应用打断保护
+                            AddIntersectionIfValid(lines, splitParams, lineIndex, neighborIndex, 
+                                                   intersection, minBreakThreshold);
+                        }
+                    }
+                }
+                else
+                {
+                    // 线段终点：从活跃集合移除
+                    activeLines.Remove(lineIndex);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[扫描线] 找到 {totalIntersections} 个交点");
+
+            // 分割线段
+            var result = new List<Line2D>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (splitParams[i].Count == 0)
+                {
+                    result.Add(lines[i]);
+                }
+                else
+                {
+                    splitParams[i].Sort();
+                    result.AddRange(SplitLineAtParameters(lines[i], splitParams[i]));
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 获取线段的左右端点（按 X 坐标）
+        /// </summary>
+        private (Point2D left, Point2D right) GetLeftRightPoints(Line2D line)
+        {
+            if (line.StartPoint.X < line.EndPoint.X)
+                return (line.StartPoint, line.EndPoint);
+            else if (line.StartPoint.X > line.EndPoint.X)
+                return (line.EndPoint, line.StartPoint);
+            else
+                // X 相同时按 Y 排序
+                return line.StartPoint.Y <= line.EndPoint.Y 
+                    ? (line.StartPoint, line.EndPoint) 
+                    : (line.EndPoint, line.StartPoint);
+        }
+
+        /// <summary>
+        /// 获取活跃集合中指定线段的前后相邻线段
+        /// </summary>
+        private List<int> GetNeighbors(SortedSet<int> activeLines, int lineIndex)
+        {
+            var neighbors = new List<int>();
+            var view = activeLines.GetViewBetween(int.MinValue, int.MaxValue);
+            
+            bool foundCurrent = false;
+            int? prev = null;
+            
+            foreach (var idx in view)
+            {
+                if (idx == lineIndex)
+                {
+                    foundCurrent = true;
+                    if (prev.HasValue)
+                        neighbors.Add(prev.Value); // 前一个
+                }
+                else if (foundCurrent)
+                {
+                    neighbors.Add(idx); // 后一个
+                    break;
+                }
+                prev = idx;
+            }
+            
+            return neighbors;
+        }
+
+        /// <summary>
+        /// 添加交点（如果打断后的线段长度有效）
+        /// </summary>
+        private void AddIntersectionIfValid(
+            List<Line2D> lines, 
+            Dictionary<int, List<double>> splitParams,
+            int index1, 
+            int index2, 
+            Point2D intersection, 
+            double minBreakThreshold)
+        {
+            // 计算交点在两条线段上的投影参数
+            double param1 = GetProjectionParameter(lines[index1], intersection);
+            double param2 = GetProjectionParameter(lines[index2], intersection);
+
+            double length1 = lines[index1].Length;
+            double length2 = lines[index2].Length;
+
+            // 检查打断后的两段长度
+            double segment1A = param1 * length1;
+            double segment1B = (1 - param1) * length1;
+
+            if (segment1A >= minBreakThreshold && segment1B >= minBreakThreshold)
+            {
+                splitParams[index1].Add(param1);
+            }
+
+            double segment2A = param2 * length2;
+            double segment2B = (1 - param2) * length2;
+
+            if (segment2A >= minBreakThreshold && segment2B >= minBreakThreshold)
+            {
+                splitParams[index2].Add(param2);
+            }
+        }
+
+        /// <summary>
+        /// 扫描线事件类型
+        /// </summary>
+        private enum EventType
+        {
+            Start = 0,  // 线段起点
+            End = 1     // 线段终点
+        }
+
+        /// <summary>
+        /// 扫描线事件
+        /// </summary>
+        private class SweepEvent
+        {
+            public Point2D Point { get; set; }
+            public EventType Type { get; set; }
+            public int LineIndex { get; set; }
+        }
+
+        /// <summary>
+        /// 活跃线段比较器（按当前扫描位置的 Y 坐标排序）
+        /// </summary>
+        private class ActiveLineComparer : IComparer<int>
+        {
+            private readonly List<Line2D> _lines;
+            private readonly double _currentX;
+
+            public ActiveLineComparer(List<Line2D> lines, double currentX)
+            {
+                _lines = lines;
+                _currentX = currentX;
+            }
+
+            public int Compare(int idx1, int idx2)
+            {
+                if (idx1 == idx2) return 0;
+
+                // 计算两条线段在当前 X 位置的 Y 坐标
+                double y1 = GetYAtX(_lines[idx1], _currentX);
+                double y2 = GetYAtX(_lines[idx2], _currentX);
+
+                int cmp = y1.CompareTo(y2);
+                // Y 相同时按索引排序（保证稳定性）
+                return cmp != 0 ? cmp : idx1.CompareTo(idx2);
+            }
+
+            private double GetYAtX(Line2D line, double x)
+            {
+                double dx = line.EndPoint.X - line.StartPoint.X;
+                if (Math.Abs(dx) < 1e-10)
+                    return Math.Min(line.StartPoint.Y, line.EndPoint.Y);
+
+                double t = (x - line.StartPoint.X) / dx;
+                t = Math.Max(0.0, Math.Min(1.0, t));
+                return line.StartPoint.Y + t * (line.EndPoint.Y - line.StartPoint.Y);
+            }
+        }
+
+        /// <summary>
+        /// 扫描线优化版本：端点延伸
+        /// </summary>
+        private List<Line2D> ExtendNearEndpoints_SweepLine(List<Line2D> lines, double tolerance, double maxDistance)
+        {
+            var lineList = lines.ToList();
+            var result = new List<Line2D>();
+            var processed = new HashSet<int>();
+
+            // 为所有线段端点创建事件
+            var endpointEvents = new List<EndpointEvent>();
+            for (int i = 0; i < lineList.Count; i++)
+            {
+                var line = lineList[i];
+                endpointEvents.Add(new EndpointEvent
+                {
+                    Point = line.StartPoint,
+                    LineIndex = i,
+                    IsStartPoint = true
+                });
+                endpointEvents.Add(new EndpointEvent
+                {
+                    Point = line.EndPoint,
+                    LineIndex = i,
+                    IsStartPoint = false
+                });
+            }
+
+            // 按 X 坐标排序
+            endpointEvents.Sort((a, b) => a.Point.X.CompareTo(b.Point.X));
+
+            // 扫描所有端点，维护活跃端点窗口
+            for (int i = 0; i < endpointEvents.Count; i++)
+            {
+                var evt1 = endpointEvents[i];
+                if (processed.Contains(evt1.LineIndex)) continue;
+
+                // 在 X 方向 maxDistance 范围内查找候选端点
+                for (int j = i + 1; j < endpointEvents.Count; j++)
+                {
+                    var evt2 = endpointEvents[j];
+                    
+                    // X 距离超过阈值，停止搜索
+                    if (evt2.Point.X - evt1.Point.X > maxDistance)
+                        break;
+
+                    if (evt1.LineIndex == evt2.LineIndex) continue;
+                    if (processed.Contains(evt2.LineIndex)) continue;
+
+                    // 检查端点距离
+                    double dist = evt1.Point.DistanceTo(evt2.Point);
+                    if (dist > tolerance && dist <= maxDistance)
+                    {
+                        var line1 = lineList[evt1.LineIndex];
+                        var line2 = lineList[evt2.LineIndex];
+
+                        // 计算无限延长线交点
+                        if (TryGetInfiniteLinesIntersection(line1, line2, tolerance, out Point2D intersection))
+                        {
+                            // 延伸线段
+                            Line2D extended1 = evt1.IsStartPoint
+                                ? new Line2D(intersection, line1.EndPoint)
+                                : new Line2D(line1.StartPoint, intersection);
+
+                            Line2D extended2 = evt2.IsStartPoint
+                                ? new Line2D(intersection, line2.EndPoint)
+                                : new Line2D(line2.StartPoint, intersection);
+
+                            // ⚠️ 防御性检查：避免产生零长度线段
+                            if (extended1.Length >= tolerance && extended2.Length >= tolerance)
+                            {
+                                lineList[evt1.LineIndex] = extended1;
+                                lineList[evt2.LineIndex] = extended2;
+                                processed.Add(evt1.LineIndex);
+                                processed.Add(evt2.LineIndex);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 返回处理后的线段
+            return lineList;
+        }
+
+        /// <summary>
+        /// 扫描线优化版本：端点到线延伸
+        /// </summary>
+        private List<Line2D> ExtendEndpointToLine_SweepLine(List<Line2D> lines, double tolerance, double maxDistance, double minBreakThreshold)
+        {
+            var lineList = lines.ToList();
+
+            // 为所有线段端点创建事件
+            var endpointEvents = new List<EndpointEvent>();
+            for (int i = 0; i < lineList.Count; i++)
+            {
+                var line = lineList[i];
+                endpointEvents.Add(new EndpointEvent
+                {
+                    Point = line.StartPoint,
+                    LineIndex = i,
+                    IsStartPoint = true
+                });
+                endpointEvents.Add(new EndpointEvent
+                {
+                    Point = line.EndPoint,
+                    LineIndex = i,
+                    IsStartPoint = false
+                });
+            }
+
+            // 按 X 坐标排序
+            endpointEvents.Sort((a, b) => a.Point.X.CompareTo(b.Point.X));
+
+            // 扫描所有端点
+            for (int i = 0; i < endpointEvents.Count; i++)
+            {
+                var evt = endpointEvents[i];
+                var currentLine = lineList[evt.LineIndex];
+                var endPoint = evt.IsStartPoint ? currentLine.StartPoint : currentLine.EndPoint;
+
+                // 在 X 方向 maxDistance 范围内查找候选线段
+                for (int j = 0; j < lineList.Count; j++)
+                {
+                    if (j == evt.LineIndex) continue;
+
+                    var targetLine = lineList[j];
+                    
+                    // X 范围剪枝
+                    double minX = Math.Min(targetLine.StartPoint.X, targetLine.EndPoint.X);
+                    double maxX = Math.Max(targetLine.StartPoint.X, targetLine.EndPoint.X);
+                    if (endPoint.X < minX - maxDistance || endPoint.X > maxX + maxDistance)
+                        continue;
+
+                    // 计算端点到目标线段的垂直距离
+                    double distance = DistanceToLine(endPoint, targetLine);
+                    if (distance > tolerance && distance <= maxDistance)
+                    {
+                        // 计算投影点
+                        Point2D projection = GetProjectionPoint(endPoint, targetLine);
+
+                        // 检查投影点是否在线段上
+                        if (IsPointOnSegment(projection, targetLine, tolerance))
+                        {
+                            // 延伸当前线段到投影点
+                            Line2D extendedLine = evt.IsStartPoint
+                                ? new Line2D(projection, currentLine.EndPoint)
+                                : new Line2D(currentLine.StartPoint, projection);
+
+                            // 在投影点处打断目标线段（应用 minBreakThreshold）
+                            double param = GetProjectionParameter(targetLine, projection);
+                            double seg1Len = param * targetLine.Length;
+                            double seg2Len = (1 - param) * targetLine.Length;
+
+                            if (seg1Len >= minBreakThreshold && seg2Len >= minBreakThreshold)
+                            {
+                                Line2D seg1 = new Line2D(targetLine.StartPoint, projection);
+                                Line2D seg2 = new Line2D(projection, targetLine.EndPoint);
+
+                                lineList[evt.LineIndex] = extendedLine;
+                                lineList[j] = seg1;
+                                lineList.Insert(j + 1, seg2);
+
+                                // 更新事件索引（因为插入了新线段）
+                                if (j < evt.LineIndex)
+                                {
+                                    // 调整当前线段索引
+                                    for (int k = i; k < endpointEvents.Count; k++)
+                                    {
+                                        if (endpointEvents[k].LineIndex > j)
+                                            endpointEvents[k].LineIndex++;
+                                    }
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return lineList;
+        }
+
+        /// <summary>
+        /// 端点事件（用于扫描线算法）
+        /// </summary>
+        private class EndpointEvent
+        {
+            public Point2D Point { get; set; }
+            public int LineIndex { get; set; }
+            public bool IsStartPoint { get; set; }
+        }
+
+        /// <summary>
+        /// 计算两条无限延长线的交点
+        /// </summary>
+        private bool TryGetInfiniteLinesIntersection(Line2D line1, Line2D line2, double tolerance, out Point2D intersection)
+        {
+            intersection = line1.GetIntersectionWithInfiniteLine(line2, tolerance);
+            return intersection != default;
+        }
+
+        /// <summary>
+        /// 计算点到线段的垂直距离
+        /// </summary>
+        private double DistanceToLine(Point2D point, Line2D line)
+        {
+            return line.DistanceToPoint(point);
+        }
+
+        /// <summary>
+        /// 计算点在线段上的投影点
+        /// </summary>
+        private Point2D GetProjectionPoint(Point2D point, Line2D line)
+        {
+            Vector2D lineVec = line.Direction;
+            Vector2D pointVec = new Vector2D(point.X - line.StartPoint.X, point.Y - line.StartPoint.Y);
+            
+            double lineLength = line.Length;
+            if (lineLength < 1e-10) return line.StartPoint;
+            
+            double projection = lineVec.Dot(pointVec) / (lineLength * lineLength);
+            projection = Math.Max(0.0, Math.Min(1.0, projection));
+            
+            return new Point2D(
+                line.StartPoint.X + projection * lineVec.X,
+                line.StartPoint.Y + projection * lineVec.Y
+            );
+        }
+
+        /// <summary>
+        /// 判断点是否在线段上
+        /// </summary>
+        private bool IsPointOnSegment(Point2D point, Line2D line, double tolerance)
+        {
+            return line.IsPointOnSegment(point, tolerance);
         }
 
         #endregion

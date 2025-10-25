@@ -151,6 +151,18 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
             
+            builder.RegisterType<CurveBreakService>()
+                .AsSelf()
+                .SingleInstance();
+            
+            builder.RegisterType<CurveIntersectionService>()
+                .AsSelf()
+                .SingleInstance();
+            
+            builder.RegisterType<CurveSegmentService>()
+                .AsSelf()
+                .SingleInstance();
+            
             // TODO: Application层删除后暂时注释掉
             // // 应用用例
             // builder.RegisterType<OverKillUseCase>()
