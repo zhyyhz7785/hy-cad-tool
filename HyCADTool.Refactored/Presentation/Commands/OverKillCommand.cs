@@ -94,45 +94,53 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 var domainLines = lineData.Select(x => x.DomainLine).ToList();
                 List<Line2D> processedLines = domainLines;
 
+                var stepwatch = System.Diagnostics.Stopwatch.StartNew();
+                
                 // 3. OVERKILL 预清理：合并重叠和共线线段（可选）
                 if (settings.EnablePreClean)
                 {
+                    stepwatch.Restart();
                     processedLines = _overKillService.MergeOverlappingLines(processedLines, tolerance, parallelDistance);
-                    ed.WriteMessage($"\n第0步-预清理：{originalCount} → {processedLines.Count} 线段");
+                    ed.WriteMessage($"\n第0步-预清理：{originalCount} → {processedLines.Count} 线段 ({stepwatch.ElapsedMilliseconds}ms)");
                 }
                 
                 // 4. FILLET 第一步：打断相交线段（不过滤）
                 if (settings.EnableBreakLines)
                 {
                     var beforeCount = processedLines.Count;
+                    stepwatch.Restart();
                     processedLines = _overKillService.BreakAtIntersections(processedLines, tolerance, minLineLength);
-                    ed.WriteMessage($"\n第1步-打断相交：{beforeCount} → {processedLines.Count} 线段");
+                    ed.WriteMessage($"\n第1步-打断相交：{beforeCount} → {processedLines.Count} 线段 ({stepwatch.ElapsedMilliseconds}ms)");
                 }
                 
                 // 5. FILLET 第二步：端点延伸（不过滤）
                 if (settings.EnableExtendEndpoints)
                 {
                     var beforeCount = processedLines.Count;
+                    stepwatch.Restart();
                     processedLines = _overKillService.ExtendNearEndpoints(processedLines, tolerance, maxExtendDistance);
-                    ed.WriteMessage($"\n第2步-端点延伸：{beforeCount} → {processedLines.Count} 线段");
+                    ed.WriteMessage($"\n第2步-端点延伸：{beforeCount} → {processedLines.Count} 线段 ({stepwatch.ElapsedMilliseconds}ms)");
                 }
                 
                 // 6. FILLET 第三步：端点到线延伸（不过滤）
                 if (settings.EnableExtendToLine)
                 {
                     var beforeCount = processedLines.Count;
+                    stepwatch.Restart();
                     processedLines = _overKillService.ExtendEndpointToLine(processedLines, tolerance, maxExtendDistance, minLineLength);
-                    ed.WriteMessage($"\n第3步-端点到线：{beforeCount} → {processedLines.Count} 线段");
+                    ed.WriteMessage($"\n第3步-端点到线：{beforeCount} → {processedLines.Count} 线段 ({stepwatch.ElapsedMilliseconds}ms)");
                 }
                 
                 // 7. 统一过滤短线段（一次性）
                 var beforeFilter = processedLines.Count;
+                stepwatch.Restart();
                 processedLines = _overKillService.FilterShortSegments(processedLines, minLineLength, false);
-                ed.WriteMessage($"\n第4步-过滤短线段：{beforeFilter} → {processedLines.Count} 线段");
+                ed.WriteMessage($"\n第4步-过滤短线段：{beforeFilter} → {processedLines.Count} 线段 ({stepwatch.ElapsedMilliseconds}ms)");
                 
                 // 8. 删除完全重复的线段
+                stepwatch.Restart();
                 var cleanedLines = _overKillService.RemoveDuplicateLines(processedLines, tolerance);
-                ed.WriteMessage($"\n第5步-删除重复：{processedLines.Count} → {cleanedLines.Count} 线段");
+                ed.WriteMessage($"\n第5步-删除重复：{processedLines.Count} → {cleanedLines.Count} 线段 ({stepwatch.ElapsedMilliseconds}ms)");
                 
                 // 9. 查找并标记独立端点
                 if (settings.ShowIndependentEndpoints)

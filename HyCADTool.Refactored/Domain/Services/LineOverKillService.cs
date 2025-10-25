@@ -74,6 +74,10 @@ namespace HyCADTool.Refactored.Domain.Services
             var result = new List<Line2D>();
             var processed = new HashSet<int>();
             
+            // 性能优化：使用空间网格索引
+            var gridSize = Math.Max(100.0, parallelDistanceThreshold * 2);
+            var spatialIndex = BuildSpatialIndex(lineList, gridSize);
+            
             for (int i = 0; i < lineList.Count; i++)
             {
                 if (processed.Contains(i)) continue;
@@ -81,10 +85,12 @@ namespace HyCADTool.Refactored.Domain.Services
                 Line2D current = lineList[i];
                 processed.Add(i);
                 
-                // 查找与当前线段重叠的其他线段
-                for (int j = i + 1; j < lineList.Count; j++)
+                // 只检查附近的线段（使用空间索引）
+                var nearbyIndices = GetNearbyLineIndices(current, spatialIndex, gridSize, parallelDistanceThreshold);
+                
+                foreach (int j in nearbyIndices)
                 {
-                    if (processed.Contains(j)) continue;
+                    if (j <= i || processed.Contains(j)) continue;
                     
                     if (CheckAndMergeOverlap(current, lineList[j], tolerance, parallelDistanceThreshold, out Line2D merged))
                     {
@@ -306,36 +312,92 @@ namespace HyCADTool.Refactored.Domain.Services
         public List<Line2D> RemoveDuplicateLines(IEnumerable<Line2D> lines, double tolerance)
         {
             var lineList = lines.ToList();
-            var result = new List<Line2D>();
+            
+            // 性能优化：使用基于坐标网格的哈希去重
+            // 将坐标量化到网格，快速识别可能重复的线段
+            var gridResolution = Math.Max(tolerance, 0.001);
+            var lineGroups = new Dictionary<(long, long, long, long), List<int>>();
+            
+            // 第一遍：按量化坐标分组
+            for (int i = 0; i < lineList.Count; i++)
+            {
+                var line = lineList[i];
+                var key1 = GetLineGridKey(line, gridResolution, false);
+                var key2 = GetLineGridKey(line, gridResolution, true);
+                
+                // 正向和反向都添加
+                if (!lineGroups.ContainsKey(key1))
+                    lineGroups[key1] = new List<int>();
+                lineGroups[key1].Add(i);
+                
+                if (key2 != key1)
+                {
+                    if (!lineGroups.ContainsKey(key2))
+                        lineGroups[key2] = new List<int>();
+                    lineGroups[key2].Add(i);
+                }
+            }
+            
+            // 第二遍：在每组内精确比较
             var processed = new HashSet<int>();
+            var result = new List<Line2D>();
             
             for (int i = 0; i < lineList.Count; i++)
             {
                 if (processed.Contains(i)) continue;
-
+                
                 result.Add(lineList[i]);
                 processed.Add(i);
-
-                // 查找并标记完全重复的线段
-                for (int j = i + 1; j < lineList.Count; j++)
+                
+                // 获取同组的线段
+                var key = GetLineGridKey(lineList[i], gridResolution, false);
+                if (lineGroups.TryGetValue(key, out var group))
                 {
-                    if (processed.Contains(j)) continue;
-
-                    // 检查是否完全重复（起点终点都相同，或反向相同）
-                    bool sameDirection = lineList[i].StartPoint.DistanceTo(lineList[j].StartPoint) < tolerance &&
-                                        lineList[i].EndPoint.DistanceTo(lineList[j].EndPoint) < tolerance;
-
-                    bool reverseDirection = lineList[i].StartPoint.DistanceTo(lineList[j].EndPoint) < tolerance &&
-                                           lineList[i].EndPoint.DistanceTo(lineList[j].StartPoint) < tolerance;
-
-                    if (sameDirection || reverseDirection)
+                    foreach (int j in group)
                     {
-                        processed.Add(j);
+                        if (j <= i || processed.Contains(j)) continue;
+                        
+                        // 精确比较
+                        bool sameDirection = lineList[i].StartPoint.DistanceTo(lineList[j].StartPoint) < tolerance &&
+                                            lineList[i].EndPoint.DistanceTo(lineList[j].EndPoint) < tolerance;
+                        
+                        bool reverseDirection = lineList[i].StartPoint.DistanceTo(lineList[j].EndPoint) < tolerance &&
+                                               lineList[i].EndPoint.DistanceTo(lineList[j].StartPoint) < tolerance;
+                        
+                        if (sameDirection || reverseDirection)
+                        {
+                            processed.Add(j);
+                        }
                     }
                 }
             }
             
             return result;
+        }
+        
+        /// <summary>
+        /// 获取线段的网格键（用于哈希分组）
+        /// </summary>
+        private (long, long, long, long) GetLineGridKey(Line2D line, double gridResolution, bool reverse)
+        {
+            if (reverse)
+            {
+                return (
+                    (long)Math.Round(line.EndPoint.X / gridResolution),
+                    (long)Math.Round(line.EndPoint.Y / gridResolution),
+                    (long)Math.Round(line.StartPoint.X / gridResolution),
+                    (long)Math.Round(line.StartPoint.Y / gridResolution)
+                );
+            }
+            else
+            {
+                return (
+                    (long)Math.Round(line.StartPoint.X / gridResolution),
+                    (long)Math.Round(line.StartPoint.Y / gridResolution),
+                    (long)Math.Round(line.EndPoint.X / gridResolution),
+                    (long)Math.Round(line.EndPoint.Y / gridResolution)
+                );
+            }
         }
 
         #endregion
@@ -386,6 +448,10 @@ namespace HyCADTool.Refactored.Domain.Services
             var result = new List<Line2D>();
             var processed = new HashSet<int>();
 
+            // 性能优化：使用空间网格索引
+            var gridSize = maxDistance * 2;
+            var spatialIndex = BuildSpatialIndex(lineList, gridSize);
+
             for (int i = 0; i < lineList.Count; i++)
             {
                 if (processed.Contains(i))
@@ -397,8 +463,10 @@ namespace HyCADTool.Refactored.Domain.Services
                 Line2D currentLine = lineList[i];
                 bool extended = false;
                 
-                // 检查与其他线段的端点距离
-                for (int j = 0; j < lineList.Count; j++)
+                // 只检查附近的线段（使用空间索引）
+                var nearbyIndices = GetNearbyLineIndices(currentLine, spatialIndex, gridSize, maxDistance);
+                
+                foreach (int j in nearbyIndices)
                 {
                     if (i == j || processed.Contains(j)) continue;
                     
@@ -559,13 +627,19 @@ namespace HyCADTool.Refactored.Domain.Services
             var lineList = lines.ToList();
             var result = new List<Line2D>();
 
+            // 性能优化：使用空间网格索引
+            var gridSize = maxDistance * 2;
+            var spatialIndex = BuildSpatialIndex(lineList, gridSize);
+
             for (int i = 0; i < lineList.Count; i++)
             {
                 Line2D currentLine = lineList[i];
                 bool extended = false;
                 
-                // 检查当前线段的两个端点到其他线段的距离
-                for (int j = 0; j < lineList.Count; j++)
+                // 只检查附近的线段（使用空间索引）
+                var nearbyIndices = GetNearbyLineIndices(currentLine, spatialIndex, gridSize, maxDistance);
+                
+                foreach (int j in nearbyIndices)
                 {
                     if (i == j) continue;
                     
@@ -684,24 +758,39 @@ namespace HyCADTool.Refactored.Domain.Services
                 splitParams[i] = new List<double>();
             }
             
+            // 性能优化：使用更精细的空间网格索引
+            // 使用较小的网格尺寸以提高精度
+            var averageLength = lines.Average(l => l.Length);
+            var gridSize = Math.Max(50.0, averageLength * 0.5); // 使用平均长度的一半作为网格大小
+            var spatialIndex = BuildSpatialIndex(lines, gridSize);
+            
             // 计算所有交点
             int totalIntersections = 0;
             for (int i = 0; i < lines.Count; i++)
             {
-                for (int j = i + 1; j < lines.Count; j++)
+                var line1 = lines[i];
+                
+                // 优化搜索半径：使用线段长度而不是 Max(length, gridSize)
+                // 交点只可能出现在线段长度范围内
+                var searchRadius = line1.Length * 1.5; // 增加50%余量
+                var nearbyIndices = GetNearbyLineIndices(line1, spatialIndex, gridSize, searchRadius);
+                
+                foreach (int j in nearbyIndices)
                 {
-                    var intersection = lines[i].GetIntersection(lines[j], tolerance);
-                if (intersection != default)
-                {
+                    if (j <= i) continue; // 避免重复检测
+                    
+                    var intersection = line1.GetIntersection(lines[j], tolerance);
+                    if (intersection != default)
+                    {
                         totalIntersections++;
                         
                         // 计算交点在两条线段上的投影参数
-                        double param1 = GetProjectionParameter(lines[i], intersection);
+                        double param1 = GetProjectionParameter(line1, intersection);
                         double param2 = GetProjectionParameter(lines[j], intersection);
                         
                         // 智能打断：检查打断后的两段长度是否都 >= minSegmentLength
                         // 避免产生极短的无用线段
-                        double length1 = lines[i].Length;
+                        double length1 = line1.Length;
                         double length2 = lines[j].Length;
                         
                         // 对于 line1：检查打断后的两段长度
@@ -871,6 +960,91 @@ namespace HyCADTool.Refactored.Domain.Services
                 System.Diagnostics.Debug.WriteLine($"  保留：{result.Count} 条");
                 System.Diagnostics.Debug.WriteLine($"  删除：{deletedLines.Count} 条");
                 System.Diagnostics.Debug.WriteLine("==========================================\n");
+            }
+            
+            return result;
+        }
+
+        #endregion
+
+        #region 空间索引优化
+
+        /// <summary>
+        /// 构建空间网格索引（提升性能）
+        /// </summary>
+        private Dictionary<(int, int), List<int>> BuildSpatialIndex(List<Line2D> lines, double gridSize)
+        {
+            var index = new Dictionary<(int, int), List<int>>();
+            
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var line = lines[i];
+                
+                // 计算线段包围盒的网格坐标
+                double minX = Math.Min(line.StartPoint.X, line.EndPoint.X);
+                double maxX = Math.Max(line.StartPoint.X, line.EndPoint.X);
+                double minY = Math.Min(line.StartPoint.Y, line.EndPoint.Y);
+                double maxY = Math.Max(line.StartPoint.Y, line.EndPoint.Y);
+                
+                int gridMinX = (int)Math.Floor(minX / gridSize);
+                int gridMaxX = (int)Math.Floor(maxX / gridSize);
+                int gridMinY = (int)Math.Floor(minY / gridSize);
+                int gridMaxY = (int)Math.Floor(maxY / gridSize);
+                
+                // 将线段添加到所有相关的网格单元
+                for (int gx = gridMinX; gx <= gridMaxX; gx++)
+                {
+                    for (int gy = gridMinY; gy <= gridMaxY; gy++)
+                    {
+                        var key = (gx, gy);
+                        if (!index.ContainsKey(key))
+                        {
+                            index[key] = new List<int>();
+                        }
+                        index[key].Add(i);
+                    }
+                }
+            }
+            
+            return index;
+        }
+
+        /// <summary>
+        /// 获取附近的线段索引（使用空间索引）
+        /// </summary>
+        private HashSet<int> GetNearbyLineIndices(
+            Line2D line, 
+            Dictionary<(int, int), List<int>> spatialIndex, 
+            double gridSize,
+            double searchRadius)
+        {
+            var result = new HashSet<int>();
+            
+            // 计算搜索范围的网格坐标
+            double minX = Math.Min(line.StartPoint.X, line.EndPoint.X) - searchRadius;
+            double maxX = Math.Max(line.StartPoint.X, line.EndPoint.X) + searchRadius;
+            double minY = Math.Min(line.StartPoint.Y, line.EndPoint.Y) - searchRadius;
+            double maxY = Math.Max(line.StartPoint.Y, line.EndPoint.Y) + searchRadius;
+            
+            int gridMinX = (int)Math.Floor(minX / gridSize);
+            int gridMaxX = (int)Math.Floor(maxX / gridSize);
+            int gridMinY = (int)Math.Floor(minY / gridSize);
+            int gridMaxY = (int)Math.Floor(maxY / gridSize);
+            
+            // 收集所有相关网格单元中的线段
+            for (int gx = gridMinX; gx <= gridMaxX; gx++)
+            {
+                for (int gy = gridMinY; gy <= gridMaxY; gy++)
+                {
+                    var key = (gx, gy);
+                    if (spatialIndex.ContainsKey(key))
+                    {
+                        foreach (var idx in spatialIndex[key])
+                        {
+                            result.Add(idx);
+                        }
+                    }
+                }
             }
             
             return result;
