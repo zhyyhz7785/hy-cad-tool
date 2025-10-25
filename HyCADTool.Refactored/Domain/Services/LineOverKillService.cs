@@ -7,28 +7,37 @@ using HyCADTool.Refactored.Domain.Services.MathAlgorithms;
 namespace HyCADTool.Refactored.Domain.Services
 {
     /// <summary>
-    /// 线段清理服务 - 基础 OVERKILL 功能
+    /// 线段清理服务 - OVERKILL + FILLET 功能
     /// 
-    /// 核心功能：
-    /// 1. 删除完全重复的线段
-    /// 2. 合并部分重叠的共线线段
-    /// 3. 合并端点接触的共线线段
-    /// 4. 删除近距离平行线段（保留端点连接性更好的）
+    /// 【核心功能】
+    /// 1. OVERKILL 清理：合并重叠/共线线段，删除近距离平行线
+    /// 2. FILLET 连接：打断相交线段，延伸近距离端点，自动连接
+    /// 3. 独立端点检测：查找未连接的端点
     /// 
-    /// 设计原则：
-    /// - 只做基础清理，不做复杂操作（如 FILLET、分割等）
-    /// - 使用投影区间法准确判断共线线段重叠
-    /// - 平行线删除基于端点连接性评分
+    /// 【关键算法】
+    /// - 投影区间法：准确判断共线线段是否有间隙（CheckCollinearMerge）
+    /// - 智能投影轴：根据角度选择X/Y轴投影，避免数值精度问题（ForceMergeParallelLines）
+    /// - 零长度保护：所有涉及 Normalize() 的地方都有长度检查
+    /// - 相对参数阈值：使用 0.01/0.99 避免在端点附近打断（ExtendEndpointToLine, SplitAtIntersections）
+    /// 
+    /// 【测试状态】✅ 已通过生产环境测试
     /// </summary>
     public class LineOverKillService
     {
+        #region OVERKILL 基础清理功能
+
         /// <summary>
-        /// 清理线段集合 - 主要入口方法
+        /// 清理线段集合 - OVERKILL 主入口
         /// </summary>
         /// <param name="lines">输入线段集合</param>
-        /// <param name="tolerance">几何容差</param>
-        /// <param name="parallelDistanceThreshold">平行线删除距离阈值（默认1.0）</param>
+        /// <param name="tolerance">几何容差（用于点重合、共线判断），推荐 1e-6</param>
+        /// <param name="parallelDistanceThreshold">平行线合并距离阈值（单位：图形单位），推荐 1.0
+        /// <br/>- 两条平行线之间的距离小于此值时将被合并</param>
         /// <returns>清理后的线段列表</returns>
+        /// <remarks>
+        /// 功能：合并重叠/共线/近距离平行线段
+        /// <br/>调用链：CleanLines → MergeOverlappingLines → CheckAndMergeOverlap
+        /// </remarks>
         public List<Line2D> CleanLines(IEnumerable<Line2D> lines, double tolerance, double parallelDistanceThreshold = 1.0)
         {
             var lineList = lines.ToList();
@@ -44,12 +53,18 @@ namespace HyCADTool.Refactored.Domain.Services
         }
 
         /// <summary>
-        /// 合并重叠线段
+        /// 合并重叠/共线/近距离平行线段
         /// </summary>
         /// <param name="lines">输入线段集合</param>
-        /// <param name="tolerance">几何容差</param>
-        /// <param name="parallelDistanceThreshold">平行线删除距离阈值</param>
+        /// <param name="tolerance">几何容差（推荐 1e-6）</param>
+        /// <param name="parallelDistanceThreshold">平行线合并距离阈值（推荐 1.0）</param>
         /// <returns>合并后的线段列表</returns>
+        /// <remarks>
+        /// 处理逻辑：
+        /// <br/>1. 遍历所有线段对
+        /// <br/>2. 调用 CheckAndMergeOverlap 判断是否可以合并
+        /// <br/>3. 如果可以合并，用新线段替换当前线段，标记被合并的线段
+        /// </remarks>
         public List<Line2D> MergeOverlappingLines(
             IEnumerable<Line2D> lines, 
             double tolerance,
@@ -117,7 +132,7 @@ namespace HyCADTool.Refactored.Domain.Services
                 }
             }
             
-            return false;
+                return false;
         }
         
         /// <summary>
@@ -273,9 +288,21 @@ namespace HyCADTool.Refactored.Domain.Services
             return Math.Min(Math.Min(dist1, dist2), Math.Min(dist3, dist4));
         }
         
+        #endregion
+
+        #region 辅助功能 - 删除重复
+
         /// <summary>
-        /// 只删除完全重复的线段（不合并共线线段）
+        /// 删除完全重复的线段（不合并共线线段）
         /// </summary>
+        /// <param name="lines">输入线段集合</param>
+        /// <param name="tolerance">几何容差（推荐 1e-6）</param>
+        /// <returns>删除重复后的线段列表</returns>
+        /// <remarks>
+        /// 判断重复的标准：
+        /// <br/>- 同向：起点到起点 &lt; tolerance 且 终点到终点 &lt; tolerance
+        /// <br/>- 反向：起点到终点 &lt; tolerance 且 终点到起点 &lt; tolerance
+        /// </remarks>
         public List<Line2D> RemoveDuplicateLines(IEnumerable<Line2D> lines, double tolerance)
         {
             var lineList = lines.ToList();
@@ -310,36 +337,49 @@ namespace HyCADTool.Refactored.Domain.Services
             
             return result;
         }
+
+        #endregion
+
+        #region FILLET 功能 - 自动连接
         
         /// <summary>
-        /// FILLET 功能 - 第一步：打断相交直线，删除短线段
+        /// FILLET 步骤1：打断相交线段（不过滤）
         /// </summary>
         /// <param name="lines">输入线段集合</param>
-        /// <param name="tolerance">几何容差</param>
-        /// <param name="minLength">最小线段长度阈值（小于此值的线段将被删除）</param>
-        /// <returns>处理后的线段列表</returns>
-        public List<Line2D> BreakAndCleanLines(IEnumerable<Line2D> lines, double tolerance, double minLength = 1.0)
+        /// <param name="tolerance">几何容差（推荐 1e-6）</param>
+        /// <returns>打断后的线段列表（未过滤）</returns>
+        /// <remarks>
+        /// 处理流程：
+        /// <br/>1. 调用 SplitAtIntersections 在所有相交处打断线段
+        /// <br/>2. 使用固定阈值 0.5mm 避免产生极短线段
+        /// <br/>🔑 核心思想：只打断，不过滤，过滤由后续统一步骤处理
+        /// </remarks>
+        public List<Line2D> BreakAtIntersections(IEnumerable<Line2D> lines, double tolerance, double minBreakThreshold = 0.5)
         {
             var lineList = lines.ToList();
             
-            // 第一步：找到所有交点并打断线段
-            var brokenLines = SplitAtIntersections(lineList, tolerance);
+            // minBreakThreshold: 打断保护阈值，避免产生极短线段
+            // 推荐设置为与 minLength 相同的值（例如 5.0），避免打断后立即被过滤
+            var brokenLines = SplitAtIntersections(lineList, tolerance, minBreakThreshold);
             
-            // 第二步：删除长度小于阈值的线段（包括零长度线段）
-            // 使用 tolerance 作为最小长度，避免零长度线段
-            double effectiveMinLength = Math.Max(minLength, tolerance);
-            var result = brokenLines.Where(line => line.Length >= effectiveMinLength).ToList();
-            
-            return result;
+            return brokenLines;  // 不过滤，直接返回
         }
 
         /// <summary>
-        /// FILLET 功能 - 第二步：延伸端点距离很近的线段到它们的交点
+        /// FILLET 步骤2：延伸端点距离很近的线段到它们的交点（FILLET R=0）
         /// </summary>
         /// <param name="lines">输入线段集合</param>
-        /// <param name="tolerance">几何容差</param>
-        /// <param name="maxDistance">最大端点距离阈值</param>
+        /// <param name="tolerance">几何容差（推荐 1e-6）</param>
+        /// <param name="maxDistance">最大端点距离阈值（单位：图形单位），推荐 10.0
+        /// <br/>- 只有端点距离在 (tolerance, maxDistance] 范围内的线段才会延伸</param>
         /// <returns>处理后的线段列表</returns>
+        /// <remarks>
+        /// 处理逻辑：
+        /// <br/>1. 检查所有线段的4种端点组合（起-起、起-终、终-起、终-终）
+        /// <br/>2. 如果端点距离 ∈ (tolerance, maxDistance]，计算无限延长线交点
+        /// <br/>3. 延伸两条线段到交点
+        /// <br/>⚠️ 直接修改 lineList，后续线段会使用更新后的数据
+        /// </remarks>
         public List<Line2D> ExtendNearEndpoints(IEnumerable<Line2D> lines, double tolerance, double maxDistance = 10.0)
         {
             var lineList = lines.ToList();
@@ -381,31 +421,44 @@ namespace HyCADTool.Refactored.Domain.Services
                         {
                             // 计算无限延长线的交点
                             var intersection = currentLine.GetIntersectionWithInfiniteLine(otherLine, tolerance);
-                            
-                            if (intersection != default)
-                            {
+
+                    if (intersection != default)
+                    {
                                 // 延伸当前线段到交点
+                                Line2D newCurrentLine;
                                 if (isCurrentEnd)
                                 {
-                                    currentLine = new Line2D(currentLine.StartPoint, intersection);
+                                    newCurrentLine = new Line2D(currentLine.StartPoint, intersection);
                                 }
                                 else
                                 {
-                                    currentLine = new Line2D(intersection, currentLine.EndPoint);
+                                    newCurrentLine = new Line2D(intersection, currentLine.EndPoint);
                                 }
                                 
                                 // 延伸另一条线段到交点
+                                Line2D newOtherLine;
                                 if (isOtherStart)
                                 {
-                                    lineList[j] = new Line2D(intersection, otherLine.EndPoint);
+                                    newOtherLine = new Line2D(intersection, otherLine.EndPoint);
                                 }
                                 else
                                 {
-                                    lineList[j] = new Line2D(otherLine.StartPoint, intersection);
+                                    newOtherLine = new Line2D(otherLine.StartPoint, intersection);
                                 }
                                 
-                                extended = true;
-                                break;
+                                // 检查新线段是否有效（长度 > 0）
+                                if (newCurrentLine.Length > 1e-6 && newOtherLine.Length > 1e-6)
+                                {
+                                    currentLine = newCurrentLine;
+                                    lineList[j] = newOtherLine;
+                                    extended = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    // 调试输出：跳过零长度线段的延伸
+                                    System.Diagnostics.Debug.WriteLine($"警告：跳过零长度延伸 - currentLine: {newCurrentLine.Length:F6}, otherLine: {newOtherLine.Length:F6}");
+                                }
                             }
                         }
                     }
@@ -421,11 +474,17 @@ namespace HyCADTool.Refactored.Domain.Services
         }
 
         /// <summary>
-        /// 查找所有独立端点（没有与其他线段连接的端点）
+        /// 查找所有独立端点（未与其他线段连接的端点）
         /// </summary>
         /// <param name="lines">线段集合</param>
-        /// <param name="tolerance">容差</param>
-        /// <returns>独立端点列表（包含端点位置和对应线段的方向）</returns>
+        /// <param name="tolerance">几何容差（推荐 1e-6）</param>
+        /// <returns>独立端点列表（包含端点位置和对应线段的归一化方向向量）</returns>
+        /// <remarks>
+        /// 判断标准：
+        /// <br/>- 如果端点与任何其他线段的端点距离 &lt; tolerance，则认为已连接
+        /// <br/>- 否则标记为独立端点
+        /// <br/>用途：绘制独立端点标记，提示用户未连接的地方
+        /// </remarks>
         public List<(Point2D Point, Vector2D Direction)> FindIndependentEndpoints(IEnumerable<Line2D> lines, double tolerance)
         {
             var lineList = lines.ToList();
@@ -476,14 +535,27 @@ namespace HyCADTool.Refactored.Domain.Services
         }
 
         /// <summary>
-        /// FILLET 功能 - 第三步：端点延伸到线段，并在交点处打断线段
+        /// FILLET 步骤3：端点延伸到线段，并在交点处打断线段（不过滤）
         /// </summary>
         /// <param name="lines">输入线段集合</param>
-        /// <param name="tolerance">几何容差</param>
-        /// <param name="maxDistance">最大端点到线段距离阈值</param>
-        /// <returns>处理后的线段列表</returns>
-        public List<Line2D> ExtendEndpointToLine(IEnumerable<Line2D> lines, double tolerance, double maxDistance = 10.0)
+        /// <param name="tolerance">几何容差（推荐 1e-6）</param>
+        /// <param name="maxDistance">最大端点到线段距离阈值（单位：图形单位），推荐 10.0
+        /// <br/>- 只有端点到线段的距离在 (tolerance, maxDistance] 范围内才会延伸</param>
+        /// <returns>处理后的线段列表（未过滤）</returns>
+        /// <remarks>
+        /// 处理逻辑：
+        /// <br/>1. 对每条线段，检查其端点到其他线段的垂直距离
+        /// <br/>2. 如果距离 ∈ (tolerance, maxDistance]，计算无限延长线交点
+        /// <br/>3. 延伸当前线段的端点到交点
+        /// <br/>4. 在交点处打断另一条线段（使用固定阈值 0.5mm 避免极短线段）
+        /// <br/>⚠️ 直接修改 lineList，使用 else if 保证每条线只延伸一个端点
+        /// <br/>🔑 核心思想：只延伸和打断，不过滤，过滤由后续统一步骤处理
+        /// </remarks>
+        public List<Line2D> ExtendEndpointToLine(IEnumerable<Line2D> lines, double tolerance, double maxDistance = 10.0, double minBreakThreshold = 0.5)
         {
+            // minBreakThreshold: 打断保护阈值，避免产生极短线段
+            // 推荐设置为与 minLength 相同的值（例如 5.0），避免打断后立即被过滤
+            
             var lineList = lines.ToList();
             var result = new List<Line2D>();
 
@@ -516,11 +588,25 @@ namespace HyCADTool.Refactored.Domain.Services
                         if (intersection != default && otherLine.IsPointOnSegment(intersection, tolerance))
                         {
                             // 延伸当前线段的起点到交点
-                            currentLine = new Line2D(intersection, currentLine.EndPoint);
+                            Line2D newCurrentLine = new Line2D(intersection, currentLine.EndPoint);
                             
-                            // 在交点处打断 otherLine
+                            // 检查新线段是否有效（长度 > 0）
+                            if (newCurrentLine.Length < 1e-6)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"警告：跳过零长度延伸（起点） - 长度: {newCurrentLine.Length:F6}");
+                                continue;  // 跳过这个延伸操作
+                            }
+                            
+                            currentLine = newCurrentLine;
+                            
+                            // 在交点处智能打断 otherLine（检查打断后的两段长度）
                             double param = GetProjectionParameter(otherLine, intersection);
-                            if (param > 0.01 && param < 0.99)
+                            double length = otherLine.Length;
+                            double segmentA = param * length;        // 起点到交点
+                            double segmentB = (1 - param) * length;  // 交点到终点
+                            
+                            // 只有两段长度都 >= minBreakThreshold 才打断
+                            if (segmentA >= minBreakThreshold && segmentB >= minBreakThreshold)
                             {
                                 // 分割成两段
                                 Line2D segment1 = new Line2D(otherLine.StartPoint, intersection);
@@ -547,9 +633,14 @@ namespace HyCADTool.Refactored.Domain.Services
                             // 延伸当前线段的终点到交点
                             currentLine = new Line2D(currentLine.StartPoint, intersection);
                             
-                            // 在交点处打断 otherLine
+                            // 在交点处智能打断 otherLine（检查打断后的两段长度）
                             double param = GetProjectionParameter(otherLine, intersection);
-                            if (param > 0.01 && param < 0.99)
+                            double length = otherLine.Length;
+                            double segmentA = param * length;        // 起点到交点
+                            double segmentB = (1 - param) * length;  // 交点到终点
+                            
+                            // 只有两段长度都 >= minBreakThreshold 才打断
+                            if (segmentA >= minBreakThreshold && segmentB >= minBreakThreshold)
                             {
                                 // 分割成两段
                                 Line2D segment1 = new Line2D(otherLine.StartPoint, intersection);
@@ -575,9 +666,14 @@ namespace HyCADTool.Refactored.Domain.Services
         }
 
         /// <summary>
-        /// 在交点处分割线段
+        /// 在交点处分割线段（智能打断）
         /// </summary>
-        private List<Line2D> SplitAtIntersections(List<Line2D> lines, double tolerance)
+        /// <param name="lines">输入线段集合</param>
+        /// <param name="tolerance">几何容差</param>
+        /// <param name="minBreakThreshold">打断保护阈值（默认 0.5mm）
+        /// <br/>- 如果打断后产生的线段长度 &lt; minBreakThreshold，则不打断
+        /// <br/>- 避免产生极短的无用线段</param>
+        private List<Line2D> SplitAtIntersections(List<Line2D> lines, double tolerance, double minBreakThreshold = 0.5)
         {
             // 存储每条线段的分割点（使用投影参数）
             var splitParams = new Dictionary<int, List<double>>();
@@ -595,22 +691,33 @@ namespace HyCADTool.Refactored.Domain.Services
                 for (int j = i + 1; j < lines.Count; j++)
                 {
                     var intersection = lines[i].GetIntersection(lines[j], tolerance);
-                    if (intersection != default)
-                    {
+                if (intersection != default)
+                {
                         totalIntersections++;
                         
                         // 计算交点在两条线段上的投影参数
                         double param1 = GetProjectionParameter(lines[i], intersection);
                         double param2 = GetProjectionParameter(lines[j], intersection);
                         
-                        // 只添加在线段内部的交点（不在端点）
-                        // 使用更宽松的端点判断：容差设为 0.01
-                        if (param1 > 0.01 && param1 < 0.99)
+                        // 智能打断：检查打断后的两段长度是否都 >= minSegmentLength
+                        // 避免产生极短的无用线段
+                        double length1 = lines[i].Length;
+                        double length2 = lines[j].Length;
+                        
+                        // 对于 line1：检查打断后的两段长度
+                        double segment1A = param1 * length1;        // 起点到交点的长度
+                        double segment1B = (1 - param1) * length1;  // 交点到终点的长度
+                        
+                        if (segment1A >= minBreakThreshold && segment1B >= minBreakThreshold)
                         {
                             splitParams[i].Add(param1);
                         }
                         
-                        if (param2 > 0.01 && param2 < 0.99)
+                        // 对于 line2：检查打断后的两段长度
+                        double segment2A = param2 * length2;        // 起点到交点的长度
+                        double segment2B = (1 - param2) * length2;  // 交点到终点的长度
+                        
+                        if (segment2A >= minBreakThreshold && segment2B >= minBreakThreshold)
                         {
                             splitParams[j].Add(param2);
                         }
@@ -677,15 +784,98 @@ namespace HyCADTool.Refactored.Domain.Services
                 double t1 = allParams[i];
                 double t2 = allParams[i + 1];
                 
+                // 检查参数差值，避免创建极短线段
                 if (Math.Abs(t2 - t1) > 1e-10)
                 {
                     Point2D p1 = line.StartPoint.Add(line.Direction * t1);
                     Point2D p2 = line.StartPoint.Add(line.Direction * t2);
-                    segments.Add(new Line2D(p1, p2));
+                    
+                    // 额外检查：确保生成的线段不是零长度
+                    double segmentLength = p1.DistanceTo(p2);
+                    if (segmentLength > 1e-6)  // 至少 0.000001mm
+                    {
+                        segments.Add(new Line2D(p1, p2));
+                    }
+                    else
+                    {
+                        // 调试输出：零长度线段被跳过
+                        System.Diagnostics.Debug.WriteLine($"警告：跳过零长度线段 ({p1.X:F3}, {p1.Y:F3}) → ({p2.X:F3}, {p2.Y:F3})");
+                    }
                 }
             }
             
             return segments;
         }
+
+        #endregion
+
+        #region 统一过滤功能
+
+        /// <summary>
+        /// 过滤短线段（统一过滤步骤）
+        /// </summary>
+        /// <param name="lines">输入线段集合</param>
+        /// <param name="minLength">最小线段长度阈值</param>
+        /// <returns>过滤后的线段列表（只包含长度 >= minLength 的有效线段）</returns>
+        /// <remarks>
+        /// 这是唯一的过滤步骤，在所有打断和延伸操作完成后统一执行
+        /// </remarks>
+        /// <summary>
+        /// 过滤短线段（用于测试，输出每条线段的长度信息）
+        /// </summary>
+        /// <param name="lines">输入线段集合</param>
+        /// <param name="minLength">最小长度阈值</param>
+        /// <param name="enableDebugOutput">是否启用调试输出（默认 false）</param>
+        /// <returns>过滤后的线段列表</returns>
+        public List<Line2D> FilterShortSegments(IEnumerable<Line2D> lines, double minLength, bool enableDebugOutput = false)
+        {
+            var lineList = lines.ToList();
+            var result = new List<Line2D>();
+            var deletedLines = new List<Line2D>();
+            
+            if (enableDebugOutput)
+            {
+                System.Diagnostics.Debug.WriteLine("\n========== 过滤短线段（调试模式） ==========");
+                System.Diagnostics.Debug.WriteLine($"最小长度阈值：{minLength:F6}");
+                System.Diagnostics.Debug.WriteLine($"输入线段数：{lineList.Count}");
+                System.Diagnostics.Debug.WriteLine("\n线段长度列表：");
+            }
+            
+            for (int i = 0; i < lineList.Count; i++)
+            {
+                var line = lineList[i];
+                double length = line.Length;
+                bool keep = length >= minLength;
+                
+                if (enableDebugOutput)
+                {
+                    string status = keep ? "✅ 保留" : "❌ 删除";
+                    System.Diagnostics.Debug.WriteLine($"  线段 {i + 1}: 长度 = {length:F6} mm, {status}");
+                    System.Diagnostics.Debug.WriteLine($"    起点: ({line.StartPoint.X:F3}, {line.StartPoint.Y:F3})");
+                    System.Diagnostics.Debug.WriteLine($"    终点: ({line.EndPoint.X:F3}, {line.EndPoint.Y:F3})");
+                }
+                
+                if (keep)
+                {
+                    result.Add(line);
+                }
+                else
+                {
+                    deletedLines.Add(line);
+                }
+            }
+            
+            if (enableDebugOutput)
+            {
+                System.Diagnostics.Debug.WriteLine($"\n过滤结果：");
+                System.Diagnostics.Debug.WriteLine($"  保留：{result.Count} 条");
+                System.Diagnostics.Debug.WriteLine($"  删除：{deletedLines.Count} 条");
+                System.Diagnostics.Debug.WriteLine("==========================================\n");
+            }
+            
+            return result;
+        }
+
+        #endregion
     }
 }

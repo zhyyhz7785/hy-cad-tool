@@ -214,6 +214,10 @@
     <Compile Include="Presentation\PanelManager.cs" />
     <!-- Presentation Layer - Commands -->
     <Compile Include="Presentation\Commands\OverKillCommand.cs" />
+    <Compile Include="Presentation\Commands\HyovSettings.cs" />
+    <Compile Include="Presentation\Commands\HyovSettingsWindow.xaml.cs">
+      <DependentUpon>HyovSettingsWindow.xaml</DependentUpon>
+    </Compile>
     <!-- 阶段 8-10: 几何工具命令 -->
     <Compile Include="Presentation\Commands\BreakCurvesCommand.cs" />
     <Compile Include="Presentation\Commands\MBRCommand.cs" />
@@ -319,6 +323,13 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <!-- Folder placeholders for future files -->
+  </ItemGroup>
+  <ItemGroup>
+    <!-- XAML Files -->
+    <Page Include="Presentation\Commands\HyovSettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Infrastructure\AutoCAD\Persistence\" />

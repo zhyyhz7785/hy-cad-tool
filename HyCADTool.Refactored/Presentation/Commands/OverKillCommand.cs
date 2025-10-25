@@ -30,14 +30,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class OverKillCommand
     {
-        private const double DEFAULT_TOLERANCE = 1e-6;
-        private const double MIN_EXTENSION_DISTANCE = 10.0;  // 最小延伸距离
-        private const double MAX_EXTENSION_DISTANCE = 500.0; // 最大延伸距离
-        private const string WARNING_LAYER = "00_HY_警告_红色";
         private const string MARKER_LAYER = "00_HY_临时标记";  // 临时标记图层
-        private const short WARNING_COLOR = 1; // 红色
-        private const double MARKER_SCALE = 20.0; // 标记放大倍数
-        
 
         private readonly LineOverKillService _overKillService;
         private readonly ILayerService _layerService;
@@ -52,7 +45,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
 
         /// <summary>
-        /// HYOV 命令 - 基础版：只做 OVERKILL 清理
+        /// HYOV 命令 - OVERKILL + FILLET 综合清理
+        /// 
+        /// 测试命令：C11（由 Recall.cs 动态调用，支持热重启）
         /// </summary>
         [CommandMethod("HYOV")]
         public void Execute()
@@ -63,7 +58,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                ed.WriteMessage("\n=== HYOV 命令（基础 OVERKILL 清理） ===");
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                
+                ed.WriteMessage("\n=== HYOV 命令（OVERKILL + FILLET） ===");
+                ed.WriteMessage("\n提示：如果修改代码后命令未更新，请使用 C11 命令或重启 AutoCAD");
                 
                 // 1. 获取用户选择的线段
                 var selectionResult = GetLineSelection(ed);
@@ -84,40 +82,80 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 int originalCount = lineData.Count;
                 ed.WriteMessage($"\n已选择 {originalCount} 条线段");
 
-                // 3. 预清理：合并重叠和共线线段
+                // 获取当前设置并应用单位换算
+                var settings = HyovSettings.Instance;
+                double tolerance = settings.GetScaledGeometricTolerance();
+                double parallelDistance = settings.GetScaledParallelMergeDistance();
+                double minLineLength = settings.GetScaledMinLineLength();
+                double maxExtendDistance = settings.GetScaledMaxExtendDistance();
+                double independentTolerance = settings.GetScaledIndependentEndpointTolerance();
+
+
                 var domainLines = lineData.Select(x => x.DomainLine).ToList();
-                var preCleanedLines = _overKillService.MergeOverlappingLines(domainLines, DEFAULT_TOLERANCE, 1);
-                ed.WriteMessage($"\n第0步-预清理：{originalCount} → {preCleanedLines.Count} 线段");
-                
-                // 4. FILLET 第一步：打断相交直线，删除短线段
-                var brokenLines = _overKillService.BreakAndCleanLines(preCleanedLines, DEFAULT_TOLERANCE, minLength: 1.0);
-                ed.WriteMessage($"\n第1步-打断并清理：{preCleanedLines.Count} → {brokenLines.Count} 线段");
-                
-                // 5. FILLET 第二步：延伸端点距离很近的线段
-                var extendedLines = _overKillService.ExtendNearEndpoints(brokenLines, DEFAULT_TOLERANCE, maxDistance: 10.0);
-                ed.WriteMessage($"\n第2步-端点延伸：{brokenLines.Count} → {extendedLines.Count} 线段");
-                
-                // 6. FILLET 第三步：端点延伸到线段并打断
-                var extendedToLineLines = _overKillService.ExtendEndpointToLine(extendedLines, DEFAULT_TOLERANCE, maxDistance: 10.0);
-                ed.WriteMessage($"\n第3步-端点到线：{extendedLines.Count} → {extendedToLineLines.Count} 线段");
-                
-                // 7. 最终清理：删除完全重复的线段
-                var cleanedLines = _overKillService.RemoveDuplicateLines(extendedToLineLines, DEFAULT_TOLERANCE);
-                ed.WriteMessage($"\n第4步-删除重复：{extendedToLineLines.Count} → {cleanedLines.Count} 线段");
-                
-                // 8. 查找并标记独立端点
-                var independentEndpoints = _overKillService.FindIndependentEndpoints(cleanedLines, DEFAULT_TOLERANCE);
-                if (independentEndpoints.Count > 0)
+                List<Line2D> processedLines = domainLines;
+
+                // 3. OVERKILL 预清理：合并重叠和共线线段（可选）
+                if (settings.EnablePreClean)
                 {
-                    DrawIndependentEndpointMarkers(doc, db, independentEndpoints);
-                    ed.WriteMessage($"\n找到 {independentEndpoints.Count} 个独立端点，已标记");
+                    processedLines = _overKillService.MergeOverlappingLines(processedLines, tolerance, parallelDistance);
+                    ed.WriteMessage($"\n第0步-预清理：{originalCount} → {processedLines.Count} 线段");
+                }
+                
+                // 4. FILLET 第一步：打断相交线段（不过滤）
+                if (settings.EnableBreakLines)
+                {
+                    var beforeCount = processedLines.Count;
+                    processedLines = _overKillService.BreakAtIntersections(processedLines, tolerance, minLineLength);
+                    ed.WriteMessage($"\n第1步-打断相交：{beforeCount} → {processedLines.Count} 线段");
+                }
+                
+                // 5. FILLET 第二步：端点延伸（不过滤）
+                if (settings.EnableExtendEndpoints)
+                {
+                    var beforeCount = processedLines.Count;
+                    processedLines = _overKillService.ExtendNearEndpoints(processedLines, tolerance, maxExtendDistance);
+                    ed.WriteMessage($"\n第2步-端点延伸：{beforeCount} → {processedLines.Count} 线段");
+                }
+                
+                // 6. FILLET 第三步：端点到线延伸（不过滤）
+                if (settings.EnableExtendToLine)
+                {
+                    var beforeCount = processedLines.Count;
+                    processedLines = _overKillService.ExtendEndpointToLine(processedLines, tolerance, maxExtendDistance, minLineLength);
+                    ed.WriteMessage($"\n第3步-端点到线：{beforeCount} → {processedLines.Count} 线段");
+                }
+                
+                // 7. 统一过滤短线段（一次性）
+                var beforeFilter = processedLines.Count;
+                processedLines = _overKillService.FilterShortSegments(processedLines, minLineLength, false);
+                ed.WriteMessage($"\n第4步-过滤短线段：{beforeFilter} → {processedLines.Count} 线段");
+                
+                // 8. 删除完全重复的线段
+                var cleanedLines = _overKillService.RemoveDuplicateLines(processedLines, tolerance);
+                ed.WriteMessage($"\n第5步-删除重复：{processedLines.Count} → {cleanedLines.Count} 线段");
+                
+                // 9. 查找并标记独立端点
+                if (settings.ShowIndependentEndpoints)
+                {
+                    var independentEndpoints = _overKillService.FindIndependentEndpoints(cleanedLines, independentTolerance);
+                    if (independentEndpoints.Count > 0)
+                    {
+                        DrawIndependentEndpointMarkers(doc, db, independentEndpoints, settings.MarkerScale);
+                        ed.WriteMessage($"\n找到 {independentEndpoints.Count} 个独立端点，已标记");
+                    }
+                    else
+                    {
+                        ed.WriteMessage($"\n✅ 未找到独立端点（所有线段都已连接）");
+                    }
                 }
                 
                 // 9. 更新图纸
                 UpdateLines(doc, db, lineData, cleanedLines);
                 
                 // 10. 输出结果
+                stopwatch.Stop();
                 ed.WriteMessage($"\n最终结果：{originalCount} → {cleanedLines.Count} 线段");
+                ed.WriteMessage($"\n处理时间：{stopwatch.ElapsedMilliseconds} 毫秒");
             }
             catch (System.Exception ex)
             {
@@ -216,7 +254,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private void DrawIndependentEndpointMarkers(
             Autodesk.AutoCAD.ApplicationServices.Document doc, 
             Database db, 
-            List<(Point2D Point, Vector2D Direction)> endpoints)
+            List<(Point2D Point, Vector2D Direction)> endpoints,
+            double markerScale)
         {
             using (doc.LockDocument())
             using (Transaction trans = db.TransactionManager.StartTransaction())
@@ -227,9 +266,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 BlockTable bt = trans.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                 BlockTableRecord btr = trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
 
-                // 标记尺寸：长方形，长边 = 10，短边 = 3，放大倍数 = MARKER_SCALE
-                double longSide = 10.0 * MARKER_SCALE;
-                double shortSide = 3.0 * MARKER_SCALE;
+                // 标记尺寸：长方形，长边 = 10，短边 = 3，放大倍数由参数控制
+                double longSide = 10.0 * markerScale;
+                double shortSide = 3.0 * markerScale;
                 
                 foreach (var (point, direction) in endpoints)
                 {
@@ -288,6 +327,44 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 lt.Add(ltr);
                 trans.AddNewlyCreatedDBObject(ltr, true);
                 lt.DowngradeOpen();
+            }
+        }
+
+        /// <summary>
+        /// HYOVSET 命令 - 打开 HYOV 参数设置窗口
+        /// 
+        /// 测试命令：C12（由 Recall.cs 动态调用，支持热重启）
+        /// </summary>
+        [CommandMethod("HYOVSET")]
+        public void ExecuteSettings()
+        {
+            try
+            {
+                // 创建并显示设置窗口
+                var settingsWindow = new HyovSettingsWindow();
+                var result = AcApp.ShowModalWindow(settingsWindow);
+                
+                if (result == true)
+                {
+                    var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+                    ed.WriteMessage("\n✅ HYOV 参数已更新");
+                    
+                    // 显示当前设置
+                    var settings = HyovSettings.Instance;
+                    ed.WriteMessage("\n========== 当前设置 ==========");
+                    ed.WriteMessage($"\n绘图单位: {(settings.Unit == DrawingUnit.Millimeter ? "毫米(mm)" : "米(m)")}");
+                    ed.WriteMessage($"\n几何容差: {settings.GeometricTolerance:G} → 实际值: {settings.GetScaledGeometricTolerance():G}");
+                    ed.WriteMessage($"\n平行线合并距离: {settings.ParallelMergeDistance:F3} → 实际值: {settings.GetScaledParallelMergeDistance():F6}");
+                    ed.WriteMessage($"\n最小线段长度: {settings.MinLineLength:F3} → 实际值: {settings.GetScaledMinLineLength():F6}");
+                    ed.WriteMessage($"\n端点延伸最大距离: {settings.MaxExtendDistance:F3} → 实际值: {settings.GetScaledMaxExtendDistance():F6}");
+                    ed.WriteMessage($"\n标记缩放倍数: {settings.MarkerScale:F1}");
+                    ed.WriteMessage($"\n独立端点检测容差: {settings.IndependentEndpointTolerance:F3} → 实际值: {settings.GetScaledIndependentEndpointTolerance():F6}");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+                ed.WriteMessage($"\n错误：{ex.Message}");
             }
         }
 

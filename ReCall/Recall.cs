@@ -2,7 +2,9 @@
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Resources;
 
@@ -59,10 +61,31 @@ namespace HyCADTool.ReCall
         /// </summary>
         private const string TEST_METHOD_NAME = "RunAllTests";
 
+        /// <summary>
+        /// 测试命令配置（C11-C19）
+        /// 格式：命令名, 类名, 方法名
+        /// 留空表示该槽位未使用
+        /// </summary>
+        private static readonly (string Command, string ClassName, string MethodName)[] TEST_COMMANDS = new[]
+        {
+            ("C11", "HyCADTool.Refactored.Presentation.Commands.OverKillCommand", "Execute"),        // HYOV
+            ("C12", "HyCADTool.Refactored.Presentation.Commands.OverKillCommand", "ExecuteSettings"), // HYOVSET
+            ("C13", "", ""),  // 预留槽位3
+            ("C14", "", ""),  // 预留槽位4
+            ("C15", "", ""),  // 预留槽位5
+            ("C16", "", ""),  // 预留槽位6
+            ("C17", "", ""),  // 预留槽位7
+            ("C18", "", ""),  // 预留槽位8
+            ("C19", "", ""),  // 预留槽位9
+        };
+
         #endregion
 
         // 保存 TestRunner.RunAllTests 的委托
         private Action _runAllTestsAction;
+        
+        // 保存测试命令的委托（C11-C19）
+        private readonly Dictionary<string, Action> _testCommandActions = new Dictionary<string, Action>();
 
         /// <summary>
         /// 构造函数，初始化并加载插件
@@ -123,12 +146,31 @@ namespace HyCADTool.ReCall
 
                 // 加载插件并获取 TestRunner
                 LoadPlugin(targetFilePath, out _runAllTestsAction);
+                
+                // 加载测试命令（C11-C19）
+                LoadTestCommands(targetFilePath);
 
                 ed.WriteMessage("\n✓ 插件加载成功！");
                 ed.WriteMessage("\n" + new string('=', 60));
                 ed.WriteMessage("\n可用命令：");
-                ed.WriteMessage("\n  C1 - 运行所有测试");
-                ed.WriteMessage("\n  C2 - 重新加载插件");
+                ed.WriteMessage("\n  C1  - 运行所有测试（自动执行 HYOV）");
+                ed.WriteMessage("\n  C2  - 重新加载插件");
+                
+                // 显示已配置的测试命令
+                foreach (var cmd in TEST_COMMANDS)
+                {
+                    if (!string.IsNullOrEmpty(cmd.ClassName))
+                    {
+                        var shortClassName = cmd.ClassName.Split('.').Last();
+                        ed.WriteMessage($"\n  {cmd.Command} - {shortClassName}.{cmd.MethodName}() ✓");
+                    }
+                }
+                
+                ed.WriteMessage("\n");
+                ed.WriteMessage("\n⚠️ 重要提示：");
+                ed.WriteMessage("\n  - 修改代码后，请使用 C11-C19 测试命令（支持热重启）");
+                ed.WriteMessage("\n  - 或者重启 AutoCAD 后，正式命令才会更新");
+                ed.WriteMessage("\n  - 在 Recall.cs 的 TEST_COMMANDS 中配置测试命令");
                 ed.WriteMessage("\n" + new string('=', 60));
                 ed.WriteMessage("\n");
             }
@@ -258,6 +300,103 @@ namespace HyCADTool.ReCall
 
             return null;
         }
+        
+        /// <summary>
+        /// 加载测试命令（C11-C19）
+        /// </summary>
+        private void LoadTestCommands(string pluginPath)
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            
+            // 清空现有命令
+            _testCommandActions.Clear();
+            
+            // 加载插件程序集
+            var targetAssembly = Assembly.Load(File.ReadAllBytes(pluginPath));
+            
+            int loadedCount = 0;
+            foreach (var (command, className, methodName) in TEST_COMMANDS)
+            {
+                // 跳过未配置的槽位
+                if (string.IsNullOrEmpty(className) || string.IsNullOrEmpty(methodName))
+                    continue;
+                
+                try
+                {
+                    // 获取类型
+                    var commandType = targetAssembly.GetType(className);
+                    if (commandType == null)
+                    {
+                        ed?.WriteMessage($"\n⚠️ 警告：找不到类型 '{className}'");
+                        continue;
+                    }
+                    
+                    // 获取方法
+                    var method = commandType.GetMethod(methodName);
+                    if (method == null)
+                    {
+                        ed?.WriteMessage($"\n⚠️ 警告：找不到方法 '{className}.{methodName}'");
+                        continue;
+                    }
+                    
+                    // 创建实例
+                    var instance = Activator.CreateInstance(commandType);
+                    if (instance == null)
+                    {
+                        ed?.WriteMessage($"\n⚠️ 警告：无法创建 '{className}' 的实例");
+                        continue;
+                    }
+                    
+                    // 创建委托并保存
+                    _testCommandActions[command] = () => method.Invoke(instance, null);
+                    loadedCount++;
+                }
+                catch (System.Exception ex)
+                {
+                    ed?.WriteMessage($"\n⚠️ 警告：加载 {command} 失败: {ex.Message}");
+                }
+            }
+            
+            ed?.WriteMessage($"\n✓ 已加载 {loadedCount} 个测试命令");
+        }
+        
+        /// <summary>
+        /// 执行测试命令的通用方法
+        /// </summary>
+        private void ExecuteTestCommand(string commandName)
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            if (ed == null) return;
+            
+            try
+            {
+                if (!_testCommandActions.ContainsKey(commandName))
+                {
+                    ed.WriteMessage($"\n✗ 命令 {commandName} 未配置或加载失败");
+                    ed.WriteMessage($"\n   请在 Recall.cs 的 TEST_COMMANDS 中配置该命令");
+                    return;
+                }
+                
+                // 执行命令
+                _testCommandActions[commandName].Invoke();
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n✗ 命令 {commandName} 执行失败: {ex.Message}");
+                ed.WriteMessage($"\n堆栈跟踪: {ex.StackTrace}");
+            }
+        }
+        
+        // 自动生成 C11-C19 命令方法
+        [CommandMethod("C11")] public void ExecuteC11() => ExecuteTestCommand("C11");
+        [CommandMethod("C12")] public void ExecuteC12() => ExecuteTestCommand("C12");
+        [CommandMethod("C13")] public void ExecuteC13() => ExecuteTestCommand("C13");
+        [CommandMethod("C14")] public void ExecuteC14() => ExecuteTestCommand("C14");
+        [CommandMethod("C15")] public void ExecuteC15() => ExecuteTestCommand("C15");
+        [CommandMethod("C16")] public void ExecuteC16() => ExecuteTestCommand("C16");
+        [CommandMethod("C17")] public void ExecuteC17() => ExecuteTestCommand("C17");
+        [CommandMethod("C18")] public void ExecuteC18() => ExecuteTestCommand("C18");
+        [CommandMethod("C19")] public void ExecuteC19() => ExecuteTestCommand("C19");
     }
 
     /// <summary>
