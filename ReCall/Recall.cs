@@ -71,9 +71,9 @@ namespace HyCADTool.ReCall
             ("C11", "HyCADTool.Refactored.Presentation.Commands.OverKillCommand", "Execute"),        // HYOV
             ("C12", "HyCADTool.Refactored.Presentation.Commands.OverKillCommand", "ExecuteSettings"), // HYOVSET
             ("C13", "HyCADTool.Refactored.Presentation.Commands.BreakCurvesCommand", "Execute"),     // HYBC
-            ("C14", "", ""),  // 预留槽位4
-            ("C15", "", ""),  // 预留槽位5
-            ("C16", "", ""),  // 预留槽位6
+            ("C14", "HyCADTool.Refactored.Presentation.Commands.Elevation3DCommand", "Execute"),     // HY3 (原方法)
+            ("C15", "HyCADTool.Refactored.Presentation.Commands.SurfaceBasedElevation3DCommand", "Execute"),  // HY3 (新方法-表面)
+            ("C16", "HyCADTool.Refactored.Presentation.Commands.TestOffsetCommand", "Execute"),  // 测试多边形偏移
             ("C17", "", ""),  // 预留槽位7
             ("C18", "", ""),  // 预留槽位8
             ("C19", "", ""),  // 预留槽位9
@@ -302,6 +302,86 @@ namespace HyCADTool.ReCall
         }
         
         /// <summary>
+        /// 初始化 ServiceLocator（如果尚未初始化）
+        /// </summary>
+        private void InitializeServiceLocator(Assembly targetAssembly, Editor ed)
+        {
+            try
+            {
+                // 获取 ServiceLocator 类型
+                var serviceLocatorType = targetAssembly.GetType("HyCADTool.Refactored.Infrastructure.Configuration.ServiceLocator");
+                if (serviceLocatorType == null)
+                {
+                    ed?.WriteMessage("\n⚠️ 警告：找不到 ServiceLocator 类型");
+                    return;
+                }
+                
+                // 获取 Container 属性
+                var containerProperty = serviceLocatorType.GetProperty("Container", 
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                
+                // 检查 Container 是否已初始化
+                try
+                {
+                    var existingContainer = containerProperty?.GetValue(null);
+                    if (existingContainer != null)
+                    {
+                        // 已初始化，无需重复初始化
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Container 未初始化，继续初始化流程
+                }
+                
+                // 获取 AutofacModule 类型
+                var autofacModuleType = targetAssembly.GetType("HyCADTool.Refactored.Infrastructure.Configuration.AutofacModule");
+                if (autofacModuleType == null)
+                {
+                    ed?.WriteMessage("\n⚠️ 警告：找不到 AutofacModule 类型");
+                    return;
+                }
+                
+                // 创建 ContainerBuilder
+                var containerBuilderType = Type.GetType("Autofac.ContainerBuilder, Autofac");
+                if (containerBuilderType == null)
+                {
+                    ed?.WriteMessage("\n⚠️ 警告：找不到 Autofac.ContainerBuilder 类型");
+                    return;
+                }
+                
+                var builder = Activator.CreateInstance(containerBuilderType);
+                
+                // 调用 builder.RegisterModule(new AutofacModule())
+                var registerModuleMethod = containerBuilderType.GetMethod("RegisterModule", 
+                    new[] { Type.GetType("Autofac.Core.IModule, Autofac") });
+                var moduleInstance = Activator.CreateInstance(autofacModuleType);
+                registerModuleMethod?.Invoke(builder, new[] { moduleInstance });
+                
+                // 调用 builder.Build()
+                var buildMethod = containerBuilderType.GetMethod("Build", Type.EmptyTypes);
+                var container = buildMethod?.Invoke(builder, null);
+                
+                // 调用 ServiceLocator.Initialize(container)
+                var initializeMethod = serviceLocatorType.GetMethod("Initialize", 
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                initializeMethod?.Invoke(null, new[] { container });
+                
+                ed?.WriteMessage("\n✓ ServiceLocator 已初始化");
+            }
+            catch (System.Exception ex)
+            {
+                ed?.WriteMessage($"\n⚠️ ServiceLocator 初始化失败: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    ed?.WriteMessage($"\n   内部异常: {ex.InnerException.Message}");
+                }
+                ed?.WriteMessage($"\n   堆栈: {ex.StackTrace}");
+            }
+        }
+        
+        /// <summary>
         /// 加载测试命令（C11-C19）
         /// </summary>
         private void LoadTestCommands(string pluginPath)
@@ -314,6 +394,9 @@ namespace HyCADTool.ReCall
             // 加载插件程序集
             var targetAssembly = Assembly.Load(File.ReadAllBytes(pluginPath));
             
+            // 初始化 ServiceLocator（如果尚未初始化）
+            InitializeServiceLocator(targetAssembly, ed);
+            
             int loadedCount = 0;
             foreach (var (command, className, methodName) in TEST_COMMANDS)
             {
@@ -323,21 +406,38 @@ namespace HyCADTool.ReCall
                 
                 try
                 {
+                    // 调试输出：开始加载
+                    ed?.WriteMessage($"\n[DEBUG] 开始加载 {command} -> {className}.{methodName}");
+                    
                     // 获取类型
                     var commandType = targetAssembly.GetType(className);
                     if (commandType == null)
                     {
                         ed?.WriteMessage($"\n⚠️ 警告：找不到类型 '{className}'");
+                        ed?.WriteMessage($"\n   可用类型列表:");
+                        foreach (var t in targetAssembly.GetTypes().Where(t => t.Namespace == "HyCADTool.Refactored.Presentation.Commands"))
+                        {
+                            ed?.WriteMessage($"\n   - {t.FullName}");
+                        }
                         continue;
                     }
+                    
+                    ed?.WriteMessage($"\n[DEBUG] 类型找到：{commandType.FullName}");
                     
                     // 获取方法
                     var method = commandType.GetMethod(methodName);
                     if (method == null)
                     {
                         ed?.WriteMessage($"\n⚠️ 警告：找不到方法 '{className}.{methodName}'");
+                        ed?.WriteMessage($"\n   可用方法列表:");
+                        foreach (var m in commandType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+                        {
+                            ed?.WriteMessage($"\n   - {m.Name}");
+                        }
                         continue;
                     }
+                    
+                    ed?.WriteMessage($"\n[DEBUG] 方法找到：{method.Name}");
                     
                     // 创建实例
                     var instance = Activator.CreateInstance(commandType);
@@ -347,17 +447,37 @@ namespace HyCADTool.ReCall
                         continue;
                     }
                     
+                    ed?.WriteMessage($"\n[DEBUG] 实例创建成功");
+                    
                     // 创建委托并保存
                     _testCommandActions[command] = () => method.Invoke(instance, null);
                     loadedCount++;
+                    
+                    ed?.WriteMessage($"\n[DEBUG] {command} 加载成功 ✓");
                 }
                 catch (System.Exception ex)
                 {
                     ed?.WriteMessage($"\n⚠️ 警告：加载 {command} 失败: {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        ed?.WriteMessage($"\n   内部异常: {ex.InnerException.Message}");
+                        ed?.WriteMessage($"\n   堆栈: {ex.InnerException.StackTrace}");
+                    }
+                    ed?.WriteMessage($"\n   完整堆栈: {ex.StackTrace}");
                 }
             }
             
             ed?.WriteMessage($"\n✓ 已加载 {loadedCount} 个测试命令");
+            
+            // 调试：显示所有成功加载的命令
+            if (_testCommandActions.Count > 0)
+            {
+                ed?.WriteMessage("\n已加载的命令:");
+                foreach (var cmd in _testCommandActions.Keys)
+                {
+                    ed?.WriteMessage($"\n  - {cmd}");
+                }
+            }
         }
         
         /// <summary>
@@ -365,8 +485,16 @@ namespace HyCADTool.ReCall
         /// </summary>
         private void ExecuteTestCommand(string commandName)
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            if (ed == null) return;
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+            {
+                System.Windows.Forms.MessageBox.Show("没有活动的文档。", "错误", 
+                    System.Windows.Forms.MessageBoxButtons.OK, 
+                    System.Windows.Forms.MessageBoxIcon.Error);
+                return;
+            }
+            
+            var ed = doc.Editor;
             
             try
             {
@@ -382,8 +510,19 @@ namespace HyCADTool.ReCall
             }
             catch (System.Exception ex)
             {
-                ed.WriteMessage($"\n✗ 命令 {commandName} 执行失败: {ex.Message}");
-                ed.WriteMessage($"\n堆栈跟踪: {ex.StackTrace}");
+                // 使用 MessageBox 显示错误，避免在错误的上下文中调用 WriteMessage
+                var errorMsg = $"命令 {commandName} 执行失败:\n\n" +
+                              $"错误: {ex.Message}\n\n" +
+                              $"堆栈跟踪:\n{ex.StackTrace}";
+                
+                if (ex.InnerException != null)
+                {
+                    errorMsg += $"\n\n内部异常:\n{ex.InnerException.Message}";
+                }
+                
+                System.Windows.Forms.MessageBox.Show(errorMsg, $"命令 {commandName} 执行失败", 
+                    System.Windows.Forms.MessageBoxButtons.OK, 
+                    System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
         
