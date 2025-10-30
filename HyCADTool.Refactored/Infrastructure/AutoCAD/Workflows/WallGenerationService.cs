@@ -4,11 +4,12 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.Entities;
+using HyCADTool.Refactored.Domain.Services;
 using HyCADTool.Refactored.Domain.Services.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 
-namespace HyCADTool.Refactored.HyApplication.Services
+namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
 {
     /// <summary>
     /// 墙体生成服务
@@ -120,7 +121,7 @@ namespace HyCADTool.Refactored.HyApplication.Services
             double currentBottomElevation,
             IWallBuilder wallBuilder)
         {
-            var (bottom, top, offsetDirection) = _calculator.CalculateConnectingWall(
+            (double bottom, double top, int offsetDirection) = _calculator.CalculateConnectingWall(
                 currentElevation,
                 adjacentElevation);
             
@@ -162,7 +163,7 @@ namespace HyCADTool.Refactored.HyApplication.Services
             double bottomElevation,
             IWallBuilder wallBuilder)
         {
-            var (bottom, top, offsetDirection) = _calculator.CalculateRetainingWall(
+            (double bottom, double top, int offsetDirection) = _calculator.CalculateRetainingWall(
                 baseElevation,
                 bottomElevation);
             

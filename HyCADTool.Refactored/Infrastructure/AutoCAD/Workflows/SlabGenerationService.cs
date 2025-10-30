@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Entities;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 
-namespace HyCADTool.Refactored.HyApplication.Services
+namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
 {
     /// <summary>
     /// 筏板生成服务
@@ -76,4 +76,5 @@ namespace HyCADTool.Refactored.HyApplication.Services
         }
     }
 }
+
 

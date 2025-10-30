@@ -18,6 +18,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         public const string LAYER_OUTER_POLYGONS = "00_HY_标记_外轮廓";
         public const string LAYER_INNER_HOLES = "00_HY_标记_内孔洞";
         public const string LAYER_ELEVATION_CHECK = "00_HY_标记_标高检查";
+        public const string LAYER_INDEPENDENT_ENDPOINTS = "00_HY_标记_独立端点";
 
         /// <summary>
         /// 确保标记图层存在

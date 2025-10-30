@@ -220,20 +220,13 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .SingleInstance();
             
             // === 阶段 13: HYBC/HYOV 重构服务 ===
-            // 标记图层服务
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.MarkerLayerService>()
                 .AsSelf()
                 .SingleInstance();
             
-            // 空间索引服务（泛型）
             builder.RegisterGeneric(typeof(HyCADTool.Refactored.Domain.Services.Geometry.SpatialIndexService<>))
                 .AsSelf()
                 .SingleInstance();
-            
-            // HyApplication 层工作流
-            builder.RegisterType<HyCADTool.Refactored.HyApplication.Services.BreakCurvesWorkflow>()
-                .AsSelf()
-                .InstancePerDependency();
             
             // TODO: 后续添加更多服务注册
         }

@@ -44,6 +44,12 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     
+    <!-- WPF References (for WarmupWPF) -->
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Xaml" />
+    
     <!-- AutoCAD .NET API References -->
     <Reference Include="AcCoreMgd">
       <HintPath>bin\Debug\AcCoreMgd.dll</HintPath>

@@ -1,8 +1,9 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using HyCADTool.Refactored.Presentation.Commands;
 
-namespace HyCADTool.Refactored.Presentation.Commands
+namespace HyCADTool.Refactored.Presentation.Views
 {
     /// <summary>
     /// HYOV 参数设置窗口
@@ -13,13 +14,31 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         public HyovSettingsWindow()
         {
+            var ed = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument?.Editor;
+            var totalWatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            ed?.WriteMessage("\n  === HyovSettingsWindow 构造函数 ===");
+            
+            var phase1 = System.Diagnostics.Stopwatch.StartNew();
             InitializeComponent();
+            ed?.WriteMessage($"\n  [InitializeComponent] {phase1.ElapsedMilliseconds} 毫秒");
             
-            // 复制当前设置
+            var phase2 = System.Diagnostics.Stopwatch.StartNew();
             _settings = HyovSettings.Instance.Clone();
+            ed?.WriteMessage($"\n  [Clone Settings] {phase2.ElapsedMilliseconds} 毫秒");
             
-            // 加载设置到界面
+            var phase3 = System.Diagnostics.Stopwatch.StartNew();
             LoadSettings();
+            ed?.WriteMessage($"\n  [LoadSettings] {phase3.ElapsedMilliseconds} 毫秒");
+            
+            totalWatch.Stop();
+            ed?.WriteMessage($"\n  [构造函数总时间] {totalWatch.ElapsedMilliseconds} 毫秒");
+            
+            // 监听 Loaded 事件
+            this.Loaded += (s, e) =>
+            {
+                ed?.WriteMessage("\n  [窗口 Loaded 事件触发]");
+            };
         }
 
         /// <summary>
@@ -180,9 +199,4 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
     }
 }
-
-
-
-
-
 

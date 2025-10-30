@@ -73,8 +73,8 @@ namespace HyCADTool.ReCall
             ("C13", "HyCADTool.Refactored.Presentation.Commands.BreakCurvesCommand", "Execute"),     // HYBC
             ("C14", "HyCADTool.Refactored.Presentation.Commands.Elevation3DCommand", "Execute"),     // HY3 (原方法)
             ("C15", "HyCADTool.Refactored.Presentation.Commands.SurfaceBasedElevation3DCommand", "Execute"),  // HY3 (新方法-表面)
-            ("C16", "HyCADTool.Refactored.Presentation.Commands.TestOffsetCommand", "Execute"),  // 测试多边形偏移
-            ("C17", "", ""),  // 预留槽位7
+            ("C16", "HyCADTool.Refactored.Presentation.Commands.TestOffsetCommand", "Execute"),      // 测试多边形偏移
+            ("C17", "HyCADTool.Refactored.Presentation.Commands.TestPanelCommand", "ShowTestPanel"), // HYTEST (性能对比测试)
             ("C18", "", ""),  // 预留槽位8
             ("C19", "", ""),  // 预留槽位9
         };
@@ -406,38 +406,21 @@ namespace HyCADTool.ReCall
                 
                 try
                 {
-                    // 调试输出：开始加载
-                    ed?.WriteMessage($"\n[DEBUG] 开始加载 {command} -> {className}.{methodName}");
-                    
                     // 获取类型
                     var commandType = targetAssembly.GetType(className);
                     if (commandType == null)
                     {
                         ed?.WriteMessage($"\n⚠️ 警告：找不到类型 '{className}'");
-                        ed?.WriteMessage($"\n   可用类型列表:");
-                        foreach (var t in targetAssembly.GetTypes().Where(t => t.Namespace == "HyCADTool.Refactored.Presentation.Commands"))
-                        {
-                            ed?.WriteMessage($"\n   - {t.FullName}");
-                        }
                         continue;
                     }
-                    
-                    ed?.WriteMessage($"\n[DEBUG] 类型找到：{commandType.FullName}");
                     
                     // 获取方法
                     var method = commandType.GetMethod(methodName);
                     if (method == null)
                     {
                         ed?.WriteMessage($"\n⚠️ 警告：找不到方法 '{className}.{methodName}'");
-                        ed?.WriteMessage($"\n   可用方法列表:");
-                        foreach (var m in commandType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
-                        {
-                            ed?.WriteMessage($"\n   - {m.Name}");
-                        }
                         continue;
                     }
-                    
-                    ed?.WriteMessage($"\n[DEBUG] 方法找到：{method.Name}");
                     
                     // 创建实例
                     var instance = Activator.CreateInstance(commandType);
@@ -447,37 +430,17 @@ namespace HyCADTool.ReCall
                         continue;
                     }
                     
-                    ed?.WriteMessage($"\n[DEBUG] 实例创建成功");
-                    
                     // 创建委托并保存
                     _testCommandActions[command] = () => method.Invoke(instance, null);
                     loadedCount++;
-                    
-                    ed?.WriteMessage($"\n[DEBUG] {command} 加载成功 ✓");
                 }
                 catch (System.Exception ex)
                 {
                     ed?.WriteMessage($"\n⚠️ 警告：加载 {command} 失败: {ex.Message}");
-                    if (ex.InnerException != null)
-                    {
-                        ed?.WriteMessage($"\n   内部异常: {ex.InnerException.Message}");
-                        ed?.WriteMessage($"\n   堆栈: {ex.InnerException.StackTrace}");
-                    }
-                    ed?.WriteMessage($"\n   完整堆栈: {ex.StackTrace}");
                 }
             }
             
             ed?.WriteMessage($"\n✓ 已加载 {loadedCount} 个测试命令");
-            
-            // 调试：显示所有成功加载的命令
-            if (_testCommandActions.Count > 0)
-            {
-                ed?.WriteMessage("\n已加载的命令:");
-                foreach (var cmd in _testCommandActions.Keys)
-                {
-                    ed?.WriteMessage($"\n  - {cmd}");
-                }
-            }
         }
         
         /// <summary>

@@ -2,10 +2,10 @@ using System;
 using HyCADTool.Refactored.Domain.ValueObjects;
 using HyCADTool.Refactored.Domain.Services;
 
-namespace HyCADTool.Refactored.HyApplication.Services
+namespace HyCADTool.Refactored.Domain.Services
 {
     /// <summary>
-    /// 墙体几何计算服务
+    /// 墙体几何计算服务（Domain 层 - 平台无关）
     /// 负责计算墙体的高度、偏移方向等几何参数
     /// </summary>
     public class WallGeometryCalculator
@@ -86,4 +86,5 @@ namespace HyCADTool.Refactored.HyApplication.Services
         }
     }
 }
+
 

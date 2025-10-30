@@ -1,5 +1,6 @@
 using System;
 
+
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -13,6 +14,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
     /// <summary>
     /// HYOV 命令参数配置（单例模式）
+    /// 提供 HYOV 命令的所有配置参数管理
     /// </summary>
     public class HyovSettings
     {

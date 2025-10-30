@@ -16,7 +16,8 @@ using HyCADTool.Refactored.Domain.Entities;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.Configuration;
-using HyCADTool.Refactored.HyApplication.Services;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows;
+using HyCADTool.Refactored.Domain.Services;
 
 namespace HyCADTool.Refactored.Presentation.Commands
 {
@@ -51,7 +52,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             
             var detector = new AdjacencyDetector(tolerance: 1.0);
             _wallService = new WallGenerationService(
-                new HyApplication.Services.WallGeometryCalculator(),
+                new WallGeometryCalculator(),
                 detector,
                 editor: null);
         }
@@ -145,7 +146,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     return (null, null);
                 }
                 
-                var extractor = new HyApplication.Services.ElevationDataExtractor(ed, silentMode: true);
+                var extractor = new ElevationDataExtractor(ed, silentMode: true);
                 var elevationDict = extractor.ExtractElevationData(tr, polygons, textObjectIds);
                 tr.Commit();
                 

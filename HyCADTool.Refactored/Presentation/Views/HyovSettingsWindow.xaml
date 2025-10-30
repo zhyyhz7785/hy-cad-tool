@@ -1,4 +1,4 @@
-<Window x:Class="HyCADTool.Refactored.Presentation.Commands.HyovSettingsWindow"
+<Window x:Class="HyCADTool.Refactored.Presentation.Views.HyovSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="HYOV 参数设置" Height="600" Width="500"
@@ -104,9 +104,4 @@
         </StackPanel>
     </Grid>
 </Window>
-
-
-
-
-
 
