@@ -1,0 +1,734 @@
+---
+alwaysApply: true
+---
+# HyCADTool 命令详细清单
+
+> **生成日期**: 2025-10-13  
+> **项目版本**: HyCADTool v1.0  
+> **框架**: .NET Framework 4.8 + AutoCAD 2024  
+> **总命令数**: 90+
+
+---
+
+## 📋 目录
+
+1. [概述](#概述)
+2. [技术栈与依赖](#技术栈与依赖)
+3. [命令分类清单](#命令分类清单)
+4. [详细命令说明](#详细命令说明)
+5. [依赖关系分析](#依赖关系分析)
+6. [使用建议](#使用建议)
+
+---
+
+## 概述
+
+HyCADTool 是一个专业的 AutoCAD 二次开发插件，专注于结构工程设计领域。项目包含 **90+ 个命令**，涵盖钢筋配筋、地脚螺栓、桩基布置、三维建模、智能标注等多个功能模块。
+
+### 核心特点
+
+- **高度自动化**: 从底图处理到配筋生成全流程自动化
+- **智能算法**: 集成 Voronoi、Lloyd、DCEL、Clipper2 等先进算法
+- **专业适配**: 深度适配 YJK、PKPM 等国内主流结构软件
+- **模块化设计**: 清晰的功能分类，便于扩展和维护
+
+---
+
+## 技术栈与依赖
+
+### 外部 NuGet 包依赖
+
+| 包名                 | 版本    | 用途                 | 使用范围                   |
+| -------------------- | ------- | -------------------- | -------------------------- |
+| **AutoCAD.NET**      | 24.3.0  | AutoCAD .NET API     | 所有命令                   |
+| **Clipper2**         | 1.4.0   | 多边形布尔运算、偏移 | 基础配筋、图形处理         |
+| **NetTopologySuite** | 2.5.0   | 拓扑分析、几何运算   | 桩基布置、区域分析         |
+| **Newtonsoft.Json**  | 13.0.3  | JSON 序列化/反序列化 | 地脚螺栓数据存储、配置管理 |
+| **RectanglePacker**  | 1.1.0   | 矩形装箱算法         | 布局视口排列               |
+| **FSharp.Core**      | 8.0.301 | F# 运行时支持        | 部分算法实现               |
+
+### 核心内部工具类
+
+| 工具类                        | 位置                          | 功能                | 依赖命令数 |
+| ----------------------------- | ----------------------------- | ------------------- | ---------- |
+| **ZTools**                    | `Tools/`                      | 通用 CAD 操作工具集 | 60+        |
+| **BaseRein**                  | `Tools/CreatEntity/BaseRein/` | 基础配筋核心逻辑    | 7          |
+| **Reinforcement**             | `Tools/CreatEntity/Rein/`     | 钢筋绘制核心类      | 12         |
+| **DimensionForReinforcement** | `00/`                         | 钢筋标注逻辑        | 4          |
+| **GeometryUtils**             | `Tools/GeometryUtils/`        | 几何计算工具        | 40+        |
+| **ElevationModelGenerator**   | `HelpClass/Elevation3d/`      | 三维模型生成器      | 2          |
+| **ElevationSymbol**           | `HelpClass/ElevationSymbol/`  | 标高符号绘制        | 4          |
+| **DCEL**                      | `HelpClass/DCEL/`             | 双连通边表数据结构  | 3          |
+| **CoreMethods**               | `00/EquipmentFoundation/`     | 设备基础核心方法    | 6          |
+| **AnchorBoltFactory**         | `Models/`                     | 地脚螺栓工厂类      | 6          |
+
+### 配置系统
+
+| 配置项            | 文件                        | 用途               |
+| ----------------- | --------------------------- | ------------------ |
+| **BaseConfig**    | `Config/BaseConfig.cs`      | 全局比例、样式配置 |
+| **ConfigService** | `Services/ConfigService.cs` | 配置服务接口       |
+| **config.json**   | `config.json`               | 桩基、样式参数配置 |
+
+---
+
+## 命令分类清单
+
+### 快速索引表
+
+| 序号 | 模块名称                            | 命令数 | 核心命令                                       | 使用频率 |
+| ---- | ----------------------------------- | ------ | ---------------------------------------------- | -------- |
+| 1    | [核心面板](#1-核心面板)             | 1      | `hy`                                           | ⭐⭐⭐⭐⭐    |
+| 2    | [钢筋绘制与标注](#2-钢筋绘制与标注) | 12     | `gj`, `g1`, `g2`, `gb`                         | ⭐⭐⭐⭐⭐    |
+| 3    | [基础底板配筋](#3-基础底板配筋)     | 7      | `hyb5a`, `hyb1-6`                              | ⭐⭐⭐⭐⭐    |
+| 4    | [地脚螺栓](#4-地脚螺栓)             | 6      | `hyab`, `hyabC_Calculat`                       | ⭐⭐⭐⭐     |
+| 5    | [标高与剖面](#5-标高与剖面)         | 6      | `bg`, `hy3_Generate`                           | ⭐⭐⭐⭐     |
+| 6    | [尺寸标注](#6-尺寸标注)             | 4      | `ddss`, `dds`                                  | ⭐⭐⭐⭐⭐    |
+| 7    | [轴线功能](#7-轴线功能)             | 3      | `hyAxis_AlignedAxisText`                       | ⭐⭐⭐      |
+| 8    | [桩基布置](#8-桩基布置)             | 2      | `hyz_PlacePileAndVoronoiWithLloydOptimization` | ⭐⭐⭐      |
+| 9    | [设备基础](#9-设备基础)             | 6      | `hyef_Base_ConstructBaseData`                  | ⭐⭐⭐      |
+| 10   | [图形处理](#10-图形处理)            | 8      | `hyov`                                         | ⭐⭐⭐⭐     |
+| 11   | [布局出图](#11-布局出图)            | 4      | `HYMBR`, `HYMBRC_CreateLayoutViewports`        | ⭐⭐⭐      |
+| 12   | [数据导出](#12-数据导出)            | 4      | `ExportEntityPropertiesToCsv`                  | ⭐⭐       |
+| 13   | [其他辅助工具](#13-其他辅助工具)    | 25+    | 测试、实验性命令                               | ⭐        |
+
+---
+
+## 详细命令说明
+
+### 1. 核心面板
+
+#### 1.1 主控制面板
+
+| 命令简写 | 命令全称  | 功能说明                  | 依赖关系                                                     |
+| -------- | --------- | ------------------------- | ------------------------------------------------------------ |
+| **hy**   | ShowPanel | 打开 HyCADTool 主控制面板 | **服务**: AutoCadService, ConfigService, AreaFactory<br>**UI**: PaletteSet, WPF 控件<br>**面板**: ReinPanel, FilterPanel, BaseReinPanel, PilePanel, ClusterPanel |
+
+**功能详情**:
+
+- 打开包含 5 个子面板的主控制界面
+- 钢筋面板: 钢筋参数配置
+- 过滤器面板: 图元筛选工具
+- 基础钢筋面板: 基础配筋参数
+- 桩面板: 桩基布置配置
+- 螺栓聚类与基础标注面板: 地脚螺栓管理
+
+**使用场景**: 项目初始化、参数配置、功能入口
+
+---
+
+### 2. 钢筋绘制与标注
+
+钢筋模块提供交互式钢筋绘制、锚固添加、延伸、标注等功能。
+
+| 命令简写  | 命令全称          | 功能说明                  | 依赖关系                                                     |
+| --------- | ----------------- | ------------------------- | ------------------------------------------------------------ |
+| **gj**    | DrawReinforcement | 交互式绘制钢筋            | **类**: Reinforcement.Rein()<br>**配置**: BaseConfig.Scale   |
+| **g1**    | ReinAddAnchor1    | 为多段线添加单侧锚固      | **类**: ZTools, PolylineExtension<br>**参数**: Reinforcement.HookLength |
+| **g2**    | ReinAddAnchor2    | 为多段线添加双侧锚固      | **类**: ZTools, PolylineExtension<br>**参数**: Reinforcement.HookLength |
+| **gg**    | MyPolyline        | 使用 Jig 绘制带偏移的钢筋 | **类**: PolylineJig<br>**参数**: Reinforcement.ProtectionThickness, HookLength |
+| **gb**    | MleaderRein       | 绘制钢筋标注(带点钢筋)    | **类**: ZTools, MLeader 工具<br>**参数**: Reinforcement.RebarDiameter, RebarSpacing |
+| **gb1**   | MleaderReinOne    | 绘制单引线钢筋标注        | **类**: ZTools, MLeader 工具                                 |
+| **gb2**   | MleaderReinTwo    | 绘制六点钢筋标注          | **类**: ZTools, MLeader 工具                                 |
+| **ge**    | ExtentRein        | 延伸钢筋多段线            | **类**: ZTools<br>**参数**: Reinforcement.AnchorageLength    |
+| **gd**    | (ReinCommand02)   | 钢筋绘制功能2             | **类**: Reinforcement 相关                                   |
+| **ge1**   | (ReinCommand05)   | 钢筋绘制功能5             | **类**: Reinforcement 相关                                   |
+| **ggj**   | ReinOutside       | 外侧钢筋绘制              | **类**: ReinforcementOutside                                 |
+| **hysrt** | SelectReinText    | 选择钢筋文本              | **类**: 选择工具                                             |
+
+**核心依赖**:
+
+- **Reinforcement 静态类**: 存储钢筋参数(直径、间距、保护层、锚固长度等)
+- **Jig 技术**: 实时预览钢筋绘制
+- **图层管理**: 自动创建 `01_hy_1钢筋_线钢筋`、`01_hy_1钢筋_点钢筋` 等图层
+
+**工作流程**:
+
+1. 用户通过 `hy` 面板配置钢筋参数
+2. 使用 `gj`、`gg` 等命令绘制钢筋
+3. 使用 `g1`、`g2` 添加锚固
+4. 使用 `ge` 延伸钢筋
+5. 使用 `gb`、`gb1`、`gb2` 标注
+
+---
+
+### 3. 基础底板配筋
+
+自动化基础底板配筋生成，支持 YJK/PKPM 有限元网格识别。
+
+| 命令简写  | 命令全称       | 功能说明               | 依赖关系                                                     |
+| --------- | -------------- | ---------------------- | ------------------------------------------------------------ |
+| **hyb5a** | BR05a (全流程) | 一键完成基础配筋全流程 | **类**: BaseRein<br>**方法**: ReinforcementStepA(), ReinforcementAll() |
+| **hyb1**  | BR01           | 步骤1: 优化底图        | **类**: BaseRein.SetUp(), OptimizeBasemap()<br>**工具**: Clipper2 (多边形优化) |
+| **hyb2**  | BR02           | 步骤2: 筛选无用文本    | **类**: BaseRein.SelectNoUseText()                           |
+| **hyb3**  | BR03           | 步骤3: 识别有限元网格  | **类**: BaseRein.SelectFiniteElementGrid()<br>**算法**: 网格识别、并行处理 |
+| **hyb4**  | BR04           | 步骤4: 空间分组与包络  | **类**: BaseRein<br>**方法**: DrawBoundingPolyline(), GroupBySpatialProximity(), CreateOptimizedBounding() |
+| **hyb5**  | BR05           | 步骤5: 生成配筋        | **类**: BaseRein.Reinforcement()<br>**计算**: 根据有限元结果计算钢筋直径、间距 |
+| **hyb6**  | BR06           | 步骤6: 自动标注        | **类**: BaseRein.PolyDim()<br>**工具**: DimensionForReinforcement |
+
+**配置参数** (BaseRein 静态类):
+
+```csharp
+proximityThreshold = 2000;      // 分组距离阈值
+PillarPiersDistance = 2500;     // 柱墩识别距离
+Interval = 100;                 // 标注取整间隔
+ReinforceSafety = 1;            // 配筋安全系数
+MinAdditionalDiameter = 8;      // 最小附加钢筋直径
+AdditionalSpacing = 200;        // 附加钢筋间距
+PlateThickness = 350;           // 板厚
+```
+
+**外部库依赖**:
+
+- **Clipper2**: 多边形布尔运算、轮廓优化
+- **NetTopologySuite**: 空间分组、拓扑分析
+
+**数据流程**:
+
+```
+YJK/PKPM 有限元网格 (DWG)
+  ↓ hyb1 (优化底图)
+  ↓ hyb2 (筛选文本)
+  ↓ hyb3 (识别网格)
+  ↓ hyb4 (空间分组)
+  ↓ hyb5 (生成配筋)
+  ↓ hyb6 (标注)
+最终配筋图
+```
+
+**生成图层**:
+
+- `00_hy_配筋轮廓`
+- `00_hy_筏板附加配筋x_上`
+- `00_hy_筏板附加配筋y_上`
+- `00_hy_筏板附加配筋x_下`
+- `00_hy_筏板附加配筋y_下`
+- `00_hy_筏板附加配筋文字_x`
+- `00_hy_筏板附加配筋文字_y`
+- `00_hy_筏板附加配筋x_标注`
+- `00_hy_筏板附加配筋Y_标注`
+
+---
+
+### 4. 地脚螺栓
+
+地脚螺栓管理系统,支持数据存储、受力计算、对齐、汇总。
+
+| 命令简写                         | 命令全称                  | 功能说明              | 依赖关系                                                     |
+| -------------------------------- | ------------------------- | --------------------- | ------------------------------------------------------------ |
+| **hyab**                         | AttachAnchorBoltToCircles | 创建地脚螺栓(圆→螺栓) | **类**: AnchorBoltFactory<br>**存储**: ExtensionDictionary (JSON)<br>**库**: Newtonsoft.Json |
+| **hyabA_Align**                  | AlignBolts                | 螺栓对齐到轴线交点    | **类**: 几何计算<br>**工具**: 轴线识别                       |
+| **hyabC_Calculat**               | CalculateBoltForce        | 计算螺栓受力          | **类**: 力学计算<br>**输入**: 荷载参数、基础尺寸             |
+| **hyabCD_ChangeDisPlay**         | ChangeDisplay             | 切换螺栓显示模式      | **存储**: ExtensionDictionary 读写                           |
+| **hyabCT_CreateAnchorBoltTable** | CreateTable               | 生成螺栓汇总表        | **类**: 表格生成<br>**工具**: Table 对象                     |
+| **hyabR_RectSection**            | RectSection               | 矩形截面螺栓布置      | **类**: 螺栓布置算法                                         |
+
+**螺栓型号** (1-9):
+
+```csharp
+型号 1: M16
+型号 2: M20
+型号 3: M24
+型号 4: M30
+型号 5: M36
+...
+```
+
+**数据存储结构** (ExtensionDictionary):
+
+```json
+{
+  "AnchorBolt": {
+    "Model": "3",
+    "D": 24,
+    "L": 500,
+    "Force": {
+      "Tension": 45.5,
+      "Shear": 12.3
+    }
+  }
+}
+```
+
+**生成图层**:
+
+- `00_Hy_螺栓_1` ~ `00_Hy_螺栓_9` (按型号分层)
+
+---
+
+### 5. 标高与剖面
+
+标高符号绘制与三维模型生成。
+
+| 命令简写                        | 命令全称                | 功能说明           | 依赖关系                                                     |
+| ------------------------------- | ----------------------- | ------------------ | ------------------------------------------------------------ |
+| **bg**                          | DrawElevationWithJig    | 交互式绘制标高符号 | **类**: ElevationSymbol (Jig)<br>**配置**: BaseConfig.Scale, ElevationLength |
+| **bgu_UpdateElevationText**     | UpdateElevationText     | 更新标高文本       | **类**: ElevationSymbol 编辑                                 |
+| **hybgTCE_TextsCreatElevation** | TextsCreateElevation    | 从文本创建标高     | **类**: 文本识别、标高生成                                   |
+| **bgR_RotateElevation**         | RotateElevation         | 旋转标高符号       | **类**: 图形变换                                             |
+| **hy3_Generate**                | ElevationModelGenerator | 生成三维基础模型   | **类**: ElevationModelGenerator<br>**方法**: GenerateWalls(), GenerateRaftAndBase() |
+| **hy3C_CreateSection**          | CreateSection           | 创建剖面图         | **类**: CrossSection, SectionLine                            |
+
+**Jig 技术**: 实时预览、连续绘制、状态切换
+
+**三维生成流程**:
+
+```
+平面基础配筋 + 标高数据
+  ↓ 墙体识别
+  ↓ 筏板识别
+  ↓ 基础底板识别
+  ↓ 生成 3D Solid
+三维基础模型
+```
+
+---
+
+### 6. 尺寸标注
+
+智能尺寸标注系统。
+
+| 命令简写                            | 命令全称                 | 功能说明           | 依赖关系                                                     |
+| ----------------------------------- | ------------------------ | ------------------ | ------------------------------------------------------------ |
+| **ddss**                            | DimPolys                 | 批量标注多段线     | **类**: DimensionForReinforcement<br>**工具**: 尺寸计算、轴线识别 |
+| **dds**                             | DimPoly                  | 标注单个多段线     | **类**: DimensionForReinforcement                            |
+| **sd**                              | SplitDimensionAtLine     | 在直线处分割标注   | **工具**: 标注分割算法                                       |
+| **hydimA_AddVertexAtIntersections** | AddVertexAtIntersections | 在交点处添加标注点 | **工具**: 交点计算                                           |
+
+**标注逻辑**:
+
+- 自动识别多段线顶点
+- 与轴线对齐
+- 尺寸取整(Interval 参数)
+- 自动图层管理
+
+---
+
+### 7. 轴线功能
+
+轴线识别与文本对齐。
+
+| 命令简写                   | 命令全称        | 功能说明       | 依赖关系                 |
+| -------------------------- | --------------- | -------------- | ------------------------ |
+| **hyAxis_AlignedAxisText** | AlignedAxisText | 文本对齐到轴线 | **类**: AlignTextToLine  |
+| **HY_DrawDimPoints**       | DrawDimPoints   | 绘制标注点     | **类**: DimPointsAndAxis |
+| **HY_AnnotateAxes**        | AnnotateAxes    | 轴线标注       | **类**: Cluster 模块     |
+
+---
+
+### 8. 桩基布置
+
+基于 Voronoi 图的桩基优化布置。
+
+| 命令简写                                         | 命令全称              | 功能说明                 | 依赖关系                                                     |
+| ------------------------------------------------ | --------------------- | ------------------------ | ------------------------------------------------------------ |
+| **hyz_PlacePileAndVoronoiWithLloydOptimization** | PlacePileOptimization | Voronoi + Lloyd 优化布桩 | **库**: NetTopologySuite<br>**算法**: Voronoi Diagram, Lloyd 迭代<br>**配置**: config.json (PileConfigData) |
+| **HYz_GroupCirclesZFinal**                       | GroupCirclesZ         | 桩位圆按 Z 坐标分组      | **工具**: 空间聚类                                           |
+
+**配置参数** (config.json):
+
+```json
+{
+  "PileConfigData": {
+    "Section": "Circle",              // 桩型
+    "DiameterOrEdge": 400,            // 直径 (mm)
+    "MinPileCenterDistance": 1200,    // 最小桩距 (mm)
+    "Margin": {                       // 边距 (mm)
+      "Up": 400, "Down": 400,
+      "Left": 400, "Right": 400
+    }
+  }
+}
+```
+
+**算法流程**:
+
+```
+1. 读取基础边界 (闭合多段线)
+2. 生成初始桩位 (矩形/圆形排列)
+3. 构建 Voronoi 图
+4. Lloyd 迭代优化 (10次)
+5. 检查桩距约束
+6. 生成桩位圆和 Voronoi 单元
+```
+
+---
+
+### 9. 设备基础
+
+设备基础数据管理与轴线系统。
+
+| 命令简写                        | 命令全称          | 功能说明         | 依赖关系                                                     |
+| ------------------------------- | ----------------- | ---------------- | ------------------------------------------------------------ |
+| **hyef_Base_ConstructBaseData** | ConstructBaseData | 构造基础数据     | **类**: CoreMethods<br>**存储**: ExtensionDictionary         |
+| **hyef_Base_HighlightBoltData** | HighlightBoltData | 高亮显示螺栓数据 | **类**: CoreMethods<br>**工具**: 数据读取                    |
+| **hyef_Axis_Construct**         | ConstructAxis     | 构造轴线系统     | **类**: CoreMethods.ConstructAxis()<br>**模型**: Axis 数据结构 |
+| **hyef_Axis_Initialize**        | InitializeAxis    | 初始化轴线       | **类**: CoreMethods.InitializeAxis()                         |
+| **hyef_Axis_Display**           | DisplayStructure  | 显示结构高亮     | **类**: CoreMethods.DisplayStructure()                       |
+| **hyef_Axis_CreateTable**       | CreateAxisTable   | 创建轴线表格     | **类**: CoreMethods.CreateAxisTable()<br>**工具**: Table 生成 |
+
+**数据结构**:
+
+- **Base**: 基础对象 (轮廓、螺栓列表)
+- **Axis**: 轴线对象 (直线、关联基础)
+- 存储在 ExtensionDictionary 中
+
+---
+
+### 10. 图形处理
+
+几何处理、清理、拓扑分析。
+
+| 命令简写 | 命令全称     | 功能说明          | 依赖关系                                       |
+| -------- | ------------ | ----------------- | ---------------------------------------------- |
+| **hyov** | LineOverkill | 清理重复/重叠线段 | **算法**: 线段合并、端点连接<br>**公差**: 1e-6 |
+
+| **DetectClosedRegions** | DetectClosedRegions | 检测封闭区域 | **工具**: 拓扑分析 |
+| **abrc** | ReplacePolygon | 多边形替换 | **库**: Clipper2<br>**操作**: 布尔运算 |
+| **abrcs** | ReplacePolygonsByIntersection | 批量多边形替换 | **库**: Clipper2 |
+| **hybc** | BreakCruesCommand | 打断曲线 | **类**: BreakCurves |
+| **HYBL** | BreakLines | 打断直线 | **类**: BreakLines |
+| **HYc2_block_color** | BlockColor | 修改图块颜色 | **工具**: 图块编辑 |
+| **HYc2_block2leader** | Block2Leader | 图块转引线 | **工具**: MLeader 生成 |
+
+**Overkill 算法**:
+
+1. 收集选中线段
+2. 合并共线重叠线段
+3. 连接端点重合线段
+4. 删除原始线段,添加合并后线段
+
+ 
+
+---
+
+### 11. 布局出图
+
+批量布局、视口创建。
+
+| 命令简写                         | 命令全称              | 功能说明             | 依赖关系                                           |
+| -------------------------------- | --------------------- | -------------------- | -------------------------------------------------- |
+| **HYMBR**                        | CreateClusteredMBRs   | 创建聚类最小边界矩形 | **算法**: BFS 聚类<br>**参数**: 距离阈值、放大距离 |
+| **HYMBRC_CreateLayoutViewports** | CreateLayoutViewports | 批量创建布局视口     | **类**: 视口管理                                   |
+| **HYMBRD_DrawTitleBlock**        | DrawTitleBlock        | 绘制图框             | **类**: TitleBlock                                 |
+| **HY_PackViewports**             | PackViewports         | 视口装箱排列         | **库**: RectanglePacker<br>**算法**: 矩形装箱      |
+
+**聚类算法**:
+
+- 基于图元边界距离的 BFS 聚类
+- 并行距离计算 (>100 图元)
+- 边界框放大与合并
+
+---
+
+### 12. 数据导出
+
+图元属性导出。
+
+| 命令简写                         | 命令全称             | 功能说明            | 依赖关系                |
+| -------------------------------- | -------------------- | ------------------- | ----------------------- |
+| **ExportEntityPropertiesToCsv**  | ExportToCsv          | 导出图元属性到 CSV  | **工具**: CSV 写入      |
+| **ExportEntityPropertiesToCsv1** | ExportToCsv1         | 导出图元属性 (变体) | **工具**: CSV 写入      |
+| **hyex_MarkdownTable**           | ExportMarkdownTable  | 导出 Markdown 表格  | **工具**: Markdown 生成 |
+| **hydl_DrawLinesOnEachLayer**    | DrawLinesOnEachLayer | 在各图层绘制线      | **工具**: 图层遍历      |
+
+---
+
+### 13. 其他辅助工具
+
+测试、实验性、辅助命令。
+
+| 命令简写                   | 命令全称           | 功能说明         | 类型     |
+| -------------------------- | ------------------ | ---------------- | -------- |
+| **te**                     | TestCommand        | 测试命令         | 测试     |
+| **TEST_PROCESS_CLUSTER**   | TestProcessCluster | 聚类测试         | 测试     |
+| **TEST_ALL_INTERSECTIONS** | TestIntersections  | 交点测试         | 测试     |
+| **HY_TestDrawInCad**       | TestDrawInCad      | CAD 绘制测试     | 测试     |
+| **GPT_ADAPTIVE_GRID**      | AdaptiveGrid       | 自适应网格       | 实验性   |
+| **SetCurrentTextStyle**    | SetTextStyle       | 设置当前文本样式 | 样式管理 |
+| **SetCurrentDimStyle**     | SetDimStyle        | 设置当前标注样式 | 样式管理 |
+| **SetCurrentLeaderStyle**  | SetLeaderStyle     | 设置当前引线样式 | 样式管理 |
+| **SetCurrentLayer**        | SetLayer           | 设置当前图层     | 图层管理 |
+| **HyRT_aftThicknessText**  | RaftThicknessText  | 筏板厚度标注     | 特殊标注 |
+| **HyDcL_Line**             | CreatePadLine      | 创建衬垫线       | 辅助绘制 |
+| **hyDcP_Poly**             | CreatePadPoly      | 创建衬垫多段线   | 辅助绘制 |
+
+---
+
+## 依赖关系分析
+
+### 依赖层级图
+
+```
+┌─────────────────────────────────────┐
+│   命令层 (Commands)                  │
+│   90+ 命令方法                       │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────┴──────────────────────┐
+│   核心工具层 (Tools)                 │
+│   ZTools, BaseRein, Reinforcement   │
+│   GeometryUtils, DimensionForRein   │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────┴──────────────────────┐
+│   辅助类层 (HelpClass)               │
+│   DCEL, ElevationSymbol, Jig        │
+│   ElevationModelGenerator           │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────┴──────────────────────┐
+│   服务层 (Services)                  │
+│   AutoCadService, ConfigService     │
+│   AreaFactory                        │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────┴──────────────────────┐
+│   配置层 (Config)                    │
+│   BaseConfig, ConfigManager         │
+│   config.json                        │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────┴──────────────────────┐
+│   外部库层                           │
+│   AutoCAD.NET, Clipper2             │
+│   NetTopologySuite, Newtonsoft.Json │
+└─────────────────────────────────────┘
+```
+
+### 核心依赖矩阵
+
+| 命令模块 | AutoCAD.NET | Clipper2 | NetTopologySuite | Newtonsoft.Json | ZTools | BaseRein | Reinforcement |
+| -------- | ----------- | -------- | ---------------- | --------------- | ------ | -------- | ------------- |
+| 核心面板 | ✅           | ❌        | ❌                | ❌               | ✅      | ❌        | ❌             |
+| 钢筋绘制 | ✅           | ❌        | ❌                | ❌               | ✅      | ❌        | ✅             |
+| 基础配筋 | ✅           | ✅        | ✅                | ❌               | ✅      | ✅        | ❌             |
+| 地脚螺栓 | ✅           | ❌        | ❌                | ✅               | ✅      | ❌        | ❌             |
+| 标高剖面 | ✅           | ❌        | ❌                | ❌               | ✅      | ❌        | ❌             |
+| 尺寸标注 | ✅           | ❌        | ❌                | ❌               | ✅      | ❌        | ❌             |
+| 桩基布置 | ✅           | ❌        | ✅                | ❌               | ✅      | ❌        | ❌             |
+| 图形处理 | ✅           | ✅        | ✅                | ❌               | ✅      | ❌        | ❌             |
+| 布局出图 | ✅           | ❌        | ❌                | ❌               | ✅      | ❌        | ❌             |
+
+### 配置文件依赖
+
+**config.json 影响的命令**:
+
+- 桩基布置模块 (PileConfigData)
+- 所有样式相关命令 (BaseConfigData)
+
+**BaseConfig 静态类影响的命令**:
+
+- 钢筋绘制 (Scale)
+- 基础配筋 (Scale, 样式配置)
+- 标高绘制 (Scale, ElevationLength)
+
+---
+
+## 使用建议
+
+### 最佳实践
+
+#### 1. 基础配筋完整流程
+
+```
+步骤1: 配置参数
+  命令: hy → 打开基础钢筋面板
+  设置: proximityThreshold, Interval, PlateThickness
+
+步骤2: 导入底图
+  数据: YJK/PKPM 有限元计算结果 (DWG)
+
+步骤3: 一键生成
+  命令: hyb5a
+  等待: 10-30秒
+
+步骤4: 批量标注
+  命令: ddss
+  选择: 生成的配筋多段线
+
+步骤5: 检查调整
+  手动: 微调配筋轮廓、修改参数
+
+步骤6: 生成三维
+  命令: hy3_Generate
+```
+
+#### 2. 设备基础设计流程
+
+```
+步骤1: 绘制基础轮廓
+  工具: AutoCAD Polyline
+
+步骤2: 绘制螺栓位置
+  工具: AutoCAD Circle
+
+步骤3: 创建螺栓
+  命令: hyab
+  输入: 型号 (1-9)
+
+步骤4: 对齐螺栓
+  命令: hyabA_Align
+
+步骤5: 受力计算
+  命令: hyabC_Calculat
+
+步骤6: 生成表格
+  命令: hyabCT_CreateAnchorBoltTable
+
+步骤7: 三维模型
+  命令: hy3_Generate
+```
+
+#### 3. 桩基优化布置流程
+
+```
+步骤1: 配置参数
+  文件: config.json → PileConfigData
+  参数: 直径、桩距、边距
+
+步骤2: 绘制基础边界
+  工具: AutoCAD Polyline (闭合)
+
+步骤3: 运行优化
+  命令: hyz_PlacePileAndVoronoiWithLloydOptimization
+
+步骤4: 查看结果
+  输出: 桩位圆 + Voronoi 单元
+
+步骤5: 手动微调
+  工具: AutoCAD Move
+```
+
+### 性能优化建议
+
+1. **大数据集处理**:
+   - 基础配筋: 使用 `hyb1`-`hyb6` 分步执行,便于调试
+   - Overkill: 选择范围不要过大 (建议 <5000 线段)
+   - 聚类: 距离阈值合理设置,避免过度聚类
+
+2. **图层管理**:
+   - 定期清理无用图层
+   - 使用图层过滤器
+   - 冻结非必要图层
+
+3. **配置优化**:
+   - 合理设置 `proximityThreshold` (2000-5000)
+   - 调整 `Interval` 以平衡精度与整洁度
+   - 控制 Lloyd 迭代次数 (5-10次)
+
+### 常见问题与解决方案
+
+#### Q1: 基础配筋生成失败?
+
+**A**: 
+
+- 检查底图是否为 YJK/PKPM 标准格式
+- 使用 `hyb1`-`hyb6` 分步排查问题
+- 调整 `proximityThreshold` 参数
+
+#### Q2: 螺栓数据丢失?
+
+**A**:
+
+- 避免使用"分解"命令
+- 使用 `hyabCD_ChangeDisPlay` 切换显示
+- 使用 `hyef_Base_HighlightBoltData` 查看数据
+
+#### Q3: Voronoi 布桩失败?
+
+**A**:
+
+- 确保基础边界为闭合多段线
+- 检查 `MinPileCenterDistance` 是否合理
+- 调整 Margin 参数
+
+#### Q4: 标注样式不符合规范?
+
+**A**:
+
+- 修改 `config.json` → DimStyle
+- 调整 `BaseConfig.Scale`
+- 使用 `SetCurrentDimStyle` 切换样式
+
+---
+
+## 附录
+
+### 图层命名规范
+
+| 图层前缀      | 用途     | 示例                     |
+| ------------- | -------- | ------------------------ |
+| `00_Hy_`      | 公共元素 | `00_Hy_螺栓_1`           |
+| `01_hy_1`     | 钢筋     | `01_hy_1钢筋_线钢筋`     |
+| `00_hy_2公共` | 公共标注 | `00_hy_2公共_视口`       |
+| `00_hy_3公共` | 引线标注 | `00_hy_3公共_标注3_引线` |
+| `00_hy_配筋`  | 配筋相关 | `00_hy_配筋轮廓`         |
+| `00_hy_筏板`  | 筏板配筋 | `00_hy_筏板附加配筋x_上` |
+
+### 文本样式配置
+
+```json
+{
+  "TextStyle": {
+    "name": "0_Hy_40",
+    "fontFileName": "tssdeng.shx",
+    "bigFontFileName": "hztxt.shx",
+    "textSize": 2.5,
+    "textXScale": 0.7
+  }
+}
+```
+
+### 标注样式配置
+
+```json
+{
+  "DimStyle": {
+    "name": "0_Hy_40_Dim",
+    "dimtxt": 2.5,
+    "dimexo": 1.0,
+    "dimexe": 1.0,
+    "dimasz": 1.0,
+    "dimgap": 1.0
+  }
+}
+```
+
+---
+
+## 版本历史
+
+| 版本 | 日期       | 变更内容                  |
+| ---- | ---------- | ------------------------- |
+| v1.0 | 2025-10-13 | 初始版本,90+ 命令完整清单 |
+
+---
+
+## 联系与支持
+
+### 文档维护
+
+- **当前分支**: RefactorDev
+- **框架版本**: .NET Framework 4.8
+- **目标 CAD**: AutoCAD 2024
+- **文档生成**: 2025-10-13
+
+### 相关文档
+
+- [README.md](../HyCADtool/README.md) - 项目总览
+- [快速开始](./快速开始.md) - 入门指南
+- [阶段完成报告](./阶段5.0.6-ReinPanel功能实现完成报告.md) - 重构进度
+
+---
+
+<div align="center">
+
+
+
+**HyCADTool - 让结构设计更高效**
+
+Made with ❤️ by HyCADTool Team
+
+</div>
+

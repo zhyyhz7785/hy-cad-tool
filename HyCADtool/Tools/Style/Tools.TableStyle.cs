@@ -3,12 +3,12 @@ using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Config;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class ZTools
     {
         public static class TableStyleConfig
         {
             public static string Name => $"0_Hy_{BaseConfig.Scale}_Table";
-            public static string TextStyleName => Et.TextStyleConfig.Name;
+            public static string TextStyleName => ZTools.TextStyleConfig.Name;
             // 表格行设置
             public static double TitleRowHeight { get; } = 8;   // 标题行高度
             public static double DataRowHeight { get; } = 6;     // 数据行高度
@@ -64,8 +64,8 @@ namespace HyCADTool.Tools
                 ObjectId textStyleId = BaseConfig.TextStyleId.IsValid ? BaseConfig.TextStyleId : db.Textstyle;
                 style.SetTextStyle(textStyleId, (int)(RowType.TitleRow | RowType.HeaderRow | RowType.DataRow));
                 // 设置边距（乘以缩放系数）
-                style.HorizontalCellMargin = Et.TableStyleConfig.CellHorizontalMargin * BaseConfig.Scale;
-                style.VerticalCellMargin = Et.TableStyleConfig.CellVerticalMargin * BaseConfig.Scale;
+                style.HorizontalCellMargin = ZTools.TableStyleConfig.CellHorizontalMargin * BaseConfig.Scale;
+                style.VerticalCellMargin = ZTools.TableStyleConfig.CellVerticalMargin * BaseConfig.Scale;
                 // 设置文本高度
                 style.SetTextHeight(1 * BaseConfig.Scale, (int)RowType.TitleRow);    // 例如 250
                 style.SetTextHeight(1 * BaseConfig.Scale, (int)RowType.HeaderRow);   // 例如 175

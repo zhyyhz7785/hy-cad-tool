@@ -18,7 +18,7 @@ namespace HyCADTool
             Editor ed = doc.Editor;
             Dictionary<DBText, ObjectId> newDict = new Dictionary<DBText, ObjectId>();
             // 创建图层
-            Et.SetCurrentLayer("00_hy_配筋轮廓");
+            Tools.ZTools.SetCurrentLayer("00_hy_配筋轮廓");
             using (DocumentLock docLock = doc.LockDocument())
             {
                 using (Transaction trans = db.TransactionManager.StartTransaction())

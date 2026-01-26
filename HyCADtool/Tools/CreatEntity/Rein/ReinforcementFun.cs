@@ -40,15 +40,14 @@ namespace HyCADTool
         }
         public static void GenerateReinforcement(Polyline boundary)
         {
-            Reinforcement.SetProperties(boundary);
-            //
-            //EtGpt.CreateMultipleLayers(("01_hy_1钢筋_线钢筋", 1), ("01_hy_2钢筋_点钢筋", 5), ("00_hy_3公共_标注1_外", 3), ("00_hy_3公共_标注3_引线", 92));
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Reinforcement.SetProperties(boundary);            
+            ZTools.CreateMultipleLayers(("01_hy_1钢筋_线钢筋", 1), ("01_hy_1钢筋_点钢筋", 5), ("00_hy_3公共_标注1_外", 3), ("00_hy_3公共_标注3_引线", 92));
+            Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             Reinforcement.SubReinforcementWithAnchorsAddhooks.ToSpace();
-            Et.SetCurrentLayer("01_hy_1钢筋_点钢筋");
+            Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_点钢筋");
             Reinforcement.ReduceDotRein.ToSpace();
             //Application.SetSystemVariable("CELWEIGHT", Convert.ToInt16(-1));
-            Et.SetCurrentLayer("00_hy_3公共_标注3_引线");
+            Tools.ZTools.SetCurrentLayer("00_hy_3公共_标注3_引线");
             Reinforcement.Mleaders.ToSpace();
         }
         #endregion
@@ -412,7 +411,7 @@ namespace HyCADTool
                     {
                         enxtendSeg02 = enxtendSeg02Backup;
                         //对不满足锚固长度的节点进行标记 i 计数，有多少个不满足锚固的结果
-                        Et.MakeMark(enxtendSeg02.EndPoint, i.ToString(), 120, 100);
+                        Tools.ZTools.MakeMark(enxtendSeg02.EndPoint, i.ToString(), 120, 100);
                         i++;
                     }
                     else
@@ -755,7 +754,7 @@ namespace HyCADTool
             var list = new List<Polyline>();
             foreach (var point in points)
             {
-                var poly = Et.CreateSolidCircle(ReinforcementDiameter, point);
+                var poly = Tools.ZTools.CreateSolidCircle(ReinforcementDiameter, point);
                 list.Add(poly);
             }
             return list.ToArray();
@@ -770,7 +769,7 @@ namespace HyCADTool
             vec = vec.RotateBy(Math.PI / 2, Vector3d.ZAxis);
             var mPoint = seg.MidPoint;
             var ePoint = mPoint + vec.GetNormal() * separation;
-            var ml = Et.AddMleader(points, Reinforcement.MleaderDistance, content);
+            var ml = Tools.ZTools.AddMleader(points, Reinforcement.MleaderDistance, content);
             return ml;
         }
         #endregion

@@ -6,7 +6,7 @@ using HyCADTool.HelpClass.Jig;
 using System;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class ZTools
     {
         //public static (Polyline Polyline, Point3d ClosestPoint, double param)? GetPolylineInfo()
         //{
@@ -285,7 +285,7 @@ namespace HyCADTool.Tools
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             var doc = Application.DocumentManager.MdiActiveDocument;
-            var pl = Et.SelectAEntity<Polyline>(db);
+            var pl = ZTools.SelectAEntity<Polyline>(db);
             using (Transaction trans = db.TransactionManager.StartTransaction())
             {
                 // 获取选中的多段线

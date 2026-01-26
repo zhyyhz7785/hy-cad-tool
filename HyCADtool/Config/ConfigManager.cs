@@ -55,71 +55,161 @@ namespace HyCADTool.Config
             File.WriteAllText(ExCsvFile, sb.ToString(), Encoding.UTF8);
         }
 
+        //public static void ImportConfigFromCsv(string typeFilter = null, string subKeyFilter = null)
+        //{
+        //    var doc = Application.DocumentManager.MdiActiveDocument;
+
+        //    Tools.ZTools.RegisterStandardLinetypes();
+        //    if (!File.Exists(ConfigCsvFile)) return;
+
+        //    using (var fs = new FileStream(ConfigCsvFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        //    using (var reader = new StreamReader(fs, Encoding.UTF8))
+        //    {
+        //        string line;
+        //        bool skipHeader = true;
+        //        while ((line = reader.ReadLine()) != null)
+        //        {
+        //            if (skipHeader) { skipHeader = false; continue; }
+        //            var parts = line.Split(',').Select(p => p.Trim()).ToArray();
+        //            if (parts.Length < 4) continue;
+
+        //            var type = parts[0];
+        //            var key = parts[1];
+        //            var subKey = parts.Length > 2 ? parts[2] : "";
+        //            var v = parts.Skip(3).ToArray();
+
+        //            if (!string.IsNullOrEmpty(typeFilter) && !string.Equals(type, typeFilter, StringComparison.OrdinalIgnoreCase))
+        //                continue;
+        //            if (!string.IsNullOrEmpty(subKeyFilter) && !string.Equals(subKey, subKeyFilter, StringComparison.OrdinalIgnoreCase))
+        //                continue;
+
+        //            switch (type)
+        //            {
+        //                case "Layer":
+        //                    if (short.TryParse(v[0], out var color) && Enum.TryParse(v[2], out LineWeight lw))
+        //                    {
+        //                        Tools.ZTools.CreateLayer(key, color, v[1], lw);
+        //                    }
+        //                    break;
+        //                case "TextStyle":
+        //                    if (double.TryParse(v[2], out var size) && double.TryParse(v[3], out var xscale))
+        //                    {
+        //                        Tools.ZTools.CreateTextStyle(key, v[0], v[1], size, xscale);
+        //                    }
+        //                    break;
+        //                case "Pile":
+        //                    var pile = PileConfig.Instance;
+        //                    switch (key)
+        //                    {
+        //                        case "Section": pile.Section = Enum.TryParse(v[0], out PileSectionType s) ? s : PileSectionType.Circle; break;
+        //                        case "DiameterOrEdge": if (double.TryParse(v[0], out var d)) pile.DiameterOrEdge = d; break;
+        //                        case "ArrangementType": pile.ArrangementType = Enum.TryParse(v[0], out PileArrangementType a) ? a : PileArrangementType.Rectangle; break;
+        //                        case "PileArrangeRate": if (double.TryParse(v[0], out var r)) pile.PileArrangeRate = r; break;
+        //                        case "Margin":
+        //                            if (v.Length >= 4 && double.TryParse(v[0], out var up) && double.TryParse(v[1], out var down) &&
+        //                                double.TryParse(v[2], out var left) && double.TryParse(v[3], out var right))
+        //                                pile.Margin = (up, down, left, right);
+        //                            break;
+        //                        case "MinPileCenterDistance": if (double.TryParse(v[0], out var m)) pile.MinPileCenterDistance = m; break;
+        //                        case "InputDisplacementRate": if (double.TryParse(v[0], out var dr)) pile.InputDisplacementRate = dr; break;
+        //                        case "InputDistanceFromContour": if (double.TryParse(v[0], out var c)) pile.InputDistanceFromContour = c; break;
+        //                    }
+        //                    break;
+        //                case "BaseConfig":
+        //                    switch (key)
+        //                    {
+        //                        case "Scale": if (double.TryParse(v[0], out var s)) BaseConfig.Scale = s; break;
+        //                        case "ElevationLength": if (double.TryParse(v[0], out var el)) BaseConfig.ElevationLength = el; break;
+        //                    }
+        //                    break;
+        //            }
+        //        }
+        //    }
+        //}
         public static void ImportConfigFromCsv(string typeFilter = null, string subKeyFilter = null)
         {
-            Et.RegisterStandardLinetypes();
-            if (!File.Exists(ConfigCsvFile)) return;
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
 
-            using (var fs = new FileStream(ConfigCsvFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            using (var reader = new StreamReader(fs, Encoding.UTF8))
+            //using (doc.LockDocument()) // ⬅️ 加锁确保线程安全写入
             {
-                string line;
-                bool skipHeader = true;
-                while ((line = reader.ReadLine()) != null)
+                //Tools.ZTools.RegisterStandardLinetypes(); // 确保在锁定下注册线型
+
+                if (!File.Exists(ConfigCsvFile)) return;
+
+                using (var fs = new FileStream(ConfigCsvFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var reader = new StreamReader(fs, Encoding.UTF8))
                 {
-                    if (skipHeader) { skipHeader = false; continue; }
-                    var parts = line.Split(',').Select(p => p.Trim()).ToArray();
-                    if (parts.Length < 4) continue;
+                    string line;
+                    bool skipHeader = true;
 
-                    var type = parts[0];
-                    var key = parts[1];
-                    var subKey = parts.Length > 2 ? parts[2] : "";
-                    var v = parts.Skip(3).ToArray();
-
-                    if (!string.IsNullOrEmpty(typeFilter) && !string.Equals(type, typeFilter, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    if (!string.IsNullOrEmpty(subKeyFilter) && !string.Equals(subKey, subKeyFilter, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    switch (type)
+                    while ((line = reader.ReadLine()) != null)
                     {
-                        case "Layer":
-                            if (short.TryParse(v[0], out var color) && Enum.TryParse(v[2], out LineWeight lw))
-                            {
-                                Et.CreateLayer(key, color, v[1], lw);
-                            }
-                            break;
-                        case "TextStyle":
-                            if (double.TryParse(v[2], out var size) && double.TryParse(v[3], out var xscale))
-                            {
-                                Et.CreateTextStyle(key, v[0], v[1], size, xscale);
-                            }
-                            break;
-                        case "Pile":
-                            var pile = PileConfig.Instance;
-                            switch (key)
-                            {
-                                case "Section": pile.Section = Enum.TryParse(v[0], out PileSectionType s) ? s : PileSectionType.Circle; break;
-                                case "DiameterOrEdge": if (double.TryParse(v[0], out var d)) pile.DiameterOrEdge = d; break;
-                                case "ArrangementType": pile.ArrangementType = Enum.TryParse(v[0], out PileArrangementType a) ? a : PileArrangementType.Rectangle; break;
-                                case "PileArrangeRate": if (double.TryParse(v[0], out var r)) pile.PileArrangeRate = r; break;
-                                case "Margin":
-                                    if (v.Length >= 4 && double.TryParse(v[0], out var up) && double.TryParse(v[1], out var down) &&
-                                        double.TryParse(v[2], out var left) && double.TryParse(v[3], out var right))
-                                        pile.Margin = (up, down, left, right);
-                                    break;
-                                case "MinPileCenterDistance": if (double.TryParse(v[0], out var m)) pile.MinPileCenterDistance = m; break;
-                                case "InputDisplacementRate": if (double.TryParse(v[0], out var dr)) pile.InputDisplacementRate = dr; break;
-                                case "InputDistanceFromContour": if (double.TryParse(v[0], out var c)) pile.InputDistanceFromContour = c; break;
-                            }
-                            break;
-                        case "BaseConfig":
-                            switch (key)
-                            {
-                                case "Scale": if (double.TryParse(v[0], out var s)) BaseConfig.Scale = s; break;
-                                case "ElevationLength": if (double.TryParse(v[0], out var el)) BaseConfig.ElevationLength = el; break;
-                            }
-                            break;
+                        if (skipHeader) { skipHeader = false; continue; }
+
+                        var parts = line.Split(',').Select(p => p.Trim()).ToArray();
+                        if (parts.Length < 4) continue;
+
+                        var type = parts[0];
+                        var key = parts[1];
+                        var subKey = parts.Length > 2 ? parts[2] : "";
+                        var v = parts.Skip(3).ToArray();
+
+                        if (!string.IsNullOrEmpty(typeFilter) && !string.Equals(type, typeFilter, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        if (!string.IsNullOrEmpty(subKeyFilter) && !string.Equals(subKey, subKeyFilter, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        switch (type)
+                        {
+                            case "Layer":
+                                if (short.TryParse(v[0], out var color) && Enum.TryParse(v[2], out LineWeight lw))
+                                {
+                                    Tools.ZTools.CreateLayer(key, color, v[1], lw); // 内部需自行开启事务（如已有）
+                                }
+                                break;
+
+                            case "TextStyle":
+                                if (double.TryParse(v[2], out var size) && double.TryParse(v[3], out var xscale))
+                                {
+                                    Tools.ZTools.CreateTextStyle(key, v[0], v[1], size, xscale);
+                                }
+                                break;
+
+                            case "Pile":
+                                var pile = PileConfig.Instance;
+                                switch (key)
+                                {
+                                    case "Section": pile.Section = Enum.TryParse(v[0], out PileSectionType s) ? s : PileSectionType.Circle; break;
+                                    case "DiameterOrEdge": if (double.TryParse(v[0], out var d)) pile.DiameterOrEdge = d; break;
+                                    case "ArrangementType": pile.ArrangementType = Enum.TryParse(v[0], out PileArrangementType a) ? a : PileArrangementType.Rectangle; break;
+                                    case "PileArrangeRate": if (double.TryParse(v[0], out var r)) pile.PileArrangeRate = r; break;
+                                    case "Margin":
+                                        if (v.Length >= 4 &&
+                                            double.TryParse(v[0], out var up) &&
+                                            double.TryParse(v[1], out var down) &&
+                                            double.TryParse(v[2], out var left) &&
+                                            double.TryParse(v[3], out var right))
+                                        {
+                                            pile.Margin = (up, down, left, right);
+                                        }
+                                        break;
+                                    case "MinPileCenterDistance": if (double.TryParse(v[0], out var m)) pile.MinPileCenterDistance = m; break;
+                                    case "InputDisplacementRate": if (double.TryParse(v[0], out var dr)) pile.InputDisplacementRate = dr; break;
+                                    case "InputDistanceFromContour": if (double.TryParse(v[0], out var c)) pile.InputDistanceFromContour = c; break;
+                                }
+                                break;
+
+                            case "BaseConfig":
+                                switch (key)
+                                {
+                                    //case "Scale": if (double.TryParse(v[0], out var s)) BaseConfig.Scale = s; break;
+                                    case "Scale":  break;
+                                    case "ElevationLength": if (double.TryParse(v[0], out var el)) BaseConfig.ElevationLength = el; break;
+                                }
+                                break;
+                        }
                     }
                 }
             }

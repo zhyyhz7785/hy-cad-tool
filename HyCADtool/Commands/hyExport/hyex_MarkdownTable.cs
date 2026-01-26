@@ -17,7 +17,7 @@ namespace HyCADTool.Commands
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed = doc.Editor;
-            Entity entity = Et.SelectSingleEntity(doc.Database);
+            Entity entity = Tools.ZTools.SelectSingleEntity();
             if (entity == null)
             {
                 ed.WriteMessage("\nOperation canceled.");

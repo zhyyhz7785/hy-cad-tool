@@ -152,7 +152,7 @@ namespace HyCADTool.Services
                 {
                     var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                     var btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
-                    Et.CreateLayer("00_hy_4公共_表格", 7);
+                    Tools.ZTools.CreateLayer("00_hy_4公共_表格", 7);
                     var table = new Table();
                     table.SetSize(12, 2);
                     table.Position = insertionPoint;

@@ -11,7 +11,7 @@ using HyCADTool.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static HyCADTool.Tools.Et;
+using static HyCADTool.Tools.ZTools;
 namespace HyCADTool
 {
     public static class HyTest
@@ -24,7 +24,7 @@ namespace HyCADTool
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
-            var layerId = Et.CreateLayer("00_hy_测试_标注", 91, db);
+            var layerId = Tools.ZTools.CreateLayer("00_hy_测试_标注", 91, db);
             // 选择点
             var points = SelectPoints();
             if (points.Count < 2)
@@ -106,7 +106,7 @@ namespace HyCADTool
                 {
                     effectiveOffset = 2 * defaultOffset;
                 }
-                var dim = Et.GetDimByTwoPoints(p1, p2, effectiveOffset, dimDirection, true);
+                var dim = Tools.ZTools.GetDimByTwoPoints(p1, p2, effectiveOffset, dimDirection, true);
                 dim.LayerId = layerId;
                 dim.DimensionStyle = Application.DocumentManager.MdiActiveDocument.Database.Dimstyle;
                 dims.Add(dim);
@@ -142,7 +142,7 @@ namespace HyCADTool
                 {
                     effectiveOffset = 2 * defaultOffset;
                 }
-                var dim = Et.GetDimByTwoPoints(p1, p2, effectiveOffset, dimDirection, true);
+                var dim = Tools.ZTools.GetDimByTwoPoints(p1, p2, effectiveOffset, dimDirection, true);
                 dim.LayerId = layerId;
                 dim.DimensionStyle = Application.DocumentManager.MdiActiveDocument.Database.Dimstyle;
                 dims.Add(dim);

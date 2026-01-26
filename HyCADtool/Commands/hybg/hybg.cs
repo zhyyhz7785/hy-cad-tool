@@ -16,9 +16,13 @@ namespace HyCADTool.Commands
             Database db = Application.DocumentManager.MdiActiveDocument.Database;
             try
             {
-                double scale = GetScale(ed);
+
+                //double scale = GetScale(ed);
+                double scale = BaseConfig.Scale;
                 if (scale <= 0) return;
-                double d = GetConstructionParameter(ed);
+                //double d = GetConstructionParameter(ed);
+                double d = 2;
+
                 if (d <= 0) return;
                 Point3d? basePoint = GetBasePoint(ed);
                 if (!basePoint.HasValue) // 非空判断

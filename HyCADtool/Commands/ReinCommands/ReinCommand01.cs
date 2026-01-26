@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.Runtime;
 using HyCADTool.HelpClass.Jig;
 using HyCADTool.Tools;
 using System;
-using static HyCADTool.Tools.Et;
+using static HyCADTool.Tools.ZTools;
 [assembly: CommandClass(typeof(HyCADTool.Commands.HyCommand))]
 namespace HyCADTool.Commands
 {
@@ -16,7 +16,7 @@ namespace HyCADTool.Commands
         [CommandMethod("g1")]
         public static void ReinAddAnchor1()
         {
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             HookLength = Reinforcement.HookLength;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
@@ -33,6 +33,7 @@ namespace HyCADTool.Commands
                     return;
                 ObjectId polylineId = per.ObjectId;
                 Point3d pickedPoint = per.PickedPoint;
+              
                 using (Transaction trans = db.TransactionManager.StartTransaction())
                 {
                     // 打开多段线
@@ -51,7 +52,7 @@ namespace HyCADTool.Commands
         [CommandMethod("g2")]
         public static void ReinAddAnchor2()
         {
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             HookLength = Reinforcement.HookLength;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
@@ -111,7 +112,7 @@ namespace HyCADTool.Commands
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
-            Et.SetCurrentLayer("01_hy_1钢筋_线钢筋");
+            Tools.ZTools.SetCurrentLayer("01_hy_1钢筋_线钢筋");
             PolylineJig jig = new PolylineJig();
             jig._offsetDistance = -Reinforcement.ProtectionThickness;
             double hookLength = Reinforcement.HookLength;

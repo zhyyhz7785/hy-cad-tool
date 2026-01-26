@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 namespace HyCADTool.Tools
 {
-    public static partial class Et
+    public static partial class ZTools
     {
         public static ObjectId[] GetEntitiesWithMatchingProperties(Document doc, PromptSelectionResult selectionResult, TypedValue[] filterValues)
         {

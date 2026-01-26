@@ -12,6 +12,8 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -34,24 +36,50 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    
+    <!-- WPF References (for WarmupWPF) -->
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Xaml" />
+    
+    <!-- AutoCAD .NET API References -->
+    <Reference Include="AcCoreMgd">
+      <HintPath>bin\Debug\AcCoreMgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AcDbMgd">
+      <HintPath>bin\Debug\AcDbMgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AcMgd">
+      <HintPath>bin\Debug\AcMgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Recall -  - EquipmentFoundation.cs" />
-    <Compile Include="Recall -  -HyRetainingWallSolver.cs" />
-    <Compile Include="Recall -  -HyCADTool - 复制.cs" />
+    
+    <!-- 旧的热重启文件（已注释，仅保留作为参考） -->
+    <!-- <Compile Include="Recall -  - EquipmentFoundation.cs" /> -->
+    <!-- <Compile Include="Recall -  -HyRetainingWallSolver.cs" /> -->
+    <!-- <Compile Include="Recall -  -HyCADTool - 复制.cs" /> -->
+    <!-- <Compile Include="Recall-ReinPanel.cs" /> -->
+    
+    <!-- 通用热重启文件（后续不再修改） -->
     <Compile Include="Recall.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="AutoCAD.NET">
-      <Version>24.3.0</Version>
-    </PackageReference>
+    <None Include="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

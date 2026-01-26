@@ -15,7 +15,7 @@ namespace HyCADTool.Commands
 {
     public static partial class HyCommand
     {
-        [CommandMethod("ExportEntityPropertiesToCsv")]
+        [CommandMethod("ExportEntityPropertiesToCsv1")]
         public static void Export()
         {
             string outputPath = @"E:\BaiduSyncdisk\Code\testResult\AutoCAD_Entity_Properties.csv";

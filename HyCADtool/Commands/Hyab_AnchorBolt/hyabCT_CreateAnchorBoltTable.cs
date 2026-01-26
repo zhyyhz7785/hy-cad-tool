@@ -133,7 +133,7 @@ namespace HyCADTool.Commands
             int totalRows = 1 + 1 + typeCount + 1 + boltCount; // 标题 + 统计标题 + 统计行 + 表头 + 数据行
             int totalCols = 14; // 型号 + 11属性 + X/Y坐标 + 数量
             table.SetSize(totalRows, totalCols);
-            double textHeight = Et.TextStyleConfig.TextSize * BaseConfig.Scale;
+            double textHeight = Tools.ZTools.TextStyleConfig.TextSize * BaseConfig.Scale;
             for (int i = 0; i < table.Rows.Count; i++)
             {
                 table.Rows[i].Height = 1.5 * textHeight;

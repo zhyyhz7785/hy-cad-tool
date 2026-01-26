@@ -1,111 +1,80 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{08A1AC2F-1D10-4A55-A998-9F668BA19B75}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>HyCADTool.Refactored</RootNamespace>
     <AssemblyName>HyCADTool.Refactored</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
+    <RootNamespace>HyCADTool.Refactored</RootNamespace>
+    <LangVersion>8.0</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    
+    <!-- 禁用自动生成 AssemblyInfo，使用手动的 Properties/AssemblyInfo.cs -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DefineConstants>TRACE</DefineConstants>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+
+  <!-- AutoCAD 和其他 NuGet 包引用 -->
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+    <PackageReference Include="AutoCAD.NET" Version="24.3.0" />
+    <PackageReference Include="Autofac" Version="7.1.0" />
+    <PackageReference Include="Clipper2" Version="1.4.0" />
+    <PackageReference Include="NetTopologySuite" Version="2.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
+
+  <!-- 配置文件复制到输出目录 -->
   <ItemGroup>
-    <Compile Include="Class1.cs" />
-    <Compile Include="Commands\AnchorBoltCommands.cs" />
-    <Compile Include="Commands\ClusterCommands.cs" />
-    <Compile Include="Commands\DimensionCommands.cs" />
-    <Compile Include="Commands\LayoutCommands.cs" />
-    <Compile Include="Commands\PileCommands.cs" />
-    <Compile Include="Commands\ReinforcementCommands.cs" />
-    <Compile Include="Config\BaseConfig.cs" />
-    <Compile Include="Config\BaseConfigData.cs" />
-    <Compile Include="Models\Cluster\ClusterConfig.cs" />
-    <Compile Include="Models\Cluster\ClusterResult.cs" />
-    <Compile Include="Models\Common\Direction.cs" />
-    <Compile Include="Models\Pile\PileArrangement.cs" />
-    <Compile Include="Models\Pile\PileConfig.cs" />
-    <Compile Include="Models\Reinforcement\ReinforcementConfig.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\AnchorBoltService.cs" />
-    <Compile Include="Services\CadService.cs" />
-    <Compile Include="Services\ClusterService.cs" />
-    <Compile Include="Services\DimensionService.cs" />
-    <Compile Include="Services\IAnchorBoltService.cs" />
-    <Compile Include="Services\ICadService.cs" />
-    <Compile Include="Services\IClusterService.cs" />
-    <Compile Include="Services\IDimensionService.cs" />
-    <Compile Include="Services\ILayoutService.cs" />
-    <Compile Include="Services\IPileService.cs" />
-    <Compile Include="Services\IReinforcementService.cs" />
-    <Compile Include="Services\LayoutService.cs" />
-    <Compile Include="Services\PileService.cs" />
-    <Compile Include="Services\ReinforcementService.cs" />
-    <Compile Include="Tools\FileTool.cs" />
-    <Compile Include="Tools\GeometryUtils.cs" />
-    <Compile Include="Tools\LayerTool.cs" />
-    <Compile Include="Tools\LineTool.cs" />
-    <Compile Include="Tools\PointTool.cs" />
-    <Compile Include="Tools\PolyTool.cs" />
-    <Compile Include="Tools\SelectTool.cs" />
-    <Compile Include="ViewModels\ClusterPanelViewModel.cs" />
-    <Compile Include="ViewModels\PilePanelViewModel.cs" />
-    <Compile Include="ViewModels\ReinforcementPanelViewModel.cs" />
+    <None Update="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
+
+  <!-- 排除不需要的文件（如果有） -->
   <ItemGroup>
-    <None Include="Config\config.json" />
+    <!-- 排除备份文件、临时文件等 -->
+    <Compile Remove="**/*.bak" />
+    <Compile Remove="**/*.old" />
+    <None Remove="**/*.bak" />
+    <None Remove="**/*.old" />
   </ItemGroup>
+
+  <!-- XAML 文件自动包含，无需手动指定 -->
+
+  <!-- 注释掉的面板（暂时排除） -->
   <ItemGroup>
-    <Page Include="Views\ClusterPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\PilePanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\ReinforcementPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
+    <Compile Remove="Presentation\Views\ReinPanel.xaml.cs" />
+    <Compile Remove="Presentation\Views\BaseReinPanel.xaml.cs" />
+    <Compile Remove="Presentation\Views\PilePanel.xaml.cs" />
+    <Compile Remove="Presentation\Views\ClusterPanel.xaml.cs" />
+    <Compile Remove="Presentation\Commands\ShowPanelCommand.cs" />
+    <Compile Remove="Presentation\Commands\ShowMainPanelCommand.cs" />
+    <Compile Remove="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
+    <Compile Remove="Presentation\ViewModels\ReinPanelViewModel.cs" />
+    <Compile Remove="Presentation\ViewModels\PilePanelViewModel.cs" />
+    <Compile Remove="Presentation\ViewModels\ClusterPanelViewModel.cs" />
+    <Compile Remove="Application\Services\BaseReinforcementService.cs" />
+    <Compile Remove="Domain\Interfaces\IBaseReinforcementService.cs" />
+    <Compile Remove="Domain\Models\Configuration\BaseReinforcementConfig.cs" />
+    
+    <Page Remove="Presentation\Views\ReinPanel.xaml" />
+    <Page Remove="Presentation\Views\BaseReinPanel.xaml" />
+    <Page Remove="Presentation\Views\PilePanel.xaml" />
+    <Page Remove="Presentation\Views\ClusterPanel.xaml" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="AutoCAD.NET">
-      <Version>24.3.0</Version>
-    </PackageReference>
-    <PackageReference Include="Clipper2">
-      <Version>1.4.0</Version>
-    </PackageReference>
-    <PackageReference Include="Newtonsoft.Json">
-      <Version>13.0.3</Version>
-    </PackageReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
 </Project>

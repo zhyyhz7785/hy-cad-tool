@@ -17,8 +17,12 @@ namespace HyCADTool.ViewModels
 {
     public class FilterPanelViewModel : INotifyPropertyChanged
     {
-        private readonly Document _doc = Application.DocumentManager.MdiActiveDocument;
-        private readonly Editor _ed = Application.DocumentManager.MdiActiveDocument.Editor;
+        //private readonly Document CurrentDocument = Application.DocumentManager.MdiActiveDocument;
+        //private readonly Editor Editor = Application.DocumentManager.MdiActiveDocument.Editor;
+
+        private Document CurrentDocument => Application.DocumentManager.MdiActiveDocument;
+        private Editor Editor => CurrentDocument.Editor;
+
         private Entity _selectedEntity;
         private ObjectId[] _userSelectedIds = new ObjectId[0];
         private string _selectedPropertyValue;
@@ -77,7 +81,7 @@ namespace HyCADTool.ViewModels
 
         private void SelectSingleEntity()
         {
-            _selectedEntity = _doc.Database.SelectSingleEntity();
+            _selectedEntity = ZTools.SelectSingleEntity();
             if (_selectedEntity != null)
             {
                 SelectedType = _selectedEntity.GetType().Name.ToChinese();
@@ -105,10 +109,10 @@ namespace HyCADTool.ViewModels
 
         //private void SelectWithFilters()
         //{
-        //    PromptSelectionResult res = _ed.GetSelection();
+        //    PromptSelectionResult res = Editor.GetSelection();
         //    if (res.Status != PromptStatus.OK)
         //    {
-        //        _ed.WriteMessage("未选择任何对象\n");
+        //        Editor.WriteMessage("未选择任何对象\n");
         //        return;
         //    }
 
@@ -133,8 +137,8 @@ namespace HyCADTool.ViewModels
         //        ids = ids.Intersect(FilterEntitiesByExpression(_userSelectedIds, field, op, valStr));
         //    }
 
-        //    _ed.SetImpliedSelection(new ObjectId[0]);
-        //    _ed.SetImpliedSelection(ids.ToArray());
+        //    Editor.SetImpliedSelection(new ObjectId[0]);
+        //    Editor.SetImpliedSelection(ids.ToArray());
         //}
         private void UpdateSelectedPropertyValue()
         {
@@ -167,13 +171,13 @@ namespace HyCADTool.ViewModels
         private void SelectWithFilters()
         {
             // 清空之前的选择状态
-            _ed.SetImpliedSelection(new ObjectId[0]);
+            Editor.SetImpliedSelection(new ObjectId[0]);
 
             // 获取用户新的选择
-            PromptSelectionResult res = _ed.GetSelection();
+            PromptSelectionResult res = Editor.GetSelection();
             if (res.Status != PromptStatus.OK)
             {
-                _ed.WriteMessage("未选择任何对象\n");
+                Editor.WriteMessage("未选择任何对象\n");
                 // 确保清空用户选择的ID集合
                 _userSelectedIds = null;
                 return;
@@ -185,7 +189,7 @@ namespace HyCADTool.ViewModels
             // 如果没有选择任何对象，直接返回
             if (_userSelectedIds == null || _userSelectedIds.Length == 0)
             {
-                _ed.WriteMessage("未选择任何对象\n");
+                Editor.WriteMessage("未选择任何对象\n");
                 return;
             }
 
@@ -222,14 +226,14 @@ namespace HyCADTool.ViewModels
 
             // 设置最终的选择结果
             ObjectId[] finalIds = ids.ToArray();
-            _ed.SetImpliedSelection(finalIds);
+            Editor.SetImpliedSelection(finalIds);
 
             // 输出结果信息
-            _ed.WriteMessage($"筛选完成，共选中 {finalIds.Length} 个对象\n");
+            Editor.WriteMessage($"筛选完成，共选中 {finalIds.Length} 个对象\n");
         }
         private IEnumerable<ObjectId> FilterEntitiesByExpression(ObjectId[] ids, string field, string op, string valStr)
         {
-            return _doc.FilterEntitiesBy(e =>
+            return CurrentDocument.FilterEntitiesBy(e =>
             {
                 var props = e.GetFilterableProperties();
                 if (!props.ContainsKey(field)) return false;
@@ -309,10 +313,10 @@ namespace HyCADTool.ViewModels
         }
 
         private IEnumerable<ObjectId> GetLayerFilteredIds() => _selectedEntity?.Layer.GetLayerFilter().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds) ?? Enumerable.Empty<ObjectId>();
-        private IEnumerable<ObjectId> GetColorFilteredIds() => _selectedEntity?.GetTrueColor().GetEntitiesWithMatchingColorInputIds(_doc, _userSelectedIds) ?? Enumerable.Empty<ObjectId>();
+        private IEnumerable<ObjectId> GetColorFilteredIds() => _selectedEntity?.GetTrueColor().GetEntitiesWithMatchingColorInputIds(CurrentDocument, _userSelectedIds) ?? Enumerable.Empty<ObjectId>();
         private IEnumerable<ObjectId> GetLineWeightFilteredIds() => _selectedEntity?.GetTrueLineWeight().GetLineWeightFilter().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds) ?? Enumerable.Empty<ObjectId>();
-        private IEnumerable<ObjectId> GetLineTypeFilteredIds() => _selectedEntity?.GetTrueLinetype().GetEntitiesWithMatchingLinetype(_doc, _userSelectedIds) ?? Enumerable.Empty<ObjectId>();
-        private IEnumerable<ObjectId> GetTransparencyFilteredIds() => _selectedEntity?.GetTrueTransparency().GetEntitiesWithMatchingTransparency(_doc, _userSelectedIds) ?? Enumerable.Empty<ObjectId>();
+        private IEnumerable<ObjectId> GetLineTypeFilteredIds() => _selectedEntity?.GetTrueLinetype().GetEntitiesWithMatchingLinetype(CurrentDocument, _userSelectedIds) ?? Enumerable.Empty<ObjectId>();
+        private IEnumerable<ObjectId> GetTransparencyFilteredIds() => _selectedEntity?.GetTrueTransparency().GetEntitiesWithMatchingTransparency(CurrentDocument, _userSelectedIds) ?? Enumerable.Empty<ObjectId>();
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
