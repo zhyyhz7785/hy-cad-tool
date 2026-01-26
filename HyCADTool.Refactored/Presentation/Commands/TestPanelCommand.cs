@@ -1,9 +1,5 @@
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Windows;
-using HyCADTool.Refactored.Presentation.Views;
-using HyCADTool.Refactored.Presentation.ViewModels;
-using HyCADTool.Refactored.Infrastructure.Configuration;
-using System;
 using System.Diagnostics;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

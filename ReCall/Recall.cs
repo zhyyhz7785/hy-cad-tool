@@ -62,7 +62,7 @@ namespace HyCADTool.ReCall
         private const string TEST_METHOD_NAME = "RunAllTests";
 
         /// <summary>
-        /// 测试命令配置（C11-C19）
+        /// 测试命令配置（C11-C21）
         /// 格式：命令名, 类名, 方法名
         /// 留空表示该槽位未使用
         /// </summary>
@@ -75,8 +75,11 @@ namespace HyCADTool.ReCall
             ("C15", "HyCADTool.Refactored.Presentation.Commands.SurfaceBasedElevation3DCommand", "Execute"),  // HY3 (新方法-表面)
             ("C16", "HyCADTool.Refactored.Presentation.Commands.TestOffsetCommand", "Execute"),      // 测试多边形偏移
             ("C17", "HyCADTool.Refactored.Presentation.Commands.TestPanelCommand", "ShowTestPanel"), // HYTEST (性能对比测试)
-            ("C18", "", ""),  // 预留槽位8
-            ("C19", "", ""),  // 预留槽位9
+            ("C18", "HyCADTool.Refactored.Presentation.Commands.DCELCommand", "Execute"),           // HYDCEL
+            ("C19", "HyCADTool.Refactored.Presentation.Commands.DCELSettingsCommand", "Execute"),   // HYDCELSET
+            ("C20", "HyCADTool.Refactored.Presentation.Commands.TestArcSimplifyCommand", "Execute"), // TESTARC (测试Arc简化)
+            ("C21", "HyCADTool.Refactored.Presentation.Commands.JoinParallelLinesCommand", "Execute"), // HYJP (连接平行直线)
+            ("C22", "HyCADTool.Refactored.Presentation.Commands.PaperHH", "Test"),                   // PHH (图纸空间视口)
         };
 
         #endregion
@@ -168,7 +171,7 @@ namespace HyCADTool.ReCall
                 
                 ed.WriteMessage("\n");
                 ed.WriteMessage("\n⚠️ 重要提示：");
-                ed.WriteMessage("\n  - 修改代码后，请使用 C11-C19 测试命令（支持热重启）");
+                ed.WriteMessage("\n  - 修改代码后，请使用 C11-C21 测试命令（支持热重启）");
                 ed.WriteMessage("\n  - 或者重启 AutoCAD 后，正式命令才会更新");
                 ed.WriteMessage("\n  - 在 Recall.cs 的 TEST_COMMANDS 中配置测试命令");
                 ed.WriteMessage("\n" + new string('=', 60));
@@ -489,7 +492,7 @@ namespace HyCADTool.ReCall
             }
         }
         
-        // 自动生成 C11-C19 命令方法
+        // 自动生成 C11-C21 命令方法
         [CommandMethod("C11")] public void ExecuteC11() => ExecuteTestCommand("C11");
         [CommandMethod("C12")] public void ExecuteC12() => ExecuteTestCommand("C12");
         [CommandMethod("C13")] public void ExecuteC13() => ExecuteTestCommand("C13");
@@ -499,6 +502,9 @@ namespace HyCADTool.ReCall
         [CommandMethod("C17")] public void ExecuteC17() => ExecuteTestCommand("C17");
         [CommandMethod("C18")] public void ExecuteC18() => ExecuteTestCommand("C18");
         [CommandMethod("C19")] public void ExecuteC19() => ExecuteTestCommand("C19");
+        [CommandMethod("C20")] public void ExecuteC20() => ExecuteTestCommand("C20");
+        [CommandMethod("C21")] public void ExecuteC21() => ExecuteTestCommand("C21");
+        [CommandMethod("C22")] public void ExecuteC22() => ExecuteTestCommand("C22");
     }
 
     /// <summary>

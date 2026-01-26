@@ -397,3 +397,27 @@ private void WarmupWPF(Editor ed)
 **关键词**: IExtensionApplication, WPF 预加载, 程序集加载, 性能优化
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

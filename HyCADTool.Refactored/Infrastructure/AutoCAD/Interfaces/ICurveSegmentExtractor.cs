@@ -29,6 +29,26 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces
         /// <param name="tolerance">离散化容差</param>
         /// <returns>Line2D 线段列表</returns>
         List<Line2D> ExtractSegments(IEnumerable<ObjectId> curveIds, double tolerance);
+
+        /// <summary>
+        /// 从 ObjectId 集合提取所有曲线段（包含完整曲线信息）
+        /// 支持 Polyline 多顶点、Arc、Spline、Ellipse
+        /// </summary>
+        /// <param name="curveIds">曲线对象 ID 列表</param>
+        /// <param name="tolerance">离散化容差</param>
+        /// <returns>曲线段列表（包含原始曲线信息）</returns>
+        List<CurveSegment2D> ExtractSegmentsWithCurveInfo(IEnumerable<ObjectId> curveIds, double tolerance);
+        
+        /// <summary>
+        /// 提取并简化所有曲线为线段，同时建立映射字典
+        /// </summary>
+        (List<Line2D> segments, List<SimplifiedCurveMapping> mappings) ExtractAndSimplify(
+            IEnumerable<ObjectId> curveIds,
+            Domain.Services.CurveSimplificationService simplificationService,
+            double tolerance,
+            int? arcSegmentCount = null,
+            int? ellipseSegmentCount = null,
+            int? splineSegmentCount = null);
     }
 }
 

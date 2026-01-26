@@ -8,11 +8,16 @@ namespace HyCADTool.Refactored.Test
 {
     /// <summary>
     /// 通用测试运行器 - 简化版
-    /// 只测试 HYOV 命令
+    /// 测试当前正在开发的命令
     /// 
     /// 使用说明：
-    /// - RunAllTests(): 执行 HYOV 测试（自动计时）
+    /// - RunAllTests(): 执行测试命令（自动计时）
     /// - LogElapsedTime(): 辅助方法，完全按照原项目 SimpleLogger.LogElapsedTime 的简洁风格
+    /// 
+    /// 测试方式：
+    /// - 一次只测试一个命令（已测试通过的命令注释掉）
+    /// - 使用 C1 命令调用此方法
+    /// - 可通过 C11-C19 直接调用单个命令
     /// </summary>
     public class TestRunner
     {
@@ -25,7 +30,7 @@ namespace HyCADTool.Refactored.Test
         }
 
         /// <summary>
-        /// 运行测试 - 直接执行 HYOV 命令
+        /// 运行测试 - 一次只测试一个命令
         /// </summary>
         public void RunAllTests()
         {
@@ -34,13 +39,30 @@ namespace HyCADTool.Refactored.Test
                 return;
             }
 
-            LogElapsedTime("HYOV 命令执行", () =>
+            // ========== 当前测试命令 ==========
+            // 一次只启用一个命令的测试
+            
+            // ✅ HYOV - 已测试通过
+            // LogElapsedTime("HYOV 命令执行", () =>
+            // {
+            //     var cmd = new HyCADTool.Refactored.Presentation.Commands.OverKillCommand();
+            //     cmd.Execute();
+            // });
+
+            // ✅ HYBC - 已测试通过
+            // LogElapsedTime("HYBC 命令执行", () =>
+            // {
+            //     var cmd = new HyCADTool.Refactored.Presentation.Commands.BreakCurvesCommand();
+            //     cmd.Execute();
+            // });
+
+            // 🔄 HYDCEL - 当前测试
+            LogElapsedTime("HYDCEL 命令执行", () =>
             {
                 try
                 {
-                    // 直接执行 HYOV 命令
-                    var hyovCommand = new HyCADTool.Refactored.Presentation.Commands.OverKillCommand();
-                    hyovCommand.Execute();
+                    var cmd = new HyCADTool.Refactored.Presentation.Commands.DCELCommand();
+                    cmd.Execute();
                 }
                 catch (System.Exception ex)
                 {

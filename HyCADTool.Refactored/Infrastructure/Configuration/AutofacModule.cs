@@ -227,7 +227,12 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterGeneric(typeof(HyCADTool.Refactored.Domain.Services.Geometry.SpatialIndexService<>))
                 .AsSelf()
                 .SingleInstance();
-            
+
+            // === 地理空间服务 ===
+            builder.RegisterType<HyCADTool.Refactored.Domain.Services.GeospatialService>()
+                .As<HyCADTool.Refactored.Domain.Interfaces.IGeospatialService>()
+                .SingleInstance();
+
             // TODO: 后续添加更多服务注册
         }
     }

@@ -499,3 +499,27 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD
 **结论**: IExtensionApplication 是 AutoCAD 插件性能优化的最佳实践！
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

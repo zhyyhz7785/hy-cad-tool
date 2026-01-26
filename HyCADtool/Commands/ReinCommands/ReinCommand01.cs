@@ -33,6 +33,7 @@ namespace HyCADTool.Commands
                     return;
                 ObjectId polylineId = per.ObjectId;
                 Point3d pickedPoint = per.PickedPoint;
+              
                 using (Transaction trans = db.TransactionManager.StartTransaction())
                 {
                     // 打开多段线

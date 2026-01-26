@@ -9,6 +9,7 @@ using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 [assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.DCELCommand))]
 
@@ -63,7 +64,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
 
             var ed = doc.Editor;
-            var stopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -86,10 +86,23 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     return;
                 }
 
+                // 版本标识：新简化架构
+                ed.WriteMessage("\n[HYDCEL v4.1 - 端点对齐修复 2025-10-30]");
+                
+                // 显示当前配置
+                var settings = Domain.Services.DCELSettings.Current;
+                ed.WriteMessage($"\n配置: Arc={settings.ArcSegmentCount?.ToString() ?? "自动"}, " +
+                               $"Ellipse={settings.EllipseSegmentCount?.ToString() ?? "自动"}, " +
+                               $"Spline={settings.SplineSegmentCount?.ToString() ?? "自动"}, " +
+                               $"恢复原曲线={settings.RestoreOriginalCurves}");
+
                 var selectionSet = selectionResult.Value;
-                ed.WriteMessage($"\n选择了 {selectionSet.Count} 个对象");
+
+                // ⏱️ 性能测量开始（用户选择完成后）
+                var stopwatch = Stopwatch.StartNew();
 
                 // 2. 提取曲线 ID
+                var sw0 = Stopwatch.StartNew();
                 var curveIds = new List<ObjectId>();
                 foreach (SelectedObject selObj in selectionSet)
                 {
@@ -98,10 +111,23 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         curveIds.Add(selObj.ObjectId);
                     }
                 }
+                sw0.Stop();
+                long collectTime = sw0.ElapsedMilliseconds;
 
-                // 3. 从曲线提取线段
-                var tolerance = 0.01; // 容差值，与原代码保持一致
-                var segments = _curveExtractor.ExtractSegments(curveIds, tolerance);
+                // 3. 提取并简化所有曲线（使用全局配置）
+                var tolerance = 0.01;
+                var sw1 = Stopwatch.StartNew();
+                var simplificationService = new Domain.Services.CurveSimplificationService();
+                var (segments, mappings) = _curveExtractor.ExtractAndSimplify(
+                    curveIds, 
+                    simplificationService, 
+                    tolerance,
+                    arcSegmentCount: settings.ArcSegmentCount,
+                    ellipseSegmentCount: settings.EllipseSegmentCount,
+                    splineSegmentCount: settings.SplineSegmentCount);
+                
+                sw1.Stop();
+                long extractTime = sw1.ElapsedMilliseconds;
 
                 if (segments.Count == 0)
                 {
@@ -109,10 +135,11 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     return;
                 }
 
-                ed.WriteMessage($"\n提取了 {segments.Count} 条线段");
-
-                // 4. 构建 DCEL 图
+                // 4. 构建 DCEL 图（使用简化后的线段）
+                var sw3 = Stopwatch.StartNew();
                 var graph = _dcelBuilder.BuildFromSegments(segments, new Tolerance(tolerance));
+                sw3.Stop();
+                long buildTime = sw3.ElapsedMilliseconds;
 
                 if (graph == null || graph.Faces.Count == 0)
                 {
@@ -120,41 +147,81 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     return;
                 }
 
-                // 5. 输出统计信息
+                // 5. 统计信息
+                var sw5 = Stopwatch.StartNew();
                 var stats = graph.GetStatistics();
-                ed.WriteMessage($"\nDCEL 构建完成：{stats.VertexCount} 顶点, {stats.EdgeCount} 边, {stats.FaceCount} 面");
-                
-                // 6. 输出面的分类信息
-                var outerFaces = new List<Domain.DataStructures.DCEL.Face>();
-                var innerFaces = new List<Domain.DataStructures.DCEL.Face>();
-                foreach (var face in graph.Faces)
-                {
-                    if (face.IsOuter)
-                        outerFaces.Add(face);
-                    else
-                        innerFaces.Add(face);
-                }
-                ed.WriteMessage($"\n外轮廓面: {outerFaces.Count}, 内部面: {innerFaces.Count}");
+                var outerCount = graph.Faces.Count(f => f.IsOuter);
+                var innerCount = stats.FaceCount - outerCount;
+                sw5.Stop();
+                long statsTime = sw5.ElapsedMilliseconds;
 
-                // 7. 验证拓扑一致性
-                if (!graph.Validate(out var errors))
+                // 6. 验证拓扑一致性
+                var sw6 = Stopwatch.StartNew();
+                var isValid = graph.Validate(out var errors);
+                sw6.Stop();
+                long validateTime = sw6.ElapsedMilliseconds;
+
+#if DEBUG
+                if (!isValid)
                 {
-                    ed.WriteMessage("\n警告：DCEL 拓扑验证失败：");
+                    ed.WriteMessage($"\n⚠️ 拓扑验证失败（{errors.Count} 个问题）");
                     foreach (var error in errors)
-                    {
                         ed.WriteMessage($"\n  - {error}");
-                    }
                 }
+#endif
 
-                // 8. 渲染到 AutoCAD
-                _dcelRenderer.Render(graph, "dcelOuter", "dcelInner");
-
+                // 7. 渲染到 AutoCAD
+                var sw4 = Stopwatch.StartNew();
+                
+                if (mappings.Count > 0)
+                {
+                    // 包含曲线，使用曲线恢复渲染（根据用户配置）
+                    _dcelRenderer.RenderWithMappings(graph, mappings, "dcelOuter", "dcelInner", restoreOriginal: settings.RestoreOriginalCurves);
+                }
+                else
+                {
+                    // 纯直线，使用简单渲染
+                    _dcelRenderer.Render(graph, "dcelOuter", "dcelInner");
+                }
+                
+                sw4.Stop();
+                long renderTime = sw4.ElapsedMilliseconds;
+                
+                // 统计
+                var sw7 = Stopwatch.StartNew();
+                var curveStats = new Dictionary<string, int>
+                {
+                    ["Line"] = segments.Count,
+                    ["SimplifiedCurves"] = mappings.Count
+                };
+                var arcCount = mappings.Count(m => m.OriginalType == CurveSegmentType.Arc);
+                var ellipseCount = mappings.Count(m => m.OriginalType == CurveSegmentType.Ellipse);
+                var splineCount = mappings.Count(m => m.OriginalType == CurveSegmentType.Spline);
+                if (arcCount > 0) curveStats["Arc"] = arcCount;
+                if (ellipseCount > 0) curveStats["Ellipse"] = ellipseCount;
+                if (splineCount > 0) curveStats["Spline"] = splineCount;
+                sw7.Stop();
+                long groupTime = sw7.ElapsedMilliseconds;
+                
                 stopwatch.Stop();
-                ed.WriteMessage($"\nINFO: DCEL处理 耗时 {stopwatch.ElapsedMilliseconds} 毫秒");
+                long totalTime = stopwatch.ElapsedMilliseconds;
+                long otherTime = totalTime - collectTime - extractTime - buildTime - statsTime - validateTime - renderTime - groupTime;
+                
+                ed.WriteMessage($"\n曲线统计：{string.Join(", ", curveStats.Select(kv => $"{kv.Key}:{kv.Value}"))}");
+                ed.WriteMessage($"\nDCEL 完成：{stats.FaceCount} 面（{outerCount} 外 + {innerCount} 内）");
+                ed.WriteMessage($"\n━━━━━━━━━━ 详细性能分析 ━━━━━━━━━━");
+                ed.WriteMessage($"\n  1. ID收集     : {collectTime}ms ({collectTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n  2. 提取+简化  : {extractTime}ms ({extractTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n  3. DCEL构建   : {buildTime}ms ({buildTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n  4. 统计信息   : {statsTime}ms ({statsTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n  5. 拓扑验证   : {validateTime}ms ({validateTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n  6. 渲染       : {renderTime}ms ({renderTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n  7. 其他开销   : {otherTime}ms ({otherTime * 100.0 / totalTime:F1}%)");
+                ed.WriteMessage($"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                ed.WriteMessage($"\nINFO: DCEL处理 总耗时 {totalTime} 毫秒（不含用户选择）");
             }
             catch (System.Exception ex)
             {
-                stopwatch.Stop();
                 ed.WriteMessage($"\n错误：{ex.Message}");
                 ed.WriteMessage($"\n{ex.StackTrace}");
             }
