@@ -4,6 +4,7 @@ using Autofac;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.Views;
 using System;
+using System.Windows.Controls;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using Exception = System.Exception;
 
@@ -14,10 +15,15 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// <summary>
     /// 显示集成主面板命令（类似原项目的 hy 命令）
     /// 将所有子面板（钢筋、过滤器、基础钢筋、桩、聚类）集成在一个 PaletteSet 中
+    /// 
+    /// 面板 DI 策略：
+    /// - ReinPanel / FilterPanel：通过 Autofac 容器解析（构造函数注入 ViewModel）
+    /// - BaseReinPanel：暂用无参构造 + 手动解析 ViewModel（待 IBaseReinforcementService 实现后切换为 DI）
+    /// - PilePanel / ClusterPanel：无参构造（内部自行管理旧项目依赖）
     /// </summary>
     public class ShowMainPanelCommand
     {
-        private static PaletteSet _mainPalette; // 静态实例，确保单例
+        private static PaletteSet _mainPalette;
 
         /// <summary>
         /// 显示集成主面板
@@ -26,93 +32,47 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("HYREFACTOR")]
         public static void ShowMainPanel()
         {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            if (ed == null) return;
+
             try
             {
                 if (_mainPalette == null)
                 {
-                    ed.WriteMessage("\n正在创建 HY 主面板...\n");
-                    
                     _mainPalette = new PaletteSet("HY 主面板 (重构版)")
                     {
-                        Style = PaletteSetStyles.ShowAutoHideButton 
-                              | PaletteSetStyles.ShowCloseButton 
+                        Style = PaletteSetStyles.ShowAutoHideButton
+                              | PaletteSetStyles.ShowCloseButton
                               | PaletteSetStyles.Snappable
                     };
 
-                    // 添加各个子面板（使用 AddVisual 自动创建 ElementHost）
-                    try
-                    {
-                        _mainPalette.AddVisual("钢筋", new ReinPanel());
-                        ed.WriteMessage("✅ 钢筋面板已加载\n");
-                    }
-                    catch (Exception ex)
-                    {
-                        ed.WriteMessage($"❌ 钢筋面板加载失败: {ex.Message}\n");
-                    }
+                    int loaded = 0;
 
-                    try
-                    {
-                        var filterPanel = new FilterPanel();
-                        if (filterPanel.DataContext == null && ServiceLocator.Container != null)
-                        {
-                            filterPanel.DataContext = ServiceLocator.Container.Resolve<HyCADTool.Refactored.Presentation.ViewModels.FilterPanelViewModel>();
-                        }
-                        _mainPalette.AddVisual("过滤器", filterPanel);
-                        ed.WriteMessage("✅ 过滤器面板已加载\n");
-                    }
-                    catch (Exception ex)
-                    {
-                        ed.WriteMessage($"❌ 过滤器面板加载失败: {ex.Message}\n");
-                    }
+                    // 1. 钢筋面板 - 通过 DI 解析
+                    loaded += TryAddPanel<ReinPanel>(_mainPalette, "钢筋", ed);
 
-                    try
-                    {
-                        var baseReinPanel = new BaseReinPanel();
-                        if (baseReinPanel.DataContext == null && ServiceLocator.Container != null)
-                        {
-                            baseReinPanel.DataContext = ServiceLocator.Container.Resolve<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>();
-                        }
-                        _mainPalette.AddVisual("基础钢筋", baseReinPanel);
-                        ed.WriteMessage("✅ 基础钢筋面板已加载\n");
-                    }
-                    catch (Exception ex)
-                    {
-                        ed.WriteMessage($"❌ 基础钢筋面板加载失败: {ex.Message}\n");
-                    }
+                    // 2. 过滤器面板 - 通过 DI 解析
+                    loaded += TryAddPanel<FilterPanel>(_mainPalette, "过滤器", ed);
 
-                    try
-                    {
-                        var pilePanel = new PilePanel();
-                        _mainPalette.AddVisual("桩", pilePanel);
-                        ed.WriteMessage("✅ 桩基布置面板已加载\n");
-                    }
-                    catch (Exception ex)
-                    {
-                        ed.WriteMessage($"❌ 桩基布置面板加载失败: {ex.Message}\n");
-                    }
+                    // 3. 基础钢筋面板 - 暂用无参构造（IBaseReinforcementService 尚未实现）
+                    loaded += TryAddPanelDirect(() => new BaseReinPanel(), _mainPalette, "基础钢筋", ed);
 
-                    try
-                    {
-                        var clusterPanel = new ClusterPanel();
-                        _mainPalette.AddVisual("螺栓聚类与标注", clusterPanel);
-                        ed.WriteMessage("✅ 聚类分析面板已加载\n");
-                    }
-                    catch (Exception ex)
-                    {
-                        ed.WriteMessage($"❌ 聚类分析面板加载失败: {ex.Message}\n");
-                    }
+                    // 4. 桩基面板 - 无参构造（内部管理旧项目依赖）
+                    // 注意: PilePanel 依赖旧项目，若未在 csproj 中恢复编译则跳过
+                    // loaded += TryAddPanelDirect(() => new PilePanel(), _mainPalette, "桩", ed);
 
-                    ed.WriteMessage("\n✅ HY 主面板创建完成\n");
+                    // 5. 聚类面板 - 无参构造（内部管理旧项目依赖）
+                    // 注意: ClusterPanel 依赖旧项目，若未在 csproj 中恢复编译则跳过
+                    // loaded += TryAddPanelDirect(() => new ClusterPanel(), _mainPalette, "螺栓聚类与标注", ed);
+
+                    ed.WriteMessage($"\nHY 主面板创建完成：{loaded}/3 个面板已加载（钢筋、过滤器、基础钢筋）");
                 }
 
                 _mainPalette.Visible = true;
-                ed.WriteMessage("✅ HY 主面板已显示（共 5 个子面板）\n");
             }
             catch (Exception ex)
             {
-                ed.WriteMessage($"\n❌ 显示主面板失败: {ex.Message}\n");
-                ed.WriteMessage($"堆栈跟踪: {ex.StackTrace}\n");
+                ed.WriteMessage($"\n显示主面板失败: {ex.Message}");
             }
         }
 
@@ -123,23 +83,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("HYHIDE")]
         public static void HideMainPanel()
         {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
-            try
-            {
-                if (_mainPalette != null)
-                {
-                    _mainPalette.Visible = false;
-                    ed.WriteMessage("\n✅ HY 主面板已隐藏\n");
-                }
-                else
-                {
-                    ed.WriteMessage("\n⚠️ 主面板尚未创建\n");
-                }
-            }
-            catch (Exception ex)
-            {
-                ed.WriteMessage($"\n❌ 隐藏主面板失败: {ex.Message}\n");
-            }
+            if (_mainPalette != null)
+                _mainPalette.Visible = false;
         }
 
         /// <summary>
@@ -149,26 +94,58 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("HYTOGGLE")]
         public static void ToggleMainPanel()
         {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            if (_mainPalette == null)
+                ShowMainPanel();
+            else
+                _mainPalette.Visible = !_mainPalette.Visible;
+        }
+
+        #region 辅助方法
+
+        /// <summary>
+        /// 通过 DI 容器解析面板并添加到 PaletteSet
+        /// </summary>
+        private static int TryAddPanel<T>(PaletteSet palette, string tabName, Autodesk.AutoCAD.EditorInput.Editor ed) where T : UserControl
+        {
             try
             {
-                if (_mainPalette == null)
+                if (ServiceLocator.Container == null)
                 {
-                    ShowMainPanel();
+                    ed.WriteMessage($"\n  {tabName}: DI 容器未初始化");
+                    return 0;
                 }
-                else
-                {
-                    _mainPalette.Visible = !_mainPalette.Visible;
-                    ed.WriteMessage(_mainPalette.Visible 
-                        ? "\n✅ HY 主面板已显示\n" 
-                        : "\n✅ HY 主面板已隐藏\n");
-                }
+
+                var panel = ServiceLocator.Container.Resolve<T>();
+                palette.AddVisual(tabName, panel);
+                return 1;
             }
             catch (Exception ex)
             {
-                ed.WriteMessage($"\n❌ 切换主面板失败: {ex.Message}\n");
+                ed.WriteMessage($"\n  {tabName} 加载失败: {ex.Message}");
+                return 0;
             }
         }
+
+        /// <summary>
+        /// 直接创建面板（不通过 DI）并添加到 PaletteSet
+        /// 用于依赖旧项目或 DI 尚未就绪的面板
+        /// </summary>
+        private static int TryAddPanelDirect(Func<UserControl> factory, PaletteSet palette, string tabName, Autodesk.AutoCAD.EditorInput.Editor ed)
+        {
+            try
+            {
+                var panel = factory();
+                palette.AddVisual(tabName, panel);
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n  {tabName} 加载失败: {ex.Message}");
+                return 0;
+            }
+        }
+
+        #endregion
     }
 }
 

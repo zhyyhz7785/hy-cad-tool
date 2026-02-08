@@ -112,7 +112,7 @@
                         <ComboBox Grid.Column="1"
                                   Width="90"
                                   Height="20"
-                                  SelectedIndex="0">
+                                  SelectedIndex="{Binding SelectedDirection, Converter={StaticResource EnumToIndexConverter}}">
                             <ComboBoxItem Content="x向顶筋" Tag="TopX" />
                             <ComboBoxItem Content="y向顶筋" Tag="TopY" />
                             <ComboBoxItem Content="x向底筋" Tag="BottomX" />
@@ -299,7 +299,7 @@
                         <ComboBox Grid.Column="1"
                                   Width="90"
                                   Height="20"
-                                  SelectedIndex="0">
+                                  SelectedIndex="{Binding SelectedDimDirection, Converter={StaticResource EnumToIndexConverter}}">
                             <ComboBoxItem Content="Y向标注" Tag="LeftRight" />
                             <ComboBoxItem Content="X向标注" Tag="UpDown" />
                         </ComboBox>

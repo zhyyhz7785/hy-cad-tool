@@ -100,49 +100,55 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
-            // 面板注册（按需创建，非单例）
-            // TODO 阶段2后恢复: 暂时排除依赖原项目的面板注册
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
+            // ===== 面板和 ViewModel 注册 =====
 
+            // ReinPanel（钢筋面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ReinPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // FilterPanel（过滤器面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.FilterPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
             builder.RegisterType<HyCADTool.Refactored.Presentation.Views.FilterPanel>()
                 .AsSelf()
                 .InstancePerDependency();
 
-            // ViewModel 注册（按需创建）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.FilterPanelViewModel>()
-                .AsSelf()
-                .InstancePerDependency();
-
-            // TODO 阶段2后恢复: 暂时排除依赖原项目的 ViewModel 和服务
+            // BaseReinPanel（基础钢筋面板）
+            // 注意: BaseReinPanelViewModel 依赖 IBaseReinforcementService，需要后续注册实现
             // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
             //     .AsSelf()
             //     .InstancePerDependency();
-
             // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
             //     .AsSelf()
             //     .InstancePerDependency();
 
-            // builder.RegisterType<HyCADTool.Refactored.Application.Services.BaseReinforcementService>()
-            //     .As<IBaseReinforcementService>()
-            //     .SingleInstance();
-
+            // PilePanel（桩基面板）- 依赖旧项目服务，暂不通过 DI 注册
             // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
             //     .AsSelf()
             //     .InstancePerDependency();
-
             // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
             //     .AsSelf()
             //     .InstancePerDependency();
 
+            // ClusterPanel（聚类面板）- 依赖旧项目服务，暂不通过 DI 注册
             // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
             //     .AsSelf()
             //     .InstancePerDependency();
-
             // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
             //     .AsSelf()
             //     .InstancePerDependency();
+
+            // ===== 钢筋服务 =====
+
+            // 钢筋服务（单例）
+            builder.RegisterType<ReinService>()
+                .As<IReinService>()
+                .SingleInstance();
 
             // ===== 阶段 4: OverKill 功能 =====
             

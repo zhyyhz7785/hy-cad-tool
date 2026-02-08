@@ -1,6 +1,6 @@
+using HyCADTool.Refactored.Domain.Enums;
 using HyCADTool.Refactored.Domain.Models.Configuration;
 using System.Collections.Generic;
-using static HyCADTool.BaseRein;
 
 namespace HyCADTool.Refactored.Domain.Interfaces
 {

@@ -1,3 +1,4 @@
+using HyCADTool.Refactored.Domain.Enums;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Models.Configuration;
 using System;
@@ -6,7 +7,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using static HyCADTool.BaseRein;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {

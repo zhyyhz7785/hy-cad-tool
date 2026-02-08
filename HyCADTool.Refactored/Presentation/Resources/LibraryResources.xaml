@@ -6,6 +6,7 @@
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
     <converters:EnumDescriptionConverter x:Key="EnumDescriptionConverter"/>
+    <converters:EnumToIndexConverter x:Key="EnumToIndexConverter"/>
     
     <!-- ===== AutoCAD 工具选项板样式 ===== -->
     <!-- 统一配色定义 -->
