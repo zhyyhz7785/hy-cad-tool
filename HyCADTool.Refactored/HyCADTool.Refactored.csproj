@@ -46,6 +46,13 @@
     </None>
   </ItemGroup>
 
+  <!-- Test 入口（C1 调用），显式包含确保参与编译 -->
+  <ItemGroup>
+    <Compile Include="Test\SimpleLogger.cs" />
+    <Compile Include="Test\TestCommand.cs" />
+    <Compile Include="Test\TestRunner.cs" />
+  </ItemGroup>
+
   <!-- 排除不需要的文件（如果有） -->
   <ItemGroup>
     <!-- 排除备份文件、临时文件等 -->

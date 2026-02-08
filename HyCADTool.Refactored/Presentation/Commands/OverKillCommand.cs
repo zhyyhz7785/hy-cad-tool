@@ -48,7 +48,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 var selectionResult = GetLineSelection(ed);
                 if (selectionResult == null || selectionResult.Value.Count == 0)
                 {
-                    ed.WriteMessage("\n未选择任何线段");
+                    ed.WriteMessage("\n未选择任何线段aa");
                     return;
                 }
 

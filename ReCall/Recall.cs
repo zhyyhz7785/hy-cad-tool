@@ -11,11 +11,11 @@ using System.Resources;
 namespace HyCADTool.ReCall
 {
     /// <summary>
-    /// 热重启：C2 重载插件，C1 测试当前配置的一个命令。
+    /// 热重启：C2 重载插件，C1 执行 TestCommand.Run()。要测谁请改 Refactored/Test/TestCommand.cs。
     /// </summary>
     public class ReCallClass
     {
-        #region ========== 配置（换测哪个命令就改这里） ==========
+        #region ========== 配置 ==========
 
         private const string TARGET_PROJECT_NAME = "HyCADTool.Refactored";
         private const string TARGET_DLL_NAME = "HyCADTool.Refactored.dll";
@@ -23,10 +23,9 @@ namespace HyCADTool.ReCall
         /// <summary>ReCall.dll 到解决方案根的层级：Debug→bin→ReCall→根 = 3</summary>
         private const int DIRECTORY_LEVELS_UP = 3;
 
-        /// <summary>C1 要执行的命令类（完整命名空间.类名）</summary>
-        private const string C1_CLASS_NAME = "HyCADTool.Refactored.Presentation.Commands.OverKillCommand";
-        /// <summary>C1 要调用的方法名</summary>
-        private const string C1_METHOD_NAME = "Execute";
+        /// <summary>C1 固定调用 TestCommand.Run()，要测谁请改 Refactored/Test/TestCommand.cs</summary>
+        private const string TEST_ENTRY_TYPE = "HyCADTool.Refactored.Test.TestCommand";
+        private const string TEST_ENTRY_METHOD = "Run";
 
         #endregion
 
@@ -59,13 +58,24 @@ namespace HyCADTool.ReCall
                 AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
                     ResolveAssembly(args, depsPath, nugetPath);
 
-                var asm = Assembly.Load(File.ReadAllBytes(pluginPath));
+                // 优先使用已加载的程序集，避免再次 Load 触发 eDuplicateKey
+                Assembly asm = GetLoadedAssembly(TARGET_PROJECT_NAME);
+                if (asm == null)
+                {
+                    asm = Assembly.Load(File.ReadAllBytes(pluginPath));
+                    ed.WriteMessage("\n插件已从文件加载。");
+                }
+                else
+                    ed.WriteMessage("\n插件已就绪（使用当前已加载版本）。");
+
                 ResourceManager.ResourceAssembly = asm;
-
                 InitializeServiceLocator(asm, ed);
-                _c1Action = CreateCommandDelegate(asm, C1_CLASS_NAME, C1_METHOD_NAME, ed);
+                _c1Action = CreateStaticMethodDelegate(asm, TEST_ENTRY_TYPE, TEST_ENTRY_METHOD, ed);
 
-                ed.WriteMessage("\n插件已加载。C2 重载 | C1 测试");
+                if (_c1Action != null)
+                    ed.WriteMessage(" C2 重载 | C1 测试");
+                else
+                    ed.WriteMessage(" 请重新生成 HyCADTool.Refactored 后再执行 C2。");
             }
             catch (System.Exception ex)
             {
@@ -104,27 +114,42 @@ namespace HyCADTool.ReCall
             return dir?.FullName ?? throw new InvalidOperationException("无法解析根目录。");
         }
 
-        private static Action CreateCommandDelegate(Assembly asm, string className, string methodName, Editor ed)
+        private static Assembly GetLoadedAssembly(string shortName)
         {
-            var type = asm.GetType(className);
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    if (a.GetName().Name == shortName)
+                        return a;
+                }
+                catch { }
+            }
+            return null;
+        }
+
+        /// <summary>获取静态方法委托（用于 TestCommand.Run）</summary>
+        private static Action CreateStaticMethodDelegate(Assembly asm, string typeName, string methodName, Editor ed)
+        {
+            var type = asm?.GetType(typeName);
             if (type == null)
             {
-                ed?.WriteMessage("\n⚠ 未找到类型: " + className);
+                var alt = GetLoadedAssembly(TARGET_PROJECT_NAME);
+                if (alt != null && alt != asm)
+                    type = alt.GetType(typeName);
+            }
+            if (type == null)
+            {
+                ed?.WriteMessage("\n⚠ 未找到类型: " + typeName + "（请重新生成 HyCADTool.Refactored）");
                 return null;
             }
-            var method = type.GetMethod(methodName);
+            var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
             if (method == null)
             {
-                ed?.WriteMessage("\n⚠ 未找到方法: " + className + "." + methodName);
+                ed?.WriteMessage("\n⚠ 未找到方法: " + typeName + "." + methodName);
                 return null;
             }
-            var instance = Activator.CreateInstance(type);
-            if (instance == null)
-            {
-                ed?.WriteMessage("\n⚠ 无法创建实例: " + className);
-                return null;
-            }
-            return () => method.Invoke(instance, null);
+            return () => method.Invoke(null, null);
         }
 
         private static void InitializeServiceLocator(Assembly targetAssembly, Editor ed)
