@@ -150,6 +150,16 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<IReinService>()
                 .SingleInstance();
 
+            // 多段线偏移服务（单例）
+            builder.RegisterType<AutoCadPolygonOffsetService>()
+                .As<IPolygonOffsetService>()
+                .SingleInstance();
+
+            // 射线-多段线交点服务（单例）
+            builder.RegisterType<AutoCadIntersectionService>()
+                .As<ILineIntersectionService>()
+                .SingleInstance();
+
             // ===== 阶段 4: OverKill 功能 =====
             
             // 领域服务

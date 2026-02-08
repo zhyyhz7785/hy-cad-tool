@@ -172,6 +172,24 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         /// Y 轴单位向量
         /// </summary>
         public static Vector2D UnitY => new Vector2D(0, 1);
+
+        /// <summary>
+        /// 将向量绕原点旋转指定角度（弧度，逆时针为正）
+        /// </summary>
+        public Vector2D Rotate(double angle)
+        {
+            double cos = Math.Cos(angle);
+            double sin = Math.Sin(angle);
+            return new Vector2D(X * cos - Y * sin, X * sin + Y * cos);
+        }
+
+        /// <summary>
+        /// 获取垂直向量（逆时针旋转 90 度）
+        /// </summary>
+        public Vector2D Perpendicular()
+        {
+            return new Vector2D(-Y, X);
+        }
     }
 }
 

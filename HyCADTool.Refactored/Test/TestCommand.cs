@@ -19,9 +19,10 @@ namespace HyCADTool.Refactored.Test
                 try
                 {
                     // ========== 只改下面一行即可切换测试命令 ==========
-                    new Presentation.Commands.OverKillCommand().Execute();
+                    //new Presentation.Commands.OverKillCommand().Execute();
                     // 示例：new Presentation.Commands.BreakCurvesCommand().Execute();
                     // 示例：new Presentation.Commands.DCELCommand().Execute();
+                    new Presentation.Commands.DrawReinforcementCommand().Execute();
                 }
                 catch (System.Exception ex)
                 {

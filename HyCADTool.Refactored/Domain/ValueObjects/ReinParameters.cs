@@ -67,6 +67,11 @@ namespace HyCADTool.Refactored.Domain.ValueObjects
         /// </summary>
         public double DotReinOffset { get; set; }
 
+        /// <summary>
+        /// 点钢起始距离
+        /// </summary>
+        public double DotStartDistance { get; set; }
+
         #endregion
 
         #region 尺寸参数
@@ -131,6 +136,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects
                 ProtectionThickness = 1.0,
                 ReinforcementDiameter = 0.35,
                 DotReinOffset = 1.35,
+                DotStartDistance = 0.0,
 
                 // 尺寸参数
                 DimensionDistanceInside = 6.0,
@@ -194,6 +200,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects
                 ProtectionThickness = ProtectionThickness,
                 ReinforcementDiameter = ReinforcementDiameter,
                 DotReinOffset = DotReinOffset,
+                DotStartDistance = DotStartDistance,
                 DimensionDistanceInside = DimensionDistanceInside,
                 DimensionDistanceOutside = DimensionDistanceOutside,
                 DimensionDistanceWithDim = DimensionDistanceWithDim,
