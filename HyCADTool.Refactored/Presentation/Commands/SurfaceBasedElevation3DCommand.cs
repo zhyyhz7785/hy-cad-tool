@@ -17,7 +17,6 @@ using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows;
-using HyCADTool.Refactored.Domain.Services;
 
 namespace HyCADTool.Refactored.Presentation.Commands
 {

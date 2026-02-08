@@ -43,13 +43,11 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    
     <!-- WPF References (for WarmupWPF) -->
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />
-    
     <!-- AutoCAD .NET API References -->
     <Reference Include="AcCoreMgd">
       <HintPath>bin\Debug\AcCoreMgd.dll</HintPath>
@@ -66,13 +64,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    
+    <Compile Include="Recall - 复制.cs" />
     <!-- 旧的热重启文件（已注释，仅保留作为参考） -->
     <!-- <Compile Include="Recall -  - EquipmentFoundation.cs" /> -->
     <!-- <Compile Include="Recall -  -HyRetainingWallSolver.cs" /> -->
     <!-- <Compile Include="Recall -  -HyCADTool - 复制.cs" /> -->
     <!-- <Compile Include="Recall-ReinPanel.cs" /> -->
-    
     <!-- 通用热重启文件（后续不再修改） -->
     <Compile Include="Recall.cs" />
   </ItemGroup>

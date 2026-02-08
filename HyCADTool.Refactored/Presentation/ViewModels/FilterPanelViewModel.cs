@@ -22,7 +22,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private Document CurrentDocument => AcApp.DocumentManager.MdiActiveDocument;
         private Editor Editor => CurrentDocument?.Editor;
 
+#pragma warning disable CS0649 // 预留字段，后续筛选功能迁移时使用
         private Entity _selectedEntity;
+#pragma warning restore CS0649
         private ObjectId[] _userSelectedIds = new ObjectId[0];
 
         #region 属性

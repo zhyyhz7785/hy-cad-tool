@@ -523,8 +523,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             
             Vector3d direction = (end - start).GetNormal();
             double totalLength = start.DistanceTo(end);
-            double segmentLength = dashLength + gapLength;
-            
+
             Point3d currentPoint = start;
             double remainingLength = totalLength;
             bool drawDash = true;

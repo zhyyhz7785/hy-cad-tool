@@ -111,7 +111,6 @@ namespace HyCADTool.Refactored.Test
             _editor?.WriteMessage($"\nINFO: {operation} 耗时 {stopwatch.ElapsedMilliseconds} 毫秒");
             return result;
         }
-
         #endregion
     }
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
@@ -10,6 +10,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- 不自动包含所有 XAML，只编译下面显式列出的 Page，避免被排除的面板 XAML 仍被编译 -->
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     
     <!-- 禁用自动生成 AssemblyInfo，使用手动的 Properties/AssemblyInfo.cs -->
@@ -54,21 +55,13 @@
     <None Remove="**/*.old" />
   </ItemGroup>
 
-  <!-- XAML 文件显式包含（避免 SDK 自动包含与排除冲突） -->
+  <!-- 只编译需要的 XAML（EnableDefaultPageItems=false 时必须显式列出） -->
   <ItemGroup>
     <Page Include="Presentation\Resources\LibraryResources.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\ReinPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Presentation\Views\FilterPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Presentation\Views\BaseReinPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -80,34 +73,20 @@
 
   <!-- 注释掉的面板（暂时排除） -->
   <ItemGroup>
-    <!-- ReinPanel 和 ReinPanelViewModel - 已修复，恢复编译 -->
-    <!-- <Compile Remove="Presentation\Views\ReinPanel.xaml.cs" /> -->
-    <!-- <Compile Remove="Presentation\ViewModels\ReinPanelViewModel.cs" /> -->
-    <!-- <Page Remove="Presentation\Views\ReinPanel.xaml" /> -->
-    
-    <!-- BaseReinPanel - 已修复基础类型，恢复编译 -->
-    <!-- <Compile Remove="Presentation\Views\BaseReinPanel.xaml.cs" /> -->
-    <!-- <Compile Remove="Presentation\ViewModels\BaseReinPanelViewModel.cs" /> -->
-    <!-- <Compile Remove="Domain\Interfaces\IBaseReinforcementService.cs" /> -->
-    <!-- <Compile Remove="Domain\Models\Configuration\BaseReinforcementConfig.cs" /> -->
-    <!-- <Page Remove="Presentation\Views\BaseReinPanel.xaml" /> -->
-    
-    <!-- ShowMainPanelCommand - 已统一 DI 模式，恢复编译 -->
-    <!-- <Compile Remove="Presentation\Commands\ShowMainPanelCommand.cs" /> -->
-    
-    <!-- PilePanel 和 ClusterPanel - 依赖旧项目，保持排除 -->
+    <Compile Remove="Presentation\Views\ReinPanel.xaml.cs" />
+    <Compile Remove="Presentation\Views\BaseReinPanel.xaml.cs" />
     <Compile Remove="Presentation\Views\PilePanel.xaml.cs" />
     <Compile Remove="Presentation\Views\ClusterPanel.xaml.cs" />
+    <Compile Remove="Presentation\Commands\ShowPanelCommand.cs" />
+    <Compile Remove="Presentation\Commands\ShowMainPanelCommand.cs" />
+    <Compile Remove="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
+    <Compile Remove="Presentation\ViewModels\ReinPanelViewModel.cs" />
     <Compile Remove="Presentation\ViewModels\PilePanelViewModel.cs" />
     <Compile Remove="Presentation\ViewModels\ClusterPanelViewModel.cs" />
-    <Page Remove="Presentation\Views\PilePanel.xaml" />
-    <Page Remove="Presentation\Views\ClusterPanel.xaml" />
-    
-    <!-- ShowPanelCommand - 个别面板命令，暂时排除 -->
-    <Compile Remove="Presentation\Commands\ShowPanelCommand.cs" />
-    
-    <!-- BaseReinforcementService - 尚未实现，保持排除 -->
     <Compile Remove="Application\Services\BaseReinforcementService.cs" />
+    <Compile Remove="Domain\Interfaces\IBaseReinforcementService.cs" />
+    <Compile Remove="Domain\Models\Configuration\BaseReinforcementConfig.cs" />
+    
   </ItemGroup>
 
 </Project>
