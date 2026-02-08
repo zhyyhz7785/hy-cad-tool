@@ -55,18 +55,16 @@ namespace HyCADTool.ReCall
                     return;
                 }
 
-                AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
-                    ResolveAssembly(args, depsPath, nugetPath);
+                // 复制到临时目录再加载，避免锁定 bin\Debug，使 VS 可在不关 AutoCAD 的情况下重新生成
+                string loadPath = CopyToTempAndGetLoadPath(depsPath, pluginPath, ed);
+                if (loadPath == null) return;
+                string loadDepsPath = Path.GetDirectoryName(loadPath);
 
-                // 优先使用已加载的程序集，避免再次 Load 触发 eDuplicateKey
-                Assembly asm = GetLoadedAssembly(TARGET_PROJECT_NAME);
-                if (asm == null)
-                {
-                    asm = Assembly.Load(File.ReadAllBytes(pluginPath));
-                    ed.WriteMessage("\n插件已从文件加载。");
-                }
-                else
-                    ed.WriteMessage("\n插件已就绪（使用当前已加载版本）。");
+                AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
+                    ResolveAssembly(args, loadDepsPath, nugetPath);
+
+                Assembly asm = Assembly.Load(File.ReadAllBytes(loadPath));
+                ed.WriteMessage("\n插件已加载（从副本，不锁 bin\\Debug）。");
 
                 ResourceManager.ResourceAssembly = asm;
                 InitializeServiceLocator(asm, ed);
@@ -112,6 +110,36 @@ namespace HyCADTool.ReCall
             for (int i = 0; i < levelsUp && dir != null; i++)
                 dir = dir.Parent;
             return dir?.FullName ?? throw new InvalidOperationException("无法解析根目录。");
+        }
+
+        /// <summary>将 bin\Debug 复制到新的临时子目录，返回副本中主 DLL 的路径。加载从副本进行，不锁定原始目录；每次用新目录避免覆盖已加载的副本。</summary>
+        private static string CopyToTempAndGetLoadPath(string sourceDir, string mainDllPath, Editor ed)
+        {
+            string tempBase = Path.Combine(Path.GetTempPath(), "HyCADToolRefactored");
+            string tempDir = Path.Combine(tempBase, DateTime.UtcNow.Ticks.ToString());
+            try
+            {
+                Directory.CreateDirectory(tempDir);
+                foreach (string file in Directory.GetFiles(sourceDir))
+                {
+                    string dest = Path.Combine(tempDir, Path.GetFileName(file));
+                    try
+                    {
+                        File.Copy(file, dest, true);
+                    }
+                    catch (System.Exception)
+                    {
+                        // 忽略单文件失败
+                    }
+                }
+                string loadPath = Path.Combine(tempDir, Path.GetFileName(mainDllPath));
+                return File.Exists(loadPath) ? loadPath : null;
+            }
+            catch (System.Exception ex)
+            {
+                ed?.WriteMessage("\n✗ 复制到临时目录失败: " + ex.Message);
+                return null;
+            }
         }
 
         private static Assembly GetLoadedAssembly(string shortName)
