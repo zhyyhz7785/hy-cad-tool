@@ -32,12 +32,7 @@ namespace HyCADTool.ReCall
 
         private Action _c1Action;
 
-        public ReCallClass()
-        {
-            Reload();
-        }
-
-        /// <summary>C2 - 重新加载插件</summary>
+        /// <summary>C2 - 重新加载插件（仅在此命令执行时加载，不在构造函数中调用，避免加载时执行两次）</summary>
         [CommandMethod("C2")]
         public void Reload()
         {
