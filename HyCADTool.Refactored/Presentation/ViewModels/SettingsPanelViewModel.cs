@@ -261,6 +261,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// 供命令调用：确保当前面板参数已同步到 AutoCAD 样式
+        /// 命令执行前调用此方法，保证 MLeader/标注/文字样式与面板参数一致
+        /// </summary>
+        public void EnsureStylesApplied()
+        {
+            ApplyStyle();
+        }
+
         private void DrawReinforcement()
         {
             try

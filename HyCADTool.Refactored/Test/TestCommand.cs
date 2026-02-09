@@ -20,7 +20,11 @@ namespace HyCADTool.Refactored.Test
                 try
                 {
                     // ========== 只改下面一行即可切换测试命令 ==========
-                    TestReinExtend();                // ge: 延伸钢筋+15d弯折
+                    TestMleaderRein();               // gb: 多引线标注+点钢筋
+                    //TestMleaderReinOne();          // gb1: 单引线标注
+                   // TestMleaderReinSix();          // gb2: 六点引线标注+点钢筋
+                    // TestDrawReinforcement();       // gj: 绘制钢筋（完整配筋流程）
+                    // TestReinExtend();              // ge: 延伸钢筋+15d弯折
                     // TestReinQuickExtend();         // ge1: 快速延伸至边界
                     // TestReinCut();                 // gd: 截断钢筋
                     // TestReinAddAnchor1();          // g1: 单侧弯钩
@@ -101,6 +105,44 @@ namespace HyCADTool.Refactored.Test
         private static void TestReinCut()
         {
             new Presentation.Commands.ReinCutCommand().Execute();
+        }
+
+        /// <summary>gb: 多引线标注+点钢筋（命令内部自动同步面板样式）</summary>
+        private static void TestMleaderRein()
+        {
+            EnsureDefaultViewModel();
+            new Presentation.Commands.MleaderReinCommand(
+                Presentation.Commands.MleaderReinCommand.Mode.Standard).Execute();
+        }
+
+        /// <summary>gb1: 单引线标注（命令内部自动同步面板样式）</summary>
+        private static void TestMleaderReinOne()
+        {
+            EnsureDefaultViewModel();
+            new Presentation.Commands.MleaderReinCommand(
+                Presentation.Commands.MleaderReinCommand.Mode.Single).Execute();
+        }
+
+        /// <summary>gb2: 六点引线标注+点钢筋（命令内部自动同步面板样式）</summary>
+        private static void TestMleaderReinSix()
+        {
+            EnsureDefaultViewModel();
+            new Presentation.Commands.MleaderReinCommand(
+                Presentation.Commands.MleaderReinCommand.Mode.Six).Execute();
+        }
+
+        /// <summary>
+        /// 确保 SettingsPanelViewModel.Current 存在（面板未打开时用默认值初始化）
+        /// 面板已打开则不做任何事，命令会读取面板最新参数
+        /// </summary>
+        private static void EnsureDefaultViewModel()
+        {
+            if (Presentation.ViewModels.SettingsPanelViewModel.Current == null)
+            {
+                var styleService = ServiceLocator.Container.Resolve<IStyleService>();
+                new Presentation.ViewModels.SettingsPanelViewModel(styleService);
+                // 构造函数自动设置 Current
+            }
         }
 
         /// <summary>ge: 延伸钢筋（锚固长度）</summary>
