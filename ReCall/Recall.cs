@@ -38,6 +38,8 @@ namespace HyCADTool.ReCall
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
             if (ed == null) return;
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
             try
             {
                 var adapterDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -55,25 +57,34 @@ namespace HyCADTool.ReCall
                     return;
                 }
 
-                // 复制到临时目录再加载，避免锁定 bin\Debug，使 VS 可在不关 AutoCAD 的情况下重新生成
+                // 复制到临时目录再加载
+                var swCopy = System.Diagnostics.Stopwatch.StartNew();
                 string loadPath = CopyToTempAndGetLoadPath(depsPath, pluginPath, ed);
                 if (loadPath == null) return;
                 string loadDepsPath = Path.GetDirectoryName(loadPath);
+                swCopy.Stop();
 
                 AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
                     ResolveAssembly(args, loadDepsPath, nugetPath);
 
+                // 加载程序集
+                var swLoad = System.Diagnostics.Stopwatch.StartNew();
                 Assembly asm = Assembly.Load(File.ReadAllBytes(loadPath));
-                ed.WriteMessage("\n插件已加载（从副本，不锁 bin\\Debug）。");
+                swLoad.Stop();
 
+                // 初始化 DI 容器
+                var swDi = System.Diagnostics.Stopwatch.StartNew();
                 ResourceManager.ResourceAssembly = asm;
                 InitializeServiceLocator(asm, ed);
                 _c1Action = CreateStaticMethodDelegate(asm, TEST_ENTRY_TYPE, TEST_ENTRY_METHOD, ed);
+                swDi.Stop();
+
+                sw.Stop();
 
                 if (_c1Action != null)
-                    ed.WriteMessage(" C2 重载 | C1 测试");
+                    ed.WriteMessage($"\nC2 完成 {sw.ElapsedMilliseconds}ms (复制{swCopy.ElapsedMilliseconds} + 加载{swLoad.ElapsedMilliseconds} + DI{swDi.ElapsedMilliseconds})");
                 else
-                    ed.WriteMessage(" 请重新生成 HyCADTool.Refactored 后再执行 C2。");
+                    ed.WriteMessage("\n请重新生成后再执行 C2。");
             }
             catch (System.Exception ex)
             {
@@ -103,6 +114,7 @@ namespace HyCADTool.ReCall
                 ed.WriteMessage("\n✗ 执行失败: " + ex.Message);
             }
         }
+
 
         private static string GetRootDirectory(FileInfo fileInfo, int levelsUp)
         {

@@ -102,6 +102,14 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
 
             // ===== 面板和 ViewModel 注册 =====
 
+            // SettingsPanel（HY 设置面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.SettingsPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.SettingsPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
             // ReinPanel（钢筋面板）- 已从编译排除时请注释下方注册
             // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ReinPanelViewModel>()
             //     .AsSelf()

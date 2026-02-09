@@ -69,6 +69,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Presentation\Views\SettingsPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
 
   <!-- 注释掉的面板（暂时排除） -->
@@ -77,7 +81,8 @@
     <Compile Remove="Presentation\Views\BaseReinPanel.xaml.cs" />
     <Compile Remove="Presentation\Views\PilePanel.xaml.cs" />
     <Compile Remove="Presentation\Views\ClusterPanel.xaml.cs" />
-    <Compile Remove="Presentation\Commands\ShowPanelCommand.cs" />
+    <!-- ShowPanelCommand 已启用（HYSET 设置面板命令需要） -->
+    <!-- <Compile Remove="Presentation\Commands\ShowPanelCommand.cs" /> -->
     <Compile Remove="Presentation\Commands\ShowMainPanelCommand.cs" />
     <Compile Remove="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
     <Compile Remove="Presentation\ViewModels\ReinPanelViewModel.cs" />

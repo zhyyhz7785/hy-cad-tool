@@ -55,7 +55,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 parameters.TextSize * parameters.Scale, parameters.TextXScale);
 
             _styleService.CreateDimensionStyle(DefaultDimStyleName, DefaultTextStyleName, parameters.Scale);
-            _styleService.CreateMLeaderStyle(DefaultMLeaderStyleName, DefaultTextStyleName);
+            _styleService.CreateMLeaderStyle(DefaultMLeaderStyleName, DefaultTextStyleName, parameters.Scale);
             _styleService.CreateTableStyle(DefaultTableStyleName, DefaultTextStyleName);
         }
 

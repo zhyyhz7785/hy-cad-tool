@@ -16,30 +16,29 @@
     <!-- 前景色: White -->
     <!-- 边框色: #707070 -->
 
-    <!-- Expander Toggle Button Style -->
+    <!-- Expander Toggle Button Style (AutoCAD 属性面板风格：左侧三角 + 全宽标题栏) -->
     <Style x:Key="ExpanderToggleButton" TargetType="ToggleButton">
-        <Setter Property="Height" Value="20" />
+        <Setter Property="Height" Value="22" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border Background="#2e3440">
+                    <Border Background="#2e3440" BorderBrush="#555" BorderThickness="0,0,0,1">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="20" />
                             </Grid.ColumnDefinitions>
+                            <!-- 标题文字 -->
                             <ContentPresenter Grid.Column="0" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                            <!-- 右侧三角箭头 -->
                             <Path x:Name="arrow" 
-                              Grid.Column="1" 
-                              Stroke="White" 
-                              Fill="White" 
-                              HorizontalAlignment="Center" 
-                              VerticalAlignment="Center" 
-                              Margin="5,0,5,0"
-                              Data="M 0 6 L 6 0 L 12 6 Z" 
-                              Width="8" 
-                              Height="5"
-                              RenderTransformOrigin="0.5,0.5">
+                                  Grid.Column="1" 
+                                  Stroke="White" Fill="White" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"
+                                  Data="M 0 0 L 5 4 L 0 8 Z"
+                                  Width="5" Height="8"
+                                  RenderTransformOrigin="0.5,0.5">
                                 <Path.RenderTransform>
                                     <RotateTransform Angle="0"/>
                                 </Path.RenderTransform>
@@ -48,23 +47,12 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="arrow" Property="RenderTransform">
-                                <Setter.Value>
-                                    <RotateTransform Angle="180"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="arrow" Property="Fill" Value="#7f4f3f"/>
-                            <Setter TargetName="arrow" Property="Stroke" Value="#7f4f3f"/>
-                        </Trigger>
-                        <Trigger Property="IsChecked" Value="True">
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="arrow" 
-                                                    Storyboard.TargetProperty="(Path.RenderTransform).(RotateTransform.Angle)"
-                                                    To="180" Duration="0:0:0.2"/>
+                                                         Storyboard.TargetProperty="(Path.RenderTransform).(RotateTransform.Angle)"
+                                                         To="90" Duration="0:0:0.15"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
@@ -72,11 +60,15 @@
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="arrow" 
-                                                    Storyboard.TargetProperty="(Path.RenderTransform).(RotateTransform.Angle)"
-                                                    To="0" Duration="0:0:0.2"/>
+                                                         Storyboard.TargetProperty="(Path.RenderTransform).(RotateTransform.Angle)"
+                                                         To="0" Duration="0:0:0.15"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="arrow" Property="Fill" Value="#88c0d0"/>
+                            <Setter TargetName="arrow" Property="Stroke" Value="#88c0d0"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -84,7 +76,7 @@
         </Setter>
     </Style>
 
-    <!-- Expander Style -->
+    <!-- Expander Style (AutoCAD 属性面板风格) -->
     <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
         <Setter Property="Foreground" Value="White" />
         <Setter Property="Template">
@@ -93,11 +85,11 @@
                     <Border>
                         <StackPanel>
                             <ToggleButton Style="{StaticResource ExpanderToggleButton}" 
-                                      Content="{TemplateBinding Header}" 
-                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" 
-                                      Foreground="{TemplateBinding Foreground}" 
-                                      Background="{TemplateBinding Background}" />
-                            <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="0,5,0,0"/>
+                                          Content="{TemplateBinding Header}" 
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" 
+                                          Foreground="{TemplateBinding Foreground}" 
+                                          Background="{TemplateBinding Background}" />
+                            <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="0,2,0,0"/>
                         </StackPanel>
                     </Border>
                     <ControlTemplate.Triggers>

@@ -32,7 +32,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 {
                     var textStyleTable = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
 
-                    if (!textStyleTable.Has(styleName))
+                    if (textStyleTable.Has(styleName))
+                    {
+                        // 样式已存在 → 更新属性（与旧代码 CreateTextStyle 重载一致）
+                        ObjectId styleId = textStyleTable[styleName];
+                        var styleRec = (TextStyleTableRecord)tr.GetObject(styleId, OpenMode.ForWrite);
+                        styleRec.FileName = fontName;
+                        styleRec.BigFontFileName = bigFontName;
+                        styleRec.TextSize = textHeight;
+                        styleRec.XScale = widthFactor;
+                        db.Textstyle = styleId;
+                    }
+                    else
                     {
                         textStyleTable.UpgradeOpen();
 
@@ -47,8 +58,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                         textStyleTable.Add(textStyleRecord);
                         tr.AddNewlyCreatedDBObject(textStyleRecord, true);
-                        
-                        doc.Editor.WriteMessage($"\n✓ 已创建文字样式: {styleName}");
+                        db.Textstyle = textStyleTable[styleName];
                     }
 
                     tr.Commit();
@@ -56,7 +66,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 }
                 catch (System.Exception ex)
                 {
-                    doc.Editor.WriteMessage($"\n✗ 创建文字样式失败: {ex.Message}");
+                    doc.Editor.WriteMessage($"\n创建文字样式失败: {ex.Message}");
                     tr.Abort();
                     throw;
                 }
@@ -74,6 +84,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
 
+            using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 try
@@ -84,7 +95,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     {
                         db.Textstyle = textStyleTable[styleName];
                         tr.Commit();
-                        doc.Editor.WriteMessage($"\n✓ 已设置当前文字样式: {styleName}");
                     }
                     else
                     {
@@ -101,7 +111,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         // === 标注样式 ===
 
-        public string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0)
+        public string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0,
+            double dimtxt = 2.5, double dimexo = 1.0, double dimexe = 1.0,
+            double dimdle = 0.5, double dimgap = 1.0, double dimasz = 1.0)
         {
             if (string.IsNullOrWhiteSpace(styleName))
                 throw new ArgumentException("Style name cannot be null or empty", nameof(styleName));
@@ -118,51 +130,109 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 try
                 {
                     var dimStyleTable = (DimStyleTable)tr.GetObject(db.DimStyleTableId, OpenMode.ForRead);
+                    DimStyleTableRecord dimStyleRecord;
+                    bool isNew = false;
 
-                    if (!dimStyleTable.Has(styleName))
+                    if (dimStyleTable.Has(styleName))
+                    {
+                        dimStyleRecord = (DimStyleTableRecord)tr.GetObject(dimStyleTable[styleName], OpenMode.ForWrite);
+                    }
+                    else
                     {
                         dimStyleTable.UpgradeOpen();
-
-                        var dimStyleRecord = new DimStyleTableRecord
-                        {
-                            Name = styleName
-                        };
-
-                        // 设置基本标注参数
-                        dimStyleRecord.Dimexo = 1.0 * scale;  // 尺寸界线偏移
-                        dimStyleRecord.Dimexe = 1.0 * scale;  // 尺寸界线超出
-                        dimStyleRecord.Dimdle = 0.5 * scale;  // 尺寸线超出
-                        dimStyleRecord.Dimtxt = 2.5 * scale;  // 文字高度
-                        dimStyleRecord.Dimgap = 1.0 * scale;  // 文字偏移
-                        dimStyleRecord.Dimasz = 1.0 * scale;  // 箭头大小
-                        dimStyleRecord.Dimdec = 0;            // 小数位数
-                        dimStyleRecord.Dimtdec = 0;           // 公差小数位数
-
-                        // 设置文字样式
-                        if (!string.IsNullOrEmpty(textStyleName))
-                        {
-                            var textStyleTable = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
-                            if (textStyleTable.Has(textStyleName))
-                            {
-                                dimStyleRecord.Dimtxsty = textStyleTable[textStyleName];
-                            }
-                        }
-
-                        dimStyleTable.Add(dimStyleRecord);
-                        tr.AddNewlyCreatedDBObject(dimStyleRecord, true);
-                        
-                        doc.Editor.WriteMessage($"\n✓ 已创建标注样式: {styleName}");
+                        dimStyleRecord = new DimStyleTableRecord { Name = styleName };
+                        isNew = true;
                     }
 
+                    // 使用传入的参数（面板可调）
+                    dimStyleRecord.Dimtdec = 0;
+                    dimStyleRecord.Dimexo = dimexo;
+                    dimStyleRecord.Dimexe = dimexe;
+                    dimStyleRecord.Dimdle = dimdle;
+                    dimStyleRecord.Dimtxt = dimtxt;
+                    dimStyleRecord.Dimgap = dimgap;
+                    dimStyleRecord.Dimasz = dimasz;
+                    dimStyleRecord.Dimdec = 0;
+                    dimStyleRecord.Dimscale = scale;
+                    dimStyleRecord.Dimtofl = true;        // 尺寸线强制
+                    dimStyleRecord.Dimtad = 1;            // 文字位置垂直（上方）
+                    dimStyleRecord.Dimtix = true;         // 文字在内
+                    dimStyleRecord.Dimtih = false;        // 文字在内不水平对齐
+                    dimStyleRecord.Dimtoh = false;        // 文字外部不水平对齐
+                    dimStyleRecord.Dimclrt = Color.FromColorIndex(ColorMethod.ByColor, 7); // 文字颜色白色
+
+                    // 设置文字样式
+                    if (!string.IsNullOrEmpty(textStyleName))
+                    {
+                        var textStyleTable = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+                        if (textStyleTable.Has(textStyleName))
+                        {
+                            dimStyleRecord.Dimtxsty = textStyleTable[textStyleName];
+                        }
+                    }
+
+                    if (isNew)
+                    {
+                        dimStyleTable.Add(dimStyleRecord);
+                        tr.AddNewlyCreatedDBObject(dimStyleRecord, true);
+                    }
+
+                    // 设置尺寸样式数据并设为当前
+                    db.SetDimstyleData(dimStyleRecord);
+                    db.Dimstyle = dimStyleRecord.ObjectId;
+
+                    // 设置箭头样式为 _ARCHTICK
+                    SetDimStyleArrows(db, tr, dimStyleRecord);
+
                     tr.Commit();
-                    return dimStyleTable[styleName].ToString();
+                    return dimStyleRecord.ObjectId.ToString();
                 }
                 catch (System.Exception ex)
                 {
-                    doc.Editor.WriteMessage($"\n✗ 创建标注样式失败: {ex.Message}");
+                    doc.Editor.WriteMessage($"\n创建标注样式失败: {ex.Message}");
                     tr.Abort();
                     throw;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 设置标注样式的箭头（_ARCHTICK）
+        /// </summary>
+        private void SetDimStyleArrows(Database db, Transaction tr, DimStyleTableRecord dimStyleRecord)
+        {
+            var arrowId = GetArrowObjectId(db, "_ARCHTICK");
+            if (!arrowId.IsNull)
+            {
+                dimStyleRecord.Dimsah = true;
+                dimStyleRecord.Dimblk1 = arrowId;
+                dimStyleRecord.Dimblk2 = arrowId;
+                db.SetDimstyleData(dimStyleRecord);
+            }
+        }
+
+        /// <summary>
+        /// 获取箭头块的 ObjectId（与旧代码 GetArrowObjectId 一致）
+        /// </summary>
+        private ObjectId GetArrowObjectId(Database db, string arrowName)
+        {
+            // 通过设置系统变量来注册箭头块定义
+            string sysVar = "DIMBLK";
+            try
+            {
+                string oldVal = AcApp.GetSystemVariable(sysVar) as string;
+                AcApp.SetSystemVariable(sysVar, arrowName);
+                if (!string.IsNullOrEmpty(oldVal))
+                    AcApp.SetSystemVariable(sysVar, oldVal);
+            }
+            catch { }
+
+            using (var tr2 = db.TransactionManager.StartTransaction())
+            {
+                var bt = (BlockTable)tr2.GetObject(db.BlockTableId, OpenMode.ForRead);
+                ObjectId result = bt.Has(arrowName) ? bt[arrowName] : ObjectId.Null;
+                tr2.Commit();
+                return result;
             }
         }
 
@@ -177,6 +247,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
 
+            using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 try
@@ -187,7 +258,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     {
                         db.Dimstyle = dimStyleTable[styleName];
                         tr.Commit();
-                        doc.Editor.WriteMessage($"\n✓ 已设置当前标注样式: {styleName}");
                     }
                     else
                     {
@@ -204,7 +274,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         // === 多重引线样式 ===
 
-        public string CreateMLeaderStyle(string styleName, string textStyleName = null)
+        public string CreateMLeaderStyle(string styleName, string textStyleName = null, double scale = 1.0,
+            double arrowSize = 2.0, double landingGap = 0.5, double textHeight = 2.5,
+            int textColorIndex = 7)
         {
             if (string.IsNullOrWhiteSpace(styleName))
                 throw new ArgumentException("Style name cannot be null or empty", nameof(styleName));
@@ -221,40 +293,63 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 try
                 {
                     var mleaderStyleDict = (DBDictionary)tr.GetObject(db.MLeaderStyleDictionaryId, OpenMode.ForRead);
+                    MLeaderStyle mleaderStyle;
+                    ObjectId mleId;
 
-                    if (!mleaderStyleDict.Contains(styleName))
+                    if (mleaderStyleDict.Contains(styleName))
+                    {
+                        mleId = mleaderStyleDict.GetAt(styleName);
+                        mleaderStyle = (MLeaderStyle)tr.GetObject(mleId, OpenMode.ForWrite);
+                    }
+                    else
                     {
                         mleaderStyleDict.UpgradeOpen();
-
-                        var mleaderStyle = new MLeaderStyle
-                        {
-                            ContentType = ContentType.MTextContent,
-                            LeaderLineType = LeaderType.StraightLeader,
-                            MaxLeaderSegmentsPoints = 2
-                        };
-
-                        // 设置文字样式
-                        if (!string.IsNullOrEmpty(textStyleName))
-                        {
-                            var textStyleTable = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
-                            if (textStyleTable.Has(textStyleName))
-                            {
-                                mleaderStyle.TextStyleId = textStyleTable[textStyleName];
-                            }
-                        }
-
-                        mleaderStyleDict.SetAt(styleName, mleaderStyle);
+                        mleaderStyle = new MLeaderStyle();
+                        mleId = mleaderStyleDict.SetAt(styleName, mleaderStyle);
                         tr.AddNewlyCreatedDBObject(mleaderStyle, true);
-                        
-                        doc.Editor.WriteMessage($"\n✓ 已创建多重引线样式: {styleName}");
                     }
 
+                    // 基本属性
+                    mleaderStyle.ContentType = ContentType.MTextContent;
+                    mleaderStyle.LeaderLineType = LeaderType.StraightLeader;
+                    mleaderStyle.MaxLeaderSegmentsPoints = 2;
+
+                    // 文字样式
+                    if (!string.IsNullOrEmpty(textStyleName))
+                    {
+                        var textStyleTable = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+                        if (textStyleTable.Has(textStyleName))
+                        {
+                            mleaderStyle.TextStyleId = textStyleTable[textStyleName];
+                        }
+                    }
+
+                    // 使用传入参数（面板可调）
+                    mleaderStyle.TextHeight = textHeight * scale;
+                    mleaderStyle.TextColor = Color.FromColorIndex(ColorMethod.ByColor, (short)textColorIndex);
+                    mleaderStyle.TextAttachmentType = TextAttachmentType.AttachmentBottomLine;
+
+                    // 箭头（_DotSmall）
+                    var arrowId = GetArrowObjectId(db, "_DotSmall");
+                    if (!arrowId.IsNull)
+                    {
+                        mleaderStyle.ArrowSymbolId = arrowId;
+                    }
+                    mleaderStyle.ArrowSize = arrowSize * scale;
+
+                    // 着陆间距与线宽（使用传入参数）
+                    mleaderStyle.LandingGap = landingGap * scale;
+                    mleaderStyle.LeaderLineWeight = LineWeight.ByLayer;
+
+                    // 设为当前引线样式
+                    db.MLeaderstyle = mleId;
+
                     tr.Commit();
-                    return mleaderStyleDict.GetAt(styleName).ToString();
+                    return mleId.ToString();
                 }
                 catch (System.Exception ex)
                 {
-                    doc.Editor.WriteMessage($"\n✗ 创建多重引线样式失败: {ex.Message}");
+                    doc.Editor.WriteMessage($"\n创建多重引线样式失败: {ex.Message}");
                     tr.Abort();
                     throw;
                 }
@@ -272,6 +367,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
 
+            using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 try
@@ -282,7 +378,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     {
                         db.MLeaderstyle = mleaderStyleDict.GetAt(styleName);
                         tr.Commit();
-                        doc.Editor.WriteMessage($"\n✓ 已设置当前多重引线样式: {styleName}");
                     }
                     else
                     {
@@ -461,6 +556,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
 
+            using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 try
@@ -471,7 +567,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     {
                         db.Tablestyle = tableStyleDict.GetAt(styleName);
                         tr.Commit();
-                        doc.Editor.WriteMessage($"\n✓ 已设置当前表格样式: {styleName}");
                     }
                     else
                     {

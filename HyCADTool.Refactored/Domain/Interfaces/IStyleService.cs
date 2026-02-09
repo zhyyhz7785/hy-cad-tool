@@ -30,16 +30,13 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// <summary>
         /// 创建标注样式
         /// </summary>
-        /// <param name="styleName">标注样式名称</param>
-        /// <param name="textStyleName">关联的文字样式名称</param>
-        /// <param name="scale">比例因子</param>
-        /// <returns>样式ObjectId</returns>
-        string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0);
+        string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0,
+            double dimtxt = 2.5, double dimexo = 1.0, double dimexe = 1.0,
+            double dimdle = 0.5, double dimgap = 1.0, double dimasz = 1.0);
 
         /// <summary>
         /// 设置当前标注样式
         /// </summary>
-        /// <param name="styleName">样式名称</param>
         void SetCurrentDimensionStyle(string styleName);
 
         // === 多重引线样式 ===
@@ -47,10 +44,9 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// <summary>
         /// 创建多重引线样式
         /// </summary>
-        /// <param name="styleName">样式名称</param>
-        /// <param name="textStyleName">关联的文字样式名称</param>
-        /// <returns>样式ObjectId</returns>
-        string CreateMLeaderStyle(string styleName, string textStyleName = null);
+        string CreateMLeaderStyle(string styleName, string textStyleName = null, double scale = 1.0,
+            double arrowSize = 2.0, double landingGap = 0.5, double textHeight = 2.5,
+            int textColorIndex = 7);
 
         /// <summary>
         /// 设置当前多重引线样式
