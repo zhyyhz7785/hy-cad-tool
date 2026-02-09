@@ -146,29 +146,50 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         }
 
         /// <summary>
-        /// 创建多重引线
+        /// 创建多重引线（与旧项目 ZTools.AddMleader 一致：多根引线汇集到文字集中点）
         /// </summary>
         private static MLeader CreateMLeader(MLeaderData data, ReinParameters parameters)
         {
             if (data.AnchorPoints == null || data.AnchorPoints.Length < 2)
                 return null;
 
-            var mleader = new MLeader();
-            int leaderIndex = mleader.AddLeader();
+            var db = Application.DocumentManager.MdiActiveDocument.Database;
+            var startP = data.AnchorPoints[0].ToAcadPoint3d();
+            var endP = data.AnchorPoints[data.AnchorPoints.Length - 1].ToAcadPoint3d();
 
-            // 添加引线点
-            for (int i = 0; i < data.AnchorPoints.Length; i++)
+            // 线段方向与垂直方向（文字在垂直方向偏移）
+            var vecH = (endP - startP).GetNormal();
+            var vecV = vecH.TransformBy(Matrix3d.Rotation(-Math.PI / 2, Vector3d.ZAxis, Point3d.Origin)).GetNormal();
+
+            // 集中点 = 线段中点 + 垂直方向 * 引线距离
+            var midP = new Point3d(
+                (startP.X + endP.X) / 2,
+                (startP.Y + endP.Y) / 2,
+                0);
+            var centralPoint = midP + vecV * data.LeaderDistance;
+
+            var mleader = new MLeader();
+            mleader.MLeaderStyle = db.MLeaderstyle;
+
+            // 每个锚点一根引线，汇集到 centralPoint
+            foreach (var pt in data.AnchorPoints)
             {
+                int leaderIndex = mleader.AddLeader();
                 int lineIndex = mleader.AddLeaderLine(leaderIndex);
-                var pt = data.AnchorPoints[i].ToAcadPoint3d();
-                mleader.AddFirstVertex(lineIndex, pt);
+                var p3 = pt.ToAcadPoint3d();
+                mleader.AddFirstVertex(lineIndex, p3);
+                mleader.AddLastVertex(lineIndex, centralPoint);
             }
 
-            // 设置文字
-            mleader.ContentType = ContentType.MTextContent;
+            // 文字：内容、高度、旋转（与线段平行）
+            var line = new Line(startP, endP);
+            double angle = line.Angle;
+            line.Dispose();
+
             var mtext = new MText();
             mtext.Contents = data.Content;
             mtext.TextHeight = parameters.TextSize * parameters.Scale;
+            mtext.Rotation = angle;
             mleader.MText = mtext;
 
             return mleader;

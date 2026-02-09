@@ -53,9 +53,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 }
 
                 // 3. 预处理：转换为 Domain 对象
+                // 旧代码 SetPolyLineClockWise 实际确保逆时针（命名误导），偏移用负值向内
                 var boundary = entity.ToDomainPolyline();
                 boundary.RemoveDuplicateVertices();
-                boundary.SetClockwise();
+                boundary.SetCounterClockwise();
                 boundary.IsClosed = true;
 
                 tr.Commit();

@@ -97,11 +97,21 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         /// 获取每个顶点处相邻线段的转折角度（弧度）
         /// 用于判断是否需要在该点断开钢筋（角度 >= PI 表示大转折）
         /// </summary>
+        /// <summary>
+        /// 计算每个顶点处的转弯角（带方向，0 ~ 2*PI）
+        /// 与旧代码 GetPolySegmentAngle + GetPolylineShape 一致：
+        ///   v1 = seg[i-1] 方向, v2 = seg[i] 方向
+        ///   角度 = Atan2(cross, dot)，映射到 [0, 2*PI)
+        /// 对于逆时针多段线的凸角（左转）：angle 约 PI/2（&lt; PI，继续同一根钢筋）
+        /// 对于凹角（右转或尖角）：angle 约 3*PI/2（&gt; PI，断开钢筋）
+        /// </summary>
         public double[] GetVertexTurnAngles()
         {
             int n = _vertices.Count;
             var angles = new double[n];
             if (n < 3) return angles;
+
+            int segCount = SegmentCount; // 闭合: n, 不闭合: n-1
 
             for (int i = 0; i < n; i++)
             {
@@ -111,14 +121,24 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
                     continue;
                 }
 
-                int prev = (i - 1 + n) % n;
-                int next = (i + 1) % n;
-                Vector2D v1 = _vertices[prev].VectorTo(_vertices[i]);
-                Vector2D v2 = _vertices[i].VectorTo(_vertices[next]);
+                // 旧代码：angles[i] 是 seg[i-1] 与 seg[i] 之间的角度
+                // 闭合多段线: angles[0] 是最后线段与第一条线段的角度
+                int prevSegIdx = ((i - 1) + segCount) % segCount;
+                int curSegIdx = i % segCount;
 
-                double cross = v1.Cross(v2);
+                var seg1 = GetSegmentAt(prevSegIdx);
+                var seg2 = GetSegmentAt(curSegIdx);
+
+                Vector2D v1 = seg1.Direction; // EndPoint - StartPoint
+                Vector2D v2 = seg2.Direction;
+
+                // 对应 AutoCAD Vector3d.GetAngleTo(v2, normal)
+                // normal = (0,0,1) 时等价于 Atan2(cross, dot)，映射到 [0, 2*PI)
+                double cross = v1.Cross(v2); // v1.X * v2.Y - v1.Y * v2.X
                 double dot = v1.Dot(v2);
-                angles[i] = Math.PI - Math.Atan2(Math.Abs(cross), dot);
+                double angle = Math.Atan2(cross, dot); // [-PI, PI]
+                if (angle < 0) angle += 2.0 * Math.PI;  // 映射到 [0, 2*PI)
+                angles[i] = angle;
             }
             return angles;
         }
@@ -195,6 +215,16 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         {
             if (!IsClosed || _vertices.Count < 3) return;
             if (GetSignedArea() > 0) _vertices.Reverse();
+        }
+
+        /// <summary>
+        /// 确保闭合多段线为逆时针方向
+        /// 旧代码 SetPolyLineClockWise 实际行为是确保逆时针（area &lt; 0 时 ReverseCurve）
+        /// </summary>
+        public void SetCounterClockwise()
+        {
+            if (!IsClosed || _vertices.Count < 3) return;
+            if (GetSignedArea() < 0) _vertices.Reverse();
         }
 
         /// <summary>

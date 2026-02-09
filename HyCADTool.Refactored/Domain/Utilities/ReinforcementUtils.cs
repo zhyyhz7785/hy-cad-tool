@@ -43,6 +43,12 @@ namespace HyCADTool.Refactored.Domain.Utilities
         /// <summary>
         /// 对单根钢筋延伸到锚固长度
         /// 对应旧代码 ExtendSingleReinforcement
+        /// 严格按旧代码逻辑：
+        ///   startSeg 反向 (EndPoint→StartPoint)
+        ///   startDirection = GetBendDirection
+        ///   extendStart = ExtendEnding(startSeg反向, startDirection)
+        ///   extendEnd   = ExtendEnding(endSeg, -startDirection)
+        ///   起点延伸点按原序依次 AddVertexAt(0,…)（等效为反序插入）
         /// </summary>
         public static Polyline2D ExtendSingleToAnchorage(
             Polyline2D subPolyline,
@@ -53,37 +59,44 @@ namespace HyCADTool.Refactored.Domain.Utilities
         {
             var result = subPolyline.Clone();
 
-            // 起止线段
+            // 1. 取钢筋的起止线段（与旧代码一致）
             var endSeg = subPolyline.GetSegmentAt(subPolyline.VertexCount - 2);
             var startSeg = subPolyline.GetSegmentAt(0);
-            // 起点方向反向
+            // 1.1 起点方向反向（旧代码: startSeg = new LineSegment3d(startSeg.EndPoint, startSeg.StartPoint)）
             var startSegReversed = new Line2D(startSeg.EndPoint, startSeg.StartPoint);
 
-            // 判断两端点是否在同一条边界线段上，决定弯折方向
-            Vector2D? bendDirection = GetBendDirection(subPolyline, boundary, intersectionService);
+            // 1.2 得到弯折方向（旧代码: GetDirectionTwoPointInOneLine）
+            Vector2D? startDirection = GetBendDirection(subPolyline, boundary, intersectionService);
 
-            // 延伸起点
+            // 2. 延伸起点（旧代码: ExtendEndingReinforcement(startSeg, startDirection, ...)）
             var extendStart = ExtendEnding(
-                startSegReversed, bendDirection, boundary, parameters, intersectionService,
+                startSegReversed, startDirection, boundary, parameters, intersectionService,
                 out bool isStartBending);
 
-            // 延伸终点（方向取反）
-            Vector2D? endDirection = bendDirection.HasValue ? (Vector2D?)(-bendDirection.Value) : null;
+            // 延伸终点（旧代码: ExtendEndingReinforcement(endSeg, -startDirection, ...)）
+            Vector2D? endDirection = startDirection.HasValue
+                ? (Vector2D?)(new Vector2D(-startDirection.Value.X, -startDirection.Value.Y))
+                : null;
             var extendEnd = ExtendEnding(
                 endSeg, endDirection, boundary, parameters, intersectionService,
                 out bool isEndBending);
 
+            // 3. 弯折标记
             bendingFlags = new Dictionary<int, bool>
             {
                 { 1, isStartBending },
                 { 2, isEndBending }
             };
 
-            // 在起点前插入延伸点
-            for (int i = extendStart.Count - 1; i >= 0; i--)
-                result.AddVertexAt(0, extendStart[i]);
+            // 4. 添加延伸点到钢筋
+            // 旧代码起点: foreach(point in extendPointsStart) { subPolylineN.AddVertexAt(0, point) }
+            // 旧代码 AddVertexAt(0, ...) 在每次调用时都插在最前面，
+            // 所以 points[0] 先插到位置0，然后 points[1] 插到位置0 把 points[0] 推到位置1
+            // 等效: 最终顺序 = extendStart 的反序
+            foreach (var pt in extendStart)
+                result.AddVertexAt(0, pt);
 
-            // 在终点后添加延伸点
+            // 终点: foreach(point in extendPointsEnd) { subPolylineN.AddVertexAt(NumberOfVertices, point) }
             foreach (var pt in extendEnd)
                 result.AddVertex(pt);
 
@@ -193,10 +206,12 @@ namespace HyCADTool.Refactored.Domain.Utilities
                 var (segEnd, _) = boundary.GetSegmentAtPoint(boundEndPt);
 
                 // 两交点在同一线段上
+                // 旧代码: direction = (boundStartPoint - boundEndPoint).GetNormal()
+                // 即从 End交点 指向 Start交点
                 if (segStart.StartPoint.IsEqualTo(segEnd.StartPoint) &&
                     segStart.EndPoint.IsEqualTo(segEnd.EndPoint))
                 {
-                    return boundStartPt.VectorTo(boundEndPt).Normalize();
+                    return boundEndPt.VectorTo(boundStartPt).Normalize();
                 }
             }
             catch
@@ -479,18 +494,23 @@ namespace HyCADTool.Refactored.Domain.Utilities
 
         /// <summary>
         /// 计算所有标注的数据
-        /// 对应旧代码 AddMleaders
+        /// 对应旧代码 AddMleaders；相邻过近的标注合并，避免重叠
         /// </summary>
         public static MLeaderData[] CalculateLabelData(
             Polyline2D dotReinCenterPoly, double separation, double leaderDistance, string content)
         {
             var result = new List<MLeaderData>();
             var segments = dotReinCenterPoly.GetSegments();
+            double minGap = separation * 0.5; // 标注中点距离小于此值则视为重叠，跳过
 
             foreach (var seg in segments)
             {
                 var points = GetReducePoints(seg, separation);
                 if (points.Length < 2) continue;
+
+                Point2D mid = seg.MidPoint;
+                if (result.Any(r => MidpointOf(r).DistanceTo(mid) < minGap))
+                    continue;
 
                 result.Add(new MLeaderData
                 {
@@ -501,6 +521,16 @@ namespace HyCADTool.Refactored.Domain.Utilities
             }
 
             return result.ToArray();
+        }
+
+        private static Point2D MidpointOf(MLeaderData data)
+        {
+            if (data.AnchorPoints == null || data.AnchorPoints.Length == 0)
+                return Point2D.Origin;
+            double x = 0, y = 0;
+            foreach (var p in data.AnchorPoints) { x += p.X; y += p.Y; }
+            int n = data.AnchorPoints.Length;
+            return new Point2D(x / n, y / n);
         }
 
         #endregion
@@ -529,7 +559,7 @@ namespace HyCADTool.Refactored.Domain.Utilities
             double reinforcementDiameter = parameters.ReinforcementDiameter * scale;
             double leaderDistance = parameters.MleaderDistance * scale;
 
-            // 1. 偏移边界 → 分段钢筋
+            // 1. 偏移边界 → 分段钢筋（向内偏移：旧代码用负距离 GetOffsetCurves(-ProtectionThickness)）
             var offsetBoundary = offsetService.Offset(boundary, -protectionThickness);
             result.SubReinforcements = offsetBoundary.SplitByAngleThreshold();
 
@@ -547,7 +577,7 @@ namespace HyCADTool.Refactored.Domain.Utilities
             result.FinalReinforcements = AddHooks(
                 extended, bendingFlags, boundary, hookLength, intersectionService);
 
-            // 5. 点钢筋
+            // 5. 点钢筋（向内偏移：旧代码用 GetOffsetCurves(-DotReinOffset)）
             var dotCenterPoly = offsetService.Offset(boundary, -dotReinOffset);
             result.DotReinCenterPoly = dotCenterPoly;
             result.DotReinPoints = GenerateDotPositions(dotCenterPoly, dotSeparation, dotStartDistance);
