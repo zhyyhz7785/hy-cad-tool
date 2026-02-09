@@ -255,11 +255,115 @@
             </ScrollViewer>
         </TabItem>
 
-        <!-- ==================== Tab B: 预留 ==================== -->
-        <TabItem Header="B">
-            <StackPanel Margin="10" Background="#3b4453">
-                <TextBlock Text="预留标签页 B" Foreground="#808080" />
-            </StackPanel>
+        <!-- ==================== Tab B: 钢筋参数 ==================== -->
+        <TabItem Header="钢筋">
+            <ScrollViewer Style="{StaticResource SmallScrollViewer}" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="5,10,5,5" Background="#3b4453">
+
+                    <!-- 操作按钮 -->
+                    <Button Content="绘制" Command="{Binding DrawCommand}" Margin="0,0,0,3" />
+
+                    <!-- 标注参数 -->
+                    <Grid Margin="0,3,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="标注:" />
+                        <TextBlock Grid.Column="1" Text="直径" />
+                        <TextBox Grid.Column="2" Text="{Binding RebarDiameter}" 
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                        <TextBlock Grid.Column="3" Text="间距" />
+                        <TextBox Grid.Column="4" Text="{Binding RebarSpacing}" 
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+
+                    <!-- 钢筋参数 -->
+                    <Expander Header="钢筋参数" IsExpanded="True" Margin="0,2,0,5">
+                        <StackPanel Margin="5,5,0,0">
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="钢筋锚固长度" />
+                                <TextBox Grid.Column="1" Text="{Binding AnchorageLength}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="点钢筋间距" />
+                                <TextBox Grid.Column="1" Text="{Binding DotSeparation}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="钢筋弯折最小长度"  />
+                                <TextBox Grid.Column="1" Text="{Binding BendingLineMinLength}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="锚固钢筋连接长度" />
+                                <TextBox Grid.Column="1" Text="{Binding AnchorageJoinLength}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="弯钩长度" />
+                                <TextBox Grid.Column="1" Text="{Binding HookLength}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="保护层厚度" />
+                                <TextBox Grid.Column="1" Text="{Binding ProtectionThickness}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="点钢直径" />
+                                <TextBox Grid.Column="1" Text="{Binding ReinforcementDiameter}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="点钢偏移" />
+                                <TextBox Grid.Column="1" Text="{Binding DotReinOffset}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- 尺寸参数 -->
+                    <Expander Header="尺寸参数" IsExpanded="False" Margin="0,2,0,5">
+                        <StackPanel Margin="5,5,0,0">
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="内侧标注距离" />
+                                <TextBox Grid.Column="1" Text="{Binding DimensionDistanceInside}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="外标注距离" />
+                                <TextBox Grid.Column="1" Text="{Binding DimensionDistanceOutside}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="标注间距" />
+                                <TextBox Grid.Column="1" Text="{Binding DimensionDistanceWithDim}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="引线距离" />
+                                <TextBox Grid.Column="1" Text="{Binding MleaderDistance}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="允许距离" />
+                                <TextBox Grid.Column="1" Text="{Binding DimDistanceTolerance}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- 状态 -->
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="#a3be8c" FontSize="10" Margin="0,5,0,0" TextWrapping="Wrap" />
+
+                </StackPanel>
+            </ScrollViewer>
         </TabItem>
 
         <!-- ==================== Tab C: 预留 ==================== -->

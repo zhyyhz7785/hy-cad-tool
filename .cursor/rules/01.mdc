@@ -67,4 +67,66 @@ new Presentation.Commands.OverKillCommand().Execute();
 
 ---
 
-**版本**：v3.0
+## 六、当前工作状态（2026-02-09）
+
+### 已完成：HY 设置面板
+
+- **SettingsPanel**（`Presentation/Views/SettingsPanel.xaml` + `.xaml.cs`）：TabControl 结构
+  - Tab A "样式设置"：Scale（动态样式名 `0_Hy_{Scale}`）、文字/标注/引线样式参数
+  - Tab B "钢筋"：钢筋参数（对应旧 ReinPanel）、绘制按钮
+  - Tab C/D：预留
+- **SettingsPanelViewModel**（`Presentation/ViewModels/SettingsPanelViewModel.cs`）：
+  - `static Current` 属性供外部读参数
+  - `CreateReinParameters()` 导出 `ReinParameters`
+  - `ApplyStyleCommand` 创建/更新全部样式
+  - `DrawCommand` 调用旧 gj（通过反射桥接）
+- **StyleService** 已修复：CreateTextStyle（支持更新）、CreateDimensionStyle（Dimscale 方式 + 全属性）、CreateMLeaderStyle（全属性 + scale）
+- **TextBoxHelper**（`Presentation/Views/Helpers/TextBoxHelper.cs`）：解决小数点输入 + 点击全选
+- **EntityExtensions**（`Infrastructure/AutoCAD/Extensions/EntityExtensions.cs`）：ToSpace、CreateSolidCircle（带宽度填充）
+- **MLeaderExtensions**（`Infrastructure/AutoCAD/Extensions/MLeaderExtensions.cs`）：AddMleader
+
+### 进行中：钢筋命令重构
+
+- 旧 HyCADtool.dll 已移除，需要逐个重构钢筋命令到 Refactored 项目
+- 重构顺序：ReinforcementSingleFunsA → B → C → D → E → F → ReinforcementFun → ReinforcementMain
+- 每次重构一个文件，测试通过后再下一个
+- 关键依赖已准备好：EntityExtensions、MLeaderExtensions、SettingsPanelViewModel.Current
+
+### 坐标与单位规则
+
+- **模型空间坐标 = 实际 mm（1:1）**
+- 面板参数分两类：
+
+**直接用（实际 mm，红色）**：不乘 Scale
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `RebarDiameter` | 14 | 钢筋直径，如 15d = 15×14 = 210mm |
+| `AnchorageLength` | 500 | 锚固长度 |
+| `DotSeparation` | 200 | 点钢筋间距 |
+| `BendingLineMinLength` | 150 | 弯折最小长度 |
+| `AnchorageJoinLength` | 1500 | 锚固连接长度 |
+| `RebarSpacing` | 200 | 钢筋间距 |
+
+**需 × Scale（缩放值，绿色）**：面板存的是 `实际mm / Scale`，用于几何时需 `值 × Scale`
+| 参数 | 默认 | ×40 实际 | 说明 |
+|------|------|----------|------|
+| `ProtectionThickness` | 1.0 | 40mm | 保护层厚度 |
+| `HookLength` | 1.0 | 40mm | 弯钩长度 |
+| `ReinforcementDiameter` | 0.35 | 14mm | 点钢筋绘制直径 |
+| `DotReinOffset` | 1.35 | 54mm | 点钢筋偏移 |
+
+- **Scale 还用于**：文字/标注/引线样式符号大小（`TextSize × Scale`、`Dimscale`）
+
+### 关键约束
+
+- 重构项目中 **不能用 `[CommandMethod]`**（热重载会 eDuplicateKey）
+- 面板用 `ShowPanelCommand.ShowSettingsPanel()`（无 CommandMethod），通过 TestCommand 调用
+- 旧代码的 `ReinPanel.ActivePanel?.xxx` 改为 `SettingsPanelViewModel.Current?.xxx`
+- 旧代码的 `BaseConfig.xxx` 改为从 SettingsPanelViewModel 读取
+- 旧代码的 `ZTools.CreateSolidCircle` 改为 `EntityExtensions.CreateSolidCircle`
+- 旧代码的 `.ToSpace()` 改为 `EntityExtensions.ToSpace()`
+- 旧代码的 `ZTools.AddMleader` 改为 `MLeaderExtensions.AddMleader`
+
+---
+
+**版本**：v3.1

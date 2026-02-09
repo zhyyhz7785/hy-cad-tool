@@ -27,16 +27,15 @@ namespace HyCADTool.Refactored.Presentation.Commands
             _intersectionService = ServiceLocator.Resolve<ILineIntersectionService>();
         }
 
-        [CommandMethod("HYREIN_DRAW")]
         public void Execute()
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
 
-            // 1. 获取参数（从面板或默认值）
-            var parameters = ReinParameters.CreateDefault();
-            // TODO: 从 ReinPanel 读取用户参数覆盖默认值
+            // 1. 获取参数（优先从设置面板，否则用默认值）
+            var vm = ViewModels.SettingsPanelViewModel.Current;
+            var parameters = vm != null ? vm.CreateReinParameters() : ReinParameters.CreateDefault();
 
             // 2. 选择边界多段线
             var selResult = ed.GetEntity("\n选择混凝土边界多段线: ");

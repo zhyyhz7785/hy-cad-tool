@@ -9,6 +9,7 @@ namespace HyCADTool.Refactored.Test
 {
     /// <summary>
     /// 测试入口：C1 调用 Run()。
+    /// 面板用 TestShowSettingsPanel 打开（首次慢，后续秒开）。
     /// </summary>
     public static class TestCommand
     {
@@ -19,10 +20,13 @@ namespace HyCADTool.Refactored.Test
                 try
                 {
                     // ========== 只改下面一行即可切换测试命令 ==========
-                    // 面板测试（含详细耗时分解）
-                    TestShowSettingsPanel();
-                    // 纯样式测试（无 WPF）
-                    // TestApplyStyle();
+                    TestReinExtend();                // ge: 延伸钢筋+15d弯折
+                    // TestReinQuickExtend();         // ge1: 快速延伸至边界
+                    // TestReinCut();                 // gd: 截断钢筋
+                    // TestReinAddAnchor1();          // g1: 单侧弯钩
+                    // TestReinAddAnchor2();          // g2: 竖向弯钩
+                    // TestDrawOffsetPolyline();      // gg: 偏移多段线+弯钩
+                    // TestShowSettingsPanel();       // 调出设置面板
                 }
                 catch (System.Exception ex)
                 {
@@ -32,33 +36,14 @@ namespace HyCADTool.Refactored.Test
         }
 
         /// <summary>
-        /// 带详细耗时分解的面板测试，定位 WPF 慢在哪一步
+        /// 测试绘制钢筋（使用默认参数，不开面板）
         /// </summary>
-        private static void TestShowSettingsPanel()
+        private static void TestDrawReinforcement()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            var swTotal = Stopwatch.StartNew();
-
-            // 1. 解析 PanelManager
-            var sw1 = Stopwatch.StartNew();
-            var panelManager = ServiceLocator.Container.Resolve<Presentation.PanelManager>();
-            sw1.Stop();
-
-            // 2. 解析 SettingsPanel（DI 创建 ViewModel + View）
-            var sw2 = Stopwatch.StartNew();
-            var panel = ServiceLocator.Container.Resolve<Presentation.Views.SettingsPanel>();
-            sw2.Stop();
-
-            // 3. 创建 PaletteSet + ElementHost
-            var sw3 = Stopwatch.StartNew();
-            panelManager.TogglePanel<Presentation.Views.SettingsPanel>(
-                "HY 设置",
-                new Guid("F6A7B8C9-D0E1-2345-FA67-890ABCDEF123"));
-            sw3.Stop();
-
-            swTotal.Stop();
-            ed?.WriteMessage($"\n面板耗时 {swTotal.ElapsedMilliseconds}ms " +
-                $"(PanelMgr={sw1.ElapsedMilliseconds} + 创建面板={sw2.ElapsedMilliseconds} + 显示={sw3.ElapsedMilliseconds})");
+            // 先确保样式存在
+            TestApplyStyle();
+            // 执行绘制命令（会让用户选择多段线）
+            new Presentation.Commands.DrawReinforcementCommand().Execute();
         }
 
         /// <summary>
@@ -80,9 +65,54 @@ namespace HyCADTool.Refactored.Test
 
             styleService.CreateMLeaderStyle(mleaderStyleName, textStyleName, scale);
             styleService.SetCurrentMLeaderStyle(mleaderStyleName);
+        }
 
+        /// <summary>
+        /// 打开设置面板（首次慢，后续秒开）
+        /// </summary>
+        private static void TestShowSettingsPanel()
+        {
+            var sw = Stopwatch.StartNew();
+            Presentation.Commands.ShowPanelCommand.ShowSettingsPanel();
+            sw.Stop();
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage($"\n样式测试完成: {textStyleName}");
+            ed?.WriteMessage($"\n面板耗时 {sw.ElapsedMilliseconds}ms");
+        }
+
+        /// <summary>g1: 单侧弯钩（isVertical=false）</summary>
+        private static void TestReinAddAnchor1()
+        {
+            new Presentation.Commands.ReinAddAnchorCommand(isVertical: false).Execute();
+        }
+
+        /// <summary>g2: 竖向弯钩（isVertical=true）</summary>
+        private static void TestReinAddAnchor2()
+        {
+            new Presentation.Commands.ReinAddAnchorCommand(isVertical: true).Execute();
+        }
+
+        /// <summary>gg: 偏移多段线绘制+弯钩</summary>
+        private static void TestDrawOffsetPolyline()
+        {
+            new Presentation.Commands.DrawOffsetPolylineCommand().Execute();
+        }
+
+        /// <summary>gd: 截断钢筋</summary>
+        private static void TestReinCut()
+        {
+            new Presentation.Commands.ReinCutCommand().Execute();
+        }
+
+        /// <summary>ge: 延伸钢筋（锚固长度）</summary>
+        private static void TestReinExtend()
+        {
+            new Presentation.Commands.ReinExtendCommand().Execute();
+        }
+
+        /// <summary>ge1: 快速延伸至边界</summary>
+        private static void TestReinQuickExtend()
+        {
+            new Presentation.Commands.ReinQuickExtendCommand().Execute();
         }
     }
 }
