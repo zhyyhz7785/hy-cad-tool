@@ -260,8 +260,36 @@
             <ScrollViewer Style="{StaticResource SmallScrollViewer}" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="5,10,5,5" Background="#3b4453">
 
-                    <!-- 操作按钮 -->
-                    <Button Content="绘制" Command="{Binding DrawCommand}" Margin="0,0,0,3" />
+                    <!-- ===== 命令按钮组 ===== -->
+
+                    <!-- 绘制 -->
+                    <TextBlock Text="绘制" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
+                    <UniformGrid Columns="4" Margin="0,0,0,4">
+                        <Button Content="gj 绘制" Command="{Binding CmdGj}" Margin="1" Padding="2,4" />
+                        <Button Content="gg 偏移" Command="{Binding CmdGg}" Margin="1" Padding="2,4" />
+                    </UniformGrid>
+
+                    <!-- 修改 -->
+                    <TextBlock Text="修改" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
+                    <UniformGrid Columns="4" Margin="0,0,0,4">
+                        <Button Content="g1 弯钩" Command="{Binding CmdG1}" Margin="1" Padding="2,4" />
+                        <Button Content="g2 竖弯" Command="{Binding CmdG2}" Margin="1" Padding="2,4" />
+                        <Button Content="ge 延伸" Command="{Binding CmdGe}" Margin="1" Padding="2,4" />
+                        <Button Content="ge1快延" Command="{Binding CmdGe1}" Margin="1" Padding="2,4" />
+                    </UniformGrid>
+                    <UniformGrid Columns="4" Margin="0,0,0,4">
+                        <Button Content="gd 截断" Command="{Binding CmdGd}" Margin="1" Padding="2,4" />
+                    </UniformGrid>
+
+                    <!-- 标注 -->
+                    <TextBlock Text="标注" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
+                    <UniformGrid Columns="4" Margin="0,0,0,4">
+                        <Button Content="gb 标注" Command="{Binding CmdGb}" Margin="1" Padding="2,4" />
+                        <Button Content="gb1单引" Command="{Binding CmdGb1}" Margin="1" Padding="2,4" />
+                        <Button Content="gb2六点" Command="{Binding CmdGb2}" Margin="1" Padding="2,4" />
+                    </UniformGrid>
+
+                    <Separator Margin="0,2,0,6" Background="#555" />
 
                     <!-- 标注参数 -->
                     <Grid Margin="0,3,0,5">

@@ -29,7 +29,8 @@ namespace HyCADTool.ReCall
 
         #endregion
 
-        private Action _c1Action;
+        private static Action _c1Action;
+        private static bool _assemblyResolveRegistered = false;
 
         /// <summary>C2 - 重新加载插件（仅在此命令执行时加载，不在构造函数中调用，避免加载时执行两次）</summary>
         [CommandMethod("C2")]
@@ -64,8 +65,13 @@ namespace HyCADTool.ReCall
                 string loadDepsPath = Path.GetDirectoryName(loadPath);
                 swCopy.Stop();
 
-                AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
-                    ResolveAssembly(args, loadDepsPath, nugetPath);
+                // 只注册一次 AssemblyResolve 事件
+                if (!_assemblyResolveRegistered)
+                {
+                    AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
+                        ResolveAssembly(args, loadDepsPath, nugetPath);
+                    _assemblyResolveRegistered = true;
+                }
 
                 // 加载程序集
                 var swLoad = System.Diagnostics.Stopwatch.StartNew();
@@ -228,7 +234,17 @@ namespace HyCADTool.ReCall
             string name = new AssemblyName(args.Name).Name + ".dll";
             string path = Path.Combine(dependenciesPath, name);
             if (File.Exists(path))
-                return Assembly.LoadFrom(path);
+            {
+                // 使用 Load(byte[]) 而不是 LoadFrom，避免锁定文件
+                try
+                {
+                    return Assembly.Load(File.ReadAllBytes(path));
+                }
+                catch
+                {
+                    return null;
+                }
+            }
 
             try
             {
@@ -237,7 +253,13 @@ namespace HyCADTool.ReCall
                 {
                     path = Path.Combine(dir, name);
                     if (File.Exists(path))
-                        return Assembly.LoadFrom(path);
+                    {
+                        try
+                        {
+                            return Assembly.Load(File.ReadAllBytes(path));
+                        }
+                        catch { }
+                    }
                 }
             }
             catch { }

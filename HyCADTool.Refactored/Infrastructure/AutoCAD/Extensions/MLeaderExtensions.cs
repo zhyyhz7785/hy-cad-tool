@@ -26,13 +26,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
 
             var vecH = (endP - startP).GetNormal();
             var line = new Line(startP, endP);
+            double angle = line.Angle;
 
             // 调整引线方向（第二三象限时翻转）
             // 注意：vecH 和 endP 保持原始值不变，centralPoint 基于原始方向计算
-            if (line.Angle > Math.PI / 2 && line.Angle <= Math.PI * 3 / 2)
+            if (angle > Math.PI / 2 && angle <= Math.PI * 3 / 2)
             {
                 points = points.Reverse().ToArray();
                 line = new Line(points.First(), points.Last());
+                // 文字角度翻转 180 度，避免倒置
+                angle = line.Angle;
             }
 
             var vecV = vecH.RotateBy(-Math.PI / 2, Vector3d.ZAxis);
@@ -53,7 +56,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             mt.Color = ml.TextColor;
             mt.TextHeight = ml.TextHeight;
             mt.Contents = content;
-            mt.Rotation = line.Angle;
+            mt.Rotation = angle;  // 使用调整后的角度
             ml.MText = mt;
 
             return ml;
@@ -74,13 +77,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
 
             var vecH = (endP - startP).GetNormal();
             var line = new Line(startP, endP);
+            double angle = line.Angle;
 
             // 调整引线方向（第二三象限时翻转）
             // 注意：vecH 和 centerP 保持原始值不变
-            if (line.Angle > Math.PI / 2 && line.Angle <= Math.PI * 3 / 2)
+            if (angle > Math.PI / 2 && angle <= Math.PI * 3 / 2)
             {
                 points = points.Reverse().ToArray();
                 line = new Line(points.First(), points.Last());
+                // 文字角度翻转 180 度，避免倒置
+                angle = line.Angle;
             }
 
             var vecV = vecH.RotateBy(-Math.PI / 2, Vector3d.ZAxis);
@@ -99,7 +105,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             mt.Color = ml.TextColor;
             mt.TextHeight = ml.TextHeight;
             mt.Contents = content;
-            mt.Rotation = line.Angle;
+            mt.Rotation = angle;  // 使用调整后的角度
             ml.MText = mt;
 
             return ml;

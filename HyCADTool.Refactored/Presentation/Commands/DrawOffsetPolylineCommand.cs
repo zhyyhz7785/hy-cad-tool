@@ -39,7 +39,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double hookLength = (vm?.HookLength ?? 1.0) * scale;             // 绿色参数 × Scale
 
             // 1. 交互式沿边界绘制（Jig 实时预览偏移效果）
-            var jig = new PolylineJig(offsetDistance);
+            var jig = new PolylineJig(-offsetDistance);
             if (jig.StartJig() != PromptStatus.OK || jig.Points.Count <= 1)
                 return;
 
@@ -56,7 +56,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 }
 
                 // 3. 生成偏移曲线（= 钢筋线）
-                var offsetCurves = tempPoly.GetOffsetCurves(offsetDistance);
+                var offsetCurves = tempPoly.GetOffsetCurves(-offsetDistance);
 
                 foreach (Entity ent in offsetCurves)
                 {

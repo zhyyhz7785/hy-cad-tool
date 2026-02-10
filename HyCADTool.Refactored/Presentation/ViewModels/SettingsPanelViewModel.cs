@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
@@ -11,27 +13,85 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
     /// Tab A: 样式设置（文字/标注/引线）
     /// Tab B: 钢筋参数（对应旧 ReinPanel）
     /// 样式名称根据 Scale 动态生成
+    /// 
+    /// 多文档支持：每个文档有独立的 ViewModel 实例
     /// </summary>
     public class SettingsPanelViewModel : INotifyPropertyChanged
     {
         private readonly IStyleService _styleService;
 
         /// <summary>
-        /// 当前活动实例（供 DrawReinforcementCommand 等外部读取参数）
+        /// 文档级 ViewModel 存储（每个文档独立参数）
+        /// </summary>
+        private static readonly Dictionary<string, SettingsPanelViewModel> _documentViewModels 
+            = new Dictionary<string, SettingsPanelViewModel>();
+
+        /// <summary>
+        /// 当前活动文档的 ViewModel（供 DrawReinforcementCommand 等外部读取参数）
         /// 对应旧代码 ReinPanel.ActivePanel
         /// </summary>
-        public static SettingsPanelViewModel Current { get; private set; }
+        public static SettingsPanelViewModel Current
+        {
+            get
+            {
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                if (doc == null) return null;
+
+                var docName = doc.Name;
+                if (!_documentViewModels.ContainsKey(docName))
+                {
+                    // 为新文档创建 ViewModel（使用默认构造函数，无 IStyleService）
+                    _documentViewModels[docName] = new SettingsPanelViewModel();
+                }
+                return _documentViewModels[docName];
+            }
+        }
+
+        /// <summary>
+        /// 获取或创建指定文档的 ViewModel
+        /// </summary>
+        public static SettingsPanelViewModel GetOrCreate(string documentName, IStyleService styleService)
+        {
+            if (!_documentViewModels.ContainsKey(documentName))
+            {
+                _documentViewModels[documentName] = new SettingsPanelViewModel(styleService);
+            }
+            return _documentViewModels[documentName];
+        }
+
+        /// <summary>
+        /// 清理已关闭文档的 ViewModel
+        /// </summary>
+        public static void RemoveDocument(string documentName)
+        {
+            _documentViewModels.Remove(documentName);
+        }
 
         #region 构造函数
 
         public SettingsPanelViewModel(IStyleService styleService)
         {
             _styleService = styleService;
-            Current = this;
 
             ApplyStyleCommand = new RelayCommand(ApplyStyle);
             ResetCommand = new RelayCommand(ResetToDefaults);
             DrawCommand = new RelayCommand(DrawReinforcement);
+
+            // 钢筋绘制
+            CmdGj = new RelayCommand(() => SendCommand(() => new Commands.DrawReinforcementCommand().Execute()));
+            CmdGg = new RelayCommand(() => SendCommand(() => new Commands.DrawOffsetPolylineCommand().Execute()));
+
+            // 钢筋修改
+            CmdG1 = new RelayCommand(() => SendCommand(() => new Commands.ReinAddAnchorCommand(isVertical: false).Execute()));
+            CmdG2 = new RelayCommand(() => SendCommand(() => new Commands.ReinAddAnchorCommand(isVertical: true).Execute()));
+            CmdGe = new RelayCommand(() => SendCommand(() => new Commands.ReinExtendCommand().Execute()));
+            CmdGe1 = new RelayCommand(() => SendCommand(() => new Commands.ReinQuickExtendCommand().Execute()));
+            CmdGd = new RelayCommand(() => SendCommand(() => new Commands.ReinCutCommand().Execute()));
+
+            // 钢筋标注
+            CmdGb = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Standard).Execute()));
+            CmdGb1 = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Single).Execute()));
+            CmdGb2 = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Six).Execute()));
         }
 
         public SettingsPanelViewModel()
@@ -39,6 +99,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             ApplyStyleCommand = new RelayCommand(() => { });
             ResetCommand = new RelayCommand(() => { });
             DrawCommand = new RelayCommand(() => { });
+            CmdGj = CmdGg = new RelayCommand(() => { });
+            CmdG1 = CmdG2 = CmdGe = CmdGe1 = CmdGd = new RelayCommand(() => { });
+            CmdGb = CmdGb1 = CmdGb2 = new RelayCommand(() => { });
         }
 
         #endregion
@@ -230,6 +293,74 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public ICommand ApplyStyleCommand { get; }
         public ICommand ResetCommand { get; }
         public ICommand DrawCommand { get; }
+
+        // 钢筋绘制命令
+        public ICommand CmdGj { get; }
+        public ICommand CmdGg { get; }
+
+        // 钢筋修改命令
+        public ICommand CmdG1 { get; }
+        public ICommand CmdG2 { get; }
+        public ICommand CmdGe { get; }
+        public ICommand CmdGe1 { get; }
+        public ICommand CmdGd { get; }
+
+        // 钢筋标注命令
+        public ICommand CmdGb { get; }
+        public ICommand CmdGb1 { get; }
+        public ICommand CmdGb2 { get; }
+
+        #endregion
+
+        #region 命令路由（面板按钮 → C1 → AutoCAD 命令线程）
+
+        /// <summary>
+        /// 待执行命令：面板按钮设置后通过 C1 在 AutoCAD 命令线程执行
+        /// </summary>
+        public static System.Action PendingCommand { get; set; }
+
+        /// <summary>
+        /// 最后一次执行的命令（用于 C1 重复执行）
+        /// </summary>
+        public static System.Action LastCommand { get; private set; }
+
+        /// <summary>
+        /// 取出待执行命令（不清除，保留用于重复）
+        /// </summary>
+        public static System.Action ConsumePendingCommand()
+        {
+            var cmd = PendingCommand;
+            if (cmd != null)
+            {
+                // 有新命令 → 保存为最后命令，清除待执行标记
+                LastCommand = cmd;
+                PendingCommand = null;
+            }
+            // 返回最后命令（新命令或重复命令）
+            return LastCommand;
+        }
+
+        /// <summary>
+        /// 从面板按钮发起命令：设置 PendingCommand，然后通过 C1 在正确线程执行
+        /// </summary>
+        private void SendCommand(System.Action commandAction)
+        {
+            PendingCommand = () =>
+            {
+                EnsureStylesApplied();
+                commandAction();
+            };
+            try
+            {
+                var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+                doc.SendStringToExecute("C1\n", true, false, false);
+            }
+            catch (System.Exception ex)
+            {
+                StatusMessage = $"发送命令失败: {ex.Message}";
+                PendingCommand = null;
+            }
+        }
 
         #endregion
 

@@ -7,8 +7,10 @@ using HyCADTool.Refactored.Domain.ValueObjects;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Reinforcement;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -146,53 +148,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         }
 
         /// <summary>
-        /// 创建多重引线（与旧项目 ZTools.AddMleader 一致：多根引线汇集到文字集中点）
+        /// 创建多重引线（直接使用 gb 命令的 AddMleader 逻辑）
         /// </summary>
         private static MLeader CreateMLeader(MLeaderData data, ReinParameters parameters)
         {
             if (data.AnchorPoints == null || data.AnchorPoints.Length < 2)
                 return null;
 
-            var db = Application.DocumentManager.MdiActiveDocument.Database;
-            var startP = data.AnchorPoints[0].ToAcadPoint3d();
-            var endP = data.AnchorPoints[data.AnchorPoints.Length - 1].ToAcadPoint3d();
-
-            // 线段方向与垂直方向（文字在垂直方向偏移）
-            var vecH = (endP - startP).GetNormal();
-            var vecV = vecH.TransformBy(Matrix3d.Rotation(-Math.PI / 2, Vector3d.ZAxis, Point3d.Origin)).GetNormal();
-
-            // 集中点 = 线段中点 + 垂直方向 * 引线距离
-            var midP = new Point3d(
-                (startP.X + endP.X) / 2,
-                (startP.Y + endP.Y) / 2,
-                0);
-            var centralPoint = midP + vecV * data.LeaderDistance;
-
-            var mleader = new MLeader();
-            mleader.MLeaderStyle = db.MLeaderstyle;
-
-            // 每个锚点一根引线，汇集到 centralPoint
-            foreach (var pt in data.AnchorPoints)
-            {
-                int leaderIndex = mleader.AddLeader();
-                int lineIndex = mleader.AddLeaderLine(leaderIndex);
-                var p3 = pt.ToAcadPoint3d();
-                mleader.AddFirstVertex(lineIndex, p3);
-                mleader.AddLastVertex(lineIndex, centralPoint);
-            }
-
-            // 文字：内容、高度、旋转（与线段平行）
-            var line = new Line(startP, endP);
-            double angle = line.Angle;
-            line.Dispose();
-
-            var mtext = new MText();
-            mtext.Contents = data.Content;
-            mtext.TextHeight = parameters.TextSize * parameters.Scale;
-            mtext.Rotation = angle;
-            mleader.MText = mtext;
-
-            return mleader;
+            // 转换为 Point3d[]
+            var points = data.AnchorPoints.Select(pt => pt.ToAcadPoint3d()).ToArray();
+            
+            // 直接调用 gb 命令的扩展方法
+            return points.AddMleader(data.LeaderDistance, data.Content);
         }
 
         #endregion

@@ -4,18 +4,21 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Forms.Integration;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation
 {
     /// <summary>
     /// 面板管理器 - 统一管理所有工具面板的创建、显示和生命周期
     /// 单例模式，通过依赖注入提供
+    /// 支持多文档环境：面板全局唯一，内容按文档切换
     /// </summary>
     public class PanelManager
     {
         private readonly Dictionary<Type, PaletteSet> _paletteSets;
         private readonly Dictionary<Type, object> _panelInstances;
         private readonly IComponentContext _componentContext;
+        private bool _documentEventsRegistered = false;
 
         /// <summary>
         /// 构造函数
@@ -29,6 +32,73 @@ namespace HyCADTool.Refactored.Presentation
         }
 
         /// <summary>
+        /// 注册文档切换事件（仅注册一次）
+        /// </summary>
+        private void RegisterDocumentEvents()
+        {
+            if (_documentEventsRegistered) return;
+
+            try
+            {
+                AcApp.DocumentManager.DocumentBecameCurrent += OnDocumentBecameCurrent;
+                AcApp.DocumentManager.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
+                _documentEventsRegistered = true;
+            }
+            catch
+            {
+                // 静默失败，不影响主流程
+            }
+        }
+
+        /// <summary>
+        /// 文档切换事件处理：更新面板内容
+        /// </summary>
+        private void OnDocumentBecameCurrent(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
+        {
+            if (e.Document == null) return;
+
+            // 更新 SettingsPanel 的 DataContext
+            UpdateSettingsPanelDataContext(e.Document.Name);
+        }
+
+        /// <summary>
+        /// 文档销毁事件处理：清理 ViewModel
+        /// </summary>
+        private void OnDocumentToBeDestroyed(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
+        {
+            if (e.Document == null) return;
+
+            // 清理该文档的 ViewModel
+            ViewModels.SettingsPanelViewModel.RemoveDocument(e.Document.Name);
+        }
+
+        /// <summary>
+        /// 更新 SettingsPanel 的 DataContext（切换到当前文档的 ViewModel）
+        /// </summary>
+        private void UpdateSettingsPanelDataContext(string documentName)
+        {
+            var panelType = typeof(Views.SettingsPanel);
+            if (!_panelInstances.ContainsKey(panelType)) return;
+
+            var panel = _panelInstances[panelType] as Views.SettingsPanel;
+            if (panel == null) return;
+
+            // 获取或创建当前文档的 ViewModel
+            var styleService = _componentContext.Resolve<Domain.Interfaces.IStyleService>();
+            var viewModel = ViewModels.SettingsPanelViewModel.GetOrCreate(documentName, styleService);
+
+            // 切换 DataContext（必须在 UI 线程）
+            if (panel.Dispatcher.CheckAccess())
+            {
+                panel.DataContext = viewModel;
+            }
+            else
+            {
+                panel.Dispatcher.Invoke(() => panel.DataContext = viewModel);
+            }
+        }
+
+        /// <summary>
         /// 显示指定类型的面板
         /// </summary>
         /// <typeparam name="TPanel">面板类型（必须是 WPF UserControl）</typeparam>
@@ -38,10 +108,27 @@ namespace HyCADTool.Refactored.Presentation
         {
             var panelType = typeof(TPanel);
 
+            // 首次创建面板时注册文档事件
+            if (_paletteSets.Count == 0)
+            {
+                RegisterDocumentEvents();
+            }
+
             // 如果面板已存在，直接显示
             if (_paletteSets.ContainsKey(panelType))
             {
                 _paletteSets[panelType].Visible = true;
+                
+                // 如果是 SettingsPanel，确保 DataContext 是当前文档的 ViewModel
+                if (panelType == typeof(Views.SettingsPanel))
+                {
+                    var doc = AcApp.DocumentManager.MdiActiveDocument;
+                    if (doc != null)
+                    {
+                        UpdateSettingsPanelDataContext(doc.Name);
+                    }
+                }
+                
                 return;
             }
 
@@ -60,8 +147,19 @@ namespace HyCADTool.Refactored.Presentation
             TPanel panelInstance;
             try
             {
+                // 特殊处理 SettingsPanel：为当前文档创建 ViewModel
+                if (panelType == typeof(Views.SettingsPanel))
+                {
+                    var doc = AcApp.DocumentManager.MdiActiveDocument;
+                    var docName = doc?.Name ?? "default";
+                    var styleService = _componentContext.Resolve<Domain.Interfaces.IStyleService>();
+                    var viewModel = ViewModels.SettingsPanelViewModel.GetOrCreate(docName, styleService);
+                    
+                    panelInstance = Activator.CreateInstance<TPanel>();
+                    (panelInstance as Views.SettingsPanel).DataContext = viewModel;
+                }
                 // 尝试从容器解析
-                if (_componentContext.TryResolve<TPanel>(out panelInstance))
+                else if (_componentContext.TryResolve<TPanel>(out panelInstance))
                 {
                     // 成功从容器解析
                 }
