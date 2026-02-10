@@ -115,6 +115,20 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             var chineseName = ToChinese(typeName);
             return ToDxfName(chineseName);
         }
+
+        /// <summary>
+        /// 将中文名称转换回C#类型名（用于过滤器）
+        /// Convert Chinese name back to C# type name
+        /// </summary>
+        public static string ToType(string chineseName)
+        {
+            foreach (var kvp in TypeToChinese)
+            {
+                if (kvp.Value == chineseName)
+                    return kvp.Key;
+            }
+            return chineseName;
+        }
     }
 }
 

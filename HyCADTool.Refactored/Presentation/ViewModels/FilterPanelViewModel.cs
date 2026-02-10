@@ -8,23 +8,25 @@ using System.Windows.Input;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Metadata;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using TypeNameConverter = HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions.TypeNameConverter;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
-    /// FilterPanel 的 ViewModel，实现 MVVM 模式的数据绑定和命令
-    /// 注意：此为阶段 5.0.3 的简化版本，仅保留 UI 框架
-    /// 业务逻辑（筛选功能）将在后续阶段迁移到 Application/Domain 层
+    /// FilterPanel 的独立 ViewModel
+    /// 从旧项目 HyCADtool/Views/ViewModels/FilterPanelViewModel.cs 迁移
+    /// 提供图形过滤选择功能
     /// </summary>
     public class FilterPanelViewModel : INotifyPropertyChanged
     {
         private Document CurrentDocument => AcApp.DocumentManager.MdiActiveDocument;
         private Editor Editor => CurrentDocument?.Editor;
 
-#pragma warning disable CS0649 // 预留字段，后续筛选功能迁移时使用
         private Entity _selectedEntity;
-#pragma warning restore CS0649
         private ObjectId[] _userSelectedIds = new ObjectId[0];
 
         #region 属性
@@ -134,6 +136,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
+        #region 构造函数
+
         public FilterPanelViewModel()
         {
             SelectSingleEntityCommand = new RelayCommand(SelectSingleEntity);
@@ -143,36 +147,84 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             RemoveExpressionFilterCommand = new RelayCommand(RemoveExpressionFilter);
         }
 
-        #region 命令实现（简化版本，仅输出消息）
+        #endregion
+
+        #region 命令实现
 
         private void SelectSingleEntity()
         {
-            Editor?.WriteMessage("\n[FilterPanel] 选择单个图形功能暂未迁移\n");
-            Editor?.WriteMessage("提示：此功能将在后续阶段迁移到 Application 层\n");
-            
-            // TODO: 在阶段 5.1 中迁移到 Application/Domain 层
-            // 原逻辑：使用 ZTools.SelectSingleEntity() 获取实体
-            // 然后提取实体的可筛选属性列表
+            _selectedEntity = SelectionHelper.SelectSingleEntity();
+            if (_selectedEntity != null)
+            {
+                // 使用 TypeNameConverter 将类型名转换为中文
+                SelectedType = TypeNameConverter.ToChinese(_selectedEntity.GetType().Name);
+                TypeChecked = true;
+
+                // 绑定可筛选属性列表（DisplayName 中文名）
+                PropertyFields.Clear();
+                var typeName = _selectedEntity.GetType().Name;
+                var props = FilterablePropertyMetadataProvider.GetMetadataList()
+                                .Where(p => p.EntityType == typeName)
+                                .Select(p => $"{p.DisplayName} ({p.PropertyName})");
+
+                foreach (var item in props)
+                    PropertyFields.Add(item);
+            }
         }
 
         private void SelectWithFilters()
         {
-            Editor?.WriteMessage("\n[FilterPanel] 自行选择功能暂未迁移\n");
-            Editor?.WriteMessage($"当前筛选器状态：\n");
-            Editor?.WriteMessage($"  - 类型过滤：{TypeChecked}\n");
-            Editor?.WriteMessage($"  - 图层过滤：{LayerChecked}\n");
-            Editor?.WriteMessage($"  - 颜色过滤：{ColorChecked}\n");
-            Editor?.WriteMessage($"  - 线宽过滤：{LineWeightChecked}\n");
-            Editor?.WriteMessage($"  - 线型过滤：{LineTypeChecked}\n");
-            Editor?.WriteMessage($"  - 透明度过滤：{TransparencyChecked}\n");
-            Editor?.WriteMessage($"  - 表达式过滤器数量：{ExpressionFilters.Count}\n");
+            // 清空之前的选择状态
+            Editor?.SetImpliedSelection(new ObjectId[0]);
 
-            // TODO: 在阶段 5.1 中迁移到 Application/Domain 层
-            // 原逻辑：
-            // 1. Editor.GetSelection() 获取用户选择
-            // 2. 应用各种筛选器（类型、图层、颜色等）
-            // 3. 应用表达式筛选器
-            // 4. Editor.SetImpliedSelection() 设置最终选择
+            // 获取用户新的选择
+            PromptSelectionResult res = Editor?.GetSelection();
+            if (res == null || res.Status != PromptStatus.OK)
+            {
+                Editor?.WriteMessage("未选择任何对象\n");
+                _userSelectedIds = new ObjectId[0];
+                return;
+            }
+
+            // 更新用户选择的对象ID集合
+            _userSelectedIds = res.Value.GetObjectIds();
+
+            // 如果没有选择任何对象，直接返回
+            if (_userSelectedIds == null || _userSelectedIds.Length == 0)
+            {
+                Editor?.WriteMessage("未选择任何对象\n");
+                return;
+            }
+
+            // 应用筛选器
+            IEnumerable<ObjectId> ids = _userSelectedIds;
+
+            if (TypeChecked) ids = ids.Intersect(GetTypeFilteredIds());
+            if (LayerChecked) ids = ids.Intersect(GetLayerFilteredIds());
+            if (ColorChecked) ids = ids.Intersect(GetColorFilteredIds());
+            if (LineWeightChecked) ids = ids.Intersect(GetLineWeightFilteredIds());
+            if (LineTypeChecked) ids = ids.Intersect(GetLineTypeFilteredIds());
+            if (TransparencyChecked) ids = ids.Intersect(GetTransparencyFilteredIds());
+
+            // 应用表达式筛选器
+            foreach (var exp in ExpressionFilters)
+            {
+                var parts = exp.Split(' ');
+                if (parts.Length != 3) continue;
+
+                string field = parts[0];
+                string op = parts[1];
+                string valStr = parts[2];
+
+                ids = ids.Intersect(FilterEntitiesByExpression(_userSelectedIds, field, op, valStr));
+            }
+
+            // 设置最终的选择结果
+            ObjectId[] finalIds = ids.ToArray();
+            Editor?.SetImpliedSelection(finalIds);
+
+            // 输出结果信息
+            Editor?.WriteMessage($"筛选完成，共选中 {finalIds.Length} 个对象\n");
         }
 
         private void ResetFilters()
@@ -248,7 +300,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     SelectedPropertyValue = "(属性不存在)";
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 SelectedPropertyValue = $"(读取失败: {ex.Message})";
             }
@@ -265,6 +317,65 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             return field;
         }
 
+        private IEnumerable<ObjectId> FilterEntitiesByExpression(ObjectId[] ids, string field, string op, string valStr)
+        {
+            return CurrentDocument.FilterEntitiesBy(e =>
+            {
+                var props = e.GetFilterableProperties();
+                if (!props.ContainsKey(field)) return false;
+                var (value, type) = props[field];
+                try
+                {
+                    switch (type)
+                    {
+                        case "Int32":
+                            int iv = int.Parse(valStr);
+                            return FilterExtensions.Compare(Convert.ToInt32(value), iv, op);
+                        case "Double":
+                            double dv = double.Parse(valStr);
+                            return FilterExtensions.Compare(Convert.ToDouble(value), dv, op);
+                        case "Boolean":
+                            bool bv = bool.Parse(valStr);
+                            return FilterExtensions.Compare(Convert.ToBoolean(value), bv, op);
+                        case "String":
+                            return FilterExtensions.Compare(value?.ToString(), valStr, op);
+                    }
+                }
+                catch { }
+                return false;
+            }, ids);
+        }
+
+        private IEnumerable<ObjectId> GetTypeFilteredIds()
+        {
+            if (_selectedEntity == null || string.IsNullOrWhiteSpace(SelectedType)) 
+                return Enumerable.Empty<ObjectId>();
+            
+            // 使用 TypeNameConverter 将中文转回英文类型名
+            string typeName = TypeNameConverter.ToType(SelectedType);
+            return typeName.GetfilterWithString().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds);
+        }
+
+        private IEnumerable<ObjectId> GetLayerFilteredIds() => 
+            _selectedEntity?.Layer.GetLayerFilter().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds) 
+            ?? Enumerable.Empty<ObjectId>();
+
+        private IEnumerable<ObjectId> GetColorFilteredIds() => 
+            _selectedEntity?.GetTrueColor().GetEntitiesWithMatchingColorInputIds(CurrentDocument, _userSelectedIds) 
+            ?? Enumerable.Empty<ObjectId>();
+
+        private IEnumerable<ObjectId> GetLineWeightFilteredIds() => 
+            _selectedEntity?.GetTrueLineWeight().GetLineWeightFilter().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds) 
+            ?? Enumerable.Empty<ObjectId>();
+
+        private IEnumerable<ObjectId> GetLineTypeFilteredIds() => 
+            _selectedEntity?.GetTrueLinetype().GetEntitiesWithMatchingLinetype(CurrentDocument, _userSelectedIds) 
+            ?? Enumerable.Empty<ObjectId>();
+
+        private IEnumerable<ObjectId> GetTransparencyFilteredIds() => 
+            _selectedEntity?.GetTrueTransparency().GetEntitiesWithMatchingTransparency(CurrentDocument, _userSelectedIds) 
+            ?? Enumerable.Empty<ObjectId>();
+
         #endregion
 
         #region INotifyPropertyChanged 实现
@@ -279,4 +390,3 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #endregion
     }
 }
-
