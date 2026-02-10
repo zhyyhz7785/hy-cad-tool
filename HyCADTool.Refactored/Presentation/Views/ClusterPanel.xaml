@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              mc:Ignorable="d"
              d:DesignHeight="1800" d:DesignWidth="250"
              Background="#3b4453">
@@ -24,7 +25,7 @@
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
             <TextBlock Text="比例" />
-            <TextBox Grid.Column="1" Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
         <Expander Header="聚类参数" IsExpanded="True" Margin="0,0,0,10">
@@ -36,7 +37,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonX" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigX.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -44,7 +45,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonY" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigX.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
                 <TextBlock Margin="0,5,0,2" Text="Y方向聚类参数" />
@@ -54,7 +55,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonX" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigY.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -62,7 +63,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="EpsilonY" />
-                    <TextBox Grid.Column="1" Text="{Binding ClusterConfigY.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -70,7 +71,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="过滤容差" />
-                    <TextBox Grid.Column="1" Text="{Binding DistanceThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding DistanceThreshold, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -78,7 +79,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="最小点数" />
-                    <TextBox Grid.Column="1" Text="{Binding MinPoints, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding MinPoints, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
                 <TextBlock Margin="0,5,0,2" Text="扩展边距 (单位 mm)" />
@@ -88,7 +89,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="左边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginLeft, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginLeft, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -96,7 +97,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="上边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginTop, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginTop, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -104,7 +105,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="右边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginRight, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginRight, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -112,7 +113,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="下边距" />
-                    <TextBox Grid.Column="1" Text="{Binding ExpandMarginBottom, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginBottom, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
                 <TextBlock Margin="0,5,0,2" Text="方案选择" />

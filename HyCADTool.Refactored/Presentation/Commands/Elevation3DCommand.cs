@@ -40,14 +40,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
         
         public Elevation3DCommand()
         {
-            // 初始化Domain服务
+            // Domain 纯算法服务，无外部依赖，直接 new
             _geometryAnalyzer = new GeometryAnalyzer();
             _wallBufferGenerator = new WallBufferGenerator();
             _wallConnectionHandler = new WallConnectionHandler();
             _polygonMerger = new PolygonMerger();
             _elevation3DCalculator = new Elevation3DCalculator();
             
-            // 初始化Infrastructure适配器
+            // 需要运行时参数的 Infrastructure 适配器，保持 new
             _geometry3DBuilder = new Geometry3DBuilder(scale: 1.0);
             _polygonAdapter = new PolygonAdapter(scale: 1.0);
             

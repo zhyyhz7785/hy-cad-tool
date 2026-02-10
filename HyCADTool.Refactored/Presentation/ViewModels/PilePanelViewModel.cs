@@ -1,193 +1,244 @@
-using HyCADTool.Config;
-using HyCADTool.HelpClass;
-using HyCADTool.Interfaces;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
-    /// 桩基布置面板 ViewModel
-    /// 已迁移自原项目（保持原有 MVVM 结构）
+    /// 桩基布置面板 ViewModel（自含式，不依赖旧项目服务）
+    /// 参数自管理，DrawPiles 通过 SendCommand → C1 路由到 AutoCAD 命令线程
+    /// 旧命令（GroupCircles / VoronoiPile）通过 SendStringToExecute 调用已注册的 [CommandMethod]
     /// </summary>
     public class PilePanelViewModel : INotifyPropertyChanged
     {
-        private readonly ICadService _cadService;
-        private readonly IAreaFactory _areaFactory;
-        private readonly IConfigService _configService;
+        #region 多文档支持
 
-        #region 属性
+        private static readonly Dictionary<string, PilePanelViewModel> _documentViewModels
+            = new Dictionary<string, PilePanelViewModel>();
+
+        /// <summary>
+        /// 当前活动文档的 ViewModel（供外部读取参数）
+        /// </summary>
+        public static PilePanelViewModel Current
+        {
+            get
+            {
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                if (doc == null) return null;
+
+                var docName = doc.Name;
+                if (!_documentViewModels.ContainsKey(docName))
+                {
+                    _documentViewModels[docName] = new PilePanelViewModel();
+                }
+                return _documentViewModels[docName];
+            }
+        }
+
+        /// <summary>
+        /// 获取或创建指定文档的 ViewModel
+        /// </summary>
+        public static PilePanelViewModel GetOrCreate(string documentName)
+        {
+            if (!_documentViewModels.ContainsKey(documentName))
+            {
+                _documentViewModels[documentName] = new PilePanelViewModel();
+            }
+            return _documentViewModels[documentName];
+        }
+
+        /// <summary>
+        /// 清理已关闭文档的 ViewModel
+        /// </summary>
+        public static void RemoveDocument(string documentName)
+        {
+            _documentViewModels.Remove(documentName);
+        }
+
+        #endregion
+
+        #region 构造函数
+
+        public PilePanelViewModel()
+        {
+            ApplyCommand = new RelayCommand(Apply);
+            ResetCommand = new RelayCommand(ResetToDefaults);
+            DrawPilesCommand = new RelayCommand(
+                () => SendCommand(() => new Commands.DrawPilesCommand().Execute()),
+                CanDrawPiles);
+
+            GroupCirclesByElevationCommand = new RelayCommand(
+                () => SendCommand(() => new Commands.GroupCirclesByElevationCommand().Execute()));
+            PileVoronoiOptimizationCommand = new RelayCommand(
+                () => SendCommand(() => new Commands.PileVoronoiOptimizationCommand().Execute()));
+            PileVoronoiFromCirclesCommand = new RelayCommand(
+                () => SendCommand(() => new Commands.PileVoronoiOptimizationCommand().ExecuteWithExistingCircles()));
+
+        }
+
+        #endregion
+
+        #region 基础参数
 
         private double _scale = 40.0;
-        private double _diameterOrEdge = 400.0;
-        private double _minPileCenterDistance = 1200.0;
-        private double _inputDisplacementRate = 0.02;
-        private double _pileArrangeRate = 0.5;
-        private double _inputDistanceFromContour = 400.0;
-        private double _marginUp = 400.0;
-        private double _marginDown = 400.0;
-        private double _marginLeft = 400.0;
-        private double _marginRight = 400.0;
-        private int _NX = 2;
-        private int _NY = 2;
-        private bool _isRectangular = true;
-        private bool _isCirclePile = true;
-        private bool _isCircular;
-        private bool _isRectPile;
-        private bool _manualControl;
-
         public double Scale
         {
             get => _scale;
-            set { _scale = value; _configService.Scale = value; OnPropertyChanged(); }
+            set => SetProperty(ref _scale, value);
         }
 
+        #endregion
+
+        #region 布置选项
+
+        private bool _isRectangular = true;
+        public bool IsRectangular
+        {
+            get => _isRectangular;
+            set
+            {
+                if (SetProperty(ref _isRectangular, value) && value)
+                    IsCircular = false;
+            }
+        }
+
+        private bool _isCircular;
+        public bool IsCircular
+        {
+            get => _isCircular;
+            set
+            {
+                if (SetProperty(ref _isCircular, value) && value)
+                    IsRectangular = false;
+            }
+        }
+
+        private bool _isCirclePile = true;
+        public bool IsCirclePile
+        {
+            get => _isCirclePile;
+            set
+            {
+                if (SetProperty(ref _isCirclePile, value) && value)
+                    IsRectPile = false;
+            }
+        }
+
+        private bool _isRectPile;
+        public bool IsRectPile
+        {
+            get => _isRectPile;
+            set
+            {
+                if (SetProperty(ref _isRectPile, value) && value)
+                    IsCirclePile = false;
+            }
+        }
+
+        private bool _manualControl;
+        public bool ManualControl
+        {
+            get => _manualControl;
+            set => SetProperty(ref _manualControl, value);
+        }
+
+        private int _ny = 2;
+        public int NY
+        {
+            get => _ny;
+            set => SetProperty(ref _ny, value);
+        }
+
+        private int _nx = 2;
+        public int NX
+        {
+            get => _nx;
+            set => SetProperty(ref _nx, value);
+        }
+
+        #endregion
+
+        #region 桩参数
+
+        private double _diameterOrEdge = 400.0;
         public double DiameterOrEdge
         {
             get => _diameterOrEdge;
-            set { _diameterOrEdge = value; _configService.DiameterOrEdge = value; OnPropertyChanged(); }
+            set => SetProperty(ref _diameterOrEdge, value);
         }
 
+        private double _minPileCenterDistance = 1200.0;
         public double MinPileCenterDistance
         {
             get => _minPileCenterDistance;
-            set { _minPileCenterDistance = value; _configService.MinPileCenterDistance = value; OnPropertyChanged(); }
+            set => SetProperty(ref _minPileCenterDistance, value);
         }
 
+        private double _inputDisplacementRate = 0.02;
         public double InputDisplacementRate
         {
             get => _inputDisplacementRate;
-            set { _inputDisplacementRate = value; _configService.InputDisplacementRate = value; OnPropertyChanged(); }
+            set => SetProperty(ref _inputDisplacementRate, value);
         }
 
+        private double _pileArrangeRate = 0.5;
         public double PileArrangeRate
         {
             get => _pileArrangeRate;
-            set { _pileArrangeRate = value; _configService.PileArrangeRate = value; OnPropertyChanged(); }
+            set => SetProperty(ref _pileArrangeRate, value);
         }
 
+        private double _inputDistanceFromContour = 400.0;
         public double InputDistanceFromContour
         {
             get => _inputDistanceFromContour;
             set
             {
-                _inputDistanceFromContour = value;
-                _configService.InputDistanceFromContour = value;
-                SyncMargins(value);
-                OnPropertyChanged();
+                if (SetProperty(ref _inputDistanceFromContour, value))
+                    SyncMargins(value);
             }
         }
 
+        private double _marginUp = 400.0;
         public double MarginUp
         {
             get => _marginUp;
-            set { _marginUp = value; UpdateMargin(); OnPropertyChanged(); }
+            set => SetProperty(ref _marginUp, value);
         }
 
+        private double _marginDown = 400.0;
         public double MarginDown
         {
             get => _marginDown;
-            set { _marginDown = value; UpdateMargin(); OnPropertyChanged(); }
+            set => SetProperty(ref _marginDown, value);
         }
 
+        private double _marginLeft = 400.0;
         public double MarginLeft
         {
             get => _marginLeft;
-            set { _marginLeft = value; UpdateMargin(); OnPropertyChanged(); }
+            set => SetProperty(ref _marginLeft, value);
         }
 
+        private double _marginRight = 400.0;
         public double MarginRight
         {
             get => _marginRight;
-            set { _marginRight = value; UpdateMargin(); OnPropertyChanged(); }
+            set => SetProperty(ref _marginRight, value);
         }
 
-        public int NX
-        {
-            get => _NX;
-            set { _NX = (int)value; }
-        }
+        #endregion
 
-        public int NY
-        {
-            get => _NY;
-            set { _NY = (int)value; }
-        }
+        #region 状态
 
-        public bool ManualControl
+        private string _statusMessage = "";
+        public string StatusMessage
         {
-            get { return _manualControl; }
-            set { _manualControl = value; OnPropertyChanged(); }
-        }
-
-        public bool IsRectangular
-        {
-            get { return _isRectangular; }
-            set
-            {
-                if (_isRectangular != value)
-                {
-                    _isRectangular = value;
-                    OnPropertyChanged(nameof(IsRectangular));
-                    if (value)
-                    {
-                        IsCircular = false;
-                    }
-                }
-            }
-        }
-
-        public bool IsCircular
-        {
-            get { return _isCircular; }
-            set
-            {
-                if (_isCircular != value)
-                {
-                    _isCircular = value;
-                    OnPropertyChanged(nameof(IsCircular));
-                    if (value)
-                    {
-                        IsRectangular = false;
-                    }
-                }
-            }
-        }
-
-        public bool IsCirclePile
-        {
-            get { return _isCirclePile; }
-            set
-            {
-                if (_isCirclePile != value)
-                {
-                    _isCirclePile = value;
-                    OnPropertyChanged(nameof(IsCirclePile));
-                    if (value)
-                    {
-                        IsRectPile = false;
-                    }
-                }
-            }
-        }
-
-        public bool IsRectPile
-        {
-            get { return _isRectPile; }
-            set
-            {
-                if (_isRectPile != value)
-                {
-                    _isRectPile = value;
-                    OnPropertyChanged(nameof(IsRectPile));
-                    if (value)
-                    {
-                        IsCirclePile = false;
-                    }
-                }
-            }
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
         }
 
         #endregion
@@ -198,116 +249,111 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public ICommand ResetCommand { get; }
         public ICommand DrawPilesCommand { get; }
 
+        public ICommand GroupCirclesByElevationCommand { get; }
+        public ICommand PileVoronoiOptimizationCommand { get; }
+        public ICommand PileVoronoiFromCirclesCommand { get; }
+
         #endregion
 
-        #region 构造函数
+        #region 命令路由
 
-        public PilePanelViewModel(ICadService cadService, IAreaFactory areaFactory, IConfigService configService)
+        /// <summary>
+        /// 通过 C1 路由到 AutoCAD 命令线程（Refactored 命令用）
+        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制
+        /// </summary>
+        private void SendCommand(Action commandAction)
         {
-            _cadService = cadService ?? throw new ArgumentNullException(nameof(cadService));
-            _areaFactory = areaFactory ?? throw new ArgumentNullException(nameof(areaFactory));
-            _configService = configService ?? throw new ArgumentNullException(nameof(configService));
-
-            ApplyCommand = new RelayCommand(Apply);
-            ResetCommand = new RelayCommand(ResetToDefaultValues);
-            DrawPilesCommand = new RelayCommand(DrawPiles, CanDrawPiles);
+            SettingsPanelViewModel.PendingCommand = commandAction;
+            try
+            {
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                doc.SendStringToExecute("C1\n", true, false, false);
+            }
+            catch (System.Exception ex)
+            {
+                StatusMessage = $"发送命令失败: {ex.Message}";
+                SettingsPanelViewModel.PendingCommand = null;
+            }
         }
 
+
         #endregion
 
-        #region 逻辑方法
+        #region 命令实现
 
         private void Apply()
         {
-            BaseConfig.Scale = Scale;
-            BaseConfig.InitializeStyle();
-            _cadService.WriteMessage("\n样式应用成功\n");
-        }
-
-        private void DrawPiles()
-        {
             try
             {
-                var polyline = _cadService.SelectPolyline();
-                if (polyline == null)
+                // 同步 Scale 到 SettingsPanel（共享样式）
+                var settingsVm = SettingsPanelViewModel.Current;
+                if (settingsVm != null)
                 {
-                    _cadService.WriteMessage("\n多段线为空\n");
-                    return;
+                    settingsVm.Scale = Scale;
+                    settingsVm.EnsureStylesApplied();
                 }
-
-                var sectionType = IsCirclePile ? PileSectionType.Circle : PileSectionType.Square;
-                var area = IsRectangular
-                    ? _areaFactory.CreateRectangularArea(polyline, sectionType, DiameterOrEdge, Scale)
-                    : _areaFactory.CreateCircularArea(polyline, sectionType, DiameterOrEdge, Scale);
-
-                if (ManualControl)
-                {
-                    area.AdjustGridSize(NX, NY);
-                }
-
-                area.DrawInCAD();
+                StatusMessage = $"样式应用成功 (Scale={Scale})";
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                _cadService.WriteMessage($"\n绘制桩失败: {ex.Message}\n");
+                StatusMessage = $"应用失败: {ex.Message}";
             }
         }
 
         private bool CanDrawPiles() => Scale > 0 && DiameterOrEdge > 0;
 
-        private void ResetToDefaultValues()
+        private void ResetToDefaults()
         {
-            // 从 CSV 中导入配置
-            ConfigManager.ImportConfigFromCsv("Pile");
-
-            // 同步 PileConfig.Instance 中的值到 ViewModel
-            var config = PileConfig.Instance;
-
-            Scale = BaseConfig.Scale;
-            DiameterOrEdge = config.DiameterOrEdge;
-            MinPileCenterDistance = config.MinPileCenterDistance;
-            InputDisplacementRate = config.InputDisplacementRate;
-            PileArrangeRate = config.PileArrangeRate;
-            InputDistanceFromContour = config.InputDistanceFromContour;
-
-            MarginUp = config.Margin.up;
-            MarginDown = config.Margin.down;
-            MarginLeft = config.Margin.left;
-            MarginRight = config.Margin.right;
-
-            IsRectangular = config.ArrangementType == PileArrangementType.Rectangle;
-            IsCircular = config.ArrangementType == PileArrangementType.Circular;
-
-            IsCirclePile = config.Section == PileSectionType.Circle;
-            IsRectPile = config.Section == PileSectionType.Square;
+            Scale = 40.0;
+            DiameterOrEdge = 400.0;
+            MinPileCenterDistance = 1200.0;
+            InputDisplacementRate = 0.02;
+            PileArrangeRate = 0.5;
+            InputDistanceFromContour = 400.0;
+            MarginUp = 400.0;
+            MarginDown = 400.0;
+            MarginLeft = 400.0;
+            MarginRight = 400.0;
+            NX = 2;
+            NY = 2;
+            IsRectangular = true;
+            IsCirclePile = true;
+            ManualControl = false;
+            StatusMessage = "已恢复默认值";
         }
 
         private void SyncMargins(double value)
         {
-            MarginUp = MarginDown = MarginLeft = MarginRight = value;
+            _marginUp = value;
+            _marginDown = value;
+            _marginLeft = value;
+            _marginRight = value;
             OnPropertyChanged(nameof(MarginUp));
             OnPropertyChanged(nameof(MarginDown));
             OnPropertyChanged(nameof(MarginLeft));
             OnPropertyChanged(nameof(MarginRight));
         }
 
-        private void UpdateMargin()
-        {
-            _configService.Margin = (MarginUp, MarginDown, MarginLeft, MarginRight);
-        }
-
         #endregion
+
 
         #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string propertyName = null)
+        {
+            if (Equals(storage, value)) return false;
+            storage = value;
+            OnPropertyChanged(propertyName);
+            return true;
         }
 
         #endregion
     }
 }
-

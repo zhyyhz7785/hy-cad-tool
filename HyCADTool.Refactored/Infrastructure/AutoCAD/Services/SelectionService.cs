@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using System;
 using System.Collections.Generic;

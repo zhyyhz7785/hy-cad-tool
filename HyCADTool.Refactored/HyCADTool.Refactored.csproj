@@ -69,29 +69,24 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Presentation\Views\PilePanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Presentation\Views\SettingsPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\ClusterPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\BaseReinPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
 
-  <!-- 注释掉的面板（暂时排除） -->
-  <ItemGroup>
-    <Compile Remove="Presentation\Views\ReinPanel.xaml.cs" />
-    <Compile Remove="Presentation\Views\BaseReinPanel.xaml.cs" />
-    <Compile Remove="Presentation\Views\PilePanel.xaml.cs" />
-    <Compile Remove="Presentation\Views\ClusterPanel.xaml.cs" />
-    <!-- ShowPanelCommand 已启用（HYSET 设置面板命令需要） -->
-    <!-- <Compile Remove="Presentation\Commands\ShowPanelCommand.cs" /> -->
-    <Compile Remove="Presentation\Commands\ShowMainPanelCommand.cs" />
-    <Compile Remove="Presentation\ViewModels\BaseReinPanelViewModel.cs" />
-    <Compile Remove="Presentation\ViewModels\ReinPanelViewModel.cs" />
-    <Compile Remove="Presentation\ViewModels\PilePanelViewModel.cs" />
-    <Compile Remove="Presentation\ViewModels\ClusterPanelViewModel.cs" />
-    <Compile Remove="Application\Services\BaseReinforcementService.cs" />
-    <Compile Remove="Domain\Interfaces\IBaseReinforcementService.cs" />
-    <Compile Remove="Domain\Models\Configuration\BaseReinforcementConfig.cs" />
-    
-  </ItemGroup>
+  <!-- 已删除的废弃文件：ReinPanel.xaml/.cs、ReinPanelViewModel.cs、ShowMainPanelCommand.cs（2026-02-10 第三轮清理） -->
 
 </Project>

@@ -158,6 +158,35 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             return ml;
         }
 
+        /// <summary>
+        /// 创建单点引线标注（用于圆分组标注）
+        /// </summary>
+        /// <param name="startPoint">引线起点</param>
+        /// <param name="endPoint">引线终点（文字位置）</param>
+        /// <param name="content">文字内容</param>
+        public static MLeader CreateMLeaderSinglePoint(Point3d startPoint, Point3d endPoint, string content)
+        {
+            var db = Application.DocumentManager.MdiActiveDocument.Database;
+            MLeader ml = new MLeader();
+
+            int leaderIndex = ml.AddLeader();
+            int leaderLineIndex = ml.AddLeaderLine(leaderIndex);
+            ml.AddFirstVertex(leaderLineIndex, startPoint);
+            ml.AddLastVertex(leaderLineIndex, endPoint);
+
+            ml.MLeaderStyle = db.MLeaderstyle;
+
+            MText mt = new MText();
+            mt.TextStyleId = ml.TextStyleId;
+            mt.Color = ml.TextColor;
+            mt.TextHeight = ml.TextHeight;
+            mt.Contents = content;
+            mt.Rotation = 0;
+            ml.MText = mt;
+
+            return ml;
+        }
+
         /// <summary>计算两点中点</summary>
         private static Point3d MidPoint(Point3d p1, Point3d p2)
         {

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules;
+using HyCADTool.Refactored.Domain.Entities.Pile;
 using HyCADTool.Refactored.Domain.Enums;
 
 // LayerConfig 位于 Global 命名空间

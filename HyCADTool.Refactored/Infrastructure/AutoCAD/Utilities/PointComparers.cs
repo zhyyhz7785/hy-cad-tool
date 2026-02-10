@@ -79,6 +79,33 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities
     }
 
     /// <summary>
+    /// Point3d 比较器（基于 2D 容差，用于聚类等场景）
+    /// 从 Domain.Models.Cluster 迁移而来
+    /// </summary>
+    public class Point3dComparer : IEqualityComparer<Point3d>
+    {
+        private readonly double _tolerance;
+
+        public Point3dComparer(double tolerance)
+        {
+            _tolerance = tolerance;
+        }
+
+        public bool Equals(Point3d p1, Point3d p2)
+        {
+            return Math.Abs(p1.X - p2.X) <= _tolerance
+                && Math.Abs(p1.Y - p2.Y) <= _tolerance;
+        }
+
+        public int GetHashCode(Point3d p)
+        {
+            int hx = (int)(p.X / _tolerance);
+            int hy = (int)(p.Y / _tolerance);
+            return hx * 397 ^ hy;
+        }
+    }
+
+    /// <summary>
     /// Coordinate 相等性比较器（用于 NetTopologySuite）
     /// </summary>
     public class CoordinateEqualityComparer : IEqualityComparer<Coordinate>

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              d:DesignWidth="230"
              Background="#3b4453"
              mc:Ignorable="d">
@@ -37,6 +38,7 @@
                                    Foreground="White" 
                                    Text="主图形比例" />
                         <TextBox Grid.Column="1"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                     
@@ -76,6 +78,7 @@
                     
                     <!--  过滤值输入  -->
                     <TextBox Width="auto"
+                             helper:TextBoxHelper.EnableCustomHandlers="True"
                              Text="{Binding FilterValues, UpdateSourceTrigger=PropertyChanged}" />
                     
                     <Button Command="{Binding StepTwoCommand}"
@@ -133,12 +136,14 @@
                         <TextBlock Grid.Column="1" Text="直径" />
                         <TextBox Grid.Column="2"
                                  IsEnabled="{Binding IsRebarInputEnabled}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding RebarDiameter, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Grid.Column="3" 
                                    Foreground="White" 
                                    Text="间距" />
                         <TextBox Grid.Column="4"
                                  IsEnabled="{Binding IsRebarInputEnabled}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding RebarSpacing, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -158,11 +163,13 @@
                                    Foreground="White" 
                                    Text="直径" />
                         <TextBox Grid.Column="2"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding MinAdditionalDiameter, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Grid.Column="3" 
                                    Foreground="White" 
                                    Text="间距" />
                         <TextBox Grid.Column="4"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding AdditionalSpacing, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -181,6 +188,7 @@
                                  Height="20"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding PlateThickness, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Grid.Column="2" 
                                    Foreground="White" 
@@ -189,6 +197,7 @@
                                  Height="20"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinforceSafety, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -211,6 +220,7 @@
                                  Height="20"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinforceTextDistanceX, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Grid.Column="3" 
                                    Foreground="White" 
@@ -218,6 +228,7 @@
                         <TextBox Grid.Column="4"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinforceTextDistanceY, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -284,6 +295,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding Interval, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -335,6 +347,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding AnchorFactor, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -350,6 +363,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ProximityThreshold, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -365,6 +379,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinforceDistance, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -380,6 +395,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding TextToLineDistance, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -395,6 +411,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding HookLength, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -410,6 +427,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding PolylineWidth, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -425,6 +443,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding AxisExtend, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
@@ -440,6 +459,7 @@
                         <TextBox Grid.Column="1"
                                  Background="#2e3440"
                                  Foreground="White"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding DimensionDistanceWithDim, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                 </StackPanel>

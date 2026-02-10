@@ -1,6 +1,7 @@
 using Autofac;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Services;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 
 using HyCADTool.Refactored.Domain.Services.MathAlgorithms;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
@@ -110,14 +111,6 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .InstancePerDependency();
 
-            // ReinPanel（钢筋面板）- 已从编译排除时请注释下方注册
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ReinPanelViewModel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ReinPanel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
-
             // FilterPanel（过滤器面板）
             builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.FilterPanelViewModel>()
                 .AsSelf()
@@ -127,31 +120,35 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .InstancePerDependency();
 
             // BaseReinPanel（基础钢筋面板）
-            // 注意: BaseReinPanelViewModel 依赖 IBaseReinforcementService，需要后续注册实现
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
+                .AsSelf()
+                .InstancePerDependency();
 
-            // PilePanel（桩基面板）- 依赖旧项目服务，暂不通过 DI 注册
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
+            // PilePanel（桩基面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
+                .AsSelf()
+                .InstancePerDependency();
 
-            // ClusterPanel（聚类面板）- 依赖旧项目服务，暂不通过 DI 注册
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
-            // builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
+            // ClusterPanel（聚类面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
+                .AsSelf()
+                .InstancePerDependency();
 
             // ===== 钢筋服务 =====
+
+            // 基础配筋服务（单例）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.BaseReinforcementService>()
+                .As<IBaseReinforcementService>()
+                .SingleInstance();
 
             // 钢筋服务（单例）
             builder.RegisterType<ReinService>()
@@ -186,12 +183,6 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<CurveSegmentService>()
                 .AsSelf()
                 .SingleInstance();
-            
-            // TODO: Application层删除后暂时注释掉
-            // // 应用用例
-            // builder.RegisterType<OverKillUseCase>()
-            //     .AsSelf()
-            //     .InstancePerDependency();
             
             // 仓储
             builder.RegisterType<LineRepository>()
@@ -242,6 +233,16 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<Geometry3DBuilder>()
                 .As<IGeometry3DBuilder>()
                 .SingleInstance();
+
+            // 3D 实体构建器
+            builder.RegisterType<Solid3DBuilder>()
+                .As<ISolid3DBuilder>()
+                .SingleInstance();
+
+            // 图层管理器
+            builder.RegisterType<LayerManager>()
+                .As<ILayerManager>()
+                .SingleInstance();
             
             // === 阶段 13: HYBC/HYOV 重构服务 ===
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.MarkerLayerService>()
@@ -257,7 +258,21 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .As<HyCADTool.Refactored.Domain.Interfaces.IGeospatialService>()
                 .SingleInstance();
 
-            // TODO: 后续添加更多服务注册
+            // === 阶段 14: 桩布置与 Voronoi 优化服务 ===
+            builder.RegisterType<VoronoiOptimizationService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // 桩布置计算服务（Domain）
+            builder.RegisterType<PileLayoutService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // 桩绘制服务（Infrastructure）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.PileDrawingService>()
+                .AsSelf()
+                .SingleInstance();
+
         }
     }
 }

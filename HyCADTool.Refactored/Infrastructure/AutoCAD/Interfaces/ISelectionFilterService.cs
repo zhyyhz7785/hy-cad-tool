@@ -1,10 +1,10 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 
-namespace HyCADTool.Refactored.Domain.Interfaces
+namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces
 {
     /// <summary>
-    /// 选择集过滤服务接口（接口位于 Domain，具体实现放在 Infrastructure）
+    /// 选择集过滤服务接口（AutoCAD 特有概念，属于 Infrastructure 层）
     /// </summary>
     public interface ISelectionFilterService
     {
@@ -31,5 +31,3 @@ namespace HyCADTool.Refactored.Domain.Interfaces
             bool byType = false);
     }
 }
-
-

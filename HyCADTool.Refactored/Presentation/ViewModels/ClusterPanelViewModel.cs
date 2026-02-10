@@ -1,22 +1,28 @@
 using System;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Drawing;
-using HyCADTool.Models;
-using HyCADTool.Models.Cluster;
-using HyCADTool.Tools;
+using HyCADTool.Refactored.Domain.Models.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
     /// 聚类分析面板 ViewModel
-    /// 已迁移自原项目（保持原有 MVVM 结构）
+    /// 已从旧项目完全解耦，所有属性本地化
     /// </summary>
     public class ClusterPanelViewModel : INotifyPropertyChanged
     {
+        #region 静态实例
+
+        /// <summary>
+        /// 当前活动实例，供外部命令读取配置
+        /// </summary>
+        public static ClusterPanelViewModel Current { get; private set; }
+
+        #endregion
+
         #region 命令
 
         public ICommand ExecuteDrawCommand { get; }
@@ -161,44 +167,70 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 using (doc.LockDocument())
                 {
-                    var dpa = DimPointsAndAxis.GetInput();
-                    if (dpa == null)
+                    // 1. 采集输入
+                    var inputSvc = new ClusterInputService();
+                    var input = inputSvc.GatherInput(
+                        IncludeBPs, IncludeAAPs, IncludeBAPs, IncludeABs, IncludeSteelPlatePs);
+
+                    if (input == null || input.FilteredPoints.Count == 0)
                     {
                         ed.WriteMessage("\n未获取到有效的选择集。\n");
                         return;
                     }
 
-                    var axes = AxisDatas.FromLines(dpa.AxisLines, dpa.SelectPoints);
-                    var pointsMap = axes.PointsMap;
+                    // 2. 轴线分析 + 区域划分 + 点分区
+                    var axisSvc = new AxisAnalysisService();
+                    var axes = axisSvc.AnalyzeAxes(input.AxisLines, input.FilteredPoints, Scale);
 
-                    // 设置聚类参数
+                    // 3. 同步聚类参数
                     ClusterConfigX.ExpandMargins = (ExpandMarginLeft, ExpandMarginTop, ExpandMarginRight, ExpandMarginBottom);
                     ClusterConfigY.ExpandMargins = (ExpandMarginLeft, ExpandMarginTop, ExpandMarginRight, ExpandMarginBottom);
                     ClusterConfigX.MinPoints = MinPoints;
                     ClusterConfigY.MinPoints = MinPoints;
 
-                    // 添加交点（左下点与最接近轴线交点）
-                    foreach (var kv in pointsMap)
+                    // 4. 聚类 + 标注生成
+                    var clusterFactory = new ClusterFactoryService();
+                    var dimSvc = new DimensionService();
+                    var dimOptions = new ClusterDimOptions
                     {
-                        var regionInfo = kv.Value;
-                        var pts = regionInfo.Points;
+                        Scale = Scale,
+                        DistanceThreshold = DistanceThreshold,
+                        XDirectionIsUp = false,
+                        YDirectionIsRight = false
+                    };
 
-                        if (pts == null || pts.Count == 0)
-                            continue;
+                    var dimResult = dimSvc.BuildDimensionsByRegion(
+                        axes.PointsMap, ClusterConfigX, ClusterConfigY,
+                        dimOptions, clusterFactory);
 
-                        var minPt = pts.OrderBy(p => p.X).ThenBy(p => p.Y).FirstOrDefault();
+                    // 5. 绘制输出
+                    var drawSvc = new ClusterDrawService();
+                    var switches = new DrawSwitches
+                    {
+                        DrawBPs = DrawBPs,
+                        DrawAAPs = DrawAAPs,
+                        DrawBAPs = DrawBAPs,
+                        DrawABs = DrawABs,
+                        DrawSteelPlatePs = DrawSteelPlatePs,
+                        DrawClusterX = DrawClusterX,
+                        DrawClusterY = DrawClusterY,
+                        DrawClusterEnvelopePolyline = DrawClusterEnvelopePolyline,
+                        DrawClusterExpandedEnvelope = DrawClusterExpandedEnvelope,
+                        DrawClusterHull = DrawClusterHull,
+                        DrawClusterPts = DrawClusterPts,
+                        DrawDimX = DrawDimX,
+                        DrawDimY = DrawDimY,
+                        DrawAxisCircle = DrawAxisCircle,
+                        DrawAxisText = DrawAxisText,
+                        DrawRegionFrame = DrawRegionFrame,
+                        DrawRegionText = DrawRegionText
+                    };
 
-                        var xAxis = regionInfo.XAxis;
-                        var yAxis = regionInfo.YAxis;
-                    }
-
-                    // 聚类与标注
-                    var helper = DimHelper.BuildByRegion(pointsMap, ClusterConfigX, ClusterConfigY);
-                    DrawInCad.Draw(dpa, axes, helper.Clusters, helper.AllDimensions);
+                    drawSvc.Draw(input, axes, dimResult.Clusters, dimResult.AllDimensions, switches);
                     ed.WriteMessage("\n区域聚类标注完成。\n");
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n致命错误：{ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}\n");
             }
@@ -206,7 +238,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
-        #region 属性
+        #region 属性 - 基础参数
 
         public double Scale { get => _scale; set { _scale = value; OnPropertyChanged(); } }
         private double _scale = 40;
@@ -230,35 +262,63 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public double DistanceThreshold { get => _distanceThreshold; set { _distanceThreshold = value; OnPropertyChanged(); } }
         private double _distanceThreshold = 6000;
 
+        #endregion
+
+        #region 属性 - 绘图开关（本地 bool）
+
         public bool DrawClusterX { get => _drawClusterX; set { _drawClusterX = value; OnPropertyChanged(); } }
         public bool DrawClusterY { get => _drawClusterY; set { _drawClusterY = value; OnPropertyChanged(); } }
         private bool _drawClusterX = true;
         private bool _drawClusterY = false;
 
-        public bool IncludeBPs { get => DimPointsAndAxisConfig.IncludeBPs; set { DimPointsAndAxisConfig.IncludeBPs = value; OnPropertyChanged(); } }
-        public bool IncludeAAPs { get => DimPointsAndAxisConfig.IncludeAAPs; set { DimPointsAndAxisConfig.IncludeAAPs = value; OnPropertyChanged(); } }
-        public bool IncludeBAPs { get => DimPointsAndAxisConfig.IncludeBAPs; set { DimPointsAndAxisConfig.IncludeBAPs = value; OnPropertyChanged(); } }
-        public bool IncludeABs { get => DimPointsAndAxisConfig.IncludeABs; set { DimPointsAndAxisConfig.IncludeABs = value; OnPropertyChanged(); } }
-        public bool IncludeSteelPlatePs { get => DimPointsAndAxisConfig.IncludeSteelPlatePs; set { DimPointsAndAxisConfig.IncludeSteelPlatePs = value; OnPropertyChanged(); } }
+        public bool DrawBPs { get => _drawBPs; set { _drawBPs = value; OnPropertyChanged(); } }
+        public bool DrawAAPs { get => _drawAAPs; set { _drawAAPs = value; OnPropertyChanged(); } }
+        public bool DrawBAPs { get => _drawBAPs; set { _drawBAPs = value; OnPropertyChanged(); } }
+        public bool DrawABs { get => _drawABs; set { _drawABs = value; OnPropertyChanged(); } }
+        public bool DrawSteelPlatePs { get => _drawSteelPlatePs; set { _drawSteelPlatePs = value; OnPropertyChanged(); } }
+        private bool _drawBPs = false;
+        private bool _drawAAPs = false;
+        private bool _drawBAPs = false;
+        private bool _drawABs = false;
+        private bool _drawSteelPlatePs = false;
 
-        public bool DrawBPs { get => DrawInCad.Draw_BPs; set { DrawInCad.Draw_BPs = value; OnPropertyChanged(); } }
-        public bool DrawAAPs { get => DrawInCad.Draw_AAPs; set { DrawInCad.Draw_AAPs = value; OnPropertyChanged(); } }
-        public bool DrawBAPs { get => DrawInCad.Draw_BAPs; set { DrawInCad.Draw_BAPs = value; OnPropertyChanged(); } }
-        public bool DrawABs { get => DrawInCad.Draw_ABs; set { DrawInCad.Draw_ABs = value; OnPropertyChanged(); } }
-        public bool DrawSteelPlatePs { get => DrawInCad.Draw_SteelPlPs; set { DrawInCad.Draw_SteelPlPs = value; OnPropertyChanged(); } }
+        public bool DrawClusterEnvelopePolyline { get => _drawClusterEnvelopePolyline; set { _drawClusterEnvelopePolyline = value; OnPropertyChanged(); } }
+        public bool DrawClusterExpandedEnvelope { get => _drawClusterExpandedEnvelope; set { _drawClusterExpandedEnvelope = value; OnPropertyChanged(); } }
+        public bool DrawClusterHull { get => _drawClusterHull; set { _drawClusterHull = value; OnPropertyChanged(); } }
+        public bool DrawClusterPts { get => _drawClusterPts; set { _drawClusterPts = value; OnPropertyChanged(); } }
+        private bool _drawClusterEnvelopePolyline = false;
+        private bool _drawClusterExpandedEnvelope = false;
+        private bool _drawClusterHull = false;
+        private bool _drawClusterPts = false;
 
-        public bool DrawClusterEnvelopePolyline { get => DrawInCad.Draw_ClusterEnvelopePolyline; set { DrawInCad.Draw_ClusterEnvelopePolyline = value; OnPropertyChanged(); } }
-        public bool DrawClusterExpandedEnvelope { get => DrawInCad.Draw_ClusterEnvelopeExpandedPolyline; set { DrawInCad.Draw_ClusterEnvelopeExpandedPolyline = value; OnPropertyChanged(); } }
-        public bool DrawClusterHull { get => DrawInCad.Draw_ClusterHull; set { DrawInCad.Draw_ClusterHull = value; OnPropertyChanged(); } }
-        public bool DrawClusterPts { get => DrawInCad.Draw_ClusterPts; set { DrawInCad.Draw_ClusterPts = value; OnPropertyChanged(); } }
+        public bool DrawDimX { get => _drawDimX; set { _drawDimX = value; OnPropertyChanged(); } }
+        public bool DrawDimY { get => _drawDimY; set { _drawDimY = value; OnPropertyChanged(); } }
+        private bool _drawDimX = true;
+        private bool _drawDimY = true;
 
-        public bool DrawDimX { get => DrawInCad.Draw_DimX; set { DrawInCad.Draw_DimX = value; OnPropertyChanged(); } }
-        public bool DrawDimY { get => DrawInCad.Draw_DimY; set { DrawInCad.Draw_DimY = value; OnPropertyChanged(); } }
+        public bool DrawAxisCircle { get => _drawAxisCircle; set { _drawAxisCircle = value; OnPropertyChanged(); } }
+        public bool DrawAxisText { get => _drawAxisText; set { _drawAxisText = value; OnPropertyChanged(); } }
+        public bool DrawRegionFrame { get => _drawRegionFrame; set { _drawRegionFrame = value; OnPropertyChanged(); } }
+        public bool DrawRegionText { get => _drawRegionText; set { _drawRegionText = value; OnPropertyChanged(); } }
+        private bool _drawAxisCircle = false;
+        private bool _drawAxisText = false;
+        private bool _drawRegionFrame = false;
+        private bool _drawRegionText = false;
 
-        public bool DrawAxisCircle { get => DrawInCad.Draw_AxisCircle; set { DrawInCad.Draw_AxisCircle = value; OnPropertyChanged(); } }
-        public bool DrawAxisText { get => DrawInCad.Draw_AxisText; set { DrawInCad.Draw_AxisText = value; OnPropertyChanged(); } }
-        public bool DrawRegionFrame { get => DrawInCad.Draw_RegionFrame; set { DrawInCad.Draw_RegionFrame = value; OnPropertyChanged(); } }
-        public bool DrawRegionText { get => DrawInCad.Draw_RegionText; set { DrawInCad.Draw_RegionText = value; OnPropertyChanged(); } }
+        #endregion
+
+        #region 属性 - 聚类点开关（本地 bool）
+
+        public bool IncludeBPs { get => _includeBPs; set { _includeBPs = value; OnPropertyChanged(); } }
+        public bool IncludeAAPs { get => _includeAAPs; set { _includeAAPs = value; OnPropertyChanged(); } }
+        public bool IncludeBAPs { get => _includeBAPs; set { _includeBAPs = value; OnPropertyChanged(); } }
+        public bool IncludeABs { get => _includeABs; set { _includeABs = value; OnPropertyChanged(); } }
+        public bool IncludeSteelPlatePs { get => _includeSteelPlatePs; set { _includeSteelPlatePs = value; OnPropertyChanged(); } }
+        private bool _includeBPs = true;
+        private bool _includeAAPs = true;
+        private bool _includeBAPs = true;
+        private bool _includeABs = false;
+        private bool _includeSteelPlatePs = false;
 
         #endregion
 
@@ -271,6 +331,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             LoadPreset2Command = new RelayCommand(() => SelectedPreset = 2);
             LoadPreset3Command = new RelayCommand(() => SelectedPreset = 3);
             ApplyPreset(1); // 默认方案1
+
+            Current = this;
         }
 
         #endregion
@@ -284,4 +346,3 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #endregion
     }
 }
-

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules;
+using HyCADTool.Refactored.Domain.Entities.Pile;
 using HyCADTool.Refactored.Domain.Enums;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

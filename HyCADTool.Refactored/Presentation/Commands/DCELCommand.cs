@@ -40,14 +40,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
 
         /// <summary>
-        /// 默认构造函数（用于AutoCAD命令注册）
+        /// 默认构造函数（用于AutoCAD命令注册，从 DI 容器获取服务）
         /// </summary>
         public DCELCommand()
         {
-            // 创建服务实例（简单工厂模式）
-            _curveExtractor = new CurveSegmentExtractor();
-            _dcelBuilder = new DCELBuilderService();
-            _dcelRenderer = new DCELRenderer();
+            _curveExtractor = Infrastructure.Configuration.ServiceLocator.Resolve<ICurveSegmentExtractor>();
+            _dcelBuilder = Infrastructure.Configuration.ServiceLocator.Resolve<IDCELBuilderService>();
+            _dcelRenderer = Infrastructure.Configuration.ServiceLocator.Resolve<IDCELRenderer>();
         }
 
         /// <summary>

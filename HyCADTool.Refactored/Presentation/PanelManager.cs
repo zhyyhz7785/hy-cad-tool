@@ -57,8 +57,9 @@ namespace HyCADTool.Refactored.Presentation
         {
             if (e.Document == null) return;
 
-            // 更新 SettingsPanel 的 DataContext
+            // 更新面板的 DataContext
             UpdateSettingsPanelDataContext(e.Document.Name);
+            UpdatePilePanelDataContext(e.Document.Name);
         }
 
         /// <summary>
@@ -70,6 +71,7 @@ namespace HyCADTool.Refactored.Presentation
 
             // 清理该文档的 ViewModel
             ViewModels.SettingsPanelViewModel.RemoveDocument(e.Document.Name);
+            ViewModels.PilePanelViewModel.RemoveDocument(e.Document.Name);
         }
 
         /// <summary>
@@ -88,6 +90,29 @@ namespace HyCADTool.Refactored.Presentation
             var viewModel = ViewModels.SettingsPanelViewModel.GetOrCreate(documentName, styleService);
 
             // 切换 DataContext（必须在 UI 线程）
+            if (panel.Dispatcher.CheckAccess())
+            {
+                panel.DataContext = viewModel;
+            }
+            else
+            {
+                panel.Dispatcher.Invoke(() => panel.DataContext = viewModel);
+            }
+        }
+
+        /// <summary>
+        /// 更新 PilePanel 的 DataContext（切换到当前文档的 ViewModel）
+        /// </summary>
+        private void UpdatePilePanelDataContext(string documentName)
+        {
+            var panelType = typeof(Views.PilePanel);
+            if (!_panelInstances.ContainsKey(panelType)) return;
+
+            var panel = _panelInstances[panelType] as Views.PilePanel;
+            if (panel == null) return;
+
+            var viewModel = ViewModels.PilePanelViewModel.GetOrCreate(documentName);
+
             if (panel.Dispatcher.CheckAccess())
             {
                 panel.DataContext = viewModel;
@@ -119,18 +144,21 @@ namespace HyCADTool.Refactored.Presentation
             {
                 _paletteSets[panelType].Visible = true;
                 
-                // 如果是 SettingsPanel，确保 DataContext 是当前文档的 ViewModel
-                if (panelType == typeof(Views.SettingsPanel))
+                // 确保 DataContext 是当前文档的 ViewModel
+                var doc2 = AcApp.DocumentManager.MdiActiveDocument;
+                if (doc2 != null)
                 {
-                    var doc = AcApp.DocumentManager.MdiActiveDocument;
-                    if (doc != null)
-                    {
-                        UpdateSettingsPanelDataContext(doc.Name);
-                    }
+                    if (panelType == typeof(Views.SettingsPanel))
+                        UpdateSettingsPanelDataContext(doc2.Name);
+                    else if (panelType == typeof(Views.PilePanel))
+                        UpdatePilePanelDataContext(doc2.Name);
                 }
                 
                 return;
             }
+
+            // BaseReinPanel 特殊处理标记
+            bool isBaseReinPanel = panelType == typeof(Views.BaseReinPanel);
 
             // 创建新的 PaletteSet
             var paletteSet = new PaletteSet(title, guid)
@@ -157,6 +185,25 @@ namespace HyCADTool.Refactored.Presentation
                     
                     panelInstance = Activator.CreateInstance<TPanel>();
                     (panelInstance as Views.SettingsPanel).DataContext = viewModel;
+                }
+                // 特殊处理 PilePanel：为当前文档创建 ViewModel
+                else if (panelType == typeof(Views.PilePanel))
+                {
+                    var doc = AcApp.DocumentManager.MdiActiveDocument;
+                    var docName = doc?.Name ?? "default";
+                    var viewModel = ViewModels.PilePanelViewModel.GetOrCreate(docName);
+
+                    panelInstance = Activator.CreateInstance<TPanel>();
+                    (panelInstance as Views.PilePanel).DataContext = viewModel;
+                }
+                // 特殊处理 BaseReinPanel：通过 DI 解析服务并创建 ViewModel
+                else if (isBaseReinPanel)
+                {
+                    var reinforcementService = _componentContext.Resolve<Domain.Interfaces.IBaseReinforcementService>();
+                    var viewModel = new ViewModels.BaseReinPanelViewModel(reinforcementService);
+
+                    panelInstance = Activator.CreateInstance<TPanel>();
+                    (panelInstance as Views.BaseReinPanel).DataContext = viewModel;
                 }
                 // 尝试从容器解析
                 else if (_componentContext.TryResolve<TPanel>(out panelInstance))

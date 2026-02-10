@@ -43,12 +43,15 @@ namespace HyCADTool.Refactored.Presentation.Commands
         
         public SurfaceBasedElevation3DCommand()
         {
-            // 初始化服务
+            // Infrastructure 服务：从 DI 容器获取
+            _solidBuilder = ServiceLocator.Resolve<ISolid3DBuilder>();
+            _layerManager = ServiceLocator.Resolve<ILayerManager>();
+            
+            // 组合服务：需要运行时参数 / DI 服务作为构造参数，直接 new（生命周期与命令绑定）
             _polygonAdapter = new PolygonAdapter(_scale);
-            _solidBuilder = new Solid3DBuilder();
-            _layerManager = new LayerManager();
             _slabService = new SlabGenerationService(_solidBuilder, _layerManager);
             
+            // Domain 纯算法：无外部依赖，直接 new
             var detector = new AdjacencyDetector(tolerance: 1.0);
             _wallService = new WallGenerationService(
                 new WallGeometryCalculator(),

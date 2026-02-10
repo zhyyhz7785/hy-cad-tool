@@ -1,4 +1,5 @@
 using System;
+using HyCADTool.Refactored.Domain.Entities.Pile;
 using HyCADTool.Refactored.Domain.Enums;
 
 namespace HyCADTool.Refactored.Domain.ValueObjects.Configuration.Modules

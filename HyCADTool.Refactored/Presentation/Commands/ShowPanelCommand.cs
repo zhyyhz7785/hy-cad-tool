@@ -31,6 +31,25 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
 
         /// <summary>
+        /// 显示/隐藏桩基面板
+        /// </summary>
+        public static void ShowPilePanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.PilePanel>(
+                    "桩基布置",
+                    new Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890"));
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示桩基面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 显示/隐藏过滤器面板
         /// </summary>
         public static void ShowFilterPanel()
@@ -46,6 +65,44 @@ namespace HyCADTool.Refactored.Presentation.Commands
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n显示面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 显示/隐藏基础配筋面板
+        /// </summary>
+        public static void ShowBaseReinPanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>(
+                    "基础配筋",
+                    new Guid("D4E5F6A7-B8C9-0123-DEF0-456789012345"));
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示基础配筋面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 显示/隐藏聚类面板
+        /// </summary>
+        public static void ShowClusterPanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.ClusterPanel>(
+                    "聚类标注",
+                    new Guid("C3D4E5F6-A7B8-9012-CDEF-345678901234"));
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示聚类面板失败: {ex.Message}");
             }
         }
     }
