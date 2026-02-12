@@ -1,5 +1,6 @@
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Refactored.Presentation.ViewModels;
 
 namespace HyCADTool.Refactored.Infrastructure.Configuration
 {
@@ -75,18 +76,20 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
         // ========== 便捷访问方法 ==========
 
         /// <summary>
-        /// 获取当前比例
+        /// 获取当前比例 — 唯一真相源：SettingsPanelViewModel
         /// </summary>
         public double GetScale()
         {
-            return _globalConfigService.Scale;
+            return SettingsPanelViewModel.Current?.Scale ?? _globalConfigService.Scale;
         }
 
         /// <summary>
-        /// 设置当前比例
+        /// 设置当前比例 — 同时写入 SettingsPanelViewModel 和全局配置
         /// </summary>
         public void SetScale(double scale)
         {
+            var vm = SettingsPanelViewModel.Current;
+            if (vm != null) vm.Scale = scale;
             _globalConfigService.Scale = scale;
         }
     }

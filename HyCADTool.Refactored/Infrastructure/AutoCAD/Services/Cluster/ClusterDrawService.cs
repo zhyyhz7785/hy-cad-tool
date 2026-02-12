@@ -55,10 +55,51 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
             IEnumerable<RotatedDimension> dims,
             DrawSwitches switches)
         {
+            EnsureLayers();
             if (input != null) DrawPoints(input, switches);
             if (axes != null) DrawAxes(axes, switches);
             if (clusters != null) DrawClusters(clusters, switches);
             if (dims != null) DrawDims(dims, switches);
+        }
+
+        /// <summary>
+        /// 确保所有聚类图层存在（防止新图纸中图层未创建）
+        /// </summary>
+        private void EnsureLayers()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var db = doc.Database;
+
+            var allLayers = new[]
+            {
+                LayerBP, LayerAAP, LayerBAP, LayerAB, LayerSteelPl,
+                LayerAxisCir, LayerAxisTxt, LayerRegFrame, LayerRegTxt,
+                LayerDimX, LayerDimY,
+                LayerClEP, LayerClEEP, LayerClHull, LayerClPts
+            };
+
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+                bool upgraded = false;
+
+                foreach (var (name, color) in allLayers)
+                {
+                    if (lt.Has(name)) continue;
+                    if (!upgraded) { lt.UpgradeOpen(); upgraded = true; }
+
+                    var rec = new LayerTableRecord
+                    {
+                        Name = name,
+                        Color = Color.FromColorIndex(ColorMethod.ByAci, color)
+                    };
+                    lt.Add(rec);
+                    tr.AddNewlyCreatedDBObject(rec, true);
+                }
+
+                tr.Commit();
+            }
         }
 
         #region 点集绘制
@@ -78,27 +119,24 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
 
         private void DrawAxes(AxisAnalysisResult a, DrawSwitches sw)
         {
+            // 图层已在 PluginInitializer 统一创建
             if (sw.DrawAxisCircle && a.AxisCircles.Any())
             {
-                EnsureLayer(LayerAxisCir);
                 foreach (var c in a.AxisCircles) { c.Layer = LayerAxisCir.Name; }
                 a.AxisCircles.Cast<Entity>().ToList().ToSpace();
             }
             if (sw.DrawAxisText && a.AxisTexts.Any())
             {
-                EnsureLayer(LayerAxisTxt);
                 foreach (var t in a.AxisTexts) { t.Layer = LayerAxisTxt.Name; }
                 a.AxisTexts.Cast<Entity>().ToList().ToSpace();
             }
             if (sw.DrawRegionFrame && a.RegionFrames.Any())
             {
-                EnsureLayer(LayerRegFrame);
                 foreach (var pl in a.RegionFrames) { pl.Layer = LayerRegFrame.Name; }
                 a.RegionFrames.Cast<Entity>().ToList().ToSpace();
             }
             if (sw.DrawRegionText && a.RegionTexts.Any())
             {
-                EnsureLayer(LayerRegTxt);
                 foreach (var t in a.RegionTexts)
                 {
                     t.Layer = LayerRegTxt.Name;
@@ -157,7 +195,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
                 if (!isX && !sw.DrawDimY) continue;
 
                 var lay = isX ? LayerDimX : LayerDimY;
-                EnsureLayer(lay);
                 d.Layer = lay.Name;
                 d.ToSpace();
             }
@@ -170,7 +207,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
         private void WritePoints(IEnumerable<Point3d> pts, (string Name, short Color) layer)
         {
             if (pts == null || !pts.Any()) return;
-            EnsureLayer(layer);
+            // 图层已在 PluginInitializer 统一创建
 
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
@@ -197,33 +234,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
 
         private void WriteEntity(Entity ent, (string Name, short Color) layer)
         {
-            EnsureLayer(layer);
+            // 图层已在 PluginInitializer 统一创建
             ent.Layer = layer.Name;
             ent.ToSpace();
         }
 
-        private void EnsureLayer((string Name, short Color) layer)
-        {
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            var db = doc.Database;
-
-            using (var tr = db.TransactionManager.StartTransaction())
-            {
-                var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-                if (!lt.Has(layer.Name))
-                {
-                    lt.UpgradeOpen();
-                    var ltr = new LayerTableRecord
-                    {
-                        Name = layer.Name,
-                        Color = Color.FromColorIndex(ColorMethod.ByAci, layer.Color)
-                    };
-                    lt.Add(ltr);
-                    tr.AddNewlyCreatedDBObject(ltr, true);
-                }
-                tr.Commit();
-            }
-        }
+        // EnsureLayer 已移除 —— 图层在 PluginInitializer 统一创建
 
         #endregion
     }

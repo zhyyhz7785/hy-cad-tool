@@ -101,45 +101,41 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
-            // ===== 面板和 ViewModel 注册 =====
+            // ===== 统一面板和 ViewModel 注册 =====
 
-            // SettingsPanel（HY 设置面板）
+            // HyToolPanel（统一工具面板）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.HyToolPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+
+            // ViewModel 注册
             builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.SettingsPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.SettingsPanel>()
-                .AsSelf()
-                .InstancePerDependency();
-
-            // FilterPanel（过滤器面板）
             builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.FilterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.FilterPanel>()
-                .AsSelf()
-                .InstancePerDependency();
-
-            // BaseReinPanel（基础钢筋面板）
             builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.BaseReinPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
 
-            // PilePanel（桩基面板）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.PilePanelViewModel>()
+            // 子面板注册（作为 HyToolPanel 内嵌内容）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Refactored.Presentation.Views.PilePanel>()
                 .AsSelf()
                 .InstancePerDependency();
-
-            // ClusterPanel（聚类面板）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.ClusterPanelViewModel>()
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.ClusterPanel>()
+            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.FilterPanel>()
                 .AsSelf()
                 .InstancePerDependency();
 

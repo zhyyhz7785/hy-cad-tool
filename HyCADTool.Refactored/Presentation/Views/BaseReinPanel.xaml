@@ -16,51 +16,7 @@
     </UserControl.Resources>
     
     <StackPanel Margin="0" Background="#3b4453">
-        <!--  第一分区：基本设置  -->
-        <Expander Margin="5"
-                  Background="#3f4855"
-                  BorderBrush="Gray"
-                  BorderThickness="1"
-                  Header="基本设置"
-                  IsExpanded="True">
-            <Border Background="#3f4855"
-                    BorderBrush="Gray"
-                    BorderThickness="1"
-                    CornerRadius="5">
-                <StackPanel>
-                    <!--  主图形比例  -->
-                    <Grid Margin="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" 
-                                   Foreground="White" 
-                                   Text="主图形比例" />
-                        <TextBox Grid.Column="1"
-                                 helper:TextBoxHelper.EnableCustomHandlers="True"
-                                 Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-                    
-                    <!--  设置样式按钮  -->
-                    <Grid Margin="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0"
-                                Command="{Binding ApplyStyleCommand}"
-                                Content="设置样式"
-                                Foreground="White" />
-                        <Button Grid.Column="1"
-                                Command="{Binding ResetCommand}"
-                                Content="恢复默认值" />
-                    </Grid>
-                </StackPanel>
-            </Border>
-        </Expander>
-
-        <!--  第二分区：操作  -->
+        <!--  第一分区：操作  -->
         <Expander Margin="5"
                   Background="#3f4855"
                   BorderBrush="Gray"

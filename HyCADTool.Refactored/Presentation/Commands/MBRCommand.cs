@@ -33,7 +33,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private const double DEFAULT_EXPAND_Y = 100.0;
 
         private readonly IClusteringService _clusteringService;
-        private readonly ILayerService _layerService;
 
         /// <summary>
         /// 构造函数 - 通过依赖注入获取服务
@@ -41,7 +40,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         public MBRCommand()
         {
             _clusteringService = ServiceLocator.Resolve<IClusteringService>();
-            _layerService = ServiceLocator.Resolve<ILayerService>();
         }
 
         /// <summary>
@@ -98,11 +96,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                 ed.WriteMessage($"\n聚类完成，生成了 {clusters.Count} 个区域。");
 
-                // 确保目标图层存在
-                if (!_layerService.LayerExists(DEFAULT_LAYER_NAME))
-                {
-                    _layerService.CreateLayer(DEFAULT_LAYER_NAME, DEFAULT_LAYER_COLOR);
-                }
+                // 图层已在 PluginInitializer 统一创建
 
                 // 生成边界框
                 using (doc.LockDocument())

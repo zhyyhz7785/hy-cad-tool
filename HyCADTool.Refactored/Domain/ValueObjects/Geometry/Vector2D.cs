@@ -27,7 +27,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         public double LengthSquared => X * X + Y * Y;
 
         /// <summary>
-        /// 单位化向量
+        /// 单位化向量（零向量会抛异常）
         /// </summary>
         public Vector2D Normalize()
         {
@@ -36,6 +36,26 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
                 throw new InvalidOperationException("Cannot normalize a zero-length vector");
             return new Vector2D(X / len, Y / len);
         }
+
+        /// <summary>
+        /// 安全单位化：零向量或极短向量返回 false + fallback
+        /// </summary>
+        public bool TryNormalize(out Vector2D result, double tolerance = 1e-6)
+        {
+            double len = Length;
+            if (len < tolerance)
+            {
+                result = Zero;
+                return false;
+            }
+            result = new Vector2D(X / len, Y / len);
+            return true;
+        }
+
+        /// <summary>
+        /// 是否为零向量（长度小于容差）
+        /// </summary>
+        public bool IsZero(double tolerance = 1e-6) => Length < tolerance;
 
         /// <summary>
         /// 点积（实例方法）

@@ -38,6 +38,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double offsetDistance = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
             double hookLength = (vm?.HookLength ?? 1.0) * scale;             // 绿色参数 × Scale
 
+            // 确保样式已同步
+            vm?.EnsureStylesApplied();
+
             // 1. 交互式沿边界绘制（Jig 实时预览偏移效果）
             var jig = new PolylineJig(-offsetDistance);
             if (jig.StartJig() != PromptStatus.OK || jig.Points.Count <= 1)

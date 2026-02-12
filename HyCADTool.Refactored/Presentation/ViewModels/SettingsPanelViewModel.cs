@@ -1,9 +1,14 @@
+using Autofac;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Infrastructure.Configuration;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
@@ -19,6 +24,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
     public class SettingsPanelViewModel : INotifyPropertyChanged
     {
         private readonly IStyleService _styleService;
+
+        /// <summary>
+        /// 样式脏标记：参数变更后置 true，样式同步后置 false
+        /// 避免每个命令执行前都无条件重建样式（8~10 个事务）
+        /// </summary>
+        private bool _stylesDirty = true;
 
         /// <summary>
         /// 文档级 ViewModel 存储（每个文档独立参数）
@@ -40,8 +51,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 var docName = doc.Name;
                 if (!_documentViewModels.ContainsKey(docName))
                 {
-                    // 为新文档创建 ViewModel（使用默认构造函数，无 IStyleService）
-                    _documentViewModels[docName] = new SettingsPanelViewModel();
+                    // 从 DI 容器获取 IStyleService，确保命令按钮可用
+                    IStyleService styleService = null;
+                    try { styleService = ServiceLocator.Container?.Resolve<IStyleService>(); }
+                    catch { }
+                    _documentViewModels[docName] = styleService != null
+                        ? new SettingsPanelViewModel(styleService)
+                        : new SettingsPanelViewModel();
                 }
                 return _documentViewModels[docName];
             }
@@ -75,7 +91,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             ApplyStyleCommand = new RelayCommand(ApplyStyle);
             ResetCommand = new RelayCommand(ResetToDefaults);
-            DrawCommand = new RelayCommand(DrawReinforcement);
+            DrawCommand = new RelayCommand(() => SendCommand(() => new Commands.DrawReinforcementCommand().Execute()));
 
             // 钢筋绘制
             CmdGj = new RelayCommand(() => SendCommand(() => new Commands.DrawReinforcementCommand().Execute()));
@@ -92,6 +108,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             CmdGb = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Standard).Execute()));
             CmdGb1 = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Single).Execute()));
             CmdGb2 = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Six).Execute()));
+
+            // 从持久化文件加载上次保存的设置
+            LoadSettings();
         }
 
         public SettingsPanelViewModel()
@@ -112,6 +131,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 基础属性
 
+        private string _equipmentDataFilePath = @"E:\BaiduSyncdisk\Code\testResult\00equipment_data.md";
+        /// <summary>
+        /// 设备数据 Markdown 文件路径（设备基础命令使用）
+        /// </summary>
+        public string EquipmentDataFilePath
+        {
+            get => _equipmentDataFilePath;
+            set => SetProperty(ref _equipmentDataFilePath, value);
+        }
+
         private double _scale = 40.0;
         public double Scale
         {
@@ -120,6 +149,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 if (SetProperty(ref _scale, value))
                 {
+                    _stylesDirty = true;
                     OnPropertyChanged(nameof(TextStyleName));
                     OnPropertyChanged(nameof(DimStyleName));
                     OnPropertyChanged(nameof(MLeaderStyleName));
@@ -145,20 +175,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #region 文字样式属性
 
         private string _fontFileName = "tssdeng.shx";
-        public string FontFileName { get => _fontFileName; set => SetProperty(ref _fontFileName, value); }
+        public string FontFileName { get => _fontFileName; set { if (SetProperty(ref _fontFileName, value)) _stylesDirty = true; } }
 
         private string _bigFontFileName = "hztxt.shx";
-        public string BigFontFileName { get => _bigFontFileName; set => SetProperty(ref _bigFontFileName, value); }
+        public string BigFontFileName { get => _bigFontFileName; set { if (SetProperty(ref _bigFontFileName, value)) _stylesDirty = true; } }
 
         private double _textSize = 2.5;
         public double TextSize
         {
             get => _textSize;
-            set { if (SetProperty(ref _textSize, value)) OnPropertyChanged(nameof(ActualTextHeight)); }
+            set { if (SetProperty(ref _textSize, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualTextHeight)); } }
         }
 
         private double _textXScale = 0.7;
-        public double TextXScale { get => _textXScale; set => SetProperty(ref _textXScale, value); }
+        public double TextXScale { get => _textXScale; set { if (SetProperty(ref _textXScale, value)) _stylesDirty = true; } }
 
         public double ActualTextHeight => TextSize * Scale;
 
@@ -167,22 +197,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #region 标注样式属性
 
         private double _dimtxt = 2.5;
-        public double Dimtxt { get => _dimtxt; set => SetProperty(ref _dimtxt, value); }
+        public double Dimtxt { get => _dimtxt; set { if (SetProperty(ref _dimtxt, value)) _stylesDirty = true; } }
 
         private double _dimexo = 1.0;
-        public double Dimexo { get => _dimexo; set => SetProperty(ref _dimexo, value); }
+        public double Dimexo { get => _dimexo; set { if (SetProperty(ref _dimexo, value)) _stylesDirty = true; } }
 
         private double _dimexe = 1.0;
-        public double Dimexe { get => _dimexe; set => SetProperty(ref _dimexe, value); }
+        public double Dimexe { get => _dimexe; set { if (SetProperty(ref _dimexe, value)) _stylesDirty = true; } }
 
         private double _dimdle = 0.5;
-        public double Dimdle { get => _dimdle; set => SetProperty(ref _dimdle, value); }
+        public double Dimdle { get => _dimdle; set { if (SetProperty(ref _dimdle, value)) _stylesDirty = true; } }
 
         private double _dimgap = 1.0;
-        public double Dimgap { get => _dimgap; set => SetProperty(ref _dimgap, value); }
+        public double Dimgap { get => _dimgap; set { if (SetProperty(ref _dimgap, value)) _stylesDirty = true; } }
 
         private double _dimasz = 1.0;
-        public double Dimasz { get => _dimasz; set => SetProperty(ref _dimasz, value); }
+        public double Dimasz { get => _dimasz; set { if (SetProperty(ref _dimasz, value)) _stylesDirty = true; } }
 
         private string _dimArrowName = "_ARCHTICK";
         public string DimArrowName { get => _dimArrowName; set => SetProperty(ref _dimArrowName, value); }
@@ -195,21 +225,21 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public double MLeaderArrowSize
         {
             get => _mleaderArrowSize;
-            set { if (SetProperty(ref _mleaderArrowSize, value)) OnPropertyChanged(nameof(ActualMLeaderArrowSize)); }
+            set { if (SetProperty(ref _mleaderArrowSize, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualMLeaderArrowSize)); } }
         }
 
         private string _mleaderArrowName = "_DotSmall";
-        public string MLeaderArrowName { get => _mleaderArrowName; set => SetProperty(ref _mleaderArrowName, value); }
+        public string MLeaderArrowName { get => _mleaderArrowName; set { if (SetProperty(ref _mleaderArrowName, value)) _stylesDirty = true; } }
 
         private double _mleaderLandingGap = 0.5;
         public double MLeaderLandingGap
         {
             get => _mleaderLandingGap;
-            set { if (SetProperty(ref _mleaderLandingGap, value)) OnPropertyChanged(nameof(ActualMLeaderLandingGap)); }
+            set { if (SetProperty(ref _mleaderLandingGap, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualMLeaderLandingGap)); } }
         }
 
         private int _mleaderTextColorIndex = 7;
-        public int MLeaderTextColorIndex { get => _mleaderTextColorIndex; set => SetProperty(ref _mleaderTextColorIndex, value); }
+        public int MLeaderTextColorIndex { get => _mleaderTextColorIndex; set { if (SetProperty(ref _mleaderTextColorIndex, value)) _stylesDirty = true; } }
 
         public double ActualMLeaderArrowSize => MLeaderArrowSize * Scale;
         public double ActualMLeaderLandingGap => MLeaderLandingGap * Scale;
@@ -342,18 +372,21 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         /// <summary>
         /// 从面板按钮发起命令：设置 PendingCommand，然后通过 C1 在正确线程执行
+        /// 面板按钮点击时先按需同步样式（仅 dirty 时），再执行命令
         /// </summary>
         private void SendCommand(System.Action commandAction)
         {
+            SaveSettings();
             PendingCommand = () =>
             {
-                EnsureStylesApplied();
+                // 仅在面板样式参数有变更时同步（dirty flag）
+                if (_stylesDirty) EnsureStylesApplied();
                 commandAction();
             };
             try
             {
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-                doc.SendStringToExecute("C1\n", true, false, false);
+                doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)
             {
@@ -384,6 +417,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 _styleService.CreateTableStyle(TableStyleName, TextStyleName);
                 _styleService.SetCurrentTableStyle(TableStyleName);
 
+                _stylesDirty = false;
+                SaveSettings();
                 StatusMessage = $"样式应用成功 (Scale={Scale})";
             }
             catch (System.Exception ex)
@@ -394,111 +429,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         /// <summary>
         /// 供命令调用：确保当前面板参数已同步到 AutoCAD 样式
-        /// 命令执行前调用此方法，保证 MLeader/标注/文字样式与面板参数一致
+        /// 仅在参数有变更（dirty）时才执行样式重建，避免不必要的开销
         /// </summary>
         public void EnsureStylesApplied()
         {
+            if (!_stylesDirty) return;
             ApplyStyle();
-        }
-
-        private void DrawReinforcement()
-        {
-            try
-            {
-                // 先应用样式
-                ApplyStyle();
-                // 同步参数到旧 Reinforcement 系统，然后发送 gj 命令
-                SyncToOldReinforcement();
-                var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-                doc.SendStringToExecute("gj\n", true, false, false);
-            }
-            catch (System.Exception ex)
-            {
-                StatusMessage = $"绘制失败: {ex.Message}";
-            }
-        }
-
-        /// <summary>
-        /// 通过反射将新面板参数同步到旧 Reinforcement 系统
-        /// 旧代码从 ReinPanel.ActivePanel 读取参数，此方法设置 ActivePanel 的属性
-        /// </summary>
-        private void SyncToOldReinforcement()
-        {
-            try
-            {
-                // 查找旧 ReinPanel 类型（在已加载的 HyCADtool 程序集中）
-                System.Type reinPanelType = null;
-                System.Type reinforcementType = null;
-                System.Type baseConfigType = null;
-
-                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    try
-                    {
-                        if (asm.GetName().Name == "HyCADtool" || asm.FullName.Contains("HyCADtool"))
-                        {
-                            reinPanelType = reinPanelType ?? asm.GetType("HyCADTool.Views.ReinPanel");
-                            reinforcementType = reinforcementType ?? asm.GetType("HyCADTool.Reinforcement");
-                            baseConfigType = baseConfigType ?? asm.GetType("HyCADTool.Config.BaseConfig");
-                        }
-                    }
-                    catch { }
-                }
-
-                // 设置 BaseConfig.Scale
-                if (baseConfigType != null)
-                {
-                    var scaleProp = baseConfigType.GetProperty("Scale", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    scaleProp?.SetValue(null, Scale);
-                }
-
-                // 设置 Reinforcement.Scale（有 setter）
-                if (reinforcementType != null)
-                {
-                    var scaleProp = reinforcementType.GetProperty("Scale", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    scaleProp?.SetValue(null, Scale);
-                }
-
-                // 获取或创建 ReinPanel.ActivePanel，设置其属性
-                if (reinPanelType != null)
-                {
-                    var activePanelProp = reinPanelType.GetProperty("ActivePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    var activePanel = activePanelProp?.GetValue(null);
-
-                    if (activePanel == null)
-                    {
-                        // 没有旧面板实例，创建一个并设为 ActivePanel
-                        activePanel = System.Activator.CreateInstance(reinPanelType);
-                        activePanelProp?.SetValue(null, activePanel);
-                    }
-
-                    // 同步所有属性到旧面板
-                    SetOldPanelProperty(reinPanelType, activePanel, "RebarDiameter", RebarDiameter);
-                    SetOldPanelProperty(reinPanelType, activePanel, "RebarSpacing", RebarSpacing);
-                    SetOldPanelProperty(reinPanelType, activePanel, "AnchorageLength", AnchorageLength);
-                    SetOldPanelProperty(reinPanelType, activePanel, "DotSeparation", DotSeparation);
-                    SetOldPanelProperty(reinPanelType, activePanel, "BendingLineMinLength", BendingLineMinLength);
-                    SetOldPanelProperty(reinPanelType, activePanel, "AnchorageJoinLength", AnchorageJoinLength);
-                    SetOldPanelProperty(reinPanelType, activePanel, "HookLength", HookLength);
-                    SetOldPanelProperty(reinPanelType, activePanel, "ProtectionThickness", ProtectionThickness);
-                    SetOldPanelProperty(reinPanelType, activePanel, "ReinforcementDiameter", ReinforcementDiameter);
-                    SetOldPanelProperty(reinPanelType, activePanel, "DotReinOffset", DotReinOffset);
-                    SetOldPanelProperty(reinPanelType, activePanel, "TextSize", TextSize);
-                    SetOldPanelProperty(reinPanelType, activePanel, "TextXScale", TextXScale);
-                    SetOldPanelProperty(reinPanelType, activePanel, "DimensionDistanceInside", DimensionDistanceInside);
-                    SetOldPanelProperty(reinPanelType, activePanel, "DimensionDistanceOutside", DimensionDistanceOutside);
-                    SetOldPanelProperty(reinPanelType, activePanel, "DimensionDistanceWithDim", DimensionDistanceWithDim);
-                    SetOldPanelProperty(reinPanelType, activePanel, "MleaderDistance", MleaderDistance);
-                    SetOldPanelProperty(reinPanelType, activePanel, "DimDistanceTolerance", DimDistanceTolerance);
-                }
-            }
-            catch { /* 静默失败，不影响主流程 */ }
-        }
-
-        private static void SetOldPanelProperty(System.Type type, object instance, string name, double value)
-        {
-            var prop = type.GetProperty(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            prop?.SetValue(instance, value);
+            _stylesDirty = false;
         }
 
         private void ResetToDefaults()
@@ -521,6 +458,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             DimensionDistanceInside = 6.0; DimensionDistanceOutside = 14.0;
             DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0; DimDistanceTolerance = 30.0;
 
+            SaveSettings();
             StatusMessage = "已恢复默认值";
         }
 
@@ -559,6 +497,194 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
+        // ================================================================
+        //  持久化：hy-settings.json（%APPDATA%\HyCADTool）
+        // ================================================================
+
+        #region 持久化
+
+        private static string _settingsFilePath;
+
+        /// <summary>
+        /// 获取设置文件路径（%APPDATA%\HyCADTool\hy-settings.json）
+        /// 使用 AppData 而非 Assembly 目录，避免热重载时路径不稳定
+        /// </summary>
+        public static string GetSettingsFilePath()
+        {
+            if (_settingsFilePath != null) return _settingsFilePath;
+            var appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "HyCADTool");
+            Directory.CreateDirectory(appDataDir);
+            _settingsFilePath = Path.Combine(appDataDir, "hy-settings.json");
+            return _settingsFilePath;
+        }
+
+        /// <summary>
+        /// 保存当前面板参数到 JSON 文件
+        /// </summary>
+        public void SaveSettings()
+        {
+            try
+            {
+                var data = new SettingsData
+                {
+                    // Tab A: 样式
+                    Scale = Scale,
+                    FontFileName = FontFileName,
+                    BigFontFileName = BigFontFileName,
+                    TextSize = TextSize,
+                    TextXScale = TextXScale,
+                    Dimtxt = Dimtxt,
+                    Dimexo = Dimexo,
+                    Dimexe = Dimexe,
+                    Dimdle = Dimdle,
+                    Dimgap = Dimgap,
+                    Dimasz = Dimasz,
+                    DimArrowName = DimArrowName,
+                    MLeaderArrowSize = MLeaderArrowSize,
+                    MLeaderArrowName = MLeaderArrowName,
+                    MLeaderLandingGap = MLeaderLandingGap,
+                    MLeaderTextColorIndex = MLeaderTextColorIndex,
+                    // Tab B: 钢筋
+                    RebarDiameter = RebarDiameter,
+                    RebarSpacing = RebarSpacing,
+                    AnchorageLength = AnchorageLength,
+                    DotSeparation = DotSeparation,
+                    BendingLineMinLength = BendingLineMinLength,
+                    AnchorageJoinLength = AnchorageJoinLength,
+                    HookLength = HookLength,
+                    ProtectionThickness = ProtectionThickness,
+                    ReinforcementDiameter = ReinforcementDiameter,
+                    DotReinOffset = DotReinOffset,
+                    DimensionDistanceInside = DimensionDistanceInside,
+                    DimensionDistanceOutside = DimensionDistanceOutside,
+                    DimensionDistanceWithDim = DimensionDistanceWithDim,
+                    MleaderDistance = MleaderDistance,
+                    DimDistanceTolerance = DimDistanceTolerance,
+                    // 其他
+                    EquipmentDataFilePath = EquipmentDataFilePath
+                };
+
+                var json = JsonConvert.SerializeObject(data, Formatting.Indented);
+                File.WriteAllText(GetSettingsFilePath(), json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存设置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从 JSON 文件加载设置到当前实例
+        /// 文件不存在或格式错误时静默使用默认值
+        /// </summary>
+        public void LoadSettings()
+        {
+            _isLoading = true;
+            try
+            {
+                var path = GetSettingsFilePath();
+                if (!File.Exists(path)) { _isLoading = false; return; }
+
+                var json = File.ReadAllText(path);
+                var data = JsonConvert.DeserializeObject<SettingsData>(json);
+                if (data == null) { _isLoading = false; return; }
+
+                // Tab A: 样式
+                Scale = data.Scale;
+                FontFileName = data.FontFileName ?? _fontFileName;
+                BigFontFileName = data.BigFontFileName ?? _bigFontFileName;
+                TextSize = data.TextSize;
+                TextXScale = data.TextXScale;
+                Dimtxt = data.Dimtxt;
+                Dimexo = data.Dimexo;
+                Dimexe = data.Dimexe;
+                Dimdle = data.Dimdle;
+                Dimgap = data.Dimgap;
+                Dimasz = data.Dimasz;
+                DimArrowName = data.DimArrowName ?? _dimArrowName;
+                MLeaderArrowSize = data.MLeaderArrowSize;
+                MLeaderArrowName = data.MLeaderArrowName ?? _mleaderArrowName;
+                MLeaderLandingGap = data.MLeaderLandingGap;
+                MLeaderTextColorIndex = data.MLeaderTextColorIndex;
+                // Tab B: 钢筋
+                RebarDiameter = data.RebarDiameter;
+                RebarSpacing = data.RebarSpacing;
+                AnchorageLength = data.AnchorageLength;
+                DotSeparation = data.DotSeparation;
+                BendingLineMinLength = data.BendingLineMinLength;
+                AnchorageJoinLength = data.AnchorageJoinLength;
+                HookLength = data.HookLength;
+                ProtectionThickness = data.ProtectionThickness;
+                ReinforcementDiameter = data.ReinforcementDiameter;
+                DotReinOffset = data.DotReinOffset;
+                DimensionDistanceInside = data.DimensionDistanceInside;
+                DimensionDistanceOutside = data.DimensionDistanceOutside;
+                DimensionDistanceWithDim = data.DimensionDistanceWithDim;
+                MleaderDistance = data.MleaderDistance;
+                DimDistanceTolerance = data.DimDistanceTolerance;
+                // 其他
+                if (!string.IsNullOrEmpty(data.EquipmentDataFilePath))
+                    EquipmentDataFilePath = data.EquipmentDataFilePath;
+
+                _stylesDirty = true; // 加载后需重新应用样式
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载设置失败: {ex.Message}（使用默认值）");
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// 序列化 DTO — 纯数据容器，字段默认值与面板硬编码默认值一致
+        /// 新增字段时此处同步加默认值，确保旧 JSON 文件向前兼容
+        /// </summary>
+        private class SettingsData
+        {
+            // Tab A: 样式
+            public double Scale { get; set; } = 40.0;
+            public string FontFileName { get; set; } = "tssdeng.shx";
+            public string BigFontFileName { get; set; } = "hztxt.shx";
+            public double TextSize { get; set; } = 2.5;
+            public double TextXScale { get; set; } = 0.7;
+            public double Dimtxt { get; set; } = 2.5;
+            public double Dimexo { get; set; } = 1.0;
+            public double Dimexe { get; set; } = 1.0;
+            public double Dimdle { get; set; } = 0.5;
+            public double Dimgap { get; set; } = 1.0;
+            public double Dimasz { get; set; } = 1.0;
+            public string DimArrowName { get; set; } = "_ARCHTICK";
+            public double MLeaderArrowSize { get; set; } = 2.0;
+            public string MLeaderArrowName { get; set; } = "_DotSmall";
+            public double MLeaderLandingGap { get; set; } = 0.5;
+            public int MLeaderTextColorIndex { get; set; } = 7;
+            // Tab B: 钢筋
+            public double RebarDiameter { get; set; } = 14.0;
+            public double RebarSpacing { get; set; } = 200.0;
+            public double AnchorageLength { get; set; } = 500.0;
+            public double DotSeparation { get; set; } = 200.0;
+            public double BendingLineMinLength { get; set; } = 150.0;
+            public double AnchorageJoinLength { get; set; } = 1500.0;
+            public double HookLength { get; set; } = 1.0;
+            public double ProtectionThickness { get; set; } = 1.0;
+            public double ReinforcementDiameter { get; set; } = 0.35;
+            public double DotReinOffset { get; set; } = 1.35;
+            public double DimensionDistanceInside { get; set; } = 6.0;
+            public double DimensionDistanceOutside { get; set; } = 14.0;
+            public double DimensionDistanceWithDim { get; set; } = 6.0;
+            public double MleaderDistance { get; set; } = 6.0;
+            public double DimDistanceTolerance { get; set; } = 30.0;
+            // 其他
+            public string EquipmentDataFilePath { get; set; } = "";
+        }
+
+        #endregion
+
         #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -568,11 +694,21 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        /// <summary>
+        /// 加载中标记：防止 LoadSettings → 属性 setter → SaveSettings 循环
+        /// </summary>
+        private bool _isLoading;
+
         protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string propertyName = null)
         {
             if (Equals(storage, value)) return false;
             storage = value;
             OnPropertyChanged(propertyName);
+
+            // 非加载期间，参数变更即时写入文件（跨程序集共享状态）
+            if (!_isLoading && propertyName != nameof(StatusMessage))
+                SaveSettings();
+
             return true;
         }
 

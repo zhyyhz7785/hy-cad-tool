@@ -7,60 +7,21 @@ namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
     /// 面板显示方法（无 [CommandMethod]，避免热重载 eDuplicateKey）。
-    /// 命令注册在 ReCall 项目中通过反射路由。
+    /// 统一面板入口：ShowHyToolPanel()
+    /// 旧方法保留向后兼容，内部转发到统一面板对应 Tab。
     /// </summary>
     public static class ShowPanelCommand
     {
         /// <summary>
-        /// 显示/隐藏 HY 设置面板
+        /// 显示/隐藏 HY 统一工具面板
         /// </summary>
-        public static void ShowSettingsPanel()
+        public static void ShowHyToolPanel()
         {
             var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             try
             {
                 var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.SettingsPanel>(
-                    "HY 设置",
-                    new Guid("F6A7B8C9-D0E1-2345-FA67-890ABCDEF123"));
-            }
-            catch (System.Exception ex)
-            {
-                ed.WriteMessage($"\n显示设置面板失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 显示/隐藏桩基面板
-        /// </summary>
-        public static void ShowPilePanel()
-        {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
-            try
-            {
-                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.PilePanel>(
-                    "桩基布置",
-                    new Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890"));
-            }
-            catch (System.Exception ex)
-            {
-                ed.WriteMessage($"\n显示桩基面板失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 显示/隐藏过滤器面板
-        /// </summary>
-        public static void ShowFilterPanel()
-        {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
-            try
-            {
-                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.FilterPanel>(
-                    "图形过滤器",
-                    new Guid("B2C3D4E5-F6A7-8901-BCDE-F23456789012"));
+                panelManager.ToggleHyToolPanel();
             }
             catch (System.Exception ex)
             {
@@ -69,17 +30,78 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
 
         /// <summary>
-        /// 显示/隐藏基础配筋面板
+        /// [已弃用] 显示设置面板 → 打开统一面板样式 Tab
         /// </summary>
+        [Obsolete("使用 ShowHyToolPanel() 替代")]
+        public static void ShowSettingsPanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                #pragma warning disable CS0618
+                panelManager.ShowSettingsPanel();
+                #pragma warning restore CS0618
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示设置面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// [已弃用] 显示桩基面板 → 打开统一面板桩基 Tab
+        /// </summary>
+        [Obsolete("使用 ShowHyToolPanel() 替代")]
+        public static void ShowPilePanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                #pragma warning disable CS0618
+                panelManager.ShowPilePanel();
+                #pragma warning restore CS0618
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示桩基面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// [已弃用] 显示过滤器面板 → 打开统一面板过滤 Tab
+        /// </summary>
+        [Obsolete("使用 ShowHyToolPanel() 替代")]
+        public static void ShowFilterPanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                #pragma warning disable CS0618
+                panelManager.ShowFilterPanel();
+                #pragma warning restore CS0618
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// [已弃用] 显示基础配筋面板 → 打开统一面板底板 Tab
+        /// </summary>
+        [Obsolete("使用 ShowHyToolPanel() 替代")]
         public static void ShowBaseReinPanel()
         {
             var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             try
             {
                 var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>(
-                    "基础配筋",
-                    new Guid("D4E5F6A7-B8C9-0123-DEF0-456789012345"));
+                #pragma warning disable CS0618
+                panelManager.ShowBaseReinPanel();
+                #pragma warning restore CS0618
             }
             catch (System.Exception ex)
             {
@@ -88,17 +110,18 @@ namespace HyCADTool.Refactored.Presentation.Commands
         }
 
         /// <summary>
-        /// 显示/隐藏聚类面板
+        /// [已弃用] 显示聚类面板 → 打开统一面板聚类 Tab
         /// </summary>
+        [Obsolete("使用 ShowHyToolPanel() 替代")]
         public static void ShowClusterPanel()
         {
             var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
             try
             {
                 var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-                panelManager.TogglePanel<HyCADTool.Refactored.Presentation.Views.ClusterPanel>(
-                    "聚类标注",
-                    new Guid("C3D4E5F6-A7B8-9012-CDEF-345678901234"));
+                #pragma warning disable CS0618
+                panelManager.ShowClusterPanel();
+                #pragma warning restore CS0618
             }
             catch (System.Exception ex)
             {

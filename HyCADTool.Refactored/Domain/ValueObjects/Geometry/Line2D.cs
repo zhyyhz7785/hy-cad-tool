@@ -207,10 +207,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             // Line2: P2 + s × D2
             
             Point2D p1 = this.StartPoint;
-            Vector2D d1 = this.Direction.Normalize();
+            if (!this.Direction.TryNormalize(out Vector2D d1))
+                return default; // 零长度线段
             
             Point2D p2 = other.StartPoint;
-            Vector2D d2 = other.Direction.Normalize();
+            if (!other.Direction.TryNormalize(out Vector2D d2))
+                return default; // 零长度线段
             
             // 向量叉积判断平行
             double cross = d1.X * d2.Y - d1.Y * d2.X;

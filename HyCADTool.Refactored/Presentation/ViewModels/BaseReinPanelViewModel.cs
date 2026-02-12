@@ -7,12 +7,14 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
     /// BaseReinPanel 的 ViewModel
     /// 管理所有 UI 状态、命令和业务逻辑调用
+    /// 注意：涉及 AutoCAD 交互（选择/绘制）的步骤必须通过 SendCommand → C1 路由到命令线程
     /// </summary>
     public class BaseReinPanelViewModel : INotifyPropertyChanged
     {
@@ -28,25 +30,33 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             // 加载配置
             _config = _reinforcementService.GetCurrentConfig();
 
-            // 初始化命令
-            ApplyStyleCommand = new RelayCommand(ExecuteApplyStyle);
-            ResetCommand = new RelayCommand(ExecuteReset);
-            StepOneCommand = new RelayCommand(ExecuteStepOne);
-            StepTwoCommand = new RelayCommand(ExecuteStepTwo);
-            StepFourCommand = new RelayCommand(ExecuteStepFour);
-            StepFiveCommand = new RelayCommand(ExecuteStepFive);
-            StepSixCommand = new RelayCommand(ExecuteStepSix);
+            // 步骤命令涉及 AutoCAD 交互，必须路由到命令线程
+            StepOneCommand = new RelayCommand(() => SendCommand(() => _reinforcementService.OptimizeBasemap()));
+            StepTwoCommand = new RelayCommand(() => SendCommand(() =>
+            {
+                char[] delimiters = new char[] { ' ', ',', '，' };
+                var fixedValues = FilterValues
+                    .Split(delimiters, StringSplitOptions.RemoveEmptyEntries)
+                    .ToList();
+                _reinforcementService.SelectAndDeleteUnusedText(fixedValues);
+            }));
+            StepFourCommand = new RelayCommand(() => SendCommand(() =>
+            {
+                SaveConfigToService();
+                _reinforcementService.GenerateReinforcementArea(_config);
+            }));
+            StepFiveCommand = new RelayCommand(() => SendCommand(() =>
+            {
+                SaveConfigToService();
+                _reinforcementService.DrawReinforcement(_config, DimAll);
+            }));
+            StepSixCommand = new RelayCommand(() => SendCommand(() =>
+                _reinforcementService.DimensionReinforcementArea(SelectedDimDirection)));
         }
 
         #endregion
 
         #region 属性 - 使用简化的 setter 模式
-
-        public double Scale
-        {
-            get => _config.Scale;
-            set { if (_config.Scale != value) { _config.Scale = value; OnPropertyChanged(); SaveConfigToService(); } }
-        }
 
         public double PlateThickness
         {
@@ -200,8 +210,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 命令
 
-        public ICommand ApplyStyleCommand { get; }
-        public ICommand ResetCommand { get; }
         public ICommand StepOneCommand { get; }
         public ICommand StepTwoCommand { get; }
         public ICommand StepFourCommand { get; }
@@ -210,97 +218,35 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
-        #region 命令执行方法
+        #region 命令路由
 
-        private void ExecuteApplyStyle()
+        /// <summary>
+        /// 通过 C1 路由到 AutoCAD 命令线程
+        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制
+        /// 执行前自动从设置面板同步 Scale 并确保样式已应用
+        /// </summary>
+        private void SendCommand(Action commandAction)
         {
+            SettingsPanelViewModel.PendingCommand = () =>
+            {
+                // 从设置面板同步 Scale，确保样式已应用
+                var settingsVm = SettingsPanelViewModel.Current;
+                if (settingsVm != null)
+                {
+                    _config.Scale = settingsVm.Scale;
+                    settingsVm.EnsureStylesApplied();
+                }
+                commandAction();
+            };
             try
             {
-                _reinforcementService.ApplyStyles(Scale);
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"应用样式失败: {ex.Message}");
-            }
-        }
-
-        private void ExecuteReset()
-        {
-            try
-            {
-                _config = _reinforcementService.ResetToDefault();
-                OnPropertyChanged(string.Empty);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"重置失败: {ex.Message}");
-            }
-        }
-
-        private void ExecuteStepOne()
-        {
-            try
-            {
-                _reinforcementService.OptimizeBasemap();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"整理底图失败: {ex.Message}");
-            }
-        }
-
-        private void ExecuteStepTwo()
-        {
-            try
-            {
-                char[] delimiters = new char[] { ' ', ',', '，' };
-                List<string> fixedValues = FilterValues
-                    .Split(delimiters, StringSplitOptions.RemoveEmptyEntries)
-                    .ToList();
-
-                _reinforcementService.SelectAndDeleteUnusedText(fixedValues);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"选择删除失败: {ex.Message}");
-            }
-        }
-
-        private void ExecuteStepFour()
-        {
-            try
-            {
-                SaveConfigToService();
-                _reinforcementService.GenerateReinforcementArea(_config);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"生成配筋面积失败: {ex.Message}");
-            }
-        }
-
-        private void ExecuteStepFive()
-        {
-            try
-            {
-                SaveConfigToService();
-                _reinforcementService.DrawReinforcement(_config, DimAll);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"绘制钢筋失败: {ex.Message}");
-            }
-        }
-
-        private void ExecuteStepSix()
-        {
-            try
-            {
-                _reinforcementService.DimensionReinforcementArea(SelectedDimDirection);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"标注配筋区域失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"发送命令失败: {ex.Message}");
+                SettingsPanelViewModel.PendingCommand = null;
             }
         }
 
@@ -327,3 +273,5 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #endregion
     }
 }
+
+

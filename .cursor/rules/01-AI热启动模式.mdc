@@ -67,30 +67,71 @@ new Presentation.Commands.OverKillCommand().Execute();
 
 ---
 
-## 六、当前工作状态（2026-02-09）
+## 六、当前工作状态（2026-02-10）
 
-### 已完成：HY 设置面板
+### 已完成
 
-- **SettingsPanel**（`Presentation/Views/SettingsPanel.xaml` + `.xaml.cs`）：TabControl 结构
-  - Tab A "样式设置"：Scale（动态样式名 `0_Hy_{Scale}`）、文字/标注/引线样式参数
-  - Tab B "钢筋"：钢筋参数（对应旧 ReinPanel）、绘制按钮
-  - Tab C/D：预留
-- **SettingsPanelViewModel**（`Presentation/ViewModels/SettingsPanelViewModel.cs`）：
-  - `static Current` 属性供外部读参数
-  - `CreateReinParameters()` 导出 `ReinParameters`
-  - `ApplyStyleCommand` 创建/更新全部样式
-  - `DrawCommand` 调用旧 gj（通过反射桥接）
-- **StyleService** 已修复：CreateTextStyle（支持更新）、CreateDimensionStyle（Dimscale 方式 + 全属性）、CreateMLeaderStyle（全属性 + scale）
-- **TextBoxHelper**（`Presentation/Views/Helpers/TextBoxHelper.cs`）：解决小数点输入 + 点击全选
-- **EntityExtensions**（`Infrastructure/AutoCAD/Extensions/EntityExtensions.cs`）：ToSpace、CreateSolidCircle（带宽度填充）
-- **MLeaderExtensions**（`Infrastructure/AutoCAD/Extensions/MLeaderExtensions.cs`）：AddMleader
+**HY 设置面板** — SettingsPanel + SettingsPanelViewModel + StyleService + TextBoxHelper
 
-### 进行中：钢筋命令重构
+**钢筋命令（全部完成）**：
+- `DrawReinforcementCommand` (gj)、`DrawOffsetPolylineCommand` (gg)
+- `ReinAddAnchorCommand` (g1/g2)、`ReinCutCommand` (gd)
+- `ReinExtendCommand` (ge)、`ReinQuickExtendCommand` (ge1)
+- `MleaderReinCommand` (gb/gb1/gb2)
+- `ReinService` — 绘制服务（除 `DimensionRein` 外完成）
 
-- 旧 HyCADtool.dll 已移除，需要逐个重构钢筋命令到 Refactored 项目
-- 重构顺序：ReinforcementSingleFunsA → B → C → D → E → F → ReinforcementFun → ReinforcementMain
-- 每次重构一个文件，测试通过后再下一个
-- 关键依赖已准备好：EntityExtensions、MLeaderExtensions、SettingsPanelViewModel.Current
+**底板配筋（BaseRein）**：
+- `BaseReinforcementConfig` — 完整配置模型
+- `BaseReinPanel.xaml` + `BaseReinPanelViewModel` — 完整面板
+- `BaseReinforcementService` — 全部 6 个步骤已实现：
+  - Step 1 整理底图、Step 2 选择删除文字
+  - Step 4 生成配筋面积（网格选择→包络→分组→合并）
+  - Step 5 绘制钢筋（单方向/全方向 + 标注文字）
+  - Step 6 标注配筋区域
+
+**架构纠偏（024 文档三轮修复）**：Domain 100% 纯净，DI 统一，废弃代码清理
+
+### 已完成（2026-02-11）
+
+**标高命令（hybg* → 4 命令）**：
+- `DrawElevationCommand` (bg)、`UpdateElevationTextCommand` (bgu)
+- `RotateElevationCommand` (bgR)、`TextsCreateElevationCommand` (hybgTCE)
+- `ElevationSymbolJig`（Jig）、`ElevationService`（服务）、`ElevationSymbolState`（枚举）
+
+**尺寸标注（hydim* → 2 独立命令）**：
+- `AddVertexAtIntersectionsCommand` (hydimA)
+- `SplitDimensionCommand` (sd)
+- 注：`DimensionForReinforcement (dds/ddss)` 依赖链深（884+769行），待独立迁移
+
+**地脚螺栓（hyab* → 6 命令）**：
+- `AnchorBoltCommand` (hyab)、`AnchorBoltAlignCommand` (hyabA)
+- `AnchorBoltCalcCommand` (hyabC)、`AnchorBoltToggleDisplayCommand` (hyabCD)
+- `AnchorBoltTableCommand` (hyabCT)、`AnchorBoltSectionCommand` (hyabR)
+- `AnchorBolt` + `AnchorBoltFactory`（Domain）、`ExtensionDictionaryService`（Infrastructure）
+
+**尺寸标注 DimensionForReinforcement（dds/ddss → 2 命令）**：
+- `DimensionForReinforcementCommand` (dds)、`DimensionForReinforcementBatchCommand` (ddss)
+- `DimensionForReinforcementService`（780行，完整迁移）
+
+**设备基础（hyef* → 6 命令）**：
+- `EF_ConstructBaseDataCommand` (hyef_Base_ConstructBaseData)
+- `EF_HighlightBoltDataCommand` (hyef_Base_HighlightBoltData)
+- `EF_AxisConstructCommand` (hyef_Axis_Construct)
+- `EF_AxisInitializeCommand` (hyef_Axis_Initialize)
+- `EF_AxisDisplayCommand` (hyef_Axis_Display)
+- `EF_AxisCreateTableCommand` (hyef_Axis_CreateTable)
+- Domain: `BaseData` + `BoltData` + `AxisData` + `EquipmentData` + `EquipmentDataManager`
+- Infrastructure: `EquipmentFoundationService` + `ExtensionDictionaryService`（Guid/BaseData/BoltData/AxisData 读写）
+
+### 进行中：其他命令迁移
+
+按优先级排序：
+1. ~~标高命令 hybg*~~ ✓
+2. ~~尺寸标注 hydim* 独立命令~~ ✓
+3. ~~地脚螺栓 hyab*~~ ✓
+4. ~~尺寸标注 DimensionForReinforcement (dds/ddss)~~ ✓
+5. ~~设备基础 hyef*~~ ✓
+6. 其他杂项（导出、轴线文字、筏板厚度、块操作等）
 
 ### 坐标与单位规则
 
@@ -129,4 +170,4 @@ new Presentation.Commands.OverKillCommand().Execute();
 
 ---
 
-**版本**：v3.1
+**版本**：v5.0

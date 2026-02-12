@@ -48,10 +48,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
-                // 确保图层存在
-                EnsureLayer(tr, db, LAYER_PILE, 3);      // 绿色
-                EnsureLayer(tr, db, LAYER_GRID, 8);      // 灰色
-                EnsureLayer(tr, db, LAYER_ANNOTATION, 7); // 白色
+                // 图层已在 PluginInitializer 统一创建
 
                 // 1. 绘制桩（圆或方）
                 DrawPileEntities(tr, btr, result);
@@ -220,21 +217,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             return pl;
         }
 
-        private void EnsureLayer(Transaction tr, Database db, string layerName, short colorIndex)
-        {
-            var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-            if (lt.Has(layerName)) return;
-
-            lt.UpgradeOpen();
-            var ltr = new LayerTableRecord
-            {
-                Name = layerName,
-                Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
-                    Autodesk.AutoCAD.Colors.ColorMethod.ByAci, colorIndex)
-            };
-            lt.Add(ltr);
-            tr.AddNewlyCreatedDBObject(ltr, true);
-        }
+        // EnsureLayer 已移除 —— 图层在 PluginInitializer 统一创建
 
         #endregion
     }

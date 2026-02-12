@@ -1,6 +1,8 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -9,8 +11,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
     /// 桩基布置面板 ViewModel（自含式，不依赖旧项目服务）
-    /// 参数自管理，DrawPiles 通过 SendCommand → C1 路由到 AutoCAD 命令线程
-    /// 旧命令（GroupCircles / VoronoiPile）通过 SendStringToExecute 调用已注册的 [CommandMethod]
+    /// 参数自管理 + JSON 持久化，DrawPiles 通过 SendCommand → C1 路由到 AutoCAD 命令线程
+    /// 参照 SettingsPanelViewModel 的持久化模式
     /// </summary>
     public class PilePanelViewModel : INotifyPropertyChanged
     {
@@ -26,15 +28,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             get
             {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc == null) return null;
-
-                var docName = doc.Name;
-                if (!_documentViewModels.ContainsKey(docName))
+                try
                 {
-                    _documentViewModels[docName] = new PilePanelViewModel();
+                    var doc = AcApp.DocumentManager.MdiActiveDocument;
+                    if (doc == null) return null;
+
+                    var docName = doc.Name;
+                    if (!_documentViewModels.ContainsKey(docName))
+                    {
+                        _documentViewModels[docName] = new PilePanelViewModel();
+                    }
+                    return _documentViewModels[docName];
                 }
-                return _documentViewModels[docName];
+                catch
+                {
+                    return null;
+                }
             }
         }
 
@@ -64,11 +73,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         public PilePanelViewModel()
         {
-            ApplyCommand = new RelayCommand(Apply);
             ResetCommand = new RelayCommand(ResetToDefaults);
             DrawPilesCommand = new RelayCommand(
-                () => SendCommand(() => new Commands.DrawPilesCommand().Execute()),
-                CanDrawPiles);
+                () => SendCommand(() => new Commands.DrawPilesCommand().Execute()));
 
             GroupCirclesByElevationCommand = new RelayCommand(
                 () => SendCommand(() => new Commands.GroupCirclesByElevationCommand().Execute()));
@@ -77,18 +84,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             PileVoronoiFromCirclesCommand = new RelayCommand(
                 () => SendCommand(() => new Commands.PileVoronoiOptimizationCommand().ExecuteWithExistingCircles()));
 
+            // 从持久化文件加载上次保存的设置
+            LoadSettings();
         }
 
         #endregion
 
-        #region 基础参数
+        #region 只读属性：从设置面板同步
 
-        private double _scale = 40.0;
-        public double Scale
-        {
-            get => _scale;
-            set => SetProperty(ref _scale, value);
-        }
+        /// <summary>
+        /// 当前比例（只读，从设置面板读取，供面板显示用）
+        /// </summary>
+        public double CurrentScale => SettingsPanelViewModel.Current?.Scale ?? 40.0;
 
         #endregion
 
@@ -161,9 +168,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
-        #region 桩参数
+        #region 桩参数（默认值参考旧项目 PileConfig）
 
         private double _diameterOrEdge = 400.0;
+        /// <summary>桩直径/边长 (mm)，旧默认 400</summary>
         public double DiameterOrEdge
         {
             get => _diameterOrEdge;
@@ -171,6 +179,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _minPileCenterDistance = 1200.0;
+        /// <summary>最小桩中心距 (mm)，旧默认 1200</summary>
         public double MinPileCenterDistance
         {
             get => _minPileCenterDistance;
@@ -178,6 +187,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _inputDisplacementRate = 0.02;
+        /// <summary>输入置换率，旧默认 0.02</summary>
         public double InputDisplacementRate
         {
             get => _inputDisplacementRate;
@@ -185,6 +195,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _pileArrangeRate = 0.5;
+        /// <summary>桩布置比例，旧默认 0.5</summary>
         public double PileArrangeRate
         {
             get => _pileArrangeRate;
@@ -192,6 +203,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _inputDistanceFromContour = 400.0;
+        /// <summary>整体轮廓距离 (mm)，旧默认 400</summary>
         public double InputDistanceFromContour
         {
             get => _inputDistanceFromContour;
@@ -203,6 +215,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _marginUp = 400.0;
+        /// <summary>上边距 (mm)，旧默认 400</summary>
         public double MarginUp
         {
             get => _marginUp;
@@ -210,6 +223,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _marginDown = 400.0;
+        /// <summary>下边距 (mm)，旧默认 400</summary>
         public double MarginDown
         {
             get => _marginDown;
@@ -217,6 +231,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _marginLeft = 400.0;
+        /// <summary>左边距 (mm)，旧默认 400</summary>
         public double MarginLeft
         {
             get => _marginLeft;
@@ -224,6 +239,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _marginRight = 400.0;
+        /// <summary>右边距 (mm)，旧默认 400</summary>
         public double MarginRight
         {
             get => _marginRight;
@@ -245,7 +261,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 命令
 
-        public ICommand ApplyCommand { get; }
         public ICommand ResetCommand { get; }
         public ICommand DrawPilesCommand { get; }
 
@@ -260,14 +275,28 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// <summary>
         /// 通过 C1 路由到 AutoCAD 命令线程（Refactored 命令用）
         /// 复用 SettingsPanelViewModel 的 PendingCommand 机制
+        /// 执行前自动确保样式已应用
         /// </summary>
         private void SendCommand(Action commandAction)
         {
-            SettingsPanelViewModel.PendingCommand = commandAction;
+            SaveSettings();
+            SettingsPanelViewModel.PendingCommand = () =>
+            {
+                // 确保设置面板样式已应用
+                var settingsVm = SettingsPanelViewModel.Current;
+                settingsVm?.EnsureStylesApplied();
+                commandAction();
+            };
             try
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
-                doc.SendStringToExecute("C1\n", true, false, false);
+                if (doc == null)
+                {
+                    StatusMessage = "无活动文档";
+                    SettingsPanelViewModel.PendingCommand = null;
+                    return;
+                }
+                doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)
             {
@@ -276,50 +305,37 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             }
         }
 
-
         #endregion
 
         #region 命令实现
 
-        private void Apply()
-        {
-            try
-            {
-                // 同步 Scale 到 SettingsPanel（共享样式）
-                var settingsVm = SettingsPanelViewModel.Current;
-                if (settingsVm != null)
-                {
-                    settingsVm.Scale = Scale;
-                    settingsVm.EnsureStylesApplied();
-                }
-                StatusMessage = $"样式应用成功 (Scale={Scale})";
-            }
-            catch (System.Exception ex)
-            {
-                StatusMessage = $"应用失败: {ex.Message}";
-            }
-        }
-
-        private bool CanDrawPiles() => Scale > 0 && DiameterOrEdge > 0;
-
         private void ResetToDefaults()
         {
-            Scale = 40.0;
-            DiameterOrEdge = 400.0;
-            MinPileCenterDistance = 1200.0;
-            InputDisplacementRate = 0.02;
-            PileArrangeRate = 0.5;
-            InputDistanceFromContour = 400.0;
-            MarginUp = 400.0;
-            MarginDown = 400.0;
-            MarginLeft = 400.0;
-            MarginRight = 400.0;
-            NX = 2;
-            NY = 2;
-            IsRectangular = true;
-            IsCirclePile = true;
-            ManualControl = false;
-            StatusMessage = "已恢复默认值";
+            _isLoading = true;
+            try
+            {
+                // 参考旧项目 PileConfig 默认值
+                DiameterOrEdge = 400.0;
+                MinPileCenterDistance = 1200.0;
+                InputDisplacementRate = 0.02;
+                PileArrangeRate = 0.5;
+                InputDistanceFromContour = 400.0;
+                MarginUp = 400.0;
+                MarginDown = 400.0;
+                MarginLeft = 400.0;
+                MarginRight = 400.0;
+                NX = 2;
+                NY = 2;
+                IsRectangular = true;
+                IsCirclePile = true;
+                ManualControl = false;
+                StatusMessage = "已恢复默认值";
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+            SaveSettings();
         }
 
         private void SyncMargins(double value)
@@ -336,10 +352,137 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
+        #region 持久化：hy-pile-settings.json（%APPDATA%\HyCADTool）
+
+        private static string _settingsFilePath;
+
+        /// <summary>
+        /// 获取桩基设置文件路径
+        /// </summary>
+        private static string GetSettingsFilePath()
+        {
+            if (_settingsFilePath != null) return _settingsFilePath;
+            var appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "HyCADTool");
+            Directory.CreateDirectory(appDataDir);
+            _settingsFilePath = Path.Combine(appDataDir, "hy-pile-settings.json");
+            return _settingsFilePath;
+        }
+
+        /// <summary>
+        /// 保存当前桩基参数到 JSON 文件
+        /// </summary>
+        public void SaveSettings()
+        {
+            if (_isLoading) return;
+            try
+            {
+                var data = new PileSettingsData
+                {
+                    DiameterOrEdge = DiameterOrEdge,
+                    MinPileCenterDistance = MinPileCenterDistance,
+                    InputDisplacementRate = InputDisplacementRate,
+                    PileArrangeRate = PileArrangeRate,
+                    InputDistanceFromContour = InputDistanceFromContour,
+                    MarginUp = MarginUp,
+                    MarginDown = MarginDown,
+                    MarginLeft = MarginLeft,
+                    MarginRight = MarginRight,
+                    NX = NX,
+                    NY = NY,
+                    IsRectangular = IsRectangular,
+                    IsCircular = IsCircular,
+                    IsCirclePile = IsCirclePile,
+                    IsRectPile = IsRectPile,
+                    ManualControl = ManualControl
+                };
+
+                var json = JsonConvert.SerializeObject(data, Formatting.Indented);
+                File.WriteAllText(GetSettingsFilePath(), json);
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存桩基设置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从 JSON 文件加载桩基设置
+        /// 文件不存在或格式错误时静默使用默认值
+        /// </summary>
+        public void LoadSettings()
+        {
+            _isLoading = true;
+            try
+            {
+                var path = GetSettingsFilePath();
+                if (!File.Exists(path)) { _isLoading = false; return; }
+
+                var json = File.ReadAllText(path);
+                var data = JsonConvert.DeserializeObject<PileSettingsData>(json);
+                if (data == null) { _isLoading = false; return; }
+
+                DiameterOrEdge = data.DiameterOrEdge;
+                MinPileCenterDistance = data.MinPileCenterDistance;
+                InputDisplacementRate = data.InputDisplacementRate;
+                PileArrangeRate = data.PileArrangeRate;
+                InputDistanceFromContour = data.InputDistanceFromContour;
+                MarginUp = data.MarginUp;
+                MarginDown = data.MarginDown;
+                MarginLeft = data.MarginLeft;
+                MarginRight = data.MarginRight;
+                NX = data.NX;
+                NY = data.NY;
+                IsRectangular = data.IsRectangular;
+                IsCircular = data.IsCircular;
+                IsCirclePile = data.IsCirclePile;
+                IsRectPile = data.IsRectPile;
+                ManualControl = data.ManualControl;
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载桩基设置失败: {ex.Message}（使用默认值）");
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// 序列化 DTO — 纯数据容器，字段默认值与旧项目 PileConfig 一致
+        /// </summary>
+        private class PileSettingsData
+        {
+            public double DiameterOrEdge { get; set; } = 400.0;
+            public double MinPileCenterDistance { get; set; } = 1200.0;
+            public double InputDisplacementRate { get; set; } = 0.02;
+            public double PileArrangeRate { get; set; } = 0.5;
+            public double InputDistanceFromContour { get; set; } = 400.0;
+            public double MarginUp { get; set; } = 400.0;
+            public double MarginDown { get; set; } = 400.0;
+            public double MarginLeft { get; set; } = 400.0;
+            public double MarginRight { get; set; } = 400.0;
+            public int NX { get; set; } = 2;
+            public int NY { get; set; } = 2;
+            public bool IsRectangular { get; set; } = true;
+            public bool IsCircular { get; set; }
+            public bool IsCirclePile { get; set; } = true;
+            public bool IsRectPile { get; set; }
+            public bool ManualControl { get; set; }
+        }
+
+        #endregion
 
         #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// 加载中标记：防止 LoadSettings → 属性 setter → SaveSettings 循环
+        /// </summary>
+        private bool _isLoading;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
@@ -351,6 +494,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             if (Equals(storage, value)) return false;
             storage = value;
             OnPropertyChanged(propertyName);
+
+            // 非加载期间，参数变更即时写入文件
+            if (!_isLoading && propertyName != nameof(StatusMessage))
+                SaveSettings();
+
             return true;
         }
 

@@ -13,7 +13,8 @@ namespace HyCADTool.Refactored.Domain.Models.Configuration
         #region 基础参数
 
         /// <summary>
-        /// 主图形比例
+        /// 主图形比例 — 运行时由 SettingsPanelViewModel.Scale 同步
+        /// 不要手动设置此值，由 BaseReinPanelViewModel.SendCommand 自动填充
         /// </summary>
         public double Scale { get; set; }
 
@@ -171,8 +172,8 @@ namespace HyCADTool.Refactored.Domain.Models.Configuration
         {
             return new BaseReinforcementConfig
             {
-                // 基础参数
-                Scale = 100.0,
+                // 基础参数（Scale 运行时从设置面板同步，此处仅为安全默认值）
+                Scale = 40.0,
                 PlateThickness = 350.0,
                 RebarDiameter = 12.0,
                 RebarSpacing = 200.0,

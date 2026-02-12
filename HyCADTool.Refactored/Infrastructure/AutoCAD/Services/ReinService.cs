@@ -41,24 +41,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         }
 
         /// <summary>
-        /// 应用样式设置
+        /// 样式和图层已在 PluginInitializer 初始化时创建，命令执行时无需操作
         /// </summary>
         public void ApplyStyle(ReinParameters parameters)
         {
-            _layerService.CreateMultipleLayers(
-                (LayerLineRein, 1),
-                (LayerDotRein, 5),
-                (LayerDimOutside, 3),
-                (LayerLeader, 92)
-            );
-
-            _styleService.CreateTextStyle(
-                DefaultTextStyleName, "tssdeng.shx", "hztxt.shx",
-                parameters.TextSize * parameters.Scale, parameters.TextXScale);
-
-            _styleService.CreateDimensionStyle(DefaultDimStyleName, DefaultTextStyleName, parameters.Scale);
-            _styleService.CreateMLeaderStyle(DefaultMLeaderStyleName, DefaultTextStyleName, parameters.Scale);
-            _styleService.CreateTableStyle(DefaultTableStyleName, DefaultTextStyleName);
+            // 不再做任何操作 — 图层和样式已在插件启动时一次性创建
         }
 
         /// <summary>

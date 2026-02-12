@@ -28,7 +28,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 {
                     // 转换为 AutoCAD 类型
                     var pt1 = new Point3d(segmentEndPoint.X, segmentEndPoint.Y, 0);
-                    var dir = new Vector3d(direction.X, direction.Y, 0).GetNormal();
+                    var rawDir = new Vector3d(direction.X, direction.Y, 0);
+                    if (rawDir.Length < 1e-10)
+                        return segmentEndPoint; // 零向量方向无法求交
+                    var dir = rawDir.GetNormal();
                     var pt2 = pt1 + dir;
 
                     // 创建临时射线（用 Line 模拟）

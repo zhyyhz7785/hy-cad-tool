@@ -41,6 +41,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;                      // 红色参数，直接 mm
             double hookLength15d = 15.0 * rebarDiameter;                           // 15d = 210mm
 
+            // 确保样式已同步
+            vm?.EnsureStylesApplied();
+
             try
             {
                 // 1. 选择钢筋多段线（非弯钩段）

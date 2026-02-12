@@ -163,6 +163,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var ed = doc.Editor;
 
+            // Scale 统一从设置面板读取
+            var scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+
             try
             {
                 using (doc.LockDocument())
@@ -180,7 +183,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
                     // 2. 轴线分析 + 区域划分 + 点分区
                     var axisSvc = new AxisAnalysisService();
-                    var axes = axisSvc.AnalyzeAxes(input.AxisLines, input.FilteredPoints, Scale);
+                    var axes = axisSvc.AnalyzeAxes(input.AxisLines, input.FilteredPoints, scale);
 
                     // 3. 同步聚类参数
                     ClusterConfigX.ExpandMargins = (ExpandMarginLeft, ExpandMarginTop, ExpandMarginRight, ExpandMarginBottom);
@@ -193,7 +196,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     var dimSvc = new DimensionService();
                     var dimOptions = new ClusterDimOptions
                     {
-                        Scale = Scale,
+                        Scale = scale,
                         DistanceThreshold = DistanceThreshold,
                         XDirectionIsUp = false,
                         YDirectionIsRight = false
@@ -239,9 +242,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #endregion
 
         #region 属性 - 基础参数
-
-        public double Scale { get => _scale; set { _scale = value; OnPropertyChanged(); } }
-        private double _scale = 40;
 
         public int MinPoints { get => _minPoints; set { _minPoints = value; OnPropertyChanged(); } }
         private int _minPoints = 3;

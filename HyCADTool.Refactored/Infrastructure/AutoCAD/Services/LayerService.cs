@@ -42,8 +42,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                         layerTable.Add(layerTableRecord);
                         tr.AddNewlyCreatedDBObject(layerTableRecord, true);
-
-                        doc.Editor.WriteMessage($"\n✓ 已创建图层: {layerName} (颜色: {colorIndex})");
                     }
 
                     tr.Commit();
@@ -237,10 +235,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     foreach (var (layerName, colorIndex) in layerInfos)
                     {
                         if (layerTable.Has(layerName))
-                        {
-                            doc.Editor.WriteMessage($"\n⚠ 图层 '{layerName}' 已存在");
-                            continue;
-                        }
+                            continue; // 静默跳过已存在的图层
 
                         if (!modified)
                         {
@@ -256,8 +251,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                         layerTable.Add(layerRecord);
                         tr.AddNewlyCreatedDBObject(layerRecord, true);
-                        
-                        doc.Editor.WriteMessage($"\n✓ 已创建图层: {layerName} (颜色: {colorIndex})");
                     }
 
                     tr.Commit();

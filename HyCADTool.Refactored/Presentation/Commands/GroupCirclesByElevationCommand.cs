@@ -35,7 +35,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             try
             {
                 // 获取 Scale
-                double scale = SettingsPanelViewModel.Current?.Scale ?? 100;
+                double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
 
                 // 1. 询问是否在引线中标注标高
                 var pko = new PromptKeywordOptions("\n是否在引线中标注标高？ [是(Y)/否(N)]: ", "是 否")

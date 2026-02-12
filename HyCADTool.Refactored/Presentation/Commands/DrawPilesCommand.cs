@@ -30,6 +30,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 return;
             }
 
+            // Scale 统一从设置面板读取
+            var scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+
             try
             {
                 // 1. 选择闭合矩形多段线
@@ -75,7 +78,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     sectionType, vm.DiameterOrEdge,
                     vm.InputDisplacementRate, vm.PileArrangeRate,
                     (vm.MarginUp, vm.MarginDown, vm.MarginLeft, vm.MarginRight),
-                    arrangementType, vm.Scale,
+                    arrangementType, scale,
                     manualNX, manualNY);
 
                 if (result.Error != null)

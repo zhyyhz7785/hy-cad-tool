@@ -58,6 +58,29 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             _vertices.AddRange(cleaned);
         }
 
+        /// <summary>
+        /// 移除极短线段：合并距离小于 tolerance 的相邻点
+        /// 用于偏移后清理退化几何（保留首/尾点对闭合多段线的完整性）
+        /// </summary>
+        public void RemoveShortSegments(double tolerance)
+        {
+            if (_vertices.Count < 3) return;
+            var cleaned = new List<Point2D> { _vertices[0] };
+            for (int i = 1; i < _vertices.Count; i++)
+            {
+                if (cleaned[cleaned.Count - 1].DistanceTo(_vertices[i]) >= tolerance)
+                    cleaned.Add(_vertices[i]);
+            }
+            // 闭合多段线：检查首尾是否过近
+            if (IsClosed && cleaned.Count > 2 &&
+                cleaned[0].DistanceTo(cleaned[cleaned.Count - 1]) < tolerance)
+            {
+                cleaned.RemoveAt(cleaned.Count - 1);
+            }
+            _vertices.Clear();
+            _vertices.AddRange(cleaned);
+        }
+
         #endregion
 
         #region 线段操作
@@ -87,6 +110,17 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             for (int i = 0; i < count; i++)
                 segments[i] = GetSegmentAt(i);
             return segments;
+        }
+
+        /// <summary>
+        /// 获取多段线总长度
+        /// </summary>
+        public double GetTotalLength()
+        {
+            double total = 0;
+            for (int i = 0; i < SegmentCount; i++)
+                total += GetSegmentAt(i).Length;
+            return total;
         }
 
         #endregion
@@ -163,9 +197,11 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
                 double distFromStart = point.DistanceTo(seg.StartPoint);
                 double ratio = seg.Length > tolerance ? distFromStart / seg.Length : 0;
 
-                Vector2D direction = ratio < 0.5
-                    ? seg.StartPoint.VectorTo(seg.EndPoint).Normalize()
-                    : seg.EndPoint.VectorTo(seg.StartPoint).Normalize();
+                Vector2D rawDir = ratio < 0.5
+                    ? seg.StartPoint.VectorTo(seg.EndPoint)
+                    : seg.EndPoint.VectorTo(seg.StartPoint);
+                if (!rawDir.TryNormalize(out Vector2D direction))
+                    direction = Vector2D.UnitX; // 退化线段 fallback
 
                 return (seg, direction);
             }

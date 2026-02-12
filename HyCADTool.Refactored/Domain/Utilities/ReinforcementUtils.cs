@@ -121,8 +121,12 @@ namespace HyCADTool.Refactored.Domain.Utilities
             double protectionThickness = parameters.ProtectionThickness * parameters.Scale;
             double bendingMinLength = parameters.BendingLineMinLength;
 
-            // 钢筋方向
-            Vector2D direction01 = seg.Direction.Normalize();
+            // 钢筋方向（零长度线段直接返回空）
+            if (!seg.Direction.TryNormalize(out Vector2D direction01))
+            {
+                extendPoints.Add(seg.EndPoint);
+                return extendPoints;
+            }
 
             // 直线锚固终点
             Point2D straightAnchorEnd = seg.EndPoint.Add(direction01 * anchorageLength);
@@ -137,6 +141,13 @@ namespace HyCADTool.Refactored.Domain.Utilities
             {
                 // 需要弯折
                 Vector2D bendDir = preferredDirection ?? nextDirection;
+
+                // 弯折方向为零向量时，无法计算弯折，回退到直线锚固
+                if (bendDir.IsZero())
+                {
+                    extendPoints.Add(seg.EndPoint.Add(direction01 * anchorageLength));
+                    return extendPoints;
+                }
 
                 var (extendSeg02End, _) = GetExtendSegment(
                     extendSeg01End, bendDir, boundary, protectionThickness, intersectionService);
@@ -189,9 +200,11 @@ namespace HyCADTool.Refactored.Domain.Utilities
             var startSeg = subPoly.GetSegmentAt(0);
             var endSeg = subPoly.GetSegmentAt(subPoly.VertexCount - 2);
 
-            // 起点方向反向
-            Vector2D startDir = startSeg.EndPoint.VectorTo(startSeg.StartPoint).Normalize();
-            Vector2D endDir = endSeg.Direction.Normalize();
+            // 起点方向反向（极短线段返回 null → 不弯折）
+            if (!startSeg.EndPoint.VectorTo(startSeg.StartPoint).TryNormalize(out Vector2D startDir))
+                return null;
+            if (!endSeg.Direction.TryNormalize(out Vector2D endDir))
+                return null;
 
             // 求交点
             Point2D boundStartPt = intersectionService.GetNearestForwardIntersection(
@@ -211,7 +224,9 @@ namespace HyCADTool.Refactored.Domain.Utilities
                 if (segStart.StartPoint.IsEqualTo(segEnd.StartPoint) &&
                     segStart.EndPoint.IsEqualTo(segEnd.EndPoint))
                 {
-                    return boundEndPt.VectorTo(boundStartPt).Normalize();
+                    if (boundEndPt.VectorTo(boundStartPt).TryNormalize(out Vector2D bendDir))
+                        return bendDir;
+                    return null;
                 }
             }
             catch
@@ -247,12 +262,15 @@ namespace HyCADTool.Refactored.Domain.Utilities
             try
             {
                 var (_, dir) = boundary.GetSegmentAtPoint(boundaryPoint);
-                nextDirection = dir;
+                nextDirection = dir.IsZero() ? direction.Perpendicular() : dir;
             }
             catch
             {
                 nextDirection = direction.Perpendicular();
             }
+            // 最终防护：如果 nextDirection 仍然是零向量，用 UnitX
+            if (nextDirection.IsZero())
+                nextDirection = Vector2D.UnitX;
 
             return (endPoint, nextDirection);
         }
@@ -309,8 +327,10 @@ namespace HyCADTool.Refactored.Domain.Utilities
         public static Point2D CalculateHookPoint(Line2D seg, bool isStartPoint, double hookLength)
         {
             Vector2D segDir = seg.StartPoint.VectorTo(seg.EndPoint);
+            if (!segDir.TryNormalize(out Vector2D segDirNorm))
+                return seg.EndPoint; // 零长度线段，不添加弯钩
             double angle = isStartPoint ? Math.PI * 5.0 / 4.0 : Math.PI * 3.0 / 4.0;
-            Vector2D hookDir = segDir.Rotate(angle).Normalize();
+            Vector2D hookDir = segDirNorm.Rotate(angle);
             return seg.EndPoint.Add(hookDir * hookLength);
         }
 
@@ -326,8 +346,10 @@ namespace HyCADTool.Refactored.Domain.Utilities
             ILineIntersectionService intersectionService)
         {
             Vector2D segDir = seg.StartPoint.VectorTo(seg.EndPoint);
-            Vector2D hookDir = segDir.Rotate(Math.PI * 3.0 / 4.0).Normalize();
-            Vector2D hookDirReverse = segDir.Rotate(Math.PI * 5.0 / 4.0).Normalize();
+            if (!segDir.TryNormalize(out Vector2D segDirNorm))
+                return seg.EndPoint; // 零长度线段，不添加弯钩
+            Vector2D hookDir = segDirNorm.Rotate(Math.PI * 3.0 / 4.0);
+            Vector2D hookDirReverse = segDirNorm.Rotate(Math.PI * 5.0 / 4.0);
 
             Point2D basePoint = isStartPoint ? seg.StartPoint : seg.EndPoint;
 
@@ -421,10 +443,17 @@ namespace HyCADTool.Refactored.Domain.Utilities
             }
             else
             {
-                Vector2D dir = seg.Direction.Normalize();
-                Point2D mid = seg.MidPoint;
-                result.Add(mid.Subtract(dir * (separation / 2)));
-                result.Add(mid.Add(dir * (separation / 2)));
+                if (seg.Direction.TryNormalize(out Vector2D dir))
+                {
+                    Point2D mid = seg.MidPoint;
+                    result.Add(mid.Subtract(dir * (separation / 2)));
+                    result.Add(mid.Add(dir * (separation / 2)));
+                }
+                else
+                {
+                    result.Add(seg.StartPoint);
+                    result.Add(seg.EndPoint);
+                }
             }
 
             return result.ToArray();
@@ -561,7 +590,22 @@ namespace HyCADTool.Refactored.Domain.Utilities
 
             // 1. 偏移边界 → 分段钢筋（向内偏移：旧代码用负距离 GetOffsetCurves(-ProtectionThickness)）
             var offsetBoundary = offsetService.Offset(boundary, -protectionThickness);
+            // 偏移后清理极短线段（小尺寸多段线偏移可能产生退化几何）
+            offsetBoundary.RemoveShortSegments(1.0); // 1mm 容差
+            if (offsetBoundary.VertexCount < 3)
+            {
+                // 偏移后退化为不可用的几何，返回空结果
+                result.SubReinforcements = new Polyline2D[0];
+                return result;
+            }
             result.SubReinforcements = offsetBoundary.SplitByAngleThreshold();
+
+            // 过滤掉退化的子钢筋（顶点数<2 或长度过短）
+            result.SubReinforcements = result.SubReinforcements
+                .Where(s => s.VertexCount >= 2 && s.GetTotalLength() > 1.0)
+                .ToArray();
+            if (result.SubReinforcements.Length == 0)
+                return result;
 
             // 2. 条件连接
             result.SubReinforcements = Polyline2D.ConnectByCondition(
@@ -579,9 +623,13 @@ namespace HyCADTool.Refactored.Domain.Utilities
 
             // 5. 点钢筋（向内偏移：旧代码用 GetOffsetCurves(-DotReinOffset)）
             var dotCenterPoly = offsetService.Offset(boundary, -dotReinOffset);
+            dotCenterPoly.RemoveShortSegments(1.0);
             result.DotReinCenterPoly = dotCenterPoly;
-            result.DotReinPoints = GenerateDotPositions(dotCenterPoly, dotSeparation, dotStartDistance);
-            result.ReduceDotReinPoints = GenerateReducedDotPositions(dotCenterPoly, dotSeparation);
+            if (dotCenterPoly.VertexCount >= 3)
+            {
+                result.DotReinPoints = GenerateDotPositions(dotCenterPoly, dotSeparation, dotStartDistance);
+                result.ReduceDotReinPoints = GenerateReducedDotPositions(dotCenterPoly, dotSeparation);
+            }
 
             // 6. 标注
             string labelContent = $"\\U+E532{parameters.RebarDiameter}@{parameters.RebarSpacing}";

@@ -44,6 +44,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double scale = vm?.Scale ?? 40.0;
             double hookLength = (vm?.HookLength ?? 1.0) * scale; // 绿色参数 × Scale
 
+            // 确保样式已同步
+            vm?.EnsureStylesApplied();
+
             try
             {
                 // 选择多段线

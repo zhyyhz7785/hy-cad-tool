@@ -471,6 +471,83 @@
         </Setter>
     </Style>
 
+    <!-- ===== AutoCAD 2025 风格 TabControl / TabItem ===== -->
+
+    <!-- TabItem Style: 紧凑水平 Tab，选中底部蓝色指示条 -->
+    <Style x:Key="AcadTabItemStyle" TargetType="TabItem">
+        <Setter Property="Foreground" Value="#CCCCCC" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid>
+                        <Border x:Name="TabBorder" 
+                                Background="{TemplateBinding Background}" 
+                                Padding="8,5,8,5"
+                                Margin="0">
+                            <ContentPresenter ContentSource="Header" 
+                                              HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"
+                                              TextBlock.FontSize="12" />
+                        </Border>
+                        <!-- 底部指示条 -->
+                        <Border x:Name="Indicator"
+                                Height="2" 
+                                VerticalAlignment="Bottom"
+                                Background="Transparent"
+                                Margin="4,0,4,0" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter TargetName="TabBorder" Property="Background" Value="#3E3E42" />
+                            <Setter TargetName="Indicator" Property="Background" Value="#5294E2" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="TabBorder" Property="Background" Value="#333337" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- TabControl Style: 无边框，紧凑布局 -->
+    <Style x:Key="AcadTabControlStyle" TargetType="TabControl">
+        <Setter Property="Background" Value="#2e3440" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <!-- Tab 头部区域 -->
+                        <Border Grid.Row="0" 
+                                Background="#2D2D30" 
+                                BorderBrush="#3F3F46" 
+                                BorderThickness="0,0,0,1">
+                            <TabPanel IsItemsHost="True" 
+                                      Margin="2,0,0,0" />
+                        </Border>
+                        <!-- Tab 内容区域 -->
+                        <Border Grid.Row="1" 
+                                Background="#2e3440"
+                                Padding="0">
+                            <ContentPresenter ContentSource="SelectedContent" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ComboBoxItem Style -->
     <Style TargetType="ComboBoxItem">
         <Setter Property="Background" Value="Transparent"/>

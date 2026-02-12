@@ -51,9 +51,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
             var db = doc.Database;
             var ed = doc.Editor;
 
-            // 从面板读取最新参数，并同步样式
+            // 从面板读取最新参数（样式已在 CommandRegistry.Run 中同步，无需重复调用）
             var vm = SettingsPanelViewModel.Current;
-            vm?.EnsureStylesApplied();
 
             double scale = vm?.Scale ?? 40.0;
             double mleaderDistance = (vm?.MleaderDistance ?? 6.0) * scale;
@@ -64,10 +63,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double dotReinOffsetRaw = vm?.DotReinOffset ?? 1.35;
             double dotReinOffsetOut = (dotReinOffsetRaw - 1) * scale;
 
+            // 确保样式已同步
+            vm?.EnsureStylesApplied();
+
             string content = $"\\U+E532{rebarDiameter}@{rebarSpacing}";
 
-            // 确保图层存在并设置当前图层
-            EnsureLayerExists(LayerMLeader);
+            // 图层已在 PluginInitializer 中创建，直接设置当前图层
             _layerService.SetCurrentLayer(LayerMLeader);
 
             try
@@ -151,7 +152,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// </summary>
         private void AddEntitiesToSpace(Database db, MLeader ml, Polyline[] dotReins)
         {
-            EnsureLayerExists(LayerDotRein);
             var doc = AcApp.DocumentManager.MdiActiveDocument;
 
             using (doc.LockDocument())
@@ -307,17 +307,5 @@ namespace HyCADTool.Refactored.Presentation.Commands
             return start + segVec * t;
         }
 
-        // ================================================================
-        //  图层辅助方法
-        // ================================================================
-
-        /// <summary>确保图层存在（不存在则创建，颜色默认白色）</summary>
-        private void EnsureLayerExists(string layerName)
-        {
-            if (!_layerService.LayerExists(layerName))
-            {
-                _layerService.CreateLayer(layerName, 7); // 7 = 白色
-            }
-        }
     }
 }

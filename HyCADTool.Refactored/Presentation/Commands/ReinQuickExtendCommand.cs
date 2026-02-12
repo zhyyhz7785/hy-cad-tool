@@ -32,6 +32,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double scale = vm?.Scale ?? 40.0;
             double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
 
+            // 确保样式已同步
+            vm?.EnsureStylesApplied();
+
             try
             {
                 // 1. 选择边界多段线

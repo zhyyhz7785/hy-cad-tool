@@ -85,6 +85,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Presentation\Views\HyToolPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
 
   <!-- 已删除的废弃文件：ReinPanel.xaml/.cs、ReinPanelViewModel.cs、ShowMainPanelCommand.cs（2026-02-10 第三轮清理） -->

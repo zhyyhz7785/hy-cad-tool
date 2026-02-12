@@ -6,7 +6,9 @@ using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.PluginInitializer))]
+// 已移除 [assembly: CommandClass(typeof(PluginInitializer))]
+// 不指定 CommandClass 时 AutoCAD 自动扫描所有类型的 [CommandMethod]
+// CommandRegistry.cs 集中注册所有命令简写
 
 namespace HyCADTool.Refactored.Presentation
 {
@@ -42,19 +44,15 @@ namespace HyCADTool.Refactored.Presentation
 
                 WriteMessage("\n✓ 配置已加载");
 
-                // 初始化样式和图层（现在由配置服务处理）
-                // InitializeStylesAndLayers();
-
-                WriteMessage("\n✓ 样式和图层已初始化");
+                // 一次性初始化所有样式和图层
+                InitializeStylesAndLayers();
 
                 // 注册文档事件（可选）
                 RegisterDocumentEvents();
 
                 WriteMessage("\n========================================");
                 WriteMessage("\n✓ HyCADTool.Refactored 插件初始化完成！");
-                WriteMessage("\n========================================");
-                WriteMessage("\n提示：输入命令查看可用功能");
-                WriteMessage("\n");
+                WriteMessage("\n========================================\n");
             }
             catch (System.Exception ex)
             {
@@ -72,6 +70,13 @@ namespace HyCADTool.Refactored.Presentation
             {
                 WriteMessage("\n========================================");
                 WriteMessage("\nHyCADTool.Refactored 插件正在卸载...");
+
+                // 保存当前面板设置
+                try
+                {
+                    ViewModels.SettingsPanelViewModel.Current?.SaveSettings();
+                }
+                catch { }
 
                 // 清理事件订阅
                 UnregisterDocumentEvents();
@@ -115,7 +120,9 @@ namespace HyCADTool.Refactored.Presentation
         }
 
         /// <summary>
-        /// 初始化样式和图层（已由 ConfigurationService 处理，保留此方法以防需要）
+        /// 一次性初始化所有样式和图层（插件启动时执行）
+        /// 从 hy-settings.json 加载上次持久化的参数（Scale、字体等），不再硬编码
+        /// 后续命令不再重复创建，仅面板参数变更时按需更新
         /// </summary>
         private void InitializeStylesAndLayers()
         {
@@ -124,53 +131,86 @@ namespace HyCADTool.Refactored.Presentation
                 var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
                 var layerService = ServiceLocator.Resolve<Domain.Interfaces.ILayerService>();
 
-                // 创建默认文本样式
-                var textStyleConfig = Domain.ValueObjects.Configuration.Global.TextStyleConfig.CreateDefault(
-                    "HyCAD_Standard", scale: 1.0);
-                styleService.CreateTextStyle(
-                    textStyleConfig.Name, 
-                    textStyleConfig.FontFileName, 
-                    textStyleConfig.BigFontFileName, 
-                    textStyleConfig.TextSize, 
-                    textStyleConfig.XScale);
+                // 从 SettingsPanelViewModel 获取持久化参数（构造时已自动 LoadSettings）
+                var vm = ViewModels.SettingsPanelViewModel.GetOrCreate(
+                    AcApp.DocumentManager.MdiActiveDocument?.Name ?? "default",
+                    styleService);
 
-                // 创建默认标注样式
-                var dimStyleConfig = Domain.ValueObjects.Configuration.Global.DimensionStyleConfig.CreateDefault(
-                    "HyCAD_Dim", "HyCAD_Standard", scale: 1.0);
-                styleService.CreateDimensionStyle(
-                    dimStyleConfig.Name, 
-                    dimStyleConfig.TextStyleName, 
-                    scale: 1.0);
+                double scale = vm.Scale;
+                string textStyleName = vm.TextStyleName;
+                string dimStyleName = vm.DimStyleName;
+                string mleaderStyleName = vm.MLeaderStyleName;
+                string tableStyleName = vm.TableStyleName;
 
-                // 创建常用图层
-                CreateDefaultLayers(layerService);
+                styleService.CreateTextStyle(textStyleName, vm.FontFileName, vm.BigFontFileName, vm.TextSize * scale, vm.TextXScale);
+                styleService.SetCurrentTextStyle(textStyleName);
+                styleService.CreateDimensionStyle(dimStyleName, textStyleName, scale, vm.Dimtxt, vm.Dimexo, vm.Dimexe, vm.Dimdle, vm.Dimgap, vm.Dimasz);
+                styleService.SetCurrentDimensionStyle(dimStyleName);
+                styleService.CreateMLeaderStyle(mleaderStyleName, textStyleName, scale, vm.MLeaderArrowSize, vm.MLeaderLandingGap, vm.TextSize, vm.MLeaderTextColorIndex);
+                styleService.SetCurrentMLeaderStyle(mleaderStyleName);
+                styleService.CreateTableStyle(tableStyleName, textStyleName);
+                styleService.SetCurrentTableStyle(tableStyleName);
 
-                WriteMessage("\n  - 已创建文本样式: HyCAD_Standard");
-                WriteMessage("\n  - 已创建标注样式: HyCAD_Dim");
-                WriteMessage("\n  - 已创建默认图层");
+                WriteMessage($"\n  ✓ 样式已创建 (Scale={scale}, 从 hy-settings.json 加载)");
+
+                // 创建所有需要的图层（静默模式，不输出每个图层）
+                layerService.CreateMultipleLayers(
+                    // ── 钢筋 ──
+                    ("01_hy_1钢筋_线钢筋", 1),
+                    ("01_hy_1钢筋_点钢筋", 5),
+                    ("01_hy_1钢筋_线钢筋_外部", 1),
+                    // ── 公共标注 ──
+                    ("00_hy_3公共_标注1_外", 3),
+                    ("00_hy_3公共_标注3_引线", 92),
+                    // ── 筏板附加配筋 ──
+                    ("00_hy_配筋轮廓", 1),
+                    ("00_hy_调整配筋轮廓", 3),
+                    ("00_hy_筏板附加配筋x_上", 1),
+                    ("00_hy_筏板附加配筋x_下", 1),
+                    ("00_hy_筏板附加配筋y_上", 3),
+                    ("00_hy_筏板附加配筋y_下", 3),
+                    ("00_hy_筏板附加配筋文字_x", 7),
+                    ("00_hy_筏板附加配筋文字_y", 7),
+                    ("00_hy_筏板附加配筋x_标注", 1),
+                    ("00_hy_筏板附加配筋Y_标注", 3),
+                    // ── 视口 ──
+                    ("00_hy_2公共_视口", 1),
+                    // ── 桩基 ──
+                    ("02_hy_1桩_主", 3),
+                    ("02_hy_3桩_地基内轮廓", 8),
+                    // ── 垫层 ──
+                    ("00_hy_垫层", 7),
+                    // ── 图框 ──
+                    ("00_hy_图框", 7),
+                    // ── 配筋文字分类 ──
+                    ("HY_H向钢筋", 7),
+                    ("HY_V向钢筋", 2),
+                    ("HY_手动配筋", 1),
+                    // ── 聚类分析 ──
+                    ("00_hy_BP", 3),
+                    ("00_hy_AAP", 1),
+                    ("00_hy_BAP", 4),
+                    ("00_hy_ABolt", 2),
+                    ("00_hy_SteelPlate", 5),
+                    ("00_hy_AxisCircle", 7),
+                    ("00_hy_AxisText", 7),
+                    ("00_hy_Region", 9),
+                    ("00_hy_RegionText", 9),
+                    ("00_hy_Dim_X", 7),
+                    ("00_hy_Dim_Y", 7),
+                    ("00_hy_ClusterEP", 8),
+                    ("00_hy_ClusterEEP", 8),
+                    ("00_hy_ClusterHull", 6),
+                    ("00_hy_ClusterPts", 34)
+                );
+
+                WriteMessage("\n  ✓ 图层已创建");
+                WriteMessage($"\n  ✓ 设置文件: {ViewModels.SettingsPanelViewModel.GetSettingsFilePath()}");
             }
             catch (System.Exception ex)
             {
                 WriteMessage($"\n  ⚠ 样式/图层初始化警告：{ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// 创建默认图层
-        /// </summary>
-        private void CreateDefaultLayers(Domain.Interfaces.ILayerService layerService)
-        {
-            // 配筋图层
-            if (!layerService.LayerExists("00_Hy_配筋"))
-                layerService.CreateLayer("00_Hy_配筋", 1); // 红色
-
-            // 标注图层
-            if (!layerService.LayerExists("00_Hy_标注"))
-                layerService.CreateLayer("00_Hy_标注", 3); // 绿色
-
-            // 轴线图层
-            if (!layerService.LayerExists("00_Hy_轴线"))
-                layerService.CreateLayer("00_Hy_轴线", 5); // 蓝色
         }
 
         /// <summary>

@@ -1,0 +1,302 @@
+using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
+using System;
+using System.Collections.Generic;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+
+namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
+{
+    /// <summary>
+    /// 标高符号服务
+    /// 封装图层/文字样式初始化、符号字典构建、批量更新/旋转
+    /// 迁移自旧代码 ElevationSymbol 的静态方法
+    /// </summary>
+    public class ElevationService
+    {
+        private static ObjectId _cachedTextStyleId = ObjectId.Null;
+        private static ObjectId _cachedLayerId = ObjectId.Null;
+
+        /// <summary>
+        /// 确保标高图层和文字样式已创建，返回 (textStyleId, layerId)
+        /// </summary>
+        public static (ObjectId textStyleId, ObjectId layerId) EnsureStylesCreated()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            var db = doc.Database;
+
+            if (_cachedTextStyleId.IsNull || _cachedTextStyleId.IsErased)
+            {
+                _cachedTextStyleId = CreateTextStyleForElevation(db, doc);
+            }
+
+            if (_cachedLayerId.IsNull || _cachedLayerId.IsErased)
+            {
+                _cachedLayerId = CreateLayerForElevation(db, doc);
+            }
+
+            return (_cachedTextStyleId, _cachedLayerId);
+        }
+
+        /// <summary>
+        /// 重置缓存（文档切换时调用）
+        /// </summary>
+        public static void ResetCache()
+        {
+            _cachedTextStyleId = ObjectId.Null;
+            _cachedLayerId = ObjectId.Null;
+        }
+
+        /// <summary>
+        /// 从用户选择构建符号字典
+        /// 键: Tuple(Shape ObjectId, Shape1 ObjectId)  值: Text ObjectId
+        /// </summary>
+        public static Dictionary<Tuple<ObjectId, ObjectId>, ObjectId> BuildSymbolDictionaryFromSelection()
+        {
+            var dict = new Dictionary<Tuple<ObjectId, ObjectId>, ObjectId>();
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            var db = AcApp.DocumentManager.MdiActiveDocument.Database;
+
+            // 过滤标高图层
+            var filter = new TypedValue[]
+            {
+                new TypedValue((int)DxfCode.LayerName, ElevationSymbolJig.ElevationLayerName)
+            };
+            var selFilter = new SelectionFilter(filter);
+            PromptSelectionResult psr = ed.GetSelection(selFilter);
+
+            if (psr.Status != PromptStatus.OK)
+            {
+                ed.WriteMessage("\n未选择任何对象。");
+                return dict;
+            }
+
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var ss = psr.Value;
+                var shapes = new List<ObjectId>();    // 4 顶点 Polyline
+                var shape1s = new List<ObjectId>();   // 2 顶点 Polyline
+                var texts = new List<ObjectId>();     // DBText
+
+                foreach (ObjectId id in ss.GetObjectIds())
+                {
+                    var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
+                    if (ent is Polyline polyline)
+                    {
+                        if (polyline.NumberOfVertices == 4) shapes.Add(id);
+                        else if (polyline.NumberOfVertices == 2) shape1s.Add(id);
+                    }
+                    else if (ent is DBText)
+                    {
+                        texts.Add(id);
+                    }
+                }
+
+                // 匹配 Shape + Shape1 → Text
+                foreach (ObjectId shapeId in shapes)
+                {
+                    var shape = tr.GetObject(shapeId, OpenMode.ForRead) as Polyline;
+                    if (shape == null || shape.NumberOfVertices != 4) continue;
+
+                    Point3d shapeThirdPoint = shape.GetPoint3dAt(2);
+
+                    foreach (ObjectId shape1Id in shape1s)
+                    {
+                        var shape1 = tr.GetObject(shape1Id, OpenMode.ForRead) as Polyline;
+                        if (shape1 == null || shape1.NumberOfVertices != 2) continue;
+
+                        Point2d sp = shape1.GetPoint2dAt(0);
+                        Point2d ep = shape1.GetPoint2dAt(1);
+                        var midPoint = new Point3d((sp.X + ep.X) / 2, (sp.Y + ep.Y) / 2, shapeThirdPoint.Z);
+
+                        if (midPoint.DistanceTo(shapeThirdPoint) < 0.001)
+                        {
+                            // 找到匹配，寻找最近的 DBText
+                            DBText nearestText = null;
+                            double minDist = double.MaxValue;
+                            foreach (ObjectId textId in texts)
+                            {
+                                var text = tr.GetObject(textId, OpenMode.ForRead) as DBText;
+                                if (text != null)
+                                {
+                                    double dist = shapeThirdPoint.DistanceTo(text.Position);
+                                    if (dist < minDist)
+                                    {
+                                        minDist = dist;
+                                        nearestText = text;
+                                    }
+                                }
+                            }
+
+                            if (nearestText != null)
+                            {
+                                dict[new Tuple<ObjectId, ObjectId>(shapeId, shape1Id)] = nearestText.ObjectId;
+                                texts.Remove(nearestText.ObjectId);
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                tr.Commit();
+            }
+
+            return dict;
+        }
+
+        /// <summary>
+        /// 更新所有标高文字（基于新基准点）
+        /// </summary>
+        public static void UpdateElevationsByPoint(
+            Point3d newBasePoint,
+            Dictionary<Tuple<ObjectId, ObjectId>, ObjectId> dictionary)
+        {
+            var db = AcApp.DocumentManager.MdiActiveDocument.Database;
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                foreach (var entry in dictionary)
+                {
+                    ObjectId shapeId = entry.Key.Item1;
+                    ObjectId textId = entry.Value;
+
+                    var shape = tr.GetObject(shapeId, OpenMode.ForRead) as Polyline;
+                    var text = tr.GetObject(textId, OpenMode.ForWrite) as DBText;
+
+                    if (shape != null && text != null && shape.NumberOfVertices >= 3)
+                    {
+                        Point3d refPoint = shape.GetPoint3dAt(2);
+                        double elevation = (refPoint.Y - newBasePoint.Y) / 1000.0;
+                        text.TextString = Math.Abs(refPoint.Y - newBasePoint.Y) < 0.001
+                            ? $"±{elevation:F3}"
+                            : $"{elevation:F3}";
+                    }
+                }
+                tr.Commit();
+            }
+        }
+
+        /// <summary>
+        /// 旋转所有标高符号
+        /// </summary>
+        public static void RotateAllByAngle(
+            double angleDegrees,
+            Dictionary<Tuple<ObjectId, ObjectId>, ObjectId> dictionary)
+        {
+            var db = AcApp.DocumentManager.MdiActiveDocument.Database;
+            double angleRadians = angleDegrees * Math.PI / 180.0;
+
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                foreach (var entry in dictionary)
+                {
+                    var shape = tr.GetObject(entry.Key.Item1, OpenMode.ForWrite) as Polyline;
+                    var shape1 = tr.GetObject(entry.Key.Item2, OpenMode.ForWrite) as Polyline;
+                    var text = tr.GetObject(entry.Value, OpenMode.ForWrite) as DBText;
+
+                    if (shape != null && shape.NumberOfVertices >= 3)
+                    {
+                        Point3d center = shape.GetPoint3dAt(2);
+
+                        // 旋转 Shape
+                        shape.TransformBy(Matrix3d.Rotation(angleRadians, Vector3d.ZAxis, center));
+
+                        // 旋转 Shape1
+                        if (shape1 != null)
+                            shape1.TransformBy(Matrix3d.Rotation(angleRadians, Vector3d.ZAxis, center));
+
+                        // 旋转 Text
+                        if (text != null)
+                            text.TransformBy(Matrix3d.Rotation(angleRadians, Vector3d.ZAxis, center));
+                    }
+                }
+                tr.Commit();
+            }
+        }
+
+        /// <summary>
+        /// 计算 _currentPoint 使得生成的 Label.Position 与指定 textPosition 重合
+        /// 用于从文字创建标高符号
+        /// </summary>
+        public static Point3d CalculateCurrentPointFromText(
+            Point3d textPosition, double scale, double d, double angleRadians)
+        {
+            double sqrt2 = Math.Sqrt(2) / 2 * d;
+            double offsetX = 0.909585 * sqrt2 * scale;
+            double offsetY = -1.57695 * sqrt2 * scale;
+            return new Point3d(textPosition.X + offsetX, textPosition.Y + offsetY, 0);
+        }
+
+        #region Private
+
+        private static ObjectId CreateTextStyleForElevation(Database db, Document doc)
+        {
+            var vm = Presentation.ViewModels.SettingsPanelViewModel.Current;
+            string styleName = vm != null ? vm.TextStyleName : "0_Hy_40";
+            string fontName = vm != null ? vm.FontFileName : "tssdeng.shx";
+            string bigFontName = vm != null ? vm.BigFontFileName : "hztxt.shx";
+            double textHeight = (vm != null ? vm.TextSize : 2.5) * (vm != null ? vm.Scale : 40.0);
+            double widthFactor = vm != null ? vm.TextXScale : 0.7;
+
+            ObjectId styleId = ObjectId.Null;
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var tst = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+                if (tst.Has(styleName))
+                {
+                    styleId = tst[styleName];
+                }
+                else
+                {
+                    tst.UpgradeOpen();
+                    var rec = new TextStyleTableRecord
+                    {
+                        Name = styleName,
+                        FileName = fontName,
+                        BigFontFileName = bigFontName,
+                        TextSize = textHeight,
+                        XScale = widthFactor
+                    };
+                    styleId = tst.Add(rec);
+                    tr.AddNewlyCreatedDBObject(rec, true);
+                }
+                tr.Commit();
+            }
+            return styleId;
+        }
+
+        private static ObjectId CreateLayerForElevation(Database db, Document doc)
+        {
+            ObjectId layerId = ObjectId.Null;
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+                if (lt.Has(ElevationSymbolJig.ElevationLayerName))
+                {
+                    layerId = lt[ElevationSymbolJig.ElevationLayerName];
+                }
+                else
+                {
+                    lt.UpgradeOpen();
+                    var rec = new LayerTableRecord
+                    {
+                        Name = ElevationSymbolJig.ElevationLayerName,
+                        Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
+                            Autodesk.AutoCAD.Colors.ColorMethod.ByAci, ElevationSymbolJig.ElevationLayerColor)
+                    };
+                    layerId = lt.Add(rec);
+                    tr.AddNewlyCreatedDBObject(rec, true);
+                }
+                tr.Commit();
+            }
+            return layerId;
+        }
+
+        #endregion
+    }
+}
