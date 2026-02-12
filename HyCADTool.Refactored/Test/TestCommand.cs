@@ -33,8 +33,8 @@ namespace HyCADTool.Refactored.Test
             }
             else
             {
-                // 无命令 → 打开统一工具面板（桩基 Tab 测试）
-                ShowPanelCommand.ShowHyToolPanel();
+                // 无命令 → 测试 Markdown 设计说明排版命令
+                new DesignSpecCommand().Execute();
             }
         }
     }

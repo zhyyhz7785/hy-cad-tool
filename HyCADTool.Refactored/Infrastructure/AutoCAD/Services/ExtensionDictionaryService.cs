@@ -2,6 +2,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Entities;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -123,6 +125,82 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 WriteGuid(tr, entity, guid);
             }
             return guid;
+        }
+
+        #endregion
+
+        #region 长字符串读写（分片存储，突破 XRecord 单条 2000 字符限制）
+
+        private const int CHUNK_SIZE = 2000;
+
+        /// <summary>
+        /// 写入长字符串：分片为每段 CHUNK_SIZE 字符的 TypedValue[]
+        /// 用于存储 Markdown 源码等大文本
+        /// </summary>
+        public static void WriteLongString(Transaction tr, Entity entity, string text, string key)
+        {
+            entity.UpgradeOpen();
+
+            DBDictionary extDict;
+            if (entity.ExtensionDictionary.IsValid)
+            {
+                extDict = tr.GetObject(entity.ExtensionDictionary, OpenMode.ForWrite) as DBDictionary;
+            }
+            else
+            {
+                entity.CreateExtensionDictionary();
+                extDict = tr.GetObject(entity.ExtensionDictionary, OpenMode.ForWrite) as DBDictionary;
+            }
+
+            // 分片
+            var chunks = new List<TypedValue>();
+            if (!string.IsNullOrEmpty(text))
+            {
+                for (int i = 0; i < text.Length; i += CHUNK_SIZE)
+                {
+                    int len = Math.Min(CHUNK_SIZE, text.Length - i);
+                    chunks.Add(new TypedValue((int)DxfCode.Text, text.Substring(i, len)));
+                }
+            }
+
+            var xrec = new Xrecord { Data = new ResultBuffer(chunks.ToArray()) };
+
+            if (extDict.Contains(key)) extDict.Remove(key);
+            extDict.SetAt(key, xrec);
+            tr.AddNewlyCreatedDBObject(xrec, true);
+        }
+
+        /// <summary>
+        /// 读取长字符串：拼接所有 TypedValue 还原完整文本
+        /// </summary>
+        public static string ReadLongString(Transaction tr, Entity entity, string key)
+        {
+            if (!entity.ExtensionDictionary.IsValid) return null;
+
+            var extDict = tr.GetObject(entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary;
+            if (extDict == null || !extDict.Contains(key)) return null;
+
+            var xrec = tr.GetObject(extDict.GetAt(key), OpenMode.ForRead) as Xrecord;
+            if (xrec?.Data == null) return null;
+
+            var sb = new StringBuilder();
+            foreach (TypedValue tv in xrec.Data)
+            {
+                if (tv.TypeCode == (int)DxfCode.Text)
+                    sb.Append(tv.Value.ToString());
+            }
+
+            return sb.Length > 0 ? sb.ToString() : null;
+        }
+
+        /// <summary>
+        /// 检查实体是否包含指定 key 的扩展字典数据
+        /// </summary>
+        public static bool HasKey(Transaction tr, Entity entity, string key)
+        {
+            if (!entity.ExtensionDictionary.IsValid) return false;
+            var extDict = tr.GetObject(entity.ExtensionDictionary, OpenMode.ForRead) as DBDictionary;
+            return extDict != null && extDict.Contains(key);
         }
 
         #endregion
