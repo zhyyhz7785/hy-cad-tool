@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:controls="clr-namespace:HyCADTool.MarkdownEditor.Views.Controls"
+        xmlns:helper="clr-namespace:HyCADTool.MarkdownEditor.Views.Helpers"
         Title="HY Markdown Editor"
         Width="960" Height="720"
         MinWidth="720" MinHeight="480"
@@ -48,6 +49,31 @@
             <Setter Property="Foreground" Value="#c9d1d9" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="8,4" />
+        </Style>
+
+        <Style x:Key="ParamInput" TargetType="TextBox">
+            <Setter Property="Background" Value="#0d1117" />
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="BorderBrush" Value="#30363d" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="2,1" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True" />
+            <Setter Property="helper:TextBoxHelper.ScrollStep" Value="0.1" />
+        </Style>
+        <Style x:Key="ParamLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#8b949e" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style x:Key="ParamSmallLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6e7681" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="10" />
         </Style>
     </Window.Resources>
 
@@ -159,7 +185,8 @@
         <!-- 阶段1骨架：下左大纲 + 下中编辑 + 右侧可切换预览 -->
         <Grid Grid.Row="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
+                <RowDefinition x:Name="PreviewMainRow" Height="*" />
+                <RowDefinition x:Name="BottomPanelSplitterRow" Height="0" />
                 <RowDefinition x:Name="BottomPanelRow" Height="0" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -170,7 +197,7 @@
                 <ColumnDefinition x:Name="PreviewCol" Width="0" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.RowSpan="2" Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
+            <Border Grid.RowSpan="3" Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="28" />
@@ -184,9 +211,9 @@
                 </Grid>
             </Border>
 
-            <Border x:Name="OutlineDivider" Grid.RowSpan="2" Grid.Column="1" Background="#24292e" />
+            <Border x:Name="OutlineDivider" Grid.RowSpan="3" Grid.Column="1" Background="#24292e" />
 
-            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" />
+            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" />
 
             <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="3" Width="4"
                           HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
@@ -194,6 +221,7 @@
 
             <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="32" />
                     <RowDefinition x:Name="RulerRow" Height="24" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
@@ -202,16 +230,102 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="RulerCorner" Grid.Row="0" Grid.Column="0" Background="#161b22"
+                <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,0,1">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
+                            <ComboBox Width="62" Height="22"
+                                      ItemsSource="{Binding PageOrientations}"
+                                      SelectedItem="{Binding PageOrientation, Mode=TwoWay}" />
+                            <ComboBox Width="92" Height="22"
+                                      Margin="4,0,0,0"
+                                      ItemsSource="{Binding PagePresets}"
+                                      SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="1:" Margin="8,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="34"
+                                     helper:TextBoxHelper.ScrollStep="1"
+                                     Text="{Binding DrawScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="栏" Margin="8,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="28"
+                                     helper:TextBoxHelper.ScrollStep="1"
+                                     Text="{Binding ColumnCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="间距" Margin="8,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}"
+                                     Text="{Binding ColumnGutter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="字高" Margin="8,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}"
+                                     Text="{Binding TextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="字宽" Margin="8,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}"
+                                     Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamLabel}" Text="缩放" Margin="8,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}"
+                                     Text="{Binding PreviewScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Border Style="{StaticResource Sep}" Margin="8,0" />
+
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="a" Margin="0,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="30"
+                                     helper:TextBoxHelper.EnableCustomHandlers="False"
+                                     Text="{Binding MarginLeftMm, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="c" Margin="4,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="30"
+                                     helper:TextBoxHelper.EnableCustomHandlers="False"
+                                     Text="{Binding MarginTopMm, Mode=OneWay}" />
+                            <Border Style="{StaticResource Sep}" Margin="8,0" />
+
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1" Margin="0,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2" Margin="6,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3" Margin="6,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P" Margin="6,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Li" Margin="6,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q" Margin="6,0,2,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                                     Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="#161b22"
                         BorderBrush="#24292e" BorderThickness="0,0,1,1" />
-                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="0" Grid.Column="1" Orientation="Horizontal"
+                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
                                        HorizontalAlignment="Left" />
-                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="1" Grid.Column="0" Orientation="Vertical"
+                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical"
                                        VerticalAlignment="Top" />
-                <WebBrowser x:Name="PreviewBrowser" Grid.Row="1" Grid.Column="1" />
+                <WebBrowser x:Name="PreviewBrowser" Grid.Row="2" Grid.Column="1" />
             </Grid>
 
-            <Border x:Name="BottomPanelHost" Grid.Row="1" Grid.Column="4"
+            <GridSplitter x:Name="BottomPanelSplitter" Grid.Row="1" Grid.Column="4" Height="4"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
+                          Background="#24292e" Visibility="Collapsed"
+                          DragCompleted="OnBottomPanelSplitterDragCompleted" />
+
+            <Border x:Name="BottomPanelHost" Grid.Row="2" Grid.Column="4"
                     Background="#161b22" BorderBrush="#24292e" BorderThickness="0,1,0,0"
                     Visibility="Collapsed">
                 <Grid>

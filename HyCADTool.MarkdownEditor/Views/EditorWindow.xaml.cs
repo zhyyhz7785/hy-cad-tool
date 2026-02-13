@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Navigation;
+using System.Windows.Controls.Primitives;
 using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
@@ -29,6 +30,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private bool _previewVisible;
         private bool _outlineVisible = true;
         private bool _bottomPanelVisible;
+        private double _bottomPanelHeight = 140;
         private VditorJsHelper _js;
         private const int WM_MOUSEWHEEL = 0x020A;
         private readonly DispatcherTimer _previewRulerSyncTimer;
@@ -180,10 +182,22 @@ namespace HyCADTool.MarkdownEditor.Views
         private void ApplyBottomPanelLayout()
         {
             bool show = _bottomPanelVisible && _previewVisible;
-            BottomPanelRow.Height = show
-                ? new GridLength(140, GridUnitType.Pixel)
+            BottomPanelSplitterRow.Height = show
+                ? new GridLength(4, GridUnitType.Pixel)
                 : new GridLength(0, GridUnitType.Pixel);
+            BottomPanelRow.Height = show
+                ? new GridLength(Math.Max(80, _bottomPanelHeight), GridUnitType.Pixel)
+                : new GridLength(0, GridUnitType.Pixel);
+            BottomPanelSplitter.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             BottomPanelHost.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnBottomPanelSplitterDragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            if (BottomPanelRow.ActualHeight > 0)
+            {
+                _bottomPanelHeight = BottomPanelRow.ActualHeight;
+            }
         }
 
         private void OnTogglePreview(object sender, RoutedEventArgs e)
@@ -308,6 +322,11 @@ namespace HyCADTool.MarkdownEditor.Views
         private void OnPropChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ViewModel.ColumnCount)
+                || e.PropertyName == nameof(ViewModel.ColumnGutter)
+                || e.PropertyName == nameof(ViewModel.TextSize)
+                || e.PropertyName == nameof(ViewModel.TextXScale)
+                || e.PropertyName == nameof(ViewModel.DrawScale)
+                || e.PropertyName == nameof(ViewModel.PagePreset)
                 || e.PropertyName == nameof(ViewModel.PreviewScale)
                 || e.PropertyName == "SpacingChanged")
             {

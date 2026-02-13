@@ -109,10 +109,36 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set { if (SetProperty(ref _textXScale, Math.Max(0.1, value))) UpdateStatus(); }
         }
 
-        public IReadOnlyList<string> PagePresets { get; } = new[]
+        public IReadOnlyList<string> PageOrientations { get; } = new[] { "横向", "竖向" };
+        private readonly IReadOnlyList<string> _landscapePresets = new[]
         {
-            "A4横向", "A4竖向", "A3横向", "A3竖向", "A2横向", "A2竖向"
+            "A0横向", "A1横向", "A2横向", "A3横向", "A4横向"
         };
+        private readonly IReadOnlyList<string> _portraitPresets = new[]
+        {
+            "A0竖向", "A1竖向", "A2竖向", "A3竖向", "A4竖向"
+        };
+
+        private string _pageOrientation = "横向";
+        public string PageOrientation
+        {
+            get => _pageOrientation;
+            set
+            {
+                string next = string.Equals(value, "竖向", StringComparison.OrdinalIgnoreCase) ? "竖向" : "横向";
+                if (!SetProperty(ref _pageOrientation, next)) return;
+
+                OnPropertyChanged(nameof(PagePresets));
+                // 保持当前 A 号不变，仅切换横/竖
+                string paperSize = ExtractPaperSize(PagePreset);
+                PagePreset = $"{paperSize}{next}";
+            }
+        }
+
+        public IReadOnlyList<string> PagePresets =>
+            string.Equals(PageOrientation, "竖向", StringComparison.OrdinalIgnoreCase)
+                ? _portraitPresets
+                : _landscapePresets;
 
         private string _pagePreset = "A3横向";
         public string PagePreset
@@ -254,6 +280,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _previewScale = cfg.PreviewScale;
             CharsPerColumn = cfg.CharsPerColumn;
             _pagePreset = string.IsNullOrWhiteSpace(cfg.PagePreset) ? _pagePreset : cfg.PagePreset;
+            _pageOrientation = _pagePreset.Contains("竖向", StringComparison.OrdinalIgnoreCase) ? "竖向" : "横向";
             _pageWidthMm = cfg.PageWidthMm > 0 ? cfg.PageWidthMm : _pageWidthMm;
             _pageHeightMm = cfg.PageHeightMm > 0 ? cfg.PageHeightMm : _pageHeightMm;
             _marginLeftMm = cfg.MarginLeftMm;
@@ -273,6 +300,17 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _quoteSpaceAfter = cfg.QuoteSpaceAfter;
 
             UpdateStatus();
+        }
+
+        private static string ExtractPaperSize(string preset)
+        {
+            if (string.IsNullOrWhiteSpace(preset)) return "A3";
+            if (preset.StartsWith("A0", StringComparison.OrdinalIgnoreCase)) return "A0";
+            if (preset.StartsWith("A1", StringComparison.OrdinalIgnoreCase)) return "A1";
+            if (preset.StartsWith("A2", StringComparison.OrdinalIgnoreCase)) return "A2";
+            if (preset.StartsWith("A3", StringComparison.OrdinalIgnoreCase)) return "A3";
+            if (preset.StartsWith("A4", StringComparison.OrdinalIgnoreCase)) return "A4";
+            return "A3";
         }
 
         #endregion
@@ -338,6 +376,14 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         {
             switch (preset)
             {
+                case "A0横向":
+                    PageWidthMm = 1189; PageHeightMm = 841; break;
+                case "A0竖向":
+                    PageWidthMm = 841; PageHeightMm = 1189; break;
+                case "A1横向":
+                    PageWidthMm = 841; PageHeightMm = 594; break;
+                case "A1竖向":
+                    PageWidthMm = 594; PageHeightMm = 841; break;
                 case "A4横向":
                     PageWidthMm = 297; PageHeightMm = 210; break;
                 case "A4竖向":
@@ -354,11 +400,17 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                     PageWidthMm = 420; PageHeightMm = 297; break;
             }
 
-            // 与稳定版一致：边距默认统一，作为预览参数显示
-            MarginLeftMm = 20;
-            MarginRightMm = 20;
-            MarginTopMm = 20;
-            MarginBottomMm = 20;
+            // 幅面边距规则：
+            // a = 左边距；c = 上/下/右边距
+            // A0/A1/A2/A3: a=25, c=10
+            // A4: a=25, c=5
+            bool isA4 = preset != null && preset.StartsWith("A4", StringComparison.OrdinalIgnoreCase);
+            double a = 25;
+            double c = isA4 ? 5 : 10;
+            MarginLeftMm = a;
+            MarginRightMm = c;
+            MarginTopMm = c;
+            MarginBottomMm = c;
         }
 
         #endregion
