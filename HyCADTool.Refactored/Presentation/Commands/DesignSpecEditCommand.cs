@@ -62,28 +62,46 @@ namespace HyCADTool.Refactored.Presentation.Commands
             string newMarkdownSource = null;
             DesignSpecConfig newConfig = null;
 
-            try
+            // 尝试 WebView2 编辑器
+            long ownerHandle = 0;
+            try { ownerHandle = AcApp.MainWindow.Handle.ToInt64(); } catch { }
+
+            bool useModernEditor = EditorLoader.TryShowEditor(
+                markdownSource, existingConfig, ownerHandle,
+                out columnContents, out newMarkdownSource, out newConfig);
+
+            if (!useModernEditor)
             {
-                var dialog = new MarkdownEditorDialog(markdownSource, existingConfig);
-
-                dialog.ViewModel.InsertRequested += (colContents, mdSource, cfg) =>
+                // 回退到旧版编辑器
+                ed.WriteMessage("\n[提示] WebView2 编辑器不可用，使用回退编辑器");
+                try
                 {
-                    columnContents = colContents;
-                    newMarkdownSource = mdSource;
-                    newConfig = cfg;
-                };
+                    var dialog = new MarkdownEditorDialog(markdownSource, existingConfig);
+                    dialog.ViewModel.InsertRequested += (colContents, mdSource, cfg) =>
+                    {
+                        columnContents = colContents;
+                        newMarkdownSource = mdSource;
+                        newConfig = cfg;
+                    };
 
-                AcApp.ShowModalWindow(dialog);
+                    AcApp.ShowModalWindow(dialog);
 
-                if (dialog.DialogResult != true || columnContents == null || columnContents.Length == 0)
+                    if (dialog.DialogResult != true || columnContents == null || columnContents.Length == 0)
+                    {
+                        ed.WriteMessage("\n已取消。");
+                        return;
+                    }
+                }
+                catch (System.Exception ex)
                 {
-                    ed.WriteMessage("\n已取消。");
+                    ed.WriteMessage($"\n打开编辑器失败: {ex.Message}");
                     return;
                 }
             }
-            catch (System.Exception ex)
+
+            if (columnContents == null || columnContents.Length == 0)
             {
-                ed.WriteMessage($"\n打开编辑器失败: {ex.Message}");
+                ed.WriteMessage("\n已取消。");
                 return;
             }
 

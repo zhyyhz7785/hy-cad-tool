@@ -1,27 +1,20 @@
 using Markdig;
 using System;
 using System.Text;
+using HyCADTool.MarkdownEditor.Models;
 
-namespace HyCADTool.Refactored.Domain.Models.Text
+namespace HyCADTool.MarkdownEditor.Html
 {
     /// <summary>
-    /// Markdown → 交互式分栏 HTML 预览
-    /// JS 实现：文字先填满第1栏 → 溢出到第2栏；每栏高度/宽度可拖拽调整
+    /// Markdown → 交互式分栏 HTML 预览（用于 WebBrowser IE11 控件）
     /// </summary>
-    public static class MarkdownHtmlRenderer
+    public static class PreviewHtmlRenderer
     {
         private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .Build();
 
-        /// <summary>
-        /// 生成交互式分栏预览 HTML（单页，含 JS 分配引擎 + 拖拽调整）
-        /// </summary>
-        /// <param name="markdown">Markdown 原文</param>
-        /// <param name="columnCount">栏数</param>
-        /// <param name="previewScale">预览缩放（默认1.0 = 1:1显示）</param>
-        /// <param name="config">配置（用于动态间距，可null用默认值）</param>
-        public static string ToInteractiveHtml(string markdown, int columnCount, double previewScale = 1.0, DesignSpecConfig config = null)
+        public static string ToInteractiveHtml(string markdown, int columnCount, double previewScale = 1.0, EditorConfig config = null)
         {
             string body = string.IsNullOrEmpty(markdown)
                 ? "<p class=\"empty\">(无内容)</p>"
@@ -30,7 +23,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             int cols = Math.Max(1, Math.Min(6, columnCount));
             double scale = Math.Max(0.1, Math.Min(3.0, previewScale));
             string columnsHtml = BuildColumnsHtml(cols);
-            string dynamicCss = BuildDynamicCss(scale, config ?? new DesignSpecConfig());
+            string dynamicCss = BuildDynamicCss(scale, config ?? new EditorConfig());
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"
@@ -43,15 +36,10 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 + "</body></html>";
         }
 
-        /// <summary>
-        /// 根据配置的间距参数动态生成 CSS
-        /// 间距倍率 × baseFontPx = 像素值
-        /// </summary>
-        private static string BuildDynamicCss(double previewScale, DesignSpecConfig cfg)
+        private static string BuildDynamicCss(double previewScale, EditorConfig cfg)
         {
             double basePx = 12.0 * previewScale;
 
-            // 将字高倍数 → em 单位（相对于 body font-size）
             string h1Margin = $"margin:{cfg.H1SpaceBefore:F1}em 0 {cfg.H1SpaceAfter:F1}em";
             string h2Margin = $"margin:{cfg.H2SpaceBefore:F1}em 0 {cfg.H2SpaceAfter:F1}em";
             string h3Margin = $"margin:{cfg.H3SpaceBefore:F1}em 0 {cfg.H3SpaceAfter:F1}em";
@@ -91,7 +79,6 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
         #region CSS
 
-        // CSS 模板：h1/h2/h3/p/li/blockquote 的 margin 用占位符，由 BuildDynamicCss 替换
         private const string CSS_TEMPLATE = @"
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -142,13 +129,11 @@ window.colChars=[];
 window.colParas=[];
 function getColChars(){return window.colChars.join(',');}
 function getColParas(){
-  /* 返回格式: '0,1,2|3,4,5' — 每栏的段落索引用逗号分隔，栏之间用|分隔 */
   var parts=[];
   for(var i=0;i<window.colParas.length;i++){parts.push(window.colParas[i].join(','));}
   return parts.join('|');
 }
 
-/* ═══ 内容分配引擎：填满第1栏 → 溢出到第2栏 → ... ═══ */
 function distribute(){
   var src=document.getElementById('source');
   var cols=document.querySelectorAll('.col-content');
@@ -195,10 +180,7 @@ function distribute(){
   }
 }
 
-/* ═══ 拖拽：竖向调栏高 ═══ */
 function startV(ev,idx){vCol=idx;sY=ev.clientY;var c=document.querySelectorAll('.col-content')[idx];sH=c.offsetHeight;ev.preventDefault();}
-
-/* ═══ 拖拽：横向调栏宽 ═══ */
 function startH(ev,idx){hDiv=idx;sX=ev.clientX;var w=document.querySelectorAll('.col-wrap');sW=[];for(var i=0;i<w.length;i++)sW.push(w[i].offsetWidth);ev.preventDefault();}
 
 document.onmousemove=function(ev){
@@ -225,7 +207,6 @@ document.onmousemove=function(ev){
 
 document.onmouseup=function(){vCol=-1;hDiv=-1;};
 
-/* ═══ 初始化 ═══ */
 function init(){distribute();}
 if(document.readyState==='complete'||document.readyState==='interactive'){setTimeout(init,50);}
 else{window.onload=init;}

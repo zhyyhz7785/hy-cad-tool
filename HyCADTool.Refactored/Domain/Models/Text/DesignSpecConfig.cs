@@ -25,14 +25,25 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// </summary>
         public int[] CharsPerColumn { get; set; } = new int[] { 28, 28 };
 
-        // ── 段落 ──
-        public double ParagraphSpacingFactor { get; set; } = 1.5;
+        // ── 行间距 ──
         public double LineSpacingFactor { get; set; } = 1.2;
 
         // ── 标题字号倍率（相对于 TextSize） ──
         public double H1Scale { get; set; } = 1.6;
         public double H2Scale { get; set; } = 1.3;
         public double H3Scale { get; set; } = 1.1;
+
+        // ── 段前段后间距（字高倍数，× TextSize × Scale → 模型空间 mm） ──
+        public double H1SpaceBefore { get; set; } = 2.0;
+        public double H1SpaceAfter { get; set; } = 0.8;
+        public double H2SpaceBefore { get; set; } = 1.5;
+        public double H2SpaceAfter { get; set; } = 0.6;
+        public double H3SpaceBefore { get; set; } = 1.2;
+        public double H3SpaceAfter { get; set; } = 0.4;
+        public double PSpaceAfter { get; set; } = 0.5;
+        public double LiSpaceAfter { get; set; } = 0.2;
+        public double QuoteSpaceBefore { get; set; } = 0.5;
+        public double QuoteSpaceAfter { get; set; } = 0.5;
 
         // ── 列表缩进（图纸 mm） ──
         public double ListIndent { get; set; } = 4;
@@ -93,6 +104,43 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         public double ActualListIndent => ListIndent * Scale;
         public double ActualQuoteIndent => QuoteIndent * Scale;
         public double ActualColumnGutter => ColumnGutter * Scale;
+
+        /// <summary>获取指定标题级别的段前间距（模型空间 mm）</summary>
+        public double GetHeadingSpaceBefore(int level)
+        {
+            double factor;
+            switch (level)
+            {
+                case 1: factor = H1SpaceBefore; break;
+                case 2: factor = H2SpaceBefore; break;
+                case 3: factor = H3SpaceBefore; break;
+                default: factor = 0; break;
+            }
+            return factor * TextSize * Scale;
+        }
+
+        /// <summary>获取指定标题级别的段后间距（模型空间 mm）</summary>
+        public double GetHeadingSpaceAfter(int level)
+        {
+            double factor;
+            switch (level)
+            {
+                case 1: factor = H1SpaceAfter; break;
+                case 2: factor = H2SpaceAfter; break;
+                case 3: factor = H3SpaceAfter; break;
+                default: factor = 0; break;
+            }
+            return factor * TextSize * Scale;
+        }
+
+        /// <summary>正文段后间距（模型空间 mm）</summary>
+        public double ActualPSpaceAfter => PSpaceAfter * TextSize * Scale;
+        /// <summary>列表项段后间距（模型空间 mm）</summary>
+        public double ActualLiSpaceAfter => LiSpaceAfter * TextSize * Scale;
+        /// <summary>引用段前间距（模型空间 mm）</summary>
+        public double ActualQuoteSpaceBefore => QuoteSpaceBefore * TextSize * Scale;
+        /// <summary>引用段后间距（模型空间 mm）</summary>
+        public double ActualQuoteSpaceAfter => QuoteSpaceAfter * TextSize * Scale;
 
         // ── 兼容：旧版单值 CharsPerLine 的序列化映射 ──
         // （JSON 反序列化时如果旧数据只有 CharsPerLine 字段，可通过此属性恢复）

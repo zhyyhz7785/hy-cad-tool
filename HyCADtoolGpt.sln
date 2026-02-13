@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34902.65
@@ -8,6 +8,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReCall", "ReCall\ReCall.csproj", "{7E0D133E-AAA0-4869-A27D-589D293BE20D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.Refactored", "HyCADTool.Refactored\HyCADTool.Refactored.csproj", "{8A9F5C3E-2B4D-4F6E-9C8A-1D7E3F5B6C9A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor", "HyCADTool.MarkdownEditor\HyCADTool.MarkdownEditor.csproj", "{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +57,18 @@ Global
 		{8A9F5C3E-2B4D-4F6E-9C8A-1D7E3F5B6C9A}.Release|x64.Build.0 = Release|Any CPU
 		{8A9F5C3E-2B4D-4F6E-9C8A-1D7E3F5B6C9A}.Release|x86.ActiveCfg = Release|Any CPU
 		{8A9F5C3E-2B4D-4F6E-9C8A-1D7E3F5B6C9A}.Release|x86.Build.0 = Release|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Debug|x64.Build.0 = Debug|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Debug|x86.Build.0 = Debug|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x64.ActiveCfg = Release|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x64.Build.0 = Release|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x86.ActiveCfg = Release|Any CPU
+		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

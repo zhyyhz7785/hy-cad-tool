@@ -150,6 +150,25 @@ namespace HyCADTool.ReCall
                         // 忽略单文件失败
                     }
                 }
+
+                // 递归复制子目录（如 net8/ 中的 MarkdownEditor）
+                foreach (string subDir in Directory.GetDirectories(sourceDir))
+                {
+                    string subDirName = Path.GetFileName(subDir);
+                    string destSubDir = Path.Combine(tempDir, subDirName);
+                    try
+                    {
+                        Directory.CreateDirectory(destSubDir);
+                        foreach (string file in Directory.GetFiles(subDir))
+                        {
+                            string dest = Path.Combine(destSubDir, Path.GetFileName(file));
+                            try { File.Copy(file, dest, true); }
+                            catch (System.Exception) { }
+                        }
+                    }
+                    catch (System.Exception) { }
+                }
+
                 string loadPath = Path.Combine(tempDir, Path.GetFileName(mainDllPath));
                 return File.Exists(loadPath) ? loadPath : null;
             }
@@ -235,7 +254,6 @@ namespace HyCADTool.ReCall
             string path = Path.Combine(dependenciesPath, name);
             if (File.Exists(path))
             {
-                // 使用 Load(byte[]) 而不是 LoadFrom，避免锁定文件
                 try
                 {
                     return Assembly.Load(File.ReadAllBytes(path));
@@ -244,6 +262,14 @@ namespace HyCADTool.ReCall
                 {
                     return null;
                 }
+            }
+
+            // 搜索 net8 子目录（MarkdownEditor 依赖如 WebView2）
+            string net8Path = Path.Combine(dependenciesPath, "net8", name);
+            if (File.Exists(net8Path))
+            {
+                try { return Assembly.Load(File.ReadAllBytes(net8Path)); }
+                catch { return null; }
             }
 
             try

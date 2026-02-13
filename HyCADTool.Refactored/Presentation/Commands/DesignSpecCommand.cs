@@ -9,7 +9,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
     /// Markdown 设计说明排版命令 (hymd)
-    /// 流程：直接弹窗编辑 → 选择插入点 → 每栏生成独立 MText
+    /// 优先使用 WebView2 编辑器（net8.0），失败回退到旧版 TextBox 编辑器
     /// </summary>
     public class DesignSpecCommand
     {
@@ -22,28 +22,46 @@ namespace HyCADTool.Refactored.Presentation.Commands
             string markdownSource = null;
             DesignSpecConfig config = null;
 
-            try
+            // 尝试 WebView2 编辑器（net8.0 项目）
+            long ownerHandle = 0;
+            try { ownerHandle = AcApp.MainWindow.Handle.ToInt64(); } catch { }
+
+            bool useModernEditor = EditorLoader.TryShowEditor(
+                null, null, ownerHandle,
+                out columnContents, out markdownSource, out config);
+
+            if (!useModernEditor)
             {
-                var dialog = new MarkdownEditorDialog();
-
-                dialog.ViewModel.InsertRequested += (colContents, mdSource, cfg) =>
+                // 回退到旧版编辑器
+                ed.WriteMessage("\n[提示] WebView2 编辑器不可用，使用回退编辑器");
+                try
                 {
-                    columnContents = colContents;
-                    markdownSource = mdSource;
-                    config = cfg;
-                };
+                    var dialog = new MarkdownEditorDialog();
+                    dialog.ViewModel.InsertRequested += (colContents, mdSource, cfg) =>
+                    {
+                        columnContents = colContents;
+                        markdownSource = mdSource;
+                        config = cfg;
+                    };
 
-                AcApp.ShowModalWindow(dialog);
+                    AcApp.ShowModalWindow(dialog);
 
-                if (dialog.DialogResult != true || columnContents == null || columnContents.Length == 0)
+                    if (dialog.DialogResult != true || columnContents == null || columnContents.Length == 0)
+                    {
+                        ed.WriteMessage("\n已取消。");
+                        return;
+                    }
+                }
+                catch (System.Exception ex)
                 {
-                    ed.WriteMessage("\n已取消。");
+                    ed.WriteMessage($"\n打开编辑器失败: {ex.Message}");
                     return;
                 }
             }
-            catch (System.Exception ex)
+
+            if (columnContents == null || columnContents.Length == 0)
             {
-                ed.WriteMessage($"\n打开编辑器失败: {ex.Message}");
+                ed.WriteMessage("\n已取消。");
                 return;
             }
 
@@ -57,7 +75,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                // 诊断
                 string cpcStr = config.CharsPerColumn != null
                     ? string.Join(",", config.CharsPerColumn)
                     : "null";

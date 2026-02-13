@@ -7,11 +7,15 @@ using HyCADTool.Refactored.Presentation.ViewModels;
 
 namespace HyCADTool.Refactored.Presentation.Views
 {
+    /// <summary>
+    /// 回退版 Markdown 编辑器（TextBox + WebBrowser IE11 预览）
+    /// 当 WebView2 编辑器不可用时使用
+    /// </summary>
     public partial class MarkdownEditorDialog : Window
     {
         public MarkdownEditorViewModel ViewModel { get; }
 
-        /// <summary>新建模式（默认尺寸）</summary>
+        /// <summary>新建模式</summary>
         public MarkdownEditorDialog()
         {
             ViewModel = new MarkdownEditorViewModel();
@@ -31,15 +35,23 @@ namespace HyCADTool.Refactored.Presentation.Views
 
         private void Init()
         {
-            Loaded += (s, e) => RefreshPreview();
+            Loaded += OnLoaded;
             ViewModel.PropertyChanged += OnPropChanged;
         }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            RefreshPreview();
+        }
+
+        #region 预览刷新
 
         private void OnPropChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ViewModel.MarkdownText)
                 || e.PropertyName == nameof(ViewModel.ColumnCount)
-                || e.PropertyName == nameof(ViewModel.PreviewScale))
+                || e.PropertyName == nameof(ViewModel.PreviewScale)
+                || e.PropertyName == "SpacingChanged")
             {
                 RefreshPreview();
             }
@@ -49,21 +61,18 @@ namespace HyCADTool.Refactored.Presentation.Views
         {
             try
             {
+                var config = ViewModel.BuildConfig();
                 string html = MarkdownHtmlRenderer.ToInteractiveHtml(
-                    ViewModel.MarkdownText ?? "", ViewModel.ColumnCount, ViewModel.PreviewScale);
+                    ViewModel.MarkdownText ?? "", ViewModel.ColumnCount, ViewModel.PreviewScale, config);
                 PreviewBrowser.NavigateToString(html);
             }
-            catch (Exception) { }
+            catch (System.Exception) { }
         }
 
-        /// <summary>
-        /// 从 WebBrowser JS 读取每栏的"字/行"值和段落分配
-        /// </summary>
         private void SyncFromPreview()
         {
             try
             {
-                // 读取每栏字符数
                 var charsResult = PreviewBrowser.InvokeScript("getColChars");
                 if (charsResult is string csv && !string.IsNullOrEmpty(csv))
                 {
@@ -75,19 +84,29 @@ namespace HyCADTool.Refactored.Presentation.Views
                         ViewModel.CharsPerColumn = values;
                 }
 
-                // 读取每栏段落索引（格式: "0,1,2|3,4,5"）
                 var parasResult = PreviewBrowser.InvokeScript("getColParas");
                 if (parasResult is string parasStr && !string.IsNullOrEmpty(parasStr))
                 {
                     ViewModel.ColumnParagraphIndices = parasStr;
                 }
             }
-            catch (Exception) { }
+            catch (System.Exception) { }
         }
+
+        #endregion
+
+        #region 按钮事件
 
         private void OnInsertClick(object sender, RoutedEventArgs e)
         {
+            RefreshPreview();
+            // 短暂等待预览渲染
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                System.Windows.Threading.DispatcherPriority.Background,
+                new Action(() => { }));
+
             SyncFromPreview();
+            ViewModel.ExecuteInsert();
             DialogResult = true;
             Close();
         }
@@ -97,5 +116,7 @@ namespace HyCADTool.Refactored.Presentation.Views
             DialogResult = false;
             Close();
         }
+
+        #endregion
     }
 }

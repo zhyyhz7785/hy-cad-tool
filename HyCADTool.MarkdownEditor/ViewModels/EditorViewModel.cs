@@ -1,4 +1,4 @@
-using HyCADTool.Refactored.Domain.Models.Text;
+using HyCADTool.MarkdownEditor.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -6,13 +6,12 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
-namespace HyCADTool.Refactored.Presentation.ViewModels
+namespace HyCADTool.MarkdownEditor.ViewModels
 {
     /// <summary>
-    /// Markdown 编辑器 ViewModel v6
-    /// 每栏独立字符数 → 独立栏宽 → 多个独立 MText
+    /// Markdown WYSIWYG 编辑器 ViewModel（独立于 AutoCAD，纯 WPF）
     /// </summary>
-    public class MarkdownEditorViewModel : INotifyPropertyChanged
+    public class EditorViewModel : INotifyPropertyChanged
     {
         #region INotifyPropertyChanged
 
@@ -31,16 +30,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 事件
 
-        /// <summary>
-        /// 插入请求事件
-        /// 参数: (每栏MText内容数组, Markdown原文, 配置)
-        /// </summary>
-        public event Action<string[], string, DesignSpecConfig> InsertRequested;
-
-        /// <summary>
-        /// 请求将内容推送到编辑器（加载文件后触发）
-        /// 参数: Markdown 字符串
-        /// </summary>
+        /// <summary>请求将内容推送到编辑器（加载文件后触发）</summary>
         public event Action<string> EditorContentLoadRequested;
 
         #endregion
@@ -54,10 +44,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set { if (SetProperty(ref _markdownText, value)) UpdateStatus(); }
         }
 
-        /// <summary>
-        /// 由编辑器（Vditor WebView2）调用，更新 MarkdownText 但不触发回写循环。
-        /// 直接设置字段并触发 PropertyChanged（供预览刷新），但不触发编辑器内容重设。
-        /// </summary>
+        /// <summary>由 Vditor 编辑器调用，更新文本但不触发回写循环</summary>
         public void SetMarkdownFromEditor(string markdown)
         {
             if (_markdownText == markdown) return;
@@ -71,7 +58,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #region 可调参数
 
         private double _scale = 1.0;
-        /// <summary>出图比例（默认1，用户可调）</summary>
         public double DrawScale
         {
             get => _scale;
@@ -85,15 +71,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set { if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(6, value)))) UpdateStatus(); }
         }
 
-        /// <summary>
-        /// 每栏的字符数数组（由 JS 预览回传）
-        /// 长度 = ColumnCount，每个元素是该栏最长行的字符数
-        /// </summary>
         public int[] CharsPerColumn { get; set; }
-
-        /// <summary>
-        /// 每栏的段落索引（由 JS 预览回传，格式: "0,1,2|3,4,5"）
-        /// </summary>
         public string ColumnParagraphIndices { get; set; }
 
         private double _columnGutter = 10;
@@ -111,7 +89,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _previewScale = 1.0;
-        /// <summary>预览缩放比例（仅预览用）</summary>
         public double PreviewScale
         {
             get => _previewScale;
@@ -119,11 +96,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _totalHeight = 350;
-        /// <summary>总高度（图纸 mm）</summary>
         public double TotalHeight
         {
             get => _totalHeight;
             set { if (SetProperty(ref _totalHeight, Math.Max(20, value))) UpdateStatus(); }
+        }
+
+        private double _textXScale = 0.7;
+        public double TextXScale
+        {
+            get => _textXScale;
+            set { if (SetProperty(ref _textXScale, Math.Max(0.1, value))) UpdateStatus(); }
         }
 
         // ── 段前段后间距（字高倍数） ──
@@ -157,11 +140,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private double _quoteSpaceAfter = 0.5;
         public double QuoteSpaceAfter { get => _quoteSpaceAfter; set { if (SetProperty(ref _quoteSpaceAfter, value)) RefreshPreviewVia(); } }
 
-        /// <summary>间距属性变化时触发 SpacingChanged 以通知 View 刷新预览</summary>
-        private void RefreshPreviewVia()
-        {
-            OnPropertyChanged("SpacingChanged");
-        }
+        private void RefreshPreviewVia() => OnPropertyChanged("SpacingChanged");
 
         #endregion
 
@@ -174,13 +153,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set => SetProperty(ref _statusText, value);
         }
 
-        public bool DialogResult { get; set; }
+        public bool DialogConfirmed { get; set; }
 
         #endregion
 
         #region 命令
 
-        public ICommand InsertCommand { get; }
         public ICommand LoadFileCommand { get; }
         public ICommand SaveFileCommand { get; }
 
@@ -188,47 +166,43 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 构造
 
-        /// <summary>新建模式</summary>
-        public MarkdownEditorViewModel()
+        public EditorViewModel()
         {
-            var vm = SettingsPanelViewModel.Current;
-            if (vm != null) _textSize = vm.TextSize;
-
-            InsertCommand = new RelayCmd(ExecuteInsert);
             LoadFileCommand = new RelayCmd(ExecuteLoad);
             SaveFileCommand = new RelayCmd(ExecuteSave);
-
             _markdownText = DefaultMarkdown;
             UpdateStatus();
         }
 
-        /// <summary>二次编辑模式：从已有 MText 读取配置</summary>
-        public MarkdownEditorViewModel(string markdown, DesignSpecConfig existingConfig)
-            : this()
+        public EditorViewModel(EditorInput input) : this()
         {
-            if (!string.IsNullOrEmpty(markdown))
-                _markdownText = markdown;
-            if (existingConfig != null)
-            {
-                _totalHeight = existingConfig.TotalHeight;
-                _scale = existingConfig.Scale;
-                _columnCount = Math.Max(1, existingConfig.ColumnCount);
-                _columnGutter = existingConfig.ColumnGutter;
-                _textSize = existingConfig.TextSize;
-                _previewScale = existingConfig.PreviewScale;
-                CharsPerColumn = existingConfig.CharsPerColumn;
-                // 恢复间距
-                _h1SpaceBefore = existingConfig.H1SpaceBefore;
-                _h1SpaceAfter = existingConfig.H1SpaceAfter;
-                _h2SpaceBefore = existingConfig.H2SpaceBefore;
-                _h2SpaceAfter = existingConfig.H2SpaceAfter;
-                _h3SpaceBefore = existingConfig.H3SpaceBefore;
-                _h3SpaceAfter = existingConfig.H3SpaceAfter;
-                _pSpaceAfter = existingConfig.PSpaceAfter;
-                _liSpaceAfter = existingConfig.LiSpaceAfter;
-                _quoteSpaceBefore = existingConfig.QuoteSpaceBefore;
-                _quoteSpaceAfter = existingConfig.QuoteSpaceAfter;
-            }
+            if (input == null) return;
+            if (!string.IsNullOrEmpty(input.Markdown))
+                _markdownText = input.Markdown;
+
+            var cfg = input.Config;
+            if (cfg == null) return;
+
+            _totalHeight = cfg.TotalHeight;
+            _scale = cfg.Scale;
+            _columnCount = Math.Max(1, cfg.ColumnCount);
+            _columnGutter = cfg.ColumnGutter;
+            _textSize = cfg.TextSize;
+            _textXScale = cfg.TextXScale;
+            _previewScale = cfg.PreviewScale;
+            CharsPerColumn = cfg.CharsPerColumn;
+
+            _h1SpaceBefore = cfg.H1SpaceBefore;
+            _h1SpaceAfter = cfg.H1SpaceAfter;
+            _h2SpaceBefore = cfg.H2SpaceBefore;
+            _h2SpaceAfter = cfg.H2SpaceAfter;
+            _h3SpaceBefore = cfg.H3SpaceBefore;
+            _h3SpaceAfter = cfg.H3SpaceAfter;
+            _pSpaceAfter = cfg.PSpaceAfter;
+            _liSpaceAfter = cfg.LiSpaceAfter;
+            _quoteSpaceBefore = cfg.QuoteSpaceBefore;
+            _quoteSpaceAfter = cfg.QuoteSpaceAfter;
+
             UpdateStatus();
         }
 
@@ -236,18 +210,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 配置
 
-        public DesignSpecConfig BuildConfig()
+        public EditorConfig BuildConfig()
         {
-            // 确保 CharsPerColumn 数组长度匹配 ColumnCount
             int[] cpc = CharsPerColumn;
             if (cpc == null || cpc.Length != ColumnCount)
             {
-                // 没有预览数据时，用默认值 28 填充
                 int def = (cpc != null && cpc.Length > 0) ? cpc[0] : 28;
                 cpc = Enumerable.Repeat(def, ColumnCount).ToArray();
             }
 
-            var cfg = new DesignSpecConfig
+            return new EditorConfig
             {
                 TotalHeight = TotalHeight,
                 Scale = DrawScale,
@@ -255,8 +227,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 CharsPerColumn = cpc,
                 ColumnGutter = ColumnGutter,
                 TextSize = TextSize,
+                TextXScale = TextXScale,
                 PreviewScale = PreviewScale,
-                // 段前段后间距
                 H1SpaceBefore = H1SpaceBefore,
                 H1SpaceAfter = H1SpaceAfter,
                 H2SpaceBefore = H2SpaceBefore,
@@ -268,26 +240,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 QuoteSpaceBefore = QuoteSpaceBefore,
                 QuoteSpaceAfter = QuoteSpaceAfter
             };
-            var vm = SettingsPanelViewModel.Current;
-            if (vm != null)
-            {
-                cfg.FontFileName = vm.FontFileName;
-                cfg.BigFontFileName = vm.BigFontFileName;
-                cfg.TextXScale = vm.TextXScale;
-            }
-            return cfg;
         }
 
         private void UpdateStatus()
         {
             try
             {
-                var config = BuildConfig();
-                var area = TextAreaCalculator.Calculate(config);
-                string colInfo = string.Join("+", area.ColumnWidths.Select(w => $"{w:F0}"));
-                StatusText = $"{ColumnCount}栏 | 栏宽={colInfo}mm | 总宽{area.TotalWidth:F1}mm (1:{DrawScale})";
+                var cpc = CharsPerColumn ?? Enumerable.Repeat(28, ColumnCount).ToArray();
+                var widths = cpc.Select(c => c * TextSize * TextXScale * DrawScale);
+                string colInfo = string.Join("+", widths.Select(w => $"{w:F0}"));
+                double totalWidth = widths.Sum() + ColumnGutter * DrawScale * Math.Max(0, ColumnCount - 1);
+                StatusText = $"{ColumnCount}栏 | 栏宽={colInfo}mm | 总宽{totalWidth:F1}mm (1:{DrawScale})";
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 StatusText = $"错误: {ex.Message}";
             }
@@ -296,97 +261,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #endregion
 
         #region 命令实现
-
-        public void ExecuteInsert()
-        {
-            DialogResult = true;
-            var config = BuildConfig();
-
-            // 按栏拆分 Markdown → 各自渲染 MText
-            var columnMarkdowns = SplitMarkdownByColumns(MarkdownText, ColumnParagraphIndices);
-            var columnMTexts = new string[columnMarkdowns.Length];
-            for (int i = 0; i < columnMarkdowns.Length; i++)
-            {
-                var renderer = new MarkdownToMTextRenderer(config);
-                columnMTexts[i] = renderer.Convert(columnMarkdowns[i]);
-            }
-
-            InsertRequested?.Invoke(columnMTexts, MarkdownText, config);
-        }
-
-        /// <summary>
-        /// 按 JS 预览中的段落分配拆分 Markdown
-        /// paraIndices 格式: "0,1,2|3,4,5" — 段落索引按栏分组
-        /// </summary>
-        private string[] SplitMarkdownByColumns(string markdown, string paraIndices)
-        {
-            if (string.IsNullOrEmpty(markdown))
-                return new[] { "" };
-
-            // 将 Markdown 按空行拆分为"段落块"
-            var blocks = SplitMarkdownBlocks(markdown);
-
-            if (string.IsNullOrEmpty(paraIndices))
-            {
-                // 没有分配信息 → 全部放第一栏
-                return new[] { markdown };
-            }
-
-            var colGroups = paraIndices.Split('|');
-            var result = new string[colGroups.Length];
-
-            for (int c = 0; c < colGroups.Length; c++)
-            {
-                if (string.IsNullOrWhiteSpace(colGroups[c]))
-                {
-                    result[c] = "";
-                    continue;
-                }
-
-                var indices = colGroups[c].Split(',')
-                    .Select(s => { int v; return int.TryParse(s.Trim(), out v) ? v : -1; })
-                    .Where(v => v >= 0 && v < blocks.Length)
-                    .ToArray();
-
-                result[c] = string.Join("\n\n", indices.Select(i => blocks[i]));
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 将 Markdown 按空行（两个换行）拆分为段落块
-        /// 与 Markdig 解析的 block 顺序一致
-        /// </summary>
-        private static string[] SplitMarkdownBlocks(string markdown)
-        {
-            // Markdig 中每个 block（heading, paragraph, list, etc.）对应
-            // Markdown 源码中由空行分隔的段落
-            var lines = markdown.Replace("\r\n", "\n").Split('\n');
-            var blocks = new System.Collections.Generic.List<string>();
-            var current = new System.Text.StringBuilder();
-
-            foreach (var line in lines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    if (current.Length > 0)
-                    {
-                        blocks.Add(current.ToString().TrimEnd());
-                        current.Clear();
-                    }
-                }
-                else
-                {
-                    if (current.Length > 0) current.Append('\n');
-                    current.Append(line);
-                }
-            }
-            if (current.Length > 0)
-                blocks.Add(current.ToString().TrimEnd());
-
-            return blocks.ToArray();
-        }
 
         private void ExecuteLoad()
         {
@@ -402,10 +276,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     string content = System.IO.File.ReadAllText(dlg.FileName, System.Text.Encoding.UTF8);
                     MarkdownText = content;
                     StatusText = $"已加载: {System.IO.Path.GetFileName(dlg.FileName)}";
-                    // 通知 View 将内容推送到 Vditor 编辑器
                     EditorContentLoadRequested?.Invoke(content);
                 }
-                catch (System.Exception ex) { StatusText = $"加载失败: {ex.Message}"; }
+                catch (Exception ex) { StatusText = $"加载失败: {ex.Message}"; }
             }
         }
 
@@ -424,7 +297,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     System.IO.File.WriteAllText(dlg.FileName, MarkdownText, System.Text.Encoding.UTF8);
                     StatusText = $"已保存: {System.IO.Path.GetFileName(dlg.FileName)}";
                 }
-                catch (System.Exception ex) { StatusText = $"保存失败: {ex.Message}"; }
+                catch (Exception ex) { StatusText = $"保存失败: {ex.Message}"; }
             }
         }
 

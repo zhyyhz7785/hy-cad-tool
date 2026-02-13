@@ -33,7 +33,7 @@ namespace HyCADTool.Refactored.Test
             }
             else
             {
-                // 无命令 → 测试 Markdown 设计说明排版命令
+                // ★ 测试入口：Markdown 设计说明（WebView2 编辑器）
                 new DesignSpecCommand().Execute();
             }
         }

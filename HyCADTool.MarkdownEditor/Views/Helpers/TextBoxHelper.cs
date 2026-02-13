@@ -4,54 +4,40 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace HyCADTool.Refactored.Presentation.Views.Helpers
+namespace HyCADTool.MarkdownEditor.Views.Helpers
 {
     /// <summary>
-    /// TextBox 辅助类：解决 WPF 绑定 double 时无法输入小数点的问题，
-    /// 并提供统一的数值输入体验（全选、回车确认、滚轮±、上下键±）。
-    /// 用法：helper:TextBoxHelper.EnableCustomHandlers="True"
-    ///        helper:TextBoxHelper.ScrollStep="0.1"  (可选，默认0.1)
+    /// TextBox 辅助类：全选、回车确认、滚轮±、上下键±
     /// </summary>
     public static class TextBoxHelper
     {
-        #region EnableCustomHandlers 附加属性
+        #region EnableCustomHandlers
 
         public static readonly DependencyProperty EnableCustomHandlersProperty =
             DependencyProperty.RegisterAttached(
-                "EnableCustomHandlers",
-                typeof(bool),
-                typeof(TextBoxHelper),
+                "EnableCustomHandlers", typeof(bool), typeof(TextBoxHelper),
                 new PropertyMetadata(false, OnEnableCustomHandlersChanged));
 
-        public static bool GetEnableCustomHandlers(DependencyObject obj)
-            => (bool)obj.GetValue(EnableCustomHandlersProperty);
-
-        public static void SetEnableCustomHandlers(DependencyObject obj, bool value)
-            => obj.SetValue(EnableCustomHandlersProperty, value);
+        public static bool GetEnableCustomHandlers(DependencyObject obj) => (bool)obj.GetValue(EnableCustomHandlersProperty);
+        public static void SetEnableCustomHandlers(DependencyObject obj, bool value) => obj.SetValue(EnableCustomHandlersProperty, value);
 
         #endregion
 
-        #region ScrollStep 附加属性
+        #region ScrollStep
 
-        /// <summary>滚轮/箭头键每次增减的步长（默认0.1）</summary>
         public static readonly DependencyProperty ScrollStepProperty =
             DependencyProperty.RegisterAttached(
-                "ScrollStep",
-                typeof(double),
-                typeof(TextBoxHelper),
+                "ScrollStep", typeof(double), typeof(TextBoxHelper),
                 new PropertyMetadata(0.1));
 
-        public static double GetScrollStep(DependencyObject obj)
-            => (double)obj.GetValue(ScrollStepProperty);
-
-        public static void SetScrollStep(DependencyObject obj, double value)
-            => obj.SetValue(ScrollStepProperty, value);
+        public static double GetScrollStep(DependencyObject obj) => (double)obj.GetValue(ScrollStepProperty);
+        public static void SetScrollStep(DependencyObject obj, double value) => obj.SetValue(ScrollStepProperty, value);
 
         #endregion
 
         private static void OnEnableCustomHandlersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (!(d is TextBox textBox)) return;
+            if (d is not TextBox textBox) return;
 
             if ((bool)e.NewValue)
             {
@@ -61,7 +47,6 @@ namespace HyCADTool.Refactored.Presentation.Views.Helpers
                 textBox.PreviewKeyDown += TextBox_PreviewKeyDown;
                 textBox.PreviewMouseWheel += TextBox_PreviewMouseWheel;
                 textBox.LostFocus += TextBox_LostFocus;
-                // 关键：改用 LostFocus 触发绑定更新，而非 PropertyChanged
                 var binding = textBox.GetBindingExpression(TextBox.TextProperty);
                 if (binding != null)
                 {
@@ -89,12 +74,9 @@ namespace HyCADTool.Refactored.Presentation.Views.Helpers
             }
         }
 
-        #region 事件处理
-
         private static void TextBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            if (sender is TextBox tb)
-                tb.SelectAll();
+            if (sender is TextBox tb) tb.SelectAll();
         }
 
         private static void TextBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -109,55 +91,31 @@ namespace HyCADTool.Refactored.Presentation.Views.Helpers
 
         private static void TextBox_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (sender is TextBox tb)
-            {
-                tb.SelectAll();
-                e.Handled = true;
-            }
+            if (sender is TextBox tb) { tb.SelectAll(); e.Handled = true; }
         }
 
         private static void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (!(sender is TextBox tb)) return;
-
+            if (sender is not TextBox tb) return;
             if (e.Key == Key.Enter)
             {
                 tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
                 Keyboard.ClearFocus();
                 e.Handled = true;
             }
-            else if (e.Key == Key.Up)
-            {
-                AdjustValue(tb, +1);
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Down)
-            {
-                AdjustValue(tb, -1);
-                e.Handled = true;
-            }
+            else if (e.Key == Key.Up) { AdjustValue(tb, +1); e.Handled = true; }
+            else if (e.Key == Key.Down) { AdjustValue(tb, -1); e.Handled = true; }
         }
 
-        /// <summary>鼠标滚轮：悬停在 TextBox 上即可滚轮调整数值</summary>
         private static void TextBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (sender is TextBox tb)
-            {
-                int direction = e.Delta > 0 ? +1 : -1;
-                AdjustValue(tb, direction);
-                e.Handled = true;
-            }
+            if (sender is TextBox tb) { AdjustValue(tb, e.Delta > 0 ? +1 : -1); e.Handled = true; }
         }
 
         private static void TextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (sender is TextBox tb)
-                tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+            if (sender is TextBox tb) tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         }
-
-        #endregion
-
-        #region 数值增减
 
         private static void AdjustValue(TextBox tb, int direction)
         {
@@ -167,11 +125,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Helpers
                 double newVal = Math.Round(current + step * direction, 4);
                 tb.Text = newVal.ToString(CultureInfo.InvariantCulture);
                 tb.SelectAll();
-                // 立即更新绑定源
                 tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
             }
         }
-
-        #endregion
     }
 }

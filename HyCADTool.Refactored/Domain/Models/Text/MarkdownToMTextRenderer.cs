@@ -98,7 +98,10 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             }
         }
 
-        /// <summary>标题 H1-H3 → 放大字号，标题后只留一个换行</summary>
+        /// <summary>
+        /// 标题 H1-H3 → 放大字号 + 段前段后间距
+        /// 使用 \pxi 格式码的 b(段前) 和 a(段后)，单位英寸
+        /// </summary>
         private void RenderHeading(HeadingBlock heading)
         {
             double height;
@@ -110,6 +113,12 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 default: height = _config.ActualTextHeight; break;
             }
 
+            double spaceBefore = _config.GetHeadingSpaceBefore(heading.Level);
+            double spaceAfter = _config.GetHeadingSpaceAfter(heading.Level);
+
+            // \pxi 段前段后间距（mm → inch）
+            AppendParaSpacing(spaceBefore, spaceAfter);
+
             string hStr = F(height);
             string wStr = F(_config.TextXScale);
 
@@ -118,14 +127,15 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             _sb.Append("}\\P");
         }
 
-        /// <summary>普通段落，段后换行</summary>
+        /// <summary>普通段落 + 段后间距</summary>
         private void RenderParagraph(ParagraphBlock paragraph)
         {
+            AppendParaSpacing(0, _config.ActualPSpaceAfter);
             RenderInlines(paragraph.Inline);
             _sb.Append("\\P");
         }
 
-        /// <summary>列表（有序/无序），使用简单前缀缩进</summary>
+        /// <summary>列表（有序/无序）+ 列表项段后间距</summary>
         private void RenderList(ListBlock list)
         {
             bool ordered = list.IsOrdered;
@@ -137,6 +147,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 {
                     string bullet = ordered ? $"{index}. " : "  \\U+2022 ";
 
+                    AppendParaSpacing(0, _config.ActualLiSpaceAfter);
                     _sb.Append(bullet);
 
                     foreach (var child in listItem)
@@ -163,11 +174,18 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             _sb.Append("}\\P");
         }
 
-        /// <summary>引用块 > → 缩进</summary>
+        /// <summary>引用块 > → 缩进 + 段前段后间距</summary>
         private void RenderQuote(QuoteBlock quote)
         {
+            double spaceBefore = _config.ActualQuoteSpaceBefore;
+            double spaceAfter = _config.ActualQuoteSpaceAfter;
             string indent = F(_config.ActualQuoteIndent);
-            _sb.Append("\\pxi0,l").Append(indent).Append(";");
+
+            // 引用块段前段后 + 左缩进
+            string bInch = F(spaceBefore / 25.4);
+            string aInch = F(spaceAfter / 25.4);
+            _sb.Append("\\pxib").Append(bInch).Append(",a").Append(aInch)
+               .Append(",l").Append(indent).Append(";");
 
             foreach (var child in quote)
             {
@@ -357,6 +375,22 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         #endregion
 
         #region 工具方法
+
+        /// <summary>
+        /// 输出 \pxi 段前段后间距格式码
+        /// b=段前（英寸），a=段后（英寸），值为0时省略
+        /// </summary>
+        private void AppendParaSpacing(double beforeMm, double afterMm)
+        {
+            if (beforeMm <= 0 && afterMm <= 0) return;
+
+            _sb.Append("\\pxi0");
+            if (beforeMm > 0)
+                _sb.Append(",b").Append(F(beforeMm / 25.4));
+            if (afterMm > 0)
+                _sb.Append(",a").Append(F(afterMm / 25.4));
+            _sb.Append(";");
+        }
 
         /// <summary>
         /// 转义 MText 特殊字符
