@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
@@ -20,6 +21,7 @@ namespace HyCADTool.MarkdownEditor.Views
         public EditorResult Result { get; private set; }
 
         private bool _editorReady;
+        private bool _previewVisible;
 
         public EditorWindow(EditorInput input)
         {
@@ -38,7 +40,6 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             try
             {
-                // 设置 WebView2 UserDataFolder
                 string userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "HyCADTool", "WebView2");
@@ -47,10 +48,8 @@ namespace HyCADTool.MarkdownEditor.Views
                 var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
                 await EditorWebView.EnsureCoreWebView2Async(env);
 
-                // 监听 JS → C# 消息
                 EditorWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
-                // 加载 Vditor 编辑器
                 string html = VditorHtmlTemplate.Generate(ViewModel.MarkdownText);
                 EditorWebView.CoreWebView2.NavigateToString(html);
             }
@@ -63,7 +62,7 @@ namespace HyCADTool.MarkdownEditor.Views
                     MessageBoxImage.Warning);
             }
 
-            // 初次刷新分栏预览
+            // 初次刷新隐藏预览（后台计算用）
             RefreshPreview();
         }
 
@@ -106,6 +105,40 @@ namespace HyCADTool.MarkdownEditor.Views
 
         #endregion
 
+        #region 预览切换
+
+        private void OnTogglePreview(object sender, RoutedEventArgs e)
+        {
+            _previewVisible = !_previewVisible;
+            ApplyPreviewLayout();
+            if (_previewVisible)
+                RefreshPreview();
+        }
+
+        private void ApplyPreviewLayout()
+        {
+            if (_previewVisible)
+            {
+                SplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
+                PreviewCol.Width = new GridLength(1.2, GridUnitType.Star);
+                PreviewSplitter.Visibility = Visibility.Visible;
+                PreviewBrowser.Visibility = Visibility.Visible;
+                PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#cccccc"));
+            }
+            else
+            {
+                SplitterCol.Width = new GridLength(0);
+                PreviewCol.Width = new GridLength(0);
+                PreviewSplitter.Visibility = Visibility.Collapsed;
+                PreviewBrowser.Visibility = Visibility.Collapsed;
+                PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#858585"));
+            }
+        }
+
+        #endregion
+
         #region 预览刷新
 
         private void OnPropChanged(object sender, PropertyChangedEventArgs e)
@@ -118,10 +151,13 @@ namespace HyCADTool.MarkdownEditor.Views
             }
         }
 
+        /// <summary>刷新预览 HTML（无论预览是否可见都执行，供后台计算分栏数据）</summary>
         private void RefreshPreview()
         {
             try
             {
+                // WebBrowser 在 Collapsed 时 NavigateToString 仍可执行
+                // 但 InvokeScript 需要文档已加载，在 OnConfirmClick 中会临时显示
                 var config = ViewModel.BuildConfig();
                 string html = PreviewHtmlRenderer.ToInteractiveHtml(
                     ViewModel.MarkdownText ?? "", ViewModel.ColumnCount, ViewModel.PreviewScale, config);
@@ -130,6 +166,7 @@ namespace HyCADTool.MarkdownEditor.Views
             catch { }
         }
 
+        /// <summary>从预览 JS 读取分栏数据（每栏字符数 + 段落分配）</summary>
         private void SyncFromPreview()
         {
             try
@@ -163,14 +200,31 @@ namespace HyCADTool.MarkdownEditor.Views
             // 1. 从 Vditor 获取最新 Markdown
             await SyncMarkdownFromEditorAsync();
 
-            // 2. 刷新分栏预览
-            RefreshPreview();
-            await Task.Delay(200);
+            // 2. 临时显示 PreviewBrowser 确保 JS 可执行
+            bool wasHidden = PreviewBrowser.Visibility != Visibility.Visible;
+            if (wasHidden)
+            {
+                PreviewBrowser.Visibility = Visibility.Visible;
+                PreviewBrowser.Width = 1;
+                PreviewBrowser.Height = 1;
+            }
 
-            // 3. 从预览读取每栏字符数和段落分配
+            // 3. 刷新分栏预览
+            RefreshPreview();
+            await Task.Delay(300);
+
+            // 4. 从预览读取每栏字符数和段落分配
             SyncFromPreview();
 
-            // 4. 构建结果
+            // 5. 恢复隐藏
+            if (wasHidden)
+            {
+                PreviewBrowser.Visibility = Visibility.Collapsed;
+                PreviewBrowser.Width = double.NaN;
+                PreviewBrowser.Height = double.NaN;
+            }
+
+            // 6. 构建结果
             Result = new EditorResult
             {
                 Confirmed = true,

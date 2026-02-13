@@ -4,18 +4,19 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:helper="clr-namespace:HyCADTool.MarkdownEditor.Views.Helpers"
         Title="HY Markdown Editor"
-        Width="1280" Height="780"
-        MinWidth="900" MinHeight="550"
+        Width="960" Height="720"
+        MinWidth="720" MinHeight="480"
         WindowStartupLocation="CenterScreen"
-        Background="#1e1e1e"
-        Foreground="#d4d4d4">
+        Background="#181818"
+        Foreground="#cccccc">
 
     <Window.Resources>
+        <!-- Cursor 风格：工具栏按钮 -->
         <Style x:Key="ToolBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#d4d4d4" />
-            <Setter Property="Padding" Value="10,4" />
-            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Foreground" Value="#cccccc" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Margin" Value="1,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -28,7 +29,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3e3e42" />
+                                <Setter TargetName="Bd" Property="Background" Value="#2a2d2e" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -36,8 +37,15 @@
             </Setter>
         </Style>
 
+        <!-- Cursor 风格：切换按钮（可选中态） -->
+        <Style x:Key="ToggleBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
+            <Setter Property="Foreground" Value="#858585" />
+        </Style>
+
+        <!-- Cursor 风格：主操作按钮 -->
         <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
             <Setter Property="Background" Value="#0e639c" />
+            <Setter Property="Foreground" Value="#ffffff" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -55,14 +63,15 @@
             </Setter>
         </Style>
 
+        <!-- 数值输入框 -->
         <Style x:Key="NumInput" TargetType="TextBox">
-            <Setter Property="Background" Value="#3c3c3c" />
-            <Setter Property="Foreground" Value="#d4d4d4" />
-            <Setter Property="BorderBrush" Value="#555" />
+            <Setter Property="Background" Value="#2d2d2d" />
+            <Setter Property="Foreground" Value="#cccccc" />
+            <Setter Property="BorderBrush" Value="#3e3e42" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="2,1" />
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="CaretBrush" Value="White" />
+            <Setter Property="CaretBrush" Value="#cccccc" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="Width" Value="30" />
@@ -70,31 +79,23 @@
             <Setter Property="helper:TextBoxHelper.ScrollStep" Value="0.1" />
         </Style>
 
-        <Style x:Key="DarkInput" TargetType="TextBox">
-            <Setter Property="Background" Value="#3c3c3c" />
-            <Setter Property="Foreground" Value="#d4d4d4" />
-            <Setter Property="BorderBrush" Value="#555" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="4,1" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="CaretBrush" Value="White" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-
+        <!-- 标签 -->
         <Style x:Key="Lbl" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#888" />
+            <Setter Property="Foreground" Value="#858585" />
             <Setter Property="FontSize" Value="11" />
         </Style>
 
+        <!-- 次级标签 -->
         <Style x:Key="SLbl" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#666" />
+            <Setter Property="Foreground" Value="#5a5a5a" />
             <Setter Property="FontSize" Value="10" />
         </Style>
 
+        <!-- 分隔条 -->
         <Style x:Key="Splitter" TargetType="GridSplitter">
-            <Setter Property="Background" Value="#3e3e42" />
+            <Setter Property="Background" Value="#2d2d2d" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="GridSplitter">
@@ -108,109 +109,125 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- 分隔线 -->
+        <Style x:Key="Sep" TargetType="Border">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Background" Value="#2d2d2d" />
+            <Setter Property="Margin" Value="6,0" />
+        </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="36" />
+            <RowDefinition Height="32" />
+            <RowDefinition Height="28" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 工具栏 -->
-        <Border Grid.Row="0" Background="#1e1e1e" BorderBrush="#3e3e42" BorderThickness="0,0,0,1">
-            <DockPanel Margin="6,0">
+        <!-- Row 0: 主工具栏 -->
+        <Border Grid.Row="0" Background="#1e1e1e" BorderBrush="#2d2d2d" BorderThickness="0,0,0,1">
+            <DockPanel Margin="4,0">
+                <!-- 左：文件操作 -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="打开.md" Style="{StaticResource ToolBtn}" Command="{Binding LoadFileCommand}" />
-                    <Button Content="保存.md" Style="{StaticResource ToolBtn}" Command="{Binding SaveFileCommand}" />
+                    <Button Content="打开" Style="{StaticResource ToolBtn}" Command="{Binding LoadFileCommand}" />
+                    <Button Content="保存" Style="{StaticResource ToolBtn}" Command="{Binding SaveFileCommand}" />
+                    <Border Style="{StaticResource Sep}" />
                 </StackPanel>
+
+                <!-- 右：操作按钮 -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="PreviewToggleBtn" Content="预览" Style="{StaticResource ToggleBtn}" Click="OnTogglePreview" />
+                    <Border Style="{StaticResource Sep}" />
                     <Button Content="插入CAD" Style="{StaticResource PrimaryBtn}" Click="OnConfirmClick" />
                     <Button Content="关闭" Style="{StaticResource ToolBtn}" Click="OnCloseClick" />
                 </StackPanel>
+
+                <!-- 中：状态栏 -->
                 <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
-                           HorizontalAlignment="Center" Foreground="#666" FontSize="11" />
+                           HorizontalAlignment="Center" Foreground="#5a5a5a" FontSize="11" />
             </DockPanel>
         </Border>
 
-        <!-- 编辑器 + 预览 -->
-        <Grid Grid.Row="1">
+        <!-- Row 1: 参数设置栏 -->
+        <Border Grid.Row="1" Background="#252526" BorderBrush="#2d2d2d" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                <TextBlock Style="{StaticResource Lbl}" Text="1:" Margin="0,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="28"
+                         helper:TextBoxHelper.ScrollStep="1"
+                         Text="{Binding DrawScale, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource Lbl}" Text="栏" Margin="6,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="24"
+                         helper:TextBoxHelper.ScrollStep="1"
+                         Text="{Binding ColumnCount, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource Lbl}" Text="间距" Margin="6,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="28"
+                         helper:TextBoxHelper.ScrollStep="1"
+                         Text="{Binding ColumnGutter, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource Lbl}" Text="字高" Margin="6,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="28"
+                         Text="{Binding TextSize, UpdateSourceTrigger=PropertyChanged}" />
+
+                <Border Style="{StaticResource Sep}" />
+
+                <TextBlock Style="{StaticResource SLbl}" Text="H1" Margin="0,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding H1SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding H1SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource SLbl}" Text="H2" Margin="4,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding H2SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding H2SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource SLbl}" Text="H3" Margin="4,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding H3SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding H3SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource SLbl}" Text="P" Margin="4,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding PSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource SLbl}" Text="Li" Margin="4,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding LiSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource SLbl}" Text="Q" Margin="4,0,1,0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding QuoteSpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
+                <TextBox Style="{StaticResource NumInput}" Width="26"
+                         Text="{Binding QuoteSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Row 2: 编辑器主体（默认全宽，可切换分栏预览） -->
+        <Grid x:Name="EditorArea" Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="2*" />
+                <ColumnDefinition x:Name="SplitterCol" Width="0" />
+                <ColumnDefinition x:Name="PreviewCol" Width="0" />
             </Grid.ColumnDefinitions>
 
-            <!-- 左：Vditor WYSIWYG 编辑器（WebView2） -->
+            <!-- Vditor 编辑器 -->
             <wv2:WebView2 x:Name="EditorWebView" Grid.Column="0" />
 
-            <!-- 分隔条 -->
-            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch"
-                          Style="{StaticResource Splitter}" />
+            <!-- 分隔条（预览模式可见） -->
+            <GridSplitter x:Name="PreviewSplitter" Grid.Column="1" Width="4"
+                          HorizontalAlignment="Stretch" Style="{StaticResource Splitter}"
+                          Visibility="Collapsed" />
 
-            <!-- 右：分栏预览 -->
-            <DockPanel Grid.Column="2">
-                <Border DockPanel.Dock="Top" Background="#1e1e1e"
-                        BorderBrush="#3e3e42" BorderThickness="0,0,0,1" Padding="8,4">
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Lbl}" Text="预览" FontSize="12" Margin="0,0,10,0" />
-                        <TextBlock Style="{StaticResource Lbl}" Text="1:" Margin="0,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="28"
-                                 helper:TextBoxHelper.ScrollStep="1"
-                                 Text="{Binding DrawScale, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource Lbl}" Text="栏:" Margin="6,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="24"
-                                 helper:TextBoxHelper.ScrollStep="1"
-                                 Text="{Binding ColumnCount, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource Lbl}" Text="间距:" Margin="6,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="28"
-                                 helper:TextBoxHelper.ScrollStep="1"
-                                 Text="{Binding ColumnGutter, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource Lbl}" Text="字高:" Margin="6,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="28"
-                                 Text="{Binding TextSize, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Border Width="1" Height="14" Background="#3e3e42" Margin="8,0" />
-
-                        <TextBlock Style="{StaticResource SLbl}" Text="H1" Margin="0,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding H1SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding H1SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Style="{StaticResource SLbl}" Text="H2" Margin="4,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding H2SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding H2SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Style="{StaticResource SLbl}" Text="H3" Margin="4,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding H3SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding H3SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Style="{StaticResource SLbl}" Text="P" Margin="4,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding PSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Style="{StaticResource SLbl}" Text="Li" Margin="4,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding LiSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Style="{StaticResource SLbl}" Text="Q" Margin="4,0,1,0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding QuoteSpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                        <TextBox Style="{StaticResource NumInput}" Width="26"
-                                 Text="{Binding QuoteSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-                    </WrapPanel>
-                </Border>
-
-                <WebBrowser x:Name="PreviewBrowser" />
-            </DockPanel>
+            <!-- 分栏预览（默认隐藏，点击"预览"显示；即使隐藏也后台运行 JS） -->
+            <WebBrowser x:Name="PreviewBrowser" Grid.Column="2"
+                        Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Window>

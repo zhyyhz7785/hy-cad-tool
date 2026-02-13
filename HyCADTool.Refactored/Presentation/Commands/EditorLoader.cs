@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace HyCADTool.Refactored.Presentation.Commands
 {
@@ -92,6 +93,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         #region 程序集加载
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr LoadLibrary(string lpFileName);
+
         private static bool EnsureLoaded()
         {
             if (_showDialogMethod != null)
@@ -104,27 +108,21 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                string baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                if (string.IsNullOrEmpty(baseDir))
+                // 策略1: 从当前程序集目录加载（NETLOAD 直接部署场景）
+                _editorAssembly = TryLoadFromDirectory(
+                    Assembly.GetExecutingAssembly().Location);
+
+                // 策略2: 从 ReCall 临时目录加载（C2 热重载场景）
+                // ReCall 用 Assembly.Load(byte[]) 加载 Refactored.dll，Location 为空
+                // 但 DLL 文件副本在 %TEMP%\HyCADToolRefactored\{ticks}\net8\
+                if (_editorAssembly == null)
+                    _editorAssembly = TryLoadFromReCallTemp();
+
+                if (_editorAssembly == null)
                     return false;
 
-                // 搜索 net8 子目录
-                string[] searchPaths = new[]
-                {
-                    Path.Combine(baseDir, "net8", EDITOR_DLL_NAME),
-                    Path.Combine(baseDir, EDITOR_DLL_NAME),
-                };
-
-                string dllPath = searchPaths.FirstOrDefault(File.Exists);
-                if (dllPath == null)
-                    return false;
-
-                _net8Dir = Path.GetDirectoryName(dllPath);
-
-                // 注册 AssemblyResolve 以解析 net8 子目录中的依赖
-                AppDomain.CurrentDomain.AssemblyResolve += ResolveEditorDeps;
-
-                _editorAssembly = Assembly.LoadFrom(dllPath);
+                // 预加载 WebView2 原生 DLL（Windows LoadLibrary 不搜索托管程序集目录）
+                PreloadNativeDependencies();
 
                 var launcherType = _editorAssembly.GetType(LAUNCHER_TYPE);
                 if (launcherType == null)
@@ -136,6 +134,115 @@ namespace HyCADTool.Refactored.Presentation.Commands
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>从指定程序集所在目录加载 MarkdownEditor</summary>
+        private static Assembly TryLoadFromDirectory(string assemblyLocation)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(assemblyLocation))
+                    return null;
+
+                string baseDir = Path.GetDirectoryName(assemblyLocation);
+                if (string.IsNullOrEmpty(baseDir))
+                    return null;
+
+                return TryLoadFromBaseDir(baseDir);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>从 ReCall 临时复制目录加载（搜索最近一次 C2 复制的 net8 子目录）</summary>
+        private static Assembly TryLoadFromReCallTemp()
+        {
+            try
+            {
+                string tempBase = Path.Combine(Path.GetTempPath(), "HyCADToolRefactored");
+                if (!Directory.Exists(tempBase))
+                    return null;
+
+                // 取最新的临时目录（目录名是 UTC ticks，字符串排序 = 时间排序）
+                var dirs = Directory.GetDirectories(tempBase);
+                Array.Sort(dirs);
+
+                for (int i = dirs.Length - 1; i >= 0; i--)
+                {
+                    var asm = TryLoadFromBaseDir(dirs[i]);
+                    if (asm != null)
+                        return asm;
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>在 baseDir 及其 net8 子目录中搜索并加载 MarkdownEditor.dll</summary>
+        private static Assembly TryLoadFromBaseDir(string baseDir)
+        {
+            string[] searchPaths = new[]
+            {
+                Path.Combine(baseDir, "net8", EDITOR_DLL_NAME),
+                Path.Combine(baseDir, EDITOR_DLL_NAME),
+            };
+
+            string dllPath = searchPaths.FirstOrDefault(File.Exists);
+            if (dllPath == null)
+                return null;
+
+            _net8Dir = Path.GetDirectoryName(dllPath);
+            AppDomain.CurrentDomain.AssemblyResolve += ResolveEditorDeps;
+            return Assembly.LoadFrom(dllPath);
+        }
+
+        /// <summary>
+        /// 预加载 WebView2Loader.dll 原生 DLL。
+        /// Windows LoadLibrary 不搜索托管程序集目录，需用完整路径显式加载。
+        /// 搜索顺序：net8 平铺 → net8/runtimes → NuGet 包缓存
+        /// </summary>
+        private static void PreloadNativeDependencies()
+        {
+            const string LOADER = "WebView2Loader.dll";
+            var paths = new System.Collections.Generic.List<string>();
+
+            // 1. net8 目录（平铺 + runtimes 子目录）
+            if (!string.IsNullOrEmpty(_net8Dir))
+            {
+                paths.Add(Path.Combine(_net8Dir, LOADER));
+                paths.Add(Path.Combine(_net8Dir, "runtimes", "win-x64", "native", LOADER));
+            }
+
+            // 2. NuGet 包缓存（始终可靠的回退）
+            try
+            {
+                string nugetPkgDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    ".nuget", "packages", "microsoft.web.webview2");
+                if (Directory.Exists(nugetPkgDir))
+                {
+                    var versions = Directory.GetDirectories(nugetPkgDir);
+                    Array.Sort(versions);
+                    for (int i = versions.Length - 1; i >= 0; i--)
+                        paths.Add(Path.Combine(versions[i], "runtimes", "win-x64", "native", LOADER));
+                }
+            }
+            catch { }
+
+            foreach (var path in paths)
+            {
+                if (File.Exists(path))
+                {
+                    LoadLibrary(path);
+                    return;
+                }
             }
         }
 
