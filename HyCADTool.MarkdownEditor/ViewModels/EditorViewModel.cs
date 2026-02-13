@@ -68,13 +68,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public int ColumnCount
         {
             get => _columnCount;
-            set { if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(6, value)))) UpdateStatus(); }
+            set { if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(10, value)))) UpdateStatus(); }
         }
 
         public int[] CharsPerColumn { get; set; }
         public string ColumnParagraphIndices { get; set; }
 
-        private double _columnGutter = 10;
+        private double _columnGutter = 0;
         public double ColumnGutter
         {
             get => _columnGutter;
@@ -107,6 +107,67 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         {
             get => _textXScale;
             set { if (SetProperty(ref _textXScale, Math.Max(0.1, value))) UpdateStatus(); }
+        }
+
+        public IReadOnlyList<string> PagePresets { get; } = new[]
+        {
+            "A4横向", "A4竖向", "A3横向", "A3竖向", "A2横向", "A2竖向"
+        };
+
+        private string _pagePreset = "A3横向";
+        public string PagePreset
+        {
+            get => _pagePreset;
+            set
+            {
+                if (SetProperty(ref _pagePreset, string.IsNullOrWhiteSpace(value) ? "A3横向" : value))
+                {
+                    ApplyPagePreset(_pagePreset);
+                    UpdateStatus();
+                }
+            }
+        }
+
+        private double _pageWidthMm = 420;
+        public double PageWidthMm
+        {
+            get => _pageWidthMm;
+            private set => SetProperty(ref _pageWidthMm, value);
+        }
+
+        private double _pageHeightMm = 297;
+        public double PageHeightMm
+        {
+            get => _pageHeightMm;
+            private set => SetProperty(ref _pageHeightMm, value);
+        }
+
+        private double _marginLeftMm = 20;
+        public double MarginLeftMm
+        {
+            get => _marginLeftMm;
+            private set => SetProperty(ref _marginLeftMm, value);
+        }
+
+        private double _marginRightMm = 20;
+        public double MarginRightMm
+        {
+            get => _marginRightMm;
+            private set => SetProperty(ref _marginRightMm, value);
+        }
+
+        private double _marginTopMm = 20;
+        public double MarginTopMm
+        {
+            get => _marginTopMm;
+            private set => SetProperty(ref _marginTopMm, value);
+        }
+
+        private double _marginBottomMm = 20;
+        public double MarginBottomMm
+        {
+            get => _marginBottomMm;
+            private set => SetProperty(ref _marginBottomMm, value);
         }
 
         // ── 段前段后间距（字高倍数） ──
@@ -171,6 +232,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             LoadFileCommand = new RelayCmd(ExecuteLoad);
             SaveFileCommand = new RelayCmd(ExecuteSave);
             _markdownText = DefaultMarkdown;
+            ApplyPagePreset(_pagePreset);
             UpdateStatus();
         }
 
@@ -185,12 +247,19 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
             _totalHeight = cfg.TotalHeight;
             _scale = cfg.Scale;
-            _columnCount = Math.Max(1, cfg.ColumnCount);
+            _columnCount = Math.Max(1, Math.Min(10, cfg.ColumnCount));
             _columnGutter = cfg.ColumnGutter;
             _textSize = cfg.TextSize;
             _textXScale = cfg.TextXScale;
             _previewScale = cfg.PreviewScale;
             CharsPerColumn = cfg.CharsPerColumn;
+            _pagePreset = string.IsNullOrWhiteSpace(cfg.PagePreset) ? _pagePreset : cfg.PagePreset;
+            _pageWidthMm = cfg.PageWidthMm > 0 ? cfg.PageWidthMm : _pageWidthMm;
+            _pageHeightMm = cfg.PageHeightMm > 0 ? cfg.PageHeightMm : _pageHeightMm;
+            _marginLeftMm = cfg.MarginLeftMm;
+            _marginRightMm = cfg.MarginRightMm;
+            _marginTopMm = cfg.MarginTopMm;
+            _marginBottomMm = cfg.MarginBottomMm;
 
             _h1SpaceBefore = cfg.H1SpaceBefore;
             _h1SpaceAfter = cfg.H1SpaceAfter;
@@ -229,6 +298,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 TextSize = TextSize,
                 TextXScale = TextXScale,
                 PreviewScale = PreviewScale,
+                PagePreset = PagePreset,
+                PageWidthMm = PageWidthMm,
+                PageHeightMm = PageHeightMm,
+                MarginLeftMm = MarginLeftMm,
+                MarginRightMm = MarginRightMm,
+                MarginTopMm = MarginTopMm,
+                MarginBottomMm = MarginBottomMm,
                 H1SpaceBefore = H1SpaceBefore,
                 H1SpaceAfter = H1SpaceAfter,
                 H2SpaceBefore = H2SpaceBefore,
@@ -256,6 +332,33 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             {
                 StatusText = $"错误: {ex.Message}";
             }
+        }
+
+        private void ApplyPagePreset(string preset)
+        {
+            switch (preset)
+            {
+                case "A4横向":
+                    PageWidthMm = 297; PageHeightMm = 210; break;
+                case "A4竖向":
+                    PageWidthMm = 210; PageHeightMm = 297; break;
+                case "A3横向":
+                    PageWidthMm = 420; PageHeightMm = 297; break;
+                case "A3竖向":
+                    PageWidthMm = 297; PageHeightMm = 420; break;
+                case "A2横向":
+                    PageWidthMm = 594; PageHeightMm = 420; break;
+                case "A2竖向":
+                    PageWidthMm = 420; PageHeightMm = 594; break;
+                default:
+                    PageWidthMm = 420; PageHeightMm = 297; break;
+            }
+
+            // 与稳定版一致：边距默认统一，作为预览参数显示
+            MarginLeftMm = 20;
+            MarginRightMm = 20;
+            MarginTopMm = 20;
+            MarginBottomMm = 20;
         }
 
         #endregion

@@ -2,16 +2,15 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        xmlns:helper="clr-namespace:HyCADTool.MarkdownEditor.Views.Helpers"
+        xmlns:controls="clr-namespace:HyCADTool.MarkdownEditor.Views.Controls"
         Title="HY Markdown Editor"
         Width="960" Height="720"
         MinWidth="720" MinHeight="480"
         WindowStartupLocation="CenterScreen"
-        Background="#181818"
+        Background="#111418"
         Foreground="#cccccc">
 
     <Window.Resources>
-        <!-- Cursor 风格：工具栏按钮 -->
         <Style x:Key="ToolBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#cccccc" />
@@ -20,214 +19,191 @@
             <Setter Property="FontSize" Value="12" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="3" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2a2d2e" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
-        <!-- Cursor 风格：切换按钮（可选中态） -->
         <Style x:Key="ToggleBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
             <Setter Property="Foreground" Value="#858585" />
         </Style>
 
-        <!-- Cursor 风格：主操作按钮 -->
         <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
             <Setter Property="Background" Value="#0e639c" />
             <Setter Property="Foreground" Value="#ffffff" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="3" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1177bb" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
-        <!-- 数值输入框 -->
-        <Style x:Key="NumInput" TargetType="TextBox">
-            <Setter Property="Background" Value="#2d2d2d" />
-            <Setter Property="Foreground" Value="#cccccc" />
-            <Setter Property="BorderBrush" Value="#3e3e42" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="2,1" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="CaretBrush" Value="#cccccc" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="Width" Value="30" />
-            <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True" />
-            <Setter Property="helper:TextBoxHelper.ScrollStep" Value="0.1" />
-        </Style>
-
-        <!-- 标签 -->
-        <Style x:Key="Lbl" TargetType="TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#858585" />
-            <Setter Property="FontSize" Value="11" />
-        </Style>
-
-        <!-- 次级标签 -->
-        <Style x:Key="SLbl" TargetType="TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#5a5a5a" />
-            <Setter Property="FontSize" Value="10" />
-        </Style>
-
-        <!-- 分隔条 -->
-        <Style x:Key="Splitter" TargetType="GridSplitter">
-            <Setter Property="Background" Value="#2d2d2d" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="GridSplitter">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" />
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#007ACC" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- 分隔线 -->
         <Style x:Key="Sep" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Height" Value="14" />
-            <Setter Property="Background" Value="#2d2d2d" />
+            <Setter Property="Background" Value="#24292e" />
             <Setter Property="Margin" Value="6,0" />
+        </Style>
+
+        <Style x:Key="DarkMenu" TargetType="Menu">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="DarkMenuItem" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="8,4" />
         </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="32" />
-            <RowDefinition Height="28" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Row 0: 主工具栏 -->
-        <Border Grid.Row="0" Background="#1e1e1e" BorderBrush="#2d2d2d" BorderThickness="0,0,0,1">
+        <!-- 顶部工具条 -->
+        <Border Grid.Row="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,0,1">
             <DockPanel Margin="4,0">
-                <!-- 左：文件操作 -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="打开" Style="{StaticResource ToolBtn}" Command="{Binding LoadFileCommand}" />
-                    <Button Content="保存" Style="{StaticResource ToolBtn}" Command="{Binding SaveFileCommand}" />
-                    <Border Style="{StaticResource Sep}" />
+                    <TextBlock Text="HY" Foreground="#c9d1d9" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,10,0" />
+                    <Border Style="{StaticResource Sep}" Margin="0,0,8,0" />
+                    <Menu Style="{StaticResource DarkMenu}">
+                        <MenuItem Header="文件" Style="{StaticResource DarkMenuItem}">
+                            <MenuItem Header="打开" Command="{Binding LoadFileCommand}" />
+                            <MenuItem Header="保存" Command="{Binding SaveFileCommand}" />
+                            <Separator />
+                            <MenuItem Header="关闭" Click="OnCloseClick" />
+                        </MenuItem>
+                        <MenuItem Header="编辑" Style="{StaticResource DarkMenuItem}">
+                            <MenuItem Header="撤消" Click="OnMenuUndo" />
+                            <MenuItem Header="重做" Click="OnMenuRedo" />
+                            <Separator />
+                            <MenuItem Header="剪切" Click="OnMenuCut" />
+                            <MenuItem Header="复制" Click="OnMenuCopy" />
+                            <MenuItem Header="粘贴" Click="OnMenuPaste" />
+                            <MenuItem Header="全选" Click="OnMenuSelectAll" />
+                            <Separator />
+                            <MenuItem Header="查找替换" Click="OnMenuFindReplace" />
+                        </MenuItem>
+                        <MenuItem Header="段落" Style="{StaticResource DarkMenuItem}">
+                            <MenuItem Header="标题 1" Click="OnMenuH1" />
+                            <MenuItem Header="标题 2" Click="OnMenuH2" />
+                            <MenuItem Header="标题 3" Click="OnMenuH3" />
+                            <MenuItem Header="标题 4" Click="OnMenuH4" />
+                            <MenuItem Header="普通段落" Click="OnMenuParagraph" />
+                            <Separator />
+                            <MenuItem Header="引用" Click="OnMenuQuote" />
+                            <MenuItem Header="有序列表" Click="OnMenuOrderedList" />
+                            <MenuItem Header="无序列表" Click="OnMenuUnorderedList" />
+                            <MenuItem Header="任务列表" Click="OnMenuTaskList" />
+                            <Separator />
+                            <MenuItem Header="表格" Click="OnMenuTable" />
+                            <MenuItem Header="代码块" Click="OnMenuCodeBlock" />
+                            <MenuItem Header="数学块" Click="OnMenuMathBlock" />
+                            <MenuItem Header="目录 [toc]" Click="OnMenuToc" />
+                            <MenuItem Header="脚注" Click="OnMenuFootnote" />
+                            <MenuItem Header="分割线" Click="OnMenuHorizontalRule" />
+                        </MenuItem>
+                        <MenuItem Header="格式" Style="{StaticResource DarkMenuItem}">
+                            <MenuItem Header="加粗" Click="OnMenuBold" />
+                            <MenuItem Header="斜体" Click="OnMenuItalic" />
+                            <MenuItem Header="删除线" Click="OnMenuStrikethrough" />
+                            <MenuItem Header="行内代码" Click="OnMenuInlineCode" />
+                            <MenuItem Header="下划线" Click="OnMenuUnderline" />
+                            <MenuItem Header="高亮" Click="OnMenuHighlight" />
+                            <MenuItem Header="上标" Click="OnMenuSuperscript" />
+                            <MenuItem Header="下标" Click="OnMenuSubscript" />
+                            <MenuItem Header="注释" Click="OnMenuComment" />
+                            <MenuItem Header="行内数学" Click="OnMenuInlineMath" />
+                            <MenuItem Header="链接" Click="OnMenuLink" />
+                            <Separator />
+                            <MenuItem Header="清除样式" Click="OnMenuClearFormatting" />
+                        </MenuItem>
+                    </Menu>
                 </StackPanel>
 
-                <!-- 右：操作按钮 -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="PreviewToggleBtn" Content="预览" Style="{StaticResource ToggleBtn}" Click="OnTogglePreview" />
+                    <Button x:Name="OutlineToggleBtn" Style="{StaticResource ToggleBtn}" Click="OnToggleOutline" ToolTip="大纲" Padding="5,4">
+                        <Grid Width="16" Height="12">
+                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                            <Rectangle Width="5" HorizontalAlignment="Left"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="BottomPanelToggleBtn" Style="{StaticResource ToggleBtn}" Click="OnToggleBottomPanel" ToolTip="底部面板" Padding="5,4">
+                        <Grid Width="16" Height="12">
+                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                            <Rectangle Height="4" VerticalAlignment="Bottom"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="PreviewToggleBtn" Style="{StaticResource ToggleBtn}" Click="OnTogglePreview" ToolTip="预览" Padding="5,4">
+                        <Grid Width="16" Height="12">
+                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                            <Rectangle Width="5" HorizontalAlignment="Right"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
                     <Border Style="{StaticResource Sep}" />
                     <Button Content="插入CAD" Style="{StaticResource PrimaryBtn}" Click="OnConfirmClick" />
                     <Button Content="关闭" Style="{StaticResource ToolBtn}" Click="OnCloseClick" />
                 </StackPanel>
 
-                <!-- 中：状态栏 -->
                 <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
                            HorizontalAlignment="Center" Foreground="#5a5a5a" FontSize="11" />
             </DockPanel>
         </Border>
 
-        <!-- Row 1: 参数设置栏 -->
-        <Border Grid.Row="1" Background="#252526" BorderBrush="#2d2d2d" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                <TextBlock Style="{StaticResource Lbl}" Text="1:" Margin="0,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="28"
-                         helper:TextBoxHelper.ScrollStep="1"
-                         Text="{Binding DrawScale, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource Lbl}" Text="栏" Margin="6,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="24"
-                         helper:TextBoxHelper.ScrollStep="1"
-                         Text="{Binding ColumnCount, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource Lbl}" Text="间距" Margin="6,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="28"
-                         helper:TextBoxHelper.ScrollStep="1"
-                         Text="{Binding ColumnGutter, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource Lbl}" Text="字高" Margin="6,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="28"
-                         Text="{Binding TextSize, UpdateSourceTrigger=PropertyChanged}" />
-
-                <Border Style="{StaticResource Sep}" />
-
-                <TextBlock Style="{StaticResource SLbl}" Text="H1" Margin="0,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding H1SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding H1SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Style="{StaticResource SLbl}" Text="H2" Margin="4,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding H2SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding H2SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Style="{StaticResource SLbl}" Text="H3" Margin="4,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding H3SpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding H3SpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Style="{StaticResource SLbl}" Text="P" Margin="4,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding PSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Style="{StaticResource SLbl}" Text="Li" Margin="4,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding LiSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Style="{StaticResource SLbl}" Text="Q" Margin="4,0,1,0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding QuoteSpaceBefore, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Style="{StaticResource SLbl}" Text="/" Margin="0" />
-                <TextBox Style="{StaticResource NumInput}" Width="26"
-                         Text="{Binding QuoteSpaceAfter, UpdateSourceTrigger=PropertyChanged}" />
-            </StackPanel>
-        </Border>
-
-        <!-- Row 2: 编辑器主体（默认全宽，可切换分栏预览） -->
-        <Grid x:Name="EditorArea" Grid.Row="2">
+        <!-- 阶段1骨架：下左大纲 + 下中编辑 + 右侧可切换预览 -->
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="OutlineCol" Width="220" />
+                <ColumnDefinition x:Name="OutlineSplitterCol" Width="4" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition x:Name="SplitterCol" Width="0" />
                 <ColumnDefinition x:Name="PreviewCol" Width="0" />
             </Grid.ColumnDefinitions>
 
-            <!-- Vditor 编辑器 -->
-            <wv2:WebView2 x:Name="EditorWebView" Grid.Column="0" />
+            <Border Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="28" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="大纲" Foreground="#8b949e" FontSize="11"
+                               FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" />
+                    <ListBox x:Name="OutlineList" Grid.Row="1"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="#c9d1d9" FontSize="12" />
+                </Grid>
+            </Border>
 
-            <!-- 分隔条（预览模式可见） -->
-            <GridSplitter x:Name="PreviewSplitter" Grid.Column="1" Width="4"
-                          HorizontalAlignment="Stretch" Style="{StaticResource Splitter}"
-                          Visibility="Collapsed" />
+            <Border x:Name="OutlineDivider" Grid.Column="1" Background="#24292e" />
 
-            <!-- 分栏预览（默认隐藏，点击"预览"显示；即使隐藏也后台运行 JS） -->
-            <WebBrowser x:Name="PreviewBrowser" Grid.Column="2"
-                        Visibility="Collapsed" />
+            <wv2:WebView2 x:Name="EditorWebView" Grid.Column="2" />
+
+            <GridSplitter x:Name="PreviewSplitter" Grid.Column="3" Width="4"
+                          HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+                          Background="#24292e" Visibility="Collapsed" />
+
+            <Grid x:Name="PreviewRulerGrid" Grid.Column="4" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="RulerRow" Height="24" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="RulerCol" Width="24" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="RulerCorner" Grid.Row="0" Grid.Column="0" Background="#161b22"
+                        BorderBrush="#24292e" BorderThickness="0,0,1,1" />
+                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="0" Grid.Column="1" Orientation="Horizontal" />
+                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="1" Grid.Column="0" Orientation="Vertical" />
+                <WebBrowser x:Name="PreviewBrowser" Grid.Row="1" Grid.Column="1" />
+            </Grid>
         </Grid>
     </Grid>
 </Window>

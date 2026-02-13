@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MarkdownEditor.TestHost": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}

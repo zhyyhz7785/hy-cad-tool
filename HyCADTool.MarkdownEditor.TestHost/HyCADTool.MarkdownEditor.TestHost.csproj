@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>HyCADTool.MarkdownEditor.TestHost</RootNamespace>
+    <AssemblyName>HyCADTool.MarkdownEditor.TestHost</AssemblyName>
+    <!-- AllocConsole() 附加控制台窗口看调试输出 -->
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HyCADTool.MarkdownEditor\HyCADTool.MarkdownEditor.csproj" />
+  </ItemGroup>
+
+</Project>

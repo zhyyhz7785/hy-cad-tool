@@ -2,9 +2,12 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
@@ -22,14 +25,20 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private bool _editorReady;
         private bool _previewVisible;
+        private bool _outlineVisible = true;
+        private bool _bottomPanelVisible;
+        private VditorJsHelper _js;
+        private const int WM_MOUSEWHEEL = 0x020A;
 
         public EditorWindow(EditorInput input)
         {
             ViewModel = new EditorViewModel(input);
             DataContext = ViewModel;
             InitializeComponent();
+            ApplyOutlineLayout();
 
             Loaded += OnLoaded;
+            Closed += OnClosed;
             ViewModel.PropertyChanged += OnPropChanged;
             ViewModel.EditorContentLoadRequested += OnEditorContentLoadRequested;
         }
@@ -38,6 +47,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
+            ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
             try
             {
                 string userDataFolder = Path.Combine(
@@ -47,6 +57,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
                 var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
                 await EditorWebView.EnsureCoreWebView2Async(env);
+                _js = new VditorJsHelper(script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script));
 
                 EditorWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
@@ -64,6 +75,12 @@ namespace HyCADTool.MarkdownEditor.Views
 
             // 初次刷新隐藏预览（后台计算用）
             RefreshPreview();
+            UpdateRulerScale();
+        }
+
+        private void OnClosed(object sender, EventArgs e)
+        {
+            ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
         }
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -107,6 +124,41 @@ namespace HyCADTool.MarkdownEditor.Views
 
         #region 预览切换
 
+        private static System.Windows.Media.SolidColorBrush BrushFromHex(string hex) =>
+            new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+
+        private void OnToggleOutline(object sender, RoutedEventArgs e)
+        {
+            _outlineVisible = !_outlineVisible;
+            ApplyOutlineLayout();
+        }
+
+        private void ApplyOutlineLayout()
+        {
+            if (_outlineVisible)
+            {
+                OutlineCol.Width = new GridLength(220, GridUnitType.Pixel);
+                OutlineSplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
+                OutlineDivider.Visibility = Visibility.Visible;
+                OutlineToggleBtn.Foreground = BrushFromHex("#cccccc");
+            }
+            else
+            {
+                OutlineCol.Width = new GridLength(0);
+                OutlineSplitterCol.Width = new GridLength(0);
+                OutlineDivider.Visibility = Visibility.Collapsed;
+                OutlineToggleBtn.Foreground = BrushFromHex("#858585");
+            }
+        }
+
+        private void OnToggleBottomPanel(object sender, RoutedEventArgs e)
+        {
+            _bottomPanelVisible = !_bottomPanelVisible;
+            ViewModel.StatusText = _bottomPanelVisible ? "底部面板：阶段1占位（未启用）" : "底部面板：关闭";
+            BottomPanelToggleBtn.Foreground = BrushFromHex(_bottomPanelVisible ? "#cccccc" : "#858585");
+        }
+
         private void OnTogglePreview(object sender, RoutedEventArgs e)
         {
             _previewVisible = !_previewVisible;
@@ -122,7 +174,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 SplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
                 PreviewCol.Width = new GridLength(1.2, GridUnitType.Star);
                 PreviewSplitter.Visibility = Visibility.Visible;
-                PreviewBrowser.Visibility = Visibility.Visible;
+                PreviewRulerGrid.Visibility = Visibility.Visible;
                 PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#cccccc"));
             }
@@ -131,10 +183,48 @@ namespace HyCADTool.MarkdownEditor.Views
                 SplitterCol.Width = new GridLength(0);
                 PreviewCol.Width = new GridLength(0);
                 PreviewSplitter.Visibility = Visibility.Collapsed;
-                PreviewBrowser.Visibility = Visibility.Collapsed;
+                PreviewRulerGrid.Visibility = Visibility.Collapsed;
                 PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#858585"));
             }
+        }
+
+        private double GetDpiScale()
+        {
+            try
+            {
+                var src = System.Windows.PresentationSource.FromVisual(this);
+                if (src?.CompositionTarget != null)
+                    return src.CompositionTarget.TransformToDevice.M22;
+            }
+            catch { }
+            return 1.0;
+        }
+
+        private void UpdateRulerScale()
+        {
+            // 与 WebBrowser(IE) 的 DPI 口径补偿保持一致
+            double x = Math.Max(0.1, ViewModel.PreviewScale);
+            double dpiScale = GetDpiScale();
+            double ppm = x / Math.Max(0.5, dpiScale);
+            PreviewHRuler.PixelsPerMm = ppm;
+            PreviewVRuler.PixelsPerMm = ppm;
+            PreviewHRuler.SegmentCount = 1;
+        }
+
+        private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
+        {
+            if (handled || msg.message != WM_MOUSEWHEEL) return;
+            if (!_previewVisible || PreviewRulerGrid.Visibility != Visibility.Visible) return;
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+            if (!PreviewRulerGrid.IsMouseOver) return;
+
+            int wheelDelta = (short)((msg.wParam.ToInt64() >> 16) & 0xffff);
+            if (wheelDelta == 0) return;
+
+            double step = wheelDelta > 0 ? 0.1 : -0.1;
+            ViewModel.PreviewScale = Math.Max(0.1, Math.Min(3.0, ViewModel.PreviewScale + step));
+            handled = true;
         }
 
         #endregion
@@ -148,6 +238,10 @@ namespace HyCADTool.MarkdownEditor.Views
                 || e.PropertyName == "SpacingChanged")
             {
                 RefreshPreview();
+            }
+            if (e.PropertyName == nameof(ViewModel.PreviewScale))
+            {
+                UpdateRulerScale();
             }
         }
 
@@ -194,6 +288,114 @@ namespace HyCADTool.MarkdownEditor.Views
         #endregion
 
         #region 按钮事件
+
+        private async Task RunMenuActionAsync(Func<Task> action)
+        {
+            if (!_editorReady || _js == null) return;
+            try { await action(); } catch { }
+        }
+
+        private async void OnMenuUndo(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.UndoAsync());
+
+        private async void OnMenuRedo(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.RedoAsync());
+
+        private async void OnMenuCut(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.CutAsync());
+
+        private async void OnMenuCopy(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.CopyAsync());
+
+        private async void OnMenuPaste(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.PasteAsync());
+
+        private async void OnMenuSelectAll(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.SelectAllAsync());
+
+        private async void OnMenuFindReplace(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.FindReplaceAsync());
+
+        private async void OnMenuH1(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertHeadingAsync(1));
+
+        private async void OnMenuH2(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertHeadingAsync(2));
+
+        private async void OnMenuH3(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertHeadingAsync(3));
+
+        private async void OnMenuH4(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertHeadingAsync(4));
+
+        private async void OnMenuParagraph(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertParagraphAsync());
+
+        private async void OnMenuQuote(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertQuoteAsync());
+
+        private async void OnMenuOrderedList(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertOrderedListAsync());
+
+        private async void OnMenuUnorderedList(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertUnorderedListAsync());
+
+        private async void OnMenuTaskList(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertTaskListAsync());
+
+        private async void OnMenuTable(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertTableAsync());
+
+        private async void OnMenuCodeBlock(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertCodeBlockAsync());
+
+        private async void OnMenuMathBlock(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertMathBlockAsync());
+
+        private async void OnMenuToc(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertTocAsync());
+
+        private async void OnMenuFootnote(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertFootnoteAsync());
+
+        private async void OnMenuHorizontalRule(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertHorizontalRuleAsync());
+
+        private async void OnMenuBold(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleBoldAsync());
+
+        private async void OnMenuItalic(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleItalicAsync());
+
+        private async void OnMenuStrikethrough(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleStrikethroughAsync());
+
+        private async void OnMenuInlineCode(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleInlineCodeAsync());
+
+        private async void OnMenuUnderline(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleUnderlineAsync());
+
+        private async void OnMenuHighlight(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleHighlightAsync());
+
+        private async void OnMenuSuperscript(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleSuperscriptAsync());
+
+        private async void OnMenuSubscript(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleSubscriptAsync());
+
+        private async void OnMenuComment(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleCommentAsync());
+
+        private async void OnMenuInlineMath(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ToggleInlineMathAsync());
+
+        private async void OnMenuLink(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.InsertLinkAsync());
+
+        private async void OnMenuClearFormatting(object sender, RoutedEventArgs e) =>
+            await RunMenuActionAsync(() => _js.ClearFormattingAsync());
 
         private async void OnConfirmClick(object sender, RoutedEventArgs e)
         {
