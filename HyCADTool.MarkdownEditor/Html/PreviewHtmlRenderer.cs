@@ -34,7 +34,11 @@ namespace HyCADTool.MarkdownEditor.Html
                 + "<div id=\"source\" style=\"display:none;\">" + body + "</div>"
                 + "<div class=\"viewport\"><div class=\"paper\" id=\"paper\"><div class=\"paper-inner\" id=\"main\">"
                 + columnsHtml
-                + "</div></div></div>"
+                + "</div>"
+                + "<div class=\"paper-resize-right\" onmousedown=\"startPaperResize(event,'right')\"></div>"
+                + "<div class=\"paper-resize-bottom\" onmousedown=\"startPaperResize(event,'bottom')\"></div>"
+                + "<div class=\"paper-resize-corner\" onmousedown=\"startPaperResize(event,'corner')\"></div>"
+                + "</div></div>"
                 + "<script>" + JS + "</script>"
                 + "</body></html>";
         }
@@ -111,6 +115,8 @@ body{overflow:auto;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei
   height:/*PAPER_HEIGHT*/;
   background:#ffffff;
   color:#111111;
+  position:relative;
+  overflow:hidden;
 }
 .paper-inner{
   width:100%;
@@ -131,6 +137,19 @@ body{overflow:auto;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei
 .col-gap{width:/*GUTTER*/;min-width:6px;background:#161b22;-ms-flex-negative:0;flex-shrink:0;cursor:ew-resize}
 .col-footer{height:22px;line-height:22px;padding:0 8px;background:transparent;color:#8b949e;font-size:11px}
 .col-chars{color:#58a6ff}
+
+.paper-resize-right{
+  position:absolute;top:0;right:0;width:6px;height:100%;
+  cursor:ew-resize;background:transparent;
+}
+.paper-resize-bottom{
+  position:absolute;left:0;bottom:0;width:100%;height:6px;
+  cursor:ns-resize;background:transparent;
+}
+.paper-resize-corner{
+  position:absolute;right:0;bottom:0;width:12px;height:12px;
+  cursor:nwse-resize;background:#30363d;border-top:1px solid #6e7681;border-left:1px solid #6e7681;
+}
 
 .empty{color:#555;font-style:italic;text-align:center;padding:30px}
 
@@ -163,11 +182,17 @@ window.colChars=[];
 window.colParas=[];
 var hDiv=-1,sX=0,sW=[];
 var vCol=-1,sY=0,sH=0;
+var pMode='',pStartX=0,pStartY=0,pStartW=0,pStartH=0;
 function getColChars(){return window.colChars.join(',');}
 function getColParas(){
   var parts=[];
   for(var i=0;i<window.colParas.length;i++){parts.push(window.colParas[i].join(','));}
   return parts.join('|');
+}
+function getPaperSize(){
+  var p=document.getElementById('paper');
+  if(!p) return '';
+  return p.offsetWidth + ',' + p.offsetHeight;
 }
 
 function distribute(){
@@ -242,7 +267,47 @@ function startV(ev,idx){
   if(ev.preventDefault) ev.preventDefault();
 }
 
+function startPaperResize(ev,mode){
+  var paper=document.getElementById('paper');
+  if(!paper) return;
+  pMode=mode||'';
+  pStartX=ev.clientX;
+  pStartY=ev.clientY;
+  pStartW=paper.offsetWidth;
+  pStartH=paper.offsetHeight;
+  if(ev.preventDefault) ev.preventDefault();
+}
+
 document.onmousemove=function(ev){
+  if(pMode){
+    var paper=document.getElementById('paper');
+    var main=document.getElementById('main');
+    if(!paper || !main) return;
+
+    var dx=ev.clientX-pStartX;
+    var dy=ev.clientY-pStartY;
+    var cs=window.getComputedStyle(main);
+    var padL=parseFloat(cs.paddingLeft)||0;
+    var padR=parseFloat(cs.paddingRight)||0;
+    var padT=parseFloat(cs.paddingTop)||0;
+    var padB=parseFloat(cs.paddingBottom)||0;
+    var minInnerW=180;
+    var minInnerH=120;
+    var minW=Math.max(120, Math.floor(padL+padR+minInnerW));
+    var minH=Math.max(120, Math.floor(padT+padB+minInnerH));
+
+    var nw=pStartW, nh=pStartH;
+    if(pMode==='right' || pMode==='corner') nw=pStartW+dx;
+    if(pMode==='bottom' || pMode==='corner') nh=pStartH+dy;
+    if(nw<minW) nw=minW;
+    if(nh<minH) nh=minH;
+
+    paper.style.width=nw+'px';
+    paper.style.height=nh+'px';
+    distribute();
+    return;
+  }
+
   if(vCol>=0){
     var dy=ev.clientY-sY;
     var cols=document.querySelectorAll('.col-content');
@@ -287,7 +352,7 @@ document.onmousemove=function(ev){
   }
 };
 
-document.onmouseup=function(){hDiv=-1;vCol=-1;};
+document.onmouseup=function(){hDiv=-1;vCol=-1;pMode='';};
 
 function init(){distribute();}
 if(document.readyState==='complete'||document.readyState==='interactive'){setTimeout(init,50);}

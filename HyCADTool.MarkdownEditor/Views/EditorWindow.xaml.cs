@@ -6,8 +6,10 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Navigation;
 using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
@@ -29,6 +31,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private bool _bottomPanelVisible;
         private VditorJsHelper _js;
         private const int WM_MOUSEWHEEL = 0x020A;
+        private readonly DispatcherTimer _previewRulerSyncTimer;
 
         public EditorWindow(EditorInput input)
         {
@@ -36,6 +39,12 @@ namespace HyCADTool.MarkdownEditor.Views
             DataContext = ViewModel;
             InitializeComponent();
             ApplyOutlineLayout();
+
+            _previewRulerSyncTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(120)
+            };
+            _previewRulerSyncTimer.Tick += OnPreviewRulerSyncTimerTick;
 
             Loaded += OnLoaded;
             Closed += OnClosed;
@@ -48,6 +57,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
+            PreviewBrowser.LoadCompleted += OnPreviewBrowserLoadCompleted;
             try
             {
                 string userDataFolder = Path.Combine(
@@ -81,6 +91,13 @@ namespace HyCADTool.MarkdownEditor.Views
         private void OnClosed(object sender, EventArgs e)
         {
             ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
+            PreviewBrowser.LoadCompleted -= OnPreviewBrowserLoadCompleted;
+            _previewRulerSyncTimer.Stop();
+        }
+
+        private void OnPreviewBrowserLoadCompleted(object sender, NavigationEventArgs e)
+        {
+            SyncRulerExtentFromPreview();
         }
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -155,8 +172,18 @@ namespace HyCADTool.MarkdownEditor.Views
         private void OnToggleBottomPanel(object sender, RoutedEventArgs e)
         {
             _bottomPanelVisible = !_bottomPanelVisible;
-            ViewModel.StatusText = _bottomPanelVisible ? "底部面板：阶段1占位（未启用）" : "底部面板：关闭";
+            ApplyBottomPanelLayout();
+            ViewModel.StatusText = _bottomPanelVisible ? "底部面板：已打开" : "底部面板：关闭";
             BottomPanelToggleBtn.Foreground = BrushFromHex(_bottomPanelVisible ? "#cccccc" : "#858585");
+        }
+
+        private void ApplyBottomPanelLayout()
+        {
+            bool show = _bottomPanelVisible && _previewVisible;
+            BottomPanelRow.Height = show
+                ? new GridLength(140, GridUnitType.Pixel)
+                : new GridLength(0, GridUnitType.Pixel);
+            BottomPanelHost.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void OnTogglePreview(object sender, RoutedEventArgs e)
@@ -175,6 +202,9 @@ namespace HyCADTool.MarkdownEditor.Views
                 PreviewCol.Width = new GridLength(1.2, GridUnitType.Star);
                 PreviewSplitter.Visibility = Visibility.Visible;
                 PreviewRulerGrid.Visibility = Visibility.Visible;
+                _previewRulerSyncTimer.Start();
+                SyncRulerExtentFromPreview();
+                ApplyBottomPanelLayout();
                 PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#cccccc"));
             }
@@ -184,6 +214,8 @@ namespace HyCADTool.MarkdownEditor.Views
                 PreviewCol.Width = new GridLength(0);
                 PreviewSplitter.Visibility = Visibility.Collapsed;
                 PreviewRulerGrid.Visibility = Visibility.Collapsed;
+                _previewRulerSyncTimer.Stop();
+                ApplyBottomPanelLayout();
                 PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#858585"));
             }
@@ -210,21 +242,63 @@ namespace HyCADTool.MarkdownEditor.Views
             PreviewHRuler.PixelsPerMm = ppm;
             PreviewVRuler.PixelsPerMm = ppm;
             PreviewHRuler.SegmentCount = 1;
+            UpdateRulerExtentByConfig(dpiScale);
+        }
+
+        private void UpdateRulerExtentByConfig(double dpiScale)
+        {
+            // 先按配置给出初值；后续由 getPaperSize() 实时覆盖（支持纸面拖拽）
+            var cfg = ViewModel.BuildConfig();
+            double wDip = (cfg.PageWidthMm * Math.Max(0.1, ViewModel.PreviewScale)) / Math.Max(0.5, dpiScale);
+            double hDip = (cfg.PageHeightMm * Math.Max(0.1, ViewModel.PreviewScale)) / Math.Max(0.5, dpiScale);
+            PreviewHRuler.Width = Math.Max(1, wDip);
+            PreviewVRuler.Height = Math.Max(1, hDip);
+        }
+
+        private void OnPreviewRulerSyncTimerTick(object sender, EventArgs e)
+        {
+            SyncRulerExtentFromPreview();
+        }
+
+        private void SyncRulerExtentFromPreview()
+        {
+            if (!_previewVisible || PreviewBrowser.Visibility != Visibility.Visible) return;
+            try
+            {
+                var result = PreviewBrowser.InvokeScript("getPaperSize");
+                if (!(result is string csv) || string.IsNullOrWhiteSpace(csv)) return;
+                var parts = csv.Split(',');
+                if (parts.Length != 2) return;
+                if (!double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pxW)) return;
+                if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pxH)) return;
+
+                double dpiScale = GetDpiScale();
+                PreviewHRuler.Width = Math.Max(1, pxW / Math.Max(0.5, dpiScale));
+                PreviewVRuler.Height = Math.Max(1, pxH / Math.Max(0.5, dpiScale));
+            }
+            catch
+            {
+                // 页面加载中时 InvokeScript 可能失败，忽略即可
+            }
         }
 
         private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
         {
-            if (handled || msg.message != WM_MOUSEWHEEL) return;
+            if (handled) return;
             if (!_previewVisible || PreviewRulerGrid.Visibility != Visibility.Visible) return;
-            if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
-            if (!PreviewRulerGrid.IsMouseOver) return;
 
-            int wheelDelta = (short)((msg.wParam.ToInt64() >> 16) & 0xffff);
-            if (wheelDelta == 0) return;
+            if (msg.message == WM_MOUSEWHEEL)
+            {
+                if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+                if (!PreviewRulerGrid.IsMouseOver) return;
 
-            double step = wheelDelta > 0 ? 0.1 : -0.1;
-            ViewModel.PreviewScale = Math.Max(0.1, Math.Min(3.0, ViewModel.PreviewScale + step));
-            handled = true;
+                int wheelDelta = (short)((msg.wParam.ToInt64() >> 16) & 0xffff);
+                if (wheelDelta == 0) return;
+
+                double step = wheelDelta > 0 ? 0.1 : -0.1;
+                ViewModel.PreviewScale = Math.Max(0.1, Math.Min(3.0, ViewModel.PreviewScale + step));
+                handled = true;
+            }
         }
 
         #endregion

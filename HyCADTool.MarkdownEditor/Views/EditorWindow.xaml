@@ -158,6 +158,10 @@
 
         <!-- 阶段1骨架：下左大纲 + 下中编辑 + 右侧可切换预览 -->
         <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition x:Name="BottomPanelRow" Height="0" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="OutlineCol" Width="220" />
                 <ColumnDefinition x:Name="OutlineSplitterCol" Width="4" />
@@ -166,7 +170,7 @@
                 <ColumnDefinition x:Name="PreviewCol" Width="0" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
+            <Border Grid.RowSpan="2" Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="28" />
@@ -180,15 +184,15 @@
                 </Grid>
             </Border>
 
-            <Border x:Name="OutlineDivider" Grid.Column="1" Background="#24292e" />
+            <Border x:Name="OutlineDivider" Grid.RowSpan="2" Grid.Column="1" Background="#24292e" />
 
-            <wv2:WebView2 x:Name="EditorWebView" Grid.Column="2" />
+            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" />
 
-            <GridSplitter x:Name="PreviewSplitter" Grid.Column="3" Width="4"
+            <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="3" Width="4"
                           HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                           Background="#24292e" Visibility="Collapsed" />
 
-            <Grid x:Name="PreviewRulerGrid" Grid.Column="4" Visibility="Collapsed">
+            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition x:Name="RulerRow" Height="24" />
                     <RowDefinition Height="*" />
@@ -200,10 +204,23 @@
 
                 <Border x:Name="RulerCorner" Grid.Row="0" Grid.Column="0" Background="#161b22"
                         BorderBrush="#24292e" BorderThickness="0,0,1,1" />
-                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="0" Grid.Column="1" Orientation="Horizontal" />
-                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="1" Grid.Column="0" Orientation="Vertical" />
+                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="0" Grid.Column="1" Orientation="Horizontal"
+                                       HorizontalAlignment="Left" />
+                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="1" Grid.Column="0" Orientation="Vertical"
+                                       VerticalAlignment="Top" />
                 <WebBrowser x:Name="PreviewBrowser" Grid.Row="1" Grid.Column="1" />
             </Grid>
+
+            <Border x:Name="BottomPanelHost" Grid.Row="1" Grid.Column="4"
+                    Background="#161b22" BorderBrush="#24292e" BorderThickness="0,1,0,0"
+                    Visibility="Collapsed">
+                <Grid>
+                    <TextBlock Text="底部预留区域（阶段重建）"
+                               Foreground="#8b949e"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center" />
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Window>
