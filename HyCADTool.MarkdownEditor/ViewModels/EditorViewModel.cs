@@ -2,6 +2,7 @@ using HyCADTool.MarkdownEditor.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -64,11 +65,39 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         #region 可调参数
 
+        private static readonly IReadOnlyList<string> _drawScaleOptions = new[]
+        {
+            "1", "5", "10", "15", "25", "50", "100", "150", "200", "250"
+        };
+
         private double _scale = 1.0;
         public double DrawScale
         {
             get => _scale;
-            set { if (SetProperty(ref _scale, Math.Max(0.1, value))) UpdateStatus(); }
+            set
+            {
+                if (!SetProperty(ref _scale, Math.Max(0.1, value))) return;
+                SyncDrawScaleTextFromValue();
+                UpdateStatus();
+            }
+        }
+
+        public IReadOnlyList<string> DrawScaleOptions => _drawScaleOptions;
+
+        private string _drawScaleText = "1";
+        public string DrawScaleText
+        {
+            get => _drawScaleText;
+            set
+            {
+                string next = (value ?? "").Trim();
+                if (!SetProperty(ref _drawScaleText, next)) return;
+
+                if (TryParseScale(next, out var parsed))
+                {
+                    DrawScale = parsed;
+                }
+            }
         }
 
         private int _columnCount = 2;
@@ -236,6 +265,32 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         private void RefreshPreviewVia() => OnPropertyChanged("SpacingChanged");
 
+        private static bool TryParseScale(string text, out double value)
+        {
+            if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                return true;
+            if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+                return true;
+            value = 1.0;
+            return false;
+        }
+
+        private static string FormatScale(double scale)
+        {
+            double rounded = Math.Round(scale, 3);
+            if (Math.Abs(rounded - Math.Round(rounded)) < 0.0001)
+                return ((int)Math.Round(rounded)).ToString(CultureInfo.InvariantCulture);
+            return rounded.ToString("0.###", CultureInfo.InvariantCulture);
+        }
+
+        private void SyncDrawScaleTextFromValue()
+        {
+            string next = FormatScale(_scale);
+            if (_drawScaleText == next) return;
+            _drawScaleText = next;
+            OnPropertyChanged(nameof(DrawScaleText));
+        }
+
         #endregion
 
         #region 状态
@@ -266,6 +321,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             SaveFileCommand = new RelayCmd(ExecuteSave);
             _markdownText = DefaultMarkdown;
             ApplyPagePreset(_pagePreset);
+            SyncDrawScaleTextFromValue();
             UpdateStatus();
         }
 
@@ -307,6 +363,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _quoteSpaceBefore = cfg.QuoteSpaceBefore;
             _quoteSpaceAfter = cfg.QuoteSpaceAfter;
 
+            SyncDrawScaleTextFromValue();
             UpdateStatus();
         }
 

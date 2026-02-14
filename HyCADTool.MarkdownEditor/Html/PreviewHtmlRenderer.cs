@@ -125,9 +125,9 @@ namespace HyCADTool.MarkdownEditor.Html
         private const string CSS_TEMPLATE = @"
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{overflow:auto;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei','Segoe UI',sans-serif;font-size:12px;line-height:1.55}
+body{overflow:hidden;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei','Segoe UI',sans-serif;font-size:12px;line-height:1.55}
 
-.viewport{min-width:100%;min-height:100%;padding:0}
+.viewport{min-width:100%;min-height:100%;padding:0;overflow:hidden}
 .paper{
   width:/*PAPER_WIDTH*/;
   height:/*PAPER_HEIGHT*/;
@@ -149,17 +149,17 @@ body{overflow:auto;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei
 
 .col-wrap{-ms-flex:1;flex:1;display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;min-width:0}
 .col-content{-ms-flex:1;flex:1;overflow:hidden;padding:8px 10px;background:#ffffff;color:#111111}
-.col-content.last{overflow-y:auto}
-.col-vhandle{height:6px;background:#30363d;cursor:ns-resize;-ms-flex-negative:0;flex-shrink:0}
+.col-content.last{overflow:hidden}
+.col-vhandle{height:6px;background:#2b3138;cursor:ns-resize;-ms-flex-negative:0;flex-shrink:0}
 .col-vhandle:hover{background:#6e7681}
-.col-gap{width:/*GUTTER*/;min-width:6px;background:#161b22;-ms-flex-negative:0;flex-shrink:0;cursor:ew-resize}
+.col-gap{width:/*GUTTER*/;min-width:0;background:#2b3138;-ms-flex-negative:0;flex-shrink:0;cursor:ew-resize}
 
 .paper-footer{
   display:-ms-flexbox;display:flex;-ms-flex-direction:row;flex-direction:row;
   padding:4px 0;color:#8b949e;font-size:11px;
 }
 .col-footer-item{-ms-flex:1;flex:1;text-align:center}
-.col-footer-sep{width:/*GUTTER*/;min-width:6px;-ms-flex-negative:0;flex-shrink:0}
+.col-footer-sep{width:/*GUTTER*/;min-width:0;background:#2b3138;-ms-flex-negative:0;flex-shrink:0}
 .col-chars{color:#58a6ff}
 
 .paper-resize-right{
@@ -219,6 +219,27 @@ function getPaperSize(){
   return p.offsetWidth + ',' + p.offsetHeight;
 }
 
+function syncFooter(){
+  var wraps=document.querySelectorAll('.col-wrap');
+  var items=document.querySelectorAll('.col-footer-item');
+  var seps=document.querySelectorAll('.col-footer-sep');
+  var gaps=document.querySelectorAll('.col-gap');
+  var i;
+
+  for(i=0;i<items.length;i++){
+    var w=(i<wraps.length)?wraps[i].offsetWidth:0;
+    items[i].style.webkitFlex='none';
+    items[i].style.msFlex='none';
+    items[i].style.flex='none';
+    items[i].style.width=w+'px';
+  }
+
+  for(i=0;i<seps.length;i++){
+    var gw=(i<gaps.length)?gaps[i].offsetWidth:0;
+    seps[i].style.width=gw+'px';
+  }
+}
+
 function distribute(){
   var src=document.getElementById('source');
   var cols=document.querySelectorAll('.col-content');
@@ -229,7 +250,7 @@ function distribute(){
   for(i=0;i<cols.length;i++) window.colParas.push([]);
 
   var els=src.children;
-  if(!els||els.length===0){if(cols[0])cols[0].innerHTML='<p class=""empty"">(无内容)</p>';return;}
+  if(!els||els.length===0){if(cols[0])cols[0].innerHTML='<p class=""empty"">(无内容)</p>';syncFooter();return;}
 
   for(e=0;e<els.length;e++){
     if(ci>=cols.length) ci=cols.length-1;
@@ -268,8 +289,10 @@ function distribute(){
     var ch=document.getElementById('chars-'+i);
     if(ch) ch.innerHTML=cpl+' 字/行';
     var info=document.getElementById('info-'+i);
-    if(info) info.innerHTML=cols[i].children.length+' 段';
+    if(info) info.innerHTML=window.colParas[i].length+' 段';
   }
+
+  syncFooter();
 }
 
 function startH(ev,idx){

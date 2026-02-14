@@ -28,10 +28,10 @@ namespace HyCADTool.MarkdownEditor.Views
         public EditorResult Result { get; private set; }
 
         private bool _editorReady;
-        private bool _previewVisible;
+        private bool _previewVisible = true;
         private bool _outlineVisible = true;
-        private bool _bottomPanelVisible;
-        private double _bottomPanelHeight = 140;
+        private bool _bottomPanelVisible = true;
+        private double _bottomPanelHeight = 160;
         private VditorJsHelper _js;
         private const int WM_MOUSEWHEEL = 0x020A;
         private readonly DispatcherTimer _rulerSyncTimer;
@@ -43,10 +43,15 @@ namespace HyCADTool.MarkdownEditor.Views
         private const double DefaultOutlinePanelWidth = 220;
         private const double OutlineSplitterWidth = 4;
         private const double RulerThickness = 24;
+        private const double DefaultEditorMinWidth = 180;
+        private const double DefaultRatioLeft = 1.0;
+        private const double DefaultRatioEditor = 2.0;
+        private const double DefaultRatioPreview = 4.0;
         private bool _isDarkTheme = true;
         private bool _rulerVisible = true;
         private double _outlinePanelWidth = DefaultOutlinePanelWidth;
         private double _previewPanelWidth = DefaultPreviewPanelWidth;
+        private bool _defaultWorkspaceLayoutApplied;
 
         public EditorWindow(EditorInput input)
         {
@@ -121,6 +126,7 @@ namespace HyCADTool.MarkdownEditor.Views
             UpdateRulerScale();
             RefreshOutline();
             RefreshFileList();
+            ApplyDefaultWorkspaceLayout(false);
         }
 
         private void OnClosed(object sender, EventArgs e)
@@ -314,6 +320,10 @@ namespace HyCADTool.MarkdownEditor.Views
         private void OnWindowStateChanged(object sender, EventArgs e)
         {
             UpdateWindowCaptionButtons();
+            if (WindowState == WindowState.Maximized)
+            {
+                Dispatcher.BeginInvoke(new Action(() => ApplyDefaultWorkspaceLayout(true)), DispatcherPriority.Loaded);
+            }
         }
 
         private void UpdateWindowCaptionButtons()
@@ -531,6 +541,37 @@ namespace HyCADTool.MarkdownEditor.Views
                 : ThemeBrush("ThemeTextSecondaryBrush");
         }
 
+        private void ApplyDefaultWorkspaceLayout(bool force)
+        {
+            if (_defaultWorkspaceLayoutApplied && !force) return;
+            if (OutlineCol == null || EditorCol == null || PreviewCol == null || SplitterCol == null || PreviewSplitter == null) return;
+
+            double ratioSum = DefaultRatioLeft + DefaultRatioEditor + DefaultRatioPreview;
+            double windowWidth = ActualWidth > 0 ? ActualWidth : Width;
+            double minRequired = MinOutlinePanelWidth + DefaultEditorMinWidth + MinPreviewVisibleWidth;
+            double splitterReserve = OutlineSplitterWidth + 4 + 24;
+            double available = Math.Max(minRequired, windowWidth - splitterReserve);
+            double unit = available / ratioSum;
+
+            _outlinePanelWidth = Math.Max(MinOutlinePanelWidth, unit * DefaultRatioLeft);
+            double editorMinWidth = Math.Max(DefaultEditorMinWidth, unit * DefaultRatioEditor * 0.55);
+            _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, unit * DefaultRatioPreview);
+            _bottomPanelHeight = Math.Max(_bottomPanelHeight, 160);
+
+            _outlineVisible = true;
+            _previewVisible = true;
+            _bottomPanelVisible = true;
+
+            ApplyOutlineLayout();
+            ApplyPreviewLayout();
+            EditorCol.MinWidth = editorMinWidth;
+            EditorCol.Width = new GridLength(1, GridUnitType.Star);
+            ApplyBottomPanelLayout();
+            UpdateRulerScale();
+
+            _defaultWorkspaceLayoutApplied = true;
+        }
+
         private double GetDpiScale()
         {
             try
@@ -545,13 +586,15 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void UpdateRulerScale()
         {
+            if (PreviewHRuler == null || PreviewVRuler == null) return;
+
             // 初始值：基于公式的 ppm（LoadCompleted 前的占位）
             double x = Math.Max(0.1, ViewModel.PreviewScale);
             double dpiScale = GetDpiScale();
             double ppm = x / Math.Max(0.5, dpiScale);
             PreviewHRuler.PixelsPerMm = ppm;
             PreviewVRuler.PixelsPerMm = ppm;
-            PreviewHRuler.SegmentCount = 1;
+            PreviewHRuler.SegmentCount = Math.Max(1, ViewModel.ColumnCount);
             // 随后由 SyncRulerFromPaper() 用实际像素覆盖
             SyncRulerFromPaper();
         }
@@ -603,8 +646,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
             if (msg.message == WM_MOUSEWHEEL)
             {
-                if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
-                if (!PreviewRulerGrid.IsMouseOver) return;
+                if (!IsMouseWheelInsidePreviewArea(msg.lParam)) return;
 
                 int wheelDelta = (short)((msg.wParam.ToInt64() >> 16) & 0xffff);
                 if (wheelDelta == 0) return;
@@ -612,6 +654,29 @@ namespace HyCADTool.MarkdownEditor.Views
                 double step = wheelDelta > 0 ? 0.1 : -0.1;
                 ViewModel.PreviewScale = Math.Max(0.1, Math.Min(3.0, ViewModel.PreviewScale + step));
                 handled = true;
+            }
+        }
+
+        private bool IsMouseWheelInsidePreviewArea(IntPtr lParam)
+        {
+            if (PreviewRulerGrid == null || PreviewRulerGrid.Visibility != Visibility.Visible) return false;
+
+            try
+            {
+                long lp = lParam.ToInt64();
+                int screenX = (short)(lp & 0xFFFF);
+                int screenY = (short)((lp >> 16) & 0xFFFF);
+                Point screenPoint = new Point(screenX, screenY);
+                Point local = PreviewRulerGrid.PointFromScreen(screenPoint);
+
+                return local.X >= 0
+                    && local.Y >= 0
+                    && local.X <= PreviewRulerGrid.ActualWidth
+                    && local.Y <= PreviewRulerGrid.ActualHeight;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -989,6 +1054,11 @@ namespace HyCADTool.MarkdownEditor.Views
                 RefreshPreview();
             }
             if (e.PropertyName == nameof(ViewModel.PreviewScale))
+            {
+                UpdateRulerScale();
+            }
+            if (e.PropertyName == nameof(ViewModel.ColumnCount)
+                || e.PropertyName == nameof(ViewModel.PagePreset))
             {
                 UpdateRulerScale();
             }

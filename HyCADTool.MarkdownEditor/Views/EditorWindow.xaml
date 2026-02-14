@@ -30,6 +30,7 @@
         <SolidColorBrush x:Key="ThemeOnAccentBrush" Color="#ffffff" />
         <SolidColorBrush x:Key="ThemeHoverBrush" Color="#30363d" />
         <SolidColorBrush x:Key="ThemeSelectionBrush" Color="#263545" />
+        <SolidColorBrush x:Key="ThemeDevPanelGrayBrush" Color="#2f3338" />
 
         <!-- 普通按钮（带 hover） -->
         <Style x:Key="ToolBtn" TargetType="Button">
@@ -61,6 +62,32 @@
         <Style x:Key="ToggleBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
             <Setter Property="Padding" Value="5,4" />
+        </Style>
+
+        <!-- 开发栏顶部占位工具按钮 -->
+        <Style x:Key="DevBarBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Arrow" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- 主按钮（带 hover） -->
@@ -649,7 +676,7 @@
                           Style="{StaticResource Splitter}" Visibility="Collapsed" Grid.RowSpan="3"
                           DragCompleted="OnPreviewSplitterDragCompleted" />
 
-            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed" Grid.RowSpan="3"
+            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed"
                   MinWidth="280">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="32" />
@@ -672,9 +699,13 @@
                                       ItemsSource="{Binding PagePresets}"
                                       SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
                             <TextBlock Style="{StaticResource ParamLabel}" Text="1:" Margin="8,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
-                                     helper:TextBoxHelper.ScrollStep="1"
-                                     Text="{Binding DrawScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ComboBox Style="{StaticResource DarkComboBox}"
+                                      MinWidth="50"
+                                      IsEditable="True"
+                                      IsTextSearchEnabled="False"
+                                      StaysOpenOnEdit="True"
+                                      ItemsSource="{Binding DrawScaleOptions}"
+                                      Text="{Binding DrawScaleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamLabel}" Text="栏" Margin="8,0,2,0" />
                             <TextBox Style="{StaticResource ParamInput}" Width="24"
                                      helper:TextBoxHelper.ScrollStep="1"
@@ -754,13 +785,32 @@
                           DragCompleted="OnBottomPanelSplitterDragCompleted" Margin="0,0,0,-4" Grid.RowSpan="2" />
 
             <Border x:Name="BottomPanelHost" Grid.Row="2" Grid.Column="4"
-                    Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,1,0,0"
+                    Background="{DynamicResource ThemeDevPanelGrayBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,1,0,0"
                     Visibility="Collapsed">
                 <Grid>
-                    <TextBlock Text="底部预留区域（阶段重建）"
-                               Foreground="{DynamicResource ThemeTextSecondaryBrush}"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center" />
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                <Button Style="{StaticResource DevBarBtn}" Content="终端" />
+                                <Button Style="{StaticResource DevBarBtn}" Content="问题" />
+                                <Button Style="{StaticResource DevBarBtn}" Content="输出" />
+                                <Button Style="{StaticResource DevBarBtn}" Content="调试控制台" />
+                                <Button Style="{StaticResource DevBarBtn}" Content="端口" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Grid Grid.Row="1">
+                        <TextBlock Text="开发栏预留区域（工具条已预设，待后续接功能）"
+                                   Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

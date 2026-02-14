@@ -42,13 +42,13 @@ namespace HyCADTool.MarkdownEditor.Models
         // ── 字体 ──
         public double TextSize { get; set; } = 2.5;
         public double TextXScale { get; set; } = 0.7;
-        public string PagePreset { get; set; } = "A3横向";
-        public double PageWidthMm { get; set; } = 420;
-        public double PageHeightMm { get; set; } = 297;
-        public double MarginLeftMm { get; set; } = 20;
-        public double MarginRightMm { get; set; } = 20;
-        public double MarginTopMm { get; set; } = 20;
-        public double MarginBottomMm { get; set; } = 20;
+        public string PagePreset { get; set; } = "A2横向";
+        public double PageWidthMm { get; set; } = 594;
+        public double PageHeightMm { get; set; } = 420;
+        public double MarginLeftMm { get; set; } = 25;
+        public double MarginRightMm { get; set; } = 10;
+        public double MarginTopMm { get; set; } = 10;
+        public double MarginBottomMm { get; set; } = 10;
         public string FontFileName { get; set; } = "tssdeng.shx";
         public string BigFontFileName { get; set; } = "hztxt.shx";
         public string BoldFontName { get; set; } = "SimHei";
