@@ -5,30 +5,69 @@
         xmlns:controls="clr-namespace:HyCADTool.MarkdownEditor.Views.Controls"
         xmlns:helper="clr-namespace:HyCADTool.MarkdownEditor.Views.Helpers"
         Title="HY Markdown Editor"
-        Width="960" Height="720"
-        MinWidth="720" MinHeight="480"
+        Width="1280" Height="780"
+        MinWidth="900" MinHeight="550"
         WindowStartupLocation="CenterScreen"
         Background="#111418"
         Foreground="#cccccc">
 
     <Window.Resources>
+        <!-- 普通按钮（带 hover） -->
         <Style x:Key="ToolBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#cccccc" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="2,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#30363d" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
+        <!-- 切换按钮 -->
         <Style x:Key="ToggleBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
             <Setter Property="Foreground" Value="#858585" />
+            <Setter Property="Padding" Value="5,4" />
         </Style>
 
-        <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
+        <!-- 主按钮（带 hover） -->
+        <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background" Value="#0e639c" />
             <Setter Property="Foreground" Value="#ffffff" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1177bb" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="Sep" TargetType="Border">
@@ -36,6 +75,23 @@
             <Setter Property="Height" Value="14" />
             <Setter Property="Background" Value="#24292e" />
             <Setter Property="Margin" Value="6,0" />
+        </Style>
+
+        <!-- 分隔条（hover 蓝） -->
+        <Style x:Key="Splitter" TargetType="GridSplitter">
+            <Setter Property="Background" Value="#24292e" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#007ACC" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="DarkMenu" TargetType="Menu">
@@ -51,11 +107,13 @@
             <Setter Property="Padding" Value="8,4" />
         </Style>
 
+        <!-- 参数输入框（暗底 + 白光标 + 滚轮增减） -->
         <Style x:Key="ParamInput" TargetType="TextBox">
             <Setter Property="Background" Value="#0d1117" />
             <Setter Property="Foreground" Value="#c9d1d9" />
             <Setter Property="BorderBrush" Value="#30363d" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="White" />
             <Setter Property="Padding" Value="2,1" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -74,6 +132,16 @@
             <Setter Property="Foreground" Value="#6e7681" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="10" />
+        </Style>
+
+        <!-- 暗色 ComboBox -->
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="#0d1117" />
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="BorderBrush" Value="#30363d" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Height" Value="22" />
         </Style>
     </Window.Resources>
 
@@ -217,7 +285,7 @@
 
             <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="3" Width="4"
                           HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
-                          Background="#24292e" Visibility="Collapsed" />
+                          Style="{StaticResource Splitter}" Visibility="Collapsed" />
 
             <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed">
                 <Grid.RowDefinitions>
@@ -231,13 +299,13 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,0,1">
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <Grid ClipToBounds="True">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                             <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
-                            <ComboBox Width="62" Height="22"
+                            <ComboBox Style="{StaticResource DarkComboBox}" Width="62"
                                       ItemsSource="{Binding PageOrientations}"
                                       SelectedItem="{Binding PageOrientation, Mode=TwoWay}" />
-                            <ComboBox Width="92" Height="22"
+                            <ComboBox Style="{StaticResource DarkComboBox}" Width="92"
                                       Margin="4,0,0,0"
                                       ItemsSource="{Binding PagePresets}"
                                       SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
@@ -307,7 +375,7 @@
                             <TextBox Style="{StaticResource ParamInput}" Width="30"
                                      Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
                 </Border>
 
                 <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="#161b22"
@@ -322,7 +390,7 @@
             <GridSplitter x:Name="BottomPanelSplitter" Grid.Row="1" Grid.Column="4" Height="4"
                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                           ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
-                          Background="#24292e" Visibility="Collapsed"
+                          Style="{StaticResource Splitter}" Visibility="Collapsed"
                           DragCompleted="OnBottomPanelSplitterDragCompleted" />
 
             <Border x:Name="BottomPanelHost" Grid.Row="2" Grid.Column="4"
