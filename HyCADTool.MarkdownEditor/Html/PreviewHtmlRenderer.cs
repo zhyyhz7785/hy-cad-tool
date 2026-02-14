@@ -7,7 +7,7 @@ using HyCADTool.MarkdownEditor.Models;
 namespace HyCADTool.MarkdownEditor.Html
 {
     /// <summary>
-    /// Markdown → 交互式分栏 HTML 预览（用于 WebBrowser IE11 控件）
+    /// Markdown → 交互式分栏 HTML 预览（用于 WebView2 预览控件）
     /// </summary>
     public static class PreviewHtmlRenderer
     {
@@ -93,12 +93,14 @@ namespace HyCADTool.MarkdownEditor.Html
             double safePreviewScale = Math.Max(0.01, previewScale);
             double textSizeMm = Math.Max(0.1, cfg.TextSize);
             double textXScale = Math.Max(0.1, cfg.TextXScale);
+            double pageWidthMm = Math.Max(1.0, cfg.PageWidthMm);
             const double contentPaddingX = 20.0; // .col-content 左右 padding 合计
 
             return JS_TEMPLATE
                 .Replace("/*PREVIEW_SCALE*/", safePreviewScale.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*TEXT_SIZE_MM*/", textSizeMm.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*TEXT_X_SCALE*/", textXScale.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*PAGE_WIDTH_MM*/", pageWidthMm.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*CONTENT_PADDING_X*/", contentPaddingX.ToString("0.#####", CultureInfo.InvariantCulture));
         }
 
@@ -245,24 +247,116 @@ tr:nth-child(even){background:#f8fafc}
         private const string JS_TEMPLATE = @"
 window.colChars=[];
 window.colParas=[];
+window.previewStats={schemaVersion:2,charsPerColumn:[],columnParagraphIndicesText:'',columnParagraphIndices:[],columns:[],blockTypeCounts:{}};
 var hDiv=-1,sX=0,sW=[];
 var vCol=-1,sY=0,sH=0;
 var pMode='',pStartX=0,pStartY=0,pStartW=0,pStartH=0;
 var PREVIEW_SCALE=/*PREVIEW_SCALE*/;
 var TEXT_SIZE_MM=/*TEXT_SIZE_MM*/;
 var TEXT_X_SCALE=/*TEXT_X_SCALE*/;
+var PAGE_WIDTH_MM=/*PAGE_WIDTH_MM*/;
 var CONTENT_PADDING_X=/*CONTENT_PADDING_X*/;
 var CHAR_WIDTH_MM=Math.max(0.01,TEXT_SIZE_MM*TEXT_X_SCALE);
-function getColChars(){return window.colChars.join(',');}
-function getColParas(){
-  var parts=[];
-  for(var i=0;i<window.colParas.length;i++){parts.push(window.colParas[i].join(','));}
-  return parts.join('|');
-}
+
+function getPreviewStats(){ return window.previewStats || null; }
+function getColChars(){return (window.previewStats && window.previewStats.charsPerColumn ? window.previewStats.charsPerColumn : []).join(',');}
+function getColParas(){return window.previewStats && window.previewStats.columnParagraphIndicesText ? window.previewStats.columnParagraphIndicesText : '';}
 function getPaperSize(){
   var p=document.getElementById('paper');
   if(!p) return '';
   return p.offsetWidth + ',' + p.offsetHeight;
+}
+
+function postPaperScaleToHost(scale){
+  if(!window.chrome || !window.chrome.webview || !window.chrome.webview.postMessage) return;
+  if(!isFinite(scale) || scale<=0) return;
+  window.chrome.webview.postMessage({ type:'paperScale', value:scale });
+}
+
+function postWheelZoomToHost(deltaY){
+  if(!window.chrome || !window.chrome.webview || !window.chrome.webview.postMessage) return;
+  if(!isFinite(deltaY)) return;
+  window.chrome.webview.postMessage({ type:'wheelZoom', deltaY:deltaY });
+}
+
+function toColParasText(){
+  var parts=[];
+  for(var i=0;i<window.colParas.length;i++){parts.push(window.colParas[i].join(','));}
+  return parts.join('|');
+}
+
+function normalizeBlockType(tagName){
+  var t=(tagName||'').toLowerCase();
+  if(t==='h1'||t==='h2'||t==='h3'||t==='h4'||t==='h5'||t==='h6') return 'heading';
+  if(t==='p') return 'paragraph';
+  if(t==='ul'||t==='ol') return 'list';
+  if(t==='blockquote') return 'blockquote';
+  if(t==='pre') return 'codeblock';
+  if(t==='table') return 'table';
+  if(t==='hr') return 'hr';
+  if(!t) return 'unknown';
+  return t;
+}
+
+function charDisplayUnits(ch){
+  if(!ch) return 0;
+  var code=ch.charCodeAt(0);
+  if(code<=0x007F) return 1;
+  if((code>=0x3400&&code<=0x4DBF) || (code>=0x4E00&&code<=0x9FFF) || (code>=0xF900&&code<=0xFAFF)) return 2;
+  if((code>=0x3000&&code<=0x303F) || (code>=0xFF01&&code<=0xFF60) || (code>=0xFFE0&&code<=0xFFE6)) return 2;
+  return 2;
+}
+
+function calcTextMetrics(text){
+  var units=0, chars=0, i=0, ch='';
+  text=text||'';
+  for(i=0;i<text.length;i++){
+    ch=text.charAt(i);
+    if(/\s/.test(ch)) continue;
+    chars++;
+    units+=charDisplayUnits(ch);
+  }
+  return {chars:chars, units:units};
+}
+
+function buildBlockTypeCountForColumn(sourceElements, paraIndices){
+  var map={}, i=0, idx=0, el=null, key='';
+  for(i=0;i<paraIndices.length;i++){
+    idx=paraIndices[i];
+    el=(sourceElements && idx>=0 && idx<sourceElements.length) ? sourceElements[idx] : null;
+    key=normalizeBlockType(el ? el.tagName : '');
+    map[key]=(map[key]||0)+1;
+  }
+  return map;
+}
+
+function setEmptyStats(cols){
+  var i=0, colStats=[], colChars=[], emptyMap={};
+  for(i=0;i<cols.length;i++){
+    colChars.push(0);
+    colStats.push({
+      index:i,
+      charsPerLine:0,
+      paragraphCount:0,
+      totalChars:0,
+      totalDisplayUnits:0,
+      avgDisplayUnitsPerChar:0,
+      blockTypes:{}
+    });
+    var ch0=document.getElementById('chars-'+i);
+    if(ch0) ch0.innerHTML='0 字/行';
+    var info0=document.getElementById('info-'+i);
+    if(info0) info0.innerHTML='0 段 · 0 字';
+  }
+  window.colChars=colChars;
+  window.previewStats={
+    schemaVersion:2,
+    charsPerColumn:colChars,
+    columnParagraphIndicesText:toColParasText(),
+    columnParagraphIndices:window.colParas,
+    columns:colStats,
+    blockTypeCounts:emptyMap
+  };
 }
 
 function syncFooter(){
@@ -290,6 +384,7 @@ function distribute(){
   var src=document.getElementById('source');
   var cols=document.querySelectorAll('.col-content');
   var i,e,clone,ci=0;
+  var globalBlockTypes={};
 
   for(i=0;i<cols.length;i++){cols[i].innerHTML='';cols[i].className='col-content';}
   window.colParas=[];
@@ -298,19 +393,14 @@ function distribute(){
   var els=src.children;
   if(!els||els.length===0){
     if(cols[0])cols[0].innerHTML='<p class=""empty"">(无内容)</p>';
-    window.colChars=[];
-    for(i=0;i<cols.length;i++){
-      window.colChars.push(0);
-      var ch0=document.getElementById('chars-'+i);
-      if(ch0) ch0.innerHTML='0 字/行';
-      var info0=document.getElementById('info-'+i);
-      if(info0) info0.innerHTML='0 段 · 0 字';
-    }
+    setEmptyStats(cols);
     syncFooter();
     return;
   }
 
   for(e=0;e<els.length;e++){
+    var key=normalizeBlockType(els[e] ? els[e].tagName : '');
+    globalBlockTypes[key]=(globalBlockTypes[key]||0)+1;
     if(ci>=cols.length) ci=cols.length-1;
     clone=els[e].cloneNode(true);
     cols[ci].appendChild(clone);
@@ -325,20 +415,40 @@ function distribute(){
   }
   if(cols.length>0) cols[cols.length-1].className='col-content last';
 
-  window.colChars=[];
+  var colChars=[], colStats=[];
   for(i=0;i<cols.length;i++){
     var contentW=Math.max(1, cols[i].clientWidth-CONTENT_PADDING_X);
     var contentMm=contentW/Math.max(0.01, PREVIEW_SCALE);
-    var cpl=Math.floor(contentMm/CHAR_WIDTH_MM);
+    var unitPerLine=Math.floor(contentMm/CHAR_WIDTH_MM);
+    var rawText=(cols[i].innerText||cols[i].textContent||'');
+    var metrics=calcTextMetrics(rawText);
+    var avgUnitsPerChar=metrics.chars>0 ? (metrics.units/metrics.chars) : 1;
+    var cpl=Math.floor(unitPerLine/Math.max(0.5, avgUnitsPerChar));
     if(cpl<1)cpl=1;
-    window.colChars.push(cpl);
+    colChars.push(cpl);
     var ch=document.getElementById('chars-'+i);
     if(ch) ch.innerHTML=cpl+' 字/行';
     var info=document.getElementById('info-'+i);
-    var txt=(cols[i].innerText||cols[i].textContent||'').replace(/\s+/g,'');
-    var totalChars=txt.length;
-    if(info) info.innerHTML=window.colParas[i].length+' 段 · '+totalChars+' 字';
+    if(info) info.innerHTML=window.colParas[i].length+' 段 · '+metrics.chars+' 字';
+    colStats.push({
+      index:i,
+      charsPerLine:cpl,
+      paragraphCount:window.colParas[i].length,
+      totalChars:metrics.chars,
+      totalDisplayUnits:metrics.units,
+      avgDisplayUnitsPerChar:avgUnitsPerChar,
+      blockTypes:buildBlockTypeCountForColumn(els, window.colParas[i])
+    });
   }
+  window.colChars=colChars;
+  window.previewStats={
+    schemaVersion:2,
+    charsPerColumn:colChars,
+    columnParagraphIndicesText:toColParasText(),
+    columnParagraphIndices:window.colParas,
+    columns:colStats,
+    blockTypeCounts:globalBlockTypes
+  };
 
   syncFooter();
 }
@@ -416,7 +526,6 @@ document.onmousemove=function(ev){
 
     paper.style.width=nw+'px';
     paper.style.height=nh+'px';
-    distribute();
     return;
   }
 
@@ -464,7 +573,27 @@ document.onmousemove=function(ev){
   }
 };
 
-document.onmouseup=function(){hDiv=-1;vCol=-1;pMode='';};
+document.onmouseup=function(){
+  var resized = !!pMode;
+  hDiv=-1;
+  vCol=-1;
+  if(resized){
+    // 拖拽中不重排，松手后一次性重排，避免画面频繁跳动
+    distribute();
+    var paper=document.getElementById('paper');
+    if(paper){
+      var nextScale=paper.offsetWidth/Math.max(1, PAGE_WIDTH_MM);
+      postPaperScaleToHost(nextScale);
+    }
+  }
+  pMode='';
+};
+
+window.addEventListener('wheel', function(ev){
+  if(!ev || !ev.ctrlKey) return;
+  postWheelZoomToHost(ev.deltaY||0);
+  if(ev.preventDefault) ev.preventDefault();
+}, { passive:false });
 
 function init(){distribute();}
 if(document.readyState==='complete'||document.readyState==='interactive'){setTimeout(init,50);}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "description": "MarkdownEditor 预览/统计快速回归样本集",
+  "cases": [
+    {
+      "id": "empty",
+      "file": "01-empty.md",
+      "focus": ["空文档统计", "空栏位稳定性"]
+    },
+    {
+      "id": "all_cn",
+      "file": "02-all-cn.md",
+      "focus": ["全中文显示宽度", "字/行稳定性"]
+    },
+    {
+      "id": "mixed_extreme",
+      "file": "03-mixed-extreme.md",
+      "focus": ["中英混排极端比例", "宽度口径一致"]
+    },
+    {
+      "id": "code_block",
+      "file": "04-code-block.md",
+      "focus": ["代码块统计边界", "段落拆分一致性"]
+    },
+    {
+      "id": "table_heavy",
+      "file": "05-table-heavy.md",
+      "focus": ["表格复杂块", "blockTypes 统计输出"]
+    },
+    {
+      "id": "long_doc",
+      "file": "06-long-doc.md",
+      "focus": ["长文档分栏", "拖拽后统计稳定性"]
+    }
+  ],
+  "quickChecklist": [
+    "统一在 A2 横向下验证 1栏/2栏/3栏",
+    "分别设置 TextSize=2.5/3.5/5.0，TextXScale=0.7",
+    "确认每栏 footer 的 字/行、段数、总字数 与视觉变化方向一致",
+    "确认确认按钮返回的 CharsPerColumn 与 ColumnParagraphIndices 非空（空文档除外）",
+    "DPI 100%/125%/150% 下标尺与纸宽变化同步"
+  ]
+}

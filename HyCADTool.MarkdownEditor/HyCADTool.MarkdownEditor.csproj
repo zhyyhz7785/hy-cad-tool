@@ -32,6 +32,12 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="RegressionSamples\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <!-- 将 WebView2Loader.dll 平铺复制到输出根目录，供 ReCall 浅层复制和 LoadLibrary 查找 -->
   <Target Name="CopyWebView2NativeLoader" AfterTargets="Build">
     <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll"

@@ -24,6 +24,10 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
         public static TextAreaResult Calculate(DesignSpecConfig config)
         {
+            if (config == null) throw new ArgumentNullException(nameof(config));
+            config.Normalize();
+            config.Validate();
+
             int cols = Math.Max(1, config.ColumnCount);
             double gutter = config.ActualColumnGutter;
 

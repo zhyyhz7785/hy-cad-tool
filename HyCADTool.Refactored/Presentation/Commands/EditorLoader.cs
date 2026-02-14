@@ -11,7 +11,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
     /// 动态加载 HyCADTool.MarkdownEditor.dll（net8.0-windows）并调用 Vditor WYSIWYG 编辑器。
-    /// 加载失败时返回 false，由调用方回退到旧版编辑器。
+    /// 加载失败时返回 false，由调用方提示并中止命令。
     /// </summary>
     public static class EditorLoader
     {
@@ -74,7 +74,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 config = ContractToConfig(result);
 
                 // 按栏拆分 Markdown → 各自渲染 MText
-                string colParaIndices = result.Value<string>("ColumnParagraphIndices");
+                string colParaIndices = ExtractColumnParagraphIndices(result);
                 var colMarkdowns = SplitMarkdownByColumns(markdownSource, colParaIndices);
                 columnContents = new string[colMarkdowns.Length];
                 for (int i = 0; i < colMarkdowns.Length; i++)
@@ -269,7 +269,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         {
             return new
             {
-                cfg.Scale,
+                DrawScale = cfg.Scale,
                 cfg.PreviewScale,
                 cfg.ColumnCount,
                 cfg.ColumnGutter,
@@ -316,14 +316,20 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 try { cpc = cfgCpc.Select(t => (int)t).ToArray(); }
                 catch { }
             }
+            if (cpc == null && result["PreviewStats"]?["CharsPerColumn"] is JArray statsCpc)
+            {
+                try { cpc = statsCpc.Select(t => (int)t).ToArray(); }
+                catch { }
+            }
 
             double Val(string name, double def) => cfg != null && cfg[name] != null ? (double)cfg[name] : def;
             int IntVal(string name, int def) => cfg != null && cfg[name] != null ? (int)cfg[name] : def;
             string StrVal(string name, string def) => cfg?.Value<string>(name) ?? def;
+            double drawScale = Val("DrawScale", Val("Scale", 1.0));
 
             var config = new DesignSpecConfig
             {
-                Scale = Val("Scale", 1.0),
+                Scale = drawScale,
                 PreviewScale = Val("PreviewScale", 1.0),
                 ColumnCount = IntVal("ColumnCount", 2),
                 ColumnGutter = Val("ColumnGutter", 10.0),
@@ -346,13 +352,16 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 BoldFontName = StrVal("BoldFontName", "SimHei")
             };
 
-            // 从 SettingsPanel 补充字体信息
+            // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings
             var vm = ViewModels.SettingsPanelViewModel.Current;
             if (vm != null)
             {
-                config.FontFileName = vm.FontFileName;
-                config.BigFontFileName = vm.BigFontFileName;
-                config.TextXScale = vm.TextXScale;
+                if (string.IsNullOrWhiteSpace(config.FontFileName))
+                    config.FontFileName = vm.FontFileName;
+                if (string.IsNullOrWhiteSpace(config.BigFontFileName))
+                    config.BigFontFileName = vm.BigFontFileName;
+                if (config.TextXScale <= 0)
+                    config.TextXScale = vm.TextXScale;
             }
 
             return config;
@@ -361,6 +370,33 @@ namespace HyCADTool.Refactored.Presentation.Commands
         #endregion
 
         #region Markdown 拆分
+
+        private static string ExtractColumnParagraphIndices(JObject result)
+        {
+            string direct = result?.Value<string>("ColumnParagraphIndices");
+            if (!string.IsNullOrWhiteSpace(direct))
+                return direct;
+
+            var stats = result?["PreviewStats"] as JObject;
+            if (stats == null)
+                return string.Empty;
+
+            string text = stats.Value<string>("ColumnParagraphIndicesText");
+            if (!string.IsNullOrWhiteSpace(text))
+                return text;
+
+            if (stats["ColumnParagraphIndices"] is JArray colArray)
+            {
+                var groups = colArray
+                    .Select(token => token is JArray row
+                        ? string.Join(",", row.Select(v => (int)v))
+                        : string.Empty)
+                    .ToArray();
+                return string.Join("|", groups);
+            }
+
+            return string.Empty;
+        }
 
         private static string[] SplitMarkdownByColumns(string markdown, string paraIndices)
         {

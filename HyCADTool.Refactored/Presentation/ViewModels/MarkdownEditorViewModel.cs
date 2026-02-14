@@ -110,6 +110,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set { if (SetProperty(ref _textSize, Math.Max(0.5, value))) UpdateStatus(); }
         }
 
+        // TextXScale 在回退编辑器不暴露输入框，采用“已有配置优先，缺失才回退 Settings”。
+        private double _resolvedTextXScale = 0.7;
+
         private double _previewScale = 1.0;
         /// <summary>预览缩放比例（仅预览用）</summary>
         public double PreviewScale
@@ -192,7 +195,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public MarkdownEditorViewModel()
         {
             var vm = SettingsPanelViewModel.Current;
-            if (vm != null) _textSize = vm.TextSize;
+            if (vm != null)
+            {
+                _textSize = vm.TextSize;
+                _resolvedTextXScale = vm.TextXScale > 0 ? vm.TextXScale : 0.7;
+            }
 
             InsertCommand = new RelayCmd(ExecuteInsert);
             LoadFileCommand = new RelayCmd(ExecuteLoad);
@@ -216,6 +223,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 _columnGutter = existingConfig.ColumnGutter;
                 _textSize = existingConfig.TextSize;
                 _previewScale = existingConfig.PreviewScale;
+                _resolvedTextXScale = existingConfig.TextXScale > 0 ? existingConfig.TextXScale : _resolvedTextXScale;
                 CharsPerColumn = existingConfig.CharsPerColumn;
                 // 恢复间距
                 _h1SpaceBefore = existingConfig.H1SpaceBefore;
@@ -255,6 +263,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 CharsPerColumn = cpc,
                 ColumnGutter = ColumnGutter,
                 TextSize = TextSize,
+                TextXScale = _resolvedTextXScale,
                 PreviewScale = PreviewScale,
                 // 段前段后间距
                 H1SpaceBefore = H1SpaceBefore,
@@ -271,9 +280,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             var vm = SettingsPanelViewModel.Current;
             if (vm != null)
             {
-                cfg.FontFileName = vm.FontFileName;
-                cfg.BigFontFileName = vm.BigFontFileName;
-                cfg.TextXScale = vm.TextXScale;
+                if (string.IsNullOrWhiteSpace(cfg.FontFileName))
+                    cfg.FontFileName = vm.FontFileName;
+                if (string.IsNullOrWhiteSpace(cfg.BigFontFileName))
+                    cfg.BigFontFileName = vm.BigFontFileName;
+                if (cfg.TextXScale <= 0)
+                    cfg.TextXScale = vm.TextXScale;
             }
             return cfg;
         }

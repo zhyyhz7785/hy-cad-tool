@@ -1,3 +1,7 @@
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+
 namespace HyCADTool.MarkdownEditor.Models
 {
     /// <summary>
@@ -22,6 +26,8 @@ namespace HyCADTool.MarkdownEditor.Models
         public int[] CharsPerColumn { get; set; }
         /// <summary>每栏段落索引（格式: "0,1,2|3,4,5"）</summary>
         public string ColumnParagraphIndices { get; set; }
+        /// <summary>结构化预览统计结果（用于回归与精度分析）</summary>
+        public PreviewStats PreviewStats { get; set; } = new PreviewStats();
     }
 
     /// <summary>
@@ -30,8 +36,22 @@ namespace HyCADTool.MarkdownEditor.Models
     public class EditorConfig
     {
         // ── 出图 ──
-        public double Scale { get; set; } = 1.0;
+        public double DrawScale { get; set; } = 1.0;
         public double PreviewScale { get; set; } = 1.0;
+
+        /// <summary>
+        /// 兼容旧字段：Scale -> DrawScale。
+        /// 仅用于反序列化历史数据，不再参与序列化输出。
+        /// </summary>
+        [Obsolete("Use DrawScale instead.")]
+        [JsonProperty("Scale")]
+        public double Scale
+        {
+            get => DrawScale;
+            set => DrawScale = value;
+        }
+
+        public bool ShouldSerializeScale() => false;
 
         // ── 栏 ──
         public int ColumnCount { get; set; } = 2;
@@ -74,5 +94,32 @@ namespace HyCADTool.MarkdownEditor.Models
         public double LiSpaceAfter { get; set; } = 0.2;
         public double QuoteSpaceBefore { get; set; } = 0.5;
         public double QuoteSpaceAfter { get; set; } = 0.5;
+    }
+
+    /// <summary>
+    /// 预览统计数据（由预览 JS 返回）
+    /// </summary>
+    public class PreviewStats
+    {
+        public int SchemaVersion { get; set; } = 2;
+        public int[] CharsPerColumn { get; set; } = Array.Empty<int>();
+        public string ColumnParagraphIndicesText { get; set; } = "";
+        public int[][] ColumnParagraphIndices { get; set; } = Array.Empty<int[]>();
+        public PreviewColumnStats[] Columns { get; set; } = Array.Empty<PreviewColumnStats>();
+        public Dictionary<string, int> BlockTypeCounts { get; set; } = new Dictionary<string, int>();
+    }
+
+    /// <summary>
+    /// 单栏统计信息
+    /// </summary>
+    public class PreviewColumnStats
+    {
+        public int Index { get; set; }
+        public int CharsPerLine { get; set; }
+        public int ParagraphCount { get; set; }
+        public int TotalChars { get; set; }
+        public int TotalDisplayUnits { get; set; }
+        public double AvgDisplayUnitsPerChar { get; set; }
+        public Dictionary<string, int> BlockTypes { get; set; } = new Dictionary<string, int>();
     }
 }

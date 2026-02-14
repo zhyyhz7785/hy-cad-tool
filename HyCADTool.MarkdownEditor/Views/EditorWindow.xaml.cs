@@ -16,6 +16,7 @@ using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.ViewModels;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace HyCADTool.MarkdownEditor.Views
@@ -33,11 +34,14 @@ namespace HyCADTool.MarkdownEditor.Views
         private bool _bottomPanelVisible = true;
         private double _bottomPanelHeight = 160;
         private VditorJsHelper _js;
+        private bool _previewReady;
+        private PreviewStats _latestPreviewStats = new PreviewStats();
         private const int WM_MOUSEWHEEL = 0x020A;
         private readonly DispatcherTimer _rulerSyncTimer;
         private readonly DispatcherTimer _previewRefreshDebounceTimer;
         private const int PreviewRefreshDebounceMs = 180;
         private double _renderedPreviewScale = 1.0;
+        private string _pendingPreviewHtml = "";
         private bool _updatingFileList;
         private bool _showFileTab = true;
         private const double MinPreviewVisibleWidth = 280;
@@ -68,7 +72,7 @@ namespace HyCADTool.MarkdownEditor.Views
             _previewRefreshDebounceTimer.Tick += (_, __) =>
             {
                 _previewRefreshDebounceTimer.Stop();
-                RefreshPreview();
+                _ = RefreshPreviewAsync();
             };
 
             ApplyTheme(_isDarkTheme);
@@ -104,6 +108,15 @@ namespace HyCADTool.MarkdownEditor.Views
 
                 var env = envTask.Result;
                 await EditorWebView.EnsureCoreWebView2Async(env);
+                await PreviewWebView.EnsureCoreWebView2Async(env);
+                _previewReady = PreviewWebView?.CoreWebView2 != null;
+                if (_previewReady)
+                {
+                    // 预览缩放统一由 Ctrl+滚轮 + PreviewScale 控制，禁用 WebView2 内建缩放。
+                    PreviewWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+                    PreviewWebView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
+                    PreviewWebView.CoreWebView2.WebMessageReceived += OnPreviewWebMessageReceived;
+                }
 
                 // 设置本地虚拟主机映射（如果缓存就绪）
                 string cdnBase = null;
@@ -120,6 +133,12 @@ namespace HyCADTool.MarkdownEditor.Views
 
                 string html = VditorHtmlTemplate.Generate(ViewModel.MarkdownText, cdnBase);
                 EditorWebView.CoreWebView2.NavigateToString(html);
+
+                if (_previewReady && !string.IsNullOrEmpty(_pendingPreviewHtml))
+                {
+                    PreviewWebView.CoreWebView2.NavigateToString(_pendingPreviewHtml);
+                    _pendingPreviewHtml = "";
+                }
             }
             catch (Exception ex)
             {
@@ -150,6 +169,12 @@ namespace HyCADTool.MarkdownEditor.Views
             _rulerSyncTimer.Stop();
             _previewRefreshDebounceTimer.Stop();
             StateChanged -= OnWindowStateChanged;
+            try
+            {
+                if (PreviewWebView?.CoreWebView2 != null)
+                    PreviewWebView.CoreWebView2.WebMessageReceived -= OnPreviewWebMessageReceived;
+            }
+            catch { }
         }
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -187,6 +212,49 @@ namespace HyCADTool.MarkdownEditor.Views
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
             }
             catch { }
+        }
+
+        private void OnPreviewWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(args.WebMessageAsJson)) return;
+                var msg = JObject.Parse(args.WebMessageAsJson);
+                string type = msg.Value<string>("type");
+                if (string.Equals(type, "paperScale", StringComparison.OrdinalIgnoreCase))
+                {
+                    double nextScale = msg.Value<double?>("value") ?? 0;
+                    if (nextScale <= 0) return;
+
+                    nextScale = Math.Max(0.1, Math.Min(5.0, nextScale));
+                    if (Math.Abs(ViewModel.PreviewScale - nextScale) < 0.001)
+                        return;
+
+                    // 关键：纸张已在 WebView 内按 nextScale 变更过尺寸。
+                    // 将“已渲染基线”同步到 nextScale，避免 OnPropChanged 再做一次 LiveZoom 叠加。
+                    _renderedPreviewScale = nextScale;
+                    ViewModel.PreviewScale = nextScale;
+                    return;
+                }
+
+                if (string.Equals(type, "wheelZoom", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Web wheel: 下滚 deltaY>0（缩小），上滚 deltaY<0（放大）
+                    double deltaY = msg.Value<double?>("deltaY") ?? 0;
+                    if (Math.Abs(deltaY) < 0.01) return;
+                    double step = -deltaY / 100.0; // 浏览器常见 1 notch 约 100
+                    ApplyPreviewScaleStep(step);
+                }
+            }
+            catch { }
+        }
+
+        private void ApplyPreviewScaleStep(double step)
+        {
+            if (double.IsNaN(step) || double.IsInfinity(step) || Math.Abs(step) < 0.0001) return;
+            double cur = ViewModel.PreviewScale;
+            double factor = Math.Pow(1.06, step);
+            ViewModel.PreviewScale = Math.Max(0.1, Math.Min(5.0, cur * factor));
         }
 
         #endregion
@@ -598,34 +666,18 @@ namespace HyCADTool.MarkdownEditor.Views
             _defaultWorkspaceLayoutApplied = true;
         }
 
-        private double GetDpiScale()
-        {
-            try
-            {
-                var src = System.Windows.PresentationSource.FromVisual(this);
-                if (src?.CompositionTarget != null)
-                    return src.CompositionTarget.TransformToDevice.M22;
-            }
-            catch { }
-            return 1.0;
-        }
-
         /// <summary>
         /// 标尺 ppm 与 HTML 图纸使用同一个 PreviewScale：
         /// HTML 中 paper width = PageWidthMm * PreviewScale (px)
-        /// 标尺 ppm = PreviewScale（每毫米对应多少 WPF DIP）
-        /// 但 WebBrowser 渲染时使用的是 物理像素，而 WPF 标尺使用 DIP，
-        /// 因此需要除以 DPI 才能让标尺刻度与 WebBrowser 内的图纸对齐。
+        /// WebView2 下 CSS px 与 WPF DIP 口径一致，因此标尺直接使用 PreviewScale。
         /// </summary>
         private void UpdateRulerScale()
         {
             if (PreviewHRuler == null || PreviewVRuler == null) return;
 
             double scale = Math.Max(0.1, ViewModel.PreviewScale);
-            double dpiScale = GetDpiScale();
-            // WebBrowser 内像素 = CSS px = 物理像素；WPF 标尺 = DIP
-            // 1 mm 在 HTML 中 = scale 个 CSS px = scale 个物理像素 = scale/dpiScale 个 DIP
-            double ppm = scale / Math.Max(0.5, dpiScale);
+            // WebView2: CSS px 与 WPF DIP 同口径
+            double ppm = scale;
             PreviewHRuler.PixelsPerMm = Math.Max(0.01, ppm);
             PreviewVRuler.PixelsPerMm = Math.Max(0.01, ppm);
             PreviewHRuler.SegmentCount = 1;
@@ -636,16 +688,15 @@ namespace HyCADTool.MarkdownEditor.Views
         /// </summary>
         private void FitPaperToPreviewArea()
         {
-            if (PreviewBrowser == null || !_previewVisible) return;
-            double areaWidth = PreviewBrowser.ActualWidth;
+            if (PreviewWebView == null || !_previewVisible) return;
+            double areaWidth = PreviewWebView.ActualWidth;
             if (areaWidth <= 0) areaWidth = PreviewRulerGrid.ActualWidth - 24; // 减去左侧标尺宽
             if (areaWidth <= 100) return;
 
-            double dpiScale = GetDpiScale();
             double pageMm = Math.Max(100, ViewModel.PageWidthMm);
-            // 目标：paperPx = pageMm * scale; WPF 区域 = areaWidth DIP = areaWidth * dpi 物理像素
-            // paperPx = 0.9 * areaWidth * dpi  →  scale = 0.9 * areaWidth * dpi / pageMm
-            double targetScale = 0.9 * areaWidth * dpiScale / pageMm;
+            // WebView2 下 CSS px 与 DIP 口径一致：paperPx 直接与 areaWidth 对齐
+            // paperPx = pageMm * scale = 0.9 * areaWidth
+            double targetScale = 0.9 * areaWidth / pageMm;
             targetScale = Math.Max(0.1, Math.Min(5.0, targetScale));
             ViewModel.PreviewScale = targetScale;
         }
@@ -666,15 +717,13 @@ namespace HyCADTool.MarkdownEditor.Views
             {
                 if (!IsMouseWheelInsidePreviewArea(msg.lParam)) return;
                 if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+                // WebView2 内容区滚轮由 JS -> WebMessage 回传处理，避免双重缩放。
+                if (PreviewWebView?.IsMouseOver == true) return;
 
                 int wheelDelta = (short)((msg.wParam.ToInt64() >> 16) & 0xffff);
                 if (wheelDelta == 0) return;
 
-                // 平滑缩放：支持高分辨率滚轮/触控板，连续性更好
-                double cur = ViewModel.PreviewScale;
-                double step = wheelDelta / 120.0;
-                double factor = Math.Pow(1.06, step);
-                ViewModel.PreviewScale = Math.Max(0.1, Math.Min(5.0, cur * factor));
+                ApplyPreviewScaleStep(wheelDelta / 120.0);
                 handled = true;
             }
         }
@@ -1069,7 +1118,6 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(ViewModel.PreviewScale):
                     UpdateRulerScale();
                     TryApplyLivePreviewZoom();
-                    SchedulePreviewRefresh();
                     break;
 
                 case nameof(ViewModel.ColumnCount):
@@ -1104,7 +1152,12 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void TryApplyLivePreviewZoom()
         {
-            if (!_previewVisible || PreviewBrowser == null) return;
+            _ = TryApplyLivePreviewZoomAsync();
+        }
+
+        private async Task TryApplyLivePreviewZoomAsync()
+        {
+            if (!_previewVisible || PreviewWebView?.CoreWebView2 == null) return;
             if (_renderedPreviewScale <= 0) return;
 
             double ratio = ViewModel.PreviewScale / _renderedPreviewScale;
@@ -1113,7 +1166,7 @@ namespace HyCADTool.MarkdownEditor.Views
             try
             {
                 string ratioText = ratio.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-                PreviewBrowser.InvokeScript("eval", new object[] { $"document.body.style.zoom='{ratioText}'" });
+                await PreviewWebView.CoreWebView2.ExecuteScriptAsync($"document.body.style.zoom='{ratioText}';");
             }
             catch
             {
@@ -1124,39 +1177,71 @@ namespace HyCADTool.MarkdownEditor.Views
         /// <summary>刷新预览 HTML（无论预览是否可见都执行，供后台计算分栏数据）</summary>
         private void RefreshPreview()
         {
+            _ = RefreshPreviewAsync();
+        }
+
+        private async Task RefreshPreviewAsync()
+        {
             try
             {
-                // WebBrowser 在 Collapsed 时 NavigateToString 仍可执行
-                // 但 InvokeScript 需要文档已加载，在 OnConfirmClick 中会临时显示
                 var config = ViewModel.BuildConfig();
                 string html = PreviewHtmlRenderer.ToInteractiveHtml(
                     ViewModel.MarkdownText ?? "", ViewModel.ColumnCount, ViewModel.PreviewScale, config);
-                PreviewBrowser.NavigateToString(html);
+                if (!_previewReady || PreviewWebView?.CoreWebView2 == null)
+                {
+                    _pendingPreviewHtml = html;
+                    return;
+                }
+
+                PreviewWebView.CoreWebView2.NavigateToString(html);
                 _renderedPreviewScale = Math.Max(0.1, ViewModel.PreviewScale);
+                await Task.CompletedTask;
             }
             catch { }
         }
 
-        /// <summary>从预览 JS 读取分栏数据（每栏字符数 + 段落分配）</summary>
-        private void SyncFromPreview()
+        /// <summary>从预览 JS 读取分栏数据（结构化统计 + 段落分配）</summary>
+        private async Task SyncFromPreviewAsync()
         {
             try
             {
-                var charsResult = PreviewBrowser.InvokeScript("getColChars");
-                if (charsResult is string csv && !string.IsNullOrEmpty(csv))
+                if (!_previewReady || PreviewWebView?.CoreWebView2 == null)
+                    return;
+
+                string raw = await PreviewWebView.CoreWebView2.ExecuteScriptAsync("getPreviewStats()");
+                if (string.IsNullOrEmpty(raw) || raw == "null")
+                    return;
+
+                string payload = raw;
+                if (payload.StartsWith("\""))
+                    payload = JsonConvert.DeserializeObject<string>(payload) ?? "";
+                if (string.IsNullOrWhiteSpace(payload))
+                    return;
+
+                var stats = JObject.Parse(payload).ToObject<PreviewStats>();
+                if (stats == null)
+                    return;
+
+                _latestPreviewStats = stats;
+
+                if (stats.CharsPerColumn != null && stats.CharsPerColumn.Length > 0)
                 {
-                    var values = csv.Split(',')
-                        .Select(s => int.TryParse(s.Trim(), out int v) ? v : 0)
+                    var values = stats.CharsPerColumn
                         .Where(v => v > 0)
                         .ToArray();
                     if (values.Length > 0)
                         ViewModel.CharsPerColumn = values;
                 }
 
-                var parasResult = PreviewBrowser.InvokeScript("getColParas");
-                if (parasResult is string parasStr && !string.IsNullOrEmpty(parasStr))
+                string paraText = stats.ColumnParagraphIndicesText;
+                if (string.IsNullOrWhiteSpace(paraText) && stats.ColumnParagraphIndices != null)
                 {
-                    ViewModel.ColumnParagraphIndices = parasStr;
+                    paraText = string.Join("|", stats.ColumnParagraphIndices
+                        .Select(col => string.Join(",", (col ?? Array.Empty<int>()).Select(v => v.ToString()))));
+                }
+                if (!string.IsNullOrWhiteSpace(paraText))
+                {
+                    ViewModel.ColumnParagraphIndices = paraText;
                 }
             }
             catch { }
@@ -1279,38 +1364,22 @@ namespace HyCADTool.MarkdownEditor.Views
             // 1. 从 Vditor 获取最新 Markdown
             await SyncMarkdownFromEditorAsync();
 
-            // 2. 临时显示 PreviewBrowser 确保 JS 可执行
-            bool wasHidden = PreviewBrowser.Visibility != Visibility.Visible;
-            if (wasHidden)
-            {
-                PreviewBrowser.Visibility = Visibility.Visible;
-                PreviewBrowser.Width = 1;
-                PreviewBrowser.Height = 1;
-            }
-
-            // 3. 刷新分栏预览
-            RefreshPreview();
+            // 2. 刷新分栏预览
+            await RefreshPreviewAsync();
             await Task.Delay(300);
 
-            // 4. 从预览读取每栏字符数和段落分配
-            SyncFromPreview();
+            // 3. 从预览读取结构化统计
+            await SyncFromPreviewAsync();
 
-            // 5. 恢复隐藏
-            if (wasHidden)
-            {
-                PreviewBrowser.Visibility = Visibility.Collapsed;
-                PreviewBrowser.Width = double.NaN;
-                PreviewBrowser.Height = double.NaN;
-            }
-
-            // 6. 构建结果
+            // 4. 构建结果
             Result = new EditorResult
             {
                 Confirmed = true,
                 Markdown = ViewModel.MarkdownText,
                 Config = ViewModel.BuildConfig(),
                 CharsPerColumn = ViewModel.CharsPerColumn,
-                ColumnParagraphIndices = ViewModel.ColumnParagraphIndices
+                ColumnParagraphIndices = ViewModel.ColumnParagraphIndices,
+                PreviewStats = _latestPreviewStats ?? new PreviewStats()
             };
 
             DialogResult = true;
@@ -1332,7 +1401,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 string result = await EditorWebView.CoreWebView2.ExecuteScriptAsync("getContent()");
                 if (!string.IsNullOrEmpty(result) && result != "null")
                 {
-                    string md = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(result);
+                    string md = JsonConvert.DeserializeObject<string>(result);
                     if (md != null)
                         ViewModel.SetMarkdownFromEditor(md);
                 }

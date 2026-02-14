@@ -769,7 +769,7 @@
                         BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,1" />
                 <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" />
                 <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical" />
-                <WebBrowser x:Name="PreviewBrowser" Grid.Row="2" Grid.Column="1" />
+                <wv2:WebView2 x:Name="PreviewWebView" Grid.Row="2" Grid.Column="1" />
             </Grid>
 
             <GridSplitter x:Name="BottomPanelSplitter" Grid.Row="1" Grid.Column="4" Height="4"

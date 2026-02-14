@@ -340,7 +340,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             if (cfg == null) return;
 
             _totalHeight = cfg.TotalHeight;
-            _scale = cfg.Scale;
+            _scale = cfg.DrawScale;
             _columnCount = Math.Max(1, Math.Min(10, cfg.ColumnCount));
             _columnGutter = cfg.ColumnGutter;
             _textSize = cfg.TextSize;
@@ -421,7 +421,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             return new EditorConfig
             {
                 TotalHeight = TotalHeight,
-                Scale = DrawScale,
+                DrawScale = DrawScale,
                 ColumnCount = ColumnCount,
                 CharsPerColumn = cpc,
                 ColumnGutter = ColumnGutter,

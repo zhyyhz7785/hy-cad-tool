@@ -276,10 +276,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>计算显示宽度（中文字符算2，ASCII算1）</summary>
         private static int GetDisplayWidth(string text)
         {
-            int width = 0;
-            foreach (char c in text)
-                width += c > 127 ? 2 : 1;
-            return width;
+            return DisplayWidthCalculator.GetDisplayUnits(text);
         }
 
         /// <summary>代码块 → 原样输出（等宽缩进）</summary>

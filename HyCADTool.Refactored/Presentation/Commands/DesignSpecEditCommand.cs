@@ -2,14 +2,12 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.Models.Text;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
-using HyCADTool.Refactored.Presentation.Views;
-using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
-    /// 二次编辑 Markdown 设计说明命令 (hymdE)
+    /// 二次编辑 Markdown 设计说明命令 (hymdE，仅 WebView2 编辑器)
     /// </summary>
     public class DesignSpecEditCommand
     {
@@ -72,31 +70,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             if (!useModernEditor)
             {
-                // 回退到旧版编辑器
-                ed.WriteMessage("\n[提示] WebView2 编辑器不可用，使用回退编辑器");
-                try
-                {
-                    var dialog = new MarkdownEditorDialog(markdownSource, existingConfig);
-                    dialog.ViewModel.InsertRequested += (colContents, mdSource, cfg) =>
-                    {
-                        columnContents = colContents;
-                        newMarkdownSource = mdSource;
-                        newConfig = cfg;
-                    };
-
-                    AcApp.ShowModalWindow(dialog);
-
-                    if (dialog.DialogResult != true || columnContents == null || columnContents.Length == 0)
-                    {
-                        ed.WriteMessage("\n已取消。");
-                        return;
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    ed.WriteMessage($"\n打开编辑器失败: {ex.Message}");
-                    return;
-                }
+                ed.WriteMessage("\nWebView2 编辑器不可用，请安装/修复 WebView2 Runtime 后重试。");
+                return;
             }
 
             if (columnContents == null || columnContents.Length == 0)

@@ -154,5 +154,55 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 CharsPerColumn = Enumerable.Repeat(value, Math.Max(1, ColumnCount)).ToArray();
             }
         }
+
+        /// <summary>
+        /// 规范化参数长度与默认值，避免口径分叉导致的空值/错位问题。
+        /// </summary>
+        public void Normalize()
+        {
+            ColumnCount = Math.Max(1, Math.Min(10, ColumnCount));
+            Scale = Scale > 0 ? Scale : 1.0;
+            PreviewScale = PreviewScale > 0 ? PreviewScale : 1.0;
+            ColumnGutter = Math.Max(0, ColumnGutter);
+            TextSize = TextSize > 0 ? TextSize : 2.5;
+            TextXScale = TextXScale > 0 ? TextXScale : 0.7;
+            TotalHeight = TotalHeight > 0 ? TotalHeight : 350;
+
+            if (CharsPerColumn == null || CharsPerColumn.Length == 0)
+            {
+                CharsPerColumn = Enumerable.Repeat(28, ColumnCount).ToArray();
+                return;
+            }
+
+            CharsPerColumn = CharsPerColumn
+                .Select(v => Math.Max(1, v))
+                .ToArray();
+
+            if (CharsPerColumn.Length != ColumnCount)
+            {
+                int fill = CharsPerColumn[CharsPerColumn.Length - 1];
+                CharsPerColumn = Enumerable.Range(0, ColumnCount)
+                    .Select(i => i < CharsPerColumn.Length ? CharsPerColumn[i] : fill)
+                    .ToArray();
+            }
+        }
+
+        /// <summary>
+        /// 运行前校验关键参数，确保预览值/导出值/统计值遵循同一口径。
+        /// </summary>
+        public void Validate()
+        {
+            if (Scale <= 0) throw new ArgumentException("Scale 必须大于 0");
+            if (PreviewScale <= 0) throw new ArgumentException("PreviewScale 必须大于 0");
+            if (ColumnCount <= 0) throw new ArgumentException("ColumnCount 必须大于 0");
+            if (ColumnGutter < 0) throw new ArgumentException("ColumnGutter 不能为负数");
+            if (TextSize <= 0) throw new ArgumentException("TextSize 必须大于 0");
+            if (TextXScale <= 0) throw new ArgumentException("TextXScale 必须大于 0");
+            if (TotalHeight <= 0) throw new ArgumentException("TotalHeight 必须大于 0");
+            if (CharsPerColumn == null || CharsPerColumn.Length == 0)
+                throw new ArgumentException("CharsPerColumn 不能为空");
+            if (CharsPerColumn.Any(v => v <= 0))
+                throw new ArgumentException("CharsPerColumn 的值必须大于 0");
+        }
     }
 }
