@@ -38,7 +38,15 @@ namespace HyCADTool.MarkdownEditor.Views
         private bool _updatingFileList;
         private bool _showFileTab = true;
         private const double MinPreviewVisibleWidth = 280;
+        private const double DefaultPreviewPanelWidth = 420;
+        private const double MinOutlinePanelWidth = 120;
+        private const double DefaultOutlinePanelWidth = 220;
+        private const double OutlineSplitterWidth = 4;
+        private const double RulerThickness = 24;
         private bool _isDarkTheme = true;
+        private bool _rulerVisible = true;
+        private double _outlinePanelWidth = DefaultOutlinePanelWidth;
+        private double _previewPanelWidth = DefaultPreviewPanelWidth;
 
         public EditorWindow(EditorInput input)
         {
@@ -249,6 +257,7 @@ namespace HyCADTool.MarkdownEditor.Views
             ApplyLeftPanelTab();
             ApplyOutlineLayout();
             ApplyPreviewLayout();
+            ApplyRulerLayout();
         }
 
         private void OnThemeDark(object sender, RoutedEventArgs e)
@@ -368,32 +377,55 @@ namespace HyCADTool.MarkdownEditor.Views
             if (PreviewCol == null) return;
 
             bool tooNarrowByActual = PreviewCol.ActualWidth > 0 && PreviewCol.ActualWidth < MinPreviewVisibleWidth;
-            bool tooNarrowByStar = PreviewCol.Width.IsStar && PreviewCol.Width.Value < 8;
             bool collapsed = PreviewCol.Width.Value <= 0;
 
-            if (tooNarrowByActual || tooNarrowByStar || collapsed)
+            if (tooNarrowByActual || collapsed)
             {
-                // 默认给一个足够可见的比例，防止只剩一条标尺
-                PreviewCol.Width = new GridLength(42, GridUnitType.Star);
+                double target = Math.Max(MinPreviewVisibleWidth, _previewPanelWidth);
+                PreviewCol.Width = new GridLength(target, GridUnitType.Pixel);
             }
         }
 
         private void ApplyOutlineLayout()
         {
+            if (OutlineCol == null || OutlineSplitterCol == null || OutlineSplitter == null || OutlineToggleBtn == null)
+                return;
+
             if (_outlineVisible)
             {
-                OutlineCol.Width = new GridLength(220, GridUnitType.Pixel);
-                // 无缝模式：不保留额外分隔列宽度
-                OutlineSplitterCol.Width = new GridLength(0, GridUnitType.Pixel);
-                OutlineDivider.Visibility = Visibility.Visible;
+                OutlineCol.Width = new GridLength(Math.Max(MinOutlinePanelWidth, _outlinePanelWidth), GridUnitType.Pixel);
+                OutlineSplitterCol.Width = new GridLength(OutlineSplitterWidth, GridUnitType.Pixel);
+                OutlineSplitter.Visibility = Visibility.Visible;
                 OutlineToggleBtn.Foreground = ThemeBrush("ThemeTextPrimaryBrush");
             }
             else
             {
-                OutlineCol.Width = new GridLength(0);
-                OutlineSplitterCol.Width = new GridLength(0);
-                OutlineDivider.Visibility = Visibility.Collapsed;
+                if (OutlineCol.ActualWidth > 0)
+                {
+                    _outlinePanelWidth = Math.Max(MinOutlinePanelWidth, OutlineCol.ActualWidth);
+                }
+
+                OutlineCol.Width = new GridLength(0, GridUnitType.Pixel);
+                OutlineSplitterCol.Width = new GridLength(0, GridUnitType.Pixel);
+                OutlineSplitter.Visibility = Visibility.Collapsed;
                 OutlineToggleBtn.Foreground = ThemeBrush("ThemeTextSecondaryBrush");
+            }
+        }
+
+        private void OnOutlineSplitterDragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            if (OutlineCol?.ActualWidth > 0)
+            {
+                _outlinePanelWidth = Math.Max(MinOutlinePanelWidth, OutlineCol.ActualWidth);
+            }
+        }
+
+        private void OnPreviewSplitterDragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            if (PreviewCol?.ActualWidth > 0)
+            {
+                _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, PreviewCol.ActualWidth);
+                PreviewCol.Width = new GridLength(_previewPanelWidth, GridUnitType.Pixel);
             }
         }
 
@@ -436,6 +468,13 @@ namespace HyCADTool.MarkdownEditor.Views
                 RefreshPreview();
         }
 
+        private void OnToggleRuler(object sender, RoutedEventArgs e)
+        {
+            _rulerVisible = !_rulerVisible;
+            ApplyRulerLayout();
+            ViewModel.StatusText = _rulerVisible ? "标线：已显示" : "标线：已隐藏";
+        }
+
         private void ApplyPreviewLayout()
         {
             if (SplitterCol == null || PreviewCol == null || PreviewSplitter == null || PreviewRulerGrid == null || PreviewToggleBtn == null)
@@ -444,24 +483,52 @@ namespace HyCADTool.MarkdownEditor.Views
             if (_previewVisible)
             {
                 SplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
-                PreviewCol.Width = new GridLength(42, GridUnitType.Star);
+                PreviewCol.MinWidth = MinPreviewVisibleWidth;
+                PreviewCol.Width = new GridLength(Math.Max(MinPreviewVisibleWidth, _previewPanelWidth), GridUnitType.Pixel);
                 PreviewSplitter.Visibility = Visibility.Visible;
                 PreviewRulerGrid.Visibility = Visibility.Visible;
                 _rulerSyncTimer?.Start();
                 EnsurePreviewColumnVisible();
+                ApplyRulerLayout();
                 ApplyBottomPanelLayout();
                 PreviewToggleBtn.Foreground = ThemeBrush("ThemeTextPrimaryBrush");
             }
             else
             {
+                if (PreviewCol.ActualWidth > 0)
+                {
+                    _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, PreviewCol.ActualWidth);
+                }
+
                 SplitterCol.Width = new GridLength(0);
+                PreviewCol.MinWidth = 0;
                 PreviewCol.Width = new GridLength(0);
                 PreviewSplitter.Visibility = Visibility.Collapsed;
                 PreviewRulerGrid.Visibility = Visibility.Collapsed;
                 _rulerSyncTimer?.Stop();
+                ApplyRulerLayout();
                 ApplyBottomPanelLayout();
                 PreviewToggleBtn.Foreground = ThemeBrush("ThemeTextSecondaryBrush");
             }
+        }
+
+        private void ApplyRulerLayout()
+        {
+            if (RulerRow == null || RulerCol == null || RulerCorner == null || PreviewHRuler == null || PreviewVRuler == null || RulerToggleBtn == null)
+                return;
+
+            bool show = _previewVisible && _rulerVisible;
+            RulerRow.Height = show ? new GridLength(RulerThickness, GridUnitType.Pixel) : new GridLength(0, GridUnitType.Pixel);
+            RulerCol.Width = show ? new GridLength(RulerThickness, GridUnitType.Pixel) : new GridLength(0, GridUnitType.Pixel);
+
+            var rulerVisibility = show ? Visibility.Visible : Visibility.Collapsed;
+            RulerCorner.Visibility = rulerVisibility;
+            PreviewHRuler.Visibility = rulerVisibility;
+            PreviewVRuler.Visibility = rulerVisibility;
+
+            RulerToggleBtn.Foreground = _rulerVisible
+                ? ThemeBrush("ThemeTextPrimaryBrush")
+                : ThemeBrush("ThemeTextSecondaryBrush");
         }
 
         private double GetDpiScale()

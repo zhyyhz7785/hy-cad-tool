@@ -229,13 +229,22 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CaretBrush" Value="White" />
             <Setter Property="Padding" Value="2,1" />
+            <Setter Property="Margin" Value="0,0,3,0" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="Height" Value="22" />
-            <Setter Property="Width" Value="36" />
+            <Setter Property="MinWidth" Value="28" />
             <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True" />
             <Setter Property="helper:TextBoxHelper.ScrollStep" Value="0.1" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="ParamLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
@@ -248,7 +257,7 @@
             <Setter Property="FontSize" Value="10" />
         </Style>
 
-        <!-- 暗色 ComboBox -->
+        <!-- 暗色 ComboBox（覆盖默认模板，避免系统白底） -->
         <Style x:Key="DarkComboBox" TargetType="ComboBox">
             <Setter Property="Background" Value="{DynamicResource ThemeBgInputBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
@@ -256,6 +265,83 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Height" Value="22" />
+            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Padding" Value="6,0,22,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="ComboBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2" />
+
+                            <ContentPresenter x:Name="ContentSite"
+                                              Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"
+                                              RecognizesAccessKey="True"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+
+                            <Path Width="8"
+                                  Height="5"
+                                  HorizontalAlignment="Right"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"
+                                  Data="M 0 0 L 4 4 L 8 0 Z"
+                                  Fill="{TemplateBinding Foreground}" />
+
+                            <ToggleButton Focusable="False"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Slide">
+                                <Border x:Name="DropDownBorder"
+                                        Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                        BorderBrush="{DynamicResource ThemeBorderStrongBrush}"
+                                        BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                                  CanContentScroll="True">
+                                        <StackPanel IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                                <Setter TargetName="DropDownBorder" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ComboBorder" Property="Opacity" Value="0.75" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextMutedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -291,6 +377,16 @@
                                shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <Border Style="{StaticResource Sep}" Margin="0,0,8,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <Menu Style="{StaticResource DarkMenu}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Menu.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#1c2128" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#c9d1d9" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuHighlightBrushKey}" Color="#30363d" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#30363d" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#ffffff" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#161b22" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#1c2128" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#c9d1d9" />
+                        </Menu.Resources>
                         <MenuItem Header="文件" Style="{StaticResource DarkMenuItem}">
                             <MenuItem Header="打开" Command="{Binding LoadFileCommand}" />
                             <MenuItem Header="保存" Command="{Binding SaveFileCommand}" />
@@ -362,6 +458,24 @@
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                        <Button x:Name="RulerToggleBtn"
+                                Style="{StaticResource ToggleBtn}"
+                                Click="OnToggleRuler"
+                                ToolTip="标线"
+                                Padding="5,4"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Grid Width="16" Height="12">
+                                <Line X1="1" Y1="6" X2="15" Y2="6"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1" />
+                                <Line X1="8" Y1="1" X2="8" Y2="11"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1" />
+                                <Rectangle Width="3" Height="3"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           RadiusX="1" RadiusY="1" />
+                            </Grid>
+                        </Button>
                         <Button x:Name="OutlineToggleBtn"
                                 Style="{StaticResource ToggleBtn}"
                                 Click="OnToggleOutline"
@@ -445,10 +559,9 @@
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="OutlineCol" Width="220" />
-                <!-- 0 表示左侧面板与编辑区无额外缝隙 -->
+                <!-- 左侧可拖拽分隔列 -->
                 <ColumnDefinition x:Name="OutlineSplitterCol" Width="0" />
-                <ColumnDefinition Width="53*" />
-                <ColumnDefinition Width="13*"/>
+                <ColumnDefinition x:Name="EditorCol" Width="*" />
                 <ColumnDefinition x:Name="SplitterCol" Width="0" />
                 <ColumnDefinition x:Name="PreviewCol" Width="0" />
             </Grid.ColumnDefinitions>
@@ -525,15 +638,18 @@
                 </Grid>
             </Border>
 
-            <Border x:Name="OutlineDivider" Grid.RowSpan="3" Grid.Column="1" Background="{DynamicResource ThemeBorderBrush}" />
-
-            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" Grid.ColumnSpan="2" />
-
-            <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="5" Width="4"
+            <GridSplitter x:Name="OutlineSplitter" Grid.RowSpan="3" Grid.Column="1" Width="4"
                           HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
-                          Style="{StaticResource Splitter}" Visibility="Collapsed" Margin="0,0,-4,0" Grid.RowSpan="3" />
+                          Style="{StaticResource Splitter}" DragCompleted="OnOutlineSplitterDragCompleted" />
 
-            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed" Grid.ColumnSpan="2" Grid.RowSpan="3"
+            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" />
+
+            <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="3" Width="4"
+                          HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+                          Style="{StaticResource Splitter}" Visibility="Collapsed" Grid.RowSpan="3"
+                          DragCompleted="OnPreviewSplitterDragCompleted" />
+
+            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed" Grid.RowSpan="3"
                   MinWidth="280">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="32" />
@@ -549,19 +665,18 @@
                     <Grid ClipToBounds="True">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                             <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
-                            <ComboBox Style="{StaticResource DarkComboBox}" Width="62"
+                            <ComboBox Style="{StaticResource DarkComboBox}"
                                       ItemsSource="{Binding PageOrientations}"
                                       SelectedItem="{Binding PageOrientation, Mode=TwoWay}" />
-                            <ComboBox Style="{StaticResource DarkComboBox}" Width="92"
-                                      Margin="4,0,0,0"
+                            <ComboBox Style="{StaticResource DarkComboBox}" MinWidth="88"
                                       ItemsSource="{Binding PagePresets}"
                                       SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
                             <TextBlock Style="{StaticResource ParamLabel}" Text="1:" Margin="8,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="34"
+                            <TextBox Style="{StaticResource ParamInput}" Width="30"
                                      helper:TextBoxHelper.ScrollStep="1"
                                      Text="{Binding DrawScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamLabel}" Text="栏" Margin="8,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="28"
+                            <TextBox Style="{StaticResource ParamInput}" Width="24"
                                      helper:TextBoxHelper.ScrollStep="1"
                                      Text="{Binding ColumnCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamLabel}" Text="间距" Margin="8,0,2,0" />
@@ -579,47 +694,47 @@
                             <Border Style="{StaticResource Sep}" Margin="8,0" />
 
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="a" Margin="0,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="26"
                                      helper:TextBoxHelper.EnableCustomHandlers="False"
                                      Text="{Binding MarginLeftMm, Mode=OneWay}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="c" Margin="4,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="26"
                                      helper:TextBoxHelper.EnableCustomHandlers="False"
                                      Text="{Binding MarginTopMm, Mode=OneWay}" />
                             <Border Style="{StaticResource Sep}" Margin="8,0" />
 
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1" Margin="0,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2" Margin="6,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3" Margin="6,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P" Margin="6,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Li" Margin="6,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q" Margin="6,0,2,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                            <TextBox Style="{StaticResource ParamInput}" Width="30"
+                            <TextBox Style="{StaticResource ParamInput}" Width="26"
                                      Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </Grid>
@@ -636,11 +751,11 @@
                           HorizontalAlignment="Stretch"
                           ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                           Style="{StaticResource Splitter}" Visibility="Collapsed"
-                          DragCompleted="OnBottomPanelSplitterDragCompleted" Grid.ColumnSpan="2" Margin="0,0,0,-4" Grid.RowSpan="2" />
+                          DragCompleted="OnBottomPanelSplitterDragCompleted" Margin="0,0,0,-4" Grid.RowSpan="2" />
 
             <Border x:Name="BottomPanelHost" Grid.Row="2" Grid.Column="4"
                     Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,1,0,0"
-                    Visibility="Collapsed" Grid.ColumnSpan="2">
+                    Visibility="Collapsed">
                 <Grid>
                     <TextBlock Text="底部预留区域（阶段重建）"
                                Foreground="{DynamicResource ThemeTextSecondaryBrush}"
