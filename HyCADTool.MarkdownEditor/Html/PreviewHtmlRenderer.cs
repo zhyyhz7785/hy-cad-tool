@@ -1,5 +1,6 @@
 using Markdig;
 using System;
+using System.Globalization;
 using System.Text;
 using HyCADTool.MarkdownEditor.Models;
 
@@ -21,11 +22,12 @@ namespace HyCADTool.MarkdownEditor.Html
                 : Markdown.ToHtml(markdown, Pipeline);
 
             int cols = Math.Max(1, Math.Min(10, columnCount));
-            double scale = Math.Max(0.1, Math.Min(3.0, previewScale));
+            double scale = Math.Max(0.1, Math.Min(5.0, previewScale));
             EditorConfig cfg = config ?? new EditorConfig();
             string columnsHtml = BuildColumnsHtml(cols);
             string footerHtml = BuildFooterHtml(cols);
-            string dynamicCss = BuildDynamicCss(scale, config ?? new EditorConfig());
+            string dynamicCss = BuildDynamicCss(scale, cfg);
+            string dynamicJs = BuildDynamicJs(scale, cfg);
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"
@@ -42,13 +44,15 @@ namespace HyCADTool.MarkdownEditor.Html
                 + "</div>"
                 + footerHtml
                 + "</div>"
-                + "<script>" + JS + "</script>"
+                + "<script>" + dynamicJs + "</script>"
                 + "</body></html>";
         }
 
         private static string BuildDynamicCss(double previewScale, EditorConfig cfg)
         {
-            double basePx = 12.0;
+            double textSizeMm = Math.Max(0.1, cfg.TextSize);
+            double basePx = textSizeMm * previewScale;
+            double lineHeightFactor = Math.Max(1.0, cfg.LineSpacingFactor);
             double pageWidthPx = cfg.PageWidthMm * previewScale;
             double pageHeightPx = cfg.PageHeightMm * previewScale;
             double leftPx = cfg.MarginLeftMm * previewScale;
@@ -67,7 +71,8 @@ namespace HyCADTool.MarkdownEditor.Html
             string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
 
             return CSS_TEMPLATE
-                .Replace("font-size:12px", $"font-size:{basePx:F1}px")
+                .Replace("/*BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*BASE_LINE_HEIGHT*/", lineHeightFactor.ToString("0.###", CultureInfo.InvariantCulture))
                 .Replace("/*PAPER_WIDTH*/", $"{Round(pageWidthPx):F0}px")
                 .Replace("/*PAPER_HEIGHT*/", $"{Round(pageHeightPx):F0}px")
                 .Replace("/*PAD_LEFT*/", $"{Round(leftPx):F0}px")
@@ -81,6 +86,20 @@ namespace HyCADTool.MarkdownEditor.Html
                 .Replace("/*P_MARGIN*/", pMargin)
                 .Replace("/*LI_MARGIN*/", liMargin)
                 .Replace("/*BQ_MARGIN*/", bqMargin);
+        }
+
+        private static string BuildDynamicJs(double previewScale, EditorConfig cfg)
+        {
+            double safePreviewScale = Math.Max(0.01, previewScale);
+            double textSizeMm = Math.Max(0.1, cfg.TextSize);
+            double textXScale = Math.Max(0.1, cfg.TextXScale);
+            const double contentPaddingX = 20.0; // .col-content 左右 padding 合计
+
+            return JS_TEMPLATE
+                .Replace("/*PREVIEW_SCALE*/", safePreviewScale.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*TEXT_SIZE_MM*/", textSizeMm.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*TEXT_X_SCALE*/", textXScale.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*CONTENT_PADDING_X*/", contentPaddingX.ToString("0.#####", CultureInfo.InvariantCulture));
         }
 
         private static double Round(double value)
@@ -127,7 +146,11 @@ namespace HyCADTool.MarkdownEditor.Html
         private const string CSS_TEMPLATE = @"
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{overflow:hidden;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei','Segoe UI',sans-serif;font-size:12px;line-height:1.55}
+body{
+  overflow:hidden;background:#0d1117;color:#d4d4d4;
+  font-family:'Microsoft YaHei','Segoe UI',sans-serif;
+  font-size:/*BASE_FONT_SIZE*/;line-height:/*BASE_LINE_HEIGHT*/
+}
 
 .viewport{min-width:100%;min-height:100%;padding:0;overflow:hidden}
 .paper{
@@ -219,12 +242,17 @@ tr:nth-child(even){background:#f8fafc}
 
         #region JavaScript
 
-        private const string JS = @"
+        private const string JS_TEMPLATE = @"
 window.colChars=[];
 window.colParas=[];
 var hDiv=-1,sX=0,sW=[];
 var vCol=-1,sY=0,sH=0;
 var pMode='',pStartX=0,pStartY=0,pStartW=0,pStartH=0;
+var PREVIEW_SCALE=/*PREVIEW_SCALE*/;
+var TEXT_SIZE_MM=/*TEXT_SIZE_MM*/;
+var TEXT_X_SCALE=/*TEXT_X_SCALE*/;
+var CONTENT_PADDING_X=/*CONTENT_PADDING_X*/;
+var CHAR_WIDTH_MM=Math.max(0.01,TEXT_SIZE_MM*TEXT_X_SCALE);
 function getColChars(){return window.colChars.join(',');}
 function getColParas(){
   var parts=[];
@@ -268,7 +296,19 @@ function distribute(){
   for(i=0;i<cols.length;i++) window.colParas.push([]);
 
   var els=src.children;
-  if(!els||els.length===0){if(cols[0])cols[0].innerHTML='<p class=""empty"">(无内容)</p>';syncFooter();return;}
+  if(!els||els.length===0){
+    if(cols[0])cols[0].innerHTML='<p class=""empty"">(无内容)</p>';
+    window.colChars=[];
+    for(i=0;i<cols.length;i++){
+      window.colChars.push(0);
+      var ch0=document.getElementById('chars-'+i);
+      if(ch0) ch0.innerHTML='0 字/行';
+      var info0=document.getElementById('info-'+i);
+      if(info0) info0.innerHTML='0 段 · 0 字';
+    }
+    syncFooter();
+    return;
+  }
 
   for(e=0;e<els.length;e++){
     if(ci>=cols.length) ci=cols.length-1;
@@ -287,27 +327,17 @@ function distribute(){
 
   window.colChars=[];
   for(i=0;i<cols.length;i++){
-    var style=window.getComputedStyle(cols[i]);
-    var canvas=document.createElement('canvas');
-    var ctx=canvas.getContext('2d');
-    var fontWeight=style.fontWeight || 'normal';
-    var fontSize=style.fontSize || '12px';
-    var fontFamily=style.fontFamily || 'Microsoft YaHei';
-    ctx.font=fontWeight + ' ' + fontSize + ' ' + fontFamily;
-    var sample='中文测试样本文字';
-    var sampleWidth=ctx.measureText(sample).width;
-    var charPx=sampleWidth / sample.length;
-    if(!charPx || charPx<=0) charPx=8;
-    // 保守修正系数，和实际排版更接近
-    charPx=charPx*1.15;
-    var contentW=Math.max(1, cols[i].clientWidth-20);
-    var cpl=Math.floor(contentW/charPx);
+    var contentW=Math.max(1, cols[i].clientWidth-CONTENT_PADDING_X);
+    var contentMm=contentW/Math.max(0.01, PREVIEW_SCALE);
+    var cpl=Math.floor(contentMm/CHAR_WIDTH_MM);
     if(cpl<1)cpl=1;
     window.colChars.push(cpl);
     var ch=document.getElementById('chars-'+i);
     if(ch) ch.innerHTML=cpl+' 字/行';
     var info=document.getElementById('info-'+i);
-    if(info) info.innerHTML=window.colParas[i].length+' 段';
+    var txt=(cols[i].innerText||cols[i].textContent||'').replace(/\s+/g,'');
+    var totalChars=txt.length;
+    if(info) info.innerHTML=window.colParas[i].length+' 段 · '+totalChars+' 字';
   }
 
   syncFooter();
@@ -362,8 +392,25 @@ document.onmousemove=function(ev){
     var minH=Math.max(120, Math.floor(padT+padB+minInnerH));
 
     var nw=pStartW, nh=pStartH;
-    if(pMode==='right' || pMode==='corner') nw=pStartW+dx;
-    if(pMode==='bottom' || pMode==='corner') nh=pStartH+dy;
+    if(pMode==='corner'){
+      // 右下角默认等比缩放；按住 Ctrl 才允许自由缩放
+      if(ev.ctrlKey){
+        nw=pStartW+dx;
+        nh=pStartH+dy;
+      }else{
+        var sx=(pStartW+dx)/Math.max(1,pStartW);
+        var sy=(pStartH+dy)/Math.max(1,pStartH);
+        var s=Math.abs(sx-1)>=Math.abs(sy-1)?sx:sy;
+        var minScale=Math.max(minW/Math.max(1,pStartW), minH/Math.max(1,pStartH));
+        if(s<minScale) s=minScale;
+        nw=pStartW*s;
+        nh=pStartH*s;
+      }
+    }else{
+      if(pMode==='right') nw=pStartW+dx;
+      if(pMode==='bottom') nh=pStartH+dy;
+    }
+
     if(nw<minW) nw=minW;
     if(nh<minH) nh=minH;
 

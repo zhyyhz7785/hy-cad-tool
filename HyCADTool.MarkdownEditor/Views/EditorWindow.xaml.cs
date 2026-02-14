@@ -646,7 +646,7 @@ namespace HyCADTool.MarkdownEditor.Views
             // 目标：paperPx = pageMm * scale; WPF 区域 = areaWidth DIP = areaWidth * dpi 物理像素
             // paperPx = 0.9 * areaWidth * dpi  →  scale = 0.9 * areaWidth * dpi / pageMm
             double targetScale = 0.9 * areaWidth * dpiScale / pageMm;
-            targetScale = Math.Max(0.1, Math.Min(3.0, targetScale));
+            targetScale = Math.Max(0.1, Math.Min(5.0, targetScale));
             ViewModel.PreviewScale = targetScale;
         }
 
