@@ -36,19 +36,27 @@ namespace HyCADTool.MarkdownEditor.Views
         private const int WM_MOUSEWHEEL = 0x020A;
         private readonly DispatcherTimer _rulerSyncTimer;
         private bool _updatingFileList;
+        private bool _showFileTab = true;
+        private const double MinPreviewVisibleWidth = 280;
+        private bool _isDarkTheme = true;
 
         public EditorWindow(EditorInput input)
         {
             ViewModel = new EditorViewModel(input);
             DataContext = ViewModel;
             InitializeComponent();
-            ApplyOutlineLayout();
 
             _rulerSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             _rulerSyncTimer.Tick += (_, __) => SyncRulerFromPaper();
 
+            ApplyTheme(_isDarkTheme);
+            UpdateWindowCaptionButtons();
+            ApplyOutlineLayout();
+            ApplyLeftPanelTab();
+
             Loaded += OnLoaded;
             Closed += OnClosed;
+            StateChanged += OnWindowStateChanged;
             ViewModel.PropertyChanged += OnPropChanged;
             ViewModel.EditorContentLoadRequested += OnEditorContentLoadRequested;
         }
@@ -111,6 +119,7 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
             _rulerSyncTimer.Stop();
+            StateChanged -= OnWindowStateChanged;
         }
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -158,10 +167,215 @@ namespace HyCADTool.MarkdownEditor.Views
             new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
 
+        private System.Windows.Media.Brush ThemeBrush(string key)
+        {
+            if (TryFindResource(key) is System.Windows.Media.Brush brush)
+                return brush;
+            return BrushFromHex("#c9d1d9");
+        }
+
+        private void SetThemeColor(string key, string hex)
+        {
+            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
+            var brush = new System.Windows.Media.SolidColorBrush(color);
+            brush.Freeze();
+            Resources[key] = brush;
+        }
+
+        private void SetThemeColor(object key, string hex)
+        {
+            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
+            var brush = new System.Windows.Media.SolidColorBrush(color);
+            brush.Freeze();
+            Resources[key] = brush;
+        }
+
+        private void ApplyTheme(bool dark)
+        {
+            _isDarkTheme = dark;
+            if (dark)
+            {
+                SetThemeColor("ThemeBgRootBrush", "#111418");
+                SetThemeColor("ThemeBgPanelBrush", "#161b22");
+                SetThemeColor("ThemeBgSurfaceBrush", "#1c2128");
+                SetThemeColor("ThemeBgInputBrush", "#0d1117");
+                SetThemeColor("ThemeBorderBrush", "#24292e");
+                SetThemeColor("ThemeBorderStrongBrush", "#30363d");
+                SetThemeColor("ThemeTextPrimaryBrush", "#c9d1d9");
+                SetThemeColor("ThemeTextSecondaryBrush", "#8b949e");
+                SetThemeColor("ThemeTextMutedBrush", "#6e7681");
+                SetThemeColor("ThemeAccentBrush", "#58a6ff");
+                SetThemeColor("ThemeAccentHoverBrush", "#79c0ff");
+                SetThemeColor("ThemeOnAccentBrush", "#ffffff");
+                SetThemeColor("ThemeHoverBrush", "#30363d");
+                SetThemeColor("ThemeSelectionBrush", "#263545");
+
+                SetThemeColor(SystemColors.MenuBrushKey, "#1c2128");
+                SetThemeColor(SystemColors.MenuTextBrushKey, "#c9d1d9");
+                SetThemeColor(SystemColors.MenuHighlightBrushKey, "#30363d");
+                SetThemeColor(SystemColors.HighlightBrushKey, "#30363d");
+                SetThemeColor(SystemColors.HighlightTextBrushKey, "#ffffff");
+                SetThemeColor(SystemColors.MenuBarBrushKey, "#161b22");
+                SetThemeColor(SystemColors.WindowBrushKey, "#1c2128");
+                SetThemeColor(SystemColors.WindowTextBrushKey, "#c9d1d9");
+            }
+            else
+            {
+                SetThemeColor("ThemeBgRootBrush", "#f5f7fa");
+                SetThemeColor("ThemeBgPanelBrush", "#eef2f6");
+                SetThemeColor("ThemeBgSurfaceBrush", "#ffffff");
+                SetThemeColor("ThemeBgInputBrush", "#ffffff");
+                SetThemeColor("ThemeBorderBrush", "#d0d7de");
+                SetThemeColor("ThemeBorderStrongBrush", "#b6c2cf");
+                SetThemeColor("ThemeTextPrimaryBrush", "#24292f");
+                SetThemeColor("ThemeTextSecondaryBrush", "#57606a");
+                SetThemeColor("ThemeTextMutedBrush", "#6e7781");
+                SetThemeColor("ThemeAccentBrush", "#0969da");
+                SetThemeColor("ThemeAccentHoverBrush", "#1f6feb");
+                SetThemeColor("ThemeOnAccentBrush", "#ffffff");
+                SetThemeColor("ThemeHoverBrush", "#dde6ef");
+                SetThemeColor("ThemeSelectionBrush", "#dbeafe");
+
+                SetThemeColor(SystemColors.MenuBrushKey, "#ffffff");
+                SetThemeColor(SystemColors.MenuTextBrushKey, "#24292f");
+                SetThemeColor(SystemColors.MenuHighlightBrushKey, "#dde6ef");
+                SetThemeColor(SystemColors.HighlightBrushKey, "#dde6ef");
+                SetThemeColor(SystemColors.HighlightTextBrushKey, "#24292f");
+                SetThemeColor(SystemColors.MenuBarBrushKey, "#eef2f6");
+                SetThemeColor(SystemColors.WindowBrushKey, "#ffffff");
+                SetThemeColor(SystemColors.WindowTextBrushKey, "#24292f");
+            }
+
+            ApplyLeftPanelTab();
+            ApplyOutlineLayout();
+            ApplyPreviewLayout();
+        }
+
+        private void OnThemeDark(object sender, RoutedEventArgs e)
+        {
+            ApplyTheme(true);
+            ViewModel.StatusText = "主题：黑色为主";
+        }
+
+        private void OnThemeLight(object sender, RoutedEventArgs e)
+        {
+            ApplyTheme(false);
+            ViewModel.StatusText = "主题：白色为主";
+        }
+
+        private void OnTitleBarMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+            if (e.ClickCount == 2)
+            {
+                ToggleMaxRestore();
+                return;
+            }
+
+            try { DragMove(); } catch { }
+        }
+
+        private void OnTitleBarMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Right) return;
+            Point screenPoint = PointToScreen(e.GetPosition(this));
+            SystemCommands.ShowSystemMenu(this, screenPoint);
+        }
+
+        private void OnMinimizeWindowClick(object sender, RoutedEventArgs e)
+        {
+            SystemCommands.MinimizeWindow(this);
+        }
+
+        private void OnMaxRestoreWindowClick(object sender, RoutedEventArgs e)
+        {
+            ToggleMaxRestore();
+        }
+
+        private void ToggleMaxRestore()
+        {
+            if (ResizeMode == ResizeMode.NoResize || ResizeMode == ResizeMode.CanMinimize) return;
+
+            if (WindowState == WindowState.Maximized)
+                SystemCommands.RestoreWindow(this);
+            else
+                SystemCommands.MaximizeWindow(this);
+        }
+
+        private void OnWindowStateChanged(object sender, EventArgs e)
+        {
+            UpdateWindowCaptionButtons();
+        }
+
+        private void UpdateWindowCaptionButtons()
+        {
+            if (MaxRestoreGlyph == null || MaxRestoreWindowBtn == null) return;
+
+            bool isMaximized = WindowState == WindowState.Maximized;
+            MaxRestoreGlyph.Text = isMaximized ? "\uE923" : "\uE922";
+            MaxRestoreWindowBtn.ToolTip = isMaximized ? "还原" : "最大化";
+        }
+
         private void OnToggleOutline(object sender, RoutedEventArgs e)
         {
             _outlineVisible = !_outlineVisible;
             ApplyOutlineLayout();
+            RelayoutPreviewIfNeeded();
+        }
+
+        private void OnShowFileTab(object sender, RoutedEventArgs e)
+        {
+            _showFileTab = true;
+            ApplyLeftPanelTab();
+            RelayoutPreviewIfNeeded();
+        }
+
+        private void OnShowOutlineTab(object sender, RoutedEventArgs e)
+        {
+            _showFileTab = false;
+            ApplyLeftPanelTab();
+            RelayoutPreviewIfNeeded();
+        }
+
+        private void ApplyLeftPanelTab()
+        {
+            if (FileTree == null || OutlineList == null || FileTabBtn == null || OutlineTabBtn == null) return;
+
+            FileTree.Visibility = _showFileTab ? Visibility.Visible : Visibility.Collapsed;
+            OutlineList.Visibility = _showFileTab ? Visibility.Collapsed : Visibility.Visible;
+
+            FileTabBtn.Foreground = _showFileTab ? ThemeBrush("ThemeTextPrimaryBrush") : ThemeBrush("ThemeTextSecondaryBrush");
+            OutlineTabBtn.Foreground = _showFileTab ? ThemeBrush("ThemeTextSecondaryBrush") : ThemeBrush("ThemeTextPrimaryBrush");
+        }
+
+        /// <summary>
+        /// 左侧布局切换后，强制重绘预览，规避 WebBrowser 在重排后偶发空白。
+        /// </summary>
+        private void RelayoutPreviewIfNeeded()
+        {
+            if (!_previewVisible) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                EnsurePreviewColumnVisible();
+                RefreshPreview();
+                SyncRulerFromPaper();
+            }), DispatcherPriority.Background);
+        }
+
+        private void EnsurePreviewColumnVisible()
+        {
+            if (!_previewVisible) return;
+            if (PreviewCol == null) return;
+
+            bool tooNarrowByActual = PreviewCol.ActualWidth > 0 && PreviewCol.ActualWidth < MinPreviewVisibleWidth;
+            bool tooNarrowByStar = PreviewCol.Width.IsStar && PreviewCol.Width.Value < 8;
+            bool collapsed = PreviewCol.Width.Value <= 0;
+
+            if (tooNarrowByActual || tooNarrowByStar || collapsed)
+            {
+                // 默认给一个足够可见的比例，防止只剩一条标尺
+                PreviewCol.Width = new GridLength(42, GridUnitType.Star);
+            }
         }
 
         private void ApplyOutlineLayout()
@@ -169,16 +383,17 @@ namespace HyCADTool.MarkdownEditor.Views
             if (_outlineVisible)
             {
                 OutlineCol.Width = new GridLength(220, GridUnitType.Pixel);
-                OutlineSplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
+                // 无缝模式：不保留额外分隔列宽度
+                OutlineSplitterCol.Width = new GridLength(0, GridUnitType.Pixel);
                 OutlineDivider.Visibility = Visibility.Visible;
-                OutlineToggleBtn.Foreground = BrushFromHex("#cccccc");
+                OutlineToggleBtn.Foreground = ThemeBrush("ThemeTextPrimaryBrush");
             }
             else
             {
                 OutlineCol.Width = new GridLength(0);
                 OutlineSplitterCol.Width = new GridLength(0);
                 OutlineDivider.Visibility = Visibility.Collapsed;
-                OutlineToggleBtn.Foreground = BrushFromHex("#858585");
+                OutlineToggleBtn.Foreground = ThemeBrush("ThemeTextSecondaryBrush");
             }
         }
 
@@ -187,7 +402,9 @@ namespace HyCADTool.MarkdownEditor.Views
             _bottomPanelVisible = !_bottomPanelVisible;
             ApplyBottomPanelLayout();
             ViewModel.StatusText = _bottomPanelVisible ? "底部面板：已打开" : "底部面板：关闭";
-            BottomPanelToggleBtn.Foreground = BrushFromHex(_bottomPanelVisible ? "#cccccc" : "#858585");
+            BottomPanelToggleBtn.Foreground = _bottomPanelVisible
+                ? ThemeBrush("ThemeTextPrimaryBrush")
+                : ThemeBrush("ThemeTextSecondaryBrush");
         }
 
         private void ApplyBottomPanelLayout()
@@ -221,15 +438,19 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void ApplyPreviewLayout()
         {
+            if (SplitterCol == null || PreviewCol == null || PreviewSplitter == null || PreviewRulerGrid == null || PreviewToggleBtn == null)
+                return;
+
             if (_previewVisible)
             {
                 SplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
-                PreviewCol.Width = new GridLength(1.2, GridUnitType.Star);
+                PreviewCol.Width = new GridLength(42, GridUnitType.Star);
                 PreviewSplitter.Visibility = Visibility.Visible;
                 PreviewRulerGrid.Visibility = Visibility.Visible;
-                _rulerSyncTimer.Start();
+                _rulerSyncTimer?.Start();
+                EnsurePreviewColumnVisible();
                 ApplyBottomPanelLayout();
-                PreviewToggleBtn.Foreground = BrushFromHex("#cccccc");
+                PreviewToggleBtn.Foreground = ThemeBrush("ThemeTextPrimaryBrush");
             }
             else
             {
@@ -237,9 +458,9 @@ namespace HyCADTool.MarkdownEditor.Views
                 PreviewCol.Width = new GridLength(0);
                 PreviewSplitter.Visibility = Visibility.Collapsed;
                 PreviewRulerGrid.Visibility = Visibility.Collapsed;
-                _rulerSyncTimer.Stop();
+                _rulerSyncTimer?.Stop();
                 ApplyBottomPanelLayout();
-                PreviewToggleBtn.Foreground = BrushFromHex("#858585");
+                PreviewToggleBtn.Foreground = ThemeBrush("ThemeTextSecondaryBrush");
             }
         }
 
@@ -350,7 +571,11 @@ namespace HyCADTool.MarkdownEditor.Views
                     Tag = title,
                     Padding = new Thickness(4 + (level - 1) * 12, 2, 4, 2),
                     FontSize = level <= 2 ? 12 : 11,
-                    Foreground = BrushFromHex(level == 1 ? "#c9d1d9" : level == 2 ? "#8b949e" : "#6e7681"),
+                    Foreground = level == 1
+                        ? ThemeBrush("ThemeTextPrimaryBrush")
+                        : level == 2
+                            ? ThemeBrush("ThemeTextSecondaryBrush")
+                            : ThemeBrush("ThemeTextMutedBrush"),
                 };
                 OutlineList.Items.Add(item);
             }
@@ -367,99 +592,317 @@ namespace HyCADTool.MarkdownEditor.Views
                 string escaped = Newtonsoft.Json.JsonConvert.SerializeObject(heading);
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"scrollToHeading({escaped})");
             }
-            catch
-            {
-                // 编辑器未完全就绪时忽略
-            }
+            catch { }
         }
+
+        #endregion
+
+        #region 文件树
 
         private void RefreshFileList()
         {
             _updatingFileList = true;
             try
             {
-                FileList.Items.Clear();
+                FileTree.Items.Clear();
                 string current = ViewModel.CurrentFilePath;
-                if (string.IsNullOrWhiteSpace(current))
-                {
-                    FileList.Items.Add(new ListBoxItem
-                    {
-                        Content = "(未绑定文件，先从“文件->打开”选择 .md)",
-                        Foreground = BrushFromHex("#6e7681"),
-                        IsEnabled = false
-                    });
-                    return;
-                }
+                if (string.IsNullOrWhiteSpace(current)) return;
 
-                string dir = Path.GetDirectoryName(current);
-                if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-                    return;
+                string rootDir = Path.GetDirectoryName(current);
+                if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir)) return;
 
-                var files = Directory.GetFiles(dir, "*.md", SearchOption.TopDirectoryOnly)
-                    .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-                if (files.Length == 0)
-                {
-                    FileList.Items.Add(new ListBoxItem
-                    {
-                        Content = "(当前目录无 .md 文件)",
-                        Foreground = BrushFromHex("#6e7681"),
-                        IsEnabled = false
-                    });
-                    return;
-                }
-
-                foreach (var file in files)
-                {
-                    var listItem = new ListBoxItem
-                    {
-                        Content = Path.GetFileName(file),
-                        Tag = file,
-                        ToolTip = file,
-                        Padding = new Thickness(8, 2, 8, 2),
-                    };
-                    if (string.Equals(file, current, StringComparison.OrdinalIgnoreCase))
-                    {
-                        listItem.Foreground = BrushFromHex("#58a6ff");
-                        FileList.SelectedItem = listItem;
-                    }
-                    FileList.Items.Add(listItem);
-                }
+                var rootNode = BuildTreeNode(rootDir, current);
+                rootNode.IsExpanded = true;
+                FileTree.Items.Add(rootNode);
             }
-            catch
-            {
-                // 目录枚举失败时不阻断主流程
-            }
-            finally
-            {
-                _updatingFileList = false;
-            }
+            catch { }
+            finally { _updatingFileList = false; }
         }
 
-        private void OnFileListSelectionChanged(object sender, SelectionChangedEventArgs e)
+        private TreeViewItem BuildTreeNode(string dirPath, string currentFile)
         {
-            if (_updatingFileList) return;
-            if (FileList.SelectedItem is not ListBoxItem item) return;
-            if (item.Tag is not string path || string.IsNullOrWhiteSpace(path)) return;
-            if (!File.Exists(path)) return;
-            if (string.Equals(ViewModel.CurrentFilePath, path, StringComparison.OrdinalIgnoreCase)) return;
+            string dirName = Path.GetFileName(dirPath);
+            if (string.IsNullOrWhiteSpace(dirName)) dirName = dirPath;
+            var node = new TreeViewItem
+            {
+                Header = "\U0001F4C1 " + dirName,
+                Tag = dirPath,
+                IsExpanded = false,
+                Foreground = ThemeBrush("ThemeTextPrimaryBrush"),
+            };
 
+            // 子文件夹
+            try
+            {
+                foreach (var sub in Directory.GetDirectories(dirPath)
+                    .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                {
+                    if (Path.GetFileName(sub).StartsWith(".")) continue;
+                    node.Items.Add(BuildTreeNode(sub, currentFile));
+                }
+            }
+            catch { }
+
+            // .md 文件
+            try
+            {
+                foreach (var file in Directory.GetFiles(dirPath, "*.md", SearchOption.TopDirectoryOnly)
+                    .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                {
+                    bool isCurrent = string.Equals(file, currentFile, StringComparison.OrdinalIgnoreCase);
+                    node.Items.Add(new TreeViewItem
+                    {
+                        Header = "\U0001F4C4 " + Path.GetFileName(file),
+                        Tag = file,
+                        ToolTip = file,
+                        Foreground = isCurrent
+                            ? ThemeBrush("ThemeAccentBrush")
+                            : ThemeBrush("ThemeTextPrimaryBrush"),
+                        IsSelected = isCurrent,
+                    });
+                }
+            }
+            catch { }
+
+            // 如果包含当前文件，展开到该路径
+            if (!string.IsNullOrWhiteSpace(currentFile) &&
+                currentFile.StartsWith(dirPath, StringComparison.OrdinalIgnoreCase))
+                node.IsExpanded = true;
+
+            return node;
+        }
+
+        private string GetSelectedTreePath()
+        {
+            if (FileTree.SelectedItem is TreeViewItem ti && ti.Tag is string p) return p;
+            return null;
+        }
+
+        private void OnFileTreeSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) { }
+
+        /// <summary>双击文件节点 → 加载到编辑器</summary>
+        private void OnFileTreeDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (path != null && File.Exists(path))
+                OpenMdFile(path);
+        }
+
+        private void OpenMdFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+            if (string.Equals(ViewModel.CurrentFilePath, path, StringComparison.OrdinalIgnoreCase)) return;
             try
             {
                 string content = File.ReadAllText(path, System.Text.Encoding.UTF8);
                 ViewModel.MarkdownText = content;
                 ViewModel.CurrentFilePath = path;
-                ViewModel.StatusText = $"已切换: {Path.GetFileName(path)}";
+                ViewModel.StatusText = $"已打开: {Path.GetFileName(path)}";
                 OnEditorContentLoadRequested(content);
                 RefreshPreview();
                 RefreshOutline();
                 RefreshFileList();
             }
-            catch (Exception ex)
+            catch (Exception ex) { ViewModel.StatusText = $"打开失败: {ex.Message}"; }
+        }
+
+        #region 文件树右键菜单
+
+        private void OnCtxOpen(object sender, RoutedEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (path != null && File.Exists(path)) OpenMdFile(path);
+            else if (path != null && Directory.Exists(path) && FileTree.SelectedItem is TreeViewItem ti)
+                ti.IsExpanded = !ti.IsExpanded;
+        }
+
+        private void OnCtxNewFile(object sender, RoutedEventArgs e)
+        {
+            string dir = ResolveDir(GetSelectedTreePath());
+            if (dir == null) return;
+            string name = PromptInput("新建文件", "请输入文件名：", "新文档.md");
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (!name.EndsWith(".md", StringComparison.OrdinalIgnoreCase)) name += ".md";
+            string full = Path.Combine(dir, name);
+            if (File.Exists(full)) { MessageBox.Show("文件已存在。", "提示"); return; }
+            File.WriteAllText(full, $"# {Path.GetFileNameWithoutExtension(name)}\n", System.Text.Encoding.UTF8);
+            ViewModel.StatusText = $"已新建: {name}";
+            RefreshFileList();
+            OpenMdFile(full);
+        }
+
+        private void OnCtxNewFolder(object sender, RoutedEventArgs e)
+        {
+            string dir = ResolveDir(GetSelectedTreePath());
+            if (dir == null) return;
+            string name = PromptInput("新建文件夹", "请输入文件夹名：", "新文件夹");
+            if (string.IsNullOrWhiteSpace(name)) return;
+            string full = Path.Combine(dir, name);
+            if (Directory.Exists(full)) { MessageBox.Show("文件夹已存在。", "提示"); return; }
+            Directory.CreateDirectory(full);
+            ViewModel.StatusText = $"已新建文件夹: {name}";
+            RefreshFileList();
+        }
+
+        private void OnCtxRename(object sender, RoutedEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (string.IsNullOrWhiteSpace(path)) return;
+            bool isFile = File.Exists(path);
+            bool isDir = Directory.Exists(path);
+            if (!isFile && !isDir) return;
+            string oldName = Path.GetFileName(path);
+            string newName = PromptInput("重命名", "请输入新名称：", oldName);
+            if (string.IsNullOrWhiteSpace(newName) || newName == oldName) return;
+            string newPath = Path.Combine(Path.GetDirectoryName(path), newName);
+            try
             {
-                ViewModel.StatusText = $"切换失败: {ex.Message}";
+                if (isFile)
+                {
+                    File.Move(path, newPath);
+                    if (string.Equals(ViewModel.CurrentFilePath, path, StringComparison.OrdinalIgnoreCase))
+                        ViewModel.CurrentFilePath = newPath;
+                }
+                else Directory.Move(path, newPath);
+                ViewModel.StatusText = $"已重命名: {oldName} \u2192 {newName}";
+                RefreshFileList();
+            }
+            catch (Exception ex) { MessageBox.Show($"重命名失败: {ex.Message}", "错误"); }
+        }
+
+        private void OnCtxDuplicate(object sender, RoutedEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (path == null || !File.Exists(path)) return;
+            string dir = Path.GetDirectoryName(path);
+            string nameNoExt = Path.GetFileNameWithoutExtension(path);
+            string ext = Path.GetExtension(path);
+            string copyPath = Path.Combine(dir, nameNoExt + " - 副本" + ext);
+            int n = 2;
+            while (File.Exists(copyPath))
+            {
+                copyPath = Path.Combine(dir, $"{nameNoExt} - 副本{n}{ext}");
+                n++;
+            }
+            File.Copy(path, copyPath);
+            ViewModel.StatusText = $"已创建副本: {Path.GetFileName(copyPath)}";
+            RefreshFileList();
+        }
+
+        private void OnCtxDelete(object sender, RoutedEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (string.IsNullOrWhiteSpace(path)) return;
+            bool isFile = File.Exists(path);
+            bool isDir = Directory.Exists(path);
+            if (!isFile && !isDir) return;
+            string name = Path.GetFileName(path);
+            if (MessageBox.Show($"确定删除 \"{name}\"？\n此操作不可撤销。", "确认删除",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            try
+            {
+                if (isFile)
+                {
+                    File.Delete(path);
+                    if (string.Equals(ViewModel.CurrentFilePath, path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ViewModel.CurrentFilePath = "";
+                        ViewModel.MarkdownText = "";
+                        OnEditorContentLoadRequested("");
+                    }
+                }
+                else Directory.Delete(path, true);
+                ViewModel.StatusText = $"已删除: {name}";
+                RefreshFileList();
+            }
+            catch (Exception ex) { MessageBox.Show($"删除失败: {ex.Message}", "错误"); }
+        }
+
+        private void OnCtxCopyPath(object sender, RoutedEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                Clipboard.SetText(path);
+                ViewModel.StatusText = "已复制路径";
             }
         }
+
+        private void OnCtxOpenFolder(object sender, RoutedEventArgs e)
+        {
+            var path = GetSelectedTreePath();
+            if (string.IsNullOrWhiteSpace(path)) return;
+            string dir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
+                System.Diagnostics.Process.Start("explorer.exe", dir);
+        }
+
+        private string ResolveDir(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            if (Directory.Exists(path)) return path;
+            if (File.Exists(path)) return Path.GetDirectoryName(path);
+            return null;
+        }
+
+        private static string PromptInput(string title, string prompt, string defaultValue)
+        {
+            var win = new Window
+            {
+                Title = title,
+                Width = 360,
+                Height = 150,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                Background = BrushFromHex("#1c2128"),
+            };
+            var sp = new StackPanel { Margin = new Thickness(16) };
+            sp.Children.Add(new TextBlock
+            {
+                Text = prompt,
+                Foreground = BrushFromHex("#c9d1d9"),
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+            var tb = new TextBox
+            {
+                Text = defaultValue,
+                Background = BrushFromHex("#0d1117"),
+                Foreground = BrushFromHex("#c9d1d9"),
+                BorderBrush = BrushFromHex("#30363d"),
+                CaretBrush = BrushFromHex("#ffffff"),
+                Padding = new Thickness(4, 2, 4, 2)
+            };
+            tb.SelectAll();
+            sp.Children.Add(tb);
+            var bp = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            var ok = new Button
+            {
+                Content = "确定", Width = 60, Margin = new Thickness(0, 0, 8, 0),
+                Background = BrushFromHex("#0e639c"), Foreground = BrushFromHex("#ffffff"),
+                BorderThickness = new Thickness(0)
+            };
+            var cancel = new Button
+            {
+                Content = "取消", Width = 60,
+                Background = BrushFromHex("#30363d"), Foreground = BrushFromHex("#c9d1d9"),
+                BorderThickness = new Thickness(0)
+            };
+            ok.Click += (_, __) => { win.DialogResult = true; };
+            cancel.Click += (_, __) => { win.DialogResult = false; };
+            bp.Children.Add(ok);
+            bp.Children.Add(cancel);
+            sp.Children.Add(bp);
+            win.Content = sp;
+            tb.Focus();
+            return win.ShowDialog() == true ? tb.Text?.Trim() : null;
+        }
+
+        #endregion
 
         #endregion
 

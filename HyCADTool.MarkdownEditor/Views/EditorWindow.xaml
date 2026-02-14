@@ -4,18 +4,37 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:controls="clr-namespace:HyCADTool.MarkdownEditor.Views.Controls"
         xmlns:helper="clr-namespace:HyCADTool.MarkdownEditor.Views.Helpers"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="HY Markdown Editor"
         Width="1280" Height="780"
         MinWidth="900" MinHeight="550"
         WindowStartupLocation="CenterScreen"
-        Background="#111418"
-        Foreground="#cccccc">
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{DynamicResource ThemeBgRootBrush}"
+        Foreground="{DynamicResource ThemeTextPrimaryBrush}">
 
     <Window.Resources>
+        <!-- 主题色：默认黑色为主（可在代码里切到白色为主） -->
+        <SolidColorBrush x:Key="ThemeBgRootBrush" Color="#111418" />
+        <SolidColorBrush x:Key="ThemeBgPanelBrush" Color="#161b22" />
+        <SolidColorBrush x:Key="ThemeBgSurfaceBrush" Color="#1c2128" />
+        <SolidColorBrush x:Key="ThemeBgInputBrush" Color="#0d1117" />
+        <SolidColorBrush x:Key="ThemeBorderBrush" Color="#24292e" />
+        <SolidColorBrush x:Key="ThemeBorderStrongBrush" Color="#30363d" />
+        <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#c9d1d9" />
+        <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#8b949e" />
+        <SolidColorBrush x:Key="ThemeTextMutedBrush" Color="#6e7681" />
+        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#0e639c" />
+        <SolidColorBrush x:Key="ThemeAccentHoverBrush" Color="#1177bb" />
+        <SolidColorBrush x:Key="ThemeOnAccentBrush" Color="#ffffff" />
+        <SolidColorBrush x:Key="ThemeHoverBrush" Color="#30363d" />
+        <SolidColorBrush x:Key="ThemeSelectionBrush" Color="#263545" />
+
         <!-- 普通按钮（带 hover） -->
         <Style x:Key="ToolBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#cccccc" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentBrush}" />
             <Setter Property="Padding" Value="10,4" />
             <Setter Property="Margin" Value="2,0" />
             <Setter Property="FontSize" Value="12" />
@@ -30,7 +49,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30363d" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -40,14 +59,14 @@
 
         <!-- 切换按钮 -->
         <Style x:Key="ToggleBtn" TargetType="Button" BasedOn="{StaticResource ToolBtn}">
-            <Setter Property="Foreground" Value="#858585" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
             <Setter Property="Padding" Value="5,4" />
         </Style>
 
         <!-- 主按钮（带 hover） -->
         <Style x:Key="PrimaryBtn" TargetType="Button">
-            <Setter Property="Background" Value="#0e639c" />
-            <Setter Property="Foreground" Value="#ffffff" />
+            <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Padding" Value="10,4" />
             <Setter Property="Margin" Value="2,0" />
             <Setter Property="FontSize" Value="12" />
@@ -62,7 +81,50 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1177bb" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeAccentHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 自定义标题栏窗口控制按钮 -->
+        <Style x:Key="TitleBarWinBtn" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TitleBarCloseBtn" TargetType="Button" BasedOn="{StaticResource TitleBarWinBtn}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E81123" />
+                                <Setter Property="Foreground" Value="#ffffff" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -73,20 +135,20 @@
         <Style x:Key="Sep" TargetType="Border">
             <Setter Property="Width" Value="1" />
             <Setter Property="Height" Value="14" />
-            <Setter Property="Background" Value="#24292e" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBorderBrush}" />
             <Setter Property="Margin" Value="6,0" />
         </Style>
 
         <!-- 分隔条（hover 蓝） -->
         <Style x:Key="Splitter" TargetType="GridSplitter">
-            <Setter Property="Background" Value="#24292e" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBorderBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="GridSplitter">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#007ACC" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -96,40 +158,40 @@
 
         <Style x:Key="DarkMenu" TargetType="Menu">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
         </Style>
 
         <!-- 顶层菜单项 -->
         <Style x:Key="DarkMenuItem" TargetType="MenuItem">
-            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="8,4" />
         </Style>
 
         <!-- 全局 MenuItem 弹出层深色 -->
         <Style TargetType="MenuItem">
-            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="6,4" />
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#30363d" />
+                    <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style TargetType="Separator">
-            <Setter Property="Background" Value="#30363d" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBorderStrongBrush}" />
             <Setter Property="Margin" Value="4,2" />
         </Style>
 
         <!-- ContextMenu / 弹出层 Popup 背景 -->
         <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="#1c2128" />
-            <Setter Property="BorderBrush" Value="#30363d" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Padding" Value="2" />
         </Style>
 
@@ -146,24 +208,24 @@
         <!-- ComboBox 下拉列表项 hover -->
         <Style TargetType="ComboBoxItem">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Padding" Value="6,3" />
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#30363d" />
+                    <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#263545" />
-                    <Setter Property="Foreground" Value="#58a6ff" />
+                    <Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <!-- 参数输入框（暗底 + 白光标 + 滚轮增减） -->
         <Style x:Key="ParamInput" TargetType="TextBox">
-            <Setter Property="Background" Value="#0d1117" />
-            <Setter Property="Foreground" Value="#c9d1d9" />
-            <Setter Property="BorderBrush" Value="#30363d" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CaretBrush" Value="White" />
             <Setter Property="Padding" Value="2,1" />
@@ -176,26 +238,34 @@
             <Setter Property="helper:TextBoxHelper.ScrollStep" Value="0.1" />
         </Style>
         <Style x:Key="ParamLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#8b949e" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="11" />
         </Style>
         <Style x:Key="ParamSmallLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#6e7681" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextMutedBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="10" />
         </Style>
 
         <!-- 暗色 ComboBox -->
         <Style x:Key="DarkComboBox" TargetType="ComboBox">
-            <Setter Property="Background" Value="#0d1117" />
-            <Setter Property="Foreground" Value="#c9d1d9" />
-            <Setter Property="BorderBrush" Value="#30363d" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBgInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Height" Value="22" />
         </Style>
     </Window.Resources>
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="32"
+                            ResizeBorderThickness="6"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -203,13 +273,24 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 顶部工具条 -->
-        <Border Grid.Row="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,0,1">
-            <DockPanel Margin="4,0">
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="HY" Foreground="#c9d1d9" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,10,0" />
-                    <Border Style="{StaticResource Sep}" Margin="0,0,8,0" />
-                    <Menu Style="{StaticResource DarkMenu}">
+        <!-- 顶部一体化标题栏 -->
+        <Border Grid.Row="0" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="4,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="HY"
+                               Foreground="{DynamicResource ThemeTextPrimaryBrush}"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Margin="8,0,10,0"
+                               shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <Border Style="{StaticResource Sep}" Margin="0,0,8,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <Menu Style="{StaticResource DarkMenu}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                         <MenuItem Header="文件" Style="{StaticResource DarkMenuItem}">
                             <MenuItem Header="打开" Command="{Binding LoadFileCommand}" />
                             <MenuItem Header="保存" Command="{Binding SaveFileCommand}" />
@@ -261,45 +342,98 @@
                             <Separator />
                             <MenuItem Header="清除样式" Click="OnMenuClearFormatting" />
                         </MenuItem>
+                        <MenuItem Header="主题" Style="{StaticResource DarkMenuItem}">
+                            <MenuItem Header="黑色为主" Click="OnThemeDark" />
+                            <MenuItem Header="白色为主" Click="OnThemeLight" />
+                        </MenuItem>
                     </Menu>
                 </StackPanel>
 
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="OutlineToggleBtn" Style="{StaticResource ToggleBtn}" Click="OnToggleOutline" ToolTip="大纲" Padding="5,4">
-                        <Grid Width="16" Height="12">
-                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
-                            <Rectangle Width="5" HorizontalAlignment="Left"
-                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
-                        </Grid>
-                    </Button>
-                    <Button x:Name="BottomPanelToggleBtn" Style="{StaticResource ToggleBtn}" Click="OnToggleBottomPanel" ToolTip="底部面板" Padding="5,4">
-                        <Grid Width="16" Height="12">
-                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
-                            <Rectangle Height="4" VerticalAlignment="Bottom"
-                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
-                        </Grid>
-                    </Button>
-                    <Button x:Name="PreviewToggleBtn" Style="{StaticResource ToggleBtn}" Click="OnTogglePreview" ToolTip="预览" Padding="5,4">
-                        <Grid Width="16" Height="12">
-                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
-                            <Rectangle Width="5" HorizontalAlignment="Right"
-                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
-                        </Grid>
-                    </Button>
-                    <Border Style="{StaticResource Sep}" />
-                    <Button Content="插入CAD" Style="{StaticResource PrimaryBtn}" Click="OnConfirmClick" />
-                    <Button Content="关闭" Style="{StaticResource ToolBtn}" Click="OnCloseClick" />
-                </StackPanel>
+                <Border Grid.Column="1"
+                        Background="Transparent"
+                        MouseLeftButtonDown="OnTitleBarMouseLeftButtonDown"
+                        MouseRightButtonUp="OnTitleBarMouseRightButtonUp">
+                    <TextBlock Text="{Binding StatusText}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource ThemeTextMutedBrush}"
+                               FontSize="11" />
+                </Border>
 
-                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
-                           HorizontalAlignment="Center" Foreground="#5a5a5a" FontSize="11" />
-            </DockPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                        <Button x:Name="OutlineToggleBtn"
+                                Style="{StaticResource ToggleBtn}"
+                                Click="OnToggleOutline"
+                                ToolTip="大纲"
+                                Padding="5,4"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Grid Width="16" Height="12">
+                                <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                                <Rectangle Width="5" HorizontalAlignment="Left"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           Opacity="0.45" RadiusX="1" RadiusY="1" />
+                            </Grid>
+                        </Button>
+                        <Button x:Name="BottomPanelToggleBtn"
+                                Style="{StaticResource ToggleBtn}"
+                                Click="OnToggleBottomPanel"
+                                ToolTip="底部面板"
+                                Padding="5,4"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Grid Width="16" Height="12">
+                                <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                                <Rectangle Height="4" VerticalAlignment="Bottom"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           Opacity="0.45" RadiusX="1" RadiusY="1" />
+                            </Grid>
+                        </Button>
+                        <Button x:Name="PreviewToggleBtn"
+                                Style="{StaticResource ToggleBtn}"
+                                Click="OnTogglePreview"
+                                ToolTip="预览"
+                                Padding="5,4"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Grid Width="16" Height="12">
+                                <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                                <Rectangle Width="5" HorizontalAlignment="Right"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           Opacity="0.45" RadiusX="1" RadiusY="1" />
+                            </Grid>
+                        </Button>
+                        <Border Style="{StaticResource Sep}" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                        <Button Content="插入CAD"
+                                Style="{StaticResource PrimaryBtn}"
+                                Click="OnConfirmClick"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    </StackPanel>
+
+                    <Button x:Name="MinimizeWindowBtn"
+                            Style="{StaticResource TitleBarWinBtn}"
+                            ToolTip="最小化"
+                            Click="OnMinimizeWindowClick"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock Text="&#xE921;" />
+                    </Button>
+                    <Button x:Name="MaxRestoreWindowBtn"
+                            Style="{StaticResource TitleBarWinBtn}"
+                            ToolTip="最大化"
+                            Click="OnMaxRestoreWindowClick"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock x:Name="MaxRestoreGlyph" Text="&#xE922;" />
+                    </Button>
+                    <Button x:Name="CloseWindowBtn"
+                            Style="{StaticResource TitleBarCloseBtn}"
+                            ToolTip="关闭"
+                            Click="OnCloseClick"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock Text="&#xE8BB;" />
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- 阶段1骨架：下左大纲 + 下中编辑 + 右侧可切换预览 -->
@@ -311,45 +445,55 @@
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="OutlineCol" Width="220" />
-                <ColumnDefinition x:Name="OutlineSplitterCol" Width="4" />
-                <ColumnDefinition Width="*" />
+                <!-- 0 表示左侧面板与编辑区无额外缝隙 -->
+                <ColumnDefinition x:Name="OutlineSplitterCol" Width="0" />
+                <ColumnDefinition Width="53*" />
+                <ColumnDefinition Width="13*"/>
                 <ColumnDefinition x:Name="SplitterCol" Width="0" />
                 <ColumnDefinition x:Name="PreviewCol" Width="0" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.RowSpan="3" Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
+            <Border Grid.RowSpan="3" Grid.Column="0" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="24" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="24" />
+                        <RowDefinition Height="30" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- 文件标题 -->
-                    <TextBlock Grid.Row="0" Text="文件" Foreground="#8b949e" FontSize="11"
-                               FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" />
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="FileTabBtn" Grid.Column="0" Content="文件"
+                                Click="OnShowFileTab"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" />
+                        <Button x:Name="OutlineTabBtn" Grid.Column="1" Content="大纲"
+                                Click="OnShowOutlineTab"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="12" FontWeight="SemiBold" />
+                    </Grid>
 
                     <!-- 文件树 -->
                     <TreeView x:Name="FileTree" Grid.Row="1"
                               Background="Transparent" BorderThickness="0"
-                              Foreground="#c9d1d9" FontSize="12"
+                              Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12"
                               SelectedItemChanged="OnFileTreeSelectedItemChanged"
                               MouseDoubleClick="OnFileTreeDoubleClick">
                         <TreeView.Resources>
                             <Style TargetType="TreeViewItem">
-                                <Setter Property="Foreground" Value="#c9d1d9" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
                                 <Setter Property="Padding" Value="2,1" />
                                 <Setter Property="Margin" Value="0" />
                                 <Setter Property="IsExpanded" Value="False" />
                                 <Style.Triggers>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="#263545" />
-                                        <Setter Property="Foreground" Value="#58a6ff" />
+                                        <Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
                                     </Trigger>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#1c2433" />
+                                        <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -372,30 +516,25 @@
                         </TreeView.ContextMenu>
                     </TreeView>
 
-                    <!-- 分割线 -->
-                    <Border Grid.Row="2" Height="1" Background="#24292e" />
-
-                    <!-- 大纲标题 -->
-                    <TextBlock Grid.Row="3" Text="大纲" Foreground="#8b949e" FontSize="11"
-                               FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" />
-
                     <!-- 大纲列表 -->
-                    <ListBox x:Name="OutlineList" Grid.Row="4"
+                    <ListBox x:Name="OutlineList" Grid.Row="1"
+                             Visibility="Collapsed"
                              SelectionChanged="OnOutlineSelectionChanged"
                              Background="Transparent" BorderThickness="0"
-                             Foreground="#c9d1d9" FontSize="12" />
+                             Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12" />
                 </Grid>
             </Border>
 
-            <Border x:Name="OutlineDivider" Grid.RowSpan="3" Grid.Column="1" Background="#24292e" />
+            <Border x:Name="OutlineDivider" Grid.RowSpan="3" Grid.Column="1" Background="{DynamicResource ThemeBorderBrush}" />
 
-            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" />
+            <wv2:WebView2 x:Name="EditorWebView" Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" Grid.ColumnSpan="2" />
 
-            <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="3" Width="4"
+            <GridSplitter x:Name="PreviewSplitter" Grid.Row="0" Grid.Column="5" Width="4"
                           HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
-                          Style="{StaticResource Splitter}" Visibility="Collapsed" />
+                          Style="{StaticResource Splitter}" Visibility="Collapsed" Margin="0,0,-4,0" Grid.RowSpan="3" />
 
-            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed">
+            <Grid x:Name="PreviewRulerGrid" Grid.Row="0" Grid.Column="4" Visibility="Collapsed" Grid.ColumnSpan="2" Grid.RowSpan="3"
+                  MinWidth="280">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="32" />
                     <RowDefinition x:Name="RulerRow" Height="24" />
@@ -406,7 +545,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,0,1">
+                <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
                     <Grid ClipToBounds="True">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                             <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
@@ -486,25 +625,25 @@
                     </Grid>
                 </Border>
 
-                <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="#161b22"
-                        BorderBrush="#24292e" BorderThickness="0,0,1,1" />
+                <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="{DynamicResource ThemeBgPanelBrush}"
+                        BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,1" />
                 <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" />
                 <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical" />
                 <WebBrowser x:Name="PreviewBrowser" Grid.Row="2" Grid.Column="1" />
             </Grid>
 
             <GridSplitter x:Name="BottomPanelSplitter" Grid.Row="1" Grid.Column="4" Height="4"
-                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          HorizontalAlignment="Stretch"
                           ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                           Style="{StaticResource Splitter}" Visibility="Collapsed"
-                          DragCompleted="OnBottomPanelSplitterDragCompleted" />
+                          DragCompleted="OnBottomPanelSplitterDragCompleted" Grid.ColumnSpan="2" Margin="0,0,0,-4" Grid.RowSpan="2" />
 
             <Border x:Name="BottomPanelHost" Grid.Row="2" Grid.Column="4"
-                    Background="#161b22" BorderBrush="#24292e" BorderThickness="0,1,0,0"
-                    Visibility="Collapsed">
+                    Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,1,0,0"
+                    Visibility="Collapsed" Grid.ColumnSpan="2">
                 <Grid>
                     <TextBlock Text="底部预留区域（阶段重建）"
-                               Foreground="#8b949e"
+                               Foreground="{DynamicResource ThemeTextSecondaryBrush}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center" />
                 </Grid>
