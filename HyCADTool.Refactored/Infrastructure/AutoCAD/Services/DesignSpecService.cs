@@ -1,7 +1,6 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Refactored.Diagnostics;
 using HyCADTool.Refactored.Domain.Models.Text;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using Newtonsoft.Json;
@@ -28,25 +27,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         /// <param name="markdownSource">完整 Markdown 源码</param>
         /// <param name="config">配置</param>
         /// <param name="insertionPoint">左上角插入点</param>
-        public void Insert(string[] columnContents, string markdownSource, DesignSpecConfig config, Point3d insertionPoint)
+        public void Insert(
+            string[] columnContents,
+            string markdownSource,
+            DesignSpecConfig config,
+            Point3d insertionPoint,
+            string[] columnMarkdowns = null)
         {
             if (columnContents == null || columnContents.Length == 0)
                 throw new ArgumentException("MText 内容不能为空");
-
-            #region agent log
-            AgentDebugLogger.Log(
-                "pre-fix",
-                "H5",
-                "DesignSpecService.Insert:33",
-                "insert entry",
-                new
-                {
-                    inputColumns = columnContents.Length,
-                    contentLengths = columnContents.Select(c => c?.Length ?? 0).ToArray(),
-                    configColumns = config?.ColumnCount ?? -1,
-                    markdownLength = markdownSource?.Length ?? 0
-                });
-            #endregion
 
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) throw new InvalidOperationException("无活动文档");
@@ -54,10 +43,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var db = doc.Database;
             var area = TextAreaCalculator.Calculate(config);
             var ed = doc.Editor;
-
-            // 诊断
-            string widthsStr = string.Join(", ", Array.ConvertAll(area.ColumnWidths, w => w.ToString("F1")));
-            ed.WriteMessage($"\n[计算] {area.ColumnCount}栏 | 栏宽=[{widthsStr}] | 总宽={area.TotalWidth:F1} | 总高={area.TotalHeight:F1}");
 
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
@@ -72,59 +57,62 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     string groupId = Guid.NewGuid().ToString("N");
 
                     double xOffset = 0;
-                    var mtextIds = new List<ObjectId>();
+                    int mtextCount = 0;
+                    int tableCount = 0;
+                    bool metadataWritten = false;
 
                     for (int i = 0; i < area.ColumnCount; i++)
                     {
                         string content = (i < columnContents.Length && !string.IsNullOrWhiteSpace(columnContents[i]))
                             ? columnContents[i]
                             : "";
-
-                        if (string.IsNullOrWhiteSpace(content))
-                        {
-                            xOffset += area.ColumnWidths[i] + area.ColumnGutter;
-                            continue;
-                        }
-
+                        string columnMarkdown = (columnMarkdowns != null && i < columnMarkdowns.Length)
+                            ? (columnMarkdowns[i] ?? "")
+                            : "";
                         double colWidth = area.ColumnWidths[i];
+                        double colLeftX = insertionPoint.X + xOffset;
 
-                        var mtext = new MText();
-                        mtext.SetDatabaseDefaults();
-                        mtext.Location = new Point3d(
-                            insertionPoint.X + xOffset,
-                            insertionPoint.Y,
-                            insertionPoint.Z);
-                        mtext.Attachment = AttachmentPoint.TopLeft;
-                        mtext.TextStyleId = textStyleId;
-                        mtext.TextHeight = config.ActualTextHeight;
-                        mtext.LineSpacingStyle = LineSpacingStyle.Exactly;
-                        mtext.LineSpacingFactor = config.LineSpacingFactor;
-                        mtext.Width = colWidth;
-                        mtext.Contents = content;
-
-                        SetLayer(db, tr, mtext, LAYER_TEXT);
-                        btr.AppendEntity(mtext);
-                        tr.AddNewlyCreatedDBObject(mtext, true);
-
-                        // 第一个 MText 存完整的 Markdown 和 Config
-                        if (i == 0)
+                        if (!string.IsNullOrWhiteSpace(content))
                         {
-                            ExtensionDictionaryService.WriteLongString(tr, mtext, markdownSource, XREC_KEY_MD);
-                            string cfgJson = JsonConvert.SerializeObject(config);
-                            ExtensionDictionaryService.WriteLongString(tr, mtext, cfgJson, XREC_KEY_CFG);
+                            var mtext = new MText();
+                            mtext.SetDatabaseDefaults();
+                            mtext.Location = new Point3d(colLeftX, insertionPoint.Y, insertionPoint.Z);
+                            mtext.Attachment = AttachmentPoint.TopLeft;
+                            mtext.TextStyleId = textStyleId;
+                            mtext.TextHeight = config.ActualTextHeight;
+                            mtext.LineSpacingStyle = LineSpacingStyle.Exactly;
+                            mtext.LineSpacingFactor = config.LineSpacingFactor;
+                            mtext.Width = colWidth;
+                            mtext.Contents = content;
+
+                            SetLayer(db, tr, mtext, LAYER_TEXT);
+                            btr.AppendEntity(mtext);
+                            tr.AddNewlyCreatedDBObject(mtext, true);
+
+                            WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataWritten);
+                            ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
+                            mtextCount++;
                         }
 
-                        // 所有 MText 存组ID，便于后续更新时找到同组
-                        ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
-                        mtextIds.Add(mtext.ObjectId);
-
-                        ed.WriteMessage($"\n[栏{i + 1}] 宽={colWidth:F1}, 位置X={insertionPoint.X + xOffset:F1}, 内容高={mtext.ActualHeight:F1}");
+                        tableCount += InsertTablesForColumn(
+                            tr,
+                            btr,
+                            db,
+                            config,
+                            columnMarkdown,
+                            colLeftX,
+                            insertionPoint.Y - area.TotalHeight - config.ActualTextHeight,
+                            insertionPoint.Z,
+                            colWidth,
+                            groupId,
+                            markdownSource,
+                            ref metadataWritten);
 
                         xOffset += colWidth + area.ColumnGutter;
                     }
 
                     tr.Commit();
-                    ed.WriteMessage($"\n已插入 {mtextIds.Count} 个 MText（{area.ColumnCount}栏 | 字高={config.ActualTextHeight:F1}）");
+                    ed.WriteMessage($"\n已插入设计说明：MText={mtextCount}, Table={tableCount}（{area.ColumnCount}栏）");
                 }
                 catch (System.Exception ex)
                 {
@@ -138,7 +126,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         /// <summary>
         /// 更新已有 MText 组
         /// </summary>
-        public void Update(ObjectId mtextId, string[] columnContents, string markdownSource, DesignSpecConfig config)
+        public void Update(
+            ObjectId anchorEntityId,
+            string[] columnContents,
+            string markdownSource,
+            DesignSpecConfig config,
+            string[] columnMarkdowns = null)
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) throw new InvalidOperationException("无活动文档");
@@ -152,13 +145,13 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 try
                 {
-                    // 读取组ID，找到同组所有 MText
-                    var mtext0 = tr.GetObject(mtextId, OpenMode.ForRead) as MText;
-                    if (mtext0 == null) throw new InvalidOperationException("选中实体不是 MText");
+                    // 读取组ID，找到同组所有实体
+                    var anchorEntity = tr.GetObject(anchorEntityId, OpenMode.ForRead) as Entity;
+                    if (anchorEntity == null) throw new InvalidOperationException("选中实体无效");
 
-                    string groupId = ExtensionDictionaryService.ReadLongString(tr, mtext0, XREC_KEY_GROUP);
+                    string groupId = ExtensionDictionaryService.ReadLongString(tr, anchorEntity, XREC_KEY_GROUP);
 
-                    // 删除旧的同组 MText
+                    // 删除旧的同组实体（MText + Table）
                     if (!string.IsNullOrEmpty(groupId))
                     {
                         var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
@@ -167,7 +160,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                         foreach (ObjectId id in btr)
                         {
-                            var ent = tr.GetObject(id, OpenMode.ForRead) as MText;
+                            var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
                             if (ent == null) continue;
                             string gid = ExtensionDictionaryService.ReadLongString(tr, ent, XREC_KEY_GROUP);
                             if (gid == groupId)
@@ -181,55 +174,69 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         }
                     }
 
-                    // 重新插入（复用 Insert 逻辑位置取原始位置）
-                    var insertPt = mtext0.Location;
+                    // 重新插入，锚点使用用户选择实体的位置
+                    var insertPt = GetAnchorPoint(anchorEntity);
 
                     var bt2 = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var btr2 = (BlockTableRecord)tr.GetObject(bt2[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
                     var textStyleId = EnsureTextStyle(db, tr, config);
                     string newGroupId = Guid.NewGuid().ToString("N");
+                    bool metadataWritten = false;
+                    int mtextCount = 0;
+                    int tableCount = 0;
 
                     double xOffset = 0;
                     for (int i = 0; i < area.ColumnCount; i++)
                     {
                         string content = (i < columnContents.Length && !string.IsNullOrWhiteSpace(columnContents[i]))
                             ? columnContents[i] : "";
-
-                        if (string.IsNullOrWhiteSpace(content))
-                        {
-                            xOffset += area.ColumnWidths[i] + area.ColumnGutter;
-                            continue;
-                        }
-
+                        string columnMarkdown = (columnMarkdowns != null && i < columnMarkdowns.Length)
+                            ? (columnMarkdowns[i] ?? "")
+                            : "";
                         double colWidth = area.ColumnWidths[i];
-                        var newMtext = new MText();
-                        newMtext.SetDatabaseDefaults();
-                        newMtext.Location = new Point3d(insertPt.X + xOffset, insertPt.Y, insertPt.Z);
-                        newMtext.Attachment = AttachmentPoint.TopLeft;
-                        newMtext.TextStyleId = textStyleId;
-                        newMtext.TextHeight = config.ActualTextHeight;
-                        newMtext.LineSpacingStyle = LineSpacingStyle.Exactly;
-                        newMtext.LineSpacingFactor = config.LineSpacingFactor;
-                        newMtext.Width = colWidth;
-                        newMtext.Contents = content;
+                        double colLeftX = insertPt.X + xOffset;
 
-                        SetLayer(db, tr, newMtext, LAYER_TEXT);
-                        btr2.AppendEntity(newMtext);
-                        tr.AddNewlyCreatedDBObject(newMtext, true);
-
-                        if (i == 0)
+                        if (!string.IsNullOrWhiteSpace(content))
                         {
-                            ExtensionDictionaryService.WriteLongString(tr, newMtext, markdownSource, XREC_KEY_MD);
-                            string cfgJson = JsonConvert.SerializeObject(config);
-                            ExtensionDictionaryService.WriteLongString(tr, newMtext, cfgJson, XREC_KEY_CFG);
+                            var newMtext = new MText();
+                            newMtext.SetDatabaseDefaults();
+                            newMtext.Location = new Point3d(colLeftX, insertPt.Y, insertPt.Z);
+                            newMtext.Attachment = AttachmentPoint.TopLeft;
+                            newMtext.TextStyleId = textStyleId;
+                            newMtext.TextHeight = config.ActualTextHeight;
+                            newMtext.LineSpacingStyle = LineSpacingStyle.Exactly;
+                            newMtext.LineSpacingFactor = config.LineSpacingFactor;
+                            newMtext.Width = colWidth;
+                            newMtext.Contents = content;
+
+                            SetLayer(db, tr, newMtext, LAYER_TEXT);
+                            btr2.AppendEntity(newMtext);
+                            tr.AddNewlyCreatedDBObject(newMtext, true);
+
+                            WriteMetadataIfNeeded(tr, newMtext, markdownSource, config, ref metadataWritten);
+                            ExtensionDictionaryService.WriteLongString(tr, newMtext, newGroupId, XREC_KEY_GROUP);
+                            mtextCount++;
                         }
-                        ExtensionDictionaryService.WriteLongString(tr, newMtext, newGroupId, XREC_KEY_GROUP);
+
+                        tableCount += InsertTablesForColumn(
+                            tr,
+                            btr2,
+                            db,
+                            config,
+                            columnMarkdown,
+                            colLeftX,
+                            insertPt.Y - area.TotalHeight - config.ActualTextHeight,
+                            insertPt.Z,
+                            colWidth,
+                            newGroupId,
+                            markdownSource,
+                            ref metadataWritten);
 
                         xOffset += colWidth + area.ColumnGutter;
                     }
 
                     tr.Commit();
-                    ed.WriteMessage($"\n已更新设计说明（{area.ColumnCount}栏）");
+                    ed.WriteMessage($"\n已更新设计说明：MText={mtextCount}, Table={tableCount}（{area.ColumnCount}栏）");
                 }
                 catch (System.Exception ex)
                 {
@@ -273,6 +280,94 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             return ExtensionDictionaryService.HasKey(tr, entity, XREC_KEY_MD);
         }
 
+        private static void WriteMetadataIfNeeded(
+            Transaction tr,
+            Entity entity,
+            string markdownSource,
+            DesignSpecConfig config,
+            ref bool metadataWritten)
+        {
+            if (metadataWritten || entity == null)
+                return;
+
+            ExtensionDictionaryService.WriteLongString(tr, entity, markdownSource ?? "", XREC_KEY_MD);
+            string cfgJson = JsonConvert.SerializeObject(config);
+            ExtensionDictionaryService.WriteLongString(tr, entity, cfgJson, XREC_KEY_CFG);
+            metadataWritten = true;
+        }
+
+        private int InsertTablesForColumn(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            DesignSpecConfig config,
+            string columnMarkdown,
+            double columnLeftX,
+            double startTopY,
+            double z,
+            double columnWidth,
+            string groupId,
+            string markdownSource,
+            ref bool metadataWritten)
+        {
+            if (string.IsNullOrWhiteSpace(columnMarkdown))
+                return 0;
+
+            var tables = MarkdownTableExtractor.ExtractTopLevelTables(columnMarkdown);
+            if (tables == null || tables.Count == 0)
+                return 0;
+
+            int created = 0;
+            double y = startTopY;
+            foreach (var tableData in tables)
+            {
+                int rows = tableData.Rows.Count;
+                int cols = tableData.ColumnCount;
+                if (rows <= 0 || cols <= 0)
+                    continue;
+
+                var table = new Table();
+                table.SetDatabaseDefaults();
+                table.TableStyle = db.Tablestyle;
+                table.Position = new Point3d(columnLeftX, y, z);
+                table.SetSize(rows, cols);
+
+                double rowHeight = Math.Max(config.ActualTextHeight * config.LineSpacingFactor * 1.3, config.ActualTextHeight);
+                for (int r = 0; r < rows; r++)
+                {
+                    table.Rows[r].Height = rowHeight;
+                    table.Rows[r].TextHeight = config.ActualTextHeight;
+                }
+
+                double colWidth = Math.Max(config.ActualTextHeight * 3.0, columnWidth / cols);
+                for (int c = 0; c < cols; c++)
+                    table.Columns[c].Width = colWidth;
+
+                for (int r = 0; r < rows; r++)
+                {
+                    var row = tableData.Rows[r];
+                    for (int c = 0; c < cols; c++)
+                    {
+                        table.Cells[r, c].TextString = c < row.Count ? row[c] : "";
+                    }
+                }
+
+                table.GenerateLayout();
+                SetLayer(db, tr, table, LAYER_TEXT);
+                btr.AppendEntity(table);
+                tr.AddNewlyCreatedDBObject(table, true);
+
+                WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
+                ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
+
+                double tableHeight = table.Height > 0 ? table.Height : rowHeight * rows;
+                y -= tableHeight + config.ActualTextHeight;
+                created++;
+            }
+
+            return created;
+        }
+
         private ObjectId EnsureTextStyle(Database db, Transaction tr, DesignSpecConfig config)
         {
             string styleName = $"0_Hy_{config.Scale}";
@@ -308,6 +403,28 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
             if (lt.Has(layerName))
                 entity.LayerId = lt[layerName];
+        }
+
+        private static Point3d GetAnchorPoint(Entity entity)
+        {
+            if (entity is MText mt)
+                return mt.Location;
+
+            if (entity is Table table)
+                return table.Position;
+
+            if (entity is BlockReference br)
+                return br.Position;
+
+            try
+            {
+                var ext = entity.GeometricExtents;
+                return new Point3d(ext.MinPoint.X, ext.MaxPoint.Y, ext.MinPoint.Z);
+            }
+            catch
+            {
+                return Point3d.Origin;
+            }
         }
     }
 }

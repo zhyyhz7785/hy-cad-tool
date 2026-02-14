@@ -2,7 +2,6 @@ using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using HyCADTool.Refactored.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -19,8 +18,6 @@ namespace HyCADTool.Refactored.Domain.Models.Text
     {
         private readonly DesignSpecConfig _config;
         private readonly StringBuilder _sb;
-        private bool _quoteLogWritten;
-        private bool _nestedListLogWritten;
 
         public MarkdownToMTextRenderer(DesignSpecConfig config)
         {
@@ -153,24 +150,6 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             bool ordered = list.IsOrdered;
             int index = 1;
 
-            if (depth > 0 && !_nestedListLogWritten)
-            {
-                #region agent log
-                AgentDebugLogger.Log(
-                    "pre-fix",
-                    "H4",
-                    "MarkdownToMTextRenderer.RenderList:154",
-                    "nested list rendering entered",
-                    new
-                    {
-                        depth,
-                        isOrdered = ordered,
-                        itemCount = list.Count
-                    });
-                #endregion
-                _nestedListLogWritten = true;
-            }
-
             foreach (var item in list)
             {
                 if (item is ListItemBlock listItem)
@@ -248,25 +227,6 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             double spaceBefore = _config.ActualQuoteSpaceBefore;
             double spaceAfter = _config.ActualQuoteSpaceAfter;
             string indentInch = F(_config.ActualQuoteIndent / 25.4);
-
-            if (!_quoteLogWritten)
-            {
-                #region agent log
-                AgentDebugLogger.Log(
-                    "pre-fix",
-                    "H3",
-                    "MarkdownToMTextRenderer.RenderQuote:244",
-                    "quote spacing conversion",
-                    new
-                    {
-                        quoteIndentMm = _config.ActualQuoteIndent,
-                        quoteIndentInch = indentInch,
-                        spaceBeforeMm = spaceBefore,
-                        spaceAfterMm = spaceAfter
-                    });
-                #endregion
-                _quoteLogWritten = true;
-            }
 
             // 引用块段前段后 + 左缩进
             string bInch = F(spaceBefore / 25.4);
@@ -369,7 +329,8 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>代码块 → 原样输出（等宽缩进）</summary>
         private void RenderCodeBlock(FencedCodeBlock code)
         {
-            string indent = F(_config.ActualListIndent);
+            // \pxi 缩进参数单位为英寸
+            string indentInch = F(_config.ActualListIndent / 25.4);
             var lines = code.Lines;
             for (int i = 0; i < lines.Count; i++)
             {
@@ -377,9 +338,10 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 string text = line.Slice.ToString();
                 if (!string.IsNullOrEmpty(text))
                 {
-                    _sb.Append("\\pxi0,l").Append(indent).Append(";");
-                    _sb.Append(EscapeMText(text));
-                    _sb.Append("\\P");
+                    _sb.Append("\\pxi0,l").Append(indentInch).Append(";");
+                    _sb.Append("{\\fConsolas|b0|i0;")
+                       .Append(EscapeMText(text))
+                       .Append("}\\P");
                 }
             }
         }

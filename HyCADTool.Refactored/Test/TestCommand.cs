@@ -54,7 +54,7 @@ namespace HyCADTool.Refactored.Test
             {
                 bool confirmed = EditorLoader.TryShowEditor(
                     null, null, ownerHandle,
-                    out var columnContents, out var markdownSource, out var config);
+                    out var columnContents, out var columnMarkdowns, out var markdownSource, out var config);
 
                 if (confirmed && columnContents != null)
                 {

@@ -1,5 +1,4 @@
 using HyCADTool.Refactored.Domain.Models.Text;
-using HyCADTool.Refactored.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -40,10 +39,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
             DesignSpecConfig existingConfig,
             long ownerHandle,
             out string[] columnContents,
+            out string[] columnMarkdowns,
             out string markdownSource,
             out DesignSpecConfig config)
         {
             columnContents = null;
+            columnMarkdowns = null;
             markdownSource = null;
             config = null;
 
@@ -77,11 +78,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 // 按栏拆分 Markdown → 各自渲染 MText
                 string colParaIndices = ExtractColumnParagraphIndices(result);
                 var colMarkdowns = SplitMarkdownByColumns(markdownSource, colParaIndices);
+                columnMarkdowns = colMarkdowns;
                 columnContents = new string[colMarkdowns.Length];
                 for (int i = 0; i < colMarkdowns.Length; i++)
                 {
                     var renderer = new MarkdownToMTextRenderer(config);
-                    columnContents[i] = renderer.Convert(colMarkdowns[i]);
+                    string markdownWithoutTables = MarkdownTableExtractor.RemoveTopLevelTables(colMarkdowns[i]);
+                    columnContents[i] = renderer.Convert(markdownWithoutTables);
                 }
 
                 return true;
@@ -376,21 +379,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         {
             string direct = result?.Value<string>("ColumnParagraphIndices");
             if (!string.IsNullOrWhiteSpace(direct))
-            {
-                #region agent log
-                AgentDebugLogger.Log(
-                    "post-fix",
-                    "H8",
-                    "EditorLoader.ExtractColumnParagraphIndices:378",
-                    "column paragraph indices source direct",
-                    new
-                    {
-                        length = direct.Length,
-                        value = direct
-                    });
-                #endregion
                 return direct;
-            }
 
             var stats = result?["PreviewStats"] as JObject;
             if (stats == null)
@@ -398,21 +387,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             string text = stats.Value<string>("ColumnParagraphIndicesText");
             if (!string.IsNullOrWhiteSpace(text))
-            {
-                #region agent log
-                AgentDebugLogger.Log(
-                    "post-fix",
-                    "H8",
-                    "EditorLoader.ExtractColumnParagraphIndices:395",
-                    "column paragraph indices source stats text",
-                    new
-                    {
-                        length = text.Length,
-                        value = text
-                    });
-                #endregion
                 return text;
-            }
 
             if (stats["ColumnParagraphIndices"] is JArray colArray)
             {
@@ -421,18 +396,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         ? string.Join(",", row.Select(v => (int)v))
                         : string.Empty)
                     .ToArray();
-                #region agent log
-                AgentDebugLogger.Log(
-                    "post-fix",
-                    "H8",
-                    "EditorLoader.ExtractColumnParagraphIndices:414",
-                    "column paragraph indices source stats array",
-                    new
-                    {
-                        groups = groups.Length,
-                        value = string.Join("|", groups)
-                    });
-                #endregion
                 return string.Join("|", groups);
             }
 
@@ -441,35 +404,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         private static string[] SplitMarkdownByColumns(string markdown, string paraIndices)
         {
-            #region agent log
-            AgentDebugLogger.Log(
-                "pre-fix",
-                "H1",
-                "EditorLoader.SplitMarkdownByColumns:403",
-                "editor loader split input",
-                new
-                {
-                    markdownLength = markdown?.Length ?? 0,
-                    paraIndicesLength = paraIndices?.Length ?? 0
-                });
-            #endregion
-
-            var result = MarkdownColumnSplitter.SplitByColumnIndices(markdown, paraIndices);
-
-            #region agent log
-            AgentDebugLogger.Log(
-                "pre-fix",
-                "H5",
-                "EditorLoader.SplitMarkdownByColumns:417",
-                "editor loader split output",
-                new
-                {
-                    columnCount = result?.Length ?? 0,
-                    lengths = result?.Select(s => s?.Length ?? 0).ToArray() ?? Array.Empty<int>()
-                });
-            #endregion
-
-            return result;
+            return MarkdownColumnSplitter.SplitByColumnIndices(markdown, paraIndices);
         }
 
         #endregion

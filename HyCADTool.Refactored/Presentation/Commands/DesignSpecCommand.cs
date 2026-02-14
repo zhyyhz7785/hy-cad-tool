@@ -1,7 +1,6 @@
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.Models.Text;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
-using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands
@@ -18,6 +17,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             var ed = doc.Editor;
 
             string[] columnContents = null;
+            string[] columnMarkdowns = null;
             string markdownSource = null;
             DesignSpecConfig config = null;
 
@@ -27,7 +27,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             bool useModernEditor = EditorLoader.TryShowEditor(
                 null, null, ownerHandle,
-                out columnContents, out markdownSource, out config);
+                out columnContents, out columnMarkdowns, out markdownSource, out config);
 
             if (!useModernEditor)
             {
@@ -51,15 +51,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                string cpcStr = config.CharsPerColumn != null
-                    ? string.Join(",", config.CharsPerColumn)
-                    : "null";
-                ed.WriteMessage($"\n[诊断] CharsPerColumn=[{cpcStr}], TextSize={config.TextSize}, Scale={config.Scale}");
-                ed.WriteMessage($"\n[诊断] ColumnCount={config.ColumnCount}, ColumnGutter={config.ColumnGutter}");
-                ed.WriteMessage($"\n[诊断] 各栏内容长度=[{string.Join(",", columnContents.Select(c => c?.Length ?? 0))}]");
-
                 var service = new DesignSpecService();
-                service.Insert(columnContents, markdownSource, config, ptRes.Value);
+                service.Insert(columnContents, markdownSource, config, ptRes.Value, columnMarkdowns);
             }
             catch (System.Exception ex)
             {
