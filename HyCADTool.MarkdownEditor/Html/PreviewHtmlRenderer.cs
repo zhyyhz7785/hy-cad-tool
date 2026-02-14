@@ -56,6 +56,8 @@ namespace HyCADTool.MarkdownEditor.Html
             double topPx = cfg.MarginTopMm * previewScale;
             double bottomPx = cfg.MarginBottomMm * previewScale;
             double gutterPx = Math.Max(0, cfg.ColumnGutter) * previewScale;
+            // 分栏间隔至少保留可见/可拖拽宽度，避免 0 时无法操作
+            double gutterVisualPx = Math.Max(6, gutterPx);
 
             string h1Margin = $"margin:{cfg.H1SpaceBefore:F1}em 0 {cfg.H1SpaceAfter:F1}em";
             string h2Margin = $"margin:{cfg.H2SpaceBefore:F1}em 0 {cfg.H2SpaceAfter:F1}em";
@@ -72,7 +74,7 @@ namespace HyCADTool.MarkdownEditor.Html
                 .Replace("/*PAD_RIGHT*/", $"{Round(rightPx):F0}px")
                 .Replace("/*PAD_TOP*/", $"{Round(topPx):F0}px")
                 .Replace("/*PAD_BOTTOM*/", $"{Round(bottomPx):F0}px")
-                .Replace("/*GUTTER*/", $"{Round(gutterPx):F0}px")
+                .Replace("/*GUTTER*/", $"{Round(gutterVisualPx):F0}px")
                 .Replace("/*H1_MARGIN*/", h1Margin)
                 .Replace("/*H2_MARGIN*/", h2Margin)
                 .Replace("/*H3_MARGIN*/", h3Margin)
@@ -152,14 +154,30 @@ body{overflow:hidden;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaH
 .col-content.last{overflow:hidden}
 .col-vhandle{height:6px;background:#2b3138;cursor:ns-resize;-ms-flex-negative:0;flex-shrink:0}
 .col-vhandle:hover{background:#6e7681}
-.col-gap{width:/*GUTTER*/;min-width:0;background:#2b3138;-ms-flex-negative:0;flex-shrink:0;cursor:ew-resize}
+.col-gap{
+  width:/*GUTTER*/;min-width:6px;background:transparent;
+  -ms-flex-negative:0;flex-shrink:0;cursor:ew-resize;position:relative
+}
+.col-gap:before{
+  content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;
+  margin-left:-0.5px;background:#6e7681
+}
+.col-gap:hover{background:#2f3942}
+.col-gap:hover:before{width:2px;margin-left:-1px;background:#58a6ff}
 
 .paper-footer{
   display:-ms-flexbox;display:flex;-ms-flex-direction:row;flex-direction:row;
   padding:4px 0;color:#8b949e;font-size:11px;
 }
 .col-footer-item{-ms-flex:1;flex:1;text-align:center}
-.col-footer-sep{width:/*GUTTER*/;min-width:0;background:#2b3138;-ms-flex-negative:0;flex-shrink:0}
+.col-footer-sep{
+  width:/*GUTTER*/;min-width:6px;background:transparent;
+  -ms-flex-negative:0;flex-shrink:0;position:relative
+}
+.col-footer-sep:before{
+  content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;
+  margin-left:-0.5px;background:#4b5560
+}
 .col-chars{color:#58a6ff}
 
 .paper-resize-right{

@@ -35,6 +35,9 @@ namespace HyCADTool.MarkdownEditor.Views
         private VditorJsHelper _js;
         private const int WM_MOUSEWHEEL = 0x020A;
         private readonly DispatcherTimer _rulerSyncTimer;
+        private readonly DispatcherTimer _previewRefreshDebounceTimer;
+        private const int PreviewRefreshDebounceMs = 180;
+        private double _renderedPreviewScale = 1.0;
         private bool _updatingFileList;
         private bool _showFileTab = true;
         private const double MinPreviewVisibleWidth = 280;
@@ -61,6 +64,12 @@ namespace HyCADTool.MarkdownEditor.Views
 
             _rulerSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             _rulerSyncTimer.Tick += (_, __) => SyncRulerFromPaper();
+            _previewRefreshDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PreviewRefreshDebounceMs) };
+            _previewRefreshDebounceTimer.Tick += (_, __) =>
+            {
+                _previewRefreshDebounceTimer.Stop();
+                RefreshPreview();
+            };
 
             ApplyTheme(_isDarkTheme);
             UpdateWindowCaptionButtons();
@@ -121,18 +130,25 @@ namespace HyCADTool.MarkdownEditor.Views
                     MessageBoxImage.Warning);
             }
 
-            // 初次刷新隐藏预览（后台计算用）
+            // 初次刷新
             RefreshPreview();
-            UpdateRulerScale();
             RefreshOutline();
             RefreshFileList();
             ApplyDefaultWorkspaceLayout(false);
+
+            // 布局就绪后，让 A2 图纸占满 90% 预览区
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                FitPaperToPreviewArea();
+                UpdateRulerScale();
+            }), DispatcherPriority.Loaded);
         }
 
         private void OnClosed(object sender, EventArgs e)
         {
             ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
             _rulerSyncTimer.Stop();
+            _previewRefreshDebounceTimer.Stop();
             StateChanged -= OnWindowStateChanged;
         }
 
@@ -322,7 +338,11 @@ namespace HyCADTool.MarkdownEditor.Views
             UpdateWindowCaptionButtons();
             if (WindowState == WindowState.Maximized)
             {
-                Dispatcher.BeginInvoke(new Action(() => ApplyDefaultWorkspaceLayout(true)), DispatcherPriority.Loaded);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ApplyDefaultWorkspaceLayout(true);
+                    FitPaperToPreviewArea();
+                }), DispatcherPriority.Loaded);
             }
         }
 
@@ -485,6 +505,12 @@ namespace HyCADTool.MarkdownEditor.Views
             ViewModel.StatusText = _rulerVisible ? "标线：已显示" : "标线：已隐藏";
         }
 
+        private void OnTogglePageOrientation(object sender, RoutedEventArgs e)
+        {
+            ViewModel.IsLandscape = !ViewModel.IsLandscape;
+            ViewModel.StatusText = $"图纸方向：{ViewModel.PageOrientationLabel}";
+        }
+
         private void ApplyPreviewLayout()
         {
             if (SplitterCol == null || PreviewCol == null || PreviewSplitter == null || PreviewRulerGrid == null || PreviewToggleBtn == null)
@@ -584,59 +610,51 @@ namespace HyCADTool.MarkdownEditor.Views
             return 1.0;
         }
 
+        /// <summary>
+        /// 标尺 ppm 与 HTML 图纸使用同一个 PreviewScale：
+        /// HTML 中 paper width = PageWidthMm * PreviewScale (px)
+        /// 标尺 ppm = PreviewScale（每毫米对应多少 WPF DIP）
+        /// 但 WebBrowser 渲染时使用的是 物理像素，而 WPF 标尺使用 DIP，
+        /// 因此需要除以 DPI 才能让标尺刻度与 WebBrowser 内的图纸对齐。
+        /// </summary>
         private void UpdateRulerScale()
         {
             if (PreviewHRuler == null || PreviewVRuler == null) return;
 
-            // 初始值：基于公式的 ppm（LoadCompleted 前的占位）
-            double x = Math.Max(0.1, ViewModel.PreviewScale);
+            double scale = Math.Max(0.1, ViewModel.PreviewScale);
             double dpiScale = GetDpiScale();
-            double ppm = x / Math.Max(0.5, dpiScale);
-            PreviewHRuler.PixelsPerMm = ppm;
-            PreviewVRuler.PixelsPerMm = ppm;
-            PreviewHRuler.SegmentCount = Math.Max(1, ViewModel.ColumnCount);
-            // 随后由 SyncRulerFromPaper() 用实际像素覆盖
-            SyncRulerFromPaper();
+            // WebBrowser 内像素 = CSS px = 物理像素；WPF 标尺 = DIP
+            // 1 mm 在 HTML 中 = scale 个 CSS px = scale 个物理像素 = scale/dpiScale 个 DIP
+            double ppm = scale / Math.Max(0.5, dpiScale);
+            PreviewHRuler.PixelsPerMm = Math.Max(0.01, ppm);
+            PreviewVRuler.PixelsPerMm = Math.Max(0.01, ppm);
+            PreviewHRuler.SegmentCount = 1;
         }
 
         /// <summary>
-        /// 从 WebBrowser JS 读取图纸实际像素尺寸，反算 PixelsPerMm，确保标尺与图纸精确对齐。
-        /// 标尺自身保持铺满预览区（不截断），但 ppm 会让刻度与图纸边界一致。
+        /// 根据预览区实际宽度，计算让图纸占 90% 区域的 PreviewScale。
         /// </summary>
+        private void FitPaperToPreviewArea()
+        {
+            if (PreviewBrowser == null || !_previewVisible) return;
+            double areaWidth = PreviewBrowser.ActualWidth;
+            if (areaWidth <= 0) areaWidth = PreviewRulerGrid.ActualWidth - 24; // 减去左侧标尺宽
+            if (areaWidth <= 100) return;
+
+            double dpiScale = GetDpiScale();
+            double pageMm = Math.Max(100, ViewModel.PageWidthMm);
+            // 目标：paperPx = pageMm * scale; WPF 区域 = areaWidth DIP = areaWidth * dpi 物理像素
+            // paperPx = 0.9 * areaWidth * dpi  →  scale = 0.9 * areaWidth * dpi / pageMm
+            double targetScale = 0.9 * areaWidth * dpiScale / pageMm;
+            targetScale = Math.Max(0.1, Math.Min(3.0, targetScale));
+            ViewModel.PreviewScale = targetScale;
+        }
+
+        /// <summary>定时器回调：布局变化后重刷标尺</summary>
         private void SyncRulerFromPaper()
         {
-            if (!_previewVisible || PreviewBrowser.Visibility != Visibility.Visible) return;
-            try
-            {
-                var result = PreviewBrowser.InvokeScript("getPaperSize");
-                if (!(result is string csv) || string.IsNullOrWhiteSpace(csv)) return;
-                var parts = csv.Split(',');
-                if (parts.Length != 2) return;
-                if (!double.TryParse(parts[0], System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out var pxW)) return;
-                if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out var pxH)) return;
-                if (pxW <= 0 || pxH <= 0) return;
-
-                double dpiScale = GetDpiScale();
-                double wMm = Math.Max(1, ViewModel.PageWidthMm);
-                double hMm = Math.Max(1, ViewModel.PageHeightMm);
-
-                // 图纸在 WPF DIP 中的实际宽高
-                double wDip = pxW / Math.Max(0.5, dpiScale);
-                double hDip = pxH / Math.Max(0.5, dpiScale);
-
-                // 反算 ppm：确保标尺上 wMm 的刻度位置 = wDip 像素
-                double ppmH = wDip / wMm;
-                double ppmV = hDip / hMm;
-
-                PreviewHRuler.PixelsPerMm = Math.Max(0.01, ppmH);
-                PreviewVRuler.PixelsPerMm = Math.Max(0.01, ppmV);
-            }
-            catch
-            {
-                // JS 尚未就绪时忽略
-            }
+            if (!_previewVisible || PreviewRulerGrid.Visibility != Visibility.Visible) return;
+            UpdateRulerScale();
         }
 
         private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
@@ -647,12 +665,16 @@ namespace HyCADTool.MarkdownEditor.Views
             if (msg.message == WM_MOUSEWHEEL)
             {
                 if (!IsMouseWheelInsidePreviewArea(msg.lParam)) return;
+                if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
 
                 int wheelDelta = (short)((msg.wParam.ToInt64() >> 16) & 0xffff);
                 if (wheelDelta == 0) return;
 
-                double step = wheelDelta > 0 ? 0.1 : -0.1;
-                ViewModel.PreviewScale = Math.Max(0.1, Math.Min(3.0, ViewModel.PreviewScale + step));
+                // 平滑缩放：支持高分辨率滚轮/触控板，连续性更好
+                double cur = ViewModel.PreviewScale;
+                double step = wheelDelta / 120.0;
+                double factor = Math.Pow(1.06, step);
+                ViewModel.PreviewScale = Math.Max(0.1, Math.Min(5.0, cur * factor));
                 handled = true;
             }
         }
@@ -1042,33 +1064,60 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnPropChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(ViewModel.ColumnCount)
-                || e.PropertyName == nameof(ViewModel.ColumnGutter)
-                || e.PropertyName == nameof(ViewModel.TextSize)
-                || e.PropertyName == nameof(ViewModel.TextXScale)
-                || e.PropertyName == nameof(ViewModel.DrawScale)
-                || e.PropertyName == nameof(ViewModel.PagePreset)
-                || e.PropertyName == nameof(ViewModel.PreviewScale)
-                || e.PropertyName == "SpacingChanged")
+            switch (e.PropertyName)
             {
-                RefreshPreview();
+                case nameof(ViewModel.PreviewScale):
+                    UpdateRulerScale();
+                    TryApplyLivePreviewZoom();
+                    SchedulePreviewRefresh();
+                    break;
+
+                case nameof(ViewModel.ColumnCount):
+                case nameof(ViewModel.ColumnGutter):
+                case nameof(ViewModel.TextSize):
+                case nameof(ViewModel.TextXScale):
+                case nameof(ViewModel.DrawScale):
+                case nameof(ViewModel.PagePreset):
+                case nameof(ViewModel.IsLandscape):
+                case nameof(ViewModel.PageWidthMm):
+                case nameof(ViewModel.PageHeightMm):
+                case "SpacingChanged":
+                    RefreshPreview();
+                    UpdateRulerScale();
+                    break;
+
+                case nameof(ViewModel.MarkdownText):
+                    RefreshOutline();
+                    break;
+
+                case nameof(ViewModel.CurrentFilePath):
+                    RefreshFileList();
+                    break;
             }
-            if (e.PropertyName == nameof(ViewModel.PreviewScale))
+        }
+
+        private void SchedulePreviewRefresh()
+        {
+            _previewRefreshDebounceTimer.Stop();
+            _previewRefreshDebounceTimer.Start();
+        }
+
+        private void TryApplyLivePreviewZoom()
+        {
+            if (!_previewVisible || PreviewBrowser == null) return;
+            if (_renderedPreviewScale <= 0) return;
+
+            double ratio = ViewModel.PreviewScale / _renderedPreviewScale;
+            ratio = Math.Max(0.2, Math.Min(8.0, ratio));
+
+            try
             {
-                UpdateRulerScale();
+                string ratioText = ratio.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+                PreviewBrowser.InvokeScript("eval", new object[] { $"document.body.style.zoom='{ratioText}'" });
             }
-            if (e.PropertyName == nameof(ViewModel.ColumnCount)
-                || e.PropertyName == nameof(ViewModel.PagePreset))
+            catch
             {
-                UpdateRulerScale();
-            }
-            if (e.PropertyName == nameof(ViewModel.MarkdownText))
-            {
-                RefreshOutline();
-            }
-            if (e.PropertyName == nameof(ViewModel.CurrentFilePath))
-            {
-                RefreshFileList();
+                // 文档尚未就绪时忽略，等待防抖后的完整刷新
             }
         }
 
@@ -1083,6 +1132,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 string html = PreviewHtmlRenderer.ToInteractiveHtml(
                     ViewModel.MarkdownText ?? "", ViewModel.ColumnCount, ViewModel.PreviewScale, config);
                 PreviewBrowser.NavigateToString(html);
+                _renderedPreviewScale = Math.Max(0.1, ViewModel.PreviewScale);
             }
             catch { }
         }

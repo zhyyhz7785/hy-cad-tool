@@ -692,12 +692,17 @@
                     <Grid ClipToBounds="True">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                             <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
-                            <ComboBox Style="{StaticResource DarkComboBox}"
-                                      ItemsSource="{Binding PageOrientations}"
-                                      SelectedItem="{Binding PageOrientation, Mode=TwoWay}" />
-                            <ComboBox Style="{StaticResource DarkComboBox}" MinWidth="88"
+                            <ComboBox x:Name="PagePresetCombo" Style="{StaticResource DarkComboBox}" MinWidth="56"
                                       ItemsSource="{Binding PagePresets}"
                                       SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
+                            <Button x:Name="OrientationBtn" Style="{StaticResource ToolBtn}" Height="22" Padding="6,2"
+                                    Margin="0,0,4,0" ToolTip="切换横向/竖向"
+                                    Click="OnTogglePageOrientation">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding PageOrientationLabel}" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0" />
+                                    <TextBlock Text="{Binding PageSizeLabel}" FontSize="10" Foreground="{DynamicResource ThemeTextMutedBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                             <TextBlock Style="{StaticResource ParamLabel}" Text="1:" Margin="8,0,2,0" />
                             <ComboBox Style="{StaticResource DarkComboBox}"
                                       MinWidth="50"
@@ -721,6 +726,8 @@
                                      Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Style="{StaticResource ParamLabel}" Text="缩放" Margin="8,0,2,0" />
                             <TextBox Style="{StaticResource ParamInput}"
+                                     IsReadOnly="True"
+                                     helper:TextBoxHelper.EnableCustomHandlers="False"
                                      Text="{Binding PreviewScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <Border Style="{StaticResource Sep}" Margin="8,0" />
 

@@ -128,7 +128,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public double PreviewScale
         {
             get => _previewScale;
-            set { if (SetProperty(ref _previewScale, Math.Max(0.1, Math.Min(3.0, value)))) UpdateStatus(); }
+            set { if (SetProperty(ref _previewScale, Math.Max(0.1, Math.Min(5.0, value)))) UpdateStatus(); }
         }
 
         private double _totalHeight = 350;
@@ -145,46 +145,50 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set { if (SetProperty(ref _textXScale, Math.Max(0.1, value))) UpdateStatus(); }
         }
 
-        public IReadOnlyList<string> PageOrientations { get; } = new[] { "横向", "竖向" };
-        private readonly IReadOnlyList<string> _landscapePresets = new[]
+        // ── 图纸幅面定义（短边 b × 长边 l） ──
+        private static readonly (string Name, double Short, double Long)[] PaperDefs = new[]
         {
-            "A0横向", "A1横向", "A2横向", "A3横向", "A4横向"
-        };
-        private readonly IReadOnlyList<string> _portraitPresets = new[]
-        {
-            "A0竖向", "A1竖向", "A2竖向", "A3竖向", "A4竖向"
+            ("A0", 841.0, 1189.0),
+            ("A1", 594.0, 841.0),
+            ("A2", 420.0, 594.0),
+            ("A3", 297.0, 420.0),
+            ("A4", 210.0, 297.0),
         };
 
-        private string _pageOrientation = "横向";
-        public string PageOrientation
+        /// <summary>下拉列表数据源：["A0","A1","A2","A3","A4"]</summary>
+        public IReadOnlyList<string> PagePresets { get; } = PaperDefs.Select(d => d.Name).ToArray();
+
+        private bool _isLandscape = true;
+        /// <summary>横向(true) / 竖向(false) 切换</summary>
+        public bool IsLandscape
         {
-            get => _pageOrientation;
+            get => _isLandscape;
             set
             {
-                string next = string.Equals(value, "竖向", StringComparison.OrdinalIgnoreCase) ? "竖向" : "横向";
-                if (!SetProperty(ref _pageOrientation, next)) return;
-
-                OnPropertyChanged(nameof(PagePresets));
-                // 保持当前 A 号不变，仅切换横/竖
-                string paperSize = ExtractPaperSize(PagePreset);
-                PagePreset = $"{paperSize}{next}";
+                if (!SetProperty(ref _isLandscape, value)) return;
+                ApplyPagePreset(_pagePreset);
+                OnPropertyChanged(nameof(PageOrientationLabel));
+                OnPropertyChanged(nameof(PageSizeLabel));
             }
         }
 
-        public IReadOnlyList<string> PagePresets =>
-            string.Equals(PageOrientation, "竖向", StringComparison.OrdinalIgnoreCase)
-                ? _portraitPresets
-                : _landscapePresets;
+        /// <summary>标题栏按钮文字："横向" 或 "竖向"</summary>
+        public string PageOrientationLabel => _isLandscape ? "横" : "竖";
 
-        private string _pagePreset = "A2横向";
+        /// <summary>标题栏尺寸标签：如 "594×420"</summary>
+        public string PageSizeLabel => $"{PageWidthMm:F0}×{PageHeightMm:F0}";
+
+        private string _pagePreset = "A2";
         public string PagePreset
         {
             get => _pagePreset;
             set
             {
-                if (SetProperty(ref _pagePreset, string.IsNullOrWhiteSpace(value) ? "A2横向" : value))
+                string normalized = NormalizePaperPreset(value);
+                if (SetProperty(ref _pagePreset, normalized))
                 {
                     ApplyPagePreset(_pagePreset);
+                    OnPropertyChanged(nameof(PageSizeLabel));
                     UpdateStatus();
                 }
             }
@@ -343,14 +347,11 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _textXScale = cfg.TextXScale;
             _previewScale = cfg.PreviewScale;
             CharsPerColumn = cfg.CharsPerColumn;
-            _pagePreset = string.IsNullOrWhiteSpace(cfg.PagePreset) ? _pagePreset : cfg.PagePreset;
-            _pageOrientation = _pagePreset.Contains("竖向", StringComparison.OrdinalIgnoreCase) ? "竖向" : "横向";
-            _pageWidthMm = cfg.PageWidthMm > 0 ? cfg.PageWidthMm : _pageWidthMm;
-            _pageHeightMm = cfg.PageHeightMm > 0 ? cfg.PageHeightMm : _pageHeightMm;
-            _marginLeftMm = cfg.MarginLeftMm;
-            _marginRightMm = cfg.MarginRightMm;
-            _marginTopMm = cfg.MarginTopMm;
-            _marginBottomMm = cfg.MarginBottomMm;
+
+            ParsePagePreset(cfg.PagePreset, cfg.PageWidthMm, cfg.PageHeightMm, out var preset, out var landscape);
+            _pagePreset = preset;
+            _isLandscape = landscape;
+            ApplyPagePreset(_pagePreset);
 
             _h1SpaceBefore = cfg.H1SpaceBefore;
             _h1SpaceAfter = cfg.H1SpaceAfter;
@@ -367,7 +368,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             UpdateStatus();
         }
 
-        private static string ExtractPaperSize(string preset)
+        private static string NormalizePaperPreset(string preset)
         {
             if (string.IsNullOrWhiteSpace(preset)) return "A2";
             if (preset.StartsWith("A0", StringComparison.OrdinalIgnoreCase)) return "A0";
@@ -376,6 +377,32 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             if (preset.StartsWith("A3", StringComparison.OrdinalIgnoreCase)) return "A3";
             if (preset.StartsWith("A4", StringComparison.OrdinalIgnoreCase)) return "A4";
             return "A2";
+        }
+
+        private static void ParsePagePreset(string rawPreset, double pageWidthMm, double pageHeightMm, out string preset, out bool isLandscape)
+        {
+            preset = NormalizePaperPreset(rawPreset);
+            if (!string.IsNullOrWhiteSpace(rawPreset))
+            {
+                if (rawPreset.Contains("竖向", StringComparison.OrdinalIgnoreCase))
+                {
+                    isLandscape = false;
+                    return;
+                }
+                if (rawPreset.Contains("横向", StringComparison.OrdinalIgnoreCase))
+                {
+                    isLandscape = true;
+                    return;
+                }
+            }
+
+            if (pageWidthMm > 0 && pageHeightMm > 0)
+            {
+                isLandscape = pageWidthMm >= pageHeightMm;
+                return;
+            }
+
+            isLandscape = true;
         }
 
         #endregion
@@ -401,7 +428,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 TextSize = TextSize,
                 TextXScale = TextXScale,
                 PreviewScale = PreviewScale,
-                PagePreset = PagePreset,
+                PagePreset = $"{PagePreset}{(IsLandscape ? "横向" : "竖向")}",
                 PageWidthMm = PageWidthMm,
                 PageHeightMm = PageHeightMm,
                 MarginLeftMm = MarginLeftMm,
@@ -439,39 +466,24 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         private void ApplyPagePreset(string preset)
         {
-            switch (preset)
+            string normalized = NormalizePaperPreset(preset);
+            var def = PaperDefs.FirstOrDefault(d => d.Name == normalized);
+            if (def.Name == null) def = PaperDefs[2]; // fallback A2
+
+            if (_isLandscape)
             {
-                case "A0横向":
-                    PageWidthMm = 1189; PageHeightMm = 841; break;
-                case "A0竖向":
-                    PageWidthMm = 841; PageHeightMm = 1189; break;
-                case "A1横向":
-                    PageWidthMm = 841; PageHeightMm = 594; break;
-                case "A1竖向":
-                    PageWidthMm = 594; PageHeightMm = 841; break;
-                case "A4横向":
-                    PageWidthMm = 297; PageHeightMm = 210; break;
-                case "A4竖向":
-                    PageWidthMm = 210; PageHeightMm = 297; break;
-                case "A3横向":
-                    PageWidthMm = 420; PageHeightMm = 297; break;
-                case "A3竖向":
-                    PageWidthMm = 297; PageHeightMm = 420; break;
-                case "A2横向":
-                    PageWidthMm = 594; PageHeightMm = 420; break;
-                case "A2竖向":
-                    PageWidthMm = 420; PageHeightMm = 594; break;
-                default:
-                    PageWidthMm = 594; PageHeightMm = 420; break;
+                PageWidthMm = def.Long;   // 横向：宽=长边
+                PageHeightMm = def.Short;
+            }
+            else
+            {
+                PageWidthMm = def.Short;  // 竖向：宽=短边
+                PageHeightMm = def.Long;
             }
 
-            // 幅面边距规则：
-            // a = 左边距；c = 上/下/右边距
-            // A0/A1/A2/A3: a=25, c=10
-            // A4: a=25, c=5
-            bool isA4 = preset != null && preset.StartsWith("A4", StringComparison.OrdinalIgnoreCase);
+            // 图框边距（GB/T 50001-2017 表3.1.1）：a=左侧装订边，c=上/下/右
             double a = 25;
-            double c = isA4 ? 5 : 10;
+            double c = string.Equals(normalized, "A4", StringComparison.OrdinalIgnoreCase) ? 5 : 10;
             MarginLeftMm = a;
             MarginRightMm = c;
             MarginTopMm = c;
