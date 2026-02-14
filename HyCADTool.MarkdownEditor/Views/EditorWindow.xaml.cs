@@ -327,19 +327,24 @@ namespace HyCADTool.MarkdownEditor.Views
                 SetThemeColor("ThemeTextPrimaryBrush", "#c9d1d9");
                 SetThemeColor("ThemeTextSecondaryBrush", "#8b949e");
                 SetThemeColor("ThemeTextMutedBrush", "#6e7681");
-                SetThemeColor("ThemeAccentBrush", "#58a6ff");
-                SetThemeColor("ThemeAccentHoverBrush", "#79c0ff");
+                SetThemeColor("ThemeAccentBrush", "#0078D4");
+                SetThemeColor("ThemeAccentHoverBrush", "#1a8cef");
                 SetThemeColor("ThemeOnAccentBrush", "#ffffff");
                 SetThemeColor("ThemeHoverBrush", "#30363d");
                 SetThemeColor("ThemeSelectionBrush", "#263545");
+                SetThemeColor("ThemeFocusBorderBrush", "#007FD4");
+                SetThemeColor("ThemeMenuPopupBgBrush", "#1a2028");
+                SetThemeColor("ThemeMenuPopupBorderBrush", "#39424d");
+                SetThemeColor("ThemeMenuPopupHoverBrush", "#2c3948");
+                SetThemeColor("ThemeMenuPopupSelectionBrush", "#1f4f7a");
 
-                SetThemeColor(SystemColors.MenuBrushKey, "#1c2128");
+                SetThemeColor(SystemColors.MenuBrushKey, "#1a2028");
                 SetThemeColor(SystemColors.MenuTextBrushKey, "#c9d1d9");
-                SetThemeColor(SystemColors.MenuHighlightBrushKey, "#30363d");
-                SetThemeColor(SystemColors.HighlightBrushKey, "#30363d");
+                SetThemeColor(SystemColors.MenuHighlightBrushKey, "#2c3948");
+                SetThemeColor(SystemColors.HighlightBrushKey, "#1f4f7a");
                 SetThemeColor(SystemColors.HighlightTextBrushKey, "#ffffff");
                 SetThemeColor(SystemColors.MenuBarBrushKey, "#161b22");
-                SetThemeColor(SystemColors.WindowBrushKey, "#1c2128");
+                SetThemeColor(SystemColors.WindowBrushKey, "#1a2028");
                 SetThemeColor(SystemColors.WindowTextBrushKey, "#c9d1d9");
             }
             else
@@ -353,19 +358,24 @@ namespace HyCADTool.MarkdownEditor.Views
                 SetThemeColor("ThemeTextPrimaryBrush", "#24292f");
                 SetThemeColor("ThemeTextSecondaryBrush", "#57606a");
                 SetThemeColor("ThemeTextMutedBrush", "#6e7781");
-                SetThemeColor("ThemeAccentBrush", "#0969da");
-                SetThemeColor("ThemeAccentHoverBrush", "#1f6feb");
+                SetThemeColor("ThemeAccentBrush", "#0078D4");
+                SetThemeColor("ThemeAccentHoverBrush", "#1a8cef");
                 SetThemeColor("ThemeOnAccentBrush", "#ffffff");
                 SetThemeColor("ThemeHoverBrush", "#dde6ef");
                 SetThemeColor("ThemeSelectionBrush", "#dbeafe");
+                SetThemeColor("ThemeFocusBorderBrush", "#0078D4");
+                SetThemeColor("ThemeMenuPopupBgBrush", "#f8fafc");
+                SetThemeColor("ThemeMenuPopupBorderBrush", "#c7d1db");
+                SetThemeColor("ThemeMenuPopupHoverBrush", "#e8f2ff");
+                SetThemeColor("ThemeMenuPopupSelectionBrush", "#dbeafe");
 
-                SetThemeColor(SystemColors.MenuBrushKey, "#ffffff");
+                SetThemeColor(SystemColors.MenuBrushKey, "#f8fafc");
                 SetThemeColor(SystemColors.MenuTextBrushKey, "#24292f");
-                SetThemeColor(SystemColors.MenuHighlightBrushKey, "#dde6ef");
-                SetThemeColor(SystemColors.HighlightBrushKey, "#dde6ef");
+                SetThemeColor(SystemColors.MenuHighlightBrushKey, "#e8f2ff");
+                SetThemeColor(SystemColors.HighlightBrushKey, "#dbeafe");
                 SetThemeColor(SystemColors.HighlightTextBrushKey, "#24292f");
                 SetThemeColor(SystemColors.MenuBarBrushKey, "#eef2f6");
-                SetThemeColor(SystemColors.WindowBrushKey, "#ffffff");
+                SetThemeColor(SystemColors.WindowBrushKey, "#f8fafc");
                 SetThemeColor(SystemColors.WindowTextBrushKey, "#24292f");
             }
 

@@ -15,7 +15,7 @@
         Foreground="{DynamicResource ThemeTextPrimaryBrush}">
 
     <Window.Resources>
-        <!-- 主题色：默认黑色为主（可在代码里切到白色为主） -->
+        <!-- 主题色：默认深色（与 ApplyTheme(dark) 完全一致，消除启动闪烁） -->
         <SolidColorBrush x:Key="ThemeBgRootBrush" Color="#111418" />
         <SolidColorBrush x:Key="ThemeBgPanelBrush" Color="#161b22" />
         <SolidColorBrush x:Key="ThemeBgSurfaceBrush" Color="#1c2128" />
@@ -25,12 +25,17 @@
         <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#c9d1d9" />
         <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#8b949e" />
         <SolidColorBrush x:Key="ThemeTextMutedBrush" Color="#6e7681" />
-        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#0e639c" />
-        <SolidColorBrush x:Key="ThemeAccentHoverBrush" Color="#1177bb" />
+        <SolidColorBrush x:Key="ThemeAccentBrush" Color="#0078D4" />
+        <SolidColorBrush x:Key="ThemeAccentHoverBrush" Color="#1a8cef" />
         <SolidColorBrush x:Key="ThemeOnAccentBrush" Color="#ffffff" />
         <SolidColorBrush x:Key="ThemeHoverBrush" Color="#30363d" />
         <SolidColorBrush x:Key="ThemeSelectionBrush" Color="#263545" />
+        <SolidColorBrush x:Key="ThemeFocusBorderBrush" Color="#007FD4" />
         <SolidColorBrush x:Key="ThemeDevPanelGrayBrush" Color="#2f3338" />
+        <SolidColorBrush x:Key="ThemeMenuPopupBgBrush" Color="#1a2028" />
+        <SolidColorBrush x:Key="ThemeMenuPopupBorderBrush" Color="#39424d" />
+        <SolidColorBrush x:Key="ThemeMenuPopupHoverBrush" Color="#2c3948" />
+        <SolidColorBrush x:Key="ThemeMenuPopupSelectionBrush" Color="#1f4f7a" />
 
         <!-- 普通按钮（带 hover） -->
         <Style x:Key="ToolBtn" TargetType="Button">
@@ -93,7 +98,7 @@
         <!-- 主按钮（带 hover） -->
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeOnAccentBrush}" />
             <Setter Property="Padding" Value="10,4" />
             <Setter Property="Margin" Value="2,0" />
             <Setter Property="FontSize" Value="12" />
@@ -203,33 +208,39 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="6,4" />
             <Style.Triggers>
+                <Trigger Property="Role" Value="SubmenuItem">
+                    <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupBgBrush}" />
+                </Trigger>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsSubmenuOpen" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupSelectionBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style TargetType="Separator">
-            <Setter Property="Background" Value="{DynamicResource ThemeBorderStrongBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupBorderBrush}" />
             <Setter Property="Margin" Value="4,2" />
         </Style>
 
         <!-- ContextMenu / 弹出层 Popup 背景 -->
         <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="{DynamicResource ThemeBgSurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderStrongBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupBgBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeMenuPopupBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Padding" Value="2" />
         </Style>
 
         <!-- 系统颜色覆盖 — 让 MenuItem 弹出层变深色 -->
-        <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#1c2128" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#1a2028" />
         <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#c9d1d9" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.MenuHighlightBrushKey}" Color="#30363d" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#30363d" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.MenuHighlightBrushKey}" Color="#2c3948" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#1f4f7a" />
         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#ffffff" />
         <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#161b22" />
-        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#1c2128" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#1a2028" />
         <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#c9d1d9" />
 
         <!-- ComboBox 下拉列表项 hover -->
@@ -254,7 +265,7 @@
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CaretBrush" Value="White" />
+            <Setter Property="CaretBrush" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Padding" Value="2,1" />
             <Setter Property="Margin" Value="0,0,3,0" />
             <Setter Property="FontSize" Value="11" />
@@ -266,10 +277,10 @@
             <Setter Property="helper:TextBoxHelper.ScrollStep" Value="0.1" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeFocusBorderBrush}" />
                 </Trigger>
                 <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeFocusBorderBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -355,15 +366,49 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource ThemeFocusBorderBrush}" />
                             </Trigger>
                             <Trigger Property="IsDropDownOpen" Value="True">
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
-                                <Setter TargetName="DropDownBorder" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource ThemeFocusBorderBrush}" />
+                                <Setter TargetName="DropDownBorder" Property="BorderBrush" Value="{DynamicResource ThemeFocusBorderBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ComboBorder" Property="Opacity" Value="0.75" />
                                 <Setter Property="Foreground" Value="{DynamicResource ThemeTextMutedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollBar 深色样式（VS Code 风格半透明滚动条） -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="10" />
+            <Setter Property="MinWidth" Value="10" />
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Width" Value="Auto" />
+                    <Setter Property="Height" Value="10" />
+                    <Setter Property="MinHeight" Value="10" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="{x:Type Thumb}" TargetType="Thumb">
+            <Setter Property="Background" Value="{DynamicResource ThemeBorderStrongBrush}" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbBd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Margin="1" Opacity="{TemplateBinding Opacity}" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbBd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbBd" Property="Opacity" Value="1.0" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -404,16 +449,6 @@
                                shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <Border Style="{StaticResource Sep}" Margin="0,0,8,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <Menu Style="{StaticResource DarkMenu}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                        <Menu.Resources>
-                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#1c2128" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#c9d1d9" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuHighlightBrushKey}" Color="#30363d" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#30363d" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#ffffff" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#161b22" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#1c2128" />
-                            <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#c9d1d9" />
-                        </Menu.Resources>
                         <MenuItem Header="文件" Style="{StaticResource DarkMenuItem}">
                             <MenuItem Header="打开" Command="{Binding LoadFileCommand}" />
                             <MenuItem Header="保存" Command="{Binding SaveFileCommand}" />
@@ -628,12 +663,18 @@
                                 <Setter Property="Margin" Value="0" />
                                 <Setter Property="IsExpanded" Value="False" />
                                 <Style.Triggers>
+                                    <!-- hover（非选中时） -->
+                                    <MultiTrigger>
+                                        <MultiTrigger.Conditions>
+                                            <Condition Property="IsMouseOver" Value="True" />
+                                            <Condition Property="IsSelected" Value="False" />
+                                        </MultiTrigger.Conditions>
+                                        <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                                    </MultiTrigger>
+                                    <!-- 选中态始终优先 -->
                                     <Trigger Property="IsSelected" Value="True">
                                         <Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" />
                                         <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
-                                    </Trigger>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -767,8 +808,18 @@
 
                 <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="{DynamicResource ThemeBgPanelBrush}"
                         BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,1" />
-                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" />
-                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical" />
+                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
+                                       RulerBackground="{DynamicResource ThemeBgPanelBrush}"
+                                       LabelBrush="{DynamicResource ThemeTextSecondaryBrush}"
+                                       MajorTickBrush="{DynamicResource ThemeTextMutedBrush}"
+                                       MinorTickBrush="{DynamicResource ThemeBorderStrongBrush}"
+                                       RulerBorderBrush="{DynamicResource ThemeBorderStrongBrush}" />
+                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical"
+                                       RulerBackground="{DynamicResource ThemeBgPanelBrush}"
+                                       LabelBrush="{DynamicResource ThemeTextSecondaryBrush}"
+                                       MajorTickBrush="{DynamicResource ThemeTextMutedBrush}"
+                                       MinorTickBrush="{DynamicResource ThemeBorderStrongBrush}"
+                                       RulerBorderBrush="{DynamicResource ThemeBorderStrongBrush}" />
                 <wv2:WebView2 x:Name="PreviewWebView" Grid.Row="2" Grid.Column="1" />
             </Grid>
 
