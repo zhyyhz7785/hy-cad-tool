@@ -7,6 +7,7 @@ namespace HyCADTool.MarkdownEditor.Models
     {
         public string Markdown { get; set; } = "";
         public EditorConfig Config { get; set; } = new EditorConfig();
+        public string CurrentFilePath { get; set; } = "";
     }
 
     /// <summary>

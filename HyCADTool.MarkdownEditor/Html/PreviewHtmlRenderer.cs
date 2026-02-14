@@ -24,6 +24,7 @@ namespace HyCADTool.MarkdownEditor.Html
             double scale = Math.Max(0.1, Math.Min(3.0, previewScale));
             EditorConfig cfg = config ?? new EditorConfig();
             string columnsHtml = BuildColumnsHtml(cols);
+            string footerHtml = BuildFooterHtml(cols);
             string dynamicCss = BuildDynamicCss(scale, config ?? new EditorConfig());
 
             return "<!DOCTYPE html>\n<html><head>"
@@ -38,7 +39,9 @@ namespace HyCADTool.MarkdownEditor.Html
                 + "<div class=\"paper-resize-right\" onmousedown=\"startPaperResize(event,'right')\"></div>"
                 + "<div class=\"paper-resize-bottom\" onmousedown=\"startPaperResize(event,'bottom')\"></div>"
                 + "<div class=\"paper-resize-corner\" onmousedown=\"startPaperResize(event,'corner')\"></div>"
-                + "</div></div>"
+                + "</div>"
+                + footerHtml
+                + "</div>"
                 + "<script>" + JS + "</script>"
                 + "</body></html>";
         }
@@ -91,7 +94,6 @@ namespace HyCADTool.MarkdownEditor.Html
                 sb.Append("<div class=\"col-wrap\">");
                 sb.Append("<div class=\"col-content\" id=\"col-").Append(i).Append("\"></div>");
                 sb.Append("<div class=\"col-vhandle\" onmousedown=\"startV(event,").Append(i).Append(")\"></div>");
-                sb.Append("<div class=\"col-footer\">第 ").Append(i + 1).Append(" 栏 <span class=\"col-chars\" id=\"chars-").Append(i).Append("\"></span> · <span id=\"info-").Append(i).Append("\"></span></div>");
                 sb.Append("</div>");
 
                 if (i < count - 1)
@@ -99,6 +101,22 @@ namespace HyCADTool.MarkdownEditor.Html
                     sb.Append("<div class=\"col-gap\" onmousedown=\"startH(event,").Append(i).Append(")\"></div>");
                 }
             }
+            return sb.ToString();
+        }
+
+        private static string BuildFooterHtml(int count)
+        {
+            var sb = new StringBuilder();
+            sb.Append("<div class=\"paper-footer\" id=\"paper-footer\">");
+            for (int i = 0; i < count; i++)
+            {
+                sb.Append("<span class=\"col-footer-item\">第 ").Append(i + 1)
+                  .Append(" 栏 <span class=\"col-chars\" id=\"chars-").Append(i).Append("\"></span>")
+                  .Append(" · <span id=\"info-").Append(i).Append("\"></span></span>");
+                if (i < count - 1)
+                    sb.Append("<span class=\"col-footer-sep\"></span>");
+            }
+            sb.Append("</div>");
             return sb.ToString();
         }
 
@@ -135,7 +153,13 @@ body{overflow:auto;background:#0d1117;color:#d4d4d4;font-family:'Microsoft YaHei
 .col-vhandle{height:6px;background:#30363d;cursor:ns-resize;-ms-flex-negative:0;flex-shrink:0}
 .col-vhandle:hover{background:#6e7681}
 .col-gap{width:/*GUTTER*/;min-width:6px;background:#161b22;-ms-flex-negative:0;flex-shrink:0;cursor:ew-resize}
-.col-footer{height:22px;line-height:22px;padding:0 8px;background:transparent;color:#8b949e;font-size:11px}
+
+.paper-footer{
+  display:-ms-flexbox;display:flex;-ms-flex-direction:row;flex-direction:row;
+  padding:4px 0;color:#8b949e;font-size:11px;
+}
+.col-footer-item{-ms-flex:1;flex:1;text-align:center}
+.col-footer-sep{width:/*GUTTER*/;min-width:6px;-ms-flex-negative:0;flex-shrink:0}
 .col-chars{color:#58a6ff}
 
 .paper-resize-right{

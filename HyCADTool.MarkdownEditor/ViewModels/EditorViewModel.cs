@@ -44,6 +44,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set { if (SetProperty(ref _markdownText, value)) UpdateStatus(); }
         }
 
+        private string _currentFilePath = "";
+        public string CurrentFilePath
+        {
+            get => _currentFilePath;
+            set => SetProperty(ref _currentFilePath, value ?? "");
+        }
+
         /// <summary>由 Vditor 编辑器调用，更新文本但不触发回写循环</summary>
         public void SetMarkdownFromEditor(string markdown)
         {
@@ -140,13 +147,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 ? _portraitPresets
                 : _landscapePresets;
 
-        private string _pagePreset = "A3横向";
+        private string _pagePreset = "A2横向";
         public string PagePreset
         {
             get => _pagePreset;
             set
             {
-                if (SetProperty(ref _pagePreset, string.IsNullOrWhiteSpace(value) ? "A3横向" : value))
+                if (SetProperty(ref _pagePreset, string.IsNullOrWhiteSpace(value) ? "A2横向" : value))
                 {
                     ApplyPagePreset(_pagePreset);
                     UpdateStatus();
@@ -154,14 +161,14 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _pageWidthMm = 420;
+        private double _pageWidthMm = 594;
         public double PageWidthMm
         {
             get => _pageWidthMm;
             private set => SetProperty(ref _pageWidthMm, value);
         }
 
-        private double _pageHeightMm = 297;
+        private double _pageHeightMm = 420;
         public double PageHeightMm
         {
             get => _pageHeightMm;
@@ -267,6 +274,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             if (input == null) return;
             if (!string.IsNullOrEmpty(input.Markdown))
                 _markdownText = input.Markdown;
+            _currentFilePath = input.CurrentFilePath ?? "";
 
             var cfg = input.Config;
             if (cfg == null) return;
@@ -304,13 +312,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         private static string ExtractPaperSize(string preset)
         {
-            if (string.IsNullOrWhiteSpace(preset)) return "A3";
+            if (string.IsNullOrWhiteSpace(preset)) return "A2";
             if (preset.StartsWith("A0", StringComparison.OrdinalIgnoreCase)) return "A0";
             if (preset.StartsWith("A1", StringComparison.OrdinalIgnoreCase)) return "A1";
             if (preset.StartsWith("A2", StringComparison.OrdinalIgnoreCase)) return "A2";
             if (preset.StartsWith("A3", StringComparison.OrdinalIgnoreCase)) return "A3";
             if (preset.StartsWith("A4", StringComparison.OrdinalIgnoreCase)) return "A4";
-            return "A3";
+            return "A2";
         }
 
         #endregion
@@ -397,7 +405,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 case "A2竖向":
                     PageWidthMm = 420; PageHeightMm = 594; break;
                 default:
-                    PageWidthMm = 420; PageHeightMm = 297; break;
+                    PageWidthMm = 594; PageHeightMm = 420; break;
             }
 
             // 幅面边距规则：
@@ -430,6 +438,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 {
                     string content = System.IO.File.ReadAllText(dlg.FileName, System.Text.Encoding.UTF8);
                     MarkdownText = content;
+                    CurrentFilePath = dlg.FileName;
                     StatusText = $"已加载: {System.IO.Path.GetFileName(dlg.FileName)}";
                     EditorContentLoadRequested?.Invoke(content);
                 }
@@ -450,6 +459,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 try
                 {
                     System.IO.File.WriteAllText(dlg.FileName, MarkdownText, System.Text.Encoding.UTF8);
+                    CurrentFilePath = dlg.FileName;
                     StatusText = $"已保存: {System.IO.Path.GetFileName(dlg.FileName)}";
                 }
                 catch (Exception ex) { StatusText = $"保存失败: {ex.Message}"; }

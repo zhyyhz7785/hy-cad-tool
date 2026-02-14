@@ -1,15 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Navigation;
 using System.Windows.Controls.Primitives;
 using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
@@ -33,7 +34,8 @@ namespace HyCADTool.MarkdownEditor.Views
         private double _bottomPanelHeight = 140;
         private VditorJsHelper _js;
         private const int WM_MOUSEWHEEL = 0x020A;
-        private readonly DispatcherTimer _previewRulerSyncTimer;
+        private readonly DispatcherTimer _rulerSyncTimer;
+        private bool _updatingFileList;
 
         public EditorWindow(EditorInput input)
         {
@@ -42,11 +44,8 @@ namespace HyCADTool.MarkdownEditor.Views
             InitializeComponent();
             ApplyOutlineLayout();
 
-            _previewRulerSyncTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(120)
-            };
-            _previewRulerSyncTimer.Tick += OnPreviewRulerSyncTimerTick;
+            _rulerSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            _rulerSyncTimer.Tick += (_, __) => SyncRulerFromPaper();
 
             Loaded += OnLoaded;
             Closed += OnClosed;
@@ -59,21 +58,37 @@ namespace HyCADTool.MarkdownEditor.Views
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
-            PreviewBrowser.LoadCompleted += OnPreviewBrowserLoadCompleted;
             try
             {
+                // 并行：1) 确保本地缓存 2) 初始化 WebView2 环境
+                var cacheTask = VditorCacheManager.EnsureCachedAsync(msg =>
+                    Dispatcher.Invoke(() => ViewModel.StatusText = msg));
+
                 string userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "HyCADTool", "WebView2");
                 Directory.CreateDirectory(userDataFolder);
+                var envTask = CoreWebView2Environment.CreateAsync(null, userDataFolder);
 
-                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                await Task.WhenAll(cacheTask, envTask);
+
+                var env = envTask.Result;
                 await EditorWebView.EnsureCoreWebView2Async(env);
-                _js = new VditorJsHelper(script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script));
 
+                // 设置本地虚拟主机映射（如果缓存就绪）
+                string cdnBase = null;
+                if (VditorCacheManager.IsCached)
+                {
+                    EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                        "vditor.local", VditorCacheManager.CacheDir,
+                        CoreWebView2HostResourceAccessKind.Allow);
+                    cdnBase = "https://vditor.local";
+                }
+
+                _js = new VditorJsHelper(script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script));
                 EditorWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
-                string html = VditorHtmlTemplate.Generate(ViewModel.MarkdownText);
+                string html = VditorHtmlTemplate.Generate(ViewModel.MarkdownText, cdnBase);
                 EditorWebView.CoreWebView2.NavigateToString(html);
             }
             catch (Exception ex)
@@ -88,18 +103,14 @@ namespace HyCADTool.MarkdownEditor.Views
             // 初次刷新隐藏预览（后台计算用）
             RefreshPreview();
             UpdateRulerScale();
+            RefreshOutline();
+            RefreshFileList();
         }
 
         private void OnClosed(object sender, EventArgs e)
         {
             ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
-            PreviewBrowser.LoadCompleted -= OnPreviewBrowserLoadCompleted;
-            _previewRulerSyncTimer.Stop();
-        }
-
-        private void OnPreviewBrowserLoadCompleted(object sender, NavigationEventArgs e)
-        {
-            SyncRulerExtentFromPreview();
+            _rulerSyncTimer.Stop();
         }
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -216,11 +227,9 @@ namespace HyCADTool.MarkdownEditor.Views
                 PreviewCol.Width = new GridLength(1.2, GridUnitType.Star);
                 PreviewSplitter.Visibility = Visibility.Visible;
                 PreviewRulerGrid.Visibility = Visibility.Visible;
-                _previewRulerSyncTimer.Start();
-                SyncRulerExtentFromPreview();
+                _rulerSyncTimer.Start();
                 ApplyBottomPanelLayout();
-                PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#cccccc"));
+                PreviewToggleBtn.Foreground = BrushFromHex("#cccccc");
             }
             else
             {
@@ -228,10 +237,9 @@ namespace HyCADTool.MarkdownEditor.Views
                 PreviewCol.Width = new GridLength(0);
                 PreviewSplitter.Visibility = Visibility.Collapsed;
                 PreviewRulerGrid.Visibility = Visibility.Collapsed;
-                _previewRulerSyncTimer.Stop();
+                _rulerSyncTimer.Stop();
                 ApplyBottomPanelLayout();
-                PreviewToggleBtn.Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#858585"));
+                PreviewToggleBtn.Foreground = BrushFromHex("#858585");
             }
         }
 
@@ -249,32 +257,22 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void UpdateRulerScale()
         {
-            // 与 WebBrowser(IE) 的 DPI 口径补偿保持一致
+            // 初始值：基于公式的 ppm（LoadCompleted 前的占位）
             double x = Math.Max(0.1, ViewModel.PreviewScale);
             double dpiScale = GetDpiScale();
             double ppm = x / Math.Max(0.5, dpiScale);
             PreviewHRuler.PixelsPerMm = ppm;
             PreviewVRuler.PixelsPerMm = ppm;
             PreviewHRuler.SegmentCount = 1;
-            UpdateRulerExtentByConfig(dpiScale);
+            // 随后由 SyncRulerFromPaper() 用实际像素覆盖
+            SyncRulerFromPaper();
         }
 
-        private void UpdateRulerExtentByConfig(double dpiScale)
-        {
-            // 先按配置给出初值；后续由 getPaperSize() 实时覆盖（支持纸面拖拽）
-            var cfg = ViewModel.BuildConfig();
-            double wDip = (cfg.PageWidthMm * Math.Max(0.1, ViewModel.PreviewScale)) / Math.Max(0.5, dpiScale);
-            double hDip = (cfg.PageHeightMm * Math.Max(0.1, ViewModel.PreviewScale)) / Math.Max(0.5, dpiScale);
-            PreviewHRuler.Width = Math.Max(1, wDip);
-            PreviewVRuler.Height = Math.Max(1, hDip);
-        }
-
-        private void OnPreviewRulerSyncTimerTick(object sender, EventArgs e)
-        {
-            SyncRulerExtentFromPreview();
-        }
-
-        private void SyncRulerExtentFromPreview()
+        /// <summary>
+        /// 从 WebBrowser JS 读取图纸实际像素尺寸，反算 PixelsPerMm，确保标尺与图纸精确对齐。
+        /// 标尺自身保持铺满预览区（不截断），但 ppm 会让刻度与图纸边界一致。
+        /// </summary>
+        private void SyncRulerFromPaper()
         {
             if (!_previewVisible || PreviewBrowser.Visibility != Visibility.Visible) return;
             try
@@ -283,16 +281,30 @@ namespace HyCADTool.MarkdownEditor.Views
                 if (!(result is string csv) || string.IsNullOrWhiteSpace(csv)) return;
                 var parts = csv.Split(',');
                 if (parts.Length != 2) return;
-                if (!double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pxW)) return;
-                if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pxH)) return;
+                if (!double.TryParse(parts[0], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var pxW)) return;
+                if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var pxH)) return;
+                if (pxW <= 0 || pxH <= 0) return;
 
                 double dpiScale = GetDpiScale();
-                PreviewHRuler.Width = Math.Max(1, pxW / Math.Max(0.5, dpiScale));
-                PreviewVRuler.Height = Math.Max(1, pxH / Math.Max(0.5, dpiScale));
+                double wMm = Math.Max(1, ViewModel.PageWidthMm);
+                double hMm = Math.Max(1, ViewModel.PageHeightMm);
+
+                // 图纸在 WPF DIP 中的实际宽高
+                double wDip = pxW / Math.Max(0.5, dpiScale);
+                double hDip = pxH / Math.Max(0.5, dpiScale);
+
+                // 反算 ppm：确保标尺上 wMm 的刻度位置 = wDip 像素
+                double ppmH = wDip / wMm;
+                double ppmV = hDip / hMm;
+
+                PreviewHRuler.PixelsPerMm = Math.Max(0.01, ppmH);
+                PreviewVRuler.PixelsPerMm = Math.Max(0.01, ppmV);
             }
             catch
             {
-                // 页面加载中时 InvokeScript 可能失败，忽略即可
+                // JS 尚未就绪时忽略
             }
         }
 
@@ -317,6 +329,140 @@ namespace HyCADTool.MarkdownEditor.Views
 
         #endregion
 
+        #region 大纲
+
+        private static readonly Regex HeadingRegex = new Regex(@"^(#{1,6})\s+(.+)$", RegexOptions.Multiline);
+
+        private void RefreshOutline()
+        {
+            OutlineList.Items.Clear();
+            string md = ViewModel.MarkdownText;
+            if (string.IsNullOrWhiteSpace(md)) return;
+
+            foreach (Match m in HeadingRegex.Matches(md))
+            {
+                int level = m.Groups[1].Value.Length;
+                string title = m.Groups[2].Value.Trim();
+                string indent = new string(' ', (level - 1) * 2);
+                var item = new ListBoxItem
+                {
+                    Content = indent + title,
+                    Tag = title,
+                    Padding = new Thickness(4 + (level - 1) * 12, 2, 4, 2),
+                    FontSize = level <= 2 ? 12 : 11,
+                    Foreground = BrushFromHex(level == 1 ? "#c9d1d9" : level == 2 ? "#8b949e" : "#6e7681"),
+                };
+                OutlineList.Items.Add(item);
+            }
+        }
+
+        private async void OnOutlineSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (OutlineList.SelectedItem is not ListBoxItem item) return;
+            if (item.Tag is not string heading || string.IsNullOrWhiteSpace(heading)) return;
+            if (!_editorReady || EditorWebView?.CoreWebView2 == null) return;
+
+            try
+            {
+                string escaped = Newtonsoft.Json.JsonConvert.SerializeObject(heading);
+                await EditorWebView.CoreWebView2.ExecuteScriptAsync($"scrollToHeading({escaped})");
+            }
+            catch
+            {
+                // 编辑器未完全就绪时忽略
+            }
+        }
+
+        private void RefreshFileList()
+        {
+            _updatingFileList = true;
+            try
+            {
+                FileList.Items.Clear();
+                string current = ViewModel.CurrentFilePath;
+                if (string.IsNullOrWhiteSpace(current))
+                {
+                    FileList.Items.Add(new ListBoxItem
+                    {
+                        Content = "(未绑定文件，先从“文件->打开”选择 .md)",
+                        Foreground = BrushFromHex("#6e7681"),
+                        IsEnabled = false
+                    });
+                    return;
+                }
+
+                string dir = Path.GetDirectoryName(current);
+                if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+                    return;
+
+                var files = Directory.GetFiles(dir, "*.md", SearchOption.TopDirectoryOnly)
+                    .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                if (files.Length == 0)
+                {
+                    FileList.Items.Add(new ListBoxItem
+                    {
+                        Content = "(当前目录无 .md 文件)",
+                        Foreground = BrushFromHex("#6e7681"),
+                        IsEnabled = false
+                    });
+                    return;
+                }
+
+                foreach (var file in files)
+                {
+                    var listItem = new ListBoxItem
+                    {
+                        Content = Path.GetFileName(file),
+                        Tag = file,
+                        ToolTip = file,
+                        Padding = new Thickness(8, 2, 8, 2),
+                    };
+                    if (string.Equals(file, current, StringComparison.OrdinalIgnoreCase))
+                    {
+                        listItem.Foreground = BrushFromHex("#58a6ff");
+                        FileList.SelectedItem = listItem;
+                    }
+                    FileList.Items.Add(listItem);
+                }
+            }
+            catch
+            {
+                // 目录枚举失败时不阻断主流程
+            }
+            finally
+            {
+                _updatingFileList = false;
+            }
+        }
+
+        private void OnFileListSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_updatingFileList) return;
+            if (FileList.SelectedItem is not ListBoxItem item) return;
+            if (item.Tag is not string path || string.IsNullOrWhiteSpace(path)) return;
+            if (!File.Exists(path)) return;
+            if (string.Equals(ViewModel.CurrentFilePath, path, StringComparison.OrdinalIgnoreCase)) return;
+
+            try
+            {
+                string content = File.ReadAllText(path, System.Text.Encoding.UTF8);
+                ViewModel.MarkdownText = content;
+                ViewModel.CurrentFilePath = path;
+                ViewModel.StatusText = $"已切换: {Path.GetFileName(path)}";
+                OnEditorContentLoadRequested(content);
+                RefreshPreview();
+                RefreshOutline();
+                RefreshFileList();
+            }
+            catch (Exception ex)
+            {
+                ViewModel.StatusText = $"切换失败: {ex.Message}";
+            }
+        }
+
+        #endregion
+
         #region 预览刷新
 
         private void OnPropChanged(object sender, PropertyChangedEventArgs e)
@@ -335,6 +481,14 @@ namespace HyCADTool.MarkdownEditor.Views
             if (e.PropertyName == nameof(ViewModel.PreviewScale))
             {
                 UpdateRulerScale();
+            }
+            if (e.PropertyName == nameof(ViewModel.MarkdownText))
+            {
+                RefreshOutline();
+            }
+            if (e.PropertyName == nameof(ViewModel.CurrentFilePath))
+            {
+                RefreshFileList();
             }
         }
 

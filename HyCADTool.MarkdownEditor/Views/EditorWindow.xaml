@@ -101,10 +101,62 @@
             <Setter Property="Padding" Value="0" />
         </Style>
 
+        <!-- 顶层菜单项 -->
         <Style x:Key="DarkMenuItem" TargetType="MenuItem">
             <Setter Property="Foreground" Value="#c9d1d9" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="8,4" />
+        </Style>
+
+        <!-- 全局 MenuItem 弹出层深色 -->
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="6,4" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#30363d" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="Separator">
+            <Setter Property="Background" Value="#30363d" />
+            <Setter Property="Margin" Value="4,2" />
+        </Style>
+
+        <!-- ContextMenu / 弹出层 Popup 背景 -->
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#1c2128" />
+            <Setter Property="BorderBrush" Value="#30363d" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Padding" Value="2" />
+        </Style>
+
+        <!-- 系统颜色覆盖 — 让 MenuItem 弹出层变深色 -->
+        <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}" Color="#1c2128" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.MenuTextBrushKey}" Color="#c9d1d9" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.MenuHighlightBrushKey}" Color="#30363d" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#30363d" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#ffffff" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}" Color="#161b22" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#1c2128" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#c9d1d9" />
+
+        <!-- ComboBox 下拉列表项 hover -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#c9d1d9" />
+            <Setter Property="Padding" Value="6,3" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#30363d" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#263545" />
+                    <Setter Property="Foreground" Value="#58a6ff" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- 参数输入框（暗底 + 白光标 + 滚轮增减） -->
@@ -268,12 +320,68 @@
             <Border Grid.RowSpan="3" Grid.Column="0" Background="#161b22" BorderBrush="#24292e" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="28" />
+                        <RowDefinition Height="24" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="24" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="大纲" Foreground="#8b949e" FontSize="11"
+
+                    <!-- 文件标题 -->
+                    <TextBlock Grid.Row="0" Text="文件" Foreground="#8b949e" FontSize="11"
                                FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" />
-                    <ListBox x:Name="OutlineList" Grid.Row="1"
+
+                    <!-- 文件树 -->
+                    <TreeView x:Name="FileTree" Grid.Row="1"
+                              Background="Transparent" BorderThickness="0"
+                              Foreground="#c9d1d9" FontSize="12"
+                              SelectedItemChanged="OnFileTreeSelectedItemChanged"
+                              MouseDoubleClick="OnFileTreeDoubleClick">
+                        <TreeView.Resources>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="Foreground" Value="#c9d1d9" />
+                                <Setter Property="Padding" Value="2,1" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="IsExpanded" Value="False" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#263545" />
+                                        <Setter Property="Foreground" Value="#58a6ff" />
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#1c2433" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TreeView.Resources>
+                        <TreeView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="打开" Click="OnCtxOpen" />
+                                <Separator />
+                                <MenuItem Header="新建文件" Click="OnCtxNewFile" />
+                                <MenuItem Header="新建文件夹" Click="OnCtxNewFolder" />
+                                <Separator />
+                                <MenuItem Header="重命名" Click="OnCtxRename" />
+                                <MenuItem Header="创建副本" Click="OnCtxDuplicate" />
+                                <Separator />
+                                <MenuItem Header="删除" Click="OnCtxDelete" />
+                                <Separator />
+                                <MenuItem Header="复制文件路径" Click="OnCtxCopyPath" />
+                                <MenuItem Header="打开文件位置" Click="OnCtxOpenFolder" />
+                            </ContextMenu>
+                        </TreeView.ContextMenu>
+                    </TreeView>
+
+                    <!-- 分割线 -->
+                    <Border Grid.Row="2" Height="1" Background="#24292e" />
+
+                    <!-- 大纲标题 -->
+                    <TextBlock Grid.Row="3" Text="大纲" Foreground="#8b949e" FontSize="11"
+                               FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" />
+
+                    <!-- 大纲列表 -->
+                    <ListBox x:Name="OutlineList" Grid.Row="4"
+                             SelectionChanged="OnOutlineSelectionChanged"
                              Background="Transparent" BorderThickness="0"
                              Foreground="#c9d1d9" FontSize="12" />
                 </Grid>
@@ -380,10 +488,8 @@
 
                 <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="#161b22"
                         BorderBrush="#24292e" BorderThickness="0,0,1,1" />
-                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
-                                       HorizontalAlignment="Left" />
-                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical"
-                                       VerticalAlignment="Top" />
+                <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" />
+                <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical" />
                 <WebBrowser x:Name="PreviewBrowser" Grid.Row="2" Grid.Column="1" />
             </Grid>
 
