@@ -199,6 +199,8 @@
         <Style x:Key="DarkMenuItem" TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="8,4" />
         </Style>
 
@@ -206,6 +208,8 @@
         <Style TargetType="MenuItem">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="6,4" />
             <Style.Triggers>
                 <Trigger Property="Role" Value="SubmenuItem">
@@ -213,22 +217,39 @@
                 </Trigger>
                 <Trigger Property="IsHighlighted" Value="True">
                     <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupHoverBrush}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
                 </Trigger>
                 <Trigger Property="IsSubmenuOpen" Value="True">
                     <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupSelectionBrush}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style TargetType="Separator">
             <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupBorderBrush}" />
-            <Setter Property="Margin" Value="4,2" />
+            <Setter Property="Height" Value="4" />
+            <Setter Property="Margin" Value="8,1" />
+            <Setter Property="Opacity" Value="0.2" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Grid Margin="{TemplateBinding Margin}" SnapsToDevicePixels="True">
+                            <Border Height="1"
+                                    VerticalAlignment="Center"
+                                    Background="{TemplateBinding Background}"
+                                    Opacity="{TemplateBinding Opacity}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- ContextMenu / 弹出层 Popup 背景 -->
         <Style TargetType="ContextMenu">
             <Setter Property="Background" Value="{DynamicResource ThemeMenuPopupBgBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeMenuPopupBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
             <Setter Property="Padding" Value="2" />
         </Style>
