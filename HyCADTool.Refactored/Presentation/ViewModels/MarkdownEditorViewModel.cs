@@ -332,72 +332,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// </summary>
         private string[] SplitMarkdownByColumns(string markdown, string paraIndices)
         {
-            if (string.IsNullOrEmpty(markdown))
-                return new[] { "" };
-
-            // 将 Markdown 按空行拆分为"段落块"
-            var blocks = SplitMarkdownBlocks(markdown);
-
-            if (string.IsNullOrEmpty(paraIndices))
-            {
-                // 没有分配信息 → 全部放第一栏
-                return new[] { markdown };
-            }
-
-            var colGroups = paraIndices.Split('|');
-            var result = new string[colGroups.Length];
-
-            for (int c = 0; c < colGroups.Length; c++)
-            {
-                if (string.IsNullOrWhiteSpace(colGroups[c]))
-                {
-                    result[c] = "";
-                    continue;
-                }
-
-                var indices = colGroups[c].Split(',')
-                    .Select(s => { int v; return int.TryParse(s.Trim(), out v) ? v : -1; })
-                    .Where(v => v >= 0 && v < blocks.Length)
-                    .ToArray();
-
-                result[c] = string.Join("\n\n", indices.Select(i => blocks[i]));
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 将 Markdown 按空行（两个换行）拆分为段落块
-        /// 与 Markdig 解析的 block 顺序一致
-        /// </summary>
-        private static string[] SplitMarkdownBlocks(string markdown)
-        {
-            // Markdig 中每个 block（heading, paragraph, list, etc.）对应
-            // Markdown 源码中由空行分隔的段落
-            var lines = markdown.Replace("\r\n", "\n").Split('\n');
-            var blocks = new System.Collections.Generic.List<string>();
-            var current = new System.Text.StringBuilder();
-
-            foreach (var line in lines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    if (current.Length > 0)
-                    {
-                        blocks.Add(current.ToString().TrimEnd());
-                        current.Clear();
-                    }
-                }
-                else
-                {
-                    if (current.Length > 0) current.Append('\n');
-                    current.Append(line);
-                }
-            }
-            if (current.Length > 0)
-                blocks.Add(current.ToString().TrimEnd());
-
-            return blocks.ToArray();
+            return MarkdownColumnSplitter.SplitByColumnIndices(markdown, paraIndices);
         }
 
         private void ExecuteLoad()

@@ -1,4 +1,5 @@
 using HyCADTool.Refactored.Domain.Models.Text;
+using HyCADTool.Refactored.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -375,7 +376,21 @@ namespace HyCADTool.Refactored.Presentation.Commands
         {
             string direct = result?.Value<string>("ColumnParagraphIndices");
             if (!string.IsNullOrWhiteSpace(direct))
+            {
+                #region agent log
+                AgentDebugLogger.Log(
+                    "post-fix",
+                    "H8",
+                    "EditorLoader.ExtractColumnParagraphIndices:378",
+                    "column paragraph indices source direct",
+                    new
+                    {
+                        length = direct.Length,
+                        value = direct
+                    });
+                #endregion
                 return direct;
+            }
 
             var stats = result?["PreviewStats"] as JObject;
             if (stats == null)
@@ -383,7 +398,21 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             string text = stats.Value<string>("ColumnParagraphIndicesText");
             if (!string.IsNullOrWhiteSpace(text))
+            {
+                #region agent log
+                AgentDebugLogger.Log(
+                    "post-fix",
+                    "H8",
+                    "EditorLoader.ExtractColumnParagraphIndices:395",
+                    "column paragraph indices source stats text",
+                    new
+                    {
+                        length = text.Length,
+                        value = text
+                    });
+                #endregion
                 return text;
+            }
 
             if (stats["ColumnParagraphIndices"] is JArray colArray)
             {
@@ -392,6 +421,18 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         ? string.Join(",", row.Select(v => (int)v))
                         : string.Empty)
                     .ToArray();
+                #region agent log
+                AgentDebugLogger.Log(
+                    "post-fix",
+                    "H8",
+                    "EditorLoader.ExtractColumnParagraphIndices:414",
+                    "column paragraph indices source stats array",
+                    new
+                    {
+                        groups = groups.Length,
+                        value = string.Join("|", groups)
+                    });
+                #endregion
                 return string.Join("|", groups);
             }
 
@@ -400,62 +441,35 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         private static string[] SplitMarkdownByColumns(string markdown, string paraIndices)
         {
-            if (string.IsNullOrEmpty(markdown))
-                return new[] { "" };
-
-            var blocks = SplitMarkdownBlocks(markdown);
-
-            if (string.IsNullOrEmpty(paraIndices))
-                return new[] { markdown };
-
-            var colGroups = paraIndices.Split('|');
-            var result = new string[colGroups.Length];
-
-            for (int c = 0; c < colGroups.Length; c++)
-            {
-                if (string.IsNullOrWhiteSpace(colGroups[c]))
+            #region agent log
+            AgentDebugLogger.Log(
+                "pre-fix",
+                "H1",
+                "EditorLoader.SplitMarkdownByColumns:403",
+                "editor loader split input",
+                new
                 {
-                    result[c] = "";
-                    continue;
-                }
+                    markdownLength = markdown?.Length ?? 0,
+                    paraIndicesLength = paraIndices?.Length ?? 0
+                });
+            #endregion
 
-                var indices = colGroups[c].Split(',')
-                    .Select(s => { int v; return int.TryParse(s.Trim(), out v) ? v : -1; })
-                    .Where(v => v >= 0 && v < blocks.Length)
-                    .ToArray();
+            var result = MarkdownColumnSplitter.SplitByColumnIndices(markdown, paraIndices);
 
-                result[c] = string.Join("\n\n", indices.Select(i => blocks[i]));
-            }
+            #region agent log
+            AgentDebugLogger.Log(
+                "pre-fix",
+                "H5",
+                "EditorLoader.SplitMarkdownByColumns:417",
+                "editor loader split output",
+                new
+                {
+                    columnCount = result?.Length ?? 0,
+                    lengths = result?.Select(s => s?.Length ?? 0).ToArray() ?? Array.Empty<int>()
+                });
+            #endregion
 
             return result;
-        }
-
-        private static string[] SplitMarkdownBlocks(string markdown)
-        {
-            var lines = markdown.Replace("\r\n", "\n").Split('\n');
-            var blocks = new System.Collections.Generic.List<string>();
-            var current = new System.Text.StringBuilder();
-
-            foreach (var line in lines)
-            {
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    if (current.Length > 0)
-                    {
-                        blocks.Add(current.ToString().TrimEnd());
-                        current.Clear();
-                    }
-                }
-                else
-                {
-                    if (current.Length > 0) current.Append('\n');
-                    current.Append(line);
-                }
-            }
-            if (current.Length > 0)
-                blocks.Add(current.ToString().TrimEnd());
-
-            return blocks.ToArray();
         }
 
         #endregion

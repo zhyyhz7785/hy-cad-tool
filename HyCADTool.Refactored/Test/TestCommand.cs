@@ -34,8 +34,8 @@ namespace HyCADTool.Refactored.Test
             }
             else
             {
-                // ★ 测试入口：MarkdownEditor 编辑器窗口（仅测试编辑器 UI，不插入 CAD）
-                TestMarkdownEditor();
+                // ★ 测试入口：Markdown 导入命令（hymd）
+                new DesignSpecCommand().Execute();
             }
         }
 

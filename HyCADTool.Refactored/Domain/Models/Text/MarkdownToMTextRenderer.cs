@@ -2,6 +2,7 @@ using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using HyCADTool.Refactored.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -18,6 +19,8 @@ namespace HyCADTool.Refactored.Domain.Models.Text
     {
         private readonly DesignSpecConfig _config;
         private readonly StringBuilder _sb;
+        private bool _quoteLogWritten;
+        private bool _nestedListLogWritten;
 
         public MarkdownToMTextRenderer(DesignSpecConfig config)
         {
@@ -138,27 +141,92 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>列表（有序/无序）+ 列表项段后间距</summary>
         private void RenderList(ListBlock list)
         {
+            RenderList(list, 0);
+        }
+
+        /// <summary>
+        /// 递归渲染列表，按深度递增左缩进。
+        /// depth=0 表示顶层列表。
+        /// </summary>
+        private void RenderList(ListBlock list, int depth)
+        {
             bool ordered = list.IsOrdered;
             int index = 1;
+
+            if (depth > 0 && !_nestedListLogWritten)
+            {
+                #region agent log
+                AgentDebugLogger.Log(
+                    "pre-fix",
+                    "H4",
+                    "MarkdownToMTextRenderer.RenderList:154",
+                    "nested list rendering entered",
+                    new
+                    {
+                        depth,
+                        isOrdered = ordered,
+                        itemCount = list.Count
+                    });
+                #endregion
+                _nestedListLogWritten = true;
+            }
 
             foreach (var item in list)
             {
                 if (item is ListItemBlock listItem)
                 {
-                    string bullet = ordered ? $"{index}. " : "  \\U+2022 ";
-
-                    AppendParaSpacing(0, _config.ActualLiSpaceAfter);
-                    _sb.Append(bullet);
-
+                    string bullet = ordered ? $"{index}. " : "\\U+2022 ";
+                    bool wrotePrimaryParagraph = false;
                     foreach (var child in listItem)
                     {
                         if (child is ParagraphBlock p)
-                            RenderInlines(p.Inline);
+                        {
+                            if (!wrotePrimaryParagraph)
+                            {
+                                AppendParaSpacing(0, _config.ActualLiSpaceAfter);
+                                AppendListIndent(depth);
+                                _sb.Append(bullet);
+                                RenderInlines(p.Inline);
+                                _sb.Append("\\P");
+                                wrotePrimaryParagraph = true;
+                            }
+                            else
+                            {
+                                AppendListIndent(depth + 1);
+                                RenderInlines(p.Inline);
+                                _sb.Append("\\P");
+                            }
+                        }
+                        else if (child is ListBlock nested)
+                        {
+                            if (!wrotePrimaryParagraph)
+                            {
+                                AppendParaSpacing(0, _config.ActualLiSpaceAfter);
+                                AppendListIndent(depth);
+                                _sb.Append(bullet).Append("\\P");
+                                wrotePrimaryParagraph = true;
+                            }
+                            RenderList(nested, depth + 1);
+                        }
                         else
+                        {
+                            if (!wrotePrimaryParagraph)
+                            {
+                                AppendParaSpacing(0, _config.ActualLiSpaceAfter);
+                                AppendListIndent(depth);
+                                _sb.Append(bullet);
+                                wrotePrimaryParagraph = true;
+                            }
                             RenderBlock(child);
+                        }
                     }
 
-                    _sb.Append("\\P");
+                    if (!wrotePrimaryParagraph)
+                    {
+                        AppendParaSpacing(0, _config.ActualLiSpaceAfter);
+                        AppendListIndent(depth);
+                        _sb.Append(bullet).Append("\\P");
+                    }
 
                     if (ordered) index++;
                 }
@@ -179,13 +247,32 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         {
             double spaceBefore = _config.ActualQuoteSpaceBefore;
             double spaceAfter = _config.ActualQuoteSpaceAfter;
-            string indent = F(_config.ActualQuoteIndent);
+            string indentInch = F(_config.ActualQuoteIndent / 25.4);
+
+            if (!_quoteLogWritten)
+            {
+                #region agent log
+                AgentDebugLogger.Log(
+                    "pre-fix",
+                    "H3",
+                    "MarkdownToMTextRenderer.RenderQuote:244",
+                    "quote spacing conversion",
+                    new
+                    {
+                        quoteIndentMm = _config.ActualQuoteIndent,
+                        quoteIndentInch = indentInch,
+                        spaceBeforeMm = spaceBefore,
+                        spaceAfterMm = spaceAfter
+                    });
+                #endregion
+                _quoteLogWritten = true;
+            }
 
             // 引用块段前段后 + 左缩进
             string bInch = F(spaceBefore / 25.4);
             string aInch = F(spaceAfter / 25.4);
             _sb.Append("\\pxib").Append(bInch).Append(",a").Append(aInch)
-               .Append(",l").Append(indent).Append(";");
+               .Append(",l").Append(indentInch).Append(";");
 
             foreach (var child in quote)
             {
@@ -386,6 +473,20 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 _sb.Append(",b").Append(F(beforeMm / 25.4));
             if (afterMm > 0)
                 _sb.Append(",a").Append(F(afterMm / 25.4));
+            _sb.Append(";");
+        }
+
+        /// <summary>
+        /// 列表缩进（\pxi 参数单位为英寸）
+        /// </summary>
+        private void AppendListIndent(int depth)
+        {
+            _sb.Append("\\pxi0");
+            if (depth > 0)
+            {
+                string indentInch = F((_config.ActualListIndent * depth) / 25.4);
+                _sb.Append(",l").Append(indentInch);
+            }
             _sb.Append(";");
         }
 

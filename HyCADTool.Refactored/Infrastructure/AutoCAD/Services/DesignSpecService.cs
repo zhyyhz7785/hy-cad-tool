@@ -1,11 +1,13 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Diagnostics;
 using HyCADTool.Refactored.Domain.Models.Text;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -30,6 +32,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         {
             if (columnContents == null || columnContents.Length == 0)
                 throw new ArgumentException("MText 内容不能为空");
+
+            #region agent log
+            AgentDebugLogger.Log(
+                "pre-fix",
+                "H5",
+                "DesignSpecService.Insert:33",
+                "insert entry",
+                new
+                {
+                    inputColumns = columnContents.Length,
+                    contentLengths = columnContents.Select(c => c?.Length ?? 0).ToArray(),
+                    configColumns = config?.ColumnCount ?? -1,
+                    markdownLength = markdownSource?.Length ?? 0
+                });
+            #endregion
 
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) throw new InvalidOperationException("无活动文档");
