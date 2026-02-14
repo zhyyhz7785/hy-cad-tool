@@ -107,8 +107,19 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set { if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(10, value)))) UpdateStatus(); }
         }
 
-        public int[] CharsPerColumn { get; set; }
-        public string ColumnParagraphIndices { get; set; }
+        private int[] _charsPerColumn;
+        public int[] CharsPerColumn
+        {
+            get => _charsPerColumn;
+            set => SetProperty(ref _charsPerColumn, value);
+        }
+
+        private string _columnParagraphIndices = "";
+        public string ColumnParagraphIndices
+        {
+            get => _columnParagraphIndices;
+            set => SetProperty(ref _columnParagraphIndices, value ?? "");
+        }
 
         private double _columnGutter = 0;
         public double ColumnGutter

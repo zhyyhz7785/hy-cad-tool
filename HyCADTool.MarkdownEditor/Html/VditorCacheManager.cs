@@ -3,6 +3,7 @@ using System.Formats.Tar;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace HyCADTool.MarkdownEditor.Html
@@ -17,6 +18,7 @@ namespace HyCADTool.MarkdownEditor.Html
     /// </summary>
     internal static class VditorCacheManager
     {
+        private static readonly SemaphoreSlim CacheLock = new SemaphoreSlim(1, 1);
         public const string VERSION = "3.10.8";
 
         /// <summary>CDN 回退地址（本地缓存不可用时使用）</summary>
@@ -55,35 +57,49 @@ namespace HyCADTool.MarkdownEditor.Html
                 return;
             }
 
-            using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(120);
-
-            foreach (var url in TarballUrls)
+            await CacheLock.WaitAsync();
+            try
             {
-                try
+                if (IsCached)
                 {
-                    string host = new Uri(url).Host;
-                    onProgress?.Invoke($"首次使用，正在下载编辑器资源 ({host})...");
+                    onProgress?.Invoke("编辑器资源已就绪");
+                    return;
+                }
 
-                    var data = await client.GetByteArrayAsync(url);
+                using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(120);
 
-                    onProgress?.Invoke("正在解压编辑器资源...");
-                    ExtractDistFromTarGz(data);
-
-                    if (IsCached)
+                foreach (var url in TarballUrls)
+                {
+                    try
                     {
-                        onProgress?.Invoke("编辑器资源就绪");
-                        return;
+                        string host = new Uri(url).Host;
+                        onProgress?.Invoke($"首次使用，正在下载编辑器资源 ({host})...");
+
+                        var data = await client.GetByteArrayAsync(url);
+
+                        onProgress?.Invoke("正在解压编辑器资源...");
+                        ExtractDistFromTarGz(data);
+
+                        if (IsCached)
+                        {
+                            onProgress?.Invoke("编辑器资源就绪");
+                            return;
+                        }
+                    }
+                    catch
+                    {
+                        // 当前镜像失败，尝试下一个
+                        continue;
                     }
                 }
-                catch
-                {
-                    // 当前镜像失败，尝试下一个
-                    continue;
-                }
-            }
 
-            onProgress?.Invoke("资源下载失败，使用在线CDN（可能较慢）");
+                onProgress?.Invoke("资源下载失败，使用在线CDN（可能较慢）");
+            }
+            finally
+            {
+                CacheLock.Release();
+            }
         }
 
         /// <summary>

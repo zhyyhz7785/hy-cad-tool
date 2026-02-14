@@ -70,22 +70,29 @@ namespace HyCADTool.MarkdownEditor.Html
             string liMargin = $"margin:0 0 {cfg.LiSpaceAfter:F1}em";
             string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
 
-            return CSS_TEMPLATE
-                .Replace("/*BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px")
-                .Replace("/*BASE_LINE_HEIGHT*/", lineHeightFactor.ToString("0.###", CultureInfo.InvariantCulture))
-                .Replace("/*PAPER_WIDTH*/", $"{Round(pageWidthPx):F0}px")
-                .Replace("/*PAPER_HEIGHT*/", $"{Round(pageHeightPx):F0}px")
-                .Replace("/*PAD_LEFT*/", $"{Round(leftPx):F0}px")
-                .Replace("/*PAD_RIGHT*/", $"{Round(rightPx):F0}px")
-                .Replace("/*PAD_TOP*/", $"{Round(topPx):F0}px")
-                .Replace("/*PAD_BOTTOM*/", $"{Round(bottomPx):F0}px")
-                .Replace("/*GUTTER*/", $"{Round(gutterVisualPx):F0}px")
-                .Replace("/*H1_MARGIN*/", h1Margin)
-                .Replace("/*H2_MARGIN*/", h2Margin)
-                .Replace("/*H3_MARGIN*/", h3Margin)
-                .Replace("/*P_MARGIN*/", pMargin)
-                .Replace("/*LI_MARGIN*/", liMargin)
-                .Replace("/*BQ_MARGIN*/", bqMargin);
+            var tokens = new (string token, string value)[]
+            {
+                ("/*BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px"),
+                ("/*BASE_LINE_HEIGHT*/", lineHeightFactor.ToString("0.###", CultureInfo.InvariantCulture)),
+                ("/*PAPER_WIDTH*/", $"{Round(pageWidthPx):F0}px"),
+                ("/*PAPER_HEIGHT*/", $"{Round(pageHeightPx):F0}px"),
+                ("/*PAD_LEFT*/", $"{Round(leftPx):F0}px"),
+                ("/*PAD_RIGHT*/", $"{Round(rightPx):F0}px"),
+                ("/*PAD_TOP*/", $"{Round(topPx):F0}px"),
+                ("/*PAD_BOTTOM*/", $"{Round(bottomPx):F0}px"),
+                ("/*GUTTER*/", $"{Round(gutterVisualPx):F0}px"),
+                ("/*H1_MARGIN*/", h1Margin),
+                ("/*H2_MARGIN*/", h2Margin),
+                ("/*H3_MARGIN*/", h3Margin),
+                ("/*P_MARGIN*/", pMargin),
+                ("/*LI_MARGIN*/", liMargin),
+                ("/*BQ_MARGIN*/", bqMargin),
+            };
+
+            var sb = new StringBuilder(CSS_TEMPLATE);
+            foreach (var token in tokens)
+                sb.Replace(token.token, token.value);
+            return sb.ToString();
         }
 
         private static string BuildDynamicJs(double previewScale, EditorConfig cfg)
@@ -302,6 +309,7 @@ function charDisplayUnits(ch){
   if(!ch) return 0;
   var code=ch.charCodeAt(0);
   if(code<=0x007F) return 1;
+  if(code<=0x024F) return 1;
   if((code>=0x3400&&code<=0x4DBF) || (code>=0x4E00&&code<=0x9FFF) || (code>=0xF900&&code<=0xFAFF)) return 2;
   if((code>=0x3000&&code<=0x303F) || (code>=0xFF01&&code<=0xFF60) || (code>=0xFFE0&&code<=0xFFE6)) return 2;
   return 2;

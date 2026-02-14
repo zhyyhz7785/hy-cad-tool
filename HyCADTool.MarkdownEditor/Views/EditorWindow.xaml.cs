@@ -12,6 +12,7 @@ using System.Windows.Threading;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Controls.Primitives;
+using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
@@ -59,6 +60,11 @@ namespace HyCADTool.MarkdownEditor.Views
         private double _outlinePanelWidth = DefaultOutlinePanelWidth;
         private double _previewPanelWidth = DefaultPreviewPanelWidth;
         private bool _defaultWorkspaceLayoutApplied;
+
+        private static void LogSilentException(string context, Exception ex)
+        {
+            Debug.WriteLine($"[MarkdownEditor][{context}] {ex.Message}");
+        }
 
         public EditorWindow(EditorInput input)
         {
@@ -139,6 +145,19 @@ namespace HyCADTool.MarkdownEditor.Views
                     PreviewWebView.CoreWebView2.NavigateToString(_pendingPreviewHtml);
                     _pendingPreviewHtml = "";
                 }
+
+                // 初次刷新
+                RefreshPreview();
+                RefreshOutline();
+                RefreshFileList();
+                ApplyDefaultWorkspaceLayout(false);
+
+                // 布局就绪后，让 A2 图纸占满 90% 预览区
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    FitPaperToPreviewArea();
+                    UpdateRulerScale();
+                }), DispatcherPriority.Loaded);
             }
             catch (Exception ex)
             {
@@ -147,20 +166,8 @@ namespace HyCADTool.MarkdownEditor.Views
                     "编辑器初始化错误",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+                LogSilentException(nameof(OnLoaded), ex);
             }
-
-            // 初次刷新
-            RefreshPreview();
-            RefreshOutline();
-            RefreshFileList();
-            ApplyDefaultWorkspaceLayout(false);
-
-            // 布局就绪后，让 A2 图纸占满 90% 预览区
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                FitPaperToPreviewArea();
-                UpdateRulerScale();
-            }), DispatcherPriority.Loaded);
         }
 
         private void OnClosed(object sender, EventArgs e)
@@ -169,12 +176,21 @@ namespace HyCADTool.MarkdownEditor.Views
             _rulerSyncTimer.Stop();
             _previewRefreshDebounceTimer.Stop();
             StateChanged -= OnWindowStateChanged;
+            ViewModel.PropertyChanged -= OnPropChanged;
+            ViewModel.EditorContentLoadRequested -= OnEditorContentLoadRequested;
             try
             {
+                if (EditorWebView?.CoreWebView2 != null)
+                    EditorWebView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
                 if (PreviewWebView?.CoreWebView2 != null)
                     PreviewWebView.CoreWebView2.WebMessageReceived -= OnPreviewWebMessageReceived;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(OnClosed), ex);
+            }
+            try { EditorWebView?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
+            try { PreviewWebView?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
         }
 
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -196,11 +212,14 @@ namespace HyCADTool.MarkdownEditor.Views
                     case "input":
                         string value = msg.Value<string>("value") ?? "";
                         ViewModel.SetMarkdownFromEditor(value);
-                        RefreshPreview();
+                        SchedulePreviewRefresh();
                         break;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(OnWebMessageReceived), ex);
+            }
         }
 
         private async void OnEditorContentLoadRequested(string markdown)
@@ -211,7 +230,10 @@ namespace HyCADTool.MarkdownEditor.Views
                 string escaped = Newtonsoft.Json.JsonConvert.SerializeObject(markdown ?? "");
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(OnEditorContentLoadRequested), ex);
+            }
         }
 
         private void OnPreviewWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -246,7 +268,10 @@ namespace HyCADTool.MarkdownEditor.Views
                     ApplyPreviewScaleStep(step);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(OnPreviewWebMessageReceived), ex);
+            }
         }
 
         private void ApplyPreviewScaleStep(double step)
@@ -371,7 +396,8 @@ namespace HyCADTool.MarkdownEditor.Views
                 return;
             }
 
-            try { DragMove(); } catch { }
+            try { DragMove(); }
+            catch (Exception ex) { LogSilentException(nameof(OnTitleBarMouseLeftButtonDown), ex); }
         }
 
         private void OnTitleBarMouseRightButtonUp(object sender, MouseButtonEventArgs e)
@@ -795,7 +821,10 @@ namespace HyCADTool.MarkdownEditor.Views
                 string escaped = Newtonsoft.Json.JsonConvert.SerializeObject(heading);
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"scrollToHeading({escaped})");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(OnOutlineSelectionChanged), ex);
+            }
         }
 
         #endregion
@@ -818,7 +847,10 @@ namespace HyCADTool.MarkdownEditor.Views
                 rootNode.IsExpanded = true;
                 FileTree.Items.Add(rootNode);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(RefreshFileList), ex);
+            }
             finally { _updatingFileList = false; }
         }
 
@@ -844,7 +876,10 @@ namespace HyCADTool.MarkdownEditor.Views
                     node.Items.Add(BuildTreeNode(sub, currentFile));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(BuildTreeNode), ex);
+            }
 
             // .md 文件
             try
@@ -865,7 +900,10 @@ namespace HyCADTool.MarkdownEditor.Views
                     });
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(BuildTreeNode), ex);
+            }
 
             // 如果包含当前文件，展开到该路径
             if (!string.IsNullOrWhiteSpace(currentFile) &&
@@ -1048,8 +1086,15 @@ namespace HyCADTool.MarkdownEditor.Views
             return null;
         }
 
-        private static string PromptInput(string title, string prompt, string defaultValue)
+        private string PromptInput(string title, string prompt, string defaultValue)
         {
+            bool dark = _isDarkTheme;
+            string winBg = dark ? "#1c2128" : "#ffffff";
+            string textPrimary = dark ? "#c9d1d9" : "#24292f";
+            string inputBg = dark ? "#0d1117" : "#ffffff";
+            string border = dark ? "#30363d" : "#d0d7de";
+            string btnSecondaryBg = dark ? "#30363d" : "#e5e7eb";
+
             var win = new Window
             {
                 Title = title,
@@ -1057,22 +1102,23 @@ namespace HyCADTool.MarkdownEditor.Views
                 Height = 150,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ResizeMode = ResizeMode.NoResize,
-                Background = BrushFromHex("#1c2128"),
+                Background = BrushFromHex(winBg),
+                Owner = this,
             };
             var sp = new StackPanel { Margin = new Thickness(16) };
             sp.Children.Add(new TextBlock
             {
                 Text = prompt,
-                Foreground = BrushFromHex("#c9d1d9"),
+                Foreground = BrushFromHex(textPrimary),
                 Margin = new Thickness(0, 0, 0, 8)
             });
             var tb = new TextBox
             {
                 Text = defaultValue,
-                Background = BrushFromHex("#0d1117"),
-                Foreground = BrushFromHex("#c9d1d9"),
-                BorderBrush = BrushFromHex("#30363d"),
-                CaretBrush = BrushFromHex("#ffffff"),
+                Background = BrushFromHex(inputBg),
+                Foreground = BrushFromHex(textPrimary),
+                BorderBrush = BrushFromHex(border),
+                CaretBrush = BrushFromHex(textPrimary),
                 Padding = new Thickness(4, 2, 4, 2)
             };
             tb.SelectAll();
@@ -1092,7 +1138,7 @@ namespace HyCADTool.MarkdownEditor.Views
             var cancel = new Button
             {
                 Content = "取消", Width = 60,
-                Background = BrushFromHex("#30363d"), Foreground = BrushFromHex("#c9d1d9"),
+                Background = BrushFromHex(btnSecondaryBg), Foreground = BrushFromHex(textPrimary),
                 BorderThickness = new Thickness(0)
             };
             ok.Click += (_, __) => { win.DialogResult = true; };
@@ -1130,7 +1176,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(ViewModel.PageWidthMm):
                 case nameof(ViewModel.PageHeightMm):
                 case "SpacingChanged":
-                    RefreshPreview();
+                    SchedulePreviewRefresh();
                     UpdateRulerScale();
                     break;
 
@@ -1197,7 +1243,10 @@ namespace HyCADTool.MarkdownEditor.Views
                 _renderedPreviewScale = Math.Max(0.1, ViewModel.PreviewScale);
                 await Task.CompletedTask;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(RefreshPreviewAsync), ex);
+            }
         }
 
         /// <summary>从预览 JS 读取分栏数据（结构化统计 + 段落分配）</summary>
@@ -1244,7 +1293,10 @@ namespace HyCADTool.MarkdownEditor.Views
                     ViewModel.ColumnParagraphIndices = paraText;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(SyncFromPreviewAsync), ex);
+            }
         }
 
         #endregion
@@ -1254,7 +1306,8 @@ namespace HyCADTool.MarkdownEditor.Views
         private async Task RunMenuActionAsync(Func<Task> action)
         {
             if (!_editorReady || _js == null) return;
-            try { await action(); } catch { }
+            try { await action(); }
+            catch (Exception ex) { LogSilentException(nameof(RunMenuActionAsync), ex); }
         }
 
         private async void OnMenuUndo(object sender, RoutedEventArgs e) =>
@@ -1406,7 +1459,10 @@ namespace HyCADTool.MarkdownEditor.Views
                         ViewModel.SetMarkdownFromEditor(md);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(SyncMarkdownFromEditorAsync), ex);
+            }
         }
 
         #endregion

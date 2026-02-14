@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,6 +63,8 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         private static readonly Typeface TF = new Typeface("Segoe UI");
         private const double FONT = 8;
         private const double THICKNESS = 24;
+        private readonly Dictionary<string, FormattedText> _textCache = new Dictionary<string, FormattedText>();
+        private double _cachedDpi = -1;
 
         static RulerControl() { LblBr.Freeze(); BgBr.Freeze(); }
         private static SolidColorBrush Br(byte r, byte g, byte b)
@@ -78,6 +81,11 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
             double len = h ? ActualWidth : ActualHeight;   // 标尺总长（像素）
             double t = h ? ActualHeight : ActualWidth;     // 标尺厚度（像素，= 20）
             double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+            if (Math.Abs(_cachedDpi - dpi) > 0.0001)
+            {
+                _textCache.Clear();
+                _cachedDpi = dpi;
+            }
             double ppm = Math.Max(0.01, PixelsPerMm);
 
             // 背景
@@ -176,8 +184,16 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
             }
         }
 
-        private static FormattedText MkTxt(string s, Brush br, double dpi) =>
-            new FormattedText(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, TF, FONT, br, dpi);
+        private FormattedText MkTxt(string s, Brush br, double dpi)
+        {
+            string key = $"{dpi:0.####}|{s}";
+            if (_textCache.TryGetValue(key, out var hit))
+                return hit;
+
+            var ft = new FormattedText(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, TF, FONT, br, dpi);
+            _textCache[key] = ft;
+            return ft;
+        }
 
         protected override Size MeasureOverride(Size a)
         {
