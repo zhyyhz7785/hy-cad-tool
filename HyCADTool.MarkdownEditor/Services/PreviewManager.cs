@@ -49,8 +49,9 @@ namespace HyCADTool.MarkdownEditor.Services
             viewModel.PreviewScale = Math.Max(0.1, Math.Min(5.0, cur * factor));
         }
 
-        public bool TryHandlePreviewWebMessage(string webMessageAsJson, EditorViewModel viewModel)
+        public bool TryHandlePreviewWebMessage(string webMessageAsJson, EditorViewModel viewModel, out string markdownChanged)
         {
+            markdownChanged = null;
             if (string.IsNullOrWhiteSpace(webMessageAsJson)) return false;
 
             var msg = JObject.Parse(webMessageAsJson);
@@ -82,6 +83,16 @@ namespace HyCADTool.MarkdownEditor.Services
                 int current = msg.Value<int?>("currentPage") ?? 1;
                 int total = msg.Value<int?>("pageCount") ?? 1;
                 UpdatePageState(current, total);
+                return true;
+            }
+
+            if (string.Equals(type, "contentChanged", StringComparison.OrdinalIgnoreCase))
+            {
+                string markdown = msg.Value<string>("markdown") ?? "";
+                if (string.Equals(viewModel.MarkdownText ?? "", markdown, StringComparison.Ordinal))
+                    return true;
+                viewModel.SetMarkdownFromEditor(markdown);
+                markdownChanged = markdown;
                 return true;
             }
 

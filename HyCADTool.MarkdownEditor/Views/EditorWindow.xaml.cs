@@ -66,6 +66,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private bool _isAutoSyncRunning;
         private bool _autoSyncPending;
         private readonly bool _isModalSession;
+        private bool _isUpdatingFromPreview;
 
         public EditorWindow(EditorInput input, bool isModal = true)
         {
@@ -415,6 +416,11 @@ namespace HyCADTool.MarkdownEditor.Views
                         _editorReady = true;
                         break;
                     case "input":
+                        if (_isUpdatingFromPreview)
+                        {
+                            _isUpdatingFromPreview = false;
+                            break;
+                        }
                         ViewModel.SetMarkdownFromEditor(msg.Value<string>("value") ?? "");
                         SchedulePreviewRefresh();
                         ScheduleAutoCadSync();
@@ -445,7 +451,12 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             try
             {
-                _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel);
+                if (_previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out string markdownChanged)
+                    && markdownChanged != null)
+                {
+                    _ = SyncEditorFromPreviewAsync(markdownChanged);
+                    ScheduleAutoCadSync();
+                }
                 UpdatePreviewPageState();
             }
             catch (Exception ex)
@@ -814,9 +825,10 @@ namespace HyCADTool.MarkdownEditor.Views
             _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, unit * DefaultRatioPreview);
             _bottomPanelHeight = Math.Max(_bottomPanelHeight, 160);
 
-            _outlineVisible = true;
+            _outlineVisible = false;
             _previewVisible = true;
             _bottomPanelVisible = true;
+            _rulerVisible = true;
 
             ApplyOutlineLayout();
             ApplyPreviewLayout();
@@ -1005,6 +1017,27 @@ namespace HyCADTool.MarkdownEditor.Views
             catch (Exception ex)
             {
                 LogSilentException(nameof(SyncMarkdownFromEditorAsync), ex);
+            }
+        }
+
+        private async Task SyncEditorFromPreviewAsync(string markdown)
+        {
+            if (!_editorReady || EditorWebView?.CoreWebView2 == null) return;
+            try
+            {
+                _isUpdatingFromPreview = true;
+                string escaped = JsonConvert.SerializeObject(markdown ?? "");
+                await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
+                RefreshOutline();
+                _ = Task.Delay(800).ContinueWith(_ =>
+                {
+                    Dispatcher.BeginInvoke(new Action(() => _isUpdatingFromPreview = false));
+                });
+            }
+            catch (Exception ex)
+            {
+                _isUpdatingFromPreview = false;
+                LogSilentException(nameof(SyncEditorFromPreviewAsync), ex);
             }
         }
     }
