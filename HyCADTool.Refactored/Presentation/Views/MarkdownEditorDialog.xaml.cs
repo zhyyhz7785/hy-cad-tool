@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using System.Windows.Threading;
 using HyCADTool.Refactored.Domain.Models.Text;
 using HyCADTool.Refactored.Presentation.ViewModels;
 
@@ -13,6 +14,10 @@ namespace HyCADTool.Refactored.Presentation.Views
     /// </summary>
     public partial class MarkdownEditorDialog : Window
     {
+        private DispatcherTimer _autoSyncDebounceTimer;
+        private bool _autoSyncInProgress;
+        private bool _autoSyncEnabled;
+
         public MarkdownEditorViewModel ViewModel { get; }
 
         /// <summary>新建模式</summary>
@@ -35,13 +40,28 @@ namespace HyCADTool.Refactored.Presentation.Views
 
         private void Init()
         {
+            _autoSyncDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(900)
+            };
+            _autoSyncDebounceTimer.Tick += OnAutoSyncTick;
+
             Loaded += OnLoaded;
+            Closed += OnClosed;
             ViewModel.PropertyChanged += OnPropChanged;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             RefreshPreview();
+            _autoSyncEnabled = true;
+        }
+
+        private void OnClosed(object sender, EventArgs e)
+        {
+            _autoSyncDebounceTimer.Stop();
+            _autoSyncDebounceTimer.Tick -= OnAutoSyncTick;
+            ViewModel.PropertyChanged -= OnPropChanged;
         }
 
         #region 预览刷新
@@ -54,6 +74,7 @@ namespace HyCADTool.Refactored.Presentation.Views
                 || e.PropertyName == "SpacingChanged")
             {
                 RefreshPreview();
+                ScheduleAutoSync();
             }
         }
 
@@ -107,6 +128,11 @@ namespace HyCADTool.Refactored.Presentation.Views
 
             SyncFromPreview();
             ViewModel.ExecuteInsert();
+        }
+
+        private void OnInsertAndCloseClick(object sender, RoutedEventArgs e)
+        {
+            OnInsertClick(sender, e);
             DialogResult = true;
             Close();
         }
@@ -118,5 +144,33 @@ namespace HyCADTool.Refactored.Presentation.Views
         }
 
         #endregion
+
+        private void ScheduleAutoSync()
+        {
+            if (!_autoSyncEnabled) return;
+            _autoSyncDebounceTimer.Stop();
+            _autoSyncDebounceTimer.Start();
+        }
+
+        private void OnAutoSyncTick(object sender, EventArgs e)
+        {
+            _autoSyncDebounceTimer.Stop();
+            if (!_autoSyncEnabled || _autoSyncInProgress) return;
+
+            try
+            {
+                _autoSyncInProgress = true;
+                SyncFromPreview();
+                ViewModel.ExecuteLiveSync();
+            }
+            catch (System.Exception)
+            {
+                // 实时同步失败时静默，避免打断编辑流程
+            }
+            finally
+            {
+                _autoSyncInProgress = false;
+            }
+        }
     }
 }

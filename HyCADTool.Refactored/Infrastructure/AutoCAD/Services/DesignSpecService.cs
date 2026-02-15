@@ -28,7 +28,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         /// <param name="markdownSource">完整 Markdown 源码</param>
         /// <param name="config">配置</param>
         /// <param name="insertionPoint">左上角插入点</param>
-        public void Insert(
+        public ObjectId Insert(
             string[] columnContents,
             string markdownSource,
             DesignSpecConfig config,
@@ -45,6 +45,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
             var ed = doc.Editor;
+
+            ObjectId anchorEntityId = ObjectId.Null;
 
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
@@ -90,6 +92,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             SetLayer(db, tr, mtext, LAYER_TEXT);
                             btr.AppendEntity(mtext);
                             tr.AddNewlyCreatedDBObject(mtext, true);
+                            if (anchorEntityId.IsNull)
+                                anchorEntityId = mtext.ObjectId;
 
                             WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataWritten);
                             ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
@@ -108,13 +112,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             colWidth,
                             groupId,
                             markdownSource,
-                            ref metadataWritten);
+                            ref metadataWritten,
+                            ref anchorEntityId);
 
                         xOffset += colWidth + area.ColumnGutter;
                     }
 
                     tr.Commit();
-                    ed.WriteMessage($"\n已插入设计说明：MText={mtextCount}, Table={tableCount}（{area.ColumnCount}栏）");
+                    string widthInfo = string.Join("+", area.ColumnWidths.Select(w => w.ToString("0.0")));
+                    ed.WriteMessage($"\n已插入设计说明：MText={mtextCount}, Table={tableCount}（{area.ColumnCount}栏，栏宽={widthInfo}mm，总宽={area.TotalWidth:0.0}mm）");
+                    return anchorEntityId;
                 }
                 catch (System.Exception ex)
                 {
@@ -128,7 +135,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         /// <summary>
         /// 更新已有 MText 组
         /// </summary>
-        public void Update(
+        public ObjectId Update(
             ObjectId anchorEntityId,
             string[] columnContents,
             string markdownSource,
@@ -143,6 +150,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var area = CalculateArea(config, layoutResult);
             var ed = doc.Editor;
 
+            ObjectId newAnchorEntityId = ObjectId.Null;
+
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
@@ -151,6 +160,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     // 读取组ID，找到同组所有实体
                     var anchorEntity = tr.GetObject(anchorEntityId, OpenMode.ForRead) as Entity;
                     if (anchorEntity == null) throw new InvalidOperationException("选中实体无效");
+                    var insertPt = GetAnchorPoint(anchorEntity);
 
                     string groupId = ExtensionDictionaryService.ReadLongString(tr, anchorEntity, XREC_KEY_GROUP);
 
@@ -178,7 +188,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     }
 
                     // 重新插入，锚点使用用户选择实体的位置
-                    var insertPt = GetAnchorPoint(anchorEntity);
 
                     var bt2 = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var btr2 = (BlockTableRecord)tr.GetObject(bt2[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
@@ -215,6 +224,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             SetLayer(db, tr, newMtext, LAYER_TEXT);
                             btr2.AppendEntity(newMtext);
                             tr.AddNewlyCreatedDBObject(newMtext, true);
+                            if (newAnchorEntityId.IsNull)
+                                newAnchorEntityId = newMtext.ObjectId;
 
                             WriteMetadataIfNeeded(tr, newMtext, markdownSource, config, ref metadataWritten);
                             ExtensionDictionaryService.WriteLongString(tr, newMtext, newGroupId, XREC_KEY_GROUP);
@@ -233,13 +244,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             colWidth,
                             newGroupId,
                             markdownSource,
-                            ref metadataWritten);
+                            ref metadataWritten,
+                            ref newAnchorEntityId);
 
                         xOffset += colWidth + area.ColumnGutter;
                     }
 
                     tr.Commit();
-                    ed.WriteMessage($"\n已更新设计说明：MText={mtextCount}, Table={tableCount}（{area.ColumnCount}栏）");
+                    string widthInfo = string.Join("+", area.ColumnWidths.Select(w => w.ToString("0.0")));
+                    ed.WriteMessage($"\n已更新设计说明：MText={mtextCount}, Table={tableCount}（{area.ColumnCount}栏，栏宽={widthInfo}mm，总宽={area.TotalWidth:0.0}mm）");
+                    return newAnchorEntityId;
                 }
                 catch (System.Exception ex)
                 {
@@ -311,7 +325,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             double columnWidth,
             string groupId,
             string markdownSource,
-            ref bool metadataWritten)
+            ref bool metadataWritten,
+            ref ObjectId anchorEntityId)
         {
             if (string.IsNullOrWhiteSpace(columnMarkdown))
                 return 0;
@@ -359,6 +374,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 SetLayer(db, tr, table, LAYER_TEXT);
                 btr.AppendEntity(table);
                 tr.AddNewlyCreatedDBObject(table, true);
+                if (anchorEntityId.IsNull)
+                    anchorEntityId = table.ObjectId;
 
                 WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
                 ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
@@ -384,6 +401,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 var rec = (TextStyleTableRecord)tr.GetObject(tst[styleName], OpenMode.ForWrite);
                 rec.TextSize = 0;
                 rec.XScale = config.TextXScale;
+                ApplyTextStyleFont(rec, config);
                 return tst[styleName];
             }
 
@@ -391,14 +409,57 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var newRec = new TextStyleTableRecord
             {
                 Name = styleName,
-                FileName = config.FontFileName,
-                BigFontFileName = config.BigFontFileName,
                 TextSize = 0,
                 XScale = config.TextXScale
             };
+            ApplyTextStyleFont(newRec, config);
             tst.Add(newRec);
             tr.AddNewlyCreatedDBObject(newRec, true);
             return newRec.ObjectId;
+        }
+
+        private static void ApplyTextStyleFont(TextStyleTableRecord rec, DesignSpecConfig config)
+        {
+            if (rec == null) return;
+
+            string rawFont = (config?.FontFileName ?? string.Empty).Trim();
+            if (IsShxFont(rawFont))
+            {
+                rec.FileName = rawFont;
+                rec.BigFontFileName = config?.BigFontFileName ?? string.Empty;
+                return;
+            }
+
+            string fontFile = ResolveTrueTypeFontFile(rawFont);
+            rec.BigFontFileName = string.Empty;
+            rec.FileName = fontFile;
+        }
+
+        private static bool IsShxFont(string fontName)
+        {
+            return !string.IsNullOrWhiteSpace(fontName)
+                && fontName.EndsWith(".shx", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveTrueTypeFontFile(string fontName)
+        {
+            if (string.IsNullOrWhiteSpace(fontName))
+                return "msyh.ttc";
+
+            string value = fontName.Trim();
+            if (string.Equals(value, "msyh.ttc", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "msyh.ttf", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "微软雅黑", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "微软雅黑体", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "Microsoft YaHei", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase))
+                return "msyh.ttc";
+
+            if (value.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)
+                || value.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
+                return value;
+
+            return value;
         }
 
         private void SetLayer(Database db, Transaction tr, Entity entity, string layerName)

@@ -4,6 +4,7 @@ namespace HyCADTool.TextLayout
 {
     public static class TextAreaCalculator
     {
+        // 每栏宽度优先走页面尺寸口径，缺失页面参数时回退字符数口径。
         public class TextAreaResult
         {
             public double TotalWidth { get; set; }

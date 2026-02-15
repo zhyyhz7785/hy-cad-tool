@@ -58,7 +58,7 @@ namespace HyCADTool.MarkdownEditor.Models
 
         // ── 栏 ──
         public int ColumnCount { get; set; } = 2;
-        public double ColumnGutter { get; set; } = 0;
+        public double ColumnGutter { get; set; } = 10;
         public int[] CharsPerColumn { get; set; } = new[] { 28, 28 };
         public double TotalHeight { get; set; } = 350;
 
@@ -72,9 +72,10 @@ namespace HyCADTool.MarkdownEditor.Models
         public double MarginRightMm { get; set; } = 10;
         public double MarginTopMm { get; set; } = 10;
         public double MarginBottomMm { get; set; } = 10;
-        public string FontFileName { get; set; } = "tssdeng.shx";
-        public string BigFontFileName { get; set; } = "hztxt.shx";
-        public string BoldFontName { get; set; } = "SimHei";
+        public string FontFileName { get; set; } = "Microsoft YaHei";
+        public string BigFontFileName { get; set; } = "";
+        public string BoldFontName { get; set; } = "Microsoft YaHei";
+        public string PreviewFontFamily { get; set; } = "Microsoft YaHei";
 
         // ── 标题倍率 ──
         public double H1Scale { get; set; } = 1.6;

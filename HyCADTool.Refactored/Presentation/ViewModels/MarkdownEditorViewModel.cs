@@ -38,6 +38,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public event Action<string[], string, DesignSpecConfig> InsertRequested;
 
         /// <summary>
+        /// 实时同步请求事件（防抖后触发）
+        /// 参数: (每栏MText内容数组, Markdown原文, 配置)
+        /// </summary>
+        public event Action<string[], string, DesignSpecConfig> LiveSyncRequested;
+
+        /// <summary>
         /// 请求将内容推送到编辑器（加载文件后触发）
         /// 参数: Markdown 字符串
         /// </summary>
@@ -313,17 +319,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             DialogResult = true;
             var config = BuildConfig();
-
-            // 按栏拆分 Markdown → 各自渲染 MText
-            var columnMarkdowns = SplitMarkdownByColumns(MarkdownText, ColumnParagraphIndices);
-            var columnMTexts = new string[columnMarkdowns.Length];
-            for (int i = 0; i < columnMarkdowns.Length; i++)
-            {
-                var renderer = new MarkdownToMTextRenderer(config);
-                columnMTexts[i] = renderer.Convert(columnMarkdowns[i]);
-            }
+            var columnMTexts = BuildColumnMTextContents(config);
 
             InsertRequested?.Invoke(columnMTexts, MarkdownText, config);
+        }
+
+        public void ExecuteLiveSync()
+        {
+            var config = BuildConfig();
+            var columnMTexts = BuildColumnMTextContents(config);
+            LiveSyncRequested?.Invoke(columnMTexts, MarkdownText, config);
         }
 
         /// <summary>
@@ -333,6 +338,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private string[] SplitMarkdownByColumns(string markdown, string paraIndices)
         {
             return MarkdownColumnSplitter.SplitByColumnIndices(markdown, paraIndices);
+        }
+
+        private string[] BuildColumnMTextContents(DesignSpecConfig config)
+        {
+            var columnMarkdowns = SplitMarkdownByColumns(MarkdownText, ColumnParagraphIndices);
+            var columnMTexts = new string[columnMarkdowns.Length];
+            for (int i = 0; i < columnMarkdowns.Length; i++)
+            {
+                var renderer = new MarkdownToMTextRenderer(config);
+                columnMTexts[i] = renderer.Convert(columnMarkdowns[i]);
+            }
+
+            return columnMTexts;
         }
 
         private void ExecuteLoad()

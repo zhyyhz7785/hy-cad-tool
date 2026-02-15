@@ -31,6 +31,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private const int WM_GETMINMAXINFO = 0x0024;
         private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const int PreviewRefreshDebounceMs = 180;
+        private const int AutoCadSyncDebounceMs = 900;
         private const double MinPreviewVisibleWidth = 280;
         private const double DefaultPreviewPanelWidth = 420;
         private const double MinOutlinePanelWidth = 120;
@@ -44,6 +45,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private readonly DispatcherTimer _rulerSyncTimer;
         private readonly DispatcherTimer _previewRefreshDebounceTimer;
+        private readonly DispatcherTimer _autoCadSyncDebounceTimer;
         private readonly ThemeManager _themeManager = new ThemeManager();
         private readonly PreviewManager _previewManager = new PreviewManager();
 
@@ -61,9 +63,13 @@ namespace HyCADTool.MarkdownEditor.Views
         private readonly LeftPanelControl _leftPanel;
         private readonly PreviewPanelControl _previewPanel;
         private HwndSource _hwndSource;
+        private bool _isAutoSyncRunning;
+        private bool _autoSyncPending;
+        private readonly bool _isModalSession;
 
-        public EditorWindow(EditorInput input)
+        public EditorWindow(EditorInput input, bool isModal = true)
         {
+            _isModalSession = isModal;
             ViewModel = new EditorViewModel(input);
             DataContext = ViewModel;
             InitializeComponent();
@@ -78,6 +84,12 @@ namespace HyCADTool.MarkdownEditor.Views
             {
                 _previewRefreshDebounceTimer.Stop();
                 _ = RefreshPreviewAsync();
+            };
+            _autoCadSyncDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(AutoCadSyncDebounceMs) };
+            _autoCadSyncDebounceTimer.Tick += async (_, __) =>
+            {
+                _autoCadSyncDebounceTimer.Stop();
+                await TriggerLiveSyncAsync();
             };
 
             WireChildControlEvents();
@@ -114,6 +126,7 @@ namespace HyCADTool.MarkdownEditor.Views
             _titleBar.ToggleOutlineRequested += (_, __) => OnToggleOutline();
             _titleBar.ToggleBottomPanelRequested += (_, __) => OnToggleBottomPanel();
             _titleBar.TogglePreviewRequested += (_, __) => OnTogglePreview();
+            _titleBar.InsertCadRequested += async (_, __) => await OnInsertCadClickAsync();
             _titleBar.ConfirmRequested += async (_, __) => await OnConfirmClickAsync();
             _titleBar.MinimizeRequested += (_, __) => SystemCommands.MinimizeWindow(this);
             _titleBar.MaxRestoreRequested += (_, __) => ToggleMaxRestore();
@@ -267,6 +280,7 @@ namespace HyCADTool.MarkdownEditor.Views
             ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
             _rulerSyncTimer.Stop();
             _previewRefreshDebounceTimer.Stop();
+            _autoCadSyncDebounceTimer.Stop();
             SourceInitialized -= OnSourceInitialized;
             StateChanged -= OnWindowStateChanged;
             ViewModel.PropertyChanged -= OnPropChanged;
@@ -290,6 +304,9 @@ namespace HyCADTool.MarkdownEditor.Views
 
             try { EditorWebView?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
             try { _previewPanel?.PreviewWebViewControl?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
+
+            // 关闭窗口后兜底清理回调，防止跨会话残留。
+            EditorLauncher.ClearSyncCallbacks();
         }
 
         private void OnSourceInitialized(object sender, EventArgs e)
@@ -400,6 +417,7 @@ namespace HyCADTool.MarkdownEditor.Views
                     case "input":
                         ViewModel.SetMarkdownFromEditor(msg.Value<string>("value") ?? "");
                         SchedulePreviewRefresh();
+                        ScheduleAutoCadSync();
                         break;
                 }
             }
@@ -473,6 +491,12 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             _previewRefreshDebounceTimer.Stop();
             _previewRefreshDebounceTimer.Start();
+        }
+
+        private void ScheduleAutoCadSync()
+        {
+            _autoCadSyncDebounceTimer.Stop();
+            _autoCadSyncDebounceTimer.Start();
         }
 
         private async Task TryApplyLivePreviewZoomAsync()
@@ -875,16 +899,69 @@ namespace HyCADTool.MarkdownEditor.Views
                 _bottomPanelHeight = BottomPanelRow.ActualHeight;
         }
 
+        private async Task OnInsertCadClickAsync()
+        {
+            var result = await BuildEditorResultAsync(confirmed: true);
+            Result = result;
+            RaiseManualSync(result);
+        }
+
         private async Task OnConfirmClickAsync()
+        {
+            var result = await BuildEditorResultAsync(confirmed: true);
+            Result = result;
+            RaiseManualSync(result);
+
+            if (_isModalSession)
+                DialogResult = true;
+            Close();
+        }
+
+        private void OnCloseClick()
+        {
+            Result = new EditorResult { Confirmed = false };
+            if (_isModalSession)
+                DialogResult = false;
+            Close();
+        }
+
+        private async Task TriggerLiveSyncAsync()
+        {
+            if (_isAutoSyncRunning)
+            {
+                _autoSyncPending = true;
+                return;
+            }
+
+            _isAutoSyncRunning = true;
+            try
+            {
+                var result = await BuildEditorResultAsync(confirmed: true);
+                Result = result;
+                RaiseLiveSync(result);
+            }
+            finally
+            {
+                _isAutoSyncRunning = false;
+            }
+
+            if (_autoSyncPending)
+            {
+                _autoSyncPending = false;
+                ScheduleAutoCadSync();
+            }
+        }
+
+        private async Task<EditorResult> BuildEditorResultAsync(bool confirmed)
         {
             await SyncMarkdownFromEditorAsync();
             await RefreshPreviewAsync();
-            await Task.Delay(300);
+            await Task.Delay(200);
             await SyncFromPreviewAsync();
 
-            Result = new EditorResult
+            return new EditorResult
             {
-                Confirmed = true,
+                Confirmed = confirmed,
                 Markdown = ViewModel.MarkdownText,
                 Config = ViewModel.BuildConfig(),
                 CharsPerColumn = ViewModel.CharsPerColumn,
@@ -892,16 +969,24 @@ namespace HyCADTool.MarkdownEditor.Views
                 PreviewStats = _previewManager.LatestPreviewStats,
                 LayoutResult = _previewManager.LatestLayoutResult
             };
-
-            DialogResult = true;
-            Close();
         }
 
-        private void OnCloseClick()
+        private static void RaiseManualSync(EditorResult result)
         {
-            Result = new EditorResult { Confirmed = false };
-            DialogResult = false;
-            Close();
+            try
+            {
+                EditorLauncher.RaiseManualSync(JsonConvert.SerializeObject(result ?? new EditorResult()));
+            }
+            catch { }
+        }
+
+        private static void RaiseLiveSync(EditorResult result)
+        {
+            try
+            {
+                EditorLauncher.RaiseLiveSync(JsonConvert.SerializeObject(result ?? new EditorResult()));
+            }
+            catch { }
         }
 
         private async Task SyncMarkdownFromEditorAsync()

@@ -4,7 +4,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 {
     /// <summary>
     /// 根据配置计算文字排版区域（纯算法，平台无关）
-    /// 每栏独立宽度 = CharsPerColumn[i] × TextSize × TextXScale × Scale
+    /// 每栏宽度优先由图纸页面尺寸驱动，缺失页面参数时回退为字符数驱动。
     /// </summary>
     public static class TextAreaCalculator
     {

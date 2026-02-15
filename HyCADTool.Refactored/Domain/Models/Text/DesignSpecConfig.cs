@@ -50,13 +50,13 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         public double QuoteIndent { get; set; } = 5;
 
         // ── 字体 ──
-        public string FontFileName { get; set; } = "tssdeng.shx";
-        public string BigFontFileName { get; set; } = "hztxt.shx";
+        public string FontFileName { get; set; } = "Microsoft YaHei";
+        public string BigFontFileName { get; set; } = "";
         public double TextSize { get; set; } = 2.5;        // 图纸 mm
         public double TextXScale { get; set; } = 0.7;
 
         // ── 粗体用字体（SHX 不支持 Bold，切 TTF 模拟） ──
-        public string BoldFontName { get; set; } = "SimHei";
+        public string BoldFontName { get; set; } = "Microsoft YaHei";
 
         // ── 计算属性（× Scale → 模型空间 mm） ──
 
@@ -65,8 +65,21 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>获取第 i 栏的宽度（模型空间 mm）</summary>
         public double GetColumnWidth(int colIndex)
         {
+            if (CanUsePageDrivenWidth())
+                return GetPageDrivenColumnWidth();
+
             int chars = GetCharsForColumn(colIndex);
             return chars * TextSize * TextXScale * Scale;
+        }
+
+        /// <summary>基于图纸可用宽度计算每栏宽度（模型空间 mm）</summary>
+        public double GetPageDrivenColumnWidth()
+        {
+            double availableWidth = (PageWidthMm - MarginLeftMm - MarginRightMm) * Scale;
+            int cols = Math.Max(1, ColumnCount);
+            double gutterTotal = ActualColumnGutter * Math.Max(0, cols - 1);
+            double width = (availableWidth - gutterTotal) / cols;
+            return Math.Max(TextSize * Scale, width);
         }
 
         /// <summary>获取第 i 栏的字符数</summary>
@@ -77,6 +90,14 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             if (colIndex < CharsPerColumn.Length)
                 return CharsPerColumn[colIndex];
             return CharsPerColumn[CharsPerColumn.Length - 1]; // 超出范围取最后一个
+        }
+
+        /// <summary>从栏宽反算每栏可容纳字符数（用于换行估算）</summary>
+        public int DeriveCharsPerColumn()
+        {
+            double colWidth = GetColumnWidth(0);
+            double charWidth = Math.Max(0.01, TextSize * TextXScale * Scale);
+            return Math.Max(1, (int)Math.Floor(colWidth / charWidth));
         }
 
         /// <summary>总宽度 = 各栏宽度之和 + 栏间距 × (栏数-1)</summary>
@@ -96,6 +117,15 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         // TotalHeight 保留用于控制每栏最大高度
         public double TotalHeight { get; set; } = 350;
         public double ActualTotalHeight => TotalHeight * Scale;
+
+        // ── 图纸与边距（用于页面驱动栏宽） ──
+        public string PagePreset { get; set; } = "A2横向";
+        public double PageWidthMm { get; set; } = 594;
+        public double PageHeightMm { get; set; } = 420;
+        public double MarginLeftMm { get; set; } = 25;
+        public double MarginRightMm { get; set; } = 10;
+        public double MarginTopMm { get; set; } = 10;
+        public double MarginBottomMm { get; set; } = 10;
 
         public double H1Height => TextSize * H1Scale * Scale;
         public double H2Height => TextSize * H2Scale * Scale;
@@ -167,6 +197,12 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             TextSize = TextSize > 0 ? TextSize : 2.5;
             TextXScale = TextXScale > 0 ? TextXScale : 0.7;
             TotalHeight = TotalHeight > 0 ? TotalHeight : 350;
+            PageWidthMm = PageWidthMm > 0 ? PageWidthMm : 594;
+            PageHeightMm = PageHeightMm > 0 ? PageHeightMm : 420;
+            MarginLeftMm = Math.Max(0, MarginLeftMm);
+            MarginRightMm = Math.Max(0, MarginRightMm);
+            MarginTopMm = Math.Max(0, MarginTopMm);
+            MarginBottomMm = Math.Max(0, MarginBottomMm);
 
             if (CharsPerColumn == null || CharsPerColumn.Length == 0)
             {
@@ -199,10 +235,25 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             if (TextSize <= 0) throw new ArgumentException("TextSize 必须大于 0");
             if (TextXScale <= 0) throw new ArgumentException("TextXScale 必须大于 0");
             if (TotalHeight <= 0) throw new ArgumentException("TotalHeight 必须大于 0");
+            if (PageWidthMm <= 0) throw new ArgumentException("PageWidthMm 必须大于 0");
+            if (PageHeightMm <= 0) throw new ArgumentException("PageHeightMm 必须大于 0");
+            if (MarginLeftMm < 0 || MarginRightMm < 0 || MarginTopMm < 0 || MarginBottomMm < 0)
+                throw new ArgumentException("Margin 不能为负数");
+            if (PageWidthMm <= MarginLeftMm + MarginRightMm)
+                throw new ArgumentException("PageWidthMm 必须大于左右边距之和");
+            if (PageHeightMm <= MarginTopMm + MarginBottomMm)
+                throw new ArgumentException("PageHeightMm 必须大于上下边距之和");
             if (CharsPerColumn == null || CharsPerColumn.Length == 0)
                 throw new ArgumentException("CharsPerColumn 不能为空");
             if (CharsPerColumn.Any(v => v <= 0))
                 throw new ArgumentException("CharsPerColumn 的值必须大于 0");
+        }
+
+        private bool CanUsePageDrivenWidth()
+        {
+            if (PageWidthMm <= 0) return false;
+            if (MarginLeftMm < 0 || MarginRightMm < 0) return false;
+            return PageWidthMm > MarginLeftMm + MarginRightMm;
         }
     }
 }

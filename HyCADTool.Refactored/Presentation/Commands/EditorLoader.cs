@@ -22,11 +22,27 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private const string EDITOR_DLL_NAME = "HyCADTool.MarkdownEditor.dll";
         private const string LAUNCHER_TYPE = "HyCADTool.MarkdownEditor.EditorLauncher";
         private const string METHOD_NAME = "ShowDialog";
+        private const string METHOD_NAME_NON_MODAL = "ShowNonModal";
+        private const string METHOD_NAME_IS_NON_MODAL_OPEN = "IsNonModalOpen";
+        private const string REGISTER_SYNC_CALLBACKS_METHOD = "RegisterSyncCallbacks";
+        private const string CLEAR_SYNC_CALLBACKS_METHOD = "ClearSyncCallbacks";
+
+        public delegate void EditorSyncDataHandler(
+            string[] columnContents,
+            string[] columnMarkdowns,
+            string markdownSource,
+            DesignSpecConfig config,
+            LayoutResultModel layoutResult);
 
         private static Assembly _editorAssembly;
         private static MethodInfo _showDialogMethod;
+        private static MethodInfo _showNonModalMethod;
+        private static MethodInfo _isNonModalOpenMethod;
+        private static MethodInfo _registerSyncCallbacksMethod;
+        private static MethodInfo _clearSyncCallbacksMethod;
         private static bool _loadAttempted;
         private static string _net8Dir;
+        public static string LastError { get; private set; }
 
         /// <summary>
         /// 尝试使用 WebView2 编辑器打开 Markdown 编辑对话框。
@@ -48,6 +64,32 @@ namespace HyCADTool.Refactored.Presentation.Commands
             out DesignSpecConfig config,
             out LayoutResultModel layoutResult)
         {
+            return TryShowEditor(
+                markdownText,
+                existingConfig,
+                ownerHandle,
+                null,
+                null,
+                out columnContents,
+                out columnMarkdowns,
+                out markdownSource,
+                out config,
+                out layoutResult);
+        }
+
+        public static bool TryShowEditor(
+            string markdownText,
+            DesignSpecConfig existingConfig,
+            long ownerHandle,
+            EditorSyncDataHandler onManualSync,
+            EditorSyncDataHandler onLiveSync,
+            out string[] columnContents,
+            out string[] columnMarkdowns,
+            out string markdownSource,
+            out DesignSpecConfig config,
+            out LayoutResultModel layoutResult)
+        {
+            LastError = null;
             columnContents = null;
             columnMarkdowns = null;
             markdownSource = null;
@@ -59,51 +101,87 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                // 构建输入 JSON
-                var input = new
-                {
-                    Markdown = markdownText ?? "",
-                    Config = existingConfig != null ? ConfigToContract(existingConfig) : null
-                };
-                string inputJson = JsonConvert.SerializeObject(input);
+                if (!RegisterSyncCallbacksIfNeeded(onManualSync, onLiveSync))
+                    return false;
+
+                string inputJson = BuildInputJson(markdownText, existingConfig);
 
                 // 反射调用 EditorLauncher.ShowDialog(inputJson, ownerHandle)
                 string resultJson = (string)_showDialogMethod.Invoke(null, new object[] { inputJson, ownerHandle });
-
-                if (string.IsNullOrEmpty(resultJson))
-                    return false;
-
-                // 解析结果
-                var result = JObject.Parse(resultJson);
-                if (result == null || result.Value<bool>("Confirmed") == false)
-                    return false;
-
-                markdownSource = result.Value<string>("Markdown") ?? "";
-                config = ContractToConfig(result);
-                layoutResult = ParseLayoutResult(result, markdownSource, config);
-
-                // 按栏拆分 Markdown → 各自渲染 MText
-                string colParaIndices = ExtractColumnParagraphIndices(result, layoutResult);
-                if (layoutResult?.Pages != null && layoutResult.Pages.Length > 0)
+                return TryParseEditorResultJson(
+                    resultJson,
+                    out columnContents,
+                    out columnMarkdowns,
+                    out markdownSource,
+                    out config,
+                    out layoutResult);
+            }
+            catch (System.Exception ex)
+            {
+                LastError = $"调用编辑器失败: {ex.Message}";
+                return false;
+            }
+            finally
+            {
+                try
                 {
-                    var page0 = layoutResult.Pages[0];
-                    if (page0?.CharsPerColumn != null && page0.CharsPerColumn.Length > 0)
-                        config.CharsPerColumn = page0.CharsPerColumn;
+                    _clearSyncCallbacksMethod?.Invoke(null, null);
                 }
-                var colMarkdowns = SplitMarkdownByColumns(markdownSource, colParaIndices);
-                columnMarkdowns = colMarkdowns;
-                columnContents = new string[colMarkdowns.Length];
-                for (int i = 0; i < colMarkdowns.Length; i++)
+                catch
                 {
-                    var renderer = new MarkdownToMTextRenderer(config);
-                    string markdownWithoutTables = MarkdownTableExtractor.RemoveTopLevelTables(colMarkdowns[i]);
-                    columnContents[i] = renderer.Convert(markdownWithoutTables);
+                    // ignore clear failure
+                }
+            }
+        }
+
+        /// <summary>
+        /// 以非模态方式打开编辑器，AutoCAD 可继续交互，结果通过回调返回。
+        /// </summary>
+        public static bool TryShowEditorNonModal(
+            string markdownText,
+            DesignSpecConfig existingConfig,
+            long ownerHandle,
+            EditorSyncDataHandler onManualSync,
+            EditorSyncDataHandler onLiveSync)
+        {
+            LastError = null;
+
+            if (!EnsureLoaded())
+                return false;
+
+            if (_showNonModalMethod == null)
+            {
+                LastError = "未找到 ShowNonModal 方法。";
+                return false;
+            }
+
+            if (IsNonModalEditorOpen())
+            {
+                LastError = "Markdown 编辑器已打开，请先关闭当前窗口。";
+                return false;
+            }
+
+            if (!RegisterSyncCallbacksIfNeeded(onManualSync, onLiveSync))
+                return false;
+
+            try
+            {
+                string inputJson = BuildInputJson(markdownText, existingConfig);
+                object ret = _showNonModalMethod.Invoke(null, new object[] { inputJson, ownerHandle });
+                bool opened = ret is bool b ? b : true;
+                if (!opened)
+                {
+                    LastError = "打开非模态编辑器失败。";
+                    _clearSyncCallbacksMethod?.Invoke(null, null);
+                    return false;
                 }
 
                 return true;
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
+                LastError = $"打开非模态编辑器失败: {ex.Message}";
+                try { _clearSyncCallbacksMethod?.Invoke(null, null); } catch { }
                 return false;
             }
         }
@@ -116,10 +194,16 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private static bool EnsureLoaded()
         {
             if (_showDialogMethod != null)
+            {
                 return true;
+            }
 
             if (_loadAttempted)
+            {
+                if (string.IsNullOrEmpty(LastError))
+                    LastError = "编辑器加载曾失败且未恢复。";
                 return false;
+            }
 
             _loadAttempted = true;
 
@@ -136,17 +220,128 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     _editorAssembly = TryLoadFromReCallTemp();
 
                 if (_editorAssembly == null)
+                {
+                    if (string.IsNullOrWhiteSpace(LastError))
+                        LastError = "未找到 HyCADTool.MarkdownEditor.dll。";
                     return false;
+                }
 
                 // 预加载 WebView2 原生 DLL（Windows LoadLibrary 不搜索托管程序集目录）
                 PreloadNativeDependencies();
 
                 var launcherType = _editorAssembly.GetType(LAUNCHER_TYPE);
                 if (launcherType == null)
+                {
+                    LastError = "未找到 EditorLauncher 类型。";
                     return false;
+                }
 
                 _showDialogMethod = launcherType.GetMethod(METHOD_NAME, BindingFlags.Public | BindingFlags.Static);
-                return _showDialogMethod != null;
+                _showNonModalMethod = launcherType.GetMethod(METHOD_NAME_NON_MODAL, BindingFlags.Public | BindingFlags.Static);
+                _isNonModalOpenMethod = launcherType.GetMethod(METHOD_NAME_IS_NON_MODAL_OPEN, BindingFlags.Public | BindingFlags.Static);
+                _registerSyncCallbacksMethod = launcherType.GetMethod(
+                    REGISTER_SYNC_CALLBACKS_METHOD,
+                    BindingFlags.Public | BindingFlags.Static);
+                _clearSyncCallbacksMethod = launcherType.GetMethod(
+                    CLEAR_SYNC_CALLBACKS_METHOD,
+                    BindingFlags.Public | BindingFlags.Static);
+                if (_showDialogMethod == null)
+                {
+                    LastError = "未找到 ShowDialog 方法。";
+                    return false;
+                }
+
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                LastError = $"加载编辑器异常: {ex.Message}";
+                return false;
+            }
+        }
+
+        private static string BuildInputJson(string markdownText, DesignSpecConfig existingConfig)
+        {
+            var input = new
+            {
+                Markdown = markdownText ?? "",
+                Config = existingConfig != null ? ConfigToContract(existingConfig) : null
+            };
+            return JsonConvert.SerializeObject(input);
+        }
+
+        private static bool RegisterSyncCallbacksIfNeeded(
+            EditorSyncDataHandler onManualSync,
+            EditorSyncDataHandler onLiveSync)
+        {
+            if (onManualSync == null && onLiveSync == null)
+                return true;
+
+            if (_registerSyncCallbacksMethod == null)
+            {
+                LastError = "MarkdownEditor.dll 缺少 RegisterSyncCallbacks 接口。";
+                return false;
+            }
+
+            Action<string> manualJsonCallback = json =>
+            {
+                if (TryParseEditorResultJson(
+                    json,
+                    out var cbColumnContents,
+                    out var cbColumnMarkdowns,
+                    out var cbMarkdownSource,
+                    out var cbConfig,
+                    out var cbLayoutResult))
+                {
+                    onManualSync?.Invoke(
+                        cbColumnContents,
+                        cbColumnMarkdowns,
+                        cbMarkdownSource,
+                        cbConfig,
+                        cbLayoutResult);
+                }
+            };
+
+            Action<string> liveJsonCallback = json =>
+            {
+                if (TryParseEditorResultJson(
+                    json,
+                    out var cbColumnContents,
+                    out var cbColumnMarkdowns,
+                    out var cbMarkdownSource,
+                    out var cbConfig,
+                    out var cbLayoutResult))
+                {
+                    onLiveSync?.Invoke(
+                        cbColumnContents,
+                        cbColumnMarkdowns,
+                        cbMarkdownSource,
+                        cbConfig,
+                        cbLayoutResult);
+                }
+            };
+
+            try
+            {
+                _registerSyncCallbacksMethod.Invoke(null, new object[] { manualJsonCallback, liveJsonCallback });
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                LastError = $"注册同步回调失败: {ex.Message}";
+                return false;
+            }
+        }
+
+        private static bool IsNonModalEditorOpen()
+        {
+            if (_isNonModalOpenMethod == null)
+                return false;
+
+            try
+            {
+                object ret = _isNonModalOpenMethod.Invoke(null, null);
+                return ret is bool b && b;
             }
             catch
             {
@@ -205,19 +400,28 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// <summary>在 baseDir 及其 net8 子目录中搜索并加载 MarkdownEditor.dll</summary>
         private static Assembly TryLoadFromBaseDir(string baseDir)
         {
-            string[] searchPaths = new[]
+            try
             {
-                Path.Combine(baseDir, "net8", EDITOR_DLL_NAME),
-                Path.Combine(baseDir, EDITOR_DLL_NAME),
-            };
+                string[] searchPaths = new[]
+                {
+                    Path.Combine(baseDir, "net8", EDITOR_DLL_NAME),
+                    Path.Combine(baseDir, EDITOR_DLL_NAME),
+                };
 
-            string dllPath = searchPaths.FirstOrDefault(File.Exists);
-            if (dllPath == null)
+                string dllPath = searchPaths.FirstOrDefault(File.Exists);
+                if (dllPath == null)
+                    return null;
+
+                _net8Dir = Path.GetDirectoryName(dllPath);
+                AppDomain.CurrentDomain.AssemblyResolve += ResolveEditorDeps;
+                var asm = Assembly.LoadFrom(dllPath);
+                return asm;
+            }
+            catch (System.Exception ex)
+            {
+                LastError = $"找到编辑器 DLL 但加载失败: {ex.Message}";
                 return null;
-
-            _net8Dir = Path.GetDirectoryName(dllPath);
-            AppDomain.CurrentDomain.AssemblyResolve += ResolveEditorDeps;
-            return Assembly.LoadFrom(dllPath);
+            }
         }
 
         /// <summary>
@@ -294,6 +498,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cfg.TotalHeight,
                 cfg.TextSize,
                 cfg.TextXScale,
+                cfg.PagePreset,
+                cfg.PageWidthMm,
+                cfg.PageHeightMm,
+                cfg.MarginLeftMm,
+                cfg.MarginRightMm,
+                cfg.MarginTopMm,
+                cfg.MarginBottomMm,
                 cfg.FontFileName,
                 cfg.BigFontFileName,
                 cfg.BoldFontName,
@@ -362,6 +573,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 TotalHeight = Val("TotalHeight", 350.0),
                 TextSize = Val("TextSize", 2.5),
                 TextXScale = Val("TextXScale", 0.7),
+                PagePreset = StrVal("PagePreset", "A2横向"),
+                PageWidthMm = Val("PageWidthMm", 594.0),
+                PageHeightMm = Val("PageHeightMm", 420.0),
+                MarginLeftMm = Val("MarginLeftMm", 25.0),
+                MarginRightMm = Val("MarginRightMm", 10.0),
+                MarginTopMm = Val("MarginTopMm", 10.0),
+                MarginBottomMm = Val("MarginBottomMm", 10.0),
                 H1SpaceBefore = Val("H1SpaceBefore", 2.0),
                 H1SpaceAfter = Val("H1SpaceAfter", 0.8),
                 H2SpaceBefore = Val("H2SpaceBefore", 1.5),
@@ -372,9 +590,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 LiSpaceAfter = Val("LiSpaceAfter", 0.2),
                 QuoteSpaceBefore = Val("QuoteSpaceBefore", 0.5),
                 QuoteSpaceAfter = Val("QuoteSpaceAfter", 0.5),
-                FontFileName = StrVal("FontFileName", "tssdeng.shx"),
-                BigFontFileName = StrVal("BigFontFileName", "hztxt.shx"),
-                BoldFontName = StrVal("BoldFontName", "SimHei")
+                FontFileName = StrVal("FontFileName", "Microsoft YaHei"),
+                BigFontFileName = StrVal("BigFontFileName", string.Empty),
+                BoldFontName = StrVal("BoldFontName", "Microsoft YaHei")
             };
 
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings
@@ -390,6 +608,65 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
 
             return config;
+        }
+
+        #endregion
+
+        #region Result 解析
+
+        private static bool TryParseEditorResultJson(
+            string resultJson,
+            out string[] columnContents,
+            out string[] columnMarkdowns,
+            out string markdownSource,
+            out DesignSpecConfig config,
+            out LayoutResultModel layoutResult)
+        {
+            columnContents = null;
+            columnMarkdowns = null;
+            markdownSource = null;
+            config = null;
+            layoutResult = null;
+
+            if (string.IsNullOrEmpty(resultJson))
+                return false;
+
+            JObject result;
+            try
+            {
+                result = JObject.Parse(resultJson);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (result == null || result.Value<bool>("Confirmed") == false)
+                return false;
+
+            markdownSource = result.Value<string>("Markdown") ?? "";
+            config = ContractToConfig(result);
+            layoutResult = ParseLayoutResult(result, markdownSource, config);
+
+            string colParaIndices = ExtractColumnParagraphIndices(result, layoutResult);
+            if (layoutResult?.Pages != null && layoutResult.Pages.Length > 0)
+            {
+                var page0 = layoutResult.Pages[0];
+                if (page0?.CharsPerColumn != null && page0.CharsPerColumn.Length > 0)
+                    config.CharsPerColumn = page0.CharsPerColumn;
+            }
+
+            var colMarkdowns = SplitMarkdownByColumns(markdownSource, colParaIndices);
+            columnMarkdowns = colMarkdowns;
+            columnContents = new string[colMarkdowns.Length];
+            for (int i = 0; i < colMarkdowns.Length; i++)
+            {
+                var renderer = new MarkdownToMTextRenderer(config);
+                string markdownWithoutTables = MarkdownTableExtractor.RemoveTopLevelTables(colMarkdowns[i]);
+                columnContents[i] = renderer.Convert(markdownWithoutTables);
+            }
+
+            return true;
         }
 
         #endregion
@@ -508,7 +785,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 BoldFontName = cfg.BoldFontName,
                 TextSize = cfg.TextSize,
                 TextXScale = cfg.TextXScale,
-                TotalHeight = cfg.TotalHeight
+                TotalHeight = cfg.TotalHeight,
+                PagePreset = cfg.PagePreset,
+                PageWidthMm = cfg.PageWidthMm,
+                PageHeightMm = cfg.PageHeightMm,
+                MarginLeftMm = cfg.MarginLeftMm,
+                MarginRightMm = cfg.MarginRightMm,
+                MarginTopMm = cfg.MarginTopMm,
+                MarginBottomMm = cfg.MarginBottomMm
             };
             layoutConfig.Normalize();
             return layoutConfig;

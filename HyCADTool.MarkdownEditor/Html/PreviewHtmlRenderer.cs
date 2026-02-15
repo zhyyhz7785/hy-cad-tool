@@ -1,6 +1,7 @@
 using Markdig;
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.TextLayout;
@@ -68,11 +69,13 @@ namespace HyCADTool.MarkdownEditor.Html
             string pMargin = $"margin:0 0 {cfg.PSpaceAfter:F1}em";
             string liMargin = $"margin:0 0 {cfg.LiSpaceAfter:F1}em";
             string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
+            string fontFamily = ResolvePreviewFontFamily(cfg);
 
             var tokens = new (string token, string value)[]
             {
                 ("/*BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px"),
                 ("/*BASE_LINE_HEIGHT*/", lineHeightFactor.ToString("0.###", CultureInfo.InvariantCulture)),
+                ("/*BASE_FONT_FAMILY*/", fontFamily),
                 ("/*PAPER_WIDTH*/", $"{Round(pageWidthPx):F0}px"),
                 ("/*PAPER_HEIGHT*/", $"{Round(pageHeightPx):F0}px"),
                 ("/*PAD_LEFT*/", $"{Round(leftPx):F0}px"),
@@ -102,6 +105,7 @@ namespace HyCADTool.MarkdownEditor.Html
             double pageWidthMm = Math.Max(1.0, cfg.PageWidthMm);
             const double contentPaddingX = 20.0; // .col-content 左右 padding 合计
             string layoutJson = layoutResult == null ? "null" : JsonConvert.SerializeObject(layoutResult);
+            string customColumnWidths = BuildCustomColumnWidthsJson(layoutResult, safePreviewScale);
 
             return JS_TEMPLATE
                 .Replace("/*PREVIEW_SCALE*/", safePreviewScale.ToString("0.#####", CultureInfo.InvariantCulture))
@@ -110,7 +114,34 @@ namespace HyCADTool.MarkdownEditor.Html
                 .Replace("/*PAGE_WIDTH_MM*/", pageWidthMm.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*COLUMN_COUNT*/", columnCount.ToString(CultureInfo.InvariantCulture))
                 .Replace("/*CONTENT_PADDING_X*/", contentPaddingX.ToString("0.#####", CultureInfo.InvariantCulture))
-                .Replace("/*LAYOUT_RESULT*/", layoutJson);
+                .Replace("/*LAYOUT_RESULT*/", layoutJson)
+                .Replace("/*CUSTOM_COLUMN_WIDTHS*/", customColumnWidths);
+        }
+
+        private static string BuildCustomColumnWidthsJson(LayoutResult layoutResult, double previewScale)
+        {
+            if (layoutResult?.ColumnWidthsMm == null || layoutResult.ColumnWidthsMm.Length == 0)
+                return "[]";
+
+            var values = layoutResult.ColumnWidthsMm
+                .Where(w => w > 0)
+                .Select(w => (w * previewScale).ToString("0.###", CultureInfo.InvariantCulture))
+                .ToArray();
+
+            if (values.Length == 0)
+                return "[]";
+
+            return "[" + string.Join(",", values) + "]";
+        }
+
+        private static string ResolvePreviewFontFamily(EditorConfig cfg)
+        {
+            string previewFamily = cfg?.PreviewFontFamily;
+            if (string.IsNullOrWhiteSpace(previewFamily))
+                previewFamily = "Microsoft YaHei";
+
+            string escaped = previewFamily.Replace("\\", "\\\\").Replace("'", "\\'");
+            return $"'{escaped}','微软雅黑','Segoe UI',sans-serif";
         }
 
         private static double Round(double value)
@@ -141,7 +172,7 @@ namespace HyCADTool.MarkdownEditor.Html
 html,body{height:100%}
 body{
   overflow:hidden;background:#0d1117;color:#d4d4d4;
-  font-family:'Microsoft YaHei','Segoe UI',sans-serif;
+  font-family:/*BASE_FONT_FAMILY*/;
   font-size:/*BASE_FONT_SIZE*/;line-height:/*BASE_LINE_HEIGHT*/
 }
 
@@ -265,7 +296,7 @@ var vPage=-1,vCol=-1,sY=0,sH=0;
 var pMode='',pStartX=0,pStartY=0,pStartW=0,pStartH=0,pTargetPage=0;
 var currentPageIndex=0;
 var customPaperWidth=0,customPaperHeight=0;
-var customColumnWidths=[];
+var customColumnWidths=/*CUSTOM_COLUMN_WIDTHS*/;
 var customColumnHeights={};
 var scrollTicking=false;
 
