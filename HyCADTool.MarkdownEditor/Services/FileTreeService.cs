@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Windows.Controls;
 using System.Windows.Media;
+using HyCADTool.MarkdownEditor.Models;
 
 namespace HyCADTool.MarkdownEditor.Services
 {
     internal class FileTreeService
     {
-        public TreeViewItem BuildTreeNode(string dirPath, string currentFile, Func<string, Brush> getBrush)
+        public TreeViewItem BuildTreeNode(string dirPath, string currentFile, Func<string, Brush> getBrush, FileSortMode sortMode)
         {
             string dirName = Path.GetFileName(dirPath);
             if (string.IsNullOrWhiteSpace(dirName)) dirName = dirPath;
@@ -23,19 +24,17 @@ namespace HyCADTool.MarkdownEditor.Services
 
             try
             {
-                foreach (var sub in Directory.GetDirectories(dirPath)
-                             .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                foreach (var sub in SortPaths(Directory.GetDirectories(dirPath), sortMode, isDirectory: true))
                 {
                     if (Path.GetFileName(sub).StartsWith(".")) continue;
-                    node.Items.Add(BuildTreeNode(sub, currentFile, getBrush));
+                    node.Items.Add(BuildTreeNode(sub, currentFile, getBrush, sortMode));
                 }
             }
             catch { }
 
             try
             {
-                foreach (var file in Directory.GetFiles(dirPath, "*.md", SearchOption.TopDirectoryOnly)
-                             .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                foreach (var file in SortPaths(Directory.GetFiles(dirPath, "*.md", SearchOption.TopDirectoryOnly), sortMode, isDirectory: false))
                 {
                     bool isCurrent = string.Equals(file, currentFile, StringComparison.OrdinalIgnoreCase);
                     node.Items.Add(new TreeViewItem
@@ -55,6 +54,37 @@ namespace HyCADTool.MarkdownEditor.Services
                 node.IsExpanded = true;
 
             return node;
+        }
+
+        private static IOrderedEnumerable<string> SortPaths(string[] paths, FileSortMode sortMode, bool isDirectory)
+        {
+            switch (sortMode)
+            {
+                case FileSortMode.NameDesc:
+                    return paths.OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
+                case FileSortMode.ModifiedDesc:
+                    return paths
+                        .OrderByDescending(path => GetWriteTimeUtc(path, isDirectory))
+                        .ThenBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
+                case FileSortMode.ModifiedAsc:
+                    return paths
+                        .OrderBy(path => GetWriteTimeUtc(path, isDirectory))
+                        .ThenBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
+                default:
+                    return paths.OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        private static DateTime GetWriteTimeUtc(string path, bool isDirectory)
+        {
+            try
+            {
+                return isDirectory ? Directory.GetLastWriteTimeUtc(path) : File.GetLastWriteTimeUtc(path);
+            }
+            catch
+            {
+                return DateTime.MinValue;
+            }
         }
 
         public string ResolveDir(string path)

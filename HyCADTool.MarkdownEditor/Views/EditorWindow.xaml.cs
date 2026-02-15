@@ -28,6 +28,8 @@ namespace HyCADTool.MarkdownEditor.Views
         public EditorResult Result { get; private set; }
 
         private const int WM_MOUSEWHEEL = 0x020A;
+        private const int WM_GETMINMAXINFO = 0x0024;
+        private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const int PreviewRefreshDebounceMs = 180;
         private const double MinPreviewVisibleWidth = 280;
         private const double DefaultPreviewPanelWidth = 420;
@@ -58,6 +60,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private readonly TitleBarControl _titleBar;
         private readonly LeftPanelControl _leftPanel;
         private readonly PreviewPanelControl _previewPanel;
+        private HwndSource _hwndSource;
 
         public EditorWindow(EditorInput input)
         {
@@ -86,6 +89,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
             Loaded += OnLoaded;
             Closed += OnClosed;
+            SourceInitialized += OnSourceInitialized;
             StateChanged += OnWindowStateChanged;
             ViewModel.PropertyChanged += OnPropChanged;
             ViewModel.EditorContentLoadRequested += OnEditorContentLoadRequested;
@@ -258,9 +262,15 @@ namespace HyCADTool.MarkdownEditor.Views
             ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
             _rulerSyncTimer.Stop();
             _previewRefreshDebounceTimer.Stop();
+            SourceInitialized -= OnSourceInitialized;
             StateChanged -= OnWindowStateChanged;
             ViewModel.PropertyChanged -= OnPropChanged;
             ViewModel.EditorContentLoadRequested -= OnEditorContentLoadRequested;
+            if (_hwndSource != null)
+            {
+                _hwndSource.RemoveHook(WndProc);
+                _hwndSource = null;
+            }
             try
             {
                 if (EditorWebView?.CoreWebView2 != null)
@@ -275,6 +285,84 @@ namespace HyCADTool.MarkdownEditor.Views
 
             try { EditorWebView?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
             try { _previewPanel?.PreviewWebViewControl?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
+        }
+
+        private void OnSourceInitialized(object sender, EventArgs e)
+        {
+            _hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+            _hwndSource?.AddHook(WndProc);
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_GETMINMAXINFO)
+            {
+                WmGetMinMaxInfo(hwnd, lParam);
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
+        {
+            IntPtr monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if (monitor == IntPtr.Zero) return;
+
+            var monitorInfo = new MONITORINFO();
+            if (!GetMonitorInfo(monitor, monitorInfo)) return;
+
+            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            RECT workArea = monitorInfo.rcWork;
+            RECT monitorArea = monitorInfo.rcMonitor;
+
+            mmi.ptMaxPosition.X = Math.Abs(workArea.Left - monitorArea.Left);
+            mmi.ptMaxPosition.Y = Math.Abs(workArea.Top - monitorArea.Top);
+            mmi.ptMaxSize.X = Math.Abs(workArea.Right - workArea.Left);
+            mmi.ptMaxSize.Y = Math.Abs(workArea.Bottom - workArea.Top);
+
+            Marshal.StructureToPtr(mmi, lParam, true);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, MONITORINFO lpmi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO
+        {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private class MONITORINFO
+        {
+            public int cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+            public RECT rcMonitor = default;
+            public RECT rcWork = default;
+            public int dwFlags = 0;
         }
 
         private void OnWindowStateChanged(object sender, EventArgs e)

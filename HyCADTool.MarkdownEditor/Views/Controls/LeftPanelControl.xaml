@@ -13,6 +13,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="32" />
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0">
@@ -79,6 +80,39 @@
                      SelectionChanged="OnOutlineSelectionChanged"
                      Background="Transparent" BorderThickness="0"
                      Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12" />
+
+            <Border Grid.Row="2"
+                    BorderBrush="{DynamicResource ThemeBorderBrush}"
+                    BorderThickness="1,1,0,0"
+                    Background="{DynamicResource ThemeBgSurfaceBrush}">
+                <Grid Margin="4,2,4,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="RecentDirsBtn"
+                            Grid.Column="0"
+                            Click="OnRecentDirsClick"
+                            Content="最近目录"
+                            Padding="6,2"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="最近使用的目录" />
+                    <Button x:Name="SortBtn"
+                            Grid.Column="2"
+                            Click="OnSortClick"
+                            Content="排序"
+                            Padding="6,2"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="切换文件排序方式" />
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

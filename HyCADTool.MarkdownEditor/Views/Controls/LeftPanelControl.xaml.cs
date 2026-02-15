@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.Services;
 
 namespace HyCADTool.MarkdownEditor.Views.Controls
@@ -30,7 +33,11 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         private bool _updatingFileList;
         private bool _isDarkTheme = true;
         private string _currentFilePath = "";
+        private string _activeRootDir = "";
+        private FileSortMode _fileSortMode = FileSortMode.NameAsc;
+        private readonly List<string> _recentDirectories = new List<string>();
         private readonly FileTreeService _fileTreeService = new FileTreeService();
+        private readonly LeftPanelStateService _leftPanelStateService = new LeftPanelStateService();
 
         public event EventHandler<string> FileOpenRequested;
         public event EventHandler<string> OutlineHeadingSelected;
@@ -41,7 +48,9 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         public LeftPanelControl()
         {
             InitializeComponent();
+            LoadPersistedState();
             ApplyLeftPanelTab();
+            UpdateBottomButtonLabels();
         }
 
         public void SetThemeMode(bool isDarkTheme)
@@ -80,15 +89,17 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
             _currentFilePath = currentFilePath ?? "";
             try
             {
-                FileTree.Items.Clear();
-                if (string.IsNullOrWhiteSpace(_currentFilePath)) return;
+                if (!string.IsNullOrWhiteSpace(_currentFilePath))
+                {
+                    string rootDir = Path.GetDirectoryName(_currentFilePath);
+                    if (!string.IsNullOrWhiteSpace(rootDir) && Directory.Exists(rootDir))
+                    {
+                        _activeRootDir = rootDir;
+                        AddRecentDirectory(rootDir);
+                    }
+                }
 
-                string rootDir = Path.GetDirectoryName(_currentFilePath);
-                if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir)) return;
-
-                var rootNode = _fileTreeService.BuildTreeNode(rootDir, _currentFilePath, ThemeBrush);
-                rootNode.IsExpanded = true;
-                FileTree.Items.Add(rootNode);
+                RebuildFileTree();
             }
             finally
             {
@@ -105,13 +116,20 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
 
         private void ApplyLeftPanelTab()
         {
-            if (FileTree == null || OutlineList == null || FileTabBtn == null || OutlineTabBtn == null) return;
+            if (FileTree == null || OutlineList == null || FileTabBtn == null || OutlineTabBtn == null || RecentDirsBtn == null || SortBtn == null)
+                return;
 
             FileTree.Visibility = _showFileTab ? Visibility.Visible : Visibility.Collapsed;
             OutlineList.Visibility = _showFileTab ? Visibility.Collapsed : Visibility.Visible;
 
             FileTabBtn.Foreground = _showFileTab ? ThemeBrush("ThemeTextPrimaryBrush") : ThemeBrush("ThemeTextSecondaryBrush");
             OutlineTabBtn.Foreground = _showFileTab ? ThemeBrush("ThemeTextSecondaryBrush") : ThemeBrush("ThemeTextPrimaryBrush");
+
+            // 底部操作仅作用于“文件”面板
+            RecentDirsBtn.IsEnabled = _showFileTab;
+            SortBtn.IsEnabled = _showFileTab;
+            RecentDirsBtn.Opacity = _showFileTab ? 1.0 : 0.5;
+            SortBtn.Opacity = _showFileTab ? 1.0 : 0.5;
         }
 
         private string GetSelectedTreePath()
@@ -206,6 +224,18 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         {
             _showFileTab = false;
             ApplyLeftPanelTab();
+        }
+
+        private void OnRecentDirsClick(object sender, RoutedEventArgs e)
+        {
+            if (!_showFileTab) return;
+            ShowRecentDirectoriesMenu();
+        }
+
+        private void OnSortClick(object sender, RoutedEventArgs e)
+        {
+            if (!_showFileTab) return;
+            ShowSortMenu();
         }
 
         private void OnOutlineSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -369,6 +399,165 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
             string dir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
             if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
                 System.Diagnostics.Process.Start("explorer.exe", dir);
+        }
+
+        private void LoadPersistedState()
+        {
+            var state = _leftPanelStateService.Load();
+            _fileSortMode = state.SortMode;
+            _recentDirectories.Clear();
+            _recentDirectories.AddRange(state.RecentDirectories);
+            _activeRootDir = _recentDirectories.FirstOrDefault() ?? "";
+        }
+
+        private void SavePersistedState()
+        {
+            _leftPanelStateService.Save(_fileSortMode, _recentDirectories);
+        }
+
+        private void AddRecentDirectory(string dirPath)
+        {
+            if (string.IsNullOrWhiteSpace(dirPath)) return;
+            string normalized = dirPath.Trim();
+            _recentDirectories.RemoveAll(path => string.Equals(path, normalized, StringComparison.OrdinalIgnoreCase));
+            _recentDirectories.Insert(0, normalized);
+            if (_recentDirectories.Count > 12)
+                _recentDirectories.RemoveRange(12, _recentDirectories.Count - 12);
+            SavePersistedState();
+            UpdateBottomButtonLabels();
+        }
+
+        private void RebuildFileTree()
+        {
+            FileTree.Items.Clear();
+
+            if (string.IsNullOrWhiteSpace(_activeRootDir) || !Directory.Exists(_activeRootDir))
+            {
+                StatusChanged?.Invoke(this, "未找到可显示的目录");
+                return;
+            }
+
+            var rootNode = _fileTreeService.BuildTreeNode(_activeRootDir, _currentFilePath, ThemeBrush, _fileSortMode);
+            rootNode.IsExpanded = true;
+            FileTree.Items.Add(rootNode);
+        }
+
+        private void OpenRootDirectory(string dirPath)
+        {
+            if (string.IsNullOrWhiteSpace(dirPath) || !Directory.Exists(dirPath)) return;
+            _activeRootDir = dirPath;
+            AddRecentDirectory(dirPath);
+            RebuildFileTree();
+            UpdateBottomButtonLabels();
+            StatusChanged?.Invoke(this, $"目录: {dirPath}");
+        }
+
+        private void ShowRecentDirectoriesMenu()
+        {
+            var menu = new ContextMenu
+            {
+                Placement = PlacementMode.Top,
+                PlacementTarget = RecentDirsBtn
+            };
+
+            var validDirs = _recentDirectories.Where(Directory.Exists).ToList();
+            if (validDirs.Count == 0)
+            {
+                menu.Items.Add(new MenuItem { Header = "暂无最近目录", IsEnabled = false });
+            }
+            else
+            {
+                foreach (var dir in validDirs)
+                {
+                    string name = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                    if (string.IsNullOrWhiteSpace(name)) name = dir;
+                    var item = new MenuItem
+                    {
+                        Header = name,
+                        ToolTip = dir,
+                        IsCheckable = true,
+                        IsChecked = string.Equals(_activeRootDir, dir, StringComparison.OrdinalIgnoreCase)
+                    };
+                    item.Click += (_, __) => OpenRootDirectory(dir);
+                    menu.Items.Add(item);
+                }
+
+                menu.Items.Add(new Separator());
+                var clearItem = new MenuItem { Header = "清空最近目录" };
+                clearItem.Click += (_, __) =>
+                {
+                    _recentDirectories.Clear();
+                    SavePersistedState();
+                    UpdateBottomButtonLabels();
+                    StatusChanged?.Invoke(this, "已清空最近目录");
+                };
+                menu.Items.Add(clearItem);
+            }
+
+            menu.IsOpen = true;
+        }
+
+        private void ShowSortMenu()
+        {
+            var menu = new ContextMenu
+            {
+                Placement = PlacementMode.Top,
+                PlacementTarget = SortBtn
+            };
+
+            AddSortMenuItem(menu, "名称 ↑", FileSortMode.NameAsc);
+            AddSortMenuItem(menu, "名称 ↓", FileSortMode.NameDesc);
+            AddSortMenuItem(menu, "修改时间（新→旧）", FileSortMode.ModifiedDesc);
+            AddSortMenuItem(menu, "修改时间（旧→新）", FileSortMode.ModifiedAsc);
+
+            menu.Items.Add(new Separator());
+            var refreshItem = new MenuItem { Header = "刷新目录" };
+            refreshItem.Click += (_, __) => RebuildFileTree();
+            menu.Items.Add(refreshItem);
+
+            menu.IsOpen = true;
+        }
+
+        private void AddSortMenuItem(ContextMenu menu, string header, FileSortMode mode)
+        {
+            var item = new MenuItem
+            {
+                Header = header,
+                IsCheckable = true,
+                IsChecked = _fileSortMode == mode
+            };
+            item.Click += (_, __) =>
+            {
+                _fileSortMode = mode;
+                SavePersistedState();
+                UpdateBottomButtonLabels();
+                RebuildFileTree();
+                StatusChanged?.Invoke(this, $"排序: {GetSortModeLabel(mode)}");
+            };
+            menu.Items.Add(item);
+        }
+
+        private void UpdateBottomButtonLabels()
+        {
+            if (RecentDirsBtn == null || SortBtn == null) return;
+            int count = _recentDirectories.Count(Directory.Exists);
+            RecentDirsBtn.Content = count > 0 ? $"最近目录 ({count})" : "最近目录";
+            SortBtn.Content = $"排序: {GetSortModeLabel(_fileSortMode)}";
+        }
+
+        private static string GetSortModeLabel(FileSortMode mode)
+        {
+            switch (mode)
+            {
+                case FileSortMode.NameDesc:
+                    return "名称↓";
+                case FileSortMode.ModifiedDesc:
+                    return "时间↓";
+                case FileSortMode.ModifiedAsc:
+                    return "时间↑";
+                default:
+                    return "名称↑";
+            }
         }
     }
 }
