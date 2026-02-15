@@ -325,6 +325,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 try { cpc = statsCpc.Select(t => (int)t).ToArray(); }
                 catch { }
             }
+            if (cpc == null
+                && result["PreviewStats"]?["Pages"] is JArray pages
+                && pages.Count > 0
+                && pages[0]?["CharsPerColumn"] is JArray firstPageCpc)
+            {
+                try { cpc = firstPageCpc.Select(t => (int)t).ToArray(); }
+                catch { }
+            }
 
             double Val(string name, double def) => cfg != null && cfg[name] != null ? (double)cfg[name] : def;
             int IntVal(string name, int def) => cfg != null && cfg[name] != null ? (int)cfg[name] : def;
@@ -397,6 +405,25 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         : string.Empty)
                     .ToArray();
                 return string.Join("|", groups);
+            }
+
+            if (stats["Pages"] is JArray pages
+                && pages.Count > 0
+                && pages[0] is JObject firstPage)
+            {
+                string firstText = firstPage.Value<string>("ColumnParagraphIndicesText");
+                if (!string.IsNullOrWhiteSpace(firstText))
+                    return firstText;
+
+                if (firstPage["ColumnParagraphIndices"] is JArray firstColArray)
+                {
+                    var firstGroups = firstColArray
+                        .Select(token => token is JArray row
+                            ? string.Join(",", row.Select(v => (int)v))
+                            : string.Empty)
+                        .ToArray();
+                    return string.Join("|", firstGroups);
+                }
             }
 
             return string.Empty;

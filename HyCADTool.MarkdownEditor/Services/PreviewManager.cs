@@ -17,6 +17,8 @@ namespace HyCADTool.MarkdownEditor.Services
         private double _renderedPreviewScale = 1.0;
         private string _pendingPreviewHtml = "";
         private PreviewStats _latestPreviewStats = new PreviewStats();
+        private int _currentPage = 1;
+        private int _totalPages = 1;
 
         public bool IsPreviewReady
         {
@@ -28,6 +30,8 @@ namespace HyCADTool.MarkdownEditor.Services
         public bool HasPendingHtml => !string.IsNullOrEmpty(_pendingPreviewHtml);
         public string PendingHtml => _pendingPreviewHtml;
         public double RenderedPreviewScale => _renderedPreviewScale;
+        public int CurrentPage => _currentPage;
+        public int TotalPages => _totalPages;
 
         public void ClearPendingHtml() => _pendingPreviewHtml = "";
 
@@ -67,7 +71,21 @@ namespace HyCADTool.MarkdownEditor.Services
                 return true;
             }
 
+            if (string.Equals(type, "pageState", StringComparison.OrdinalIgnoreCase))
+            {
+                int current = msg.Value<int?>("currentPage") ?? 1;
+                int total = msg.Value<int?>("pageCount") ?? 1;
+                UpdatePageState(current, total);
+                return true;
+            }
+
             return false;
+        }
+
+        private void UpdatePageState(int currentPage, int totalPages)
+        {
+            _totalPages = Math.Max(1, totalPages);
+            _currentPage = Math.Max(1, Math.Min(_totalPages, currentPage));
         }
 
         public void UpdateRulerScale(PreviewPanelControl panel, EditorViewModel viewModel)
@@ -118,7 +136,21 @@ namespace HyCADTool.MarkdownEditor.Services
 
             previewWebView.CoreWebView2.NavigateToString(html);
             _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
+            UpdatePageState(1, 1);
             await Task.CompletedTask;
+        }
+
+        public async Task GoToPageAsync(WebView2 previewWebView, int page)
+        {
+            if (!_previewReady || previewWebView?.CoreWebView2 == null) return;
+            int target = Math.Max(1, page);
+            await previewWebView.CoreWebView2.ExecuteScriptAsync($"jumpToPage({target});");
+        }
+
+        public Task ShiftPageAsync(WebView2 previewWebView, int delta)
+        {
+            int basePage = _currentPage > 0 ? _currentPage : 1;
+            return GoToPageAsync(previewWebView, basePage + delta);
         }
 
         public async Task SyncFromPreviewAsync(WebView2 previewWebView, EditorViewModel viewModel)
@@ -141,23 +173,47 @@ namespace HyCADTool.MarkdownEditor.Services
                 return;
 
             _latestPreviewStats = stats;
+            UpdatePageState(stats.CurrentPage, stats.PageCount);
 
-            if (stats.CharsPerColumn != null && stats.CharsPerColumn.Length > 0)
+            int[] charsPerColumn = stats.CharsPerColumn;
+            if ((charsPerColumn == null || charsPerColumn.Length == 0)
+                && stats.Pages != null
+                && stats.Pages.Length > 0)
             {
-                var values = stats.CharsPerColumn.Where(v => v > 0).ToArray();
+                charsPerColumn = stats.Pages[0]?.CharsPerColumn;
+            }
+
+            if (charsPerColumn != null && charsPerColumn.Length > 0)
+            {
+                var values = charsPerColumn.Where(v => v > 0).ToArray();
                 if (values.Length > 0)
                     viewModel.CharsPerColumn = values;
             }
 
             string paraText = stats.ColumnParagraphIndicesText;
+            if (string.IsNullOrWhiteSpace(paraText)
+                && stats.Pages != null
+                && stats.Pages.Length > 0)
+            {
+                paraText = stats.Pages[0]?.ColumnParagraphIndicesText;
+                if (string.IsNullOrWhiteSpace(paraText))
+                    paraText = BuildParagraphText(stats.Pages[0]?.ColumnParagraphIndices);
+            }
+
             if (string.IsNullOrWhiteSpace(paraText) && stats.ColumnParagraphIndices != null)
             {
-                paraText = string.Join("|", stats.ColumnParagraphIndices
-                    .Select(col => string.Join(",", (col ?? Array.Empty<int>()).Select(v => v.ToString()))));
+                paraText = BuildParagraphText(stats.ColumnParagraphIndices);
             }
 
             if (!string.IsNullOrWhiteSpace(paraText))
                 viewModel.ColumnParagraphIndices = paraText;
+        }
+
+        private static string BuildParagraphText(int[][] columns)
+        {
+            if (columns == null || columns.Length == 0) return string.Empty;
+            return string.Join("|", columns
+                .Select(col => string.Join(",", (col ?? Array.Empty<int>()).Select(v => v.ToString()))));
         }
     }
 }

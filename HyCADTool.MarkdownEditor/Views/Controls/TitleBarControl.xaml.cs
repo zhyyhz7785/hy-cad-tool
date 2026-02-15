@@ -6,6 +6,19 @@ using System.Windows.Media;
 
 namespace HyCADTool.MarkdownEditor.Views.Controls
 {
+    public enum WorkspaceMode
+    {
+        Writing,
+        Layout,
+        Proofread
+    }
+
+    public class WorkspaceModeEventArgs : EventArgs
+    {
+        public WorkspaceMode Mode { get; }
+        public WorkspaceModeEventArgs(WorkspaceMode mode) => Mode = mode;
+    }
+
     public class ScreenPointEventArgs : EventArgs
     {
         public Point ScreenPoint { get; }
@@ -26,6 +39,7 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         public event EventHandler CloseRequested;
         public event EventHandler DragMoveRequested;
         public event EventHandler<ScreenPointEventArgs> SystemMenuRequested;
+        public event EventHandler<WorkspaceModeEventArgs> WorkspaceModeRequested;
 
         public TitleBarControl()
         {
@@ -57,6 +71,9 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         private void OnMinimizeWindowClick(object sender, RoutedEventArgs e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);
         private void OnMaxRestoreWindowClick(object sender, RoutedEventArgs e) => MaxRestoreRequested?.Invoke(this, EventArgs.Empty);
         private void OnCloseClick(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
+        private void OnWorkspaceWritingClick(object sender, RoutedEventArgs e) => WorkspaceModeRequested?.Invoke(this, new WorkspaceModeEventArgs(WorkspaceMode.Writing));
+        private void OnWorkspaceLayoutClick(object sender, RoutedEventArgs e) => WorkspaceModeRequested?.Invoke(this, new WorkspaceModeEventArgs(WorkspaceMode.Layout));
+        private void OnWorkspaceProofreadClick(object sender, RoutedEventArgs e) => WorkspaceModeRequested?.Invoke(this, new WorkspaceModeEventArgs(WorkspaceMode.Proofread));
 
         private void OnTitleBarMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {

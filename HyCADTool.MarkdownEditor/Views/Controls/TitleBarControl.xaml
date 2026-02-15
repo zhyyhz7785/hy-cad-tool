@@ -81,6 +81,11 @@
                         <MenuItem Header="黑色为主" Click="OnThemeDarkClick" />
                         <MenuItem Header="白色为主" Click="OnThemeLightClick" />
                     </MenuItem>
+                    <MenuItem Header="视图" Style="{StaticResource DarkMenuItem}">
+                        <MenuItem Header="写作模式" Click="OnWorkspaceWritingClick" />
+                        <MenuItem Header="排版模式" Click="OnWorkspaceLayoutClick" />
+                        <MenuItem Header="校对模式" Click="OnWorkspaceProofreadClick" />
+                    </MenuItem>
                 </Menu>
             </StackPanel>
 

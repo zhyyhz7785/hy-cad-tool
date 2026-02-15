@@ -101,7 +101,23 @@ namespace HyCADTool.MarkdownEditor.Models
     /// </summary>
     public class PreviewStats
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
+        public int CurrentPage { get; set; } = 1;
+        public int PageCount { get; set; } = 1;
+        public int[] CharsPerColumn { get; set; } = Array.Empty<int>();
+        public string ColumnParagraphIndicesText { get; set; } = "";
+        public int[][] ColumnParagraphIndices { get; set; } = Array.Empty<int[]>();
+        public PreviewColumnStats[] Columns { get; set; } = Array.Empty<PreviewColumnStats>();
+        public PreviewPageStats[] Pages { get; set; } = Array.Empty<PreviewPageStats>();
+        public Dictionary<string, int> BlockTypeCounts { get; set; } = new Dictionary<string, int>();
+    }
+
+    /// <summary>
+    /// 单页统计信息
+    /// </summary>
+    public class PreviewPageStats
+    {
+        public int PageIndex { get; set; }
         public int[] CharsPerColumn { get; set; } = Array.Empty<int>();
         public string ColumnParagraphIndicesText { get; set; } = "";
         public int[][] ColumnParagraphIndices { get; set; } = Array.Empty<int[]>();

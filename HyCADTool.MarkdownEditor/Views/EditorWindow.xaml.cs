@@ -118,6 +118,7 @@ namespace HyCADTool.MarkdownEditor.Views
             _titleBar.MinimizeRequested += (_, __) => SystemCommands.MinimizeWindow(this);
             _titleBar.MaxRestoreRequested += (_, __) => ToggleMaxRestore();
             _titleBar.CloseRequested += (_, __) => OnCloseClick();
+            _titleBar.WorkspaceModeRequested += (_, e) => ApplyWorkspaceMode(e.Mode);
             _titleBar.DragMoveRequested += (_, __) =>
             {
                 try { DragMove(); }
@@ -137,6 +138,9 @@ namespace HyCADTool.MarkdownEditor.Views
             };
 
             _previewPanel.TogglePageOrientationRequested += (_, __) => OnTogglePageOrientation();
+            _previewPanel.PreviousPageRequested += async (_, __) => await ShiftPreviewPageAsync(-1);
+            _previewPanel.NextPageRequested += async (_, __) => await ShiftPreviewPageAsync(1);
+            _previewPanel.JumpPageRequested += async (_, page) => await JumpPreviewPageAsync(page);
         }
 
         private Brush ThemeBrush(string key) => _themeManager.GetBrush(this, key);
@@ -236,6 +240,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 }
 
                 await RefreshPreviewAsync();
+                UpdatePreviewPageState();
                 RefreshOutline();
                 RefreshFileList();
                 ApplyDefaultWorkspaceLayout(false);
@@ -423,6 +428,7 @@ namespace HyCADTool.MarkdownEditor.Views
             try
             {
                 _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel);
+                UpdatePreviewPageState();
             }
             catch (Exception ex)
             {
@@ -486,6 +492,7 @@ namespace HyCADTool.MarkdownEditor.Views
             try
             {
                 await _previewManager.RefreshPreviewAsync(_previewPanel.PreviewWebViewControl, ViewModel);
+                UpdatePreviewPageState();
             }
             catch (Exception ex)
             {
@@ -588,6 +595,71 @@ namespace HyCADTool.MarkdownEditor.Views
             ViewModel.StatusText = $"图纸方向：{ViewModel.PageOrientationLabel}";
         }
 
+        private async Task ShiftPreviewPageAsync(int delta)
+        {
+            try
+            {
+                await _previewManager.ShiftPageAsync(_previewPanel.PreviewWebViewControl, delta);
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(ShiftPreviewPageAsync), ex);
+            }
+        }
+
+        private async Task JumpPreviewPageAsync(int page)
+        {
+            try
+            {
+                await _previewManager.GoToPageAsync(_previewPanel.PreviewWebViewControl, page);
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(JumpPreviewPageAsync), ex);
+            }
+        }
+
+        private void UpdatePreviewPageState()
+        {
+            _previewPanel?.UpdatePageState(_previewManager.CurrentPage, _previewManager.TotalPages);
+        }
+
+        private void ApplyWorkspaceMode(WorkspaceMode mode)
+        {
+            switch (mode)
+            {
+                case WorkspaceMode.Writing:
+                    _outlineVisible = true;
+                    _previewVisible = false;
+                    _bottomPanelVisible = false;
+                    _rulerVisible = false;
+                    ViewModel.StatusText = "视图：写作模式";
+                    break;
+
+                case WorkspaceMode.Layout:
+                    _outlineVisible = false;
+                    _previewVisible = true;
+                    _bottomPanelVisible = true;
+                    _rulerVisible = true;
+                    ViewModel.StatusText = "视图：排版模式";
+                    break;
+
+                case WorkspaceMode.Proofread:
+                    _outlineVisible = true;
+                    _previewVisible = true;
+                    _rulerVisible = false;
+                    ViewModel.StatusText = "视图：校对模式";
+                    break;
+            }
+
+            ApplyOutlineLayout();
+            ApplyPreviewLayout();
+            ApplyBottomPanelLayout();
+            ApplyRulerLayout();
+            if (_previewVisible)
+                _ = RefreshPreviewAsync();
+        }
+
         private void RelayoutPreviewIfNeeded()
         {
             if (!_previewVisible) return;
@@ -632,6 +704,7 @@ namespace HyCADTool.MarkdownEditor.Views
             }
 
             UpdateTitleBarToggleState();
+            UpdatePreviewPageState();
         }
 
         private void ApplyPreviewLayout()

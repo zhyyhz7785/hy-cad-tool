@@ -24,7 +24,15 @@
 
         <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
             <Grid ClipToBounds="True">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ScrollViewer Grid.Column="0"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollBarVisibility="Disabled"
+                              CanContentScroll="False">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                     <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
                     <ComboBox x:Name="PagePresetCombo" Style="{StaticResource DarkComboBox}" MinWidth="56"
                               ItemsSource="{Binding PagePresets}"
@@ -95,6 +103,48 @@
                     <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
                     <TextBox Style="{StaticResource ParamInput}" Width="26"
                              Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="6,0,8,0">
+                    <Border Style="{StaticResource Sep}" Margin="0,0,6,0" />
+                    <Button x:Name="PrevPageBtn"
+                            Style="{StaticResource ToolBtn}"
+                            MinWidth="26"
+                            Height="22"
+                            Padding="4,2"
+                            Content="◀"
+                            ToolTip="上一页"
+                            Click="OnPrevPageClicked" />
+                    <TextBlock x:Name="PageStateText"
+                               Style="{StaticResource ParamLabel}"
+                               VerticalAlignment="Center"
+                               Margin="6,0,6,0"
+                               Text="1/1" />
+                    <Button x:Name="NextPageBtn"
+                            Style="{StaticResource ToolBtn}"
+                            MinWidth="26"
+                            Height="22"
+                            Padding="4,2"
+                            Content="▶"
+                            ToolTip="下一页"
+                            Click="OnNextPageClicked" />
+                    <TextBox x:Name="PageJumpTextBox"
+                             Style="{StaticResource ParamInput}"
+                             Width="36"
+                             Margin="8,0,2,0"
+                             Text="1"
+                             KeyDown="OnPageJumpTextBoxKeyDown" />
+                    <Button x:Name="PageJumpBtn"
+                            Style="{StaticResource ToolBtn}"
+                            Height="22"
+                            Padding="6,2"
+                            Content="跳转"
+                            ToolTip="跳转到页码"
+                            Click="OnJumpPageClicked" />
                 </StackPanel>
             </Grid>
         </Border>
