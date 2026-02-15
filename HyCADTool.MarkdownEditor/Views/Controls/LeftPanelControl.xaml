@@ -1,0 +1,84 @@
+<UserControl x:Class="HyCADTool.MarkdownEditor.Views.Controls.LeftPanelControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/EditorTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="FileTabBtn" Grid.Column="0" Content="文件"
+                        Click="OnShowFileTab"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" />
+                <Button x:Name="OutlineTabBtn" Grid.Column="1" Content="大纲"
+                        Click="OnShowOutlineTab"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="12" FontWeight="SemiBold" />
+            </Grid>
+
+            <TreeView x:Name="FileTree" Grid.Row="1"
+                      Background="Transparent" BorderThickness="0"
+                      Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12"
+                      SelectedItemChanged="OnFileTreeSelectedItemChanged"
+                      MouseDoubleClick="OnFileTreeDoubleClick">
+                <TreeView.Resources>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+                        <Setter Property="Padding" Value="2,1" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="IsExpanded" Value="False" />
+                        <Style.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsSelected" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TreeView.Resources>
+                <TreeView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="打开" Click="OnCtxOpen" />
+                        <Separator />
+                        <MenuItem Header="新建文件" Click="OnCtxNewFile" />
+                        <MenuItem Header="新建文件夹" Click="OnCtxNewFolder" />
+                        <Separator />
+                        <MenuItem Header="重命名" Click="OnCtxRename" />
+                        <MenuItem Header="创建副本" Click="OnCtxDuplicate" />
+                        <Separator />
+                        <MenuItem Header="删除" Click="OnCtxDelete" />
+                        <Separator />
+                        <MenuItem Header="复制文件路径" Click="OnCtxCopyPath" />
+                        <MenuItem Header="打开文件位置" Click="OnCtxOpenFolder" />
+                    </ContextMenu>
+                </TreeView.ContextMenu>
+            </TreeView>
+
+            <ListBox x:Name="OutlineList" Grid.Row="1"
+                     Visibility="Collapsed"
+                     SelectionChanged="OnOutlineSelectionChanged"
+                     Background="Transparent" BorderThickness="0"
+                     Foreground="{DynamicResource ThemeTextPrimaryBrush}" FontSize="12" />
+        </Grid>
+    </Border>
+</UserControl>

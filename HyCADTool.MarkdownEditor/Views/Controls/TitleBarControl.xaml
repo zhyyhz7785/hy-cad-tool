@@ -1,0 +1,191 @@
+<UserControl x:Class="HyCADTool.MarkdownEditor.Views.Controls.TitleBarControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/EditorTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="4,0,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="HY"
+                           Foreground="{DynamicResource ThemeTextPrimaryBrush}"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"
+                           Margin="8,0,10,0"
+                           shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                <Border Style="{StaticResource Sep}" Margin="0,0,8,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                <Menu Style="{StaticResource DarkMenu}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <MenuItem Header="文件" Style="{StaticResource DarkMenuItem}">
+                        <MenuItem Header="打开" Command="{Binding LoadFileCommand}" />
+                        <MenuItem Header="保存" Command="{Binding SaveFileCommand}" />
+                        <Separator />
+                        <MenuItem Header="关闭" Click="OnCloseClick" />
+                    </MenuItem>
+                    <MenuItem Header="编辑" Style="{StaticResource DarkMenuItem}">
+                        <MenuItem Header="撤消" Command="{Binding EditorActionCommand}" CommandParameter="Undo" />
+                        <MenuItem Header="重做" Command="{Binding EditorActionCommand}" CommandParameter="Redo" />
+                        <Separator />
+                        <MenuItem Header="剪切" Command="{Binding EditorActionCommand}" CommandParameter="Cut" />
+                        <MenuItem Header="复制" Command="{Binding EditorActionCommand}" CommandParameter="Copy" />
+                        <MenuItem Header="粘贴" Command="{Binding EditorActionCommand}" CommandParameter="Paste" />
+                        <MenuItem Header="全选" Command="{Binding EditorActionCommand}" CommandParameter="SelectAll" />
+                        <Separator />
+                        <MenuItem Header="查找替换" Command="{Binding EditorActionCommand}" CommandParameter="FindReplace" />
+                    </MenuItem>
+                    <MenuItem Header="段落" Style="{StaticResource DarkMenuItem}">
+                        <MenuItem Header="标题 1" Command="{Binding EditorActionCommand}" CommandParameter="H1" />
+                        <MenuItem Header="标题 2" Command="{Binding EditorActionCommand}" CommandParameter="H2" />
+                        <MenuItem Header="标题 3" Command="{Binding EditorActionCommand}" CommandParameter="H3" />
+                        <MenuItem Header="标题 4" Command="{Binding EditorActionCommand}" CommandParameter="H4" />
+                        <MenuItem Header="普通段落" Command="{Binding EditorActionCommand}" CommandParameter="Paragraph" />
+                        <Separator />
+                        <MenuItem Header="引用" Command="{Binding EditorActionCommand}" CommandParameter="Quote" />
+                        <MenuItem Header="有序列表" Command="{Binding EditorActionCommand}" CommandParameter="OrderedList" />
+                        <MenuItem Header="无序列表" Command="{Binding EditorActionCommand}" CommandParameter="UnorderedList" />
+                        <MenuItem Header="任务列表" Command="{Binding EditorActionCommand}" CommandParameter="TaskList" />
+                        <Separator />
+                        <MenuItem Header="表格" Command="{Binding EditorActionCommand}" CommandParameter="Table" />
+                        <MenuItem Header="代码块" Command="{Binding EditorActionCommand}" CommandParameter="CodeBlock" />
+                        <MenuItem Header="数学块" Command="{Binding EditorActionCommand}" CommandParameter="MathBlock" />
+                        <MenuItem Header="目录 [toc]" Command="{Binding EditorActionCommand}" CommandParameter="Toc" />
+                        <MenuItem Header="脚注" Command="{Binding EditorActionCommand}" CommandParameter="Footnote" />
+                        <MenuItem Header="分割线" Command="{Binding EditorActionCommand}" CommandParameter="HorizontalRule" />
+                    </MenuItem>
+                    <MenuItem Header="格式" Style="{StaticResource DarkMenuItem}">
+                        <MenuItem Header="加粗" Command="{Binding EditorActionCommand}" CommandParameter="Bold" />
+                        <MenuItem Header="斜体" Command="{Binding EditorActionCommand}" CommandParameter="Italic" />
+                        <MenuItem Header="删除线" Command="{Binding EditorActionCommand}" CommandParameter="Strikethrough" />
+                        <MenuItem Header="行内代码" Command="{Binding EditorActionCommand}" CommandParameter="InlineCode" />
+                        <MenuItem Header="下划线" Command="{Binding EditorActionCommand}" CommandParameter="Underline" />
+                        <MenuItem Header="高亮" Command="{Binding EditorActionCommand}" CommandParameter="Highlight" />
+                        <MenuItem Header="上标" Command="{Binding EditorActionCommand}" CommandParameter="Superscript" />
+                        <MenuItem Header="下标" Command="{Binding EditorActionCommand}" CommandParameter="Subscript" />
+                        <MenuItem Header="注释" Command="{Binding EditorActionCommand}" CommandParameter="Comment" />
+                        <MenuItem Header="行内数学" Command="{Binding EditorActionCommand}" CommandParameter="InlineMath" />
+                        <MenuItem Header="链接" Command="{Binding EditorActionCommand}" CommandParameter="Link" />
+                        <Separator />
+                        <MenuItem Header="清除样式" Command="{Binding EditorActionCommand}" CommandParameter="ClearFormatting" />
+                    </MenuItem>
+                    <MenuItem Header="主题" Style="{StaticResource DarkMenuItem}">
+                        <MenuItem Header="黑色为主" Click="OnThemeDarkClick" />
+                        <MenuItem Header="白色为主" Click="OnThemeLightClick" />
+                    </MenuItem>
+                </Menu>
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    Background="Transparent"
+                    MouseLeftButtonDown="OnTitleBarMouseLeftButtonDown"
+                    MouseRightButtonUp="OnTitleBarMouseRightButtonUp">
+                <TextBlock Text="{Binding StatusText}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource ThemeTextMutedBrush}"
+                           FontSize="11" />
+            </Border>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <Button x:Name="RulerToggleBtn"
+                            Style="{StaticResource ToggleBtn}"
+                            Click="OnToggleRulerClick"
+                            ToolTip="标线"
+                            Padding="5,4"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Grid Width="16" Height="12">
+                            <Line X1="1" Y1="6" X2="15" Y2="6"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1" />
+                            <Line X1="8" Y1="1" X2="8" Y2="11"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1" />
+                            <Rectangle Width="3" Height="3"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="OutlineToggleBtn"
+                            Style="{StaticResource ToggleBtn}"
+                            Click="OnToggleOutlineClick"
+                            ToolTip="大纲"
+                            Padding="5,4"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Grid Width="16" Height="12">
+                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                            <Rectangle Width="5" HorizontalAlignment="Left"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="BottomPanelToggleBtn"
+                            Style="{StaticResource ToggleBtn}"
+                            Click="OnToggleBottomPanelClick"
+                            ToolTip="底部面板"
+                            Padding="5,4"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Grid Width="16" Height="12">
+                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                            <Rectangle Height="4" VerticalAlignment="Bottom"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="PreviewToggleBtn"
+                            Style="{StaticResource ToggleBtn}"
+                            Click="OnTogglePreviewClick"
+                            ToolTip="预览"
+                            Padding="5,4"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Grid Width="16" Height="12">
+                            <Rectangle Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeThickness="1" RadiusX="1" RadiusY="1" />
+                            <Rectangle Width="5" HorizontalAlignment="Right"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Opacity="0.45" RadiusX="1" RadiusY="1" />
+                        </Grid>
+                    </Button>
+                    <Border Style="{StaticResource Sep}" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <Button Content="插入CAD"
+                            Style="{StaticResource PrimaryBtn}"
+                            Click="OnConfirmClick"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                </StackPanel>
+
+                <Button x:Name="MinimizeWindowBtn"
+                        Style="{StaticResource TitleBarWinBtn}"
+                        ToolTip="最小化"
+                        Click="OnMinimizeWindowClick"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TextBlock Text="&#xE921;" />
+                </Button>
+                <Button x:Name="MaxRestoreWindowBtn"
+                        Style="{StaticResource TitleBarWinBtn}"
+                        ToolTip="最大化"
+                        Click="OnMaxRestoreWindowClick"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TextBlock x:Name="MaxRestoreGlyph" Text="&#xE922;" />
+                </Button>
+                <Button x:Name="CloseWindowBtn"
+                        Style="{StaticResource TitleBarCloseBtn}"
+                        ToolTip="关闭"
+                        Click="OnCloseClick"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TextBlock Text="&#xE8BB;" />
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

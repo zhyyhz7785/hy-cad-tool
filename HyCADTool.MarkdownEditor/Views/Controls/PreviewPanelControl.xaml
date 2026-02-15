@@ -1,0 +1,118 @@
+<UserControl x:Class="HyCADTool.MarkdownEditor.Views.Controls.PreviewPanelControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+             xmlns:controls="clr-namespace:HyCADTool.MarkdownEditor.Views.Controls"
+             xmlns:helper="clr-namespace:HyCADTool.MarkdownEditor.Views.Helpers">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/EditorTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid x:Name="PreviewRulerGrid" MinWidth="280">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
+            <RowDefinition x:Name="RulerRow" Height="24" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="RulerCol" Width="24" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
+            <Grid ClipToBounds="True">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                    <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
+                    <ComboBox x:Name="PagePresetCombo" Style="{StaticResource DarkComboBox}" MinWidth="56"
+                              ItemsSource="{Binding PagePresets}"
+                              SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
+                    <Button x:Name="OrientationBtn" Style="{StaticResource ToolBtn}" Height="22" Padding="6,2"
+                            Margin="0,0,4,0" ToolTip="切换横向/竖向"
+                            Click="OnTogglePageOrientationClicked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding PageOrientationLabel}" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0" />
+                            <TextBlock Text="{Binding PageSizeLabel}" FontSize="10" Foreground="{DynamicResource ThemeTextMutedBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Style="{StaticResource ParamLabel}" Text="栏" Margin="8,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="24"
+                             helper:TextBoxHelper.ScrollStep="1"
+                             Text="{Binding ColumnCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamLabel}" Text="间距" Margin="8,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}"
+                             Text="{Binding ColumnGutter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamLabel}" Text="字高" Margin="8,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}"
+                             Text="{Binding TextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamLabel}" Text="字宽" Margin="8,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}"
+                             Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Border Style="{StaticResource Sep}" Margin="8,0" />
+
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="a" Margin="0,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="26"
+                             helper:TextBoxHelper.EnableCustomHandlers="False"
+                             Text="{Binding MarginLeftMm, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="c" Margin="4,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="26"
+                             helper:TextBoxHelper.EnableCustomHandlers="False"
+                             Text="{Binding MarginTopMm, Mode=OneWay}" />
+                    <Border Style="{StaticResource Sep}" Margin="8,0" />
+
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1" Margin="0,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2" Margin="6,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3" Margin="6,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P" Margin="6,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Li" Margin="6,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q" Margin="6,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="26"
+                             Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border x:Name="RulerCorner" Grid.Row="1" Grid.Column="0" Background="{DynamicResource ThemeBgPanelBrush}"
+                BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,1" />
+        <controls:RulerControl x:Name="PreviewHRuler" Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
+                               RulerBackground="{DynamicResource ThemeBgPanelBrush}"
+                               LabelBrush="{DynamicResource ThemeTextSecondaryBrush}"
+                               MajorTickBrush="{DynamicResource ThemeTextMutedBrush}"
+                               MinorTickBrush="{DynamicResource ThemeBorderStrongBrush}"
+                               RulerBorderBrush="{DynamicResource ThemeBorderStrongBrush}" />
+        <controls:RulerControl x:Name="PreviewVRuler" Grid.Row="2" Grid.Column="0" Orientation="Vertical"
+                               RulerBackground="{DynamicResource ThemeBgPanelBrush}"
+                               LabelBrush="{DynamicResource ThemeTextSecondaryBrush}"
+                               MajorTickBrush="{DynamicResource ThemeTextMutedBrush}"
+                               MinorTickBrush="{DynamicResource ThemeBorderStrongBrush}"
+                               RulerBorderBrush="{DynamicResource ThemeBorderStrongBrush}" />
+        <wv2:WebView2 x:Name="PreviewWebView" Grid.Row="2" Grid.Column="1" />
+    </Grid>
+</UserControl>

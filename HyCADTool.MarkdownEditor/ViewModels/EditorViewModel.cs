@@ -1,10 +1,12 @@
 using HyCADTool.MarkdownEditor.Models;
+using HyCADTool.MarkdownEditor.Html;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace HyCADTool.MarkdownEditor.ViewModels
@@ -325,6 +327,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         public ICommand LoadFileCommand { get; }
         public ICommand SaveFileCommand { get; }
+        public ICommand EditorActionCommand { get; }
+
+        private VditorJsHelper _jsHelper;
 
         #endregion
 
@@ -334,6 +339,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         {
             LoadFileCommand = new RelayCmd(ExecuteLoad);
             SaveFileCommand = new RelayCmd(ExecuteSave);
+            EditorActionCommand = new AsyncRelayCmd(ExecuteEditorActionAsync);
             _markdownText = DefaultMarkdown;
             ApplyPagePreset(_pagePreset);
             SyncDrawScaleTextFromValue();
@@ -505,6 +511,57 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         #region 命令实现
 
+        internal void SetJsHelper(VditorJsHelper jsHelper)
+        {
+            _jsHelper = jsHelper;
+        }
+
+        private async Task ExecuteEditorActionAsync(string action)
+        {
+            if (_jsHelper == null || string.IsNullOrWhiteSpace(action))
+                return;
+
+            switch (action)
+            {
+                case "Undo": await _jsHelper.UndoAsync(); break;
+                case "Redo": await _jsHelper.RedoAsync(); break;
+                case "Cut": await _jsHelper.CutAsync(); break;
+                case "Copy": await _jsHelper.CopyAsync(); break;
+                case "Paste": await _jsHelper.PasteAsync(); break;
+                case "SelectAll": await _jsHelper.SelectAllAsync(); break;
+                case "FindReplace": await _jsHelper.FindReplaceAsync(); break;
+
+                case "H1": await _jsHelper.InsertHeadingAsync(1); break;
+                case "H2": await _jsHelper.InsertHeadingAsync(2); break;
+                case "H3": await _jsHelper.InsertHeadingAsync(3); break;
+                case "H4": await _jsHelper.InsertHeadingAsync(4); break;
+                case "Paragraph": await _jsHelper.InsertParagraphAsync(); break;
+                case "Quote": await _jsHelper.InsertQuoteAsync(); break;
+                case "OrderedList": await _jsHelper.InsertOrderedListAsync(); break;
+                case "UnorderedList": await _jsHelper.InsertUnorderedListAsync(); break;
+                case "TaskList": await _jsHelper.InsertTaskListAsync(); break;
+                case "Table": await _jsHelper.InsertTableAsync(); break;
+                case "CodeBlock": await _jsHelper.InsertCodeBlockAsync(); break;
+                case "MathBlock": await _jsHelper.InsertMathBlockAsync(); break;
+                case "Toc": await _jsHelper.InsertTocAsync(); break;
+                case "Footnote": await _jsHelper.InsertFootnoteAsync(); break;
+                case "HorizontalRule": await _jsHelper.InsertHorizontalRuleAsync(); break;
+
+                case "Bold": await _jsHelper.ToggleBoldAsync(); break;
+                case "Italic": await _jsHelper.ToggleItalicAsync(); break;
+                case "Strikethrough": await _jsHelper.ToggleStrikethroughAsync(); break;
+                case "InlineCode": await _jsHelper.ToggleInlineCodeAsync(); break;
+                case "Underline": await _jsHelper.ToggleUnderlineAsync(); break;
+                case "Highlight": await _jsHelper.ToggleHighlightAsync(); break;
+                case "Superscript": await _jsHelper.ToggleSuperscriptAsync(); break;
+                case "Subscript": await _jsHelper.ToggleSubscriptAsync(); break;
+                case "Comment": await _jsHelper.ToggleCommentAsync(); break;
+                case "InlineMath": await _jsHelper.ToggleInlineMathAsync(); break;
+                case "Link": await _jsHelper.InsertLinkAsync(); break;
+                case "ClearFormatting": await _jsHelper.ClearFormattingAsync(); break;
+            }
+        }
+
         private void ExecuteLoad()
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
@@ -557,6 +614,16 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             public event EventHandler CanExecuteChanged { add { } remove { } }
             public bool CanExecute(object parameter) => true;
             public void Execute(object parameter) => _execute();
+        }
+
+        private class AsyncRelayCmd : ICommand
+        {
+            private readonly Func<string, Task> _execute;
+
+            public AsyncRelayCmd(Func<string, Task> execute) => _execute = execute;
+            public event EventHandler CanExecuteChanged { add { } remove { } }
+            public bool CanExecute(object parameter) => true;
+            public async void Execute(object parameter) => await _execute(parameter as string ?? "");
         }
 
         #endregion
