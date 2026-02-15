@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -32,7 +33,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string markdownSource,
             DesignSpecConfig config,
             Point3d insertionPoint,
-            string[] columnMarkdowns = null)
+            string[] columnMarkdowns = null,
+            LayoutResultModel layoutResult = null)
         {
             if (columnContents == null || columnContents.Length == 0)
                 throw new ArgumentException("MText 内容不能为空");
@@ -41,7 +43,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (doc == null) throw new InvalidOperationException("无活动文档");
 
             var db = doc.Database;
-            var area = TextAreaCalculator.Calculate(config);
+            var area = CalculateArea(config, layoutResult);
             var ed = doc.Editor;
 
             using (doc.LockDocument())
@@ -131,13 +133,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string[] columnContents,
             string markdownSource,
             DesignSpecConfig config,
-            string[] columnMarkdowns = null)
+            string[] columnMarkdowns = null,
+            LayoutResultModel layoutResult = null)
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) throw new InvalidOperationException("无活动文档");
 
             var db = doc.Database;
-            var area = TextAreaCalculator.Calculate(config);
+            var area = CalculateArea(config, layoutResult);
             var ed = doc.Editor;
 
             using (doc.LockDocument())
@@ -425,6 +428,31 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 return Point3d.Origin;
             }
+        }
+
+        private static TextAreaCalculator.TextAreaResult CalculateArea(DesignSpecConfig config, LayoutResultModel layoutResult)
+        {
+            if (layoutResult?.ColumnWidthsMm != null && layoutResult.ColumnWidthsMm.Length > 0)
+            {
+                var widths = layoutResult.ColumnWidthsMm
+                    .Where(w => w > 0)
+                    .ToArray();
+                if (widths.Length > 0)
+                {
+                    int cols = widths.Length;
+                    double gutter = config.ActualColumnGutter;
+                    return new TextAreaCalculator.TextAreaResult
+                    {
+                        ColumnCount = cols,
+                        ColumnWidths = widths,
+                        ColumnGutter = gutter,
+                        TotalHeight = config.ActualTotalHeight,
+                        TotalWidth = widths.Sum() + gutter * Math.Max(0, cols - 1)
+                    };
+                }
+            }
+
+            return TextAreaCalculator.Calculate(config);
         }
     }
 }

@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using HyCADTool.TextLayout;
 
 namespace HyCADTool.MarkdownEditor.Models
 {
@@ -28,6 +29,8 @@ namespace HyCADTool.MarkdownEditor.Models
         public string ColumnParagraphIndices { get; set; }
         /// <summary>结构化预览统计结果（用于回归与精度分析）</summary>
         public PreviewStats PreviewStats { get; set; } = new PreviewStats();
+        /// <summary>统一布局引擎结果（预览与 CAD 共用）</summary>
+        public LayoutResult LayoutResult { get; set; }
     }
 
     /// <summary>

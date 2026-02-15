@@ -54,11 +54,12 @@ namespace HyCADTool.Refactored.Test
             {
                 bool confirmed = EditorLoader.TryShowEditor(
                     null, null, ownerHandle,
-                    out var columnContents, out var columnMarkdowns, out var markdownSource, out var config);
+                    out var columnContents, out var columnMarkdowns, out var markdownSource, out var config, out var layoutResult);
 
                 if (confirmed && columnContents != null)
                 {
-                    ed?.WriteMessage($"\n[测试结果] 确认插入，栏数={columnContents.Length}，Markdown长度={markdownSource?.Length ?? 0}");
+                    int pageCount = layoutResult?.Pages?.Length ?? 0;
+                    ed?.WriteMessage($"\n[测试结果] 确认插入，栏数={columnContents.Length}，页数={pageCount}，Markdown长度={markdownSource?.Length ?? 0}");
                     for (int i = 0; i < columnContents.Length; i++)
                         ed?.WriteMessage($"\n  栏{i + 1}: {columnContents[i]?.Length ?? 0} 字符");
                 }

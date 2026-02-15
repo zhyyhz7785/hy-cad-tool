@@ -1,8 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.Views;
+using HyCADTool.TextLayout;
 using Newtonsoft.Json;
 
 namespace HyCADTool.MarkdownEditor.TestHost
@@ -23,6 +27,12 @@ namespace HyCADTool.MarkdownEditor.TestHost
         [STAThread]
         static void Main(string[] args)
         {
+            if (args != null && args.Any(a => string.Equals(a, "--regression", StringComparison.OrdinalIgnoreCase)))
+            {
+                RunLayoutRegression();
+                return;
+            }
+
             // 分配控制台（WinExe 模式下默认无控制台，手动附加用于输出）
             AllocConsole();
 
@@ -85,6 +95,117 @@ namespace HyCADTool.MarkdownEditor.TestHost
             //         TextSize = 2.5
             //     }
             // };
+        }
+
+        static void RunLayoutRegression()
+        {
+            AllocConsole();
+            Console.WriteLine("开始执行 LayoutEngine RegressionSamples 校验...");
+
+            string baseDir = AppContext.BaseDirectory;
+            string samplesDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "HyCADTool.MarkdownEditor", "RegressionSamples"));
+            if (!Directory.Exists(samplesDir))
+            {
+                Console.WriteLine($"样本目录不存在: {samplesDir}");
+                return;
+            }
+
+            var sampleFiles = Directory.GetFiles(samplesDir, "*.md", SearchOption.TopDirectoryOnly)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (sampleFiles.Length == 0)
+            {
+                Console.WriteLine("未找到回归样本。");
+                return;
+            }
+
+            int passed = 0;
+            int failed = 0;
+            var engine = new LayoutEngine();
+            foreach (string file in sampleFiles)
+            {
+                string name = Path.GetFileName(file);
+                try
+                {
+                    string markdown = File.ReadAllText(file);
+                    var cfg = BuildRegressionLayoutConfig();
+                    var blocks = MarkdownBlockParser.ParseTopLevelBlocks(markdown);
+                    var result = engine.Distribute(blocks, cfg);
+                    var issues = ValidateLayout(result, blocks.Count);
+                    if (issues.Count == 0)
+                    {
+                        passed++;
+                        Console.WriteLine($"[PASS] {name}  pages={result.PageCount}");
+                    }
+                    else
+                    {
+                        failed++;
+                        Console.WriteLine($"[FAIL] {name}  {string.Join("; ", issues)}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Console.WriteLine($"[FAIL] {name}  {ex.Message}");
+                }
+            }
+
+            Console.WriteLine($"回归结束：PASS={passed}, FAIL={failed}, TOTAL={sampleFiles.Length}");
+        }
+
+        static DesignSpecConfig BuildRegressionLayoutConfig()
+        {
+            return new DesignSpecConfig
+            {
+                Scale = 1.0,
+                PreviewScale = 1.0,
+                ColumnCount = 2,
+                CharsPerColumn = new[] { 28, 28 },
+                ColumnGutter = 0,
+                TextSize = 2.5,
+                TextXScale = 0.7,
+                LineSpacingFactor = 1.2,
+                TotalHeight = 350,
+                PageWidthMm = 594,
+                PageHeightMm = 420,
+                MarginLeftMm = 25,
+                MarginRightMm = 10,
+                MarginTopMm = 10,
+                MarginBottomMm = 10
+            };
+        }
+
+        static List<string> ValidateLayout(LayoutResult result, int blockCount)
+        {
+            var issues = new List<string>();
+            if (result == null)
+            {
+                issues.Add("result=null");
+                return issues;
+            }
+            if (result.Pages == null || result.Pages.Length == 0)
+                issues.Add("pages=0");
+
+            var indexSet = new HashSet<int>();
+            if (result.Pages != null)
+            {
+                foreach (var page in result.Pages)
+                {
+                    var cols = page?.ColumnBlockIndices;
+                    if (cols == null) continue;
+                    foreach (var col in cols)
+                    {
+                        if (col == null) continue;
+                        foreach (var idx in col)
+                            indexSet.Add(idx);
+                    }
+                }
+            }
+
+            if (blockCount > 0 && indexSet.Count == 0)
+                issues.Add("no-block-mapped");
+
+            return issues;
         }
 
         static void PrintResult(EditorResult result)

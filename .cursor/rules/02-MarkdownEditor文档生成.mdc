@@ -1,0 +1,17 @@
+---
+description: MarkdownEditor 文档生成入口提示
+globs: HyCADTool.MarkdownEditor/**
+alwaysApply: false
+---
+
+# MarkdownEditor 文档生成
+
+当用户提到 `文档L1` `文档L2` `文档L3` `文档L4` 或 `doc L1`–`doc L4` 关键词时，
+读取并执行 `.cursor/skills/markdown-editor-doc/SKILL.md` 中的对应级别指令。
+
+- **L1**：架构总览（默认）
+- **L2 [模块]**：模块说明
+- **L3 [文件]**：文件细节
+- **L4 [范围]**：问题诊断（深入检查参考 `diagnosis-checklist.md`）
+
+不指定级别时默认 L1。严格遵守各级别的输出模板和禁止事项。

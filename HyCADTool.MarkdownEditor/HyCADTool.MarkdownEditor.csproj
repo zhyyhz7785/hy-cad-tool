@@ -38,12 +38,13 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj" />
+  </ItemGroup>
+
   <!-- 将 WebView2Loader.dll 平铺复制到输出根目录，供 ReCall 浅层复制和 LoadLibrary 查找 -->
   <Target Name="CopyWebView2NativeLoader" AfterTargets="Build">
-    <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll"
-          DestinationFolder="$(OutputPath)"
-          SkipUnchangedFiles="true"
-          Condition="Exists('$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll')" />
+    <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="Exists('$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll')" />
   </Target>
 
 </Project>

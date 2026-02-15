@@ -16,6 +16,14 @@ namespace HyCADTool.MarkdownEditor.ViewModels
     /// </summary>
     public class EditorViewModel : INotifyPropertyChanged
     {
+        private readonly EditorContentViewModel _content = new EditorContentViewModel();
+        private readonly PreviewConfigViewModel _previewConfig = new PreviewConfigViewModel();
+        private readonly UIStateViewModel _uiState = new UIStateViewModel();
+
+        public EditorContentViewModel Content => _content;
+        public PreviewConfigViewModel PreviewConfig => _previewConfig;
+        public UIStateViewModel UiState => _uiState;
+
         #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -44,14 +52,25 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public string MarkdownText
         {
             get => _markdownText;
-            set { if (SetProperty(ref _markdownText, value)) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _markdownText, value))
+                {
+                    _content.SetMarkdown(_markdownText);
+                    UpdateStatus();
+                }
+            }
         }
 
         private string _currentFilePath = "";
         public string CurrentFilePath
         {
             get => _currentFilePath;
-            set => SetProperty(ref _currentFilePath, value ?? "");
+            set
+            {
+                if (SetProperty(ref _currentFilePath, value ?? ""))
+                    _content.SetCurrentFilePath(_currentFilePath);
+            }
         }
 
         /// <summary>由 Vditor 编辑器调用，更新文本但不触发回写循环</summary>
@@ -59,6 +78,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         {
             if (_markdownText == markdown) return;
             _markdownText = markdown;
+            _content.SetMarkdown(_markdownText);
             OnPropertyChanged(nameof(MarkdownText));
             UpdateStatus();
         }
@@ -79,6 +99,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set
             {
                 if (!SetProperty(ref _scale, Math.Max(0.1, value))) return;
+                _previewConfig.DrawScale = _scale;
                 SyncDrawScaleTextFromValue();
                 UpdateStatus();
             }
@@ -106,56 +127,106 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public int ColumnCount
         {
             get => _columnCount;
-            set { if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(10, value)))) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(10, value))))
+                {
+                    _previewConfig.ColumnCount = _columnCount;
+                    UpdateStatus();
+                }
+            }
         }
 
         private int[] _charsPerColumn;
         public int[] CharsPerColumn
         {
             get => _charsPerColumn;
-            set => SetProperty(ref _charsPerColumn, value);
+            set
+            {
+                if (SetProperty(ref _charsPerColumn, value))
+                    _previewConfig.CharsPerColumn = _charsPerColumn;
+            }
         }
 
         private string _columnParagraphIndices = "";
         public string ColumnParagraphIndices
         {
             get => _columnParagraphIndices;
-            set => SetProperty(ref _columnParagraphIndices, value ?? "");
+            set
+            {
+                if (SetProperty(ref _columnParagraphIndices, value ?? ""))
+                    _previewConfig.ColumnParagraphIndices = _columnParagraphIndices;
+            }
         }
 
         private double _columnGutter = 0;
         public double ColumnGutter
         {
             get => _columnGutter;
-            set { if (SetProperty(ref _columnGutter, Math.Max(0, value))) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _columnGutter, Math.Max(0, value)))
+                {
+                    _previewConfig.ColumnGutter = _columnGutter;
+                    UpdateStatus();
+                }
+            }
         }
 
         private double _textSize = 2.5;
         public double TextSize
         {
             get => _textSize;
-            set { if (SetProperty(ref _textSize, Math.Max(0.5, value))) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _textSize, Math.Max(0.5, value)))
+                {
+                    _previewConfig.TextSize = _textSize;
+                    UpdateStatus();
+                }
+            }
         }
 
         private double _previewScale = 1.0;
         public double PreviewScale
         {
             get => _previewScale;
-            set { if (SetProperty(ref _previewScale, Math.Max(0.1, Math.Min(5.0, value)))) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _previewScale, Math.Max(0.1, Math.Min(5.0, value))))
+                {
+                    _previewConfig.PreviewScale = _previewScale;
+                    UpdateStatus();
+                }
+            }
         }
 
         private double _totalHeight = 350;
         public double TotalHeight
         {
             get => _totalHeight;
-            set { if (SetProperty(ref _totalHeight, Math.Max(20, value))) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _totalHeight, Math.Max(20, value)))
+                {
+                    _previewConfig.TotalHeight = _totalHeight;
+                    UpdateStatus();
+                }
+            }
         }
 
         private double _textXScale = 0.7;
         public double TextXScale
         {
             get => _textXScale;
-            set { if (SetProperty(ref _textXScale, Math.Max(0.1, value))) UpdateStatus(); }
+            set
+            {
+                if (SetProperty(ref _textXScale, Math.Max(0.1, value)))
+                {
+                    _previewConfig.TextXScale = _textXScale;
+                    UpdateStatus();
+                }
+            }
         }
 
         // ── 图纸幅面定义（短边 b × 长边 l） ──
@@ -316,10 +387,23 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public string StatusText
         {
             get => _statusText;
-            set => SetProperty(ref _statusText, value);
+            set
+            {
+                if (SetProperty(ref _statusText, value))
+                    _uiState.StatusText = _statusText;
+            }
         }
 
-        public bool DialogConfirmed { get; set; }
+        private bool _dialogConfirmed;
+        public bool DialogConfirmed
+        {
+            get => _dialogConfirmed;
+            set
+            {
+                if (SetProperty(ref _dialogConfirmed, value))
+                    _uiState.DialogConfirmed = _dialogConfirmed;
+            }
+        }
 
         #endregion
 
@@ -341,6 +425,17 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             SaveFileCommand = new RelayCmd(ExecuteSave);
             EditorActionCommand = new AsyncRelayCmd(ExecuteEditorActionAsync);
             _markdownText = DefaultMarkdown;
+            _content.SetMarkdown(_markdownText);
+            _content.SetCurrentFilePath(_currentFilePath);
+            _previewConfig.ColumnCount = _columnCount;
+            _previewConfig.CharsPerColumn = _charsPerColumn;
+            _previewConfig.ColumnParagraphIndices = _columnParagraphIndices;
+            _previewConfig.ColumnGutter = _columnGutter;
+            _previewConfig.TextSize = _textSize;
+            _previewConfig.TextXScale = _textXScale;
+            _previewConfig.DrawScale = _scale;
+            _previewConfig.PreviewScale = _previewScale;
+            _previewConfig.TotalHeight = _totalHeight;
             ApplyPagePreset(_pagePreset);
             SyncDrawScaleTextFromValue();
             UpdateStatus();
@@ -352,6 +447,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             if (!string.IsNullOrEmpty(input.Markdown))
                 _markdownText = input.Markdown;
             _currentFilePath = input.CurrentFilePath ?? "";
+            _content.SetMarkdown(_markdownText);
+            _content.SetCurrentFilePath(_currentFilePath);
 
             var cfg = input.Config;
             if (cfg == null) return;
@@ -382,6 +479,15 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _quoteSpaceAfter = cfg.QuoteSpaceAfter;
 
             SyncDrawScaleTextFromValue();
+            _previewConfig.ColumnCount = _columnCount;
+            _previewConfig.CharsPerColumn = CharsPerColumn;
+            _previewConfig.ColumnParagraphIndices = _columnParagraphIndices;
+            _previewConfig.ColumnGutter = _columnGutter;
+            _previewConfig.TextSize = _textSize;
+            _previewConfig.TextXScale = _textXScale;
+            _previewConfig.DrawScale = _scale;
+            _previewConfig.PreviewScale = _previewScale;
+            _previewConfig.TotalHeight = _totalHeight;
             UpdateStatus();
         }
 

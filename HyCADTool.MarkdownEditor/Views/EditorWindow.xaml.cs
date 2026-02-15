@@ -889,7 +889,8 @@ namespace HyCADTool.MarkdownEditor.Views
                 Config = ViewModel.BuildConfig(),
                 CharsPerColumn = ViewModel.CharsPerColumn,
                 ColumnParagraphIndices = ViewModel.ColumnParagraphIndices,
-                PreviewStats = _previewManager.LatestPreviewStats
+                PreviewStats = _previewManager.LatestPreviewStats,
+                LayoutResult = _previewManager.LatestLayoutResult
             };
 
             DialogResult = true;

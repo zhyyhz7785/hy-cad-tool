@@ -5,9 +5,12 @@ using HyCADTool.MarkdownEditor.Html;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.ViewModels;
 using HyCADTool.MarkdownEditor.Views.Controls;
+using HyCADTool.TextLayout;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
+using LayoutSpecConfig = HyCADTool.TextLayout.DesignSpecConfig;
 
 namespace HyCADTool.MarkdownEditor.Services
 {
@@ -17,8 +20,10 @@ namespace HyCADTool.MarkdownEditor.Services
         private double _renderedPreviewScale = 1.0;
         private string _pendingPreviewHtml = "";
         private PreviewStats _latestPreviewStats = new PreviewStats();
+        private LayoutResultModel _latestLayoutResult;
         private int _currentPage = 1;
         private int _totalPages = 1;
+        private readonly LayoutEngine _layoutEngine = new LayoutEngine();
 
         public bool IsPreviewReady
         {
@@ -27,6 +32,7 @@ namespace HyCADTool.MarkdownEditor.Services
         }
 
         public PreviewStats LatestPreviewStats => _latestPreviewStats ?? new PreviewStats();
+        public LayoutResultModel LatestLayoutResult => _latestLayoutResult;
         public bool HasPendingHtml => !string.IsNullOrEmpty(_pendingPreviewHtml);
         public string PendingHtml => _pendingPreviewHtml;
         public double RenderedPreviewScale => _renderedPreviewScale;
@@ -126,8 +132,11 @@ namespace HyCADTool.MarkdownEditor.Services
         public async Task RefreshPreviewAsync(WebView2 previewWebView, EditorViewModel viewModel)
         {
             var config = viewModel.BuildConfig();
+            var layoutConfig = BuildLayoutConfig(config);
+            var blocks = MarkdownBlockParser.ParseTopLevelBlocks(viewModel.MarkdownText ?? "");
+            _latestLayoutResult = _layoutEngine.Distribute(blocks, layoutConfig);
             string html = PreviewHtmlRenderer.ToInteractiveHtml(
-                viewModel.MarkdownText ?? "", viewModel.ColumnCount, viewModel.PreviewScale, config);
+                viewModel.MarkdownText ?? "", viewModel.ColumnCount, viewModel.PreviewScale, config, _latestLayoutResult);
             if (!_previewReady || previewWebView?.CoreWebView2 == null)
             {
                 _pendingPreviewHtml = html;
@@ -138,6 +147,52 @@ namespace HyCADTool.MarkdownEditor.Services
             _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
             UpdatePageState(1, 1);
             await Task.CompletedTask;
+        }
+
+        private static LayoutSpecConfig BuildLayoutConfig(EditorConfig config)
+        {
+            if (config == null)
+                return new LayoutSpecConfig();
+
+            var layoutConfig = new LayoutSpecConfig
+            {
+                Scale = config.DrawScale,
+                PreviewScale = config.PreviewScale,
+                ColumnCount = config.ColumnCount,
+                ColumnGutter = config.ColumnGutter,
+                CharsPerColumn = config.CharsPerColumn ?? new[] { 28, 28 },
+                LineSpacingFactor = config.LineSpacingFactor,
+                H1Scale = config.H1Scale,
+                H2Scale = config.H2Scale,
+                H3Scale = config.H3Scale,
+                H1SpaceBefore = config.H1SpaceBefore,
+                H1SpaceAfter = config.H1SpaceAfter,
+                H2SpaceBefore = config.H2SpaceBefore,
+                H2SpaceAfter = config.H2SpaceAfter,
+                H3SpaceBefore = config.H3SpaceBefore,
+                H3SpaceAfter = config.H3SpaceAfter,
+                PSpaceAfter = config.PSpaceAfter,
+                LiSpaceAfter = config.LiSpaceAfter,
+                QuoteSpaceBefore = config.QuoteSpaceBefore,
+                QuoteSpaceAfter = config.QuoteSpaceAfter,
+                ListIndent = config.ListIndent,
+                QuoteIndent = config.QuoteIndent,
+                FontFileName = config.FontFileName,
+                BigFontFileName = config.BigFontFileName,
+                BoldFontName = config.BoldFontName,
+                TextSize = config.TextSize,
+                TextXScale = config.TextXScale,
+                TotalHeight = config.TotalHeight,
+                PagePreset = config.PagePreset,
+                PageWidthMm = config.PageWidthMm,
+                PageHeightMm = config.PageHeightMm,
+                MarginLeftMm = config.MarginLeftMm,
+                MarginRightMm = config.MarginRightMm,
+                MarginTopMm = config.MarginTopMm,
+                MarginBottomMm = config.MarginBottomMm
+            };
+            layoutConfig.Normalize();
+            return layoutConfig;
         }
 
         public async Task GoToPageAsync(WebView2 previewWebView, int page)

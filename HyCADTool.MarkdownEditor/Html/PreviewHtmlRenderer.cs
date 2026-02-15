@@ -3,6 +3,8 @@ using System;
 using System.Globalization;
 using System.Text;
 using HyCADTool.MarkdownEditor.Models;
+using HyCADTool.TextLayout;
+using Newtonsoft.Json;
 
 namespace HyCADTool.MarkdownEditor.Html
 {
@@ -15,7 +17,12 @@ namespace HyCADTool.MarkdownEditor.Html
             .UseAdvancedExtensions()
             .Build();
 
-        public static string ToInteractiveHtml(string markdown, int columnCount, double previewScale = 1.0, EditorConfig config = null)
+        public static string ToInteractiveHtml(
+            string markdown,
+            int columnCount,
+            double previewScale = 1.0,
+            EditorConfig config = null,
+            LayoutResult layoutResult = null)
         {
             string body = string.IsNullOrEmpty(markdown)
                 ? "<p class=\"empty\">(无内容)</p>"
@@ -26,7 +33,7 @@ namespace HyCADTool.MarkdownEditor.Html
             EditorConfig cfg = config ?? new EditorConfig();
             string footerHtml = BuildFooterHtml(cols);
             string dynamicCss = BuildDynamicCss(scale, cfg);
-            string dynamicJs = BuildDynamicJs(scale, cfg, cols);
+            string dynamicJs = BuildDynamicJs(scale, cfg, cols, layoutResult);
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"
@@ -87,13 +94,14 @@ namespace HyCADTool.MarkdownEditor.Html
             return sb.ToString();
         }
 
-        private static string BuildDynamicJs(double previewScale, EditorConfig cfg, int columnCount)
+        private static string BuildDynamicJs(double previewScale, EditorConfig cfg, int columnCount, LayoutResult layoutResult)
         {
             double safePreviewScale = Math.Max(0.01, previewScale);
             double textSizeMm = Math.Max(0.1, cfg.TextSize);
             double textXScale = Math.Max(0.1, cfg.TextXScale);
             double pageWidthMm = Math.Max(1.0, cfg.PageWidthMm);
             const double contentPaddingX = 20.0; // .col-content 左右 padding 合计
+            string layoutJson = layoutResult == null ? "null" : JsonConvert.SerializeObject(layoutResult);
 
             return JS_TEMPLATE
                 .Replace("/*PREVIEW_SCALE*/", safePreviewScale.ToString("0.#####", CultureInfo.InvariantCulture))
@@ -101,7 +109,8 @@ namespace HyCADTool.MarkdownEditor.Html
                 .Replace("/*TEXT_X_SCALE*/", textXScale.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*PAGE_WIDTH_MM*/", pageWidthMm.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*COLUMN_COUNT*/", columnCount.ToString(CultureInfo.InvariantCulture))
-                .Replace("/*CONTENT_PADDING_X*/", contentPaddingX.ToString("0.#####", CultureInfo.InvariantCulture));
+                .Replace("/*CONTENT_PADDING_X*/", contentPaddingX.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*LAYOUT_RESULT*/", layoutJson);
         }
 
         private static double Round(double value)
@@ -249,6 +258,7 @@ var TEXT_SIZE_MM=/*TEXT_SIZE_MM*/;
 var TEXT_X_SCALE=/*TEXT_X_SCALE*/;
 var PAGE_WIDTH_MM=/*PAGE_WIDTH_MM*/;
 var CONTENT_PADDING_X=/*CONTENT_PADDING_X*/;
+var LAYOUT_RESULT=/*LAYOUT_RESULT*/;
 var CHAR_WIDTH_MM=Math.max(0.01,TEXT_SIZE_MM*TEXT_X_SCALE);
 var hPage=-1,hDiv=-1,sX=0,sW=[];
 var vPage=-1,vCol=-1,sY=0,sH=0;
@@ -561,6 +571,118 @@ function jumpToPage(pageNo){
   setCurrentPage(idx, true);
 }
 
+function getLayoutPages(layout){
+  if(!layout) return [];
+  if(layout.pages && layout.pages.length) return layout.pages;
+  if(layout.Pages && layout.Pages.length) return layout.Pages;
+  return [];
+}
+
+function getLayoutColIndices(pageObj,col){
+  if(!pageObj) return [];
+  var cols=pageObj.columnBlockIndices||pageObj.ColumnBlockIndices||[];
+  return (cols && col<cols.length && cols[col]) ? cols[col] : [];
+}
+
+function distributeByLayout(src, els){
+  var pagesDef=getLayoutPages(LAYOUT_RESULT);
+  if(!pagesDef || pagesDef.length===0) return false;
+
+  var pages=[], i=0, c=0, e=0;
+  var globalBlockTypes={};
+  clearPages();
+
+  for(i=0;i<pagesDef.length;i++){
+    var page=createPage(i);
+    pages.push(page);
+    if(customPaperWidth<=0 || customPaperHeight<=0){
+      customPaperWidth=page.paper.offsetWidth;
+      customPaperHeight=page.paper.offsetHeight;
+    }
+
+    for(c=0;c<COLUMN_COUNT;c++){
+      var colEl=page.columns[c];
+      var indices=getLayoutColIndices(pagesDef[i],c);
+      for(e=0;e<indices.length;e++){
+        var idx=indices[e];
+        if(idx<0 || idx>=els.length) continue;
+        var clone=els[idx].cloneNode(true);
+        colEl.appendChild(clone);
+        page.colParas[c].push(idx);
+        var key=normalizeBlockType(els[idx]?els[idx].tagName:'');
+        globalBlockTypes[key]=(globalBlockTypes[key]||0)+1;
+      }
+    }
+  }
+
+  var pageStats=[];
+  for(i=0;i<pages.length;i++){
+    var pageRef=pages[i];
+    if(pageRef.columns.length>0){
+      pageRef.columns[pageRef.columns.length-1].className='col-content last';
+    }
+
+    var colChars=[], colStats=[], pageBlockTypes={};
+    var pageDef=pagesDef[i];
+    var layoutChars=pageDef ? (pageDef.charsPerColumn||pageDef.CharsPerColumn||[]) : [];
+
+    for(c=0;c<COLUMN_COUNT;c++){
+      var col=pageRef.columns[c];
+      var rawText=(col.innerText||col.textContent||'');
+      var metrics=calcTextMetrics(rawText);
+      var paraIndices=pageRef.colParas[c]||[];
+
+      var cpl=(layoutChars && c<layoutChars.length) ? (layoutChars[c]||0) : 0;
+      if(!cpl || cpl<1){
+        var contentW=Math.max(1, col.clientWidth-CONTENT_PADDING_X);
+        var contentMm=contentW/Math.max(0.01, PREVIEW_SCALE);
+        var unitPerLine=Math.floor(contentMm/CHAR_WIDTH_MM);
+        var avgUnitsPerChar=metrics.chars>0 ? (metrics.units/metrics.chars) : 1;
+        cpl=Math.floor(unitPerLine/Math.max(0.5, avgUnitsPerChar));
+        if(cpl<1) cpl=1;
+      }
+
+      colChars.push(cpl);
+      colStats.push({
+        index:c,
+        charsPerLine:cpl,
+        paragraphCount:paraIndices.length,
+        totalChars:metrics.chars,
+        totalDisplayUnits:metrics.units,
+        avgDisplayUnitsPerChar:metrics.chars>0 ? (metrics.units/metrics.chars) : 0,
+        blockTypes:buildBlockTypeCountForColumn(els, paraIndices, pageBlockTypes)
+      });
+    }
+
+    pageStats.push({
+      pageIndex:i,
+      charsPerColumn:colChars,
+      columnParagraphIndicesText:toColParasText(pageRef.colParas),
+      columnParagraphIndices:pageRef.colParas,
+      columns:colStats,
+      blockTypeCounts:pageBlockTypes
+    });
+  }
+
+  var firstPage=pageStats.length>0 ? pageStats[0] : null;
+  window.colChars=firstPage ? firstPage.charsPerColumn : [];
+  window.colParas=firstPage ? firstPage.columnParagraphIndices : createEmptyColParas();
+  window.previewStats={
+    schemaVersion:3,
+    currentPage:1,
+    pageCount:Math.max(1,pageStats.length),
+    charsPerColumn:firstPage ? firstPage.charsPerColumn : [],
+    columnParagraphIndicesText:firstPage ? firstPage.columnParagraphIndicesText : '',
+    columnParagraphIndices:firstPage ? firstPage.columnParagraphIndices : createEmptyColParas(),
+    columns:firstPage ? firstPage.columns : [],
+    pages:pageStats,
+    blockTypeCounts:globalBlockTypes
+  };
+
+  setCurrentPage(0, true);
+  return true;
+}
+
 function distribute(){
   var src=document.getElementById('source');
   var i,e,clone,ci=0,pi=0;
@@ -576,6 +698,8 @@ function distribute(){
   }
 
   var els=src.children;
+  if(distributeByLayout(src, els)) return;
+
   if(!els||els.length===0){
     if(pages[0] && pages[0].columns && pages[0].columns[0]){
       pages[0].columns[0].innerHTML='<p class=""empty"">(无内容)</p>';

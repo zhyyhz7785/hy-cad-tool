@@ -6,6 +6,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
+using LayoutSpecConfig = HyCADTool.TextLayout.DesignSpecConfig;
+using SharedBlockParser = HyCADTool.TextLayout.MarkdownBlockParser;
+using SharedLayoutEngine = HyCADTool.TextLayout.LayoutEngine;
 
 namespace HyCADTool.Refactored.Presentation.Commands
 {
@@ -41,12 +45,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
             out string[] columnContents,
             out string[] columnMarkdowns,
             out string markdownSource,
-            out DesignSpecConfig config)
+            out DesignSpecConfig config,
+            out LayoutResultModel layoutResult)
         {
             columnContents = null;
             columnMarkdowns = null;
             markdownSource = null;
             config = null;
+            layoutResult = null;
 
             if (!EnsureLoaded())
                 return false;
@@ -74,9 +80,16 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                 markdownSource = result.Value<string>("Markdown") ?? "";
                 config = ContractToConfig(result);
+                layoutResult = ParseLayoutResult(result, markdownSource, config);
 
                 // 按栏拆分 Markdown → 各自渲染 MText
-                string colParaIndices = ExtractColumnParagraphIndices(result);
+                string colParaIndices = ExtractColumnParagraphIndices(result, layoutResult);
+                if (layoutResult?.Pages != null && layoutResult.Pages.Length > 0)
+                {
+                    var page0 = layoutResult.Pages[0];
+                    if (page0?.CharsPerColumn != null && page0.CharsPerColumn.Length > 0)
+                        config.CharsPerColumn = page0.CharsPerColumn;
+                }
                 var colMarkdowns = SplitMarkdownByColumns(markdownSource, colParaIndices);
                 columnMarkdowns = colMarkdowns;
                 columnContents = new string[colMarkdowns.Length];
@@ -383,8 +396,15 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         #region Markdown 拆分
 
-        private static string ExtractColumnParagraphIndices(JObject result)
+        private static string ExtractColumnParagraphIndices(JObject result, LayoutResultModel layoutResult)
         {
+            if (layoutResult?.Pages != null && layoutResult.Pages.Length > 0)
+            {
+                string byLayout = layoutResult.ToColumnParagraphIndicesText(0);
+                if (!string.IsNullOrWhiteSpace(byLayout))
+                    return byLayout;
+            }
+
             string direct = result?.Value<string>("ColumnParagraphIndices");
             if (!string.IsNullOrWhiteSpace(direct))
                 return direct;
@@ -427,6 +447,71 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
 
             return string.Empty;
+        }
+
+        private static LayoutResultModel ParseLayoutResult(JObject result, string markdownSource, DesignSpecConfig config)
+        {
+            try
+            {
+                var token = result?["LayoutResult"];
+                if (token != null && token.Type != JTokenType.Null)
+                {
+                    var parsed = token.ToObject<LayoutResultModel>();
+                    if (parsed?.Pages != null && parsed.Pages.Length > 0)
+                        return parsed;
+                }
+            }
+            catch
+            {
+                // ignore and fallback
+            }
+
+            try
+            {
+                var layoutConfig = ToLayoutConfig(config);
+                var blocks = SharedBlockParser.ParseTopLevelBlocks(markdownSource ?? "");
+                return new SharedLayoutEngine().Distribute(blocks, layoutConfig);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static LayoutSpecConfig ToLayoutConfig(DesignSpecConfig cfg)
+        {
+            var layoutConfig = new LayoutSpecConfig
+            {
+                Scale = cfg.Scale,
+                PreviewScale = cfg.PreviewScale,
+                ColumnCount = cfg.ColumnCount,
+                ColumnGutter = cfg.ColumnGutter,
+                CharsPerColumn = cfg.CharsPerColumn ?? new[] { 28, 28 },
+                LineSpacingFactor = cfg.LineSpacingFactor,
+                H1Scale = cfg.H1Scale,
+                H2Scale = cfg.H2Scale,
+                H3Scale = cfg.H3Scale,
+                H1SpaceBefore = cfg.H1SpaceBefore,
+                H1SpaceAfter = cfg.H1SpaceAfter,
+                H2SpaceBefore = cfg.H2SpaceBefore,
+                H2SpaceAfter = cfg.H2SpaceAfter,
+                H3SpaceBefore = cfg.H3SpaceBefore,
+                H3SpaceAfter = cfg.H3SpaceAfter,
+                PSpaceAfter = cfg.PSpaceAfter,
+                LiSpaceAfter = cfg.LiSpaceAfter,
+                QuoteSpaceBefore = cfg.QuoteSpaceBefore,
+                QuoteSpaceAfter = cfg.QuoteSpaceAfter,
+                ListIndent = cfg.ListIndent,
+                QuoteIndent = cfg.QuoteIndent,
+                FontFileName = cfg.FontFileName,
+                BigFontFileName = cfg.BigFontFileName,
+                BoldFontName = cfg.BoldFontName,
+                TextSize = cfg.TextSize,
+                TextXScale = cfg.TextXScale,
+                TotalHeight = cfg.TotalHeight
+            };
+            layoutConfig.Normalize();
+            return layoutConfig;
         }
 
         private static string[] SplitMarkdownByColumns(string markdown, string paraIndices)

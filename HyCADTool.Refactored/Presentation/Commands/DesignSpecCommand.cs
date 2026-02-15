@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.Models.Text;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
 
 namespace HyCADTool.Refactored.Presentation.Commands
 {
@@ -20,6 +21,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             string[] columnMarkdowns = null;
             string markdownSource = null;
             DesignSpecConfig config = null;
+            LayoutResultModel layoutResult = null;
 
             // 尝试 WebView2 编辑器（net8.0 项目）
             long ownerHandle = 0;
@@ -27,7 +29,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             bool useModernEditor = EditorLoader.TryShowEditor(
                 null, null, ownerHandle,
-                out columnContents, out columnMarkdowns, out markdownSource, out config);
+                out columnContents, out columnMarkdowns, out markdownSource, out config, out layoutResult);
 
             if (!useModernEditor)
             {
@@ -52,7 +54,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             try
             {
                 var service = new DesignSpecService();
-                service.Insert(columnContents, markdownSource, config, ptRes.Value, columnMarkdowns);
+                service.Insert(columnContents, markdownSource, config, ptRes.Value, columnMarkdowns, layoutResult);
             }
             catch (System.Exception ex)
             {
