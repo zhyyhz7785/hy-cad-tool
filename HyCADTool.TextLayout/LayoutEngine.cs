@@ -102,8 +102,7 @@ namespace HyCADTool.TextLayout
                     return quoteLines * lineHeight + cfg.ActualQuoteSpaceBefore + cfg.ActualQuoteSpaceAfter;
 
                 case DocumentBlockType.Table:
-                    int tableRows = Math.Max(2, block.SourceText?.Split('\n').Count(l => l.Contains("|")) ?? 2);
-                    return tableRows * lineHeight * 1.3;
+                    return EstimateTableHeightMm(block, cfg, colWidthMm, lineHeight);
 
                 case DocumentBlockType.CodeBlock:
                     int codeLines = Math.Max(1, block.ParagraphCount);
@@ -116,6 +115,35 @@ namespace HyCADTool.TextLayout
                     int lines = Math.Max(1, (int)Math.Ceiling((double)displayUnits / charsPerLine));
                     return lines * lineHeight + cfg.ActualPSpaceAfter;
             }
+        }
+
+        private static double EstimateTableHeightMm(DocumentBlock block, DesignSpecConfig cfg, double colWidthMm, double lineHeight)
+        {
+            var tables = MarkdownTableExtractor.ExtractTopLevelTables(block?.SourceText ?? string.Empty);
+            var table = tables.FirstOrDefault();
+            if (table == null || table.Rows.Count == 0 || table.ColumnCount <= 0)
+            {
+                int fallbackRows = Math.Max(2, block?.SourceText?.Split('\n').Count(l => l.Contains("|")) ?? 2);
+                return fallbackRows * lineHeight * 1.3;
+            }
+
+            int[] colUnits = MarkdownTableExtractor.GetColumnDisplayUnits(table);
+            if (colUnits == null || colUnits.Length == 0)
+                colUnits = Enumerable.Repeat(2, table.ColumnCount).ToArray();
+
+            double totalUnits = Math.Max(1, colUnits.Sum(u => Math.Max(1, u)));
+            int[] charsPerLine = new int[colUnits.Length];
+            for (int i = 0; i < colUnits.Length; i++)
+            {
+                double ratio = Math.Max(1, colUnits[i]) / totalUnits;
+                double cellWidth = Math.Max(cfg.ActualTextHeight * 2, colWidthMm * ratio);
+                charsPerLine[i] = Math.Max(1, (int)Math.Floor(cellWidth / Math.Max(0.01, cfg.ActualTextHeight * cfg.TextXScale)));
+            }
+
+            int[] rowLines = MarkdownTableExtractor.EstimateRowLineCounts(table, charsPerLine);
+            double totalRowLines = Math.Max(1, rowLines.Sum(v => Math.Max(1, v)));
+            double rowBaseHeight = Math.Max(lineHeight * 1.3, cfg.ActualTextHeight);
+            return totalRowLines * rowBaseHeight;
         }
 
         private static MutablePage CreatePage(int cols, double[] colWidths, DesignSpecConfig cfg)

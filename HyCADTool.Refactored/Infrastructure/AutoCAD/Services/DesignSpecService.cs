@@ -8,6 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
+using SharedMarkdownBlockParser = HyCADTool.TextLayout.MarkdownBlockParser;
+using SharedDocumentBlock = HyCADTool.TextLayout.DocumentBlock;
+using SharedDocumentBlockType = HyCADTool.TextLayout.DocumentBlockType;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -20,6 +23,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         private const string XREC_KEY_MD = "HyDesignSpec_MD";
         private const string XREC_KEY_CFG = "HyDesignSpec_CFG";
         private const string XREC_KEY_GROUP = "HyDesignSpec_Group";
+
+        private sealed class TablePlacement
+        {
+            public int ColumnIndex { get; set; }
+            public int BlockIndex { get; set; }
+            public double TopOffsetMm { get; set; }
+            public double EstimatedHeightMm { get; set; }
+            public MarkdownTableData TableData { get; set; }
+        }
 
         /// <summary>
         /// 插入多个独立 MText（每栏一个），横向排列
@@ -44,6 +56,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
+            var tablePlacements = BuildTablePlacements(markdownSource, layoutResult, config, area.ColumnWidths);
             var ed = doc.Editor;
 
             ObjectId anchorEntityId = ObjectId.Null;
@@ -105,9 +118,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             btr,
                             db,
                             config,
+                            tablePlacements,
+                            i,
                             columnMarkdown,
                             colLeftX,
-                            insertionPoint.Y - area.TotalHeight - config.ActualTextHeight,
+                            insertionPoint.Y,
                             insertionPoint.Z,
                             colWidth,
                             groupId,
@@ -148,6 +163,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
+            var tablePlacements = BuildTablePlacements(markdownSource, layoutResult, config, area.ColumnWidths);
             var ed = doc.Editor;
 
             ObjectId newAnchorEntityId = ObjectId.Null;
@@ -237,9 +253,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             btr2,
                             db,
                             config,
+                            tablePlacements,
+                            i,
                             columnMarkdown,
                             colLeftX,
-                            insertPt.Y - area.TotalHeight - config.ActualTextHeight,
+                            insertPt.Y,
                             insertPt.Z,
                             colWidth,
                             newGroupId,
@@ -318,9 +336,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             BlockTableRecord btr,
             Database db,
             DesignSpecConfig config,
+            IReadOnlyDictionary<int, List<TablePlacement>> tablePlacements,
+            int columnIndex,
             string columnMarkdown,
             double columnLeftX,
-            double startTopY,
+            double columnTopY,
             double z,
             double columnWidth,
             string groupId,
@@ -328,6 +348,39 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             ref bool metadataWritten,
             ref ObjectId anchorEntityId)
         {
+            List<TablePlacement> placements = null;
+            if (tablePlacements != null && tablePlacements.TryGetValue(columnIndex, out var planned) && planned != null)
+                placements = planned.OrderBy(x => x.TopOffsetMm).ToList();
+
+            int created = 0;
+            if (placements != null && placements.Count > 0)
+            {
+                foreach (var placement in placements)
+                {
+                    if (placement?.TableData == null)
+                        continue;
+                    double tableTopY = columnTopY - Math.Max(0, placement.TopOffsetMm);
+                    if (TryCreateTable(
+                        tr,
+                        btr,
+                        db,
+                        config,
+                        placement.TableData,
+                        columnLeftX,
+                        tableTopY,
+                        z,
+                        columnWidth,
+                        groupId,
+                        markdownSource,
+                        ref metadataWritten,
+                        ref anchorEntityId))
+                    {
+                        created++;
+                    }
+                }
+                return created;
+            }
+
             if (string.IsNullOrWhiteSpace(columnMarkdown))
                 return 0;
 
@@ -335,57 +388,273 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (tables == null || tables.Count == 0)
                 return 0;
 
-            int created = 0;
-            double y = startTopY;
+            // 回退路径：没有布局位置信息时，保持旧行为（顺序下排）。
+            double y = columnTopY - config.ActualTextHeight;
             foreach (var tableData in tables)
             {
-                int rows = tableData.Rows.Count;
-                int cols = tableData.ColumnCount;
-                if (rows <= 0 || cols <= 0)
-                    continue;
-
-                var table = new Table();
-                table.SetDatabaseDefaults();
-                table.TableStyle = db.Tablestyle;
-                table.Position = new Point3d(columnLeftX, y, z);
-                table.SetSize(rows, cols);
-
-                double rowHeight = Math.Max(config.ActualTextHeight * config.LineSpacingFactor * 1.3, config.ActualTextHeight);
-                for (int r = 0; r < rows; r++)
+                if (TryCreateTable(
+                    tr,
+                    btr,
+                    db,
+                    config,
+                    tableData,
+                    columnLeftX,
+                    y,
+                    z,
+                    columnWidth,
+                    groupId,
+                    markdownSource,
+                    ref metadataWritten,
+                    ref anchorEntityId))
                 {
-                    table.Rows[r].Height = rowHeight;
-                    table.Rows[r].TextHeight = config.ActualTextHeight;
+                    created++;
+                    var rowHeight = Math.Max(config.ActualTextHeight * config.LineSpacingFactor * 1.3, config.ActualTextHeight);
+                    y -= Math.Max(rowHeight * Math.Max(1, tableData.Rows.Count), config.ActualTextHeight);
                 }
-
-                double colWidth = Math.Max(config.ActualTextHeight * 3.0, columnWidth / cols);
-                for (int c = 0; c < cols; c++)
-                    table.Columns[c].Width = colWidth;
-
-                for (int r = 0; r < rows; r++)
-                {
-                    var row = tableData.Rows[r];
-                    for (int c = 0; c < cols; c++)
-                    {
-                        table.Cells[r, c].TextString = c < row.Count ? row[c] : "";
-                    }
-                }
-
-                table.GenerateLayout();
-                SetLayer(db, tr, table, LAYER_TEXT);
-                btr.AppendEntity(table);
-                tr.AddNewlyCreatedDBObject(table, true);
-                if (anchorEntityId.IsNull)
-                    anchorEntityId = table.ObjectId;
-
-                WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
-                ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
-
-                double tableHeight = table.Height > 0 ? table.Height : rowHeight * rows;
-                y -= tableHeight + config.ActualTextHeight;
-                created++;
             }
 
             return created;
+        }
+
+        private static Dictionary<int, List<TablePlacement>> BuildTablePlacements(
+            string markdownSource,
+            LayoutResultModel layoutResult,
+            DesignSpecConfig config,
+            double[] columnWidths)
+        {
+            var result = new Dictionary<int, List<TablePlacement>>();
+            if (string.IsNullOrWhiteSpace(markdownSource) || layoutResult?.Pages == null || layoutResult.Pages.Length == 0)
+                return result;
+
+            var blocks = SharedMarkdownBlockParser.ParseTopLevelBlocks(markdownSource ?? string.Empty);
+            if (blocks == null || blocks.Count == 0)
+                return result;
+
+            var page = layoutResult.Pages[0];
+            if (page?.ColumnBlockIndices == null || page.ColumnBlockIndices.Length == 0)
+                return result;
+
+            for (int col = 0; col < page.ColumnBlockIndices.Length; col++)
+            {
+                int[] indices = page.ColumnBlockIndices[col] ?? Array.Empty<int>();
+                double[] heights = (page.ColumnBlockHeightsMm != null && col < page.ColumnBlockHeightsMm.Length)
+                    ? (page.ColumnBlockHeightsMm[col] ?? Array.Empty<double>())
+                    : Array.Empty<double>();
+                double colWidth = (columnWidths != null && col < columnWidths.Length && columnWidths[col] > 0)
+                    ? columnWidths[col]
+                    : config.GetColumnWidth(col);
+
+                double topOffset = 0;
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    int blockIndex = indices[i];
+                    SharedDocumentBlock block = (blockIndex >= 0 && blockIndex < blocks.Count) ? blocks[blockIndex] : null;
+                    double blockHeight = (i < heights.Length && heights[i] > 0)
+                        ? heights[i]
+                        : EstimateBlockHeightFallback(block, config, colWidth);
+
+                    if (block != null && block.Type == SharedDocumentBlockType.Table)
+                    {
+                        var tableData = MarkdownTableExtractor.ExtractTopLevelTables(block.SourceText ?? string.Empty).FirstOrDefault();
+                        if (tableData != null && tableData.Rows.Count > 0 && tableData.ColumnCount > 0)
+                        {
+                            if (!result.TryGetValue(col, out var list))
+                            {
+                                list = new List<TablePlacement>();
+                                result[col] = list;
+                            }
+
+                            list.Add(new TablePlacement
+                            {
+                                ColumnIndex = col,
+                                BlockIndex = blockIndex,
+                                TopOffsetMm = Math.Max(0, topOffset),
+                                EstimatedHeightMm = Math.Max(config.ActualTextHeight, blockHeight),
+                                TableData = tableData
+                            });
+                        }
+                    }
+
+                    topOffset += Math.Max(config.ActualTextHeight, blockHeight);
+                }
+            }
+
+            return result;
+        }
+
+        private static double EstimateBlockHeightFallback(SharedDocumentBlock block, DesignSpecConfig cfg, double columnWidth)
+        {
+            double lineHeight = cfg.ActualTextHeight * cfg.LineSpacingFactor;
+            if (block == null)
+                return lineHeight;
+
+            int charsPerLine = Math.Max(1, (int)Math.Floor(columnWidth / Math.Max(0.01, cfg.ActualTextHeight * cfg.TextXScale)));
+            int displayUnits = Math.Max(1, block.DisplayUnits);
+            int lines = Math.Max(1, (int)Math.Ceiling(displayUnits / (double)charsPerLine));
+
+            switch (block.Type)
+            {
+                case SharedDocumentBlockType.Heading:
+                    double headingHeight = cfg.ActualTextHeight;
+                    if (block.HeadingLevel == 1) headingHeight = cfg.H1Height;
+                    else if (block.HeadingLevel == 2) headingHeight = cfg.H2Height;
+                    else if (block.HeadingLevel == 3) headingHeight = cfg.H3Height;
+                    return lines * headingHeight * cfg.LineSpacingFactor
+                        + cfg.GetHeadingSpaceBefore(block.HeadingLevel)
+                        + cfg.GetHeadingSpaceAfter(block.HeadingLevel);
+                case SharedDocumentBlockType.List:
+                    return lines * lineHeight + cfg.ActualLiSpaceAfter * Math.Max(1, block.ParagraphCount);
+                case SharedDocumentBlockType.BlockQuote:
+                    return lines * lineHeight + cfg.ActualQuoteSpaceBefore + cfg.ActualQuoteSpaceAfter;
+                case SharedDocumentBlockType.Table:
+                    return Math.Max(lineHeight * 2, lineHeight * 1.3 * Math.Max(2, block.ParagraphCount));
+                default:
+                    return lines * lineHeight + cfg.ActualPSpaceAfter;
+            }
+        }
+
+        private bool TryCreateTable(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            DesignSpecConfig config,
+            MarkdownTableData tableData,
+            double columnLeftX,
+            double tableTopY,
+            double z,
+            double columnWidth,
+            string groupId,
+            string markdownSource,
+            ref bool metadataWritten,
+            ref ObjectId anchorEntityId)
+        {
+            int rows = tableData?.Rows?.Count ?? 0;
+            int cols = tableData?.ColumnCount ?? 0;
+            if (rows <= 0 || cols <= 0)
+                return false;
+
+            var table = new Table();
+            table.SetDatabaseDefaults();
+            table.TableStyle = db.Tablestyle;
+            table.Position = new Point3d(columnLeftX, tableTopY, z);
+            table.SetSize(rows, cols);
+
+            double[] colWidths = BuildTableColumnWidths(tableData, columnWidth, config);
+            int[] rowLines = BuildTableRowLineCounts(tableData, colWidths, config);
+            double baseRowHeight = Math.Max(config.ActualTextHeight * config.LineSpacingFactor * 1.3, config.ActualTextHeight);
+
+            for (int r = 0; r < rows; r++)
+            {
+                int lineCount = (rowLines != null && r < rowLines.Length) ? Math.Max(1, rowLines[r]) : 1;
+                table.Rows[r].Height = Math.Max(baseRowHeight, baseRowHeight * lineCount);
+                table.Rows[r].TextHeight = config.ActualTextHeight;
+            }
+
+            for (int c = 0; c < cols; c++)
+            {
+                double width = (colWidths != null && c < colWidths.Length) ? colWidths[c] : (columnWidth / Math.Max(1, cols));
+                table.Columns[c].Width = Math.Max(config.ActualTextHeight * 2.0, width);
+            }
+
+            for (int r = 0; r < rows; r++)
+            {
+                var row = tableData.Rows[r];
+                for (int c = 0; c < cols; c++)
+                    table.Cells[r, c].TextString = c < row.Count ? row[c] ?? string.Empty : string.Empty;
+            }
+
+            table.GenerateLayout();
+            SetLayer(db, tr, table, LAYER_TEXT);
+            btr.AppendEntity(table);
+            tr.AddNewlyCreatedDBObject(table, true);
+            if (anchorEntityId.IsNull)
+                anchorEntityId = table.ObjectId;
+
+            WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
+            ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
+            return true;
+        }
+
+        private static double[] BuildTableColumnWidths(MarkdownTableData tableData, double totalColumnWidth, DesignSpecConfig config)
+        {
+            int cols = Math.Max(0, tableData?.ColumnCount ?? 0);
+            if (cols <= 0)
+                return Array.Empty<double>();
+
+            int[] units = GetTableColumnDisplayUnits(tableData, cols);
+            double minWidth = Math.Max(config.ActualTextHeight * 2.0, totalColumnWidth * 0.08);
+            double reserved = minWidth * cols;
+            double flexible = Math.Max(0, totalColumnWidth - reserved);
+            double unitSum = Math.Max(1, units.Sum(u => Math.Max(1, u)));
+            var widths = new double[cols];
+
+            double acc = 0;
+            for (int i = 0; i < cols; i++)
+            {
+                double ratio = Math.Max(1, units[i]) / unitSum;
+                double width = minWidth + flexible * ratio;
+                widths[i] = width;
+                acc += width;
+            }
+
+            if (cols > 0 && Math.Abs(acc - totalColumnWidth) > 0.01)
+            {
+                widths[cols - 1] = Math.Max(minWidth, widths[cols - 1] + (totalColumnWidth - acc));
+            }
+
+            return widths;
+        }
+
+        private static int[] BuildTableRowLineCounts(MarkdownTableData tableData, double[] colWidths, DesignSpecConfig config)
+        {
+            int rows = tableData?.Rows?.Count ?? 0;
+            if (rows <= 0)
+                return Array.Empty<int>();
+
+            int cols = Math.Max(1, tableData.ColumnCount);
+            var charsPerLine = new int[cols];
+            for (int c = 0; c < cols; c++)
+            {
+                double width = (colWidths != null && c < colWidths.Length) ? colWidths[c] : config.GetColumnWidth(0) / cols;
+                charsPerLine[c] = Math.Max(1, (int)Math.Floor(width / Math.Max(0.01, config.ActualTextHeight * config.TextXScale)));
+            }
+
+            var rowLines = new int[rows];
+            for (int r = 0; r < rows; r++)
+            {
+                var row = tableData.Rows[r] ?? new List<string>();
+                int maxLines = 1;
+                for (int c = 0; c < cols; c++)
+                {
+                    int perLine = charsPerLine[c];
+                    string text = c < row.Count ? row[c] ?? string.Empty : string.Empty;
+                    int units = Math.Max(1, DisplayWidthCalculator.GetDisplayUnits(text));
+                    int lines = Math.Max(1, (int)Math.Ceiling(units / (double)perLine));
+                    if (lines > maxLines) maxLines = lines;
+                }
+                rowLines[r] = maxLines;
+            }
+
+            return rowLines;
+        }
+
+        private static int[] GetTableColumnDisplayUnits(MarkdownTableData tableData, int cols)
+        {
+            var units = Enumerable.Repeat(2, Math.Max(1, cols)).ToArray();
+            if (tableData?.Rows == null)
+                return units;
+
+            foreach (var row in tableData.Rows)
+            {
+                if (row == null) continue;
+                for (int c = 0; c < row.Count && c < units.Length; c++)
+                {
+                    int cellUnits = DisplayWidthCalculator.GetDisplayUnits(row[c] ?? string.Empty);
+                    if (cellUnits > units[c]) units[c] = cellUnits;
+                }
+            }
+
+            return units;
         }
 
         private ObjectId EnsureTextStyle(Database db, Transaction tr, DesignSpecConfig config)

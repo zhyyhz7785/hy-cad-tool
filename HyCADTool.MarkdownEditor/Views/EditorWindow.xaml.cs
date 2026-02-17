@@ -1004,6 +1004,8 @@ namespace HyCADTool.MarkdownEditor.Views
         private async Task SyncMarkdownFromEditorAsync()
         {
             if (!_editorReady || EditorWebView?.CoreWebView2 == null) return;
+            // 预览正在回写编辑器时，避免用旧编辑器内容覆盖预览最新内容。
+            if (_isUpdatingFromPreview) return;
             try
             {
                 string result = await EditorWebView.CoreWebView2.ExecuteScriptAsync("getContent()");

@@ -167,7 +167,7 @@ namespace HyCADTool.MarkdownEditor.Services
 
             var layoutConfig = new LayoutSpecConfig
             {
-                Scale = config.DrawScale,
+                Scale = config.DrawScale > 0 ? config.DrawScale : 1.0,
                 PreviewScale = config.PreviewScale,
                 ColumnCount = config.ColumnCount,
                 ColumnGutter = config.ColumnGutter,
@@ -186,13 +186,13 @@ namespace HyCADTool.MarkdownEditor.Services
                 LiSpaceAfter = config.LiSpaceAfter,
                 QuoteSpaceBefore = config.QuoteSpaceBefore,
                 QuoteSpaceAfter = config.QuoteSpaceAfter,
-                ListIndent = config.ListIndent,
-                QuoteIndent = config.QuoteIndent,
+                ListIndent = Math.Max(0, config.ListIndent),
+                QuoteIndent = Math.Max(0, config.QuoteIndent),
                 FontFileName = config.FontFileName,
                 BigFontFileName = config.BigFontFileName,
                 BoldFontName = config.BoldFontName,
                 TextSize = config.TextSize,
-                TextXScale = config.TextXScale,
+                TextXScale = Math.Max(0.1, config.TextXScale),
                 TotalHeight = config.TotalHeight,
                 PagePreset = config.PagePreset,
                 PageWidthMm = config.PageWidthMm,

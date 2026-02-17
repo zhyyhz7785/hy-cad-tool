@@ -91,6 +91,52 @@ namespace HyCADTool.TextLayout
             }
         }
 
+        public static int[] GetColumnDisplayUnits(MarkdownTableData tableData)
+        {
+            if (tableData == null || tableData.Rows.Count == 0 || tableData.ColumnCount <= 0)
+                return Array.Empty<int>();
+
+            int[] units = Enumerable.Repeat(2, tableData.ColumnCount).ToArray();
+            foreach (var row in tableData.Rows)
+            {
+                if (row == null) continue;
+                for (int c = 0; c < row.Count && c < units.Length; c++)
+                {
+                    int cellUnits = DisplayWidthCalculator.GetDisplayUnits(row[c] ?? string.Empty);
+                    if (cellUnits > units[c])
+                        units[c] = cellUnits;
+                }
+            }
+
+            return units;
+        }
+
+        public static int[] EstimateRowLineCounts(MarkdownTableData tableData, int[] charsPerLineByColumn)
+        {
+            if (tableData == null || tableData.Rows.Count == 0)
+                return Array.Empty<int>();
+            if (charsPerLineByColumn == null || charsPerLineByColumn.Length == 0)
+                return Enumerable.Repeat(1, tableData.Rows.Count).ToArray();
+
+            var rowLines = new int[tableData.Rows.Count];
+            for (int r = 0; r < tableData.Rows.Count; r++)
+            {
+                var row = tableData.Rows[r] ?? new List<string>();
+                int maxLines = 1;
+                for (int c = 0; c < charsPerLineByColumn.Length; c++)
+                {
+                    int charsPerLine = Math.Max(1, charsPerLineByColumn[c]);
+                    string text = c < row.Count ? row[c] ?? string.Empty : string.Empty;
+                    int units = Math.Max(1, DisplayWidthCalculator.GetDisplayUnits(text));
+                    int lines = Math.Max(1, (int)Math.Ceiling(units / (double)charsPerLine));
+                    if (lines > maxLines) maxLines = lines;
+                }
+                rowLines[r] = maxLines;
+            }
+
+            return rowLines;
+        }
+
         private static MarkdownTableData ToTableData(Table table)
         {
             var data = new MarkdownTableData();

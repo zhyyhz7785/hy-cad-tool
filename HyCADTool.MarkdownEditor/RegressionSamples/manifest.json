@@ -31,13 +31,34 @@
       "id": "long_doc",
       "file": "06-long-doc.md",
       "focus": ["长文档分栏", "拖拽后统计稳定性"]
+    },
+    {
+      "id": "font_consistency",
+      "file": "07-font-consistency.md",
+      "focus": ["字体宽度一致性", "粗体/代码字体口径"]
+    },
+    {
+      "id": "special_symbols",
+      "file": "08-special-symbols.md",
+      "focus": ["特殊符号兼容", "插入前降级流程"]
+    },
+    {
+      "id": "mixed_code_table",
+      "file": "09-mixed-code-table.md",
+      "focus": ["代码与表格混排", "分栏索引稳定性"]
+    },
+    {
+      "id": "layout_consistency_5_issues",
+      "file": "10-layout-consistency-5-issues.md",
+      "focus": ["TextXScale=0.7 换行一致", "表格位置/尺寸一致", "栏尾完整性", "缩进一致性"]
     }
   ],
   "quickChecklist": [
     "统一在 A2 横向下验证 1栏/2栏/3栏",
     "分别设置 TextSize=2.5/3.5/5.0，TextXScale=0.7",
-    "确认每栏 footer 的 字/行、段数、总字数 与视觉变化方向一致",
+    "确认每栏 footer 的 字/行、段数、总字数 与视觉变化方向一致，且栏尾无内容丢失",
     "确认确认按钮返回的 CharsPerColumn 与 ColumnParagraphIndices 非空（空文档除外）",
-    "DPI 100%/125%/150% 下标尺与纸宽变化同步"
+    "DPI 100%/125%/150% 下标尺与纸宽变化同步",
+    "对比预览与 CAD：换行位置、列表/引用缩进、表格锚点、表格宽高偏差"
   ]
 }

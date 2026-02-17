@@ -58,6 +58,8 @@ namespace HyCADTool.MarkdownEditor.Html
         private static string BuildDynamicCss(double previewScale, EditorConfig cfg)
         {
             double textSizeMm = Math.Max(0.1, cfg.TextSize);
+            double drawScale = Math.Max(0.1, cfg.DrawScale);
+            double textXScale = Math.Max(0.1, cfg.TextXScale);
             double basePx = textSizeMm * previewScale;
             double lineHeightFactor = Math.Max(1.0, cfg.LineSpacingFactor);
             double pageWidthPx = cfg.PageWidthMm * previewScale;
@@ -77,12 +79,15 @@ namespace HyCADTool.MarkdownEditor.Html
             string liMargin = $"margin:0 0 {cfg.LiSpaceAfter:F1}em";
             string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
             string fontFamily = ResolvePreviewFontFamily(cfg);
+            double listIndentPx = Math.Max(8, cfg.ListIndent * drawScale * previewScale);
+            double quoteIndentPx = Math.Max(8, cfg.QuoteIndent * drawScale * previewScale);
 
             var tokens = new (string token, string value)[]
             {
                 ("/*BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px"),
                 ("/*BASE_LINE_HEIGHT*/", lineHeightFactor.ToString("0.###", CultureInfo.InvariantCulture)),
                 ("/*BASE_FONT_FAMILY*/", fontFamily),
+                ("/*TEXT_X_SCALE_CSS*/", textXScale.ToString("0.###", CultureInfo.InvariantCulture)),
                 ("/*PAPER_WIDTH*/", $"{Round(pageWidthPx):F0}px"),
                 ("/*PAPER_HEIGHT*/", $"{Round(pageHeightPx):F0}px"),
                 ("/*PAD_LEFT*/", $"{Round(leftPx):F0}px"),
@@ -90,6 +95,8 @@ namespace HyCADTool.MarkdownEditor.Html
                 ("/*PAD_TOP*/", $"{Round(topPx):F0}px"),
                 ("/*PAD_BOTTOM*/", $"{Round(bottomPx):F0}px"),
                 ("/*GUTTER*/", $"{Round(gutterVisualPx):F0}px"),
+                ("/*LIST_INDENT*/", $"{Round(listIndentPx):F0}px"),
+                ("/*QUOTE_INDENT*/", $"{Round(quoteIndentPx):F0}px"),
                 ("/*H1_MARGIN*/", h1Margin),
                 ("/*H2_MARGIN*/", h2Margin),
                 ("/*H3_MARGIN*/", h3Margin),
@@ -110,6 +117,8 @@ namespace HyCADTool.MarkdownEditor.Html
             double textSizeMm = Math.Max(0.1, cfg.TextSize);
             double textXScale = Math.Max(0.1, cfg.TextXScale);
             double pageWidthMm = Math.Max(1.0, cfg.PageWidthMm);
+            double lineHeightFactor = Math.Max(1.0, cfg.LineSpacingFactor);
+            double fontWidthFactor = ResolveFontWidthFactor(cfg);
             const double contentPaddingX = 20.0; // .col-content 左右 padding 合计
             string layoutJson = layoutResult == null ? "null" : JsonConvert.SerializeObject(layoutResult);
             string customColumnWidths = BuildCustomColumnWidthsJson(layoutResult, safePreviewScale);
@@ -118,11 +127,30 @@ namespace HyCADTool.MarkdownEditor.Html
                 .Replace("/*PREVIEW_SCALE*/", safePreviewScale.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*TEXT_SIZE_MM*/", textSizeMm.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*TEXT_X_SCALE*/", textXScale.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*LINE_HEIGHT_FACTOR*/", lineHeightFactor.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*FONT_WIDTH_FACTOR*/", fontWidthFactor.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*PAGE_WIDTH_MM*/", pageWidthMm.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*COLUMN_COUNT*/", columnCount.ToString(CultureInfo.InvariantCulture))
                 .Replace("/*CONTENT_PADDING_X*/", contentPaddingX.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*LAYOUT_RESULT*/", layoutJson)
                 .Replace("/*CUSTOM_COLUMN_WIDTHS*/", customColumnWidths);
+        }
+
+        private static double ResolveFontWidthFactor(EditorConfig cfg)
+        {
+            string name = (cfg?.FontFileName ?? cfg?.PreviewFontFamily ?? string.Empty).Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(name))
+                return 1.0;
+
+            // 经验系数：用于弥补 Web 字体渲染与 CAD 字体宽度口径差。
+            if (name.Contains("yahei") || name.Contains("微软雅黑") || name.Contains("msyh"))
+                return 1.0;
+            if (name.Contains("simsun") || name.Contains("宋体") || name.Contains("song"))
+                return 1.03;
+            if (name.EndsWith(".shx", StringComparison.Ordinal))
+                return 0.95;
+
+            return 1.0;
         }
 
         private static string BuildCustomColumnWidthsJson(LayoutResult layoutResult, double previewScale)
@@ -185,7 +213,7 @@ body{
 
 .viewport{
   width:100%;height:calc(100% - 24px);
-  overflow-x:hidden;overflow-y:auto;
+  overflow-x:auto;overflow-y:auto;
   padding:8px 6px 12px 0;
 }
 .pages{
@@ -212,13 +240,15 @@ body{
   flex-direction:row;
 }
 
-.col-wrap{-ms-flex:1;flex:1;display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;min-width:0}
+.col-wrap{-ms-flex:1;flex:1;display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;min-width:0;overflow:hidden}
 .col-content{-ms-flex:1;flex:1;overflow:hidden;padding:8px 10px;background:#ffffff;color:#111111;caret-color:#111}
 .col-content.last{overflow:hidden}
 .col-content[contenteditable='true']{outline:none}
 .col-content[contenteditable='true']:focus{box-shadow:inset 0 0 0 1px #58a6ff}
 .col-vhandle{height:6px;background:#2b3138;cursor:ns-resize;-ms-flex-negative:0;flex-shrink:0}
 .col-vhandle:hover{background:#6e7681}
+.col-tables{flex-shrink:0;padding:4px 10px;background:#f8f9fb;border-top:1px dashed #adb5bd;overflow-x:auto;overflow-y:hidden}
+.col-tables:empty{display:none}
 .col-gap{
   width:/*GUTTER*/;min-width:6px;background:transparent;
   -ms-flex-negative:0;flex-shrink:0;cursor:ew-resize;position:relative
@@ -271,17 +301,24 @@ h4,h5,h6{font-size:1em;color:#333333;margin:5px 0 2px}
 p{/*P_MARGIN*/}
 strong{color:#000}
 em{color:#444}
-ul,ol{padding-left:18px;margin:4px 0}
+ul,ol{padding-left:/*LIST_INDENT*/;margin:4px 0}
 li{/*LI_MARGIN*/}
 code{background:#f0f3f6;color:#24292f;padding:1px 4px;border-radius:2px;font-family:Consolas,monospace;font-size:0.9em}
 pre{background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;padding:6px;margin:4px 0;overflow-x:auto}
 pre code{background:none;padding:0}
-blockquote{border-left:3px solid #6e7781;padding:3px 10px;/*BQ_MARGIN*/;color:#333;background:#f6f8fa}
+blockquote{border-left:3px solid #6e7781;padding:3px /*QUOTE_INDENT*/;/*BQ_MARGIN*/;color:#333;background:#f6f8fa}
 hr{border:none;border-top:1px solid #d0d7de;margin:8px 0}
-table{border-collapse:collapse;width:100%;margin:6px 0}
-th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:0.9em;text-align:left}
+table{border-collapse:collapse;width:auto;max-width:100%;margin:6px 0}
+th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:0.9em;text-align:left;word-break:break-word;overflow-wrap:break-word}
 th{background:#f6f8fa;color:#111;font-weight:bold}
 tr:nth-child(even){background:#f8fafc}
+
+.col-content h1,.col-content h2,.col-content h3,.col-content h4,.col-content h5,.col-content h6,
+.col-content p,.col-content ul,.col-content ol,.col-content blockquote,.col-content pre{
+  transform-origin:left top;
+  transform:scaleX(/*TEXT_X_SCALE_CSS*/);
+  width:calc(100% / /*TEXT_X_SCALE_CSS*/);
+}
 ";
 
         #endregion
@@ -296,10 +333,12 @@ var COLUMN_COUNT=/*COLUMN_COUNT*/;
 var PREVIEW_SCALE=/*PREVIEW_SCALE*/;
 var TEXT_SIZE_MM=/*TEXT_SIZE_MM*/;
 var TEXT_X_SCALE=/*TEXT_X_SCALE*/;
+var LINE_HEIGHT_FACTOR=/*LINE_HEIGHT_FACTOR*/;
+var FONT_WIDTH_FACTOR=/*FONT_WIDTH_FACTOR*/;
 var PAGE_WIDTH_MM=/*PAGE_WIDTH_MM*/;
 var CONTENT_PADDING_X=/*CONTENT_PADDING_X*/;
 var LAYOUT_RESULT=/*LAYOUT_RESULT*/;
-var CHAR_WIDTH_MM=Math.max(0.01,TEXT_SIZE_MM*TEXT_X_SCALE);
+var CHAR_WIDTH_MM=Math.max(0.01,TEXT_SIZE_MM*TEXT_X_SCALE*FONT_WIDTH_FACTOR);
 var hPage=-1,hDiv=-1,sX=0,sW=[];
 var vPage=-1,vCol=-1,sY=0,sH=0;
 var pMode='',pStartX=0,pStartY=0,pStartW=0,pStartH=0,pTargetPage=0;
@@ -310,6 +349,9 @@ var customColumnHeights={};
 var scrollTicking=false;
 var contentChangedTimer=0;
 var isDistributing=false;
+var middlePanActive=false;
+var middlePanStartX=0,middlePanStartY=0,middlePanStartLeft=0,middlePanStartTop=0;
+var middlePanViewport=null;
 
 function getPreviewStats(){ return window.previewStats || null; }
 function getColChars(){return (window.previewStats&&window.previewStats.charsPerColumn?window.previewStats.charsPerColumn:[]).join(',');}
@@ -402,6 +444,87 @@ function createEmptyColumnStats(columnIndex){
     avgDisplayUnitsPerChar:0,
     blockTypes:{}
   };
+}
+
+function countRenderedBlocks(pages){
+  var count=0;
+  if(!pages) return 0;
+  for(var p=0;p<pages.length;p++){
+    var page=pages[p];
+    if(!page || !page.columns) continue;
+    for(var c=0;c<page.columns.length;c++){
+      var col=page.columns[c];
+      count+=col && col.children ? col.children.length : 0;
+    }
+  }
+  return count;
+}
+
+function appendBlockByFlow(pages, sourceElements, blockIndex, globalBlockTypes){
+  if(!sourceElements || blockIndex<0 || blockIndex>=sourceElements.length) return;
+  if(!pages || pages.length<=0){
+    pages=[createPage(0)];
+  }
+
+  var pi=Math.max(0,pages.length-1);
+  var ci=0;
+  var page=pages[pi];
+  for(ci=0;ci<COLUMN_COUNT;ci++){
+    var probe=page.columns[ci];
+    if(probe && !isColumnOverflow(probe)){
+      break;
+    }
+  }
+  if(ci>=COLUMN_COUNT){
+    ci=COLUMN_COUNT;
+  }
+
+  var guard=0;
+  while(guard<4000){
+    guard++;
+    if(ci>=COLUMN_COUNT){
+      pi++;
+      ci=0;
+    }
+    if(pi>=pages.length){
+      pages.push(createPage(pi));
+    }
+    page=pages[pi];
+    var col=page.columns[ci];
+    if(!col){
+      ci++;
+      continue;
+    }
+
+    var clone=sourceElements[blockIndex].cloneNode(true);
+    col.appendChild(clone);
+    // 列非空时溢出则顺延到下一列/页；单块过高则强制保留，避免死循环丢块。
+    if(isColumnOverflow(col) && col.children.length>1){
+      col.removeChild(clone);
+      ci++;
+      continue;
+    }
+
+    page.colParas[ci].push(blockIndex);
+    var key=normalizeBlockType(sourceElements[blockIndex]?sourceElements[blockIndex].tagName:'');
+    globalBlockTypes[key]=(globalBlockTypes[key]||0)+1;
+    return;
+  }
+}
+
+function fillMissingBlocksByFlow(pages, sourceElements, assignedFlags, globalBlockTypes){
+  if(!sourceElements || sourceElements.length===0) return 0;
+  var missing=[];
+  for(var i=0;i<sourceElements.length;i++){
+    if(!assignedFlags[i]){
+      missing.push(i);
+    }
+  }
+  for(var m=0;m<missing.length;m++){
+    appendBlockByFlow(pages, sourceElements, missing[m], globalBlockTypes);
+    assignedFlags[missing[m]]=true;
+  }
+  return missing.length;
 }
 
 function getColumn(pageIndex,colIndex){
@@ -629,7 +752,9 @@ function cascadeReflow(startPage,startCol,lockedBlock){
     colIndex=next.colIndex;
   }
   trimTrailingEmptyPages();
+  separateTablesFromColumns();
   renderMathInColumns();
+  normalizeTableLayout();
   rebuildPreviewStatsFromDom();
   var wraps=document.querySelectorAll('.page-wrap');
   var targetPage=Math.min(currentPageIndex, Math.max(0, wraps.length-1));
@@ -715,9 +840,41 @@ function blockToMarkdown(el){
     return lines.join('\n');
   }
   if(tag==='table'){
-    return (el.innerText||el.textContent||'').trim();
+    return tableToMarkdown(el);
   }
   return inlineToMarkdown(el).trim();
+}
+
+function tableToMarkdown(tableEl){
+  if(!tableEl) return '';
+  var rows=tableEl.querySelectorAll('tr');
+  if(!rows || rows.length<=0) return '';
+  var cells=[], r=0, c=0, maxCols=0;
+  for(r=0;r<rows.length;r++){
+    var row=rows[r];
+    var rowCells=row ? row.querySelectorAll('th,td') : [];
+    var line=[];
+    for(c=0;c<rowCells.length;c++){
+      line.push(inlineToMarkdown(rowCells[c]).replace(/\n+/g,' ').trim());
+    }
+    if(line.length>maxCols) maxCols=line.length;
+    cells.push(line);
+  }
+  if(maxCols<=0) return '';
+
+  for(r=0;r<cells.length;r++){
+    while(cells[r].length<maxCols) cells[r].push('');
+  }
+
+  var header=cells[0];
+  var lines=['| '+header.join(' | ')+' |'];
+  var sep=[];
+  for(c=0;c<maxCols;c++) sep.push('---');
+  lines.push('| '+sep.join(' | ')+' |');
+  for(r=1;r<cells.length;r++){
+    lines.push('| '+cells[r].join(' | ')+' |');
+  }
+  return lines.join('\n');
 }
 
 function extractAllMarkdown(){
@@ -733,9 +890,92 @@ function extractAllMarkdown(){
           lines.push(md.trim());
         }
       }
+      var tablesArea=cols[c].parentNode?cols[c].parentNode.querySelector('.col-tables'):null;
+      if(tablesArea){
+        for(var t=0;t<tablesArea.children.length;t++){
+          var tmd=blockToMarkdown(tablesArea.children[t]);
+          if(tmd && tmd.trim()) lines.push(tmd.trim());
+        }
+      }
     }
   }
   return lines.join('\n\n');
+}
+
+function separateTablesFromColumns(){
+  var colContents=document.querySelectorAll('.col-content');
+  for(var i=0;i<colContents.length;i++){
+    var col=colContents[i];
+    var wrap=col.parentNode;
+    if(!wrap) continue;
+    var tablesArea=wrap.querySelector('.col-tables');
+    if(!tablesArea) continue;
+    tablesArea.innerHTML='';
+    for(var j=col.children.length-1;j>=0;j--){
+      if((col.children[j].tagName||'').toLowerCase()==='table'){
+        tablesArea.insertBefore(col.children[j],tablesArea.firstChild);
+      }
+    }
+  }
+}
+
+function normalizeTableLayout(){
+  var areas=document.querySelectorAll('.col-tables');
+  if(!areas || areas.length===0) return;
+  var baseLinePx=Math.max(8, TEXT_SIZE_MM*PREVIEW_SCALE*Math.max(1,LINE_HEIGHT_FACTOR));
+  for(var i=0;i<areas.length;i++){
+    var col=areas[i];
+    var tables=col.querySelectorAll('table');
+    for(var t=0;t<tables.length;t++){
+      var table=tables[t];
+      var rows=table.querySelectorAll('tr');
+      if(!rows || rows.length<=0) continue;
+
+      var maxCols=0, r=0, c=0;
+      for(r=0;r<rows.length;r++){
+        var rowCells=rows[r].querySelectorAll('th,td');
+        if(rowCells.length>maxCols) maxCols=rowCells.length;
+      }
+      if(maxCols<=0) continue;
+
+      var colUnits=[];
+      for(c=0;c<maxCols;c++) colUnits.push(2);
+      for(r=0;r<rows.length;r++){
+        var cells=rows[r].querySelectorAll('th,td');
+        for(c=0;c<cells.length;c++){
+          var metrics=calcTextMetrics(cells[c].innerText||cells[c].textContent||'');
+          if(metrics.units>colUnits[c]) colUnits[c]=metrics.units;
+        }
+      }
+
+      var totalUnits=0;
+      for(c=0;c<colUnits.length;c++) totalUnits+=Math.max(1,colUnits[c]);
+      if(totalUnits<=0) totalUnits=maxCols;
+
+      table.style.tableLayout='fixed';
+      table.style.width='100%';
+
+      var tableW=Math.max(1, table.clientWidth || (col.clientWidth-CONTENT_PADDING_X));
+      for(r=0;r<rows.length;r++){
+        var row=rows[r];
+        var rowCells=row.querySelectorAll('th,td');
+        var rowMaxLines=1;
+        for(c=0;c<rowCells.length;c++){
+          var pct=(Math.max(1,colUnits[c])/totalUnits)*100;
+          rowCells[c].style.width=pct.toFixed(3)+'%';
+          rowCells[c].style.verticalAlign='top';
+
+          var cellWpx=Math.max(1, tableW*(pct/100));
+          var cellWmm=cellWpx/Math.max(0.01,PREVIEW_SCALE);
+          var unitsPerLine=Math.max(1, Math.floor(cellWmm/CHAR_WIDTH_MM));
+          var cellMetrics=calcTextMetrics(rowCells[c].innerText||rowCells[c].textContent||'');
+          var cellLines=Math.max(1, Math.ceil(cellMetrics.units/unitsPerLine));
+          if(cellLines>rowMaxLines) rowMaxLines=cellLines;
+        }
+        row.style.height=Math.max(baseLinePx*1.3, baseLinePx*rowMaxLines).toFixed(2)+'px';
+      }
+    }
+  }
 }
 
 function renderMathInColumns(){
@@ -850,7 +1090,11 @@ function createPage(pageIndex){
     vHandle.className='col-vhandle';
     vHandle.onmousedown=(function(p,c){ return function(ev){ startV(ev,p,c); }; })(pageIndex,i);
 
+    var colTablesEl=document.createElement('div');
+    colTablesEl.className='col-tables';
+
     colWrap.appendChild(col);
+    colWrap.appendChild(colTablesEl);
     colWrap.appendChild(vHandle);
     inner.appendChild(colWrap);
     columns.push(col);
@@ -1036,6 +1280,8 @@ function distributeByLayout(src, els){
 
   var pages=[], i=0, c=0, e=0;
   var globalBlockTypes={};
+  var assignedFlags=[];
+  for(i=0;i<els.length;i++) assignedFlags.push(false);
   clearPages();
 
   for(i=0;i<pagesDef.length;i++){
@@ -1054,11 +1300,29 @@ function distributeByLayout(src, els){
         if(idx<0 || idx>=els.length) continue;
         var clone=els[idx].cloneNode(true);
         colEl.appendChild(clone);
+        assignedFlags[idx]=true;
         page.colParas[c].push(idx);
         var key=normalizeBlockType(els[idx]?els[idx].tagName:'');
         globalBlockTypes[key]=(globalBlockTypes[key]||0)+1;
       }
     }
+  }
+
+  var missingCount=fillMissingBlocksByFlow(pages, els, assignedFlags, globalBlockTypes);
+  var renderedCount=countRenderedBlocks(pages);
+  if(renderedCount<els.length){
+    // 二次兜底：异常场景下按顺序补齐，保证不丢块。
+    for(i=0;i<els.length;i++){
+      if(!assignedFlags[i]){
+        appendBlockByFlow(pages, els, i, globalBlockTypes);
+        assignedFlags[i]=true;
+      }
+    }
+    renderedCount=countRenderedBlocks(pages);
+  }
+  if(renderedCount!==els.length){
+    // 保守回退，避免输出部分内容导致误判。
+    return false;
   }
 
   var pageStats=[];
@@ -1080,12 +1344,7 @@ function distributeByLayout(src, els){
 
       var cpl=(layoutChars && c<layoutChars.length) ? (layoutChars[c]||0) : 0;
       if(!cpl || cpl<1){
-        var contentW=Math.max(1, col.clientWidth-CONTENT_PADDING_X);
-        var contentMm=contentW/Math.max(0.01, PREVIEW_SCALE);
-        var unitPerLine=Math.floor(contentMm/CHAR_WIDTH_MM);
-        var avgUnitsPerChar=metrics.chars>0 ? (metrics.units/metrics.chars) : 1;
-        cpl=Math.floor(unitPerLine/Math.max(0.5, avgUnitsPerChar));
-        if(cpl<1) cpl=1;
+        cpl=computeCharsPerLine(col,metrics);
       }
 
       colChars.push(cpl);
@@ -1125,7 +1384,9 @@ function distributeByLayout(src, els){
     blockTypeCounts:globalBlockTypes
   };
 
+  separateTablesFromColumns();
   renderMathInColumns();
+  normalizeTableLayout();
   setCurrentPage(0, true);
   return true;
 }
@@ -1226,14 +1487,10 @@ function distribute(){
     var colChars=[], colStats=[], pageBlockTypes={};
     for(var c=0;c<COLUMN_COUNT;c++){
       var colEl=pageRef.columns[c];
-      var contentW=Math.max(1, colEl.clientWidth-CONTENT_PADDING_X);
-      var contentMm=contentW/Math.max(0.01, PREVIEW_SCALE);
-      var unitPerLine=Math.floor(contentMm/CHAR_WIDTH_MM);
       var rawText=(colEl.innerText||colEl.textContent||'');
       var metrics=calcTextMetrics(rawText);
+      var cpl=computeCharsPerLine(colEl,metrics);
       var avgUnitsPerChar=metrics.chars>0 ? (metrics.units/metrics.chars) : 1;
-      var cpl=Math.floor(unitPerLine/Math.max(0.5, avgUnitsPerChar));
-      if(cpl<1) cpl=1;
       var paraIndices=pageRef.colParas[c]||[];
       colChars.push(cpl);
       colStats.push({
@@ -1277,7 +1534,9 @@ function distribute(){
     blockTypeCounts:globalBlockTypes
   };
 
+  separateTablesFromColumns();
   renderMathInColumns();
+  normalizeTableLayout();
   var targetPage=Math.min(currentPageIndex, Math.max(0, pageStats.length-1));
   setCurrentPage(targetPage, true);
   isDistributing=false;
@@ -1320,7 +1579,31 @@ function startPaperResize(ev,mode,pageIndex){
   if(ev.preventDefault) ev.preventDefault();
 }
 
+function startMiddlePan(ev){
+  if(!ev || ev.button!==1) return;
+  if(pMode || hDiv>=0 || vCol>=0) return;
+  var viewport=document.getElementById('viewport');
+  if(!viewport) return;
+  middlePanActive=true;
+  middlePanViewport=viewport;
+  middlePanStartX=ev.clientX;
+  middlePanStartY=ev.clientY;
+  middlePanStartLeft=viewport.scrollLeft;
+  middlePanStartTop=viewport.scrollTop;
+  viewport.style.cursor='grabbing';
+  document.body.style.userSelect='none';
+  if(ev.preventDefault) ev.preventDefault();
+}
+
 document.onmousemove=function(ev){
+  if(middlePanActive && middlePanViewport){
+    var pdx=ev.clientX-middlePanStartX;
+    var pdy=ev.clientY-middlePanStartY;
+    middlePanViewport.scrollLeft=middlePanStartLeft-pdx;
+    middlePanViewport.scrollTop=middlePanStartTop-pdy;
+    if(ev.preventDefault) ev.preventDefault();
+    return;
+  }
   if(pMode){
     var paper=document.getElementById('paper-'+pTargetPage);
     if(!paper){
@@ -1421,6 +1704,12 @@ document.onmousemove=function(ev){
 
 document.onmouseup=function(){
   var resized = !!pMode;
+  middlePanActive=false;
+  if(middlePanViewport){
+    middlePanViewport.style.cursor='';
+  }
+  middlePanViewport=null;
+  document.body.style.userSelect='';
   hPage=-1;
   hDiv=-1;
   vPage=-1;
@@ -1447,6 +1736,12 @@ function init(){
   var viewport=document.getElementById('viewport');
   if(viewport){
     viewport.addEventListener('scroll', handleViewportScroll);
+    viewport.addEventListener('mousedown', startMiddlePan, { passive:false });
+    viewport.addEventListener('auxclick', function(ev){
+      if(ev && ev.button===1 && ev.preventDefault){
+        ev.preventDefault();
+      }
+    });
   }
   distribute();
 }
