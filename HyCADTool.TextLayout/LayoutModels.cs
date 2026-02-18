@@ -32,6 +32,7 @@ namespace HyCADTool.TextLayout
         public int SchemaVersion { get; set; } = 1;
         public double[] ColumnWidthsMm { get; set; } = Array.Empty<double>();
         public LayoutPage[] Pages { get; set; } = Array.Empty<LayoutPage>();
+        public IncrementalLayoutMetadata IncrementalMetadata { get; set; }
 
         public int PageCount => Pages?.Length ?? 0;
 
@@ -56,5 +57,35 @@ namespace HyCADTool.TextLayout
         public double[][] ColumnBlockHeightsMm { get; set; } = Array.Empty<double[]>();
         public double[] ColumnUsedHeightsMm { get; set; } = Array.Empty<double>();
         public int[] CharsPerColumn { get; set; } = Array.Empty<int>();
+    }
+
+    public sealed class IncrementalLayoutMetadata
+    {
+        public int DirtyBlockStart { get; set; } = -1;
+        public int DirtyBlockEnd { get; set; } = -1;
+        public int StableBlockIndex { get; set; } = -1;
+        public int[] AffectedPageIndices { get; set; } = Array.Empty<int>();
+        public LayoutColumnDelta[] ColumnDeltas { get; set; } = Array.Empty<LayoutColumnDelta>();
+        public LayoutMovedBlock[] MovedBlocks { get; set; } = Array.Empty<LayoutMovedBlock>();
+    }
+
+    public sealed class LayoutColumnDelta
+    {
+        public int PageIndex { get; set; }
+        public int ColumnIndex { get; set; }
+        public double OldHeightMm { get; set; }
+        public double NewHeightMm { get; set; }
+        public double HeightDeltaMm => NewHeightMm - OldHeightMm;
+    }
+
+    public sealed class LayoutMovedBlock
+    {
+        public int BlockIndex { get; set; } = -1;
+        public int OldPageIndex { get; set; } = -1;
+        public int OldColumnIndex { get; set; } = -1;
+        public int OldPositionInColumn { get; set; } = -1;
+        public int NewPageIndex { get; set; } = -1;
+        public int NewColumnIndex { get; set; } = -1;
+        public int NewPositionInColumn { get; set; } = -1;
     }
 }

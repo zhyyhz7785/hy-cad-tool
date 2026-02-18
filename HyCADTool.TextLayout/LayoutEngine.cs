@@ -72,6 +72,208 @@ namespace HyCADTool.TextLayout
             };
         }
 
+        public LayoutResult DistributeIncremental(
+            IReadOnlyList<DocumentBlock> blocks,
+            DesignSpecConfig config,
+            LayoutResult previousResult,
+            int dirtyBlockStart,
+            int dirtyBlockEnd)
+        {
+            var next = Distribute(blocks, config);
+            if (previousResult == null
+                || previousResult.Pages == null
+                || previousResult.Pages.Length == 0
+                || dirtyBlockStart < 0)
+            {
+                next.IncrementalMetadata = new IncrementalLayoutMetadata
+                {
+                    DirtyBlockStart = dirtyBlockStart,
+                    DirtyBlockEnd = dirtyBlockEnd,
+                    StableBlockIndex = -1,
+                    AffectedPageIndices = Enumerable.Range(0, next.PageCount).ToArray()
+                };
+                return next;
+            }
+
+            next.IncrementalMetadata = BuildIncrementalMetadata(previousResult, next, dirtyBlockStart, dirtyBlockEnd);
+            return next;
+        }
+
+        private static IncrementalLayoutMetadata BuildIncrementalMetadata(
+            LayoutResult previousResult,
+            LayoutResult nextResult,
+            int dirtyBlockStart,
+            int dirtyBlockEnd)
+        {
+            var oldMap = BuildPlacementMap(previousResult);
+            var newMap = BuildPlacementMap(nextResult);
+            var moved = new List<LayoutMovedBlock>();
+            var affectedPages = new HashSet<int>();
+            int stableBlock = -1;
+            int searchStart = Math.Max(0, dirtyBlockEnd + 1);
+            int maxBlockIndex = newMap.Count > 0 ? newMap.Keys.Max() : -1;
+
+            foreach (var kv in newMap.OrderBy(x => x.Key))
+            {
+                int blockIndex = kv.Key;
+                if (blockIndex < Math.Max(0, dirtyBlockStart))
+                    continue;
+
+                var nextPlacement = kv.Value;
+                if (!oldMap.TryGetValue(blockIndex, out var oldPlacement))
+                {
+                    moved.Add(new LayoutMovedBlock
+                    {
+                        BlockIndex = blockIndex,
+                        OldPageIndex = -1,
+                        OldColumnIndex = -1,
+                        OldPositionInColumn = -1,
+                        NewPageIndex = nextPlacement.PageIndex,
+                        NewColumnIndex = nextPlacement.ColumnIndex,
+                        NewPositionInColumn = nextPlacement.PositionInColumn
+                    });
+                    affectedPages.Add(nextPlacement.PageIndex);
+                    continue;
+                }
+
+                if (oldPlacement.PageIndex != nextPlacement.PageIndex
+                    || oldPlacement.ColumnIndex != nextPlacement.ColumnIndex
+                    || oldPlacement.PositionInColumn != nextPlacement.PositionInColumn)
+                {
+                    moved.Add(new LayoutMovedBlock
+                    {
+                        BlockIndex = blockIndex,
+                        OldPageIndex = oldPlacement.PageIndex,
+                        OldColumnIndex = oldPlacement.ColumnIndex,
+                        OldPositionInColumn = oldPlacement.PositionInColumn,
+                        NewPageIndex = nextPlacement.PageIndex,
+                        NewColumnIndex = nextPlacement.ColumnIndex,
+                        NewPositionInColumn = nextPlacement.PositionInColumn
+                    });
+                    if (oldPlacement.PageIndex >= 0) affectedPages.Add(oldPlacement.PageIndex);
+                    if (nextPlacement.PageIndex >= 0) affectedPages.Add(nextPlacement.PageIndex);
+                }
+            }
+
+            for (int i = searchStart; i <= maxBlockIndex; i++)
+            {
+                if (!oldMap.TryGetValue(i, out var oldPlacement) || !newMap.TryGetValue(i, out var newPlacement))
+                    continue;
+
+                bool equal = oldPlacement.PageIndex == newPlacement.PageIndex
+                    && oldPlacement.ColumnIndex == newPlacement.ColumnIndex
+                    && oldPlacement.PositionInColumn == newPlacement.PositionInColumn;
+                if (!equal)
+                    continue;
+
+                stableBlock = i;
+                break;
+            }
+
+            var deltas = BuildColumnDeltas(previousResult, nextResult, affectedPages);
+            if (affectedPages.Count == 0 && deltas.Length > 0)
+            {
+                foreach (var delta in deltas)
+                    affectedPages.Add(delta.PageIndex);
+            }
+
+            int[] affected = affectedPages
+                .Where(p => p >= 0)
+                .Distinct()
+                .OrderBy(p => p)
+                .ToArray();
+
+            return new IncrementalLayoutMetadata
+            {
+                DirtyBlockStart = dirtyBlockStart,
+                DirtyBlockEnd = dirtyBlockEnd,
+                StableBlockIndex = stableBlock,
+                AffectedPageIndices = affected,
+                ColumnDeltas = deltas,
+                MovedBlocks = moved.ToArray()
+            };
+        }
+
+        private static LayoutColumnDelta[] BuildColumnDeltas(
+            LayoutResult previousResult,
+            LayoutResult nextResult,
+            HashSet<int> affectedPages)
+        {
+            var deltas = new List<LayoutColumnDelta>();
+            int oldPageCount = previousResult?.Pages?.Length ?? 0;
+            int nextPageCount = nextResult?.Pages?.Length ?? 0;
+            int maxPages = Math.Max(oldPageCount, nextPageCount);
+            const double epsilon = 0.001;
+
+            for (int p = 0; p < maxPages; p++)
+            {
+                var oldPage = p < oldPageCount ? previousResult.Pages[p] : null;
+                var newPage = p < nextPageCount ? nextResult.Pages[p] : null;
+                int oldCols = oldPage?.ColumnUsedHeightsMm?.Length ?? 0;
+                int newCols = newPage?.ColumnUsedHeightsMm?.Length ?? 0;
+                int maxCols = Math.Max(oldCols, newCols);
+
+                for (int c = 0; c < maxCols; c++)
+                {
+                    double oldHeight = c < oldCols ? oldPage.ColumnUsedHeightsMm[c] : 0;
+                    double newHeight = c < newCols ? newPage.ColumnUsedHeightsMm[c] : 0;
+                    if (Math.Abs(oldHeight - newHeight) <= epsilon)
+                        continue;
+
+                    affectedPages?.Add(p);
+                    deltas.Add(new LayoutColumnDelta
+                    {
+                        PageIndex = p,
+                        ColumnIndex = c,
+                        OldHeightMm = oldHeight,
+                        NewHeightMm = newHeight
+                    });
+                }
+            }
+
+            return deltas.ToArray();
+        }
+
+        private static Dictionary<int, BlockPlacement> BuildPlacementMap(LayoutResult result)
+        {
+            var map = new Dictionary<int, BlockPlacement>();
+            if (result?.Pages == null)
+                return map;
+
+            foreach (var page in result.Pages)
+            {
+                if (page?.ColumnBlockIndices == null)
+                    continue;
+
+                for (int c = 0; c < page.ColumnBlockIndices.Length; c++)
+                {
+                    var blocks = page.ColumnBlockIndices[c];
+                    if (blocks == null)
+                        continue;
+
+                    for (int i = 0; i < blocks.Length; i++)
+                    {
+                        int blockIndex = blocks[i];
+                        map[blockIndex] = new BlockPlacement
+                        {
+                            PageIndex = page.PageIndex,
+                            ColumnIndex = c,
+                            PositionInColumn = i
+                        };
+                    }
+                }
+            }
+
+            return map;
+        }
+
+        private sealed class BlockPlacement
+        {
+            public int PageIndex { get; set; }
+            public int ColumnIndex { get; set; }
+            public int PositionInColumn { get; set; }
+        }
+
         private static double EstimateBlockHeightMm(DocumentBlock block, DesignSpecConfig cfg, double colWidthMm)
         {
             if (block == null) return cfg.ActualTextHeight * cfg.LineSpacingFactor;

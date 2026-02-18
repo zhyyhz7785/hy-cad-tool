@@ -414,6 +414,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public ICommand EditorActionCommand { get; }
 
         private VditorJsHelper _jsHelper;
+        public event Func<string, Task<bool>> PreviewEditorActionRequested;
 
         #endregion
 
@@ -624,8 +625,25 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         private async Task ExecuteEditorActionAsync(string action)
         {
-            if (_jsHelper == null || string.IsNullOrWhiteSpace(action))
+            if (string.IsNullOrWhiteSpace(action))
                 return;
+
+            if (_jsHelper == null)
+            {
+                var fallback = PreviewEditorActionRequested;
+                if (fallback != null)
+                {
+                    try
+                    {
+                        await fallback.Invoke(action);
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusText = $"图纸面板命令失败: {ex.Message}";
+                    }
+                }
+                return;
+            }
 
             switch (action)
             {

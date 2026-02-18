@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using HyCADTool.MarkdownEditor.Html;
@@ -14,6 +15,15 @@ using LayoutSpecConfig = HyCADTool.TextLayout.DesignSpecConfig;
 
 namespace HyCADTool.MarkdownEditor.Services
 {
+    internal enum PreviewRefreshReason
+    {
+        InitialLoad = 0,
+        ContentInput = 1,
+        ConfigChanged = 2,
+        ViewportChanged = 3,
+        FallbackRebuild = 4
+    }
+
     internal class PreviewManager
     {
         private bool _previewReady;
@@ -24,6 +34,18 @@ namespace HyCADTool.MarkdownEditor.Services
         private int _currentPage = 1;
         private int _totalPages = 1;
         private readonly LayoutEngine _layoutEngine = new LayoutEngine();
+        private long _markdownVersion;
+        private long _previewVersion;
+        private long _lastPreviewContentVersion;
+        private string _lastPreviewContentHash = string.Empty;
+        private string _lastMarkdownSnapshot = string.Empty;
+        private string[] _lastBlockSources = Array.Empty<string>();
+        private int _dirtyBlockStart = -1;
+        private int _dirtyBlockEnd = -1;
+        private string _lastRenderedConfigJson;
+        private bool _hasInitialRender;
+        private bool _incrementalFallbackFuse;
+        private DateTime _lastFullRenderUtc = DateTime.MinValue;
 
         public bool IsPreviewReady
         {
@@ -38,6 +60,11 @@ namespace HyCADTool.MarkdownEditor.Services
         public double RenderedPreviewScale => _renderedPreviewScale;
         public int CurrentPage => _currentPage;
         public int TotalPages => _totalPages;
+        public long MarkdownVersion => _markdownVersion;
+        public long PreviewVersion => _previewVersion;
+        public int DirtyBlockStart => _dirtyBlockStart;
+        public int DirtyBlockEnd => _dirtyBlockEnd;
+        public long LastPreviewContentVersion => _lastPreviewContentVersion;
 
         public void ClearPendingHtml() => _pendingPreviewHtml = "";
 
@@ -89,9 +116,27 @@ namespace HyCADTool.MarkdownEditor.Services
             if (string.Equals(type, "contentChanged", StringComparison.OrdinalIgnoreCase))
             {
                 string markdown = msg.Value<string>("markdown") ?? "";
+                long previewContentVersion = msg.Value<long?>("version") ?? 0;
+                string previewContentHash = msg.Value<string>("hash") ?? string.Empty;
+                bool duplicated = !string.IsNullOrWhiteSpace(previewContentHash)
+                    && string.Equals(previewContentHash, _lastPreviewContentHash, StringComparison.Ordinal)
+                    && previewContentVersion <= _lastPreviewContentVersion;
+                if (duplicated)
+                    return true;
+
+                if (!string.IsNullOrWhiteSpace(previewContentHash))
+                    _lastPreviewContentHash = previewContentHash;
+                if (previewContentVersion > 0)
+                {
+                    _lastPreviewContentVersion = Math.Max(_lastPreviewContentVersion, previewContentVersion);
+                    _previewVersion = Math.Max(_previewVersion, _lastPreviewContentVersion);
+                }
+
                 if (string.Equals(viewModel.MarkdownText ?? "", markdown, StringComparison.Ordinal))
                     return true;
                 viewModel.SetMarkdownFromEditor(markdown);
+                _markdownVersion++;
+                _lastMarkdownSnapshot = markdown;
                 markdownChanged = markdown;
                 return true;
             }
@@ -140,24 +185,125 @@ namespace HyCADTool.MarkdownEditor.Services
             await previewWebView.CoreWebView2.ExecuteScriptAsync($"document.body.style.zoom='{ratioText}';");
         }
 
-        public async Task RefreshPreviewAsync(WebView2 previewWebView, EditorViewModel viewModel)
+        public async Task RefreshPreviewAsync(
+            WebView2 previewWebView,
+            EditorViewModel viewModel,
+            PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
             var config = viewModel.BuildConfig();
             var layoutConfig = BuildLayoutConfig(config);
-            var blocks = MarkdownBlockParser.ParseTopLevelBlocks(viewModel.MarkdownText ?? "");
-            _latestLayoutResult = _layoutEngine.Distribute(blocks, layoutConfig);
-            string html = PreviewHtmlRenderer.ToInteractiveHtml(
-                viewModel.MarkdownText ?? "", viewModel.ColumnCount, viewModel.PreviewScale, config, _latestLayoutResult);
+            string configJson = JsonConvert.SerializeObject(config);
+            bool configChanged = !string.Equals(configJson, _lastRenderedConfigJson, StringComparison.Ordinal);
+            string markdown = viewModel.MarkdownText ?? string.Empty;
+            if (!string.Equals(_lastMarkdownSnapshot, markdown, StringComparison.Ordinal))
+            {
+                _markdownVersion++;
+                _lastMarkdownSnapshot = markdown;
+            }
+
+            var blocks = MarkdownBlockParser.ParseTopLevelBlocks(markdown);
+            UpdateDirtyRange(blocks);
+            var previousLayout = _latestLayoutResult;
+            bool canIncrementalLayout = !configChanged
+                && previousLayout != null
+                && _dirtyBlockStart >= 0
+                && _dirtyBlockEnd >= 0;
+            _latestLayoutResult = canIncrementalLayout
+                ? _layoutEngine.DistributeIncremental(blocks, layoutConfig, previousLayout, _dirtyBlockStart, _dirtyBlockEnd)
+                : _layoutEngine.Distribute(blocks, layoutConfig);
+
             if (!_previewReady || previewWebView?.CoreWebView2 == null)
             {
+                string html = PreviewHtmlRenderer.ToInteractiveHtml(
+                    markdown, viewModel.ColumnCount, viewModel.PreviewScale, config, _latestLayoutResult);
                 _pendingPreviewHtml = html;
                 return;
             }
+            bool forceFullByReason = reason == PreviewRefreshReason.InitialLoad
+                || reason == PreviewRefreshReason.ConfigChanged
+                || reason == PreviewRefreshReason.ViewportChanged
+                || reason == PreviewRefreshReason.FallbackRebuild;
+            bool canIncremental = _hasInitialRender
+                && !configChanged
+                && !forceFullByReason;
 
-            previewWebView.CoreWebView2.NavigateToString(html);
+            if (reason == PreviewRefreshReason.ContentInput
+                && _incrementalFallbackFuse
+                && _hasInitialRender)
+            {
+                FullNavigatePreview(previewWebView, markdown, viewModel, config);
+                _lastRenderedConfigJson = configJson;
+                _incrementalFallbackFuse = false;
+                _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
+                _previewVersion = _markdownVersion;
+                UpdatePageState(1, 1);
+                return;
+            }
+
+            if (canIncremental)
+            {
+                try
+                {
+                    await IncrementalUpdateAsync(
+                        previewWebView,
+                        markdown,
+                        viewModel.PreviewScale,
+                        _latestLayoutResult,
+                        _dirtyBlockStart,
+                        _dirtyBlockEnd);
+                    _incrementalFallbackFuse = false;
+                    _lastRenderedConfigJson = configJson;
+                }
+                catch
+                {
+                    FullNavigatePreview(previewWebView, markdown, viewModel, config);
+                    _lastRenderedConfigJson = configJson;
+                    _incrementalFallbackFuse = true;
+                }
+            }
+            else
+            {
+                FullNavigatePreview(previewWebView, markdown, viewModel, config);
+                _lastRenderedConfigJson = configJson;
+                if (forceFullByReason || configChanged)
+                    _incrementalFallbackFuse = false;
+            }
+
             _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
+            _previewVersion = _markdownVersion;
             UpdatePageState(1, 1);
-            await Task.CompletedTask;
+        }
+
+        private void FullNavigatePreview(WebView2 previewWebView, string markdown, EditorViewModel viewModel, EditorConfig config)
+        {
+            string html = PreviewHtmlRenderer.ToInteractiveHtml(
+                markdown, viewModel.ColumnCount, viewModel.PreviewScale, config, _latestLayoutResult);
+            previewWebView.CoreWebView2.NavigateToString(html);
+            _hasInitialRender = true;
+            _lastFullRenderUtc = DateTime.UtcNow;
+        }
+
+        private async Task IncrementalUpdateAsync(
+            WebView2 previewWebView,
+            string markdown,
+            double previewScale,
+            LayoutResultModel layoutResult,
+            int dirtyBlockStart,
+            int dirtyBlockEnd)
+        {
+            string bodyHtml = PreviewHtmlRenderer.RenderBodyHtml(markdown);
+            string layoutJson = layoutResult == null
+                ? "null"
+                : JsonConvert.SerializeObject(layoutResult);
+            string customWidths = PreviewHtmlRenderer.BuildCustomColumnWidthsJson(
+                layoutResult, Math.Max(0.01, previewScale));
+            string incrementalMetaJson = layoutResult?.IncrementalMetadata == null
+                ? "null"
+                : JsonConvert.SerializeObject(layoutResult.IncrementalMetadata);
+            string bodyEscaped = JsonConvert.SerializeObject(bodyHtml);
+
+            await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                $"updateSourceIncremental({bodyEscaped},{layoutJson},{customWidths},{dirtyBlockStart},{dirtyBlockEnd},{incrementalMetaJson})");
         }
 
         private static LayoutSpecConfig BuildLayoutConfig(EditorConfig config)
@@ -280,6 +426,48 @@ namespace HyCADTool.MarkdownEditor.Services
             if (columns == null || columns.Length == 0) return string.Empty;
             return string.Join("|", columns
                 .Select(col => string.Join(",", (col ?? Array.Empty<int>()).Select(v => v.ToString()))));
+        }
+
+        private void UpdateDirtyRange(IReadOnlyList<DocumentBlock> blocks)
+        {
+            var next = blocks == null
+                ? Array.Empty<string>()
+                : blocks.Select(b => b?.SourceText ?? string.Empty).ToArray();
+
+            if (_lastBlockSources.Length == 0)
+            {
+                if (next.Length > 0)
+                {
+                    _dirtyBlockStart = 0;
+                    _dirtyBlockEnd = next.Length - 1;
+                }
+                else
+                {
+                    _dirtyBlockStart = -1;
+                    _dirtyBlockEnd = -1;
+                }
+
+                _lastBlockSources = next;
+                return;
+            }
+
+            int start = -1;
+            int end = -1;
+            int maxLen = Math.Max(_lastBlockSources.Length, next.Length);
+            for (int i = 0; i < maxLen; i++)
+            {
+                string oldValue = i < _lastBlockSources.Length ? _lastBlockSources[i] : string.Empty;
+                string newValue = i < next.Length ? next[i] : string.Empty;
+                if (string.Equals(oldValue, newValue, StringComparison.Ordinal))
+                    continue;
+
+                if (start < 0) start = i;
+                end = i;
+            }
+
+            _dirtyBlockStart = start;
+            _dirtyBlockEnd = end;
+            _lastBlockSources = next;
         }
     }
 }
