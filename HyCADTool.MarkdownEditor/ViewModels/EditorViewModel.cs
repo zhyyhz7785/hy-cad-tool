@@ -282,42 +282,74 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public double PageWidthMm
         {
             get => _pageWidthMm;
-            private set => SetProperty(ref _pageWidthMm, value);
+            set
+            {
+                double next = Math.Max(100, value);
+                if (!SetProperty(ref _pageWidthMm, next)) return;
+                OnPropertyChanged(nameof(PageSizeLabel));
+                UpdateStatus();
+            }
         }
 
         private double _pageHeightMm = 420;
         public double PageHeightMm
         {
             get => _pageHeightMm;
-            private set => SetProperty(ref _pageHeightMm, value);
+            set
+            {
+                double next = Math.Max(100, value);
+                if (!SetProperty(ref _pageHeightMm, next)) return;
+                OnPropertyChanged(nameof(PageSizeLabel));
+                UpdateStatus();
+            }
         }
 
         private double _marginLeftMm = 20;
         public double MarginLeftMm
         {
             get => _marginLeftMm;
-            private set => SetProperty(ref _marginLeftMm, value);
+            set
+            {
+                double next = Math.Max(0, value);
+                if (!SetProperty(ref _marginLeftMm, next)) return;
+                UpdateStatus();
+            }
         }
 
         private double _marginRightMm = 20;
         public double MarginRightMm
         {
             get => _marginRightMm;
-            private set => SetProperty(ref _marginRightMm, value);
+            set
+            {
+                double next = Math.Max(0, value);
+                if (!SetProperty(ref _marginRightMm, next)) return;
+                UpdateStatus();
+            }
         }
 
         private double _marginTopMm = 20;
         public double MarginTopMm
         {
             get => _marginTopMm;
-            private set => SetProperty(ref _marginTopMm, value);
+            set
+            {
+                double next = Math.Max(0, value);
+                if (!SetProperty(ref _marginTopMm, next)) return;
+                UpdateStatus();
+            }
         }
 
         private double _marginBottomMm = 20;
         public double MarginBottomMm
         {
             get => _marginBottomMm;
-            private set => SetProperty(ref _marginBottomMm, value);
+            set
+            {
+                double next = Math.Max(0, value);
+                if (!SetProperty(ref _marginBottomMm, next)) return;
+                UpdateStatus();
+            }
         }
 
         // ── 段前段后间距（字高倍数） ──

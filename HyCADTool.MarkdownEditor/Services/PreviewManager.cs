@@ -113,11 +113,40 @@ namespace HyCADTool.MarkdownEditor.Services
                 return true;
             }
 
+            if (string.Equals(type, "paperGeometry", StringComparison.OrdinalIgnoreCase))
+            {
+                double widthMm = msg.Value<double?>("pageWidthMm") ?? 0;
+                double heightMm = msg.Value<double?>("pageHeightMm") ?? 0;
+                if (widthMm > 0) viewModel.PageWidthMm = widthMm;
+                if (heightMm > 0) viewModel.PageHeightMm = heightMm;
+                return true;
+            }
+
+            if (string.Equals(type, "paperMargins", StringComparison.OrdinalIgnoreCase))
+            {
+                double leftMm = msg.Value<double?>("marginLeftMm") ?? 0;
+                double rightMm = msg.Value<double?>("marginRightMm") ?? 0;
+                double topMm = msg.Value<double?>("marginTopMm") ?? 0;
+                double bottomMm = msg.Value<double?>("marginBottomMm") ?? 0;
+                viewModel.MarginLeftMm = leftMm;
+                viewModel.MarginRightMm = rightMm;
+                viewModel.MarginTopMm = topMm;
+                viewModel.MarginBottomMm = bottomMm;
+                return true;
+            }
+
             if (string.Equals(type, "contentChanged", StringComparison.OrdinalIgnoreCase))
             {
                 string markdown = msg.Value<string>("markdown") ?? "";
+                int blockCount = msg.Value<int?>("blockCount") ?? 0;
                 long previewContentVersion = msg.Value<long?>("version") ?? 0;
                 string previewContentHash = msg.Value<string>("hash") ?? string.Empty;
+                if (blockCount > 0 && string.IsNullOrWhiteSpace(markdown))
+                {
+                    markdown = _lastMarkdownSnapshot ?? viewModel.MarkdownText ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(markdown))
+                        return true;
+                }
                 bool duplicated = !string.IsNullOrWhiteSpace(previewContentHash)
                     && string.Equals(previewContentHash, _lastPreviewContentHash, StringComparison.Ordinal)
                     && previewContentVersion <= _lastPreviewContentVersion;
@@ -191,7 +220,8 @@ namespace HyCADTool.MarkdownEditor.Services
             PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
             var config = viewModel.BuildConfig();
-            var layoutConfig = BuildLayoutConfig(config);
+            bool flowExperienceMode = PreviewHtmlRenderer.IsFlowExperiencePaperMode;
+            var layoutConfig = flowExperienceMode ? null : BuildLayoutConfig(config);
             string configJson = JsonConvert.SerializeObject(config);
             bool configChanged = !string.Equals(configJson, _lastRenderedConfigJson, StringComparison.Ordinal);
             string markdown = viewModel.MarkdownText ?? string.Empty;
@@ -201,16 +231,25 @@ namespace HyCADTool.MarkdownEditor.Services
                 _lastMarkdownSnapshot = markdown;
             }
 
-            var blocks = MarkdownBlockParser.ParseTopLevelBlocks(markdown);
-            UpdateDirtyRange(blocks);
-            var previousLayout = _latestLayoutResult;
-            bool canIncrementalLayout = !configChanged
-                && previousLayout != null
-                && _dirtyBlockStart >= 0
-                && _dirtyBlockEnd >= 0;
-            _latestLayoutResult = canIncrementalLayout
-                ? _layoutEngine.DistributeIncremental(blocks, layoutConfig, previousLayout, _dirtyBlockStart, _dirtyBlockEnd)
-                : _layoutEngine.Distribute(blocks, layoutConfig);
+            if (flowExperienceMode)
+            {
+                _dirtyBlockStart = -1;
+                _dirtyBlockEnd = -1;
+                _latestLayoutResult = null;
+            }
+            else
+            {
+                var blocks = MarkdownBlockParser.ParseTopLevelBlocks(markdown);
+                UpdateDirtyRange(blocks);
+                var previousLayout = _latestLayoutResult;
+                bool canIncrementalLayout = !configChanged
+                    && previousLayout != null
+                    && _dirtyBlockStart >= 0
+                    && _dirtyBlockEnd >= 0;
+                _latestLayoutResult = canIncrementalLayout
+                    ? _layoutEngine.DistributeIncremental(blocks, layoutConfig, previousLayout, _dirtyBlockStart, _dirtyBlockEnd)
+                    : _layoutEngine.Distribute(blocks, layoutConfig);
+            }
 
             if (!_previewReady || previewWebView?.CoreWebView2 == null)
             {
@@ -302,8 +341,22 @@ namespace HyCADTool.MarkdownEditor.Services
                 : JsonConvert.SerializeObject(layoutResult.IncrementalMetadata);
             string bodyEscaped = JsonConvert.SerializeObject(bodyHtml);
 
-            await previewWebView.CoreWebView2.ExecuteScriptAsync(
+            string raw = await previewWebView.CoreWebView2.ExecuteScriptAsync(
                 $"updateSourceIncremental({bodyEscaped},{layoutJson},{customWidths},{dirtyBlockStart},{dirtyBlockEnd},{incrementalMetaJson})");
+            if (!ParseJsBool(raw))
+                throw new InvalidOperationException("incremental patch rejected");
+        }
+
+        private static bool ParseJsBool(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw) || raw == "null")
+                return false;
+            string payload = raw.Trim();
+            if (payload.StartsWith("\"", StringComparison.Ordinal))
+            {
+                payload = JsonConvert.DeserializeObject<string>(payload) ?? string.Empty;
+            }
+            return bool.TryParse(payload, out bool value) && value;
         }
 
         private static LayoutSpecConfig BuildLayoutConfig(EditorConfig config)

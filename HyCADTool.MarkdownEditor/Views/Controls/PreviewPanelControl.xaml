@@ -60,14 +60,18 @@
                              Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <Border Style="{StaticResource Sep}" Margin="8,0" />
 
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="a" Margin="0,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="26"
-                             helper:TextBoxHelper.EnableCustomHandlers="False"
-                             Text="{Binding MarginLeftMm, Mode=OneWay}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="c" Margin="4,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" IsReadOnly="True" Width="26"
-                             helper:TextBoxHelper.EnableCustomHandlers="False"
-                             Text="{Binding MarginTopMm, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="L" Margin="0,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="30"
+                             Text="{Binding MarginLeftMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="R" Margin="4,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="30"
+                             Text="{Binding MarginRightMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="T" Margin="4,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="30"
+                             Text="{Binding MarginTopMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="B" Margin="4,0,2,0" />
+                    <TextBox Style="{StaticResource ParamInput}" Width="30"
+                             Text="{Binding MarginBottomMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <Border Style="{StaticResource Sep}" Margin="8,0" />
 
                     <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1" Margin="0,0,2,0" />

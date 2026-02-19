@@ -438,11 +438,9 @@ namespace HyCADTool.MarkdownEditor.Views
                             {
                                 _isUpdatingFromPreview = false;
                                 _pendingPreviewSyncHash = string.Empty;
-                                break;
                             }
-
-                            _isUpdatingFromPreview = false;
-                            _pendingPreviewSyncHash = string.Empty;
+                            // 预览回写编辑器期间，忽略编辑器 input 回调，避免旧值反推到预览造成“回车后回弹”。
+                            break;
                         }
 
                         ViewModel.SetMarkdownFromEditor(markdownFromEditor);
@@ -496,17 +494,35 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.PreviewScale):
                     UpdateRulerScale();
                     _ = TryApplyLivePreviewZoomAsync();
+                    _ = ApplyPaperGeometryAsync();
+                    _ = ApplyPaperColumnLayoutAsync();
                     break;
 
                 case nameof(EditorViewModel.ColumnCount):
                 case nameof(EditorViewModel.ColumnGutter):
-                case nameof(EditorViewModel.TextSize):
-                case nameof(EditorViewModel.TextXScale):
-                case nameof(EditorViewModel.DrawScale):
+                    _ = ApplyPaperColumnLayoutAsync();
+                    UpdateRulerScale();
+                    break;
+
                 case nameof(EditorViewModel.PagePreset):
                 case nameof(EditorViewModel.IsLandscape):
+                case nameof(EditorViewModel.DrawScale):
+                    _ = ApplyPaperGeometryAsync();
+                    UpdateRulerScale();
+                    break;
+
                 case nameof(EditorViewModel.PageWidthMm):
                 case nameof(EditorViewModel.PageHeightMm):
+                case nameof(EditorViewModel.MarginLeftMm):
+                case nameof(EditorViewModel.MarginRightMm):
+                case nameof(EditorViewModel.MarginTopMm):
+                case nameof(EditorViewModel.MarginBottomMm):
+                    _ = ApplyPaperGeometryAsync();
+                    UpdateRulerScale();
+                    break;
+
+                case nameof(EditorViewModel.TextSize):
+                case nameof(EditorViewModel.TextXScale):
                 case "SpacingChanged":
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
                     UpdateRulerScale();
@@ -603,11 +619,15 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async Task ScrollToHeadingAsync(string heading)
         {
-            if (string.IsNullOrWhiteSpace(heading) || !CanUseEditorScriptPipeline()) return;
+            if (string.IsNullOrWhiteSpace(heading)) return;
             try
             {
                 string escaped = JsonConvert.SerializeObject(heading);
-                await EditorWebView.CoreWebView2.ExecuteScriptAsync($"scrollToHeading({escaped})");
+                if (_editorReady && EditorWebView?.CoreWebView2 != null)
+                    await EditorWebView.CoreWebView2.ExecuteScriptAsync($"scrollToHeading({escaped})");
+
+                if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 != null)
+                    await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"scrollToHeading({escaped})");
             }
             catch (Exception ex)
             {
@@ -1213,6 +1233,54 @@ namespace HyCADTool.MarkdownEditor.Views
             if (_paperPrimaryEditMode) return false;
             if (!_editorReady) return false;
             return EditorWebView?.CoreWebView2 != null;
+        }
+
+        private async Task ApplyPaperColumnLayoutAsync()
+        {
+            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return;
+
+            try
+            {
+                int columnCount = Math.Max(1, Math.Min(10, ViewModel.ColumnCount));
+                double gapPx = ComputePaperColumnGapPx(ViewModel.ColumnGutter, ViewModel.PreviewScale);
+                string countJson = JsonConvert.SerializeObject(columnCount);
+                string gapJson = JsonConvert.SerializeObject(Math.Round(gapPx, 2));
+                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"setPaperColumnLayout({countJson}, {gapJson})");
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(ApplyPaperColumnLayoutAsync), ex);
+            }
+        }
+
+        private static double ComputePaperColumnGapPx(double columnGutter, double previewScale)
+        {
+            double safeGutter = Math.Max(0, columnGutter);
+            double safeScale = Math.Max(0.1, previewScale);
+            double px = safeGutter * safeScale;
+            return Math.Max(6, Math.Min(240, px));
+        }
+
+        private async Task ApplyPaperGeometryAsync()
+        {
+            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return;
+
+            try
+            {
+                string widthMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.PageWidthMm, 3));
+                string heightMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.PageHeightMm, 3));
+                string leftMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginLeftMm, 3));
+                string rightMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginRightMm, 3));
+                string topMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginTopMm, 3));
+                string bottomMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginBottomMm, 3));
+
+                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"setPaperGeometry({widthMmJson}, {heightMmJson})");
+                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"setPaperMargins({leftMmJson}, {rightMmJson}, {topMmJson}, {bottomMmJson})");
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(ApplyPaperGeometryAsync), ex);
+            }
         }
 
         private void UpdateEditorActionRouting()
