@@ -27,9 +27,16 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
 
     public partial class LeftPanelControl : UserControl
     {
+        private enum LeftPanelTab
+        {
+            File = 0,
+            Outline = 1,
+            Settings = 2
+        }
+
         private static readonly Regex HeadingRegex = new Regex(@"^(#{1,6})\s+(.+)$", RegexOptions.Multiline);
 
-        private bool _showFileTab = true;
+        private LeftPanelTab _activeTab = LeftPanelTab.File;
         private bool _updatingFileList;
         private bool _isDarkTheme = true;
         private string _currentFilePath = "";
@@ -116,20 +123,28 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
 
         private void ApplyLeftPanelTab()
         {
-            if (FileTree == null || OutlineList == null || FileTabBtn == null || OutlineTabBtn == null || RecentDirsBtn == null || SortBtn == null)
+            if (FileTree == null || OutlineList == null || SettingsPanel == null
+                || FileTabBtn == null || OutlineTabBtn == null || SettingsTabBtn == null
+                || RecentDirsBtn == null || SortBtn == null)
                 return;
 
-            FileTree.Visibility = _showFileTab ? Visibility.Visible : Visibility.Collapsed;
-            OutlineList.Visibility = _showFileTab ? Visibility.Collapsed : Visibility.Visible;
+            bool fileTab = _activeTab == LeftPanelTab.File;
+            bool outlineTab = _activeTab == LeftPanelTab.Outline;
+            bool settingsTab = _activeTab == LeftPanelTab.Settings;
 
-            FileTabBtn.Foreground = _showFileTab ? ThemeBrush("ThemeTextPrimaryBrush") : ThemeBrush("ThemeTextSecondaryBrush");
-            OutlineTabBtn.Foreground = _showFileTab ? ThemeBrush("ThemeTextSecondaryBrush") : ThemeBrush("ThemeTextPrimaryBrush");
+            FileTree.Visibility = fileTab ? Visibility.Visible : Visibility.Collapsed;
+            OutlineList.Visibility = outlineTab ? Visibility.Visible : Visibility.Collapsed;
+            SettingsPanel.Visibility = settingsTab ? Visibility.Visible : Visibility.Collapsed;
+
+            FileTabBtn.Foreground = fileTab ? ThemeBrush("ThemeTextPrimaryBrush") : ThemeBrush("ThemeTextSecondaryBrush");
+            OutlineTabBtn.Foreground = outlineTab ? ThemeBrush("ThemeTextPrimaryBrush") : ThemeBrush("ThemeTextSecondaryBrush");
+            SettingsTabBtn.Foreground = settingsTab ? ThemeBrush("ThemeTextPrimaryBrush") : ThemeBrush("ThemeTextSecondaryBrush");
 
             // 底部操作仅作用于“文件”面板
-            RecentDirsBtn.IsEnabled = _showFileTab;
-            SortBtn.IsEnabled = _showFileTab;
-            RecentDirsBtn.Opacity = _showFileTab ? 1.0 : 0.5;
-            SortBtn.Opacity = _showFileTab ? 1.0 : 0.5;
+            RecentDirsBtn.IsEnabled = fileTab;
+            SortBtn.IsEnabled = fileTab;
+            RecentDirsBtn.Opacity = fileTab ? 1.0 : 0.5;
+            SortBtn.Opacity = fileTab ? 1.0 : 0.5;
         }
 
         private string GetSelectedTreePath()
@@ -216,25 +231,37 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
 
         private void OnShowFileTab(object sender, RoutedEventArgs e)
         {
-            _showFileTab = true;
+            _activeTab = LeftPanelTab.File;
             ApplyLeftPanelTab();
         }
 
         private void OnShowOutlineTab(object sender, RoutedEventArgs e)
         {
-            _showFileTab = false;
+            _activeTab = LeftPanelTab.Outline;
+            ApplyLeftPanelTab();
+        }
+
+        private void OnShowSettingsTab(object sender, RoutedEventArgs e)
+        {
+            _activeTab = LeftPanelTab.Settings;
+            ApplyLeftPanelTab();
+        }
+
+        public void ShowSettingsTab()
+        {
+            _activeTab = LeftPanelTab.Settings;
             ApplyLeftPanelTab();
         }
 
         private void OnRecentDirsClick(object sender, RoutedEventArgs e)
         {
-            if (!_showFileTab) return;
+            if (_activeTab != LeftPanelTab.File) return;
             ShowRecentDirectoriesMenu();
         }
 
         private void OnSortClick(object sender, RoutedEventArgs e)
         {
-            if (!_showFileTab) return;
+            if (_activeTab != LeftPanelTab.File) return;
             ShowSortMenu();
         }
 

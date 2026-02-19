@@ -33,6 +33,7 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         public event EventHandler ToggleOutlineRequested;
         public event EventHandler ToggleBottomPanelRequested;
         public event EventHandler TogglePreviewRequested;
+        public event EventHandler SettingsRequested;
         public event EventHandler InsertCadRequested;
         public event EventHandler ConfirmRequested;
         public event EventHandler MinimizeRequested;
@@ -68,6 +69,7 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         private void OnToggleOutlineClick(object sender, RoutedEventArgs e) => ToggleOutlineRequested?.Invoke(this, EventArgs.Empty);
         private void OnToggleBottomPanelClick(object sender, RoutedEventArgs e) => ToggleBottomPanelRequested?.Invoke(this, EventArgs.Empty);
         private void OnTogglePreviewClick(object sender, RoutedEventArgs e) => TogglePreviewRequested?.Invoke(this, EventArgs.Empty);
+        private void OnSettingsClick(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
         private void OnInsertCadClick(object sender, RoutedEventArgs e) => InsertCadRequested?.Invoke(this, EventArgs.Empty);
         private void OnConfirmClick(object sender, RoutedEventArgs e) => ConfirmRequested?.Invoke(this, EventArgs.Empty);
         private void OnMinimizeWindowClick(object sender, RoutedEventArgs e) => MinimizeRequested?.Invoke(this, EventArgs.Empty);

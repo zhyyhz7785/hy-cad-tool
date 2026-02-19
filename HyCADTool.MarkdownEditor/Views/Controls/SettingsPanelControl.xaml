@@ -1,0 +1,163 @@
+<UserControl x:Class="HyCADTool.MarkdownEditor.Views.Controls.SettingsPanelControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/EditorTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource ThemeBgPanelBrush}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="8,8,8,12">
+                <TextBlock Text="排版设置"
+                           Foreground="{DynamicResource ThemeTextPrimaryBrush}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8" />
+
+                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThemeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8"
+                        Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="字体与比例"
+                                   Style="{StaticResource ParamLabel}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6" />
+                        <WrapPanel ItemWidth="88">
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="出图比例" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding DrawScaleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字高" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding TextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字宽" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="预览缩放" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding PreviewScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThemeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8"
+                        Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="页边距(mm)"
+                                   Style="{StaticResource ParamLabel}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6" />
+                        <WrapPanel ItemWidth="78">
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="L" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="64"
+                                         Text="{Binding MarginLeftMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="R" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="64"
+                                         Text="{Binding MarginRightMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="T" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="64"
+                                         Text="{Binding MarginTopMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="B" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="64"
+                                         Text="{Binding MarginBottomMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThemeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8">
+                    <StackPanel>
+                        <TextBlock Text="段前后间距"
+                                   Style="{StaticResource ParamLabel}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6" />
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1 前/后" />
+                                <WrapPanel>
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2 前/后" />
+                                <WrapPanel>
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3 前/后" />
+                                <WrapPanel>
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P / Li" />
+                                <WrapPanel>
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q 前/后" />
+                                <WrapPanel>
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                             Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

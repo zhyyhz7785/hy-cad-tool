@@ -33,80 +33,32 @@
                               VerticalScrollBarVisibility="Disabled"
                               CanContentScroll="False">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                    <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
-                    <ComboBox x:Name="PagePresetCombo" Style="{StaticResource DarkComboBox}" MinWidth="56"
-                              ItemsSource="{Binding PagePresets}"
-                              SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
-                    <Button x:Name="OrientationBtn" Style="{StaticResource ToolBtn}" Height="22" Padding="6,2"
-                            Margin="0,0,4,0" ToolTip="切换横向/竖向"
-                            Click="OnTogglePageOrientationClicked">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding PageOrientationLabel}" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0" />
-                            <TextBlock Text="{Binding PageSizeLabel}" FontSize="10" Foreground="{DynamicResource ThemeTextMutedBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <TextBlock Style="{StaticResource ParamLabel}" Text="栏" Margin="8,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="24"
-                             helper:TextBoxHelper.ScrollStep="1"
-                             Text="{Binding ColumnCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamLabel}" Text="间距" Margin="8,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}"
-                             Text="{Binding ColumnGutter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamLabel}" Text="字高" Margin="8,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}"
-                             Text="{Binding TextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamLabel}" Text="字宽" Margin="8,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}"
-                             Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <Border Style="{StaticResource Sep}" Margin="8,0" />
-
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="L" Margin="0,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="30"
-                             Text="{Binding MarginLeftMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="R" Margin="4,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="30"
-                             Text="{Binding MarginRightMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="T" Margin="4,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="30"
-                             Text="{Binding MarginTopMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="B" Margin="4,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="30"
-                             Text="{Binding MarginBottomMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <Border Style="{StaticResource Sep}" Margin="8,0" />
-
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1" Margin="0,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2" Margin="6,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3" Margin="6,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P" Margin="6,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Li" Margin="6,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q" Margin="6,0,2,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="/" Margin="1,0" />
-                    <TextBox Style="{StaticResource ParamInput}" Width="26"
-                             Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Style="{StaticResource ParamLabel}" Text="图纸" Margin="0,0,4,0" />
+                        <ComboBox x:Name="PagePresetCombo" Style="{StaticResource DarkComboBox}" MinWidth="56"
+                                  ItemsSource="{Binding PagePresets}"
+                                  SelectedItem="{Binding PagePreset, Mode=TwoWay}" />
+                        <Button x:Name="OrientationBtn" Style="{StaticResource ToolBtn}" Height="22" Padding="6,2"
+                                Margin="0,0,4,0" ToolTip="切换横向/竖向"
+                                Click="OnTogglePageOrientationClicked">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding PageOrientationLabel}" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0" />
+                                <TextBlock Text="{Binding PageSizeLabel}" FontSize="10" Foreground="{DynamicResource ThemeTextMutedBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource ParamLabel}" Text="栏" Margin="8,0,2,0" />
+                        <TextBox Style="{StaticResource ParamInput}" Width="24"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ColumnCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Style="{StaticResource ParamLabel}" Text="间距" Margin="8,0,2,0" />
+                        <TextBox Style="{StaticResource ParamInput}"
+                                 Text="{Binding ColumnGutter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Border Style="{StaticResource Sep}" Margin="8,0" />
+                        <Button Style="{StaticResource ToolBtn}"
+                                Height="22"
+                                Padding="6,2"
+                                Content="重置"
+                                ToolTip="恢复图纸默认排版参数"
+                                Click="OnResetLayoutClicked" />
                     </StackPanel>
                 </ScrollViewer>
 

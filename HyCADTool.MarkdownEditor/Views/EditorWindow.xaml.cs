@@ -32,7 +32,7 @@ namespace HyCADTool.MarkdownEditor.Views
         private const int WM_MOUSEWHEEL = 0x020A;
         private const int WM_GETMINMAXINFO = 0x0024;
         private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
-        private const int PreviewRefreshDebounceMs = 180;
+        private const int PreviewRefreshDebounceMs = 220;
         private const int AutoCadSyncDebounceMs = 900;
         private const bool DefaultPaperPrimaryMode = false;
         private const double MinPreviewVisibleWidth = 280;
@@ -75,6 +75,12 @@ namespace HyCADTool.MarkdownEditor.Views
         private bool _isUpdatingFromPreview;
         private string _pendingPreviewSyncHash = string.Empty;
         private PreviewRefreshReason _pendingPreviewRefreshReason = PreviewRefreshReason.InitialLoad;
+
+        private enum MarkdownSyncSource
+        {
+            Editor = 0,
+            Preview = 1
+        }
 
         public EditorWindow(EditorInput input, bool isModal = true)
         {
@@ -138,6 +144,7 @@ namespace HyCADTool.MarkdownEditor.Views
             _titleBar.ToggleOutlineRequested += (_, __) => OnToggleOutline();
             _titleBar.ToggleBottomPanelRequested += (_, __) => OnToggleBottomPanel();
             _titleBar.TogglePreviewRequested += (_, __) => OnTogglePreview();
+            _titleBar.SettingsRequested += (_, __) => OnOpenSettingsPanel();
             _titleBar.InsertCadRequested += async (_, __) => await OnInsertCadClickAsync();
             _titleBar.ConfirmRequested += async (_, __) => await OnConfirmClickAsync();
             _titleBar.MinimizeRequested += (_, __) => SystemCommands.MinimizeWindow(this);
@@ -163,6 +170,7 @@ namespace HyCADTool.MarkdownEditor.Views
             };
 
             _previewPanel.TogglePageOrientationRequested += (_, __) => OnTogglePageOrientation();
+            _previewPanel.ResetLayoutRequested += async (_, __) => await OnResetLayoutRequestedAsync();
             _previewPanel.PreviousPageRequested += async (_, __) => await ShiftPreviewPageAsync(-1);
             _previewPanel.NextPageRequested += async (_, __) => await ShiftPreviewPageAsync(1);
             _previewPanel.JumpPageRequested += async (_, page) => await JumpPreviewPageAsync(page);
@@ -430,22 +438,25 @@ namespace HyCADTool.MarkdownEditor.Views
                         break;
                     case "input":
                         string markdownFromEditor = msg.Value<string>("value") ?? "";
+                        string incomingHash = ComputeTextHash(markdownFromEditor);
                         if (_isUpdatingFromPreview)
                         {
-                            string incomingHash = ComputeTextHash(markdownFromEditor);
                             if (!string.IsNullOrEmpty(_pendingPreviewSyncHash)
                                 && string.Equals(_pendingPreviewSyncHash, incomingHash, StringComparison.Ordinal))
                             {
-                                _isUpdatingFromPreview = false;
-                                _pendingPreviewSyncHash = string.Empty;
+                                ClearPendingPreviewSyncState();
+                                break;
                             }
-                            // 预览回写编辑器期间，忽略编辑器 input 回调，避免旧值反推到预览造成“回车后回弹”。
-                            break;
+
+                            // 预览回写尚未完成时用户在编辑器继续输入，后写覆盖先写。
+                            ClearPendingPreviewSyncState();
                         }
 
-                        ViewModel.SetMarkdownFromEditor(markdownFromEditor);
-                        SchedulePreviewRefresh(PreviewRefreshReason.ContentInput);
-                        ScheduleAutoCadSync();
+                        if (ApplyMarkdownFromSource(markdownFromEditor, MarkdownSyncSource.Editor))
+                        {
+                            SchedulePreviewRefresh(PreviewRefreshReason.ContentInput);
+                            ScheduleAutoCadSync();
+                        }
                         break;
                 }
             }
@@ -473,10 +484,11 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             try
             {
-                if (_previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out string markdownChanged)
-                    && markdownChanged != null)
+                if (_previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged)
+                    && contentChanged != null
+                    && ApplyMarkdownFromSource(contentChanged.Markdown, MarkdownSyncSource.Preview, contentChanged.Version))
                 {
-                    _ = SyncEditorFromPreviewAsync(markdownChanged);
+                    _ = SyncEditorFromPreviewAsync(contentChanged.Markdown);
                     ScheduleAutoCadSync();
                 }
                 UpdatePreviewPageState();
@@ -670,6 +682,19 @@ namespace HyCADTool.MarkdownEditor.Views
             ApplyBottomPanelLayout();
             ViewModel.StatusText = _bottomPanelVisible ? "底部面板：已打开" : "底部面板：关闭";
             UpdateTitleBarToggleState();
+        }
+
+        private void OnOpenSettingsPanel()
+        {
+            if (!_outlineVisible)
+            {
+                _outlineVisible = true;
+                ApplyOutlineLayout();
+                RelayoutPreviewIfNeeded();
+            }
+
+            _leftPanel.ShowSettingsTab();
+            ViewModel.StatusText = "已打开设置面板";
         }
 
         private void OnTogglePreview()
@@ -1131,7 +1156,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 {
                     string md = JsonConvert.DeserializeObject<string>(result);
                     if (md != null)
-                        ViewModel.SetMarkdownFromEditor(md);
+                        ApplyMarkdownFromSource(md, MarkdownSyncSource.Editor);
                 }
             }
             catch (Exception ex)
@@ -1144,8 +1169,7 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             if (!CanUseEditorScriptPipeline())
             {
-                _isUpdatingFromPreview = false;
-                _pendingPreviewSyncHash = string.Empty;
+                ClearPendingPreviewSyncState();
                 return;
             }
             try
@@ -1162,16 +1186,14 @@ namespace HyCADTool.MarkdownEditor.Views
                     {
                         if (_isUpdatingFromPreview && string.Equals(_pendingPreviewSyncHash, expectedHash, StringComparison.Ordinal))
                         {
-                            _isUpdatingFromPreview = false;
-                            _pendingPreviewSyncHash = string.Empty;
+                            ClearPendingPreviewSyncState();
                         }
                     }));
                 });
             }
             catch (Exception ex)
             {
-                _isUpdatingFromPreview = false;
-                _pendingPreviewSyncHash = string.Empty;
+                ClearPendingPreviewSyncState();
                 LogSilentException(nameof(SyncEditorFromPreviewAsync), ex);
             }
         }
@@ -1227,6 +1249,28 @@ namespace HyCADTool.MarkdownEditor.Views
             }
         }
 
+        private void ClearPendingPreviewSyncState()
+        {
+            _isUpdatingFromPreview = false;
+            _pendingPreviewSyncHash = string.Empty;
+        }
+
+        private bool ApplyMarkdownFromSource(
+            string markdown,
+            MarkdownSyncSource source,
+            long previewVersion = 0)
+        {
+            string next = markdown ?? string.Empty;
+            _ = source;
+            _ = previewVersion;
+
+            if (string.Equals(ViewModel.MarkdownText ?? string.Empty, next, StringComparison.Ordinal))
+                return false;
+
+            ViewModel.SetMarkdownFromEditor(next);
+            return true;
+        }
+
         private bool CanUseEditorScriptPipeline()
         {
             if (!_editorVisible) return false;
@@ -1280,6 +1324,36 @@ namespace HyCADTool.MarkdownEditor.Views
             catch (Exception ex)
             {
                 LogSilentException(nameof(ApplyPaperGeometryAsync), ex);
+            }
+        }
+
+        private async Task ResetPaperLayoutAsync()
+        {
+            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return;
+            try
+            {
+                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync("if(window.resetPaperLayout){resetPaperLayout();}");
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(ResetPaperLayoutAsync), ex);
+            }
+        }
+
+        private async Task OnResetLayoutRequestedAsync()
+        {
+            try
+            {
+                ViewModel.ResetLayoutDefaults();
+                await ApplyPaperGeometryAsync();
+                await ApplyPaperColumnLayoutAsync();
+                await ResetPaperLayoutAsync();
+                SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
+                ScheduleAutoCadSync();
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(OnResetLayoutRequestedAsync), ex);
             }
         }
 

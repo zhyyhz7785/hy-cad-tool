@@ -163,6 +163,10 @@
                         </Grid>
                     </Button>
                     <Border Style="{StaticResource Sep}" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <Button Content="设置"
+                            Style="{StaticResource ToolBtn}"
+                            Click="OnSettingsClick"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <Button Content="同步CAD"
                             Style="{StaticResource PrimaryBtn}"
                             Click="OnInsertCadClick"

@@ -16,6 +16,28 @@ namespace HyCADTool.MarkdownEditor.ViewModels
     /// </summary>
     public class EditorViewModel : INotifyPropertyChanged
     {
+        private const double DefaultDrawScale = 1.0;
+        private const int DefaultColumnCount = 2;
+        private const double DefaultColumnGutter = 10;
+        private const double DefaultTextSize = 2.5;
+        private const double DefaultTextXScale = 0.7;
+        private const double DefaultPreviewScale = 1.0;
+        private const double DefaultTotalHeight = 350;
+        private const string DefaultPagePreset = "A2";
+        private const bool DefaultIsLandscape = true;
+        private static readonly int[] DefaultCharsPerColumn = new[] { 28, 28 };
+
+        private const double DefaultH1SpaceBefore = 2.0;
+        private const double DefaultH1SpaceAfter = 0.8;
+        private const double DefaultH2SpaceBefore = 1.5;
+        private const double DefaultH2SpaceAfter = 0.6;
+        private const double DefaultH3SpaceBefore = 1.2;
+        private const double DefaultH3SpaceAfter = 0.4;
+        private const double DefaultPSpaceAfter = 0.5;
+        private const double DefaultLiSpaceAfter = 0.2;
+        private const double DefaultQuoteSpaceBefore = 0.5;
+        private const double DefaultQuoteSpaceAfter = 0.5;
+
         private readonly EditorContentViewModel _content = new EditorContentViewModel();
         private readonly PreviewConfigViewModel _previewConfig = new PreviewConfigViewModel();
         private readonly UIStateViewModel _uiState = new UIStateViewModel();
@@ -92,7 +114,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             "1", "5", "10", "15", "25", "50", "100", "150", "200", "250"
         };
 
-        private double _scale = 1.0;
+        private double _scale = DefaultDrawScale;
         public double DrawScale
         {
             get => _scale;
@@ -123,7 +145,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private int _columnCount = 2;
+        private int _columnCount = DefaultColumnCount;
         public int ColumnCount
         {
             get => _columnCount;
@@ -159,7 +181,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _columnGutter = 0;
+        private double _columnGutter = DefaultColumnGutter;
         public double ColumnGutter
         {
             get => _columnGutter;
@@ -173,7 +195,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _textSize = 2.5;
+        private double _textSize = DefaultTextSize;
         public double TextSize
         {
             get => _textSize;
@@ -187,7 +209,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _previewScale = 1.0;
+        private double _previewScale = DefaultPreviewScale;
         public double PreviewScale
         {
             get => _previewScale;
@@ -201,7 +223,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _totalHeight = 350;
+        private double _totalHeight = DefaultTotalHeight;
         public double TotalHeight
         {
             get => _totalHeight;
@@ -215,7 +237,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _textXScale = 0.7;
+        private double _textXScale = DefaultTextXScale;
         public double TextXScale
         {
             get => _textXScale;
@@ -242,7 +264,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         /// <summary>下拉列表数据源：["A0","A1","A2","A3","A4"]</summary>
         public IReadOnlyList<string> PagePresets { get; } = PaperDefs.Select(d => d.Name).ToArray();
 
-        private bool _isLandscape = true;
+        private bool _isLandscape = DefaultIsLandscape;
         /// <summary>横向(true) / 竖向(false) 切换</summary>
         public bool IsLandscape
         {
@@ -262,7 +284,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         /// <summary>标题栏尺寸标签：如 "594×420"</summary>
         public string PageSizeLabel => $"{PageWidthMm:F0}×{PageHeightMm:F0}";
 
-        private string _pagePreset = "A2";
+        private string _pagePreset = DefaultPagePreset;
         public string PagePreset
         {
             get => _pagePreset;
@@ -353,34 +375,34 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         }
 
         // ── 段前段后间距（字高倍数） ──
-        private double _h1SpaceBefore = 2.0;
+        private double _h1SpaceBefore = DefaultH1SpaceBefore;
         public double H1SpaceBefore { get => _h1SpaceBefore; set { if (SetProperty(ref _h1SpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _h1SpaceAfter = 0.8;
+        private double _h1SpaceAfter = DefaultH1SpaceAfter;
         public double H1SpaceAfter { get => _h1SpaceAfter; set { if (SetProperty(ref _h1SpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _h2SpaceBefore = 1.5;
+        private double _h2SpaceBefore = DefaultH2SpaceBefore;
         public double H2SpaceBefore { get => _h2SpaceBefore; set { if (SetProperty(ref _h2SpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _h2SpaceAfter = 0.6;
+        private double _h2SpaceAfter = DefaultH2SpaceAfter;
         public double H2SpaceAfter { get => _h2SpaceAfter; set { if (SetProperty(ref _h2SpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _h3SpaceBefore = 1.2;
+        private double _h3SpaceBefore = DefaultH3SpaceBefore;
         public double H3SpaceBefore { get => _h3SpaceBefore; set { if (SetProperty(ref _h3SpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _h3SpaceAfter = 0.4;
+        private double _h3SpaceAfter = DefaultH3SpaceAfter;
         public double H3SpaceAfter { get => _h3SpaceAfter; set { if (SetProperty(ref _h3SpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _pSpaceAfter = 0.5;
+        private double _pSpaceAfter = DefaultPSpaceAfter;
         public double PSpaceAfter { get => _pSpaceAfter; set { if (SetProperty(ref _pSpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _liSpaceAfter = 0.2;
+        private double _liSpaceAfter = DefaultLiSpaceAfter;
         public double LiSpaceAfter { get => _liSpaceAfter; set { if (SetProperty(ref _liSpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _quoteSpaceBefore = 0.5;
+        private double _quoteSpaceBefore = DefaultQuoteSpaceBefore;
         public double QuoteSpaceBefore { get => _quoteSpaceBefore; set { if (SetProperty(ref _quoteSpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _quoteSpaceAfter = 0.5;
+        private double _quoteSpaceAfter = DefaultQuoteSpaceAfter;
         public double QuoteSpaceAfter { get => _quoteSpaceAfter; set { if (SetProperty(ref _quoteSpaceAfter, value)) RefreshPreviewVia(); } }
 
         private void RefreshPreviewVia() => OnPropertyChanged("SpacingChanged");
@@ -644,6 +666,39 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MarginRightMm = c;
             MarginTopMm = c;
             MarginBottomMm = c;
+        }
+
+        public void ResetLayoutDefaults()
+        {
+            DrawScale = DefaultDrawScale;
+            ColumnCount = DefaultColumnCount;
+            ColumnGutter = DefaultColumnGutter;
+            TextSize = DefaultTextSize;
+            TextXScale = DefaultTextXScale;
+            PreviewScale = DefaultPreviewScale;
+            TotalHeight = DefaultTotalHeight;
+            CharsPerColumn = (int[])DefaultCharsPerColumn.Clone();
+            ColumnParagraphIndices = string.Empty;
+
+            PagePreset = DefaultPagePreset;
+            IsLandscape = DefaultIsLandscape;
+            ApplyPagePreset(PagePreset);
+            OnPropertyChanged(nameof(PageSizeLabel));
+            OnPropertyChanged(nameof(PageOrientationLabel));
+
+            H1SpaceBefore = DefaultH1SpaceBefore;
+            H1SpaceAfter = DefaultH1SpaceAfter;
+            H2SpaceBefore = DefaultH2SpaceBefore;
+            H2SpaceAfter = DefaultH2SpaceAfter;
+            H3SpaceBefore = DefaultH3SpaceBefore;
+            H3SpaceAfter = DefaultH3SpaceAfter;
+            PSpaceAfter = DefaultPSpaceAfter;
+            LiSpaceAfter = DefaultLiSpaceAfter;
+            QuoteSpaceBefore = DefaultQuoteSpaceBefore;
+            QuoteSpaceAfter = DefaultQuoteSpaceAfter;
+
+            SyncDrawScaleTextFromValue();
+            UpdateStatus();
         }
 
         #endregion

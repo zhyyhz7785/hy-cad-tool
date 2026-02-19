@@ -24,6 +24,13 @@ namespace HyCADTool.MarkdownEditor.Services
         FallbackRebuild = 4
     }
 
+    internal sealed class PreviewContentChange
+    {
+        public string Markdown { get; init; } = string.Empty;
+        public long Version { get; init; }
+        public string Hash { get; init; } = string.Empty;
+    }
+
     internal class PreviewManager
     {
         private bool _previewReady;
@@ -76,9 +83,9 @@ namespace HyCADTool.MarkdownEditor.Services
             viewModel.PreviewScale = Math.Max(0.1, Math.Min(5.0, cur * factor));
         }
 
-        public bool TryHandlePreviewWebMessage(string webMessageAsJson, EditorViewModel viewModel, out string markdownChanged)
+        public bool TryHandlePreviewWebMessage(string webMessageAsJson, EditorViewModel viewModel, out PreviewContentChange contentChanged)
         {
-            markdownChanged = null;
+            contentChanged = null;
             if (string.IsNullOrWhiteSpace(webMessageAsJson)) return false;
 
             var msg = JObject.Parse(webMessageAsJson);
@@ -162,11 +169,18 @@ namespace HyCADTool.MarkdownEditor.Services
                 }
 
                 if (string.Equals(viewModel.MarkdownText ?? "", markdown, StringComparison.Ordinal))
+                {
+                    _lastMarkdownSnapshot = markdown;
                     return true;
-                viewModel.SetMarkdownFromEditor(markdown);
+                }
                 _markdownVersion++;
                 _lastMarkdownSnapshot = markdown;
-                markdownChanged = markdown;
+                contentChanged = new PreviewContentChange
+                {
+                    Markdown = markdown,
+                    Version = previewContentVersion,
+                    Hash = previewContentHash
+                };
                 return true;
             }
 

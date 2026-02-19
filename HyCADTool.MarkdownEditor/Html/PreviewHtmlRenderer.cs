@@ -1176,7 +1176,7 @@ function inlineToMarkdown(node){
   if(node.nodeType===3) return (node.nodeValue||'').replace(/\r/g,'');
   if(node.nodeType!==1) return '';
   var tag=(node.tagName||'').toLowerCase();
-  if(tag==='br') return '\n';
+  if(tag==='br') return '  \n';
   var inner='';
   for(var i=0;i<node.childNodes.length;i++) inner += inlineToMarkdown(node.childNodes[i]);
   if(tag==='strong' || tag==='b') return '**'+inner+'**';
@@ -1436,6 +1436,19 @@ function scrollToHeading(text){
   return false;
 }
 
+function applyGeometryRealtime(){
+  updatePaperGeometryStyles();
+  redistributeColumnWidthsEvenly();
+  syncColumnSizesToDom();
+  rebuildPreviewStats();
+}
+
+function applyGeometryFinal(){
+  updatePaperGeometryStyles();
+  redistributeColumnWidthsEvenly();
+  rebuildColumnsFromCurrent();
+}
+
 function setPaperColumnLayout(columnCount, gapPx){
   var nextCount=Math.round(clampNumber(columnCount,1,10,COLUMN_COUNT));
   var nextGap=clampNumber(gapPx,6,260,COLUMN_GAP);
@@ -1456,9 +1469,7 @@ function setPaperGeometry(pageWidthMm, pageHeightMm){
   var h=Math.max(120, Number(pageHeightMm||0) * Math.max(0.01,PREVIEW_SCALE));
   if(isFinite(w) && w>0) PAPER_WIDTH=w;
   if(isFinite(h) && h>0) PAPER_HEIGHT=h;
-  updatePaperGeometryStyles();
-  redistributeColumnWidthsEvenly();
-  rebuildColumnsFromCurrent();
+  applyGeometryFinal();
   return true;
 }
 
@@ -1468,9 +1479,17 @@ function setPaperMargins(leftMm,rightMm,topMm,bottomMm){
   MARGIN_RIGHT=Math.max(0, Number(rightMm||0) * scale);
   MARGIN_TOP=Math.max(0, Number(topMm||0) * scale);
   MARGIN_BOTTOM=Math.max(0, Number(bottomMm||0) * scale);
+  applyGeometryFinal();
+  return true;
+}
+
+function resetPaperLayout(){
+  resetColumnCaches();
   updatePaperGeometryStyles();
-  redistributeColumnWidthsEvenly();
-  rebuildColumnsFromCurrent();
+  rebuildColumnsFromSource();
+  updateSourceMirrorFromColumns();
+  lastSentHash=simpleHash(extractMarkdown());
+  postPageState();
   return true;
 }
 
@@ -1570,34 +1589,19 @@ document.addEventListener('mousemove', function(ev){
         }
       }
     }
-    updatePaperGeometryStyles();
-    redistributeColumnWidthsEvenly();
-    syncColumnSizesToDom();
-    rebuildPreviewStats();
+    applyGeometryRealtime();
   }else if(dragMode==='margin-left'){
     MARGIN_LEFT=Math.max(0,dragStartState.marginLeft + (ev.clientX-dragStartX));
-    updatePaperGeometryStyles();
-    redistributeColumnWidthsEvenly();
-    syncColumnSizesToDom();
-    rebuildPreviewStats();
+    applyGeometryRealtime();
   }else if(dragMode==='margin-right'){
     MARGIN_RIGHT=Math.max(0,dragStartState.marginRight - (ev.clientX-dragStartX));
-    updatePaperGeometryStyles();
-    redistributeColumnWidthsEvenly();
-    syncColumnSizesToDom();
-    rebuildPreviewStats();
+    applyGeometryRealtime();
   }else if(dragMode==='margin-top'){
     MARGIN_TOP=Math.max(0,dragStartState.marginTop + (ev.clientY-dragStartY));
-    updatePaperGeometryStyles();
-    redistributeColumnWidthsEvenly();
-    syncColumnSizesToDom();
-    rebuildPreviewStats();
+    applyGeometryRealtime();
   }else if(dragMode==='margin-bottom'){
     MARGIN_BOTTOM=Math.max(0,dragStartState.marginBottom - (ev.clientY-dragStartY));
-    updatePaperGeometryStyles();
-    redistributeColumnWidthsEvenly();
-    syncColumnSizesToDom();
-    rebuildPreviewStats();
+    applyGeometryRealtime();
   }
 });
 
@@ -1616,6 +1620,7 @@ document.addEventListener('mouseup', function(){
   dragIndex=-1;
   dragStartState=null;
   if(resizedPaper || movedMargin){
+    updatePaperGeometryStyles();
     redistributeColumnWidthsEvenly();
   }
   rebuildColumnsFromCurrent();
@@ -3007,7 +3012,7 @@ function inlineToMarkdown(node){
     var texInline=extractKatexTex(node);
     if(texInline) return '$'+texInline+'$';
   }
-  if(tag==='br') return '\n';
+  if(tag==='br') return '  \n';
   var inner='';
   for(var i=0;i<node.childNodes.length;i++){
     inner+=inlineToMarkdown(node.childNodes[i]);
