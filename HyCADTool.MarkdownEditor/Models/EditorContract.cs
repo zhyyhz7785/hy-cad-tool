@@ -72,6 +72,21 @@ namespace HyCADTool.MarkdownEditor.Models
         public double MarginRightMm { get; set; } = 10;
         public double MarginTopMm { get; set; } = 10;
         public double MarginBottomMm { get; set; } = 10;
+        public double BorderWidth { get; set; } = 1;
+        public double HandleWidth { get; set; } = 3;
+        public double HandleActiveWidth { get; set; } = 6;
+        /// <summary>
+        /// 兼容旧字段：HandleHeight -> HandleWidth。
+        /// 仅用于反序列化历史数据，不再参与序列化输出。
+        /// </summary>
+        [Obsolete("Use HandleWidth instead.")]
+        [JsonProperty("HandleHeight")]
+        public double HandleHeight
+        {
+            get => HandleWidth;
+            set => HandleWidth = value;
+        }
+        public bool ShouldSerializeHandleHeight() => false;
         public string FontFileName { get; set; } = "Microsoft YaHei";
         public string BigFontFileName { get; set; } = "";
         public string BoldFontName { get; set; } = "Microsoft YaHei";

@@ -37,6 +37,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         private const double DefaultLiSpaceAfter = 0.2;
         private const double DefaultQuoteSpaceBefore = 0.5;
         private const double DefaultQuoteSpaceAfter = 0.5;
+        private const double DefaultBorderWidth = 1;
+        private const double DefaultHandleWidth = 3;
+        private const double DefaultHandleActiveWidth = 6;
 
         private readonly EditorContentViewModel _content = new EditorContentViewModel();
         private readonly PreviewConfigViewModel _previewConfig = new PreviewConfigViewModel();
@@ -374,6 +377,46 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
+        private double _borderWidth = DefaultBorderWidth;
+        public double BorderWidth
+        {
+            get => _borderWidth;
+            set
+            {
+                if (SetProperty(ref _borderWidth, Math.Max(0.5, Math.Min(5, value))))
+                    UpdateStatus();
+            }
+        }
+
+        private double _handleWidth = DefaultHandleWidth;
+        public double HandleWidth
+        {
+            get => _handleWidth;
+            set
+            {
+                double next = Math.Max(1, Math.Min(10, value));
+                if (!SetProperty(ref _handleWidth, next)) return;
+                if (_handleActiveWidth < _handleWidth)
+                {
+                    _handleActiveWidth = _handleWidth;
+                    OnPropertyChanged(nameof(HandleActiveWidth));
+                }
+                UpdateStatus();
+            }
+        }
+
+        private double _handleActiveWidth = DefaultHandleActiveWidth;
+        public double HandleActiveWidth
+        {
+            get => _handleActiveWidth;
+            set
+            {
+                double next = Math.Max(HandleWidth, Math.Min(14, value));
+                if (SetProperty(ref _handleActiveWidth, next))
+                    UpdateStatus();
+            }
+        }
+
         // ── 段前段后间距（字高倍数） ──
         private double _h1SpaceBefore = DefaultH1SpaceBefore;
         public double H1SpaceBefore { get => _h1SpaceBefore; set { if (SetProperty(ref _h1SpaceBefore, value)) RefreshPreviewVia(); } }
@@ -532,6 +575,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _liSpaceAfter = cfg.LiSpaceAfter;
             _quoteSpaceBefore = cfg.QuoteSpaceBefore;
             _quoteSpaceAfter = cfg.QuoteSpaceAfter;
+            _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
+            _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
+            _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
 
             SyncDrawScaleTextFromValue();
             _previewConfig.ColumnCount = _columnCount;
@@ -613,6 +659,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MarginRightMm = MarginRightMm,
                 MarginTopMm = MarginTopMm,
                 MarginBottomMm = MarginBottomMm,
+                BorderWidth = BorderWidth,
+                HandleWidth = HandleWidth,
+                HandleActiveWidth = HandleActiveWidth,
                 H1SpaceBefore = H1SpaceBefore,
                 H1SpaceAfter = H1SpaceAfter,
                 H2SpaceBefore = H2SpaceBefore,
@@ -696,6 +745,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             LiSpaceAfter = DefaultLiSpaceAfter;
             QuoteSpaceBefore = DefaultQuoteSpaceBefore;
             QuoteSpaceAfter = DefaultQuoteSpaceAfter;
+            BorderWidth = DefaultBorderWidth;
+            HandleWidth = DefaultHandleWidth;
+            HandleActiveWidth = DefaultHandleActiveWidth;
 
             SyncDrawScaleTextFromValue();
             UpdateStatus();

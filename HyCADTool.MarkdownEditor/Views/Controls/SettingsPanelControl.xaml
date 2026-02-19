@@ -95,6 +95,42 @@
                                          Text="{Binding MarginBottomMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </WrapPanel>
+                        <WrapPanel ItemWidth="88" Margin="0,4,0,0">
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="图框宽度" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding BorderWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThemeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8"
+                        Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="栏拉伸条"
+                                   Style="{StaticResource ParamLabel}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6" />
+                        <WrapPanel ItemWidth="88">
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="默认宽度" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding HandleWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="选中宽度" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding HandleActiveWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 

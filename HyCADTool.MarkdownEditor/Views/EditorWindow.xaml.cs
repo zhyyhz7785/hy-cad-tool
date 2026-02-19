@@ -535,6 +535,9 @@ namespace HyCADTool.MarkdownEditor.Views
 
                 case nameof(EditorViewModel.TextSize):
                 case nameof(EditorViewModel.TextXScale):
+                case nameof(EditorViewModel.BorderWidth):
+                case nameof(EditorViewModel.HandleWidth):
+                case nameof(EditorViewModel.HandleActiveWidth):
                 case "SpacingChanged":
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
                     UpdateRulerScale();

@@ -87,6 +87,9 @@ namespace HyCADTool.MarkdownEditor.Html
             double topPx = Round(cfg.MarginTopMm * scale);
             double bottomPx = Round(cfg.MarginBottomMm * scale);
             double gapPx = Math.Max(6, Round(Math.Max(0, cfg.ColumnGutter) * scale));
+            double borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
+            double handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
+            double handleActiveWidth = Math.Max(handleWidth, Math.Min(14, cfg.HandleActiveWidth));
             string footerHtml = BuildFooterHtml(cols);
             string fontFamily = ResolvePreviewFontFamily(cfg);
 
@@ -130,29 +133,42 @@ body{
   bottom:/*FLOW_PAD_BOTTOM*/;
   display:flex;
   flex-direction:row;
-  align-items:stretch;
+  align-items:flex-start;
   overflow:hidden;
   background:#f8fafc;
+  z-index:5;
 }
 .col-wrap{
   display:flex;
   flex-direction:column;
   flex:1;
+  padding-top:/*FLOW_BORDER_WIDTH*/;
+  padding-bottom:/*FLOW_BORDER_WIDTH*/;
   min-width:80px;
   min-height:0;
   overflow:hidden;
 }
 .col-top-handle,
 .col-bottom-handle{
-  height:6px;
+  position:relative;
+  z-index:7;
+  height:/*FLOW_HANDLE_WIDTH*/;
   flex-shrink:0;
-  background:#2b3138;
+  background:#58a6ff;
   cursor:ns-resize;
+  transition:height 0.15s ease;
 }
 .col-top-handle:hover,
-.col-bottom-handle:hover{background:#58a6ff}
+.col-bottom-handle:hover,
+.col-top-handle:active,
+.col-bottom-handle:active{height:/*FLOW_HANDLE_ACTIVE_WIDTH*/}
+.col-top-spacer{
+  flex:none;
+  height:0;
+  flex-shrink:0;
+}
 .col-content{
-  flex:1;
+  flex:none;
   min-height:80px;
   overflow:hidden;
   padding:8px 10px;
@@ -173,6 +189,8 @@ body{
   flex-shrink:0;
   cursor:ew-resize;
   position:relative;
+  z-index:6;
+  align-self:stretch;
   background:transparent;
 }
 .col-gap-handle:before{
@@ -218,22 +236,19 @@ body{
 }
 .margin-guide{
   position:absolute;
-  z-index:4;
-  background:#58a6ff;
-  opacity:.45;
+  z-index:6;
+  background:#000000;
+  pointer-events:none;
 }
-.margin-guide:hover{opacity:.9}
 .margin-guide.left,.margin-guide.right{
-  top:0;
-  bottom:0;
-  width:2px;
-  cursor:ew-resize;
+  top:/*FLOW_PAD_TOP*/;
+  bottom:/*FLOW_PAD_BOTTOM*/;
+  width:/*FLOW_BORDER_WIDTH*/;
 }
 .margin-guide.top,.margin-guide.bottom{
-  left:0;
-  right:0;
-  height:2px;
-  cursor:ns-resize;
+  left:/*FLOW_PAD_LEFT*/;
+  right:/*FLOW_PAD_RIGHT*/;
+  height:/*FLOW_BORDER_WIDTH*/;
 }
 .margin-guide.left{left:/*FLOW_PAD_LEFT*/}
 .margin-guide.right{right:/*FLOW_PAD_RIGHT*/}
@@ -298,6 +313,8 @@ var MARGIN_RIGHT=/*FLOW_PAD_RIGHT_NUM*/;
 var MARGIN_TOP=/*FLOW_PAD_TOP_NUM*/;
 var MARGIN_BOTTOM=/*FLOW_PAD_BOTTOM_NUM*/;
 var COLUMN_GAP=/*FLOW_GAP_NUM*/;
+var HANDLE_WIDTH=/*FLOW_HANDLE_WIDTH_NUM*/;
+var FRAME_BORDER_WIDTH=/*FLOW_BORDER_WIDTH_NUM*/;
 
 var sourceRoot=null;
 var pagesFlowEl=null;
@@ -332,6 +349,7 @@ var dragStartState=null;
 
 var columnWidths=[];
 var columnHeights=[];
+var columnTopOffsets=[];
 
 window.colChars=[];
 window.colParas=[];
@@ -453,6 +471,7 @@ function ensureMarginBounds(){
 function resetColumnCaches(){
   columnWidths=[];
   columnHeights=[];
+  columnTopOffsets=[];
 }
 
 function getDefaultColumnWidth(){
@@ -461,7 +480,7 @@ function getDefaultColumnWidth(){
 }
 
 function getDefaultColumnHeight(){
-  return Math.max(80, getInnerHeight()-12);
+  return Math.max(80, getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2);
 }
 
 function normalizeColumnCaches(){
@@ -469,11 +488,15 @@ function normalizeColumnCaches(){
   var defaultHeight=getDefaultColumnHeight();
   while(columnWidths.length<COLUMN_COUNT) columnWidths.push(defaultWidth);
   while(columnHeights.length<COLUMN_COUNT) columnHeights.push(defaultHeight);
+  while(columnTopOffsets.length<COLUMN_COUNT) columnTopOffsets.push(0);
   if(columnWidths.length>COLUMN_COUNT) columnWidths.length=COLUMN_COUNT;
   if(columnHeights.length>COLUMN_COUNT) columnHeights.length=COLUMN_COUNT;
+  if(columnTopOffsets.length>COLUMN_COUNT) columnTopOffsets.length=COLUMN_COUNT;
+  var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
   for(var i=0;i<COLUMN_COUNT;i++){
     columnWidths[i]=Math.max(80,columnWidths[i]);
-    columnHeights[i]=Math.max(80, Math.min(getInnerHeight(), columnHeights[i]));
+    columnTopOffsets[i]=Math.max(0, Math.min(maxInner-80, columnTopOffsets[i]||0));
+    columnHeights[i]=Math.max(80, Math.min(maxInner-columnTopOffsets[i], columnHeights[i]));
   }
 }
 
@@ -732,6 +755,10 @@ function buildPageColumns(pageIndex){
     topHandle.className='col-top-handle';
     bindDragHandle(topHandle, 'col-top', c);
 
+    var topSpacer=document.createElement('div');
+    topSpacer.className='col-top-spacer';
+    topSpacer.style.height=toPx(columnTopOffsets[c]||0);
+
     var col=document.createElement('div');
     col.className='col-content';
     col.setAttribute('contenteditable','true');
@@ -744,6 +771,7 @@ function buildPageColumns(pageIndex){
     bottomHandle.className='col-bottom-handle';
     bindDragHandle(bottomHandle, 'col-bottom', c);
 
+    wrap.appendChild(topSpacer);
     wrap.appendChild(topHandle);
     wrap.appendChild(col);
     wrap.appendChild(bottomHandle);
@@ -933,6 +961,7 @@ function syncColumnSizesToDom(){
   for(var p=0;p<pageInners.length;p++){
     var wraps=pageInners[p].querySelectorAll('.col-wrap');
     var cols=pageInners[p].querySelectorAll('.col-content');
+    var spacers=pageInners[p].querySelectorAll('.col-top-spacer');
     for(var i=0;i<wraps.length;i++){
       var idx=parseInt(wraps[i].getAttribute('data-col-index')||'0',10);
       if(!isFinite(idx) || idx<0 || idx>=COLUMN_COUNT) idx=0;
@@ -942,6 +971,12 @@ function syncColumnSizesToDom(){
       var ci=parseInt(cols[c].getAttribute('data-col-index')||'0',10);
       if(!isFinite(ci) || ci<0 || ci>=COLUMN_COUNT) ci=0;
       cols[c].style.height=toPx(columnHeights[ci]);
+    }
+    for(var s=0;s<spacers.length;s++){
+      var wrap=spacers[s].parentElement;
+      var si=wrap ? parseInt(wrap.getAttribute('data-col-index')||'0',10) : 0;
+      if(!isFinite(si) || si<0 || si>=COLUMN_COUNT) si=0;
+      spacers[s].style.height=toPx(columnTopOffsets[si]||0);
     }
     var gaps=pageInners[p].querySelectorAll('.col-gap-handle');
     for(var g=0;g<gaps.length;g++) gaps[g].style.width=toPx(COLUMN_GAP);
@@ -1026,10 +1061,26 @@ function updatePaperGeometryStyles(){
   var guideRight=document.getElementById('margin-guide-right');
   var guideTop=document.getElementById('margin-guide-top');
   var guideBottom=document.getElementById('margin-guide-bottom');
-  if(guideLeft) guideLeft.style.left=toPx(MARGIN_LEFT);
-  if(guideRight) guideRight.style.right=toPx(MARGIN_RIGHT);
-  if(guideTop) guideTop.style.top=toPx(MARGIN_TOP);
-  if(guideBottom) guideBottom.style.bottom=toPx(MARGIN_BOTTOM);
+  if(guideLeft){
+    guideLeft.style.left=toPx(MARGIN_LEFT);
+    guideLeft.style.top=toPx(MARGIN_TOP);
+    guideLeft.style.bottom=toPx(MARGIN_BOTTOM);
+  }
+  if(guideRight){
+    guideRight.style.right=toPx(MARGIN_RIGHT);
+    guideRight.style.top=toPx(MARGIN_TOP);
+    guideRight.style.bottom=toPx(MARGIN_BOTTOM);
+  }
+  if(guideTop){
+    guideTop.style.top=toPx(MARGIN_TOP);
+    guideTop.style.left=toPx(MARGIN_LEFT);
+    guideTop.style.right=toPx(MARGIN_RIGHT);
+  }
+  if(guideBottom){
+    guideBottom.style.bottom=toPx(MARGIN_BOTTOM);
+    guideBottom.style.left=toPx(MARGIN_LEFT);
+    guideBottom.style.right=toPx(MARGIN_RIGHT);
+  }
 }
 
 function bindColumnInputEvents(col){
@@ -1056,6 +1107,7 @@ function bindDragHandle(el, mode, index){
   if(!el) return;
   el.addEventListener('mousedown', function(ev){
     if(ev && ev.button!==0) return;
+    if(ev && ev.stopPropagation) ev.stopPropagation();
     dragMode=mode;
     dragIndex=index;
     dragStartX=ev.clientX;
@@ -1068,7 +1120,8 @@ function bindDragHandle(el, mode, index){
       marginTop:MARGIN_TOP,
       marginBottom:MARGIN_BOTTOM,
       columnWidths:columnWidths.slice(),
-      columnHeights:columnHeights.slice()
+      columnHeights:columnHeights.slice(),
+      columnTopOffsets:columnTopOffsets.slice()
     };
     if(ev.preventDefault) ev.preventDefault();
   });
@@ -1552,13 +1605,28 @@ document.addEventListener('mousemove', function(ev){
     columnWidths[idx+1]=right;
     syncColumnSizesToDom();
     rebuildPreviewStats();
-  }else if(dragMode==='col-top' || dragMode==='col-bottom'){
+  }else if(dragMode==='col-top'){
+    var ci=dragIndex;
+    if(ci<0 || ci>=COLUMN_COUNT) return;
+    var dy=ev.clientY-dragStartY;
+    var origOff=dragStartState.columnTopOffsets[ci]||0;
+    var origH=dragStartState.columnHeights[ci];
+    var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
+    var newOff=Math.max(0, Math.min(maxInner-80, origOff+dy));
+    var deltaOff=newOff-origOff;
+    var newH=Math.max(80, Math.min(maxInner-newOff, origH-deltaOff));
+    columnTopOffsets[ci]=newOff;
+    columnHeights[ci]=newH;
+    syncColumnSizesToDom();
+    rebuildPreviewStats();
+  }else if(dragMode==='col-bottom'){
     var ci=dragIndex;
     if(ci<0 || ci>=COLUMN_COUNT) return;
     var dy=ev.clientY-dragStartY;
     var h0=dragStartState.columnHeights[ci];
-    var h=(dragMode==='col-top') ? (h0-dy) : (h0+dy);
-    columnHeights[ci]=Math.max(80,Math.min(getInnerHeight(),h));
+    var off=columnTopOffsets[ci]||0;
+    var maxH=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2-off;
+    columnHeights[ci]=Math.max(80,Math.min(maxH, h0+dy));
     syncColumnSizesToDom();
     rebuildPreviewStats();
   }else if(dragMode==='paper-right' || dragMode==='paper-bottom' || dragMode==='paper-corner'){
@@ -1590,18 +1658,6 @@ document.addEventListener('mousemove', function(ev){
       }
     }
     applyGeometryRealtime();
-  }else if(dragMode==='margin-left'){
-    MARGIN_LEFT=Math.max(0,dragStartState.marginLeft + (ev.clientX-dragStartX));
-    applyGeometryRealtime();
-  }else if(dragMode==='margin-right'){
-    MARGIN_RIGHT=Math.max(0,dragStartState.marginRight - (ev.clientX-dragStartX));
-    applyGeometryRealtime();
-  }else if(dragMode==='margin-top'){
-    MARGIN_TOP=Math.max(0,dragStartState.marginTop + (ev.clientY-dragStartY));
-    applyGeometryRealtime();
-  }else if(dragMode==='margin-bottom'){
-    MARGIN_BOTTOM=Math.max(0,dragStartState.marginBottom - (ev.clientY-dragStartY));
-    applyGeometryRealtime();
   }
 });
 
@@ -1615,11 +1671,10 @@ document.addEventListener('mouseup', function(){
   }
   if(!dragMode) return;
   var resizedPaper=(dragMode==='paper-right' || dragMode==='paper-bottom' || dragMode==='paper-corner');
-  var movedMargin=(dragMode.indexOf('margin-')===0);
   dragMode='';
   dragIndex=-1;
   dragStartState=null;
-  if(resizedPaper || movedMargin){
+  if(resizedPaper){
     updatePaperGeometryStyles();
     redistributeColumnWidthsEvenly();
   }
@@ -1629,19 +1684,12 @@ document.addEventListener('mouseup', function(){
     postPaperGeometry();
     postPaperScale();
   }
-  if(movedMargin){
-    postPaperMargins();
-  }
 });
 
 function bindStaticHandles(){
   bindDragHandle(document.getElementById('paper-resize-right'), 'paper-right', -1);
   bindDragHandle(document.getElementById('paper-resize-bottom'), 'paper-bottom', -1);
   bindDragHandle(document.getElementById('paper-resize-corner'), 'paper-corner', -1);
-  bindDragHandle(document.getElementById('margin-guide-left'), 'margin-left', -1);
-  bindDragHandle(document.getElementById('margin-guide-right'), 'margin-right', -1);
-  bindDragHandle(document.getElementById('margin-guide-top'), 'margin-top', -1);
-  bindDragHandle(document.getElementById('margin-guide-bottom'), 'margin-bottom', -1);
 }
 
 function init(){
@@ -1687,7 +1735,10 @@ else{window.onload=init;}
                 .Replace("/*FLOW_PAD_RIGHT*/", $"{rightPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_PAD_TOP*/", $"{topPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_PAD_BOTTOM*/", $"{bottomPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
-                .Replace("/*FLOW_GAP_PX*/", $"{gapPx.ToString("0.###", CultureInfo.InvariantCulture)}px");
+                .Replace("/*FLOW_GAP_PX*/", $"{gapPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*FLOW_BORDER_WIDTH*/", $"{borderWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*FLOW_HANDLE_WIDTH*/", $"{handleWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*FLOW_HANDLE_ACTIVE_WIDTH*/", $"{handleActiveWidth.ToString("0.###", CultureInfo.InvariantCulture)}px");
 
             string flowJs = flowJsTemplate
                 .Replace("/*FLOW_PREVIEW_SCALE*/", scale.ToString("0.#####", CultureInfo.InvariantCulture))
@@ -1699,7 +1750,9 @@ else{window.onload=init;}
                 .Replace("/*FLOW_PAD_RIGHT_NUM*/", rightPx.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_PAD_TOP_NUM*/", topPx.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_PAD_BOTTOM_NUM*/", bottomPx.ToString("0.#####", CultureInfo.InvariantCulture))
-                .Replace("/*FLOW_GAP_NUM*/", gapPx.ToString("0.#####", CultureInfo.InvariantCulture));
+                .Replace("/*FLOW_GAP_NUM*/", gapPx.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_HANDLE_WIDTH_NUM*/", handleWidth.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_BORDER_WIDTH_NUM*/", borderWidth.ToString("0.#####", CultureInfo.InvariantCulture));
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"
@@ -1910,7 +1963,7 @@ body{
 }
 
 .col-wrap{-ms-flex:1;flex:1;display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;min-width:0;overflow:hidden}
-.col-content{-ms-flex:1;flex:1;overflow:hidden;padding:8px 10px;background:#ffffff;color:#111111;caret-color:#111}
+.col-content{-ms-flex:none;flex:none;overflow:hidden;padding:8px 10px;background:#ffffff;color:#111111;caret-color:#111}
 .col-content.last{overflow:hidden}
 .col-content[contenteditable='true']{outline:none}
 .col-content[contenteditable='true']:focus{box-shadow:inset 0 0 0 1px #58a6ff}
