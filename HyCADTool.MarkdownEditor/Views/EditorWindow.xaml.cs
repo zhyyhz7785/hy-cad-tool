@@ -441,8 +441,9 @@ namespace HyCADTool.MarkdownEditor.Views
                         bool wasUpdatingFromPreview = _isUpdatingFromPreview;
                         if (_isUpdatingFromPreview)
                         {
-                            ApplyMarkdownFromSource(markdownFromEditor, MarkdownSyncSource.Editor);
-                            ClearPendingPreviewSyncState();
+                            // 不 ApplyMarkdownFromSource（避免 Vditor 对 \u200B 等做规范化后覆盖正确内容），
+                            // 不 ClearPendingPreviewSyncState（由 SyncEditorFromPreviewAsync 的 1200ms 延迟统一清除），
+                            // 防止后续 editor input 触发 SchedulePreviewRefresh 导致回弹
                             // #region agent log
                             try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H4",location="EditorWindow.cs:OnEditorInput",message="editor input BLOCKED (isUpdatingFromPreview)",data=new{wasUpdatingFromPreview,mdLen=markdownFromEditor.Length},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
                             // #endregion
@@ -1200,7 +1201,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H6",location="EditorWindow.cs:SyncEditorFromPreview",message="calling setContent on editor",data=new{mdLen=(markdown??"").Length,isUpdatingFromPreview=_isUpdatingFromPreview,previewHadFocus},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
                 // #endregion
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
-                RefreshOutline();
+                // 不在此处调用 RefreshOutline，避免左侧大纲刷新抢走预览焦点；MarkdownText 变更已触发 OnPropChanged 会调用
                 if (previewHadFocus && _previewPanel?.PreviewWebViewControl != null)
                     _previewPanel.PreviewWebViewControl.Focus();
                 string expectedHash = _pendingPreviewSyncHash;

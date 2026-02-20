@@ -80,7 +80,7 @@ namespace HyCADTool.MarkdownEditor.Html
                 for (int i = 0; i < extra; i++)
                 {
                     if (i > 0) sb.Append("\n\n");
-                    sb.Append("&nbsp;");
+                    sb.Append('\u2060'); // WORD JOINER, invisible, survives editor round-trip
                 }
                 sb.Append("\n\n");
                 return sb.ToString();
@@ -1370,7 +1370,7 @@ function blockToMarkdown(el){
     var lv=parseInt(tag.charAt(1),10); if(!isFinite(lv)||lv<1) lv=1;
     return Array(lv+1).join('#')+' '+inlineToMarkdown(el).trim();
   }
-  if(tag==='p'){ var pc=inlineToMarkdown(el).trim(); return pc||'&nbsp;'; }
+  if(tag==='p'){ var pc=inlineToMarkdown(el).trim(); return pc||'\u2060'; }
   if(tag==='blockquote') return '> '+inlineToMarkdown(el).replace(/\n/g,'\n> ').trim();
   if(tag==='hr') return '---';
   if(tag==='pre') return '```\n'+((el.textContent||'').replace(/\n+$/,''))+'\n```';
@@ -3190,7 +3190,7 @@ function blockToMarkdown(el){
     if(!isFinite(lv)||lv<1) lv=1;
     return Array(lv+1).join('#')+' '+inlineToMarkdown(el).trim();
   }
-  if(tag==='p'){ var pc2=inlineToMarkdown(el).trim(); return pc2||'&nbsp;'; }
+  if(tag==='p'){ var pc2=inlineToMarkdown(el).trim(); return pc2||'\u2060'; }
   if(tag==='blockquote'){
     return '> '+inlineToMarkdown(el).replace(/\n/g,'\n> ').trim();
   }
