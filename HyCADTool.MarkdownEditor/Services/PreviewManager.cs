@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using HyCADTool.MarkdownEditor.Html;
@@ -53,6 +54,9 @@ namespace HyCADTool.MarkdownEditor.Services
         private bool _hasInitialRender;
         private bool _incrementalFallbackFuse;
         private DateTime _lastFullRenderUtc = DateTime.MinValue;
+        private string _pendingCaretBookmarkJson = string.Empty;
+        private double? _pendingScrollTop;
+        private double? _pendingScrollLeft;
 
         public bool IsPreviewReady
         {
@@ -272,6 +276,27 @@ namespace HyCADTool.MarkdownEditor.Services
                 _pendingPreviewHtml = html;
                 return;
             }
+
+            // Flow 模式内容变更：原地更新 #source 并重建分栏，不销毁 DOM
+            if (flowExperienceMode
+                && _hasInitialRender
+                && !configChanged
+                && reason == PreviewRefreshReason.ContentInput)
+            {
+                try
+                {
+                    bool ok = await IncrementalUpdateFlowAsync(previewWebView, markdown);
+                    if (ok)
+                    {
+                        _lastRenderedConfigJson = configJson;
+                        _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
+                        _previewVersion = _markdownVersion;
+                        return;
+                    }
+                }
+                catch { /* 失败则 fall through 到完整刷新 */ }
+            }
+
             bool forceFullByReason = reason == PreviewRefreshReason.InitialLoad
                 || reason == PreviewRefreshReason.ConfigChanged
                 || reason == PreviewRefreshReason.ViewportChanged
@@ -284,6 +309,7 @@ namespace HyCADTool.MarkdownEditor.Services
                 && _incrementalFallbackFuse
                 && _hasInitialRender)
             {
+                await CaptureCaretAndScrollAsync(previewWebView);
                 FullNavigatePreview(previewWebView, markdown, viewModel, config);
                 _lastRenderedConfigJson = configJson;
                 _incrementalFallbackFuse = false;
@@ -309,13 +335,23 @@ namespace HyCADTool.MarkdownEditor.Services
                 }
                 catch
                 {
-                    FullNavigatePreview(previewWebView, markdown, viewModel, config);
+                    bool repaired = await FullUpdateInPlaceAsync(
+                        previewWebView,
+                        markdown,
+                        viewModel.PreviewScale,
+                        _latestLayoutResult);
+                    if (!repaired)
+                    {
+                        await CaptureCaretAndScrollAsync(previewWebView);
+                        FullNavigatePreview(previewWebView, markdown, viewModel, config);
+                        _incrementalFallbackFuse = true;
+                    }
                     _lastRenderedConfigJson = configJson;
-                    _incrementalFallbackFuse = true;
                 }
             }
             else
             {
+                await CaptureCaretAndScrollAsync(previewWebView);
                 FullNavigatePreview(previewWebView, markdown, viewModel, config);
                 _lastRenderedConfigJson = configJson;
                 if (forceFullByReason || configChanged)
@@ -334,6 +370,57 @@ namespace HyCADTool.MarkdownEditor.Services
             previewWebView.CoreWebView2.NavigateToString(html);
             _hasInitialRender = true;
             _lastFullRenderUtc = DateTime.UtcNow;
+        }
+
+        private async Task CaptureCaretAndScrollAsync(WebView2 previewWebView)
+        {
+            if (!_previewReady || previewWebView?.CoreWebView2 == null) return;
+            try
+            {
+                _pendingCaretBookmarkJson = await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                    "JSON.stringify(captureCaretBookmark(getActionTargetColumn()))");
+                string scrollRaw = await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                    "JSON.stringify({top:viewportEl?viewportEl.scrollTop:0,left:viewportEl?viewportEl.scrollLeft:0})");
+                var pos = JsonConvert.DeserializeObject<ScrollPos>(scrollRaw ?? string.Empty);
+                _pendingScrollTop = pos?.top;
+                _pendingScrollLeft = pos?.left;
+            }
+            catch
+            {
+                _pendingCaretBookmarkJson = string.Empty;
+                _pendingScrollTop = null;
+                _pendingScrollLeft = null;
+            }
+        }
+
+        public async Task RestoreCaretAfterNavigationAsync(WebView2 previewWebView)
+        {
+            var bookmarkJson = _pendingCaretBookmarkJson;
+            var top = _pendingScrollTop;
+            var left = _pendingScrollLeft;
+            _pendingCaretBookmarkJson = string.Empty;
+            _pendingScrollTop = null;
+            _pendingScrollLeft = null;
+
+            if (!_previewReady || previewWebView?.CoreWebView2 == null) return;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(bookmarkJson) && !string.Equals(bookmarkJson, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    await previewWebView.CoreWebView2.ExecuteScriptAsync($"restoreCaretBookmark({bookmarkJson})");
+                }
+                if (top.HasValue || left.HasValue)
+                {
+                    string topText = (top ?? 0).ToString("0.###", CultureInfo.InvariantCulture);
+                    string leftText = (left ?? 0).ToString("0.###", CultureInfo.InvariantCulture);
+                    await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                        $"(function(){{if(window.viewportEl){{viewportEl.scrollTop={topText};viewportEl.scrollLeft={leftText};}}}})();");
+                }
+            }
+            catch
+            {
+                // best effort restore; ignore failures
+            }
         }
 
         private async Task IncrementalUpdateAsync(
@@ -359,6 +446,40 @@ namespace HyCADTool.MarkdownEditor.Services
                 $"updateSourceIncremental({bodyEscaped},{layoutJson},{customWidths},{dirtyBlockStart},{dirtyBlockEnd},{incrementalMetaJson})");
             if (!ParseJsBool(raw))
                 throw new InvalidOperationException("incremental patch rejected");
+        }
+
+        private async Task<bool> FullUpdateInPlaceAsync(
+            WebView2 previewWebView,
+            string markdown,
+            double previewScale,
+            LayoutResultModel layoutResult)
+        {
+            if (!_previewReady || previewWebView?.CoreWebView2 == null)
+                return false;
+
+            string bodyHtml = PreviewHtmlRenderer.RenderBodyHtml(markdown);
+            string layoutJson = layoutResult == null
+                ? "null"
+                : JsonConvert.SerializeObject(layoutResult);
+            string customWidths = PreviewHtmlRenderer.BuildCustomColumnWidthsJson(
+                layoutResult, Math.Max(0.01, previewScale));
+            string bodyEscaped = JsonConvert.SerializeObject(bodyHtml);
+
+            string raw = await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                $"updateSource({bodyEscaped},{layoutJson},{customWidths})");
+            return ParseJsBool(raw);
+        }
+
+        /// <summary>
+        /// Flow 模式原地增量更新：仅更新 #source 内容并重建分栏，不销毁 DOM。
+        /// </summary>
+        private async Task<bool> IncrementalUpdateFlowAsync(WebView2 previewWebView, string markdown)
+        {
+            string bodyHtml = PreviewHtmlRenderer.RenderFlowBodyHtml(markdown);
+            string bodyEscaped = JsonConvert.SerializeObject(bodyHtml);
+            string raw = await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                $"updateSource({bodyEscaped},null,null)");
+            return ParseJsBool(raw);
         }
 
         private static bool ParseJsBool(string raw)
@@ -426,10 +547,61 @@ namespace HyCADTool.MarkdownEditor.Services
             await previewWebView.CoreWebView2.ExecuteScriptAsync($"jumpToPage({target});");
         }
 
+        public async Task ApplyPaperColumnLayoutAsync(WebView2 previewWebView, int columnCount, double columnGutter, double previewScale)
+        {
+            if (previewWebView?.CoreWebView2 == null)
+                return;
+
+            int nextCount = Math.Max(1, Math.Min(10, columnCount));
+            double gapPx = ComputePaperColumnGapPx(columnGutter, previewScale);
+            string countJson = JsonConvert.SerializeObject(nextCount);
+            string gapJson = JsonConvert.SerializeObject(Math.Round(gapPx, 2));
+            await previewWebView.CoreWebView2.ExecuteScriptAsync($"setPaperColumnLayout({countJson}, {gapJson})");
+        }
+
+        public async Task ApplyPaperGeometryAsync(
+            WebView2 previewWebView,
+            double pageWidthMm,
+            double pageHeightMm,
+            double marginLeftMm,
+            double marginRightMm,
+            double marginTopMm,
+            double marginBottomMm)
+        {
+            if (previewWebView?.CoreWebView2 == null)
+                return;
+
+            string widthMmJson = JsonConvert.SerializeObject(Math.Round(pageWidthMm, 3));
+            string heightMmJson = JsonConvert.SerializeObject(Math.Round(pageHeightMm, 3));
+            string leftMmJson = JsonConvert.SerializeObject(Math.Round(marginLeftMm, 3));
+            string rightMmJson = JsonConvert.SerializeObject(Math.Round(marginRightMm, 3));
+            string topMmJson = JsonConvert.SerializeObject(Math.Round(marginTopMm, 3));
+            string bottomMmJson = JsonConvert.SerializeObject(Math.Round(marginBottomMm, 3));
+
+            await previewWebView.CoreWebView2.ExecuteScriptAsync($"setPaperGeometry({widthMmJson}, {heightMmJson})");
+            await previewWebView.CoreWebView2.ExecuteScriptAsync($"setPaperMargins({leftMmJson}, {rightMmJson}, {topMmJson}, {bottomMmJson})");
+        }
+
+        public async Task ResetPaperLayoutAsync(WebView2 previewWebView)
+        {
+            if (previewWebView?.CoreWebView2 == null)
+                return;
+
+            await previewWebView.CoreWebView2.ExecuteScriptAsync("if(window.resetPaperLayout){resetPaperLayout();}");
+        }
+
         public Task ShiftPageAsync(WebView2 previewWebView, int delta)
         {
             int basePage = _currentPage > 0 ? _currentPage : 1;
             return GoToPageAsync(previewWebView, basePage + delta);
+        }
+
+        private static double ComputePaperColumnGapPx(double columnGutter, double previewScale)
+        {
+            double safeGutter = Math.Max(0, columnGutter);
+            double safeScale = Math.Max(0.1, previewScale);
+            double px = safeGutter * safeScale;
+            return Math.Max(6, Math.Min(240, px));
         }
 
         public async Task SyncFromPreviewAsync(WebView2 previewWebView, EditorViewModel viewModel)
@@ -535,6 +707,12 @@ namespace HyCADTool.MarkdownEditor.Services
             _dirtyBlockStart = start;
             _dirtyBlockEnd = end;
             _lastBlockSources = next;
+        }
+
+        private sealed class ScrollPos
+        {
+            public double top { get; set; }
+            public double left { get; set; }
         }
     }
 }

@@ -2,9 +2,6 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +15,7 @@ using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.Services;
 using HyCADTool.MarkdownEditor.ViewModels;
 using HyCADTool.MarkdownEditor.Views.Controls;
+using HyCADTool.MarkdownEditor.Views.Helpers;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -30,57 +28,29 @@ namespace HyCADTool.MarkdownEditor.Views
         public EditorResult Result { get; private set; }
 
         private const int WM_MOUSEWHEEL = 0x020A;
-        private const int WM_GETMINMAXINFO = 0x0024;
-        private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const int PreviewRefreshDebounceMs = 220;
         private const int AutoCadSyncDebounceMs = 900;
-        private const bool DefaultPaperPrimaryMode = false;
-        private const double MinPreviewVisibleWidth = 280;
-        private const double DefaultPreviewPanelWidth = 420;
-        private const double MinOutlinePanelWidth = 120;
-        private const double DefaultOutlinePanelWidth = 220;
-        private const double OutlineSplitterWidth = 4;
-        private const double RulerThickness = 24;
-        private const double DefaultEditorMinWidth = 180;
-        private const double DefaultRatioLeft = 1.0;
-        private const double DefaultRatioEditor = 2.0;
-        private const double DefaultRatioPreview = 4.0;
 
         private readonly DispatcherTimer _rulerSyncTimer;
         private readonly DispatcherTimer _previewRefreshDebounceTimer;
         private readonly DispatcherTimer _autoCadSyncDebounceTimer;
         private readonly ThemeManager _themeManager = new ThemeManager();
         private readonly PreviewManager _previewManager = new PreviewManager();
+        private readonly WorkspaceLayoutManager _layoutManager;
+        private readonly CadSyncService _cadSyncService;
+        private readonly MarkdownSyncCoordinator _syncCoordinator;
+        private readonly EditorSessionLifecycle _sessionLifecycle;
+        private readonly PreviewInteractionFacade _previewInteractions;
+        private readonly EditorUiEventRouter _eventRouter;
 
         private VditorJsHelper _js;
         private bool _editorReady;
-        private bool _previewVisible = true;
-        private bool _outlineVisible = true;
-        private bool _bottomPanelVisible = true;
-        private bool _rulerVisible = true;
-        private bool _editorVisible = true;
-        private bool _paperPrimaryEditMode = DefaultPaperPrimaryMode;
-        private bool _defaultWorkspaceLayoutApplied;
-        private double _bottomPanelHeight = 160;
-        private double _outlinePanelWidth = DefaultOutlinePanelWidth;
-        private double _previewPanelWidth = DefaultPreviewPanelWidth;
-        private double _editorPanelWidth = 0;
         private readonly TitleBarControl _titleBar;
         private readonly LeftPanelControl _leftPanel;
         private readonly PreviewPanelControl _previewPanel;
         private HwndSource _hwndSource;
-        private bool _isAutoSyncRunning;
-        private bool _autoSyncPending;
         private readonly bool _isModalSession;
-        private bool _isUpdatingFromPreview;
-        private string _pendingPreviewSyncHash = string.Empty;
         private PreviewRefreshReason _pendingPreviewRefreshReason = PreviewRefreshReason.InitialLoad;
-
-        private enum MarkdownSyncSource
-        {
-            Editor = 0,
-            Preview = 1
-        }
 
         public EditorWindow(EditorInput input, bool isModal = true)
         {
@@ -91,6 +61,57 @@ namespace HyCADTool.MarkdownEditor.Views
             _titleBar = ResolveRequiredControl<TitleBarControl>("TitleBar");
             _leftPanel = ResolveRequiredControl<LeftPanelControl>("LeftPanel");
             _previewPanel = ResolveRequiredControl<PreviewPanelControl>("PreviewPanel");
+            _cadSyncService = new CadSyncService(ViewModel, _previewManager);
+            _syncCoordinator = new MarkdownSyncCoordinator(ViewModel);
+            _layoutManager = new WorkspaceLayoutManager(
+                new LayoutTargets(
+                    OutlineCol,
+                    OutlineSplitterCol,
+                    EditorCol,
+                    SplitterCol,
+                    PreviewCol,
+                    BottomPanelSplitterRow,
+                    BottomPanelRow,
+                    OutlineSplitter,
+                    PreviewSplitter,
+                    BottomPanelSplitter,
+                    EditorWebView,
+                    BottomPanelHost,
+                    _previewPanel),
+                UpdateTitleBarToggleState,
+                UpdatePreviewPageState,
+                running =>
+                {
+                    if (running) _rulerSyncTimer.Start();
+                    else _rulerSyncTimer.Stop();
+                });
+            _previewInteractions = new PreviewInteractionFacade(
+                _previewManager,
+                _previewPanel,
+                ViewModel,
+                () => _layoutManager.IsPreviewVisible,
+                () => _layoutManager.IsPaperPrimaryEditMode,
+                LogSilentException);
+            _eventRouter = new EditorUiEventRouter(_titleBar, _leftPanel, _previewPanel);
+            _sessionLifecycle = new EditorSessionLifecycle(
+                ViewModel,
+                _previewManager,
+                EditorWebView,
+                _previewPanel.PreviewWebViewControl,
+                Dispatcher,
+                LogSilentException,
+                UpdateEditorActionRouting,
+                RefreshPreviewAsync,
+                UpdatePreviewPageState,
+                RefreshOutline,
+                RefreshFileList,
+                ApplyDefaultWorkspaceLayout,
+                FitPaperToPreviewArea,
+                UpdateRulerScale,
+                OnPreviewWebMessageReceived,
+                OnPreviewNavigationCompleted,
+                OnWebMessageReceived,
+                EditorLauncher.ClearSyncCallbacks);
 
             _rulerSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             _rulerSyncTimer.Tick += (_, __) => SyncRulerFromPaper();
@@ -138,42 +159,43 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void WireChildControlEvents()
         {
-            _titleBar.ThemeDarkRequested += (_, __) => OnThemeDark();
-            _titleBar.ThemeLightRequested += (_, __) => OnThemeLight();
-            _titleBar.ToggleRulerRequested += (_, __) => OnToggleRuler();
-            _titleBar.ToggleOutlineRequested += (_, __) => OnToggleOutline();
-            _titleBar.ToggleBottomPanelRequested += (_, __) => OnToggleBottomPanel();
-            _titleBar.TogglePreviewRequested += (_, __) => OnTogglePreview();
-            _titleBar.SettingsRequested += (_, __) => OnOpenSettingsPanel();
-            _titleBar.InsertCadRequested += async (_, __) => await OnInsertCadClickAsync();
-            _titleBar.ConfirmRequested += async (_, __) => await OnConfirmClickAsync();
-            _titleBar.MinimizeRequested += (_, __) => SystemCommands.MinimizeWindow(this);
-            _titleBar.MaxRestoreRequested += (_, __) => ToggleMaxRestore();
-            _titleBar.CloseRequested += (_, __) => OnCloseClick();
-            _titleBar.WorkspaceModeRequested += (_, e) => ApplyWorkspaceMode(e.Mode);
-            _titleBar.DragMoveRequested += (_, __) =>
+            _eventRouter.Wire(new EditorUiEventHandlers
             {
-                try { DragMove(); }
-                catch (Exception ex) { LogSilentException(nameof(DragMove), ex); }
-            };
-            _titleBar.SystemMenuRequested += (_, e) => SystemCommands.ShowSystemMenu(this, e.ScreenPoint);
-
-            _leftPanel.FileOpenRequested += (_, path) => OpenMdFile(path);
-            _leftPanel.OutlineHeadingSelected += async (_, heading) => await ScrollToHeadingAsync(heading);
-            _leftPanel.StatusChanged += (_, status) => ViewModel.StatusText = status ?? "";
-            _leftPanel.CurrentFilePathChanged += (_, e) => ViewModel.CurrentFilePath = e.NewPath;
-            _leftPanel.CurrentFileClearedRequested += (_, __) =>
-            {
-                ViewModel.CurrentFilePath = "";
-                ViewModel.MarkdownText = "";
-                OnEditorContentLoadRequested("");
-            };
-
-            _previewPanel.TogglePageOrientationRequested += (_, __) => OnTogglePageOrientation();
-            _previewPanel.ResetLayoutRequested += async (_, __) => await OnResetLayoutRequestedAsync();
-            _previewPanel.PreviousPageRequested += async (_, __) => await ShiftPreviewPageAsync(-1);
-            _previewPanel.NextPageRequested += async (_, __) => await ShiftPreviewPageAsync(1);
-            _previewPanel.JumpPageRequested += async (_, page) => await JumpPreviewPageAsync(page);
+                OnThemeDark = OnThemeDark,
+                OnThemeLight = OnThemeLight,
+                OnToggleRuler = OnToggleRuler,
+                OnToggleOutline = OnToggleOutline,
+                OnToggleBottomPanel = OnToggleBottomPanel,
+                OnTogglePreview = OnTogglePreview,
+                OnOpenSettingsPanel = OnOpenSettingsPanel,
+                OnInsertCadClickAsync = OnInsertCadClickAsync,
+                OnConfirmClickAsync = OnConfirmClickAsync,
+                OnMinimizeRequested = () => SystemCommands.MinimizeWindow(this),
+                OnMaxRestoreRequested = ToggleMaxRestore,
+                OnCloseRequested = OnCloseClick,
+                OnWorkspaceModeRequested = ApplyWorkspaceMode,
+                OnDragMoveRequested = () =>
+                {
+                    try { DragMove(); }
+                    catch (Exception ex) { LogSilentException(nameof(DragMove), ex); }
+                },
+                OnSystemMenuRequested = e => SystemCommands.ShowSystemMenu(this, e.ScreenPoint),
+                OnFileOpenRequested = OpenMdFile,
+                OnOutlineHeadingSelectedAsync = ScrollToHeadingAsync,
+                OnLeftPanelStatusChanged = status => ViewModel.StatusText = status ?? "",
+                OnCurrentFilePathChanged = newPath => ViewModel.CurrentFilePath = newPath,
+                OnCurrentFileClearedRequested = () =>
+                {
+                    ViewModel.CurrentFilePath = "";
+                    ViewModel.MarkdownText = "";
+                    OnEditorContentLoadRequested("");
+                },
+                OnTogglePageOrientationRequested = OnTogglePageOrientation,
+                OnResetLayoutRequestedAsync = OnResetLayoutRequestedAsync,
+                OnPreviousPageRequestedAsync = () => ShiftPreviewPageAsync(-1),
+                OnNextPageRequestedAsync = () => ShiftPreviewPageAsync(1),
+                OnJumpPageRequestedAsync = JumpPreviewPageAsync
+            });
         }
 
         private Brush ThemeBrush(string key) => _themeManager.GetBrush(this, key);
@@ -200,10 +222,10 @@ namespace HyCADTool.MarkdownEditor.Views
         private void UpdateTitleBarToggleState()
         {
             _titleBar.UpdateToggleState(
-                _rulerVisible,
-                _outlineVisible,
-                _bottomPanelVisible,
-                _previewVisible,
+                _layoutManager.IsRulerVisible,
+                _layoutManager.IsOutlineVisible,
+                _layoutManager.IsBottomPanelVisible,
+                _layoutManager.IsPreviewVisible,
                 ThemeBrush("ThemeTextPrimaryBrush"),
                 ThemeBrush("ThemeTextSecondaryBrush"));
         }
@@ -227,62 +249,9 @@ namespace HyCADTool.MarkdownEditor.Views
             ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
             try
             {
-                var cacheTask = VditorCacheManager.EnsureCachedAsync(msg =>
-                    Dispatcher.Invoke(() => ViewModel.StatusText = msg));
-
-                string userDataFolder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "HyCADTool", "WebView2");
-                Directory.CreateDirectory(userDataFolder);
-                var envTask = CoreWebView2Environment.CreateAsync(null, userDataFolder);
-
-                await Task.WhenAll(cacheTask, envTask);
-
-                var env = envTask.Result;
-                await EditorWebView.EnsureCoreWebView2Async(env);
-                await _previewPanel.PreviewWebViewControl.EnsureCoreWebView2Async(env);
-
-                _previewManager.IsPreviewReady = _previewPanel.PreviewWebViewControl.CoreWebView2 != null;
-                if (_previewManager.IsPreviewReady)
-                {
-                    _previewPanel.PreviewWebViewControl.CoreWebView2.Settings.IsZoomControlEnabled = false;
-                    _previewPanel.PreviewWebViewControl.CoreWebView2.Settings.IsPinchZoomEnabled = false;
-                    _previewPanel.PreviewWebViewControl.CoreWebView2.WebMessageReceived += OnPreviewWebMessageReceived;
-                }
-
-                string cdnBase = null;
-                if (VditorCacheManager.IsCached)
-                {
-                    EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                        "vditor.local", VditorCacheManager.CacheDir,
-                        CoreWebView2HostResourceAccessKind.Allow);
-                    cdnBase = "https://vditor.local";
-                }
-
-                _js = new VditorJsHelper(script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script));
+                await _sessionLifecycle.InitializeAsync();
+                _js = _sessionLifecycle.EditorJsHelper;
                 UpdateEditorActionRouting();
-                EditorWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-
-                string html = VditorHtmlTemplate.Generate(ViewModel.MarkdownText, cdnBase);
-                EditorWebView.CoreWebView2.NavigateToString(html);
-
-                if (_previewManager.IsPreviewReady && _previewManager.HasPendingHtml)
-                {
-                    _previewPanel.PreviewWebViewControl.CoreWebView2.NavigateToString(_previewManager.PendingHtml);
-                    _previewManager.ClearPendingHtml();
-                }
-
-                await RefreshPreviewAsync(PreviewRefreshReason.InitialLoad);
-                UpdatePreviewPageState();
-                RefreshOutline();
-                RefreshFileList();
-                ApplyDefaultWorkspaceLayout(false);
-
-                _ = Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    FitPaperToPreviewArea();
-                    UpdateRulerScale();
-                }), DispatcherPriority.Loaded);
             }
             catch (Exception ex)
             {
@@ -312,23 +281,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 _hwndSource.RemoveHook(WndProc);
                 _hwndSource = null;
             }
-            try
-            {
-                if (EditorWebView?.CoreWebView2 != null)
-                    EditorWebView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
-                if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 != null)
-                    _previewPanel.PreviewWebViewControl.CoreWebView2.WebMessageReceived -= OnPreviewWebMessageReceived;
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(OnClosed), ex);
-            }
-
-            try { EditorWebView?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
-            try { _previewPanel?.PreviewWebViewControl?.Dispose(); } catch (Exception ex) { LogSilentException(nameof(OnClosed), ex); }
-
-            // 关闭窗口后兜底清理回调，防止跨会话残留。
-            EditorLauncher.ClearSyncCallbacks();
+            _sessionLifecycle.Dispose();
         }
 
         private void OnSourceInitialized(object sender, EventArgs e)
@@ -339,74 +292,11 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == WM_GETMINMAXINFO)
+            if (Win32MaximizeHelper.TryHandleMessage(hwnd, msg, lParam))
             {
-                WmGetMinMaxInfo(hwnd, lParam);
                 handled = true;
             }
             return IntPtr.Zero;
-        }
-
-        private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
-        {
-            IntPtr monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-            if (monitor == IntPtr.Zero) return;
-
-            var monitorInfo = new MONITORINFO();
-            if (!GetMonitorInfo(monitor, monitorInfo)) return;
-
-            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            RECT workArea = monitorInfo.rcWork;
-            RECT monitorArea = monitorInfo.rcMonitor;
-
-            mmi.ptMaxPosition.X = Math.Abs(workArea.Left - monitorArea.Left);
-            mmi.ptMaxPosition.Y = Math.Abs(workArea.Top - monitorArea.Top);
-            mmi.ptMaxSize.X = Math.Abs(workArea.Right - workArea.Left);
-            mmi.ptMaxSize.Y = Math.Abs(workArea.Bottom - workArea.Top);
-
-            Marshal.StructureToPtr(mmi, lParam, true);
-        }
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool GetMonitorInfo(IntPtr hMonitor, MONITORINFO lpmi);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT
-        {
-            public int X;
-            public int Y;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct MINMAXINFO
-        {
-            public POINT ptReserved;
-            public POINT ptMaxSize;
-            public POINT ptMaxPosition;
-            public POINT ptMinTrackSize;
-            public POINT ptMaxTrackSize;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private class MONITORINFO
-        {
-            public int cbSize = Marshal.SizeOf(typeof(MONITORINFO));
-            public RECT rcMonitor = default;
-            public RECT rcWork = default;
-            public int dwFlags = 0;
         }
 
         private void OnWindowStateChanged(object sender, EventArgs e)
@@ -438,23 +328,8 @@ namespace HyCADTool.MarkdownEditor.Views
                         break;
                     case "input":
                         string markdownFromEditor = msg.Value<string>("value") ?? "";
-                        bool wasUpdatingFromPreview = _isUpdatingFromPreview;
-                        if (_isUpdatingFromPreview)
-                        {
-                            // 不 ApplyMarkdownFromSource（避免 Vditor 对 \u200B 等做规范化后覆盖正确内容），
-                            // 不 ClearPendingPreviewSyncState（由 SyncEditorFromPreviewAsync 的 1200ms 延迟统一清除），
-                            // 防止后续 editor input 触发 SchedulePreviewRefresh 导致回弹
-                            // #region agent log
-                            try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H4",location="EditorWindow.cs:OnEditorInput",message="editor input BLOCKED (isUpdatingFromPreview)",data=new{wasUpdatingFromPreview,mdLen=markdownFromEditor.Length},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
-                            // #endregion
-                            break;
-                        }
-
-                        bool editorApplied = ApplyMarkdownFromSource(markdownFromEditor, MarkdownSyncSource.Editor);
-                        // #region agent log
-                        try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H4_H5",location="EditorWindow.cs:OnEditorInput",message="editor input ALLOWED",data=new{wasUpdatingFromPreview,editorApplied,willRefresh=editorApplied,mdLen=markdownFromEditor.Length,mdSnippet=markdownFromEditor.Substring(0,System.Math.Min(150,markdownFromEditor.Length))},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
-                        // #endregion
-                        if (editorApplied)
+                        EditorInputSyncResult syncResult = _syncCoordinator.HandleEditorInput(markdownFromEditor);
+                        if (syncResult == EditorInputSyncResult.Applied)
                         {
                             SchedulePreviewRefresh(PreviewRefreshReason.ContentInput);
                             ScheduleAutoCadSync();
@@ -484,21 +359,13 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnPreviewWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
-            // #region agent log
-            try{var _raw=args.WebMessageAsJson;if(!string.IsNullOrEmpty(_raw)&&_raw.Contains("\"debugLog\"")){System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",_raw+"\n");return;}}catch{}
-            // #endregion
             try
             {
-                bool handled = _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged);
-                bool hasChange = contentChanged != null;
-                bool applied = hasChange && ApplyMarkdownFromSource(contentChanged?.Markdown, MarkdownSyncSource.Preview, contentChanged?.Version ?? 0);
-                bool canSyncEditor = CanUseEditorScriptPipeline();
-                // #region agent log
-                try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H3",location="EditorWindow.cs:OnPreviewWebMsg",message="preview contentChanged",data=new{handled,hasChange,applied,canSyncEditor,_paperPrimaryEditMode,_editorVisible,_editorReady,mdSnippet=(contentChanged?.Markdown??"").Substring(0,System.Math.Min(150,(contentChanged?.Markdown??"").Length))},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
-                // #endregion
+                _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged);
+                bool applied = _syncCoordinator.HandlePreviewContentChanged(contentChanged, out string appliedMarkdown);
                 if (applied)
                 {
-                    _ = SyncEditorFromPreviewAsync(contentChanged.Markdown);
+                    _ = SyncEditorFromPreviewAsync(appliedMarkdown);
                     ScheduleAutoCadSync();
                 }
                 UpdatePreviewPageState();
@@ -583,9 +450,11 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void SchedulePreviewRefresh(PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
-            // #region agent log
-            try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H5",location="EditorWindow.cs:SchedulePreviewRefresh",message="preview refresh scheduled",data=new{reason=reason.ToString(),stackTrace=new System.Diagnostics.StackTrace(true).ToString().Substring(0,System.Math.Min(400,new System.Diagnostics.StackTrace(true).ToString().Length))},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
-            // #endregion
+            // 图纸面板有焦点时，不因编辑器输入刷新图纸（避免打断用户编辑、光标丢失、内容回弹）
+            if (reason == PreviewRefreshReason.ContentInput
+                && _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true)
+                return;
+
             if (RefreshReasonPriority(reason) >= RefreshReasonPriority(_pendingPreviewRefreshReason))
                 _pendingPreviewRefreshReason = reason;
             _previewRefreshDebounceTimer.Stop();
@@ -600,18 +469,14 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async Task TryApplyLivePreviewZoomAsync()
         {
-            try
-            {
-                await _previewManager.TryApplyLivePreviewZoomAsync(_previewPanel.PreviewWebViewControl, ViewModel, _previewVisible);
-            }
-            catch
-            {
-                // 文档尚未就绪时忽略，等待防抖后的完整刷新
-            }
+            await _previewInteractions.TryApplyLivePreviewZoomAsync();
         }
 
         private async Task RefreshPreviewAsync(PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
+            _syncCoordinator.SaveFocusState(
+                EditorWebView?.IsKeyboardFocusWithin == true,
+                _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true);
             try
             {
                 await _previewManager.RefreshPreviewAsync(_previewPanel.PreviewWebViewControl, ViewModel, reason);
@@ -687,25 +552,21 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnToggleOutline()
         {
-            _outlineVisible = !_outlineVisible;
-            ApplyOutlineLayout();
+            _layoutManager.ToggleOutline();
             RelayoutPreviewIfNeeded();
         }
 
         private void OnToggleBottomPanel()
         {
-            _bottomPanelVisible = !_bottomPanelVisible;
-            ApplyBottomPanelLayout();
-            ViewModel.StatusText = _bottomPanelVisible ? "底部面板：已打开" : "底部面板：关闭";
-            UpdateTitleBarToggleState();
+            _layoutManager.ToggleBottomPanel();
+            ViewModel.StatusText = _layoutManager.IsBottomPanelVisible ? "底部面板：已打开" : "底部面板：关闭";
         }
 
         private void OnOpenSettingsPanel()
         {
-            if (!_outlineVisible)
+            if (!_layoutManager.IsOutlineVisible)
             {
-                _outlineVisible = true;
-                ApplyOutlineLayout();
+                _layoutManager.ShowSettingsOutline();
                 RelayoutPreviewIfNeeded();
             }
 
@@ -715,27 +576,19 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnTogglePreview()
         {
-            _previewVisible = !_previewVisible;
-            if (!_previewVisible && !_editorVisible)
-            {
-                _paperPrimaryEditMode = false;
-                _editorVisible = true;
-            }
-            ApplyPreviewLayout();
-            ApplyEditorLayout();
-            if (_previewVisible)
+            _layoutManager.TogglePreview();
+            UpdateEditorActionRouting();
+            if (_layoutManager.IsPreviewVisible)
                 _ = RefreshPreviewAsync(PreviewRefreshReason.ViewportChanged);
-            ViewModel.StatusText = _previewVisible
-                ? $"预览：已显示（图纸主编辑：{(_paperPrimaryEditMode ? "开" : "关")}）"
+            ViewModel.StatusText = _layoutManager.IsPreviewVisible
+                ? $"预览：已显示（图纸主编辑：{(_layoutManager.IsPaperPrimaryEditMode ? "开" : "关")}）"
                 : "预览：已隐藏，已自动保留编辑面板";
         }
 
         private void OnToggleRuler()
         {
-            _rulerVisible = !_rulerVisible;
-            ApplyRulerLayout();
-            ViewModel.StatusText = _rulerVisible ? "标线：已显示" : "标线：已隐藏";
-            UpdateTitleBarToggleState();
+            _layoutManager.ToggleRuler();
+            ViewModel.StatusText = _layoutManager.IsRulerVisible ? "标线：已显示" : "标线：已隐藏";
         }
 
         private void OnTogglePageOrientation()
@@ -746,26 +599,12 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async Task ShiftPreviewPageAsync(int delta)
         {
-            try
-            {
-                await _previewManager.ShiftPageAsync(_previewPanel.PreviewWebViewControl, delta);
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(ShiftPreviewPageAsync), ex);
-            }
+            await _previewInteractions.ShiftPreviewPageAsync(delta);
         }
 
         private async Task JumpPreviewPageAsync(int page)
         {
-            try
-            {
-                await _previewManager.GoToPageAsync(_previewPanel.PreviewWebViewControl, page);
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(JumpPreviewPageAsync), ex);
-            }
+            await _previewInteractions.JumpPreviewPageAsync(page);
         }
 
         private void UpdatePreviewPageState()
@@ -775,228 +614,60 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void ApplyWorkspaceMode(WorkspaceMode mode)
         {
-            switch (mode)
-            {
-                case WorkspaceMode.Writing:
-                    _outlineVisible = true;
-                    _previewVisible = false;
-                    _bottomPanelVisible = false;
-                    _rulerVisible = false;
-                    _paperPrimaryEditMode = false;
-                    _editorVisible = true;
-                    ViewModel.StatusText = "视图：写作模式（编辑主导）";
-                    break;
+            WorkspaceModeApplyResult result = _layoutManager.ApplyWorkspaceMode(mode, _editorReady && EditorWebView?.CoreWebView2 != null);
+            UpdateEditorActionRouting();
+            ViewModel.StatusText = result.StatusText;
 
-                case WorkspaceMode.Layout:
-                    _outlineVisible = false;
-                    _previewVisible = true;
-                    _bottomPanelVisible = true;
-                    _rulerVisible = true;
-                    _paperPrimaryEditMode = true;
-                    _editorVisible = false;
-                    ViewModel.StatusText = "视图：排版模式（图纸主编辑）";
-                    break;
+            // 编辑器从隐藏变为可见时（如排版→校对），同步当前 MarkdownText 到编辑器
+            if (result.EditorBecameVisible)
+                _ = SyncCurrentMarkdownToEditorAsync();
 
-                case WorkspaceMode.Proofread:
-                    _outlineVisible = true;
-                    _previewVisible = true;
-                    _rulerVisible = false;
-                    _paperPrimaryEditMode = false;
-                    _editorVisible = true;
-                    ViewModel.StatusText = "视图：校对模式（双面板）";
-                    break;
-            }
-
-            if (!_previewVisible && !_editorVisible)
-                _editorVisible = true;
-
-            ApplyOutlineLayout();
-            ApplyPreviewLayout();
-            ApplyEditorLayout();
-            ApplyBottomPanelLayout();
-            ApplyRulerLayout();
-            if (_previewVisible)
+            if (result.ShouldRefreshPreview)
                 _ = RefreshPreviewAsync(PreviewRefreshReason.ViewportChanged);
         }
 
         private void RelayoutPreviewIfNeeded()
         {
-            if (!_previewVisible) return;
+            if (!_layoutManager.IsPreviewVisible) return;
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                EnsurePreviewColumnVisible();
+                _layoutManager.EnsurePreviewColumnVisible();
                 _ = RefreshPreviewAsync(PreviewRefreshReason.ViewportChanged);
                 SyncRulerFromPaper();
             }), DispatcherPriority.Background);
         }
 
-        private void EnsurePreviewColumnVisible()
-        {
-            if (!_previewVisible || PreviewCol == null) return;
-
-            bool tooNarrowByActual = PreviewCol.ActualWidth > 0 && PreviewCol.ActualWidth < MinPreviewVisibleWidth;
-            bool collapsed = PreviewCol.Width.Value <= 0;
-            if (tooNarrowByActual || collapsed)
-            {
-                double target = Math.Max(MinPreviewVisibleWidth, _previewPanelWidth);
-                PreviewCol.Width = new GridLength(target, GridUnitType.Pixel);
-            }
-        }
-
         private void ApplyOutlineLayout()
         {
-            if (OutlineCol == null || OutlineSplitterCol == null || OutlineSplitter == null) return;
-
-            if (_outlineVisible)
-            {
-                OutlineCol.Width = new GridLength(Math.Max(MinOutlinePanelWidth, _outlinePanelWidth), GridUnitType.Pixel);
-                OutlineSplitterCol.Width = new GridLength(OutlineSplitterWidth, GridUnitType.Pixel);
-                OutlineSplitter.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                if (OutlineCol.ActualWidth > 0)
-                    _outlinePanelWidth = Math.Max(MinOutlinePanelWidth, OutlineCol.ActualWidth);
-                OutlineCol.Width = new GridLength(0, GridUnitType.Pixel);
-                OutlineSplitterCol.Width = new GridLength(0, GridUnitType.Pixel);
-                OutlineSplitter.Visibility = Visibility.Collapsed;
-            }
-
-            UpdateTitleBarToggleState();
-            UpdatePreviewPageState();
+            _layoutManager.ApplyOutlineLayout();
         }
 
         private void ApplyPreviewLayout()
         {
-            if (SplitterCol == null || PreviewCol == null || PreviewSplitter == null || _previewPanel == null)
-                return;
-
-            if (_previewVisible)
-            {
-                SplitterCol.Width = new GridLength(4, GridUnitType.Pixel);
-                PreviewCol.MinWidth = MinPreviewVisibleWidth;
-                PreviewCol.Width = new GridLength(Math.Max(MinPreviewVisibleWidth, _previewPanelWidth), GridUnitType.Pixel);
-                PreviewSplitter.Visibility = Visibility.Visible;
-                _previewPanel.Visibility = Visibility.Visible;
-                _rulerSyncTimer.Start();
-                EnsurePreviewColumnVisible();
-                ApplyRulerLayout();
-                ApplyBottomPanelLayout();
-            }
-            else
-            {
-                if (PreviewCol.ActualWidth > 0)
-                    _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, PreviewCol.ActualWidth);
-                SplitterCol.Width = new GridLength(0);
-                PreviewCol.MinWidth = 0;
-                PreviewCol.Width = new GridLength(0);
-                PreviewSplitter.Visibility = Visibility.Collapsed;
-                _previewPanel.Visibility = Visibility.Collapsed;
-                _rulerSyncTimer.Stop();
-                ApplyRulerLayout();
-                ApplyBottomPanelLayout();
-            }
-
-            UpdateTitleBarToggleState();
+            _layoutManager.ApplyPreviewLayout();
         }
 
         private void ApplyEditorLayout()
         {
-            if (EditorCol == null || EditorWebView == null)
-                return;
-
-            if (_editorVisible)
-            {
-                EditorCol.MinWidth = DefaultEditorMinWidth;
-                if (EditorCol.Width.Value <= 0)
-                {
-                    double target = _editorPanelWidth > 0 ? _editorPanelWidth : DefaultEditorMinWidth * 2.0;
-                    EditorCol.Width = new GridLength(target, GridUnitType.Pixel);
-                }
-                EditorWebView.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                if (EditorCol.ActualWidth > 0)
-                    _editorPanelWidth = Math.Max(DefaultEditorMinWidth, EditorCol.ActualWidth);
-                EditorCol.MinWidth = 0;
-                EditorCol.Width = new GridLength(0, GridUnitType.Pixel);
-                EditorWebView.Visibility = Visibility.Collapsed;
-            }
-
+            _layoutManager.ApplyEditorLayout();
             UpdateEditorActionRouting();
         }
 
         private void ApplyRulerLayout()
         {
-            if (_previewPanel?.RulerRowDefinition == null || _previewPanel.RulerColumnDefinition == null) return;
-
-            bool show = _previewVisible && _rulerVisible;
-            _previewPanel.RulerRowDefinition.Height = show
-                ? new GridLength(RulerThickness, GridUnitType.Pixel)
-                : new GridLength(0, GridUnitType.Pixel);
-            _previewPanel.RulerColumnDefinition.Width = show
-                ? new GridLength(RulerThickness, GridUnitType.Pixel)
-                : new GridLength(0, GridUnitType.Pixel);
-
-            var rulerVisibility = show ? Visibility.Visible : Visibility.Collapsed;
-            _previewPanel.RulerCornerElement.Visibility = rulerVisibility;
-            _previewPanel.HorizontalRuler.Visibility = rulerVisibility;
-            _previewPanel.VerticalRuler.Visibility = rulerVisibility;
-            UpdateTitleBarToggleState();
+            _layoutManager.ApplyRulerLayout();
         }
 
         private void ApplyBottomPanelLayout()
         {
-            bool show = _bottomPanelVisible && _previewVisible;
-            BottomPanelSplitterRow.Height = show
-                ? new GridLength(4, GridUnitType.Pixel)
-                : new GridLength(0, GridUnitType.Pixel);
-            BottomPanelRow.Height = show
-                ? new GridLength(Math.Max(80, _bottomPanelHeight), GridUnitType.Pixel)
-                : new GridLength(0, GridUnitType.Pixel);
-            BottomPanelSplitter.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-            BottomPanelHost.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            _layoutManager.ApplyBottomPanelLayout();
         }
 
         private void ApplyDefaultWorkspaceLayout(bool force)
         {
-            if (_defaultWorkspaceLayoutApplied && !force) return;
-            if (OutlineCol == null || EditorCol == null || PreviewCol == null || SplitterCol == null || PreviewSplitter == null) return;
-
-            double ratioSum = DefaultRatioLeft + DefaultRatioEditor + DefaultRatioPreview;
-            double windowWidth = ActualWidth > 0 ? ActualWidth : Width;
-            double minRequired = MinOutlinePanelWidth + DefaultEditorMinWidth + MinPreviewVisibleWidth;
-            double splitterReserve = OutlineSplitterWidth + 4 + 24;
-            double available = Math.Max(minRequired, windowWidth - splitterReserve);
-            double unit = available / ratioSum;
-
-            _outlinePanelWidth = Math.Max(MinOutlinePanelWidth, unit * DefaultRatioLeft);
-            double editorMinWidth = Math.Max(DefaultEditorMinWidth, unit * DefaultRatioEditor * 0.55);
-            _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, unit * DefaultRatioPreview);
-            _bottomPanelHeight = Math.Max(_bottomPanelHeight, 160);
-
-            _outlineVisible = false;
-            _previewVisible = true;
-            _bottomPanelVisible = true;
-            _rulerVisible = true;
-            _paperPrimaryEditMode = DefaultPaperPrimaryMode;
-            _editorVisible = !_paperPrimaryEditMode;
-
-            ApplyOutlineLayout();
-            ApplyPreviewLayout();
-            _editorPanelWidth = Math.Max(editorMinWidth, unit * DefaultRatioEditor);
+            _layoutManager.ApplyDefaultWorkspaceLayout(force, ActualWidth, Width);
             ApplyEditorLayout();
-            if (_editorVisible)
-            {
-                EditorCol.MinWidth = editorMinWidth;
-                if (EditorCol.Width.Value <= 0)
-                    EditorCol.Width = new GridLength(1, GridUnitType.Star);
-            }
-            ApplyBottomPanelLayout();
             UpdateRulerScale();
-
-            _defaultWorkspaceLayoutApplied = true;
         }
 
         private void UpdateRulerScale()
@@ -1006,18 +677,18 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void FitPaperToPreviewArea()
         {
-            _previewManager.FitPaperToPreviewArea(_previewPanel, ViewModel, _previewVisible);
+            _previewManager.FitPaperToPreviewArea(_previewPanel, ViewModel, _layoutManager.IsPreviewVisible);
         }
 
         private void SyncRulerFromPaper()
         {
-            if (!_previewVisible || _previewPanel.Visibility != Visibility.Visible) return;
+            if (!_layoutManager.IsPreviewVisible || _previewPanel.Visibility != Visibility.Visible) return;
             UpdateRulerScale();
         }
 
         private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
         {
-            if (handled || !_previewVisible || _previewPanel.Visibility != Visibility.Visible) return;
+            if (handled || !_layoutManager.IsPreviewVisible || _previewPanel.Visibility != Visibility.Visible) return;
             if (msg.message != WM_MOUSEWHEEL) return;
             if (!IsMouseWheelInsidePreviewArea(msg.lParam)) return;
             if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
@@ -1051,37 +722,31 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnOutlineSplitterDragCompleted(object sender, DragCompletedEventArgs e)
         {
-            if (OutlineCol?.ActualWidth > 0)
-                _outlinePanelWidth = Math.Max(MinOutlinePanelWidth, OutlineCol.ActualWidth);
+            _layoutManager.OnOutlineSplitterDragCompleted();
         }
 
         private void OnPreviewSplitterDragCompleted(object sender, DragCompletedEventArgs e)
         {
-            if (PreviewCol?.ActualWidth > 0)
-            {
-                _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, PreviewCol.ActualWidth);
-                PreviewCol.Width = new GridLength(_previewPanelWidth, GridUnitType.Pixel);
-            }
+            _layoutManager.OnPreviewSplitterDragCompleted();
         }
 
         private void OnBottomPanelSplitterDragCompleted(object sender, DragCompletedEventArgs e)
         {
-            if (BottomPanelRow.ActualHeight > 0)
-                _bottomPanelHeight = BottomPanelRow.ActualHeight;
+            _layoutManager.OnBottomPanelSplitterDragCompleted();
         }
 
         private async Task OnInsertCadClickAsync()
         {
             var result = await BuildEditorResultAsync(confirmed: true);
             Result = result;
-            RaiseManualSync(result);
+            CadSyncService.RaiseManualSync(result);
         }
 
         private async Task OnConfirmClickAsync()
         {
             var result = await BuildEditorResultAsync(confirmed: true);
             Result = result;
-            RaiseManualSync(result);
+            CadSyncService.RaiseManualSync(result);
 
             if (_isModalSession)
                 DialogResult = true;
@@ -1098,271 +763,94 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async Task TriggerLiveSyncAsync()
         {
-            if (_isAutoSyncRunning)
-            {
-                _autoSyncPending = true;
-                return;
-            }
-
-            _isAutoSyncRunning = true;
-            try
-            {
-                var result = await BuildEditorResultAsync(confirmed: true);
-                Result = result;
-                RaiseLiveSync(result);
-            }
-            finally
-            {
-                _isAutoSyncRunning = false;
-            }
-
-            if (_autoSyncPending)
-            {
-                _autoSyncPending = false;
-                ScheduleAutoCadSync();
-            }
+            await _cadSyncService.TriggerLiveSyncAsync(
+                () => BuildEditorResultAsync(confirmed: true),
+                result => Result = result,
+                CadSyncService.RaiseLiveSync,
+                ScheduleAutoCadSync);
         }
 
         private async Task<EditorResult> BuildEditorResultAsync(bool confirmed)
         {
-            await SyncMarkdownFromEditorAsync();
-            await RefreshPreviewAsync(PreviewRefreshReason.ContentInput);
-            await Task.Delay(200);
-            await SyncFromPreviewAsync();
-
-            return new EditorResult
-            {
-                Confirmed = confirmed,
-                Markdown = ViewModel.MarkdownText,
-                Config = ViewModel.BuildConfig(),
-                CharsPerColumn = ViewModel.CharsPerColumn,
-                ColumnParagraphIndices = ViewModel.ColumnParagraphIndices,
-                PreviewStats = _previewManager.LatestPreviewStats,
-                LayoutResult = _previewManager.LatestLayoutResult
-            };
-        }
-
-        private static void RaiseManualSync(EditorResult result)
-        {
-            try
-            {
-                EditorLauncher.RaiseManualSync(JsonConvert.SerializeObject(result ?? new EditorResult()));
-            }
-            catch { }
-        }
-
-        private static void RaiseLiveSync(EditorResult result)
-        {
-            try
-            {
-                EditorLauncher.RaiseLiveSync(JsonConvert.SerializeObject(result ?? new EditorResult()));
-            }
-            catch { }
+            return await _cadSyncService.BuildEditorResultAsync(
+                confirmed,
+                SyncMarkdownFromEditorAsync,
+                RefreshPreviewAsync,
+                SyncFromPreviewAsync);
         }
 
         private async Task SyncMarkdownFromEditorAsync()
         {
-            if (!CanUseEditorScriptPipeline()) return;
-            // 预览正在回写编辑器时，避免用旧编辑器内容覆盖预览最新内容。
-            if (_isUpdatingFromPreview) return;
-            try
-            {
-                string result = await EditorWebView.CoreWebView2.ExecuteScriptAsync("getContent()");
-                if (!string.IsNullOrEmpty(result) && result != "null")
-                {
-                    string md = JsonConvert.DeserializeObject<string>(result);
-                    if (md != null)
-                        ApplyMarkdownFromSource(md, MarkdownSyncSource.Editor);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(SyncMarkdownFromEditorAsync), ex);
-            }
+            await _syncCoordinator.SyncMarkdownFromEditorAsync(
+                CanUseEditorScriptPipeline,
+                script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script),
+                LogSilentException);
         }
 
         private async Task SyncEditorFromPreviewAsync(string markdown)
         {
-            if (!CanUseEditorScriptPipeline())
-            {
-                // #region agent log
-                try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H6",location="EditorWindow.cs:SyncEditorFromPreview",message="SKIPPED - CanUseEditorScriptPipeline false",data=new{_paperPrimaryEditMode,_editorVisible,_editorReady},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
-                // #endregion
-                ClearPendingPreviewSyncState();
-                return;
-            }
-            try
-            {
-                _isUpdatingFromPreview = true;
-                _pendingPreviewSyncHash = ComputeTextHash(markdown ?? "");
-                string escaped = JsonConvert.SerializeObject(markdown ?? "");
-                bool previewHadFocus = _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true;
-                // #region agent log
-                try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H6",location="EditorWindow.cs:SyncEditorFromPreview",message="calling setContent on editor",data=new{mdLen=(markdown??"").Length,isUpdatingFromPreview=_isUpdatingFromPreview,previewHadFocus},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
-                // #endregion
-                await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
-                // 不在此处调用 RefreshOutline，避免左侧大纲刷新抢走预览焦点；MarkdownText 变更已触发 OnPropChanged 会调用
-                if (previewHadFocus && _previewPanel?.PreviewWebViewControl != null)
-                    _previewPanel.PreviewWebViewControl.Focus();
-                string expectedHash = _pendingPreviewSyncHash;
-                _ = Task.Delay(1200).ContinueWith(_ =>
-                {
-                    Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        if (_isUpdatingFromPreview && string.Equals(_pendingPreviewSyncHash, expectedHash, StringComparison.Ordinal))
-                        {
-                            ClearPendingPreviewSyncState();
-                        }
-                    }));
-                });
-            }
-            catch (Exception ex)
-            {
-                ClearPendingPreviewSyncState();
-                LogSilentException(nameof(SyncEditorFromPreviewAsync), ex);
-            }
+            await _syncCoordinator.SyncEditorFromPreviewAsync(
+                markdown,
+                CanUseEditorScriptPipeline,
+                script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script),
+                () => _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true,
+                () => _previewPanel?.PreviewWebViewControl?.Focus(),
+                action => Dispatcher.BeginInvoke(action),
+                LogSilentException);
+        }
+
+        private async Task SyncCurrentMarkdownToEditorAsync()
+        {
+            await _syncCoordinator.SyncCurrentMarkdownToEditorAsync(
+                ViewModel.MarkdownText,
+                _editorReady && EditorWebView?.CoreWebView2 != null,
+                script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script),
+                action => Dispatcher.BeginInvoke(action),
+                LogSilentException);
         }
 
         private async Task<bool> OnPreviewEditorActionRequestedAsync(string action)
         {
-            if (string.IsNullOrWhiteSpace(action)) return false;
-            if (!_paperPrimaryEditMode || !_previewVisible) return false;
-            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return false;
-
-            try
+            return await _previewInteractions.ApplyPreviewEditorActionAsync(action, async () =>
             {
-                string escaped = JsonConvert.SerializeObject(action);
-                string raw = await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"applyEditorAction({escaped})");
-                bool handled = ParseJsBoolean(raw);
-                if (!handled)
-                    return false;
-
                 await SyncFromPreviewAsync();
                 RefreshOutline();
                 ScheduleAutoCadSync();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(OnPreviewEditorActionRequestedAsync), ex);
-                return false;
-            }
+            });
         }
 
-        private static bool ParseJsBoolean(string raw)
+        private void OnPreviewNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(raw) || raw == "null")
-                return false;
-
-            string payload = raw.Trim();
-            if (payload.StartsWith("\"", StringComparison.Ordinal))
-            {
-                payload = JsonConvert.DeserializeObject<string>(payload) ?? string.Empty;
-            }
-
-            return bool.TryParse(payload, out bool value) && value;
-        }
-
-        private static string ComputeTextHash(string text)
-        {
-            string safe = text ?? string.Empty;
-            using (var sha = SHA256.Create())
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(safe);
-                byte[] hash = sha.ComputeHash(bytes);
-                return Convert.ToBase64String(hash);
-            }
-        }
-
-        private void ClearPendingPreviewSyncState()
-        {
-            _isUpdatingFromPreview = false;
-            _pendingPreviewSyncHash = string.Empty;
-        }
-
-        private bool ApplyMarkdownFromSource(
-            string markdown,
-            MarkdownSyncSource source,
-            long previewVersion = 0)
-        {
-            string next = markdown ?? string.Empty;
-            _ = source;
-            _ = previewVersion;
-
-            if (string.Equals(ViewModel.MarkdownText ?? string.Empty, next, StringComparison.Ordinal))
-                return false;
-
-            ViewModel.SetMarkdownFromEditor(next);
-            return true;
+            _syncCoordinator.RestoreFocusAfterNavigation(
+                action => Dispatcher.BeginInvoke(action, DispatcherPriority.Input),
+                _layoutManager.IsEditorVisible,
+                _layoutManager.IsPreviewVisible,
+                () => EditorWebView?.Focus(),
+                () => _previewPanel?.PreviewWebViewControl?.Focus(),
+                () => _previewManager.RestoreCaretAfterNavigationAsync(_previewPanel?.PreviewWebViewControl));
         }
 
         private bool CanUseEditorScriptPipeline()
         {
-            if (!_editorVisible) return false;
-            if (_paperPrimaryEditMode) return false;
+            if (!_layoutManager.IsEditorVisible) return false;
+            if (_layoutManager.IsPaperPrimaryEditMode) return false;
             if (!_editorReady) return false;
             return EditorWebView?.CoreWebView2 != null;
         }
 
         private async Task ApplyPaperColumnLayoutAsync()
         {
-            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return;
-
-            try
-            {
-                int columnCount = Math.Max(1, Math.Min(10, ViewModel.ColumnCount));
-                double gapPx = ComputePaperColumnGapPx(ViewModel.ColumnGutter, ViewModel.PreviewScale);
-                string countJson = JsonConvert.SerializeObject(columnCount);
-                string gapJson = JsonConvert.SerializeObject(Math.Round(gapPx, 2));
-                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"setPaperColumnLayout({countJson}, {gapJson})");
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(ApplyPaperColumnLayoutAsync), ex);
-            }
-        }
-
-        private static double ComputePaperColumnGapPx(double columnGutter, double previewScale)
-        {
-            double safeGutter = Math.Max(0, columnGutter);
-            double safeScale = Math.Max(0.1, previewScale);
-            double px = safeGutter * safeScale;
-            return Math.Max(6, Math.Min(240, px));
+            await _previewInteractions.ApplyPaperColumnLayoutAsync();
         }
 
         private async Task ApplyPaperGeometryAsync()
         {
-            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return;
-
-            try
-            {
-                string widthMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.PageWidthMm, 3));
-                string heightMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.PageHeightMm, 3));
-                string leftMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginLeftMm, 3));
-                string rightMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginRightMm, 3));
-                string topMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginTopMm, 3));
-                string bottomMmJson = JsonConvert.SerializeObject(Math.Round(ViewModel.MarginBottomMm, 3));
-
-                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"setPaperGeometry({widthMmJson}, {heightMmJson})");
-                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync($"setPaperMargins({leftMmJson}, {rightMmJson}, {topMmJson}, {bottomMmJson})");
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(ApplyPaperGeometryAsync), ex);
-            }
+            await _previewInteractions.ApplyPaperGeometryAsync();
         }
 
         private async Task ResetPaperLayoutAsync()
         {
-            if (_previewPanel?.PreviewWebViewControl?.CoreWebView2 == null) return;
-            try
-            {
-                await _previewPanel.PreviewWebViewControl.CoreWebView2.ExecuteScriptAsync("if(window.resetPaperLayout){resetPaperLayout();}");
-            }
-            catch (Exception ex)
-            {
-                LogSilentException(nameof(ResetPaperLayoutAsync), ex);
-            }
+            await _previewInteractions.ResetPaperLayoutAsync();
         }
 
         private async Task OnResetLayoutRequestedAsync()
@@ -1384,7 +872,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void UpdateEditorActionRouting()
         {
-            if (_paperPrimaryEditMode || !_editorVisible)
+            if (_layoutManager.IsPaperPrimaryEditMode || !_layoutManager.IsEditorVisible)
             {
                 ViewModel.SetJsHelper(null);
                 return;

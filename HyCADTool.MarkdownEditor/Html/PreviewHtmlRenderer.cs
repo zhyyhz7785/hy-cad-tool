@@ -28,6 +28,18 @@ namespace HyCADTool.MarkdownEditor.Html
                 : Markdown.ToHtml(markdown, Pipeline);
         }
 
+        /// <summary>
+        /// Flow 模式专用 body 渲染：先做 PreserveBlankLines 预处理，与 ToFlowExperienceHtml 保持一致。
+        /// 用于原地增量更新（避免 NavigateToString 销毁 DOM）。
+        /// </summary>
+        internal static string RenderFlowBodyHtml(string markdown)
+        {
+            string preprocessed = PreserveBlankLines(markdown);
+            return string.IsNullOrEmpty(preprocessed)
+                ? "<p class=\"empty\">(无内容)</p>"
+                : Markdown.ToHtml(preprocessed, Pipeline);
+        }
+
         public static string ToInteractiveHtml(
             string markdown,
             int columnCount,
@@ -336,10 +348,6 @@ var MARGIN_BOTTOM=/*FLOW_PAD_BOTTOM_NUM*/;
 var COLUMN_GAP=/*FLOW_GAP_NUM*/;
 var HANDLE_WIDTH=/*FLOW_HANDLE_WIDTH_NUM*/;
 var FRAME_BORDER_WIDTH=/*FLOW_BORDER_WIDTH_NUM*/;
-
-// #region agent log
-function _dbg(loc,msg,data){try{if(window.chrome&&window.chrome.webview&&window.chrome.webview.postMessage){window.chrome.webview.postMessage({type:'debugLog',sessionId:'0b0680',location:loc,message:msg,data:data||{},timestamp:Date.now()});}}catch(e){}}
-// #endregion
 
 var sourceRoot=null;
 var pagesFlowEl=null;
@@ -658,10 +666,12 @@ function captureCaretBookmark(col){
   var path=getNodePath(col, range.startContainer);
   var block=getBlockElementFromNode(col, range.startContainer);
   var blockIndex=-1;
+  var textOffset=-1;
   if(block && block.getAttribute){
     var raw=block.getAttribute('data-block-index');
     var parsed=parseInt(raw||'',10);
     if(isFinite(parsed)) blockIndex=parsed;
+    textOffset=getTextOffsetInBlock(block, range.startContainer, range.startOffset);
   }
   var pageIndex=parseInt(col.getAttribute('data-page-index')||'0',10);
   var colIndex=parseInt(col.getAttribute('data-col-index')||'0',10);
@@ -669,9 +679,33 @@ function captureCaretBookmark(col){
     path:path,
     offset:range.startOffset||0,
     blockIndex:blockIndex,
+    textOffset:textOffset,
     pageIndex:isFinite(pageIndex)?pageIndex:0,
     colIndex:isFinite(colIndex)?colIndex:0
   };
+}
+
+function getTextOffsetInBlock(block, container, offset){
+  if(!block) return -1;
+  var walker=document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
+  var total=0;
+  while(walker.nextNode()){
+    if(walker.currentNode===container) return total+(offset||0);
+    total+=(walker.currentNode.nodeValue||'').length;
+  }
+  return total;
+}
+
+function resolveTextOffset(block, textOffset){
+  if(!block || !isFinite(textOffset) || textOffset<0) return null;
+  var walker=document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
+  var remaining=textOffset;
+  while(walker.nextNode()){
+    var len=(walker.currentNode.nodeValue||'').length;
+    if(remaining<=len) return {node:walker.currentNode, offset:remaining};
+    remaining-=len;
+  }
+  return null;
 }
 
 function findBlockAcrossColumns(blockIndex){
@@ -701,26 +735,44 @@ function restoreCaretBookmark(bookmark){
     col=all.length>0 ? all[0] : null;
   }
   if(!col) return;
+
+  // 策略 1：按 DOM path 精确定位
   var node=(bookmark.path && bookmark.path.length) ? resolveNodeByPath(col, bookmark.path) : null;
   if(node && !col.contains(node)) node=null;
-  if(!node && isFinite(bookmark.blockIndex) && bookmark.blockIndex>=0){
+  if(node){
+    var ok=setCaretToNode(sel,node,bookmark.offset||0);
+    if(ok){ setActiveColumn(col); try{col.focus();}catch(_){} return; }
+  }
+
+  // 策略 2：按 blockIndex 找到块，再用 textOffset 精确定位到字符
+  if(isFinite(bookmark.blockIndex) && bookmark.blockIndex>=0){
     var located=findBlockAcrossColumns(bookmark.blockIndex);
     if(located){
       col=located.col;
-      node=located.node;
+      var block=located.node;
+      if(isFinite(bookmark.textOffset) && bookmark.textOffset>=0){
+        var resolved=resolveTextOffset(block, bookmark.textOffset);
+        if(resolved){
+          var ok2=setCaretToNode(sel, resolved.node, resolved.offset);
+          if(ok2){ setActiveColumn(col); try{col.focus();}catch(_){} return; }
+        }
+      }
+      // textOffset 失败则定位到块末尾
+      setCaretToBlockEnd(sel, block);
+      setActiveColumn(col);
+      try{col.focus();}catch(_){}
+      return;
     }
   }
-  if(!node){
-    if(col.children && col.children.length>0){
-      node=col.children[col.children.length-1];
-    }else{
-      node=col;
-    }
+
+  // 策略 3：最后兜底，定位到栏末尾
+  node=null;
+  if(col.children && col.children.length>0){
+    node=col.children[col.children.length-1];
+  }else{
+    node=col;
   }
-  var ok=setCaretToNode(sel,node,bookmark.offset||0);
-  if(!ok){
-    setCaretToBlockEnd(sel,node.nodeType===1 ? node : (node.parentNode || col));
-  }
+  setCaretToBlockEnd(sel, node.nodeType===1 ? node : (node.parentNode || col));
   setActiveColumn(col);
   try{ col.focus(); }catch(_){}
 }
@@ -1139,9 +1191,6 @@ function debouncedColumnReflow(){
     for(var i=0;i<cols.length;i++){
       if(isColumnOverflow(cols[i])){ needsReflow=true; break; }
     }
-    // #region agent log
-    _dbg('flow-js:reflow','debouncedColumnReflow check',{hypothesisId:'H1',needsReflow:needsReflow});
-    // #endregion
     if(!needsReflow) return;
     var activeEl=document.activeElement;
     var bookmark=null;
@@ -1169,9 +1218,6 @@ function bindColumnInputEvents(col){
   col.addEventListener('keydown', function(ev){
     if(!ev || (ev.key!=='Enter' && ev.keyCode!==13)) return;
     ev.preventDefault();
-    // #region agent log
-    _dbg('flow-js:keydown','Enter keydown',{shiftKey:ev.shiftKey,hypothesisId:'H1',colHTML:col.innerHTML.substring(0,200)});
-    // #endregion
     if(ev.shiftKey){
       try{ document.execCommand('insertLineBreak',false,null); }catch(_){
         var sel=window.getSelection();
@@ -1190,9 +1236,6 @@ function bindColumnInputEvents(col){
     notifyContentChanged();
   });
   col.addEventListener('input', function(){
-    // #region agent log
-    _dbg('flow-js:input','input event fired',{hypothesisId:'H1',colHTML:col.innerHTML.substring(0,200)});
-    // #endregion
     normalizeContentEditableDivs(col);
     updateSourceMirrorFromColumns();
     debouncedColumnReflow();
@@ -1419,9 +1462,6 @@ function notifyContentChanged(){
   notifyTimer=setTimeout(function(){
     var markdown=extractMarkdown();
     var hash=simpleHash(markdown);
-    // #region agent log
-    _dbg('flow-js:notify','notifyContentChanged',{hypothesisId:'H2',hashSame:(hash===lastSentHash),hash:hash,lastSentHash:lastSentHash,mdLen:markdown.length,mdSnippet:markdown.substring(0,200)});
-    // #endregion
     if(hash===lastSentHash) return;
     lastSentHash=hash;
     contentVersion++;
@@ -1664,11 +1704,49 @@ function startMiddlePan(ev){
 }
 
 function updateSource(bodyHtml,layoutObj,customWidthsArr){
-  if(!sourceRoot) return;
-  sourceRoot.innerHTML=bodyHtml||'<p class=""empty"">(无内容)</p>';
-  rebuildColumnsFromSource();
+  if(!sourceRoot) return false;
+  var activeCol=document.activeElement;
+  var bookmark=null;
+  if(activeCol && activeCol.classList && activeCol.classList.contains('col-content')){
+    bookmark=captureCaretBookmark(activeCol);
+  }
+  var scrollTop=viewportEl ? viewportEl.scrollTop : 0;
+  var scrollLeft=viewportEl ? viewportEl.scrollLeft : 0;
+
+  // 块级差量更新：只替换变化的块，保持未变化块的 DOM 引用
+  var temp=document.createElement('div');
+  temp.innerHTML=bodyHtml||'<p class=""empty"">(无内容)</p>';
+  var oldBlocks=sourceRoot.children ? Array.prototype.slice.call(sourceRoot.children) : [];
+  var newBlocks=temp.children ? Array.prototype.slice.call(temp.children) : [];
+  var changed=false;
+  var maxLen=Math.max(oldBlocks.length, newBlocks.length);
+  // 从尾部删除多余旧块
+  for(var d=oldBlocks.length-1; d>=newBlocks.length; d--){
+    sourceRoot.removeChild(oldBlocks[d]);
+    changed=true;
+  }
+  // 逐块比较，只替换变化的块
+  var curOld=sourceRoot.children ? Array.prototype.slice.call(sourceRoot.children) : [];
+  for(var i=0; i<newBlocks.length; i++){
+    if(i<curOld.length){
+      if(curOld[i].outerHTML!==newBlocks[i].outerHTML){
+        sourceRoot.replaceChild(newBlocks[i], curOld[i]);
+        changed=true;
+      }
+    }else{
+      sourceRoot.appendChild(newBlocks[i]);
+      changed=true;
+    }
+  }
+
+  if(changed){
+    rebuildColumnsFromSource();
+  }
   updateSourceMirrorFromColumns();
   lastSentHash=simpleHash(extractMarkdown());
+  if(viewportEl){ viewportEl.scrollTop=scrollTop; viewportEl.scrollLeft=scrollLeft; }
+  if(bookmark) restoreCaretBookmark(bookmark);
+  return true;
 }
 
 function updateSourceIncremental(bodyHtml,layoutObj,customWidthsArr,dirtyStart,dirtyEnd,incrementalMeta){
