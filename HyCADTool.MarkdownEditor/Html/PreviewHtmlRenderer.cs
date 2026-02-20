@@ -3,6 +3,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.TextLayout;
 using Newtonsoft.Json;
@@ -67,11 +68,31 @@ namespace HyCADTool.MarkdownEditor.Html
                 + "</body></html>";
         }
 
+        private static readonly Regex ConsecutiveBlankLines = new Regex(@"\n{3,}", RegexOptions.Compiled);
+
+        private static string PreserveBlankLines(string md)
+        {
+            if (string.IsNullOrEmpty(md)) return md;
+            return ConsecutiveBlankLines.Replace(md, m =>
+            {
+                int extra = m.Value.Length - 2;
+                var sb = new StringBuilder("\n\n");
+                for (int i = 0; i < extra; i++)
+                {
+                    if (i > 0) sb.Append("\n\n");
+                    sb.Append("&nbsp;");
+                }
+                sb.Append("\n\n");
+                return sb.ToString();
+            });
+        }
+
         private static string ToFlowExperienceHtml(string markdown, int columnCount, double previewScale, EditorConfig config)
         {
-            string body = string.IsNullOrEmpty(markdown)
+            string preprocessed = PreserveBlankLines(markdown);
+            string body = string.IsNullOrEmpty(preprocessed)
                 ? "<p class=\"empty\">(无内容)</p>"
-                : Markdown.ToHtml(markdown, Pipeline);
+                : Markdown.ToHtml(preprocessed, Pipeline);
             EditorConfig cfg = config ?? new EditorConfig();
             int cols = Math.Max(1, Math.Min(10, columnCount));
             double scale = Math.Max(0.1, Math.Min(5.0, previewScale));
@@ -316,6 +337,10 @@ var COLUMN_GAP=/*FLOW_GAP_NUM*/;
 var HANDLE_WIDTH=/*FLOW_HANDLE_WIDTH_NUM*/;
 var FRAME_BORDER_WIDTH=/*FLOW_BORDER_WIDTH_NUM*/;
 
+// #region agent log
+function _dbg(loc,msg,data){try{if(window.chrome&&window.chrome.webview&&window.chrome.webview.postMessage){window.chrome.webview.postMessage({type:'debugLog',sessionId:'0b0680',location:loc,message:msg,data:data||{},timestamp:Date.now()});}}catch(e){}}
+// #endregion
+
 var sourceRoot=null;
 var pagesFlowEl=null;
 var viewportEl=null;
@@ -333,6 +358,7 @@ var currentPageIndex=0;
 var contentVersion=0;
 var lastSentHash='';
 var notifyTimer=0;
+var reflowTimer=0;
 
 var middlePanActive=false;
 var middlePanViewport=null;
@@ -502,8 +528,11 @@ function normalizeColumnCaches(){
 
 function redistributeColumnWidthsEvenly(){
   var defaultWidth=getDefaultColumnWidth();
+  var defaultHeight=getDefaultColumnHeight();
   for(var i=0;i<COLUMN_COUNT;i++){
     columnWidths[i]=defaultWidth;
+    columnHeights[i]=defaultHeight;
+    columnTopOffsets[i]=0;
   }
   normalizeColumnCaches();
 }
@@ -1083,7 +1112,50 @@ function updatePaperGeometryStyles(){
   }
 }
 
+function normalizeContentEditableDivs(col){
+  if(!col) return;
+  var sel=window.getSelection();
+  var anchorN=sel&&sel.rangeCount>0?sel.getRangeAt(0).startContainer:null;
+  var anchorO=sel&&sel.rangeCount>0?sel.getRangeAt(0).startOffset:0;
+  var didChange=false;
+  var children=col.childNodes;
+  for(var i=children.length-1;i>=0;i--){
+    var ch=children[i];
+    if(ch.nodeType===1 && (ch.tagName||'').toLowerCase()==='div' && !ch.classList.contains('col-top-spacer')){
+      var p=document.createElement('p');
+      while(ch.firstChild) p.appendChild(ch.firstChild);
+      col.replaceChild(p,ch);
+      didChange=true;
+    }
+  }
+  if(didChange&&anchorN&&sel){try{var rr=document.createRange();rr.setStart(anchorN,anchorO);rr.collapse(true);sel.removeAllRanges();sel.addRange(rr);}catch(_){}}
+}
+
+function debouncedColumnReflow(){
+  if(reflowTimer) clearTimeout(reflowTimer);
+  reflowTimer=setTimeout(function(){
+    var cols=getAllColumnsOrdered();
+    var needsReflow=false;
+    for(var i=0;i<cols.length;i++){
+      if(isColumnOverflow(cols[i])){ needsReflow=true; break; }
+    }
+    // #region agent log
+    _dbg('flow-js:reflow','debouncedColumnReflow check',{hypothesisId:'H1',needsReflow:needsReflow});
+    // #endregion
+    if(!needsReflow) return;
+    var activeEl=document.activeElement;
+    var bookmark=null;
+    if(activeEl && activeEl.classList && activeEl.classList.contains('col-content')){
+      bookmark=captureCaretBookmark(activeEl);
+    }
+    updateSourceMirrorFromColumns();
+    rebuildColumnsFromSource();
+    if(bookmark) restoreCaretBookmark(bookmark);
+  }, 400);
+}
+
 function bindColumnInputEvents(col){
+  try{ document.execCommand('defaultParagraphSeparator',false,'p'); }catch(_){}
   col.addEventListener('paste', function(ev){
     if(!ev) return;
     if(ev.preventDefault) ev.preventDefault();
@@ -1094,11 +1166,36 @@ function bindColumnInputEvents(col){
   });
   col.addEventListener('focus', function(){ setActiveColumn(col); });
   col.addEventListener('mousedown', function(){ setActiveColumn(col); });
-  col.addEventListener('input', function(){
-    var bookmark=captureCaretBookmark(col);
+  col.addEventListener('keydown', function(ev){
+    if(!ev || (ev.key!=='Enter' && ev.keyCode!==13)) return;
+    ev.preventDefault();
+    // #region agent log
+    _dbg('flow-js:keydown','Enter keydown',{shiftKey:ev.shiftKey,hypothesisId:'H1',colHTML:col.innerHTML.substring(0,200)});
+    // #endregion
+    if(ev.shiftKey){
+      try{ document.execCommand('insertLineBreak',false,null); }catch(_){
+        var sel=window.getSelection();
+        if(sel && sel.rangeCount>0){
+          var r=sel.getRangeAt(0); r.deleteContents();
+          var br=document.createElement('br'); r.insertNode(br);
+          r.setStartAfter(br); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+        }
+      }
+    }else{
+      try{ document.execCommand('insertParagraph',false,null); }catch(_){}
+    }
+    normalizeContentEditableDivs(col);
     updateSourceMirrorFromColumns();
-    rebuildColumnsFromSource();
-    restoreCaretBookmark(bookmark);
+    debouncedColumnReflow();
+    notifyContentChanged();
+  });
+  col.addEventListener('input', function(){
+    // #region agent log
+    _dbg('flow-js:input','input event fired',{hypothesisId:'H1',colHTML:col.innerHTML.substring(0,200)});
+    // #endregion
+    normalizeContentEditableDivs(col);
+    updateSourceMirrorFromColumns();
+    debouncedColumnReflow();
     notifyContentChanged();
   });
 }
@@ -1273,7 +1370,7 @@ function blockToMarkdown(el){
     var lv=parseInt(tag.charAt(1),10); if(!isFinite(lv)||lv<1) lv=1;
     return Array(lv+1).join('#')+' '+inlineToMarkdown(el).trim();
   }
-  if(tag==='p') return inlineToMarkdown(el).trim();
+  if(tag==='p'){ var pc=inlineToMarkdown(el).trim(); return pc||'&nbsp;'; }
   if(tag==='blockquote') return '> '+inlineToMarkdown(el).replace(/\n/g,'\n> ').trim();
   if(tag==='hr') return '---';
   if(tag==='pre') return '```\n'+((el.textContent||'').replace(/\n+$/,''))+'\n```';
@@ -1322,6 +1419,9 @@ function notifyContentChanged(){
   notifyTimer=setTimeout(function(){
     var markdown=extractMarkdown();
     var hash=simpleHash(markdown);
+    // #region agent log
+    _dbg('flow-js:notify','notifyContentChanged',{hypothesisId:'H2',hashSame:(hash===lastSentHash),hash:hash,lastSentHash:lastSentHash,mdLen:markdown.length,mdSnippet:markdown.substring(0,200)});
+    // #endregion
     if(hash===lastSentHash) return;
     lastSentHash=hash;
     contentVersion++;
@@ -3090,7 +3190,7 @@ function blockToMarkdown(el){
     if(!isFinite(lv)||lv<1) lv=1;
     return Array(lv+1).join('#')+' '+inlineToMarkdown(el).trim();
   }
-  if(tag==='p') return inlineToMarkdown(el).trim();
+  if(tag==='p'){ var pc2=inlineToMarkdown(el).trim(); return pc2||'&nbsp;'; }
   if(tag==='blockquote'){
     return '> '+inlineToMarkdown(el).replace(/\n/g,'\n> ').trim();
   }

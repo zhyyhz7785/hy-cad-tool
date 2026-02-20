@@ -438,21 +438,22 @@ namespace HyCADTool.MarkdownEditor.Views
                         break;
                     case "input":
                         string markdownFromEditor = msg.Value<string>("value") ?? "";
-                        string incomingHash = ComputeTextHash(markdownFromEditor);
+                        bool wasUpdatingFromPreview = _isUpdatingFromPreview;
                         if (_isUpdatingFromPreview)
                         {
-                            if (!string.IsNullOrEmpty(_pendingPreviewSyncHash)
-                                && string.Equals(_pendingPreviewSyncHash, incomingHash, StringComparison.Ordinal))
-                            {
-                                ClearPendingPreviewSyncState();
-                                break;
-                            }
-
-                            // 预览回写尚未完成时用户在编辑器继续输入，后写覆盖先写。
+                            ApplyMarkdownFromSource(markdownFromEditor, MarkdownSyncSource.Editor);
                             ClearPendingPreviewSyncState();
+                            // #region agent log
+                            try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H4",location="EditorWindow.cs:OnEditorInput",message="editor input BLOCKED (isUpdatingFromPreview)",data=new{wasUpdatingFromPreview,mdLen=markdownFromEditor.Length},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
+                            // #endregion
+                            break;
                         }
 
-                        if (ApplyMarkdownFromSource(markdownFromEditor, MarkdownSyncSource.Editor))
+                        bool editorApplied = ApplyMarkdownFromSource(markdownFromEditor, MarkdownSyncSource.Editor);
+                        // #region agent log
+                        try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H4_H5",location="EditorWindow.cs:OnEditorInput",message="editor input ALLOWED",data=new{wasUpdatingFromPreview,editorApplied,willRefresh=editorApplied,mdLen=markdownFromEditor.Length,mdSnippet=markdownFromEditor.Substring(0,System.Math.Min(150,markdownFromEditor.Length))},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
+                        // #endregion
+                        if (editorApplied)
                         {
                             SchedulePreviewRefresh(PreviewRefreshReason.ContentInput);
                             ScheduleAutoCadSync();
@@ -482,11 +483,19 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnPreviewWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
+            // #region agent log
+            try{var _raw=args.WebMessageAsJson;if(!string.IsNullOrEmpty(_raw)&&_raw.Contains("\"debugLog\"")){System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",_raw+"\n");return;}}catch{}
+            // #endregion
             try
             {
-                if (_previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged)
-                    && contentChanged != null
-                    && ApplyMarkdownFromSource(contentChanged.Markdown, MarkdownSyncSource.Preview, contentChanged.Version))
+                bool handled = _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged);
+                bool hasChange = contentChanged != null;
+                bool applied = hasChange && ApplyMarkdownFromSource(contentChanged?.Markdown, MarkdownSyncSource.Preview, contentChanged?.Version ?? 0);
+                bool canSyncEditor = CanUseEditorScriptPipeline();
+                // #region agent log
+                try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H3",location="EditorWindow.cs:OnPreviewWebMsg",message="preview contentChanged",data=new{handled,hasChange,applied,canSyncEditor,_paperPrimaryEditMode,_editorVisible,_editorReady,mdSnippet=(contentChanged?.Markdown??"").Substring(0,System.Math.Min(150,(contentChanged?.Markdown??"").Length))},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
+                // #endregion
+                if (applied)
                 {
                     _ = SyncEditorFromPreviewAsync(contentChanged.Markdown);
                     ScheduleAutoCadSync();
@@ -573,6 +582,9 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void SchedulePreviewRefresh(PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
+            // #region agent log
+            try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H5",location="EditorWindow.cs:SchedulePreviewRefresh",message="preview refresh scheduled",data=new{reason=reason.ToString(),stackTrace=new System.Diagnostics.StackTrace(true).ToString().Substring(0,System.Math.Min(400,new System.Diagnostics.StackTrace(true).ToString().Length))},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
+            // #endregion
             if (RefreshReasonPriority(reason) >= RefreshReasonPriority(_pendingPreviewRefreshReason))
                 _pendingPreviewRefreshReason = reason;
             _previewRefreshDebounceTimer.Stop();
@@ -1172,6 +1184,9 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             if (!CanUseEditorScriptPipeline())
             {
+                // #region agent log
+                try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H6",location="EditorWindow.cs:SyncEditorFromPreview",message="SKIPPED - CanUseEditorScriptPipeline false",data=new{_paperPrimaryEditMode,_editorVisible,_editorReady},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
+                // #endregion
                 ClearPendingPreviewSyncState();
                 return;
             }
@@ -1180,8 +1195,14 @@ namespace HyCADTool.MarkdownEditor.Views
                 _isUpdatingFromPreview = true;
                 _pendingPreviewSyncHash = ComputeTextHash(markdown ?? "");
                 string escaped = JsonConvert.SerializeObject(markdown ?? "");
+                bool previewHadFocus = _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true;
+                // #region agent log
+                try{System.IO.File.AppendAllText(@"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-0b0680.log",Newtonsoft.Json.JsonConvert.SerializeObject(new{sessionId="0b0680",hypothesisId="H6",location="EditorWindow.cs:SyncEditorFromPreview",message="calling setContent on editor",data=new{mdLen=(markdown??"").Length,isUpdatingFromPreview=_isUpdatingFromPreview,previewHadFocus},timestamp=System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()})+"\n");}catch{}
+                // #endregion
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
                 RefreshOutline();
+                if (previewHadFocus && _previewPanel?.PreviewWebViewControl != null)
+                    _previewPanel.PreviewWebViewControl.Focus();
                 string expectedHash = _pendingPreviewSyncHash;
                 _ = Task.Delay(1200).ContinueWith(_ =>
                 {
