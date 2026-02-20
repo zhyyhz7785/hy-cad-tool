@@ -1,6 +1,4 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.ViewModels;
@@ -21,38 +19,33 @@ namespace HyCADTool.MarkdownEditor.Services
         EchoDropped = 2
     }
 
-    internal enum FocusedPanel
+    internal enum ContentOwner
     {
-        None = 0,
-        Editor = 1,
-        Preview = 2
+        CSharp = 0,
+        Preview = 1
     }
 
     internal sealed class MarkdownSyncCoordinator
     {
         private readonly EditorViewModel _viewModel;
-        private bool _isUpdatingFromPreview;
-        private string _pendingPreviewSyncHash = string.Empty;
-        private FocusedPanel _lastFocusedPanel = FocusedPanel.None;
+        private ContentOwner _contentOwner = ContentOwner.CSharp;
 
         public MarkdownSyncCoordinator(EditorViewModel viewModel)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         }
 
+        public ContentOwner Owner => _contentOwner;
+
+        public void ClaimOwnership(ContentOwner owner)
+        {
+            _contentOwner = owner;
+        }
+
         public EditorInputSyncResult HandleEditorInput(string markdown)
         {
-            string incomingHash = ComputeTextHash(markdown ?? string.Empty);
-            if (_isUpdatingFromPreview)
-            {
-                if (string.Equals(_pendingPreviewSyncHash, incomingHash, StringComparison.Ordinal))
-                {
-                    ClearPendingPreviewSyncState();
-                    return EditorInputSyncResult.EchoDropped;
-                }
-
-                ClearPendingPreviewSyncState();
-            }
+            if (_contentOwner != ContentOwner.CSharp)
+                return EditorInputSyncResult.Ignored;
 
             return ApplyMarkdownFromSource(markdown, MarkdownSyncSource.Editor)
                 ? EditorInputSyncResult.Applied
@@ -62,6 +55,8 @@ namespace HyCADTool.MarkdownEditor.Services
         public bool HandlePreviewContentChanged(PreviewContentChange change, out string appliedMarkdown)
         {
             appliedMarkdown = change?.Markdown ?? string.Empty;
+            if (_contentOwner != ContentOwner.Preview)
+                return false;
             return change != null && ApplyMarkdownFromSource(appliedMarkdown, MarkdownSyncSource.Preview, change.Version);
         }
 
@@ -73,7 +68,6 @@ namespace HyCADTool.MarkdownEditor.Services
             if (canUseEditorScriptPipeline == null || executeEditorScriptAsync == null)
                 return;
             if (!canUseEditorScriptPipeline()) return;
-            if (_isUpdatingFromPreview) return;
 
             try
             {
@@ -97,43 +91,23 @@ namespace HyCADTool.MarkdownEditor.Services
             Func<string, Task<string>> executeEditorScriptAsync,
             Func<bool> isPreviewFocused,
             Action focusPreview,
-            Action<Action> beginInvokeOnUi,
             Action<string, Exception> logger)
         {
             if (canUseEditorScriptPipeline == null || executeEditorScriptAsync == null)
-            {
-                ClearPendingPreviewSyncState();
                 return;
-            }
             if (!canUseEditorScriptPipeline())
-            {
-                ClearPendingPreviewSyncState();
                 return;
-            }
 
             try
             {
-                _isUpdatingFromPreview = true;
-                _pendingPreviewSyncHash = ComputeTextHash(markdown ?? string.Empty);
                 string escaped = JsonConvert.SerializeObject(markdown ?? string.Empty);
                 bool previewHadFocus = isPreviewFocused?.Invoke() == true;
                 await executeEditorScriptAsync($"setContent({escaped})");
                 if (previewHadFocus)
                     focusPreview?.Invoke();
-
-                string expectedHash = _pendingPreviewSyncHash;
-                _ = Task.Delay(2000).ContinueWith(_ =>
-                {
-                    beginInvokeOnUi?.Invoke(() =>
-                    {
-                        if (_isUpdatingFromPreview && string.Equals(_pendingPreviewSyncHash, expectedHash, StringComparison.Ordinal))
-                            ClearPendingPreviewSyncState();
-                    });
-                });
             }
             catch (Exception ex)
             {
-                ClearPendingPreviewSyncState();
                 logger?.Invoke(nameof(SyncEditorFromPreviewAsync), ex);
             }
         }
@@ -142,7 +116,6 @@ namespace HyCADTool.MarkdownEditor.Services
             string markdown,
             bool editorReady,
             Func<string, Task<string>> executeEditorScriptAsync,
-            Action<Action> beginInvokeOnUi,
             Action<string, Exception> logger)
         {
             if (!editorReady || executeEditorScriptAsync == null)
@@ -152,60 +125,20 @@ namespace HyCADTool.MarkdownEditor.Services
             {
                 string content = markdown ?? string.Empty;
                 string escaped = JsonConvert.SerializeObject(content);
-                _isUpdatingFromPreview = true;
-                _pendingPreviewSyncHash = ComputeTextHash(content);
                 await executeEditorScriptAsync($"setContent({escaped})");
-
-                string expectedHash = _pendingPreviewSyncHash;
-                _ = Task.Delay(2000).ContinueWith(_ =>
-                {
-                    beginInvokeOnUi?.Invoke(() =>
-                    {
-                        if (_isUpdatingFromPreview && string.Equals(_pendingPreviewSyncHash, expectedHash, StringComparison.Ordinal))
-                            ClearPendingPreviewSyncState();
-                    });
-                });
             }
             catch (Exception ex)
             {
-                ClearPendingPreviewSyncState();
                 logger?.Invoke(nameof(SyncCurrentMarkdownToEditorAsync), ex);
             }
         }
 
-        public void SaveFocusState(bool editorFocused, bool previewFocused)
-        {
-            if (editorFocused)
-                _lastFocusedPanel = FocusedPanel.Editor;
-            else if (previewFocused)
-                _lastFocusedPanel = FocusedPanel.Preview;
-            else
-                _lastFocusedPanel = FocusedPanel.None;
-        }
-
         public void RestoreFocusAfterNavigation(
             Action<Action> beginInvokeOnUi,
-            bool editorVisible,
-            bool previewVisible,
-            Action focusEditor,
-            Action focusPreview,
             Func<Task> restoreCaretAsync)
         {
             beginInvokeOnUi?.Invoke(() =>
             {
-                switch (_lastFocusedPanel)
-                {
-                    case FocusedPanel.Editor:
-                        if (editorVisible)
-                            focusEditor?.Invoke();
-                        break;
-                    case FocusedPanel.Preview:
-                        if (previewVisible)
-                            focusPreview?.Invoke();
-                        break;
-                }
-
-                _lastFocusedPanel = FocusedPanel.None;
                 _ = restoreCaretAsync?.Invoke();
             });
         }
@@ -223,21 +156,5 @@ namespace HyCADTool.MarkdownEditor.Services
             return true;
         }
 
-        private static string ComputeTextHash(string text)
-        {
-            string safe = text ?? string.Empty;
-            using (var sha = SHA256.Create())
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(safe);
-                byte[] hash = sha.ComputeHash(bytes);
-                return Convert.ToBase64String(hash);
-            }
-        }
-
-        private void ClearPendingPreviewSyncState()
-        {
-            _isUpdatingFromPreview = false;
-            _pendingPreviewSyncHash = string.Empty;
-        }
     }
 }

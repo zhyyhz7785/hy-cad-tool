@@ -297,6 +297,35 @@ namespace HyCADTool.MarkdownEditor.Services
                 catch { /* 失败则 fall through 到完整刷新 */ }
             }
 
+            // Flow 模式配置变更优先尝试原地更新，避免直接 NavigateToString 导致 DOM 全量重建。
+            if (flowExperienceMode
+                && _hasInitialRender
+                && configChanged
+                && reason != PreviewRefreshReason.InitialLoad)
+            {
+                try
+                {
+                    bool ok = await FullUpdateInPlaceAsync(
+                        previewWebView,
+                        markdown,
+                        viewModel.PreviewScale,
+                        _latestLayoutResult);
+                    if (ok)
+                    {
+                        _lastRenderedConfigJson = configJson;
+                        _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
+                        _previewVersion = _markdownVersion;
+                        _incrementalFallbackFuse = false;
+                        UpdatePageState(1, 1);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // fall through 到后续完整刷新
+                }
+            }
+
             bool forceFullByReason = reason == PreviewRefreshReason.InitialLoad
                 || reason == PreviewRefreshReason.ConfigChanged
                 || reason == PreviewRefreshReason.ViewportChanged
@@ -378,9 +407,9 @@ namespace HyCADTool.MarkdownEditor.Services
             try
             {
                 _pendingCaretBookmarkJson = await previewWebView.CoreWebView2.ExecuteScriptAsync(
-                    "JSON.stringify(captureCaretBookmark(getActionTargetColumn()))");
+                    "JSON.stringify((function(){var col=getActionTargetColumn();var bm=captureCaretBookmark(col);return bm||window._lastKnownCaret||null;})())");
                 string scrollRaw = await previewWebView.CoreWebView2.ExecuteScriptAsync(
-                    "JSON.stringify({top:viewportEl?viewportEl.scrollTop:0,left:viewportEl?viewportEl.scrollLeft:0})");
+                    "JSON.stringify((function(){if(window.viewportEl){return {top:viewportEl.scrollTop,left:viewportEl.scrollLeft};}return window._lastKnownScroll||{top:0,left:0};})())");
                 var pos = JsonConvert.DeserializeObject<ScrollPos>(scrollRaw ?? string.Empty);
                 _pendingScrollTop = pos?.top;
                 _pendingScrollLeft = pos?.left;
@@ -407,14 +436,25 @@ namespace HyCADTool.MarkdownEditor.Services
             {
                 if (!string.IsNullOrWhiteSpace(bookmarkJson) && !string.Equals(bookmarkJson, "null", StringComparison.OrdinalIgnoreCase))
                 {
-                    await previewWebView.CoreWebView2.ExecuteScriptAsync($"restoreCaretBookmark({bookmarkJson})");
+                    await previewWebView.CoreWebView2.ExecuteScriptAsync(
+                        "(function(){"
+                        + "var payload=" + bookmarkJson + ";"
+                        + "if(typeof payload==='string'){try{payload=JSON.parse(payload);}catch(_){payload=null;}}"
+                        + "var doRestore=function(){if(payload){restoreCaretBookmark(payload);}};"
+                        + "if(typeof requestAnimationFrame==='function'){requestAnimationFrame(function(){setTimeout(doRestore,50);});}"
+                        + "else{setTimeout(doRestore,100);}"
+                        + "})();");
                 }
                 if (top.HasValue || left.HasValue)
                 {
                     string topText = (top ?? 0).ToString("0.###", CultureInfo.InvariantCulture);
                     string leftText = (left ?? 0).ToString("0.###", CultureInfo.InvariantCulture);
                     await previewWebView.CoreWebView2.ExecuteScriptAsync(
-                        $"(function(){{if(window.viewportEl){{viewportEl.scrollTop={topText};viewportEl.scrollLeft={leftText};}}}})();");
+                        "(function(){"
+                        + "var doRestore=function(){if(window.viewportEl){viewportEl.scrollTop=" + topText + ";viewportEl.scrollLeft=" + leftText + ";}};"
+                        + "if(typeof requestAnimationFrame==='function'){requestAnimationFrame(function(){setTimeout(doRestore,50);});}"
+                        + "else{setTimeout(doRestore,100);}"
+                        + "})();");
                 }
             }
             catch

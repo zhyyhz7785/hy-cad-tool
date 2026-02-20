@@ -327,6 +327,7 @@ namespace HyCADTool.MarkdownEditor.Views
                         _editorReady = true;
                         break;
                     case "input":
+                        _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
                         string markdownFromEditor = msg.Value<string>("value") ?? "";
                         EditorInputSyncResult syncResult = _syncCoordinator.HandleEditorInput(markdownFromEditor);
                         if (syncResult == EditorInputSyncResult.Applied)
@@ -348,6 +349,7 @@ namespace HyCADTool.MarkdownEditor.Views
             if (!CanUseEditorScriptPipeline()) return;
             try
             {
+                _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
                 string escaped = JsonConvert.SerializeObject(markdown ?? "");
                 await EditorWebView.CoreWebView2.ExecuteScriptAsync($"setContent({escaped})");
             }
@@ -361,6 +363,14 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             try
             {
+                var msg = JObject.Parse(args.WebMessageAsJson ?? "{}");
+                string type = msg.Value<string>("type");
+                if (string.Equals(type, "colFocusIn", StringComparison.OrdinalIgnoreCase))
+                {
+                    _syncCoordinator.ClaimOwnership(ContentOwner.Preview);
+                    return;
+                }
+
                 _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged);
                 bool applied = _syncCoordinator.HandlePreviewContentChanged(contentChanged, out string appliedMarkdown);
                 if (applied)
@@ -450,11 +460,6 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void SchedulePreviewRefresh(PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
-            // 图纸面板有焦点时，不因编辑器输入刷新图纸（避免打断用户编辑、光标丢失、内容回弹）
-            if (reason == PreviewRefreshReason.ContentInput
-                && _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true)
-                return;
-
             if (RefreshReasonPriority(reason) >= RefreshReasonPriority(_pendingPreviewRefreshReason))
                 _pendingPreviewRefreshReason = reason;
             _previewRefreshDebounceTimer.Stop();
@@ -474,11 +479,12 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async Task RefreshPreviewAsync(PreviewRefreshReason reason = PreviewRefreshReason.ConfigChanged)
         {
-            _syncCoordinator.SaveFocusState(
-                EditorWebView?.IsKeyboardFocusWithin == true,
-                _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true);
             try
             {
+                if (_syncCoordinator.Owner == ContentOwner.Preview
+                    && reason == PreviewRefreshReason.ContentInput)
+                    return;
+
                 await _previewManager.RefreshPreviewAsync(_previewPanel.PreviewWebViewControl, ViewModel, reason);
                 UpdatePreviewPageState();
             }
@@ -614,6 +620,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void ApplyWorkspaceMode(WorkspaceMode mode)
         {
+            _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
             WorkspaceModeApplyResult result = _layoutManager.ApplyWorkspaceMode(mode, _editorReady && EditorWebView?.CoreWebView2 != null);
             UpdateEditorActionRouting();
             ViewModel.StatusText = result.StatusText;
@@ -795,7 +802,6 @@ namespace HyCADTool.MarkdownEditor.Views
                 script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script),
                 () => _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true,
                 () => _previewPanel?.PreviewWebViewControl?.Focus(),
-                action => Dispatcher.BeginInvoke(action),
                 LogSilentException);
         }
 
@@ -805,7 +811,6 @@ namespace HyCADTool.MarkdownEditor.Views
                 ViewModel.MarkdownText,
                 _editorReady && EditorWebView?.CoreWebView2 != null,
                 script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script),
-                action => Dispatcher.BeginInvoke(action),
                 LogSilentException);
         }
 
@@ -823,10 +828,6 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             _syncCoordinator.RestoreFocusAfterNavigation(
                 action => Dispatcher.BeginInvoke(action, DispatcherPriority.Input),
-                _layoutManager.IsEditorVisible,
-                _layoutManager.IsPreviewVisible,
-                () => EditorWebView?.Focus(),
-                () => _previewPanel?.PreviewWebViewControl?.Focus(),
                 () => _previewManager.RestoreCaretAfterNavigationAsync(_previewPanel?.PreviewWebViewControl));
         }
 
