@@ -40,7 +40,10 @@
                     <Expander Header="样式名称预览" IsExpanded="False" Margin="0,2,0,4">
                         <StackPanel Margin="5,4,0,0">
                             <TextBlock>
-                                <Run Text="文字: " /><Run Text="{Binding TextStyleName, Mode=OneWay}" Foreground="#88c0d0" />
+                                <Run Text="说明-T: " /><Run Text="{Binding StyleTName, Mode=OneWay}" Foreground="#88c0d0" />
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="说明-S: " /><Run Text="{Binding StyleSName, Mode=OneWay}" Foreground="#88c0d0" />
                             </TextBlock>
                             <TextBlock>
                                 <Run Text="标注: " /><Run Text="{Binding DimStyleName, Mode=OneWay}" Foreground="#88c0d0" />
@@ -54,19 +57,37 @@
                         </StackPanel>
                     </Expander>
 
-                    <!-- 文字样式 -->
+                    <!-- 文字样式：双样式 T(TrueType) + S(SHX) -->
                     <Expander Header="文字样式" IsExpanded="True" Margin="0,2,0,4">
                         <StackPanel Margin="5,4,0,0">
+                            <TextBlock Text="样式1 0-hy-说明-T（TrueType 标题/说明）" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="85" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="样式名称" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding StyleTName, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="85" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="字体名称" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding StyleTFont, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
+                            <TextBlock Text="样式2 0-hy-说明-S（SHX 标注/引线/表格）" Foreground="#808080" FontSize="10" Margin="0,6,0,2" />
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="85" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="样式名称" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding StyleSName, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="85" /><ColumnDefinition /></Grid.ColumnDefinitions>
                                 <TextBlock Text="字体文件" VerticalAlignment="Center" />
-                                <TextBox Grid.Column="1" Text="{Binding FontFileName, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                <TextBox Grid.Column="1" Text="{Binding StyleSFont, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
                             </Grid>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="85" /><ColumnDefinition /></Grid.ColumnDefinitions>
                                 <TextBlock Text="大字体" VerticalAlignment="Center" />
-                                <TextBox Grid.Column="1" Text="{Binding BigFontFileName, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                <TextBox Grid.Column="1" Text="{Binding StyleSBigFont, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" />
                             </Grid>
+                            <TextBlock Text="共用参数" Foreground="#808080" FontSize="10" Margin="0,6,0,2" />
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="85" /><ColumnDefinition /></Grid.ColumnDefinitions>
                                 <TextBlock Text="基础文字高度" VerticalAlignment="Center" />

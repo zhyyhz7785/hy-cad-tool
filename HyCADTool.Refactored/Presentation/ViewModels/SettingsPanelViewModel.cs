@@ -165,20 +165,37 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 动态样式名称
 
-        public string TextStyleName => $"0_Hy_{Scale}";
+        /// <summary>主文字样式（标注/引线/表格引用），对应 0-hy-说明-S</summary>
+        public string TextStyleName => StyleSName;
         public string DimStyleName => $"0_Hy_{Scale}_Dim";
         public string MLeaderStyleName => $"0_Hy_{Scale}_Mleader";
         public string TableStyleName => $"0_Hy_{Scale}_Table";
 
         #endregion
 
-        #region 文字样式属性
+        #region 文字样式属性（双样式：T=TrueType 说明，S=SHX 工程）
 
-        private string _fontFileName = "tssdeng.shx";
-        public string FontFileName { get => _fontFileName; set { if (SetProperty(ref _fontFileName, value)) _stylesDirty = true; } }
+        /// <summary>样式1：0-hy-说明-T，TrueType 字体（标题/说明用）</summary>
+        private string _styleTName = "0-hy-说明-T";
+        public string StyleTName { get => _styleTName; set { if (SetProperty(ref _styleTName, value)) _stylesDirty = true; } }
 
-        private string _bigFontFileName = "hztxt.shx";
-        public string BigFontFileName { get => _bigFontFileName; set { if (SetProperty(ref _bigFontFileName, value)) _stylesDirty = true; } }
+        private string _styleTFont = "微软雅黑";
+        public string StyleTFont { get => _styleTFont; set { if (SetProperty(ref _styleTFont, value)) _stylesDirty = true; } }
+
+        /// <summary>样式2：0-hy-说明-S，SHX 字体（标注/引线/表格用）</summary>
+        private string _styleSName = "0-hy-说明-S";
+        public string StyleSName { get => _styleSName; set { if (SetProperty(ref _styleSName, value)) _stylesDirty = true; } }
+
+        private string _styleSFont = "tssdeng.shx";
+        public string StyleSFont { get => _styleSFont; set { if (SetProperty(ref _styleSFont, value)) _stylesDirty = true; } }
+
+        private string _styleSBigFont = "tssdchn.shx";
+        public string StyleSBigFont { get => _styleSBigFont; set { if (SetProperty(ref _styleSBigFont, value)) _stylesDirty = true; } }
+
+        /// <summary>兼容旧字段，映射到 StyleS</summary>
+        public string FontFileName { get => StyleSFont; set { StyleSFont = value; } }
+        /// <summary>兼容旧字段，映射到 StyleS</summary>
+        public string BigFontFileName { get => StyleSBigFont; set { StyleSBigFont = value; } }
 
         private double _textSize = 2.5;
         public double TextSize
@@ -405,8 +422,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 if (_styleService == null) { StatusMessage = "StyleService 未初始化"; return; }
 
-                _styleService.CreateTextStyle(TextStyleName, FontFileName, BigFontFileName, TextSize * Scale, TextXScale);
-                _styleService.SetCurrentTextStyle(TextStyleName);
+                // 样式1：0-hy-说明-T，TrueType 微软雅黑（标题/说明）
+                _styleService.CreateTextStyle(StyleTName, StyleTFont, "", TextSize * Scale, TextXScale);
+                // 样式2：0-hy-说明-S，SHX tssdeng+tssdchn（标注/引线/表格）
+                _styleService.CreateTextStyle(StyleSName, StyleSFont, StyleSBigFont, TextSize * Scale, TextXScale);
+                _styleService.SetCurrentTextStyle(StyleSName);
 
                 _styleService.CreateDimensionStyle(DimStyleName, TextStyleName, Scale, Dimtxt, Dimexo, Dimexe, Dimdle, Dimgap, Dimasz);
                 _styleService.SetCurrentDimensionStyle(DimStyleName);
@@ -442,8 +462,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             // Tab A
             Scale = 40.0;
-            FontFileName = "tssdeng.shx";
-            BigFontFileName = "hztxt.shx";
+            StyleTName = "0-hy-说明-T";
+            StyleTFont = "微软雅黑";
+            StyleSName = "0-hy-说明-S";
+            StyleSFont = "tssdeng.shx";
+            StyleSBigFont = "tssdchn.shx";
             TextSize = 2.5;
             TextXScale = 0.7;
             Dimtxt = 2.5; Dimexo = 1.0; Dimexe = 1.0; Dimdle = 0.5; Dimgap = 1.0; Dimasz = 1.0;
@@ -531,8 +554,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     // Tab A: 样式
                     Scale = Scale,
-                    FontFileName = FontFileName,
-                    BigFontFileName = BigFontFileName,
+                    StyleTName = StyleTName,
+                    StyleTFont = StyleTFont,
+                    StyleSName = StyleSName,
+                    StyleSFont = StyleSFont,
+                    StyleSBigFont = StyleSBigFont,
                     TextSize = TextSize,
                     TextXScale = TextXScale,
                     Dimtxt = Dimtxt,
@@ -593,8 +619,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
                 // Tab A: 样式
                 Scale = data.Scale;
-                FontFileName = data.FontFileName ?? _fontFileName;
-                BigFontFileName = data.BigFontFileName ?? _bigFontFileName;
+                StyleTName = data.StyleTName ?? _styleTName;
+                StyleTFont = data.StyleTFont ?? _styleTFont;
+                StyleSName = data.StyleSName ?? _styleSName;
+                StyleSFont = data.StyleSFont ?? data.FontFileName ?? _styleSFont;
+                StyleSBigFont = data.StyleSBigFont ?? data.BigFontFileName ?? _styleSBigFont;
                 TextSize = data.TextSize;
                 TextXScale = data.TextXScale;
                 Dimtxt = data.Dimtxt;
@@ -648,7 +677,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             // Tab A: 样式
             public double Scale { get; set; } = 40.0;
+            public string StyleTName { get; set; } = "0-hy-说明-T";
+            public string StyleTFont { get; set; } = "微软雅黑";
+            public string StyleSName { get; set; } = "0-hy-说明-S";
+            public string StyleSFont { get; set; } = "tssdeng.shx";
+            public string StyleSBigFont { get; set; } = "tssdchn.shx";
+            [Obsolete("Use StyleSFont")]
             public string FontFileName { get; set; } = "tssdeng.shx";
+            [Obsolete("Use StyleSBigFont")]
             public string BigFontFileName { get; set; } = "hztxt.shx";
             public double TextSize { get; set; } = 2.5;
             public double TextXScale { get; set; } = 0.7;

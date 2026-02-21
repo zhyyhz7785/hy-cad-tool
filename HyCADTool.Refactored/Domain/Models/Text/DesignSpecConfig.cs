@@ -17,7 +17,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
         // ── 栏 ──
         public int ColumnCount { get; set; } = 2;
-        public double ColumnGutter { get; set; } = 10;     // 图纸 mm
+        public double ColumnGutter { get; set; } = 5;     // 图纸 mm
 
         /// <summary>
         /// 每栏的字符数数组（长度 = ColumnCount）
@@ -124,7 +124,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         public double PageHeightMm { get; set; } = 420;
         public double MarginLeftMm { get; set; } = 25;
         public double MarginRightMm { get; set; } = 10;
-        public double MarginTopMm { get; set; } = 5;
+        public double MarginTopMm { get; set; } = 10;
         public double MarginBottomMm { get; set; } = 10;
         public double ColumnInnerPaddingMm { get; set; } = 5;
 

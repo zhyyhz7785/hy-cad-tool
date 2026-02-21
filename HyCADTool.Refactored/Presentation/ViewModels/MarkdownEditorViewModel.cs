@@ -102,7 +102,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// </summary>
         public string ColumnParagraphIndices { get; set; }
 
-        private double _columnGutter = 10;
+        private double _columnGutter = 5;
         public double ColumnGutter
         {
             get => _columnGutter;

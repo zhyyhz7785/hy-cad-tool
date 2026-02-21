@@ -11,7 +11,7 @@ namespace HyCADTool.TextLayout
         public double Scale { get; set; } = 1.0;
         public double PreviewScale { get; set; } = 1.0;
         public int ColumnCount { get; set; } = 2;
-        public double ColumnGutter { get; set; } = 10;
+        public double ColumnGutter { get; set; } = 5;
         public int[] CharsPerColumn { get; set; } = new[] { 28, 28 };
         public double LineSpacingFactor { get; set; } = 1.2;
         public double H1Scale { get; set; } = 1.6;
@@ -40,7 +40,7 @@ namespace HyCADTool.TextLayout
         public double PageHeightMm { get; set; } = 420;
         public double MarginLeftMm { get; set; } = 25;
         public double MarginRightMm { get; set; } = 10;
-        public double MarginTopMm { get; set; } = 5;
+        public double MarginTopMm { get; set; } = 10;
         public double MarginBottomMm { get; set; } = 10;
         public double ColumnInnerPaddingMm { get; set; } = 5;
 

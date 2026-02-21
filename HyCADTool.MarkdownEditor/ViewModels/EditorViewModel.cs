@@ -18,7 +18,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
     {
         private const double DefaultDrawScale = 1.0;
         private const int DefaultColumnCount = 2;
-        private const double DefaultColumnGutter = 10;
+        private const double DefaultColumnGutter = 5;
         private const double DefaultTextSize = 2.5;
         private const double DefaultTextXScale = 0.7;
         private const double DefaultPreviewScale = 1.0;
@@ -401,7 +401,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _marginTopMm = 5;
+        private double _marginTopMm = 10;
         public double MarginTopMm
         {
             get => _marginTopMm;
@@ -783,7 +783,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             double c = string.Equals(normalized, "A4", StringComparison.OrdinalIgnoreCase) ? 5 : 10;
             MarginLeftMm = a;
             MarginRightMm = c;
-            MarginTopMm = 5;
+            MarginTopMm = c;
             MarginBottomMm = c;
         }
 

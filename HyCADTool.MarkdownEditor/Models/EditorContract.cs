@@ -58,7 +58,7 @@ namespace HyCADTool.MarkdownEditor.Models
 
         // ── 栏 ──
         public int ColumnCount { get; set; } = 2;
-        public double ColumnGutter { get; set; } = 10;
+        public double ColumnGutter { get; set; } = 5;
         public int[] CharsPerColumn { get; set; } = new[] { 28, 28 };
         public double TotalHeight { get; set; } = 350;
 
@@ -70,7 +70,7 @@ namespace HyCADTool.MarkdownEditor.Models
         public double PageHeightMm { get; set; } = 420;
         public double MarginLeftMm { get; set; } = 25;
         public double MarginRightMm { get; set; } = 10;
-        public double MarginTopMm { get; set; } = 5;
+        public double MarginTopMm { get; set; } = 10;
         public double MarginBottomMm { get; set; } = 10;
         public double ColumnInnerPaddingMm { get; set; } = 5;
         public double BorderWidth { get; set; } = 1;

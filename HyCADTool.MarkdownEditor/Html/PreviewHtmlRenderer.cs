@@ -15,17 +15,13 @@ namespace HyCADTool.MarkdownEditor.Html
     /// </summary>
     public static class PreviewHtmlRenderer
     {
-        private const bool UseFlowExperiencePaperMode = true;
         private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .Build();
-        internal static bool IsFlowExperiencePaperMode => UseFlowExperiencePaperMode;
 
         public static string RenderBodyHtml(string markdown)
         {
-            return string.IsNullOrEmpty(markdown)
-                ? "<p class=\"empty\">(无内容)</p>"
-                : Markdown.ToHtml(markdown, Pipeline);
+            return RenderFlowBodyHtml(markdown);
         }
 
         /// <summary>
@@ -47,37 +43,8 @@ namespace HyCADTool.MarkdownEditor.Html
             EditorConfig config = null,
             LayoutResult layoutResult = null)
         {
-            if (UseFlowExperiencePaperMode)
-                return ToFlowExperienceHtml(markdown, columnCount, previewScale, config);
-
-            string body = string.IsNullOrEmpty(markdown)
-                ? "<p class=\"empty\">(无内容)</p>"
-                : Markdown.ToHtml(markdown, Pipeline);
-
-            int cols = Math.Max(1, Math.Min(10, columnCount));
-            double scale = Math.Max(0.1, Math.Min(5.0, previewScale));
-            EditorConfig cfg = config ?? new EditorConfig();
-            string footerHtml = BuildFooterHtml(cols);
-            string dynamicCss = BuildDynamicCss(scale, cfg);
-            string dynamicJs = BuildDynamicJs(scale, cfg, cols, layoutResult);
-
-            const string katexCss = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css";
-            const string katexJs = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js";
-            const string katexAutoRenderJs = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js";
-
-            return "<!DOCTYPE html>\n<html><head>"
-                + "<meta charset=\"utf-8\" />"
-                + "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\" />"
-                + "<link rel=\"stylesheet\" href=\"" + katexCss + "\" />"
-                + "<style>" + dynamicCss + "</style>"
-                + "</head><body>"
-                + "<div id=\"source\" style=\"display:none;\">" + body + "</div>"
-                + "<div class=\"viewport\" id=\"viewport\"><div class=\"pages\" id=\"pages\"></div></div>"
-                + footerHtml
-                + "<script src=\"" + katexJs + "\"></script>"
-                + "<script src=\"" + katexAutoRenderJs + "\"></script>"
-                + "<script>" + dynamicJs + "</script>"
-                + "</body></html>";
+            _ = layoutResult;
+            return ToFlowExperienceHtml(markdown, columnCount, previewScale, config);
         }
 
         private static readonly Regex ConsecutiveBlankLines = new Regex(@"\n{3,}", RegexOptions.Compiled);
@@ -319,14 +286,14 @@ body{
 }
 .col-chars{color:#58a6ff}
 .empty{color:#6e7681;font-style:italic}
-h1{font-size:1.6em;margin:1.2em 0 .7em;border-bottom:1px solid #d0d7de;padding-bottom:3px}
-h2{font-size:1.3em;margin:1.0em 0 .5em}
-h3{font-size:1.1em;margin:.9em 0 .4em}
+h1{font-size:1.6em;/*FLOW_H1_MARGIN*/;border-bottom:1px solid #d0d7de;padding-bottom:3px}
+h2{font-size:1.3em;/*FLOW_H2_MARGIN*/}
+h3{font-size:1.1em;/*FLOW_H3_MARGIN*/}
 h4,h5,h6{font-size:1em;margin:.8em 0 .3em}
-p{margin:0 0 .5em}
+p{/*FLOW_P_MARGIN*/}
 ul,ol{padding-left:1.4em;margin:.3em 0}
-li{margin:0 0 .2em}
-blockquote{border-left:3px solid #6e7781;padding:3px .8em;margin:.5em 0;color:#333;background:#f6f8fa}
+li{/*FLOW_LI_MARGIN*/}
+blockquote{border-left:3px solid #6e7781;padding:3px .8em;/*FLOW_BQ_MARGIN*/;color:#333;background:#f6f8fa}
 code{background:#f0f3f6;color:#24292f;padding:1px 4px;border-radius:2px;font-family:Consolas,monospace;font-size:.9em}
 pre{background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;padding:6px;margin:4px 0;overflow-x:auto}
 pre code{background:none;padding:0}
@@ -1986,9 +1953,22 @@ if(document.readyState==='complete'||document.readyState==='interactive'){setTim
 else{window.onload=init;}
 ";
 
+            string h1Margin = $"margin:{cfg.H1SpaceBefore:F1}em 0 {cfg.H1SpaceAfter:F1}em";
+            string h2Margin = $"margin:{cfg.H2SpaceBefore:F1}em 0 {cfg.H2SpaceAfter:F1}em";
+            string h3Margin = $"margin:{cfg.H3SpaceBefore:F1}em 0 {cfg.H3SpaceAfter:F1}em";
+            string pMargin = $"margin:0 0 {cfg.PSpaceAfter:F1}em";
+            string liMargin = $"margin:0 0 {cfg.LiSpaceAfter:F1}em";
+            string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
+
             string flowCss = flowCssTemplate
                 .Replace("/*FLOW_FONT_FAMILY*/", fontFamily)
                 .Replace("/*FLOW_BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*FLOW_H1_MARGIN*/", h1Margin)
+                .Replace("/*FLOW_H2_MARGIN*/", h2Margin)
+                .Replace("/*FLOW_H3_MARGIN*/", h3Margin)
+                .Replace("/*FLOW_P_MARGIN*/", pMargin)
+                .Replace("/*FLOW_LI_MARGIN*/", liMargin)
+                .Replace("/*FLOW_BQ_MARGIN*/", bqMargin)
                 .Replace("/*FLOW_LINE_HEIGHT*/", Math.Max(1.0, cfg.LineSpacingFactor).ToString("0.###", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_TEXT_X_SCALE_CSS*/", textXScale.ToString("0.###", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_PAPER_WIDTH*/", $"{paperWidthPx.ToString("0.###", CultureInfo.InvariantCulture)}px")

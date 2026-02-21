@@ -137,18 +137,18 @@ namespace HyCADTool.Refactored.Presentation
                     styleService);
 
                 double scale = vm.Scale;
-                string textStyleName = vm.TextStyleName;
                 string dimStyleName = vm.DimStyleName;
                 string mleaderStyleName = vm.MLeaderStyleName;
                 string tableStyleName = vm.TableStyleName;
 
-                styleService.CreateTextStyle(textStyleName, vm.FontFileName, vm.BigFontFileName, vm.TextSize * scale, vm.TextXScale);
-                styleService.SetCurrentTextStyle(textStyleName);
-                styleService.CreateDimensionStyle(dimStyleName, textStyleName, scale, vm.Dimtxt, vm.Dimexo, vm.Dimexe, vm.Dimdle, vm.Dimgap, vm.Dimasz);
+                styleService.CreateTextStyle(vm.StyleTName, vm.StyleTFont, "", vm.TextSize * scale, vm.TextXScale);
+                styleService.CreateTextStyle(vm.StyleSName, vm.StyleSFont, vm.StyleSBigFont, vm.TextSize * scale, vm.TextXScale);
+                styleService.SetCurrentTextStyle(vm.StyleSName);
+                styleService.CreateDimensionStyle(dimStyleName, vm.TextStyleName, scale, vm.Dimtxt, vm.Dimexo, vm.Dimexe, vm.Dimdle, vm.Dimgap, vm.Dimasz);
                 styleService.SetCurrentDimensionStyle(dimStyleName);
-                styleService.CreateMLeaderStyle(mleaderStyleName, textStyleName, scale, vm.MLeaderArrowSize, vm.MLeaderLandingGap, vm.TextSize, vm.MLeaderTextColorIndex);
+                styleService.CreateMLeaderStyle(mleaderStyleName, vm.TextStyleName, scale, vm.MLeaderArrowSize, vm.MLeaderLandingGap, vm.TextSize, vm.MLeaderTextColorIndex);
                 styleService.SetCurrentMLeaderStyle(mleaderStyleName);
-                styleService.CreateTableStyle(tableStyleName, textStyleName);
+                styleService.CreateTableStyle(tableStyleName, vm.TextStyleName);
                 styleService.SetCurrentTableStyle(tableStyleName);
 
                 WriteMessage($"\n  ✓ 样式已创建 (Scale={scale}, 从 hy-settings.json 加载)");
