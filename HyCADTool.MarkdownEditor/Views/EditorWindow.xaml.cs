@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -130,6 +131,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 await TriggerLiveSyncAsync();
             };
 
+            EditorWebView.GotFocus += (_, __) => _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
             WireChildControlEvents();
             ApplyTheme(true);
             ApplyOutlineLayout();
@@ -155,7 +157,100 @@ namespace HyCADTool.MarkdownEditor.Views
         private static void LogSilentException(string context, Exception ex)
         {
             Debug.WriteLine($"[MarkdownEditor][{context}] {ex.Message}");
+            // #region agent log
+            AgentDebugLog("pre-fix", "H6", "EditorWindow:LogSilentException", "exception captured", new
+            {
+                context,
+                message = ex?.Message ?? string.Empty
+            });
+            // #endregion
         }
+
+        // #region agent log
+        private static void AgentDebugLog(string runId, string hypothesisId, string location, string message, object data = null)
+        {
+            try
+            {
+                var payload = new JObject
+                {
+                    ["sessionId"] = "1db17a",
+                    ["runId"] = runId,
+                    ["hypothesisId"] = hypothesisId,
+                    ["location"] = location,
+                    ["message"] = message,
+                    ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    ["data"] = data == null ? new JObject() : JObject.FromObject(data)
+                };
+                File.AppendAllText(
+                    @"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-1db17a.log",
+                    payload.ToString(Formatting.None) + Environment.NewLine);
+            }
+            catch
+            {
+            }
+        }
+        // #endregion
+
+        // #region agent log
+        private static int CountNewLines(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            int count = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] == '\n') count++;
+            }
+            return count;
+        }
+
+        private static int CountTrailingNewLines(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            int count = 0;
+            for (int i = text.Length - 1; i >= 0; i--)
+            {
+                if (text[i] != '\n') break;
+                count++;
+            }
+            return count;
+        }
+
+        private static string TailDebug(string text, int max = 40)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            string tail = text.Length <= max ? text : text.Substring(text.Length - max);
+            return tail.Replace("\r", "\\r").Replace("\n", "\\n");
+        }
+
+        private static string NormalizeForVditor(string markdown)
+        {
+            string text = (markdown ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n");
+            text = Regex.Replace(text, "\n{3,}", "\n\n");
+            if (text.Length > 0 && !text.EndsWith("\n", StringComparison.Ordinal))
+                text += "\n";
+            return text;
+        }
+
+        private static int FirstDiffIndex(string a, string b)
+        {
+            a ??= string.Empty;
+            b ??= string.Empty;
+            int n = Math.Min(a.Length, b.Length);
+            for (int i = 0; i < n; i++)
+            {
+                if (a[i] != b[i]) return i;
+            }
+            return a.Length == b.Length ? -1 : n;
+        }
+
+        private static string SliceDebug(string text, int start, int len = 50)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            int s = Math.Max(0, Math.Min(start, text.Length));
+            int l = Math.Max(0, Math.Min(len, text.Length - s));
+            return text.Substring(s, l).Replace("\r", "\\r").Replace("\n", "\\n");
+        }
+        // #endregion
 
         private void WireChildControlEvents()
         {
@@ -326,10 +421,27 @@ namespace HyCADTool.MarkdownEditor.Views
                     case "ready":
                         _editorReady = true;
                         break;
+                    case "editorDebug":
+                        // #region agent log
+                        AgentDebugLog(
+                            msg.Value<string>("runId") ?? "pre-fix",
+                            msg.Value<string>("hypothesisId") ?? "H10",
+                            msg.Value<string>("location") ?? "Vditor:editorDebug",
+                            msg.Value<string>("message") ?? "editor debug message",
+                            msg["data"] is JObject debugData ? debugData : new JObject());
+                        // #endregion
+                        break;
                     case "input":
-                        _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
                         string markdownFromEditor = msg.Value<string>("value") ?? "";
                         EditorInputSyncResult syncResult = _syncCoordinator.HandleEditorInput(markdownFromEditor);
+                        // #region agent log
+                        AgentDebugLog("pre-fix", "H7", "EditorWindow:OnWebMessageReceived", "editor input received", new
+                        {
+                            owner = _syncCoordinator.Owner.ToString(),
+                            inputLength = markdownFromEditor.Length,
+                            syncResult = syncResult.ToString()
+                        });
+                        // #endregion
                         if (syncResult == EditorInputSyncResult.Applied)
                         {
                             SchedulePreviewRefresh(PreviewRefreshReason.ContentInput);
@@ -365,18 +477,89 @@ namespace HyCADTool.MarkdownEditor.Views
             {
                 var msg = JObject.Parse(args.WebMessageAsJson ?? "{}");
                 string type = msg.Value<string>("type");
+                if (string.Equals(type, "agentDebug", StringComparison.OrdinalIgnoreCase))
+                {
+                    // #region agent log
+                    AgentDebugLog(
+                        msg.Value<string>("runId") ?? "pre-fix",
+                        msg.Value<string>("hypothesisId") ?? "H-Unknown",
+                        msg.Value<string>("location") ?? "Preview:agentDebug",
+                        msg.Value<string>("message") ?? "agent debug message",
+                        msg["data"] is JObject dataObj ? dataObj : new JObject());
+                    // #endregion
+                    return;
+                }
+                // #region agent log
+                AgentDebugLog("pre-fix", "H4", "EditorWindow:OnPreviewWebMessageReceived", "preview message received", new
+                {
+                    type,
+                    owner = _syncCoordinator.Owner.ToString(),
+                    vmLength = (ViewModel.MarkdownText ?? string.Empty).Length
+                });
+                // #endregion
                 if (string.Equals(type, "colFocusIn", StringComparison.OrdinalIgnoreCase))
                 {
                     _syncCoordinator.ClaimOwnership(ContentOwner.Preview);
                     return;
                 }
 
-                _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged);
-                bool applied = _syncCoordinator.HandlePreviewContentChanged(contentChanged, out string appliedMarkdown);
-                if (applied)
+                if (_syncCoordinator.Owner == ContentOwner.Preview
+                    && string.Equals(type, "contentChanged", StringComparison.OrdinalIgnoreCase))
                 {
-                    _ = SyncEditorFromPreviewAsync(appliedMarkdown);
-                    ScheduleAutoCadSync();
+                    string md = msg.Value<string>("markdown") ?? string.Empty;
+                    string normalizedMd = NormalizeForVditor(md);
+                    AgentDebugLog("post-fix", "H13", "EditorWindow:OnPreviewWebMessageReceived", "normalized preview markdown", new
+                    {
+                        rawLength = md.Length,
+                        normalizedLength = normalizedMd.Length,
+                        rawNewLines = CountNewLines(md),
+                        normalizedNewLines = CountNewLines(normalizedMd),
+                        changed = !string.Equals(md, normalizedMd, StringComparison.Ordinal)
+                    });
+                    // #region agent log
+                    AgentDebugLog("pre-fix", "H4", "EditorWindow:OnPreviewWebMessageReceived", "preview contentChanged branch", new
+                    {
+                        mdLength = normalizedMd.Length,
+                        vmLength = (ViewModel.MarkdownText ?? string.Empty).Length,
+                        sameAsVm = string.Equals(ViewModel.MarkdownText ?? string.Empty, normalizedMd, StringComparison.Ordinal)
+                    });
+                    // #endregion
+                    bool sameAsVm = string.Equals(ViewModel.MarkdownText ?? string.Empty, normalizedMd, StringComparison.Ordinal);
+                    if (!sameAsVm)
+                    {
+                        ViewModel.SetMarkdownFromEditor(normalizedMd);
+                    }
+                    // #region agent log
+                    AgentDebugLog("post-fix", "H14", "EditorWindow:OnPreviewWebMessageReceived", "force sync editor from unique truth", new
+                    {
+                        sameAsVm,
+                        syncLength = normalizedMd.Length,
+                        isEditorVisible = _layoutManager.IsEditorVisible,
+                        isPaperPrimary = _layoutManager.IsPaperPrimaryEditMode,
+                        editorControlVisibility = EditorWebView?.Visibility.ToString() ?? "null"
+                    });
+                    // #endregion
+                    _ = SyncEditorFromPreviewAsync(normalizedMd);
+                    if (!sameAsVm)
+                        ScheduleAutoCadSync();
+                }
+                else
+                {
+                    _previewManager.TryHandlePreviewWebMessage(args.WebMessageAsJson, ViewModel, out PreviewContentChange contentChanged);
+                    bool applied = _syncCoordinator.HandlePreviewContentChanged(contentChanged, out string appliedMarkdown);
+                    // #region agent log
+                    AgentDebugLog("pre-fix", "H4", "EditorWindow:OnPreviewWebMessageReceived", "fallback branch result", new
+                    {
+                        hasContentChanged = contentChanged != null,
+                        applied,
+                        appliedLength = (appliedMarkdown ?? string.Empty).Length
+                    });
+                    // #endregion
+                    if (applied)
+                    {
+                        _ = SyncEditorFromPreviewAsync(appliedMarkdown);
+                        ScheduleAutoCadSync();
+                    }
                 }
                 UpdatePreviewPageState();
             }
@@ -422,9 +605,14 @@ namespace HyCADTool.MarkdownEditor.Views
 
                 case nameof(EditorViewModel.TextSize):
                 case nameof(EditorViewModel.TextXScale):
+                case nameof(EditorViewModel.ColumnInnerPaddingMm):
                 case nameof(EditorViewModel.BorderWidth):
                 case nameof(EditorViewModel.HandleWidth):
                 case nameof(EditorViewModel.HandleActiveWidth):
+                case nameof(EditorViewModel.FontFileName):
+                case nameof(EditorViewModel.BigFontFileName):
+                case nameof(EditorViewModel.BoldFontName):
+                case nameof(EditorViewModel.PreviewFontFamily):
                 case "SpacingChanged":
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
                     UpdateRulerScale();
@@ -622,6 +810,16 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
             WorkspaceModeApplyResult result = _layoutManager.ApplyWorkspaceMode(mode, _editorReady && EditorWebView?.CoreWebView2 != null);
+            AgentDebugLog("post-fix", "H15", "EditorWindow:ApplyWorkspaceMode", "workspace mode applied", new
+            {
+                mode = mode.ToString(),
+                resultStatus = result.StatusText,
+                resultEditorBecameVisible = result.EditorBecameVisible,
+                resultShouldRefreshPreview = result.ShouldRefreshPreview,
+                isEditorVisible = _layoutManager.IsEditorVisible,
+                isPaperPrimary = _layoutManager.IsPaperPrimaryEditMode,
+                editorControlVisibility = EditorWebView?.Visibility.ToString() ?? "null"
+            });
             UpdateEditorActionRouting();
             ViewModel.StatusText = result.StatusText;
 
@@ -796,13 +994,81 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private async Task SyncEditorFromPreviewAsync(string markdown)
         {
+            bool canUse = _editorReady && EditorWebView?.CoreWebView2 != null;
+            // #region agent log
+            AgentDebugLog("pre-fix", "H5", "EditorWindow:SyncEditorFromPreviewAsync", "sync requested", new
+            {
+                canUse,
+                editorReady = _editorReady,
+                hasEditorCore = EditorWebView?.CoreWebView2 != null,
+                markdownLength = (markdown ?? string.Empty).Length,
+                isEditorVisible = _layoutManager.IsEditorVisible,
+                isPaperPrimary = _layoutManager.IsPaperPrimaryEditMode,
+                editorControlVisibility = EditorWebView?.Visibility.ToString() ?? "null"
+            });
+            // #endregion
             await _syncCoordinator.SyncEditorFromPreviewAsync(
                 markdown,
-                CanUseEditorScriptPipeline,
-                script => EditorWebView.CoreWebView2.ExecuteScriptAsync(script),
+                () => _editorReady && EditorWebView?.CoreWebView2 != null,
+                async script =>
+                {
+                    // #region agent log
+                    AgentDebugLog("pre-fix", "H6", "EditorWindow:SyncEditorFromPreviewAsync", "execute script begin", new
+                    {
+                        scriptLength = (script ?? string.Empty).Length
+                    });
+                    // #endregion
+                    string result = await EditorWebView.CoreWebView2.ExecuteScriptAsync(script);
+                    // #region agent log
+                    AgentDebugLog("pre-fix", "H6", "EditorWindow:SyncEditorFromPreviewAsync", "execute script end", new
+                    {
+                        resultLength = (result ?? string.Empty).Length
+                    });
+                    // #endregion
+                    return result;
+                },
                 () => _previewPanel?.PreviewWebViewControl?.IsKeyboardFocusWithin == true,
                 () => _previewPanel?.PreviewWebViewControl?.Focus(),
                 LogSilentException);
+            if (canUse)
+            {
+                try
+                {
+                    string editorContentRaw = await EditorWebView.CoreWebView2.ExecuteScriptAsync("getContent()");
+                    string editorContent = string.IsNullOrWhiteSpace(editorContentRaw) || editorContentRaw == "null"
+                        ? string.Empty
+                        : JsonConvert.DeserializeObject<string>(editorContentRaw) ?? string.Empty;
+                    // #region agent log
+                    AgentDebugLog("pre-fix", "H8", "EditorWindow:SyncEditorFromPreviewAsync", "editor content after setContent", new
+                    {
+                        targetLength = (markdown ?? string.Empty).Length,
+                        editorLength = editorContent.Length,
+                        sameAsTarget = string.Equals(editorContent, markdown ?? string.Empty, StringComparison.Ordinal),
+                        targetNewLines = CountNewLines(markdown ?? string.Empty),
+                        editorNewLines = CountNewLines(editorContent),
+                        targetTrailingNewLines = CountTrailingNewLines(markdown ?? string.Empty),
+                        editorTrailingNewLines = CountTrailingNewLines(editorContent),
+                        targetTail = TailDebug(markdown ?? string.Empty),
+                        editorTail = TailDebug(editorContent)
+                    });
+                    if (!string.Equals(editorContent, markdown ?? string.Empty, StringComparison.Ordinal))
+                    {
+                        int diff = FirstDiffIndex(markdown ?? string.Empty, editorContent);
+                        AgentDebugLog("pre-fix", "H12", "EditorWindow:SyncEditorFromPreviewAsync", "first diff details", new
+                        {
+                            diffIndex = diff,
+                            targetAround = SliceDebug(markdown ?? string.Empty, Math.Max(0, diff - 20)),
+                            editorAround = SliceDebug(editorContent, Math.Max(0, diff - 20))
+                        });
+                    }
+                    // #endregion
+
+                }
+                catch (Exception ex)
+                {
+                    LogSilentException(nameof(SyncEditorFromPreviewAsync), ex);
+                }
+            }
         }
 
         private async Task SyncCurrentMarkdownToEditorAsync()

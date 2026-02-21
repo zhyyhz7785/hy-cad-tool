@@ -40,8 +40,9 @@ namespace HyCADTool.TextLayout
         public double PageHeightMm { get; set; } = 420;
         public double MarginLeftMm { get; set; } = 25;
         public double MarginRightMm { get; set; } = 10;
-        public double MarginTopMm { get; set; } = 10;
+        public double MarginTopMm { get; set; } = 5;
         public double MarginBottomMm { get; set; } = 10;
+        public double ColumnInnerPaddingMm { get; set; } = 5;
 
         public double ActualTextHeight => TextSize * Scale;
         public double ActualTotalHeight => TotalHeight * Scale;
@@ -51,6 +52,7 @@ namespace HyCADTool.TextLayout
         public double ActualListIndent => ListIndent * Scale;
         public double ActualQuoteIndent => QuoteIndent * Scale;
         public double ActualColumnGutter => ColumnGutter * Scale;
+        public double ActualColumnInnerPadding => ColumnInnerPaddingMm * Scale;
         public double ActualPSpaceAfter => PSpaceAfter * TextSize * Scale;
         public double ActualLiSpaceAfter => LiSpaceAfter * TextSize * Scale;
         public double ActualQuoteSpaceBefore => QuoteSpaceBefore * TextSize * Scale;
@@ -138,6 +140,7 @@ namespace HyCADTool.TextLayout
             MarginRightMm = Math.Max(0, MarginRightMm);
             MarginTopMm = Math.Max(0, MarginTopMm);
             MarginBottomMm = Math.Max(0, MarginBottomMm);
+            ColumnInnerPaddingMm = Math.Max(0, ColumnInnerPaddingMm);
 
             if (CharsPerColumn == null || CharsPerColumn.Length == 0)
             {
@@ -168,6 +171,8 @@ namespace HyCADTool.TextLayout
             if (PageHeightMm <= 0) throw new ArgumentException("PageHeightMm 必须大于 0");
             if (MarginLeftMm < 0 || MarginRightMm < 0 || MarginTopMm < 0 || MarginBottomMm < 0)
                 throw new ArgumentException("Margin 不能为负数");
+            if (ColumnInnerPaddingMm < 0)
+                throw new ArgumentException("ColumnInnerPaddingMm 不能为负数");
             if (PageWidthMm <= MarginLeftMm + MarginRightMm)
                 throw new ArgumentException("PageWidthMm 必须大于左右边距之和");
             if (PageHeightMm <= MarginTopMm + MarginBottomMm)

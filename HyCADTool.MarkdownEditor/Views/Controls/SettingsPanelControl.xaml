@@ -55,6 +55,14 @@
                                          Text="{Binding PreviewScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </WrapPanel>
+                        <WrapPanel ItemWidth="170" Margin="0,2,0,0">
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="预览字体(TrueType)" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="154"
+                                         Text="{Binding PreviewFontFamily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
@@ -101,6 +109,12 @@
                                 <TextBox Style="{StaticResource ParamInput}"
                                          Width="72"
                                          Text="{Binding BorderWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,6">
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="栏内边距" />
+                                <TextBox Style="{StaticResource ParamInput}"
+                                         Width="72"
+                                         Text="{Binding ColumnInnerPaddingMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </WrapPanel>
                     </StackPanel>

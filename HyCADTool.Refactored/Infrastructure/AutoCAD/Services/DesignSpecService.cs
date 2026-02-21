@@ -98,6 +98,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                         double contentTopY = pageTopY - config.MarginTopMm * config.Scale;
                         double contentLeftX = insertionPoint.X + config.MarginLeftMm * config.Scale;
+                        double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
 
                         double xOffset = 0;
                         for (int i = 0; i < area.ColumnCount; i++)
@@ -110,18 +111,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                                 : "";
                             double colWidth = area.ColumnWidths[i];
                             double colLeftX = contentLeftX + xOffset;
+                            double textLeftX = colLeftX + innerPad;
+                            double textTopY = contentTopY - innerPad;
+                            double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
                             if (!string.IsNullOrWhiteSpace(content))
                             {
                                 var mtext = new MText();
                                 mtext.SetDatabaseDefaults();
-                                mtext.Location = new Point3d(colLeftX, contentTopY, insertionPoint.Z);
+                                mtext.Location = new Point3d(textLeftX, textTopY, insertionPoint.Z);
                                 mtext.Attachment = AttachmentPoint.TopLeft;
                                 mtext.TextStyleId = textStyleId;
                                 mtext.TextHeight = config.ActualTextHeight;
                                 mtext.LineSpacingStyle = LineSpacingStyle.Exactly;
                                 mtext.LineSpacingFactor = config.LineSpacingFactor;
-                                mtext.Width = colWidth;
+                                mtext.Width = textWidth;
                                 mtext.Contents = content;
 
                                 SetLayer(db, tr, mtext, LAYER_TEXT);
@@ -138,8 +142,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             tableCount += InsertTablesForColumn(
                                 tr, btr, db, config, tablePlacements,
                                 pageIdx, i, colMd,
-                                colLeftX, contentTopY, insertionPoint.Z,
-                                colWidth, groupId, markdownSource,
+                                textLeftX, textTopY, insertionPoint.Z,
+                                textWidth, groupId, markdownSource,
                                 textStyleId,
                                 ref metadataWritten, ref anchorEntityId);
 
@@ -236,6 +240,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                         double contentTopY = pageTopY - config.MarginTopMm * config.Scale;
                         double contentLeftX = insertPt.X + config.MarginLeftMm * config.Scale;
+                        double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
 
                         double xOffset = 0;
                         for (int i = 0; i < area.ColumnCount; i++)
@@ -247,18 +252,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                                 : "";
                             double colWidth = area.ColumnWidths[i];
                             double colLeftX = contentLeftX + xOffset;
+                            double textLeftX = colLeftX + innerPad;
+                            double textTopY = contentTopY - innerPad;
+                            double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
                             if (!string.IsNullOrWhiteSpace(content))
                             {
                                 var newMtext = new MText();
                                 newMtext.SetDatabaseDefaults();
-                                newMtext.Location = new Point3d(colLeftX, contentTopY, insertPt.Z);
+                                newMtext.Location = new Point3d(textLeftX, textTopY, insertPt.Z);
                                 newMtext.Attachment = AttachmentPoint.TopLeft;
                                 newMtext.TextStyleId = textStyleId;
                                 newMtext.TextHeight = config.ActualTextHeight;
                                 newMtext.LineSpacingStyle = LineSpacingStyle.Exactly;
                                 newMtext.LineSpacingFactor = config.LineSpacingFactor;
-                                newMtext.Width = colWidth;
+                                newMtext.Width = textWidth;
                                 newMtext.Contents = content;
 
                                 SetLayer(db, tr, newMtext, LAYER_TEXT);
@@ -275,8 +283,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                             tableCount += InsertTablesForColumn(
                                 tr, btr2, db, config, tablePlacements,
                                 pageIdx, i, colMd,
-                                colLeftX, contentTopY, insertPt.Z,
-                                colWidth, newGroupId, markdownSource,
+                                textLeftX, textTopY, insertPt.Z,
+                                textWidth, newGroupId, markdownSource,
                                 textStyleId,
                                 ref metadataWritten, ref newAnchorEntityId);
 
@@ -514,7 +522,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (block == null)
                 return lineHeight;
 
-            int charsPerLine = Math.Max(1, (int)Math.Floor(columnWidth / Math.Max(0.01, cfg.ActualTextHeight * cfg.TextXScale)));
+            double effectiveColumnWidth = Math.Max(cfg.ActualTextHeight, columnWidth - Math.Max(0, cfg.ActualColumnInnerPadding) * 2.0);
+            int charsPerLine = Math.Max(1, (int)Math.Floor(effectiveColumnWidth / Math.Max(0.01, cfg.ActualTextHeight * cfg.TextXScale)));
             int displayUnits = Math.Max(1, block.DisplayUnits);
             int lines = Math.Max(1, (int)Math.Ceiling(displayUnits / (double)charsPerLine));
 
@@ -571,7 +580,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 for (int r = 0; r < rows; r++)
                     for (int c = 0; c < cols; c++)
+                    {
                         table.Cells[r, c].TextStyleId = textStyleId;
+                        table.Cells[r, c].Alignment = CellAlignment.MiddleCenter;
+                    }
             }
 
             double[] colWidths = BuildTableColumnWidths(tableData, columnWidth, config);

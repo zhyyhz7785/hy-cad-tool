@@ -70,8 +70,9 @@ namespace HyCADTool.MarkdownEditor.Models
         public double PageHeightMm { get; set; } = 420;
         public double MarginLeftMm { get; set; } = 25;
         public double MarginRightMm { get; set; } = 10;
-        public double MarginTopMm { get; set; } = 10;
+        public double MarginTopMm { get; set; } = 5;
         public double MarginBottomMm { get; set; } = 10;
+        public double ColumnInnerPaddingMm { get; set; } = 5;
         public double BorderWidth { get; set; } = 1;
         public double HandleWidth { get; set; } = 3;
         public double HandleActiveWidth { get; set; } = 6;

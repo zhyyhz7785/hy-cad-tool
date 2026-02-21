@@ -25,19 +25,23 @@ namespace HyCADTool.TextLayout
                     .Select(config.GetColumnWidth)
                     .ToArray();
             }
+            double contentPadding = Math.Max(0, config.ActualColumnInnerPadding);
+            double[] contentWidths = colWidths
+                .Select(w => Math.Max(config.ActualTextHeight, w - contentPadding * 2.0))
+                .ToArray();
 
             var safeBlocks = blocks ?? Array.Empty<DocumentBlock>();
             double pageContentHeight = Math.Max(
                 config.ActualTextHeight * 2,
                 (config.PageHeightMm - config.MarginTopMm - config.MarginBottomMm) * config.Scale);
 
-            var pages = new List<MutablePage> { CreatePage(cols, colWidths, config) };
+            var pages = new List<MutablePage> { CreatePage(cols, contentWidths, config) };
             int pageIndex = 0;
             int colIndex = 0;
 
             foreach (var block in safeBlocks)
             {
-                double blockHeight = EstimateBlockHeightMm(block, config, colWidths[colIndex]);
+                double blockHeight = EstimateBlockHeightMm(block, config, contentWidths[colIndex]);
                 int guard = 0;
                 while (guard++ < cols * 1000)
                 {
@@ -59,7 +63,7 @@ namespace HyCADTool.TextLayout
                         colIndex = 0;
                         pageIndex++;
                         if (pageIndex >= pages.Count)
-                            pages.Add(CreatePage(cols, colWidths, config));
+                            pages.Add(CreatePage(cols, contentWidths, config));
                     }
                 }
             }

@@ -184,7 +184,41 @@ var vditor = new Vditor('vditor', {{
 }});
 
 function setContent(md) {{
-  if (vditor) vditor.setValue(md, true);
+  if (vditor) {{
+    // #region agent log
+    function _nlCount(text) {{
+      text = text || '';
+      return text.split('\n').length - 1;
+    }}
+    var before = vditor.getValue() || '';
+    vditor.setValue(md, true);
+    var afterTrue = vditor.getValue() || '';
+    vditor.setValue(md, false);
+    var afterFalse = vditor.getValue() || '';
+    try {{
+      window.chrome.webview.postMessage(JSON.stringify({{
+        type: 'editorDebug',
+        sessionId: '1db17a',
+        runId: 'pre-fix',
+        hypothesisId: 'H11',
+        location: 'VditorHtmlTemplate:setContent',
+        message: 'setContent true/false compare',
+        data: {{
+          targetLength: (md || '').length,
+          beforeLength: before.length,
+          afterTrueLength: afterTrue.length,
+          afterFalseLength: afterFalse.length,
+          sameAsTargetTrue: afterTrue === (md || ''),
+          sameAsTargetFalse: afterFalse === (md || ''),
+          targetNewLines: _nlCount(md),
+          afterTrueNewLines: _nlCount(afterTrue),
+          afterFalseNewLines: _nlCount(afterFalse)
+        }},
+        timestamp: Date.now()
+      }}));
+    }} catch (e) {{}}
+    // #endregion
+  }}
 }}
 
 function getContent() {{

@@ -574,7 +574,8 @@ namespace HyCADTool.MarkdownEditor.Services
                 MarginLeftMm = config.MarginLeftMm,
                 MarginRightMm = config.MarginRightMm,
                 MarginTopMm = config.MarginTopMm,
-                MarginBottomMm = config.MarginBottomMm
+                MarginBottomMm = config.MarginBottomMm,
+                ColumnInnerPaddingMm = config.ColumnInnerPaddingMm
             };
             layoutConfig.Normalize();
             return layoutConfig;

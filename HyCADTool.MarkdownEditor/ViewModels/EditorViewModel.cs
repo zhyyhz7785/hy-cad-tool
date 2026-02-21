@@ -40,6 +40,10 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         private const double DefaultBorderWidth = 1;
         private const double DefaultHandleWidth = 3;
         private const double DefaultHandleActiveWidth = 6;
+        private const double DefaultColumnInnerPaddingMm = 5;
+        private const string DefaultFontFileName = "Microsoft YaHei";
+        private const string DefaultBoldFontName = "Microsoft YaHei";
+        private const string DefaultPreviewFontFamily = "Microsoft YaHei";
 
         private readonly EditorContentViewModel _content = new EditorContentViewModel();
         private readonly PreviewConfigViewModel _previewConfig = new PreviewConfigViewModel();
@@ -254,6 +258,50 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
+        private string _fontFileName = DefaultFontFileName;
+        public string FontFileName
+        {
+            get => _fontFileName;
+            set
+            {
+                if (SetProperty(ref _fontFileName, string.IsNullOrWhiteSpace(value) ? DefaultFontFileName : value.Trim()))
+                    UpdateStatus();
+            }
+        }
+
+        private string _bigFontFileName = "";
+        public string BigFontFileName
+        {
+            get => _bigFontFileName;
+            set
+            {
+                if (SetProperty(ref _bigFontFileName, (value ?? "").Trim()))
+                    UpdateStatus();
+            }
+        }
+
+        private string _boldFontName = DefaultBoldFontName;
+        public string BoldFontName
+        {
+            get => _boldFontName;
+            set
+            {
+                if (SetProperty(ref _boldFontName, string.IsNullOrWhiteSpace(value) ? DefaultBoldFontName : value.Trim()))
+                    UpdateStatus();
+            }
+        }
+
+        private string _previewFontFamily = DefaultPreviewFontFamily;
+        public string PreviewFontFamily
+        {
+            get => _previewFontFamily;
+            set
+            {
+                if (SetProperty(ref _previewFontFamily, string.IsNullOrWhiteSpace(value) ? DefaultPreviewFontFamily : value.Trim()))
+                    UpdateStatus();
+            }
+        }
+
         // ── 图纸幅面定义（短边 b × 长边 l） ──
         private static readonly (string Name, double Short, double Long)[] PaperDefs = new[]
         {
@@ -353,7 +401,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _marginTopMm = 20;
+        private double _marginTopMm = 5;
         public double MarginTopMm
         {
             get => _marginTopMm;
@@ -361,6 +409,18 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             {
                 double next = Math.Max(0, value);
                 if (!SetProperty(ref _marginTopMm, next)) return;
+                UpdateStatus();
+            }
+        }
+
+        private double _columnInnerPaddingMm = DefaultColumnInnerPaddingMm;
+        public double ColumnInnerPaddingMm
+        {
+            get => _columnInnerPaddingMm;
+            set
+            {
+                double next = Math.Max(0, value);
+                if (!SetProperty(ref _columnInnerPaddingMm, next)) return;
                 UpdateStatus();
             }
         }
@@ -575,6 +635,11 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _liSpaceAfter = cfg.LiSpaceAfter;
             _quoteSpaceBefore = cfg.QuoteSpaceBefore;
             _quoteSpaceAfter = cfg.QuoteSpaceAfter;
+            _columnInnerPaddingMm = Math.Max(0, cfg.ColumnInnerPaddingMm);
+            _fontFileName = string.IsNullOrWhiteSpace(cfg.FontFileName) ? DefaultFontFileName : cfg.FontFileName.Trim();
+            _bigFontFileName = (cfg.BigFontFileName ?? "").Trim();
+            _boldFontName = string.IsNullOrWhiteSpace(cfg.BoldFontName) ? DefaultBoldFontName : cfg.BoldFontName.Trim();
+            _previewFontFamily = string.IsNullOrWhiteSpace(cfg.PreviewFontFamily) ? DefaultPreviewFontFamily : cfg.PreviewFontFamily.Trim();
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
@@ -659,6 +724,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MarginRightMm = MarginRightMm,
                 MarginTopMm = MarginTopMm,
                 MarginBottomMm = MarginBottomMm,
+                ColumnInnerPaddingMm = ColumnInnerPaddingMm,
                 BorderWidth = BorderWidth,
                 HandleWidth = HandleWidth,
                 HandleActiveWidth = HandleActiveWidth,
@@ -671,7 +737,11 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 PSpaceAfter = PSpaceAfter,
                 LiSpaceAfter = LiSpaceAfter,
                 QuoteSpaceBefore = QuoteSpaceBefore,
-                QuoteSpaceAfter = QuoteSpaceAfter
+                QuoteSpaceAfter = QuoteSpaceAfter,
+                FontFileName = FontFileName,
+                BigFontFileName = BigFontFileName,
+                BoldFontName = BoldFontName,
+                PreviewFontFamily = PreviewFontFamily
             };
         }
 
@@ -713,7 +783,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             double c = string.Equals(normalized, "A4", StringComparison.OrdinalIgnoreCase) ? 5 : 10;
             MarginLeftMm = a;
             MarginRightMm = c;
-            MarginTopMm = c;
+            MarginTopMm = 5;
             MarginBottomMm = c;
         }
 
@@ -745,6 +815,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             LiSpaceAfter = DefaultLiSpaceAfter;
             QuoteSpaceBefore = DefaultQuoteSpaceBefore;
             QuoteSpaceAfter = DefaultQuoteSpaceAfter;
+            ColumnInnerPaddingMm = DefaultColumnInnerPaddingMm;
             BorderWidth = DefaultBorderWidth;
             HandleWidth = DefaultHandleWidth;
             HandleActiveWidth = DefaultHandleActiveWidth;

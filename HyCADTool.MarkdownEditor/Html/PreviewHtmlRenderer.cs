@@ -123,6 +123,7 @@ namespace HyCADTool.MarkdownEditor.Html
             double borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             double handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             double handleActiveWidth = Math.Max(handleWidth, Math.Min(14, cfg.HandleActiveWidth));
+            double contentPadPx = Math.Max(0, Round(Math.Max(0, cfg.ColumnInnerPaddingMm) * scale));
             string footerHtml = BuildFooterHtml(cols);
             string fontFamily = ResolvePreviewFontFamily(cfg);
 
@@ -204,7 +205,7 @@ body{
   flex:none;
   min-height:80px;
   overflow:hidden;
-  padding:8px 10px;
+  padding:/*FLOW_CONTENT_PAD_PX*/;
   transform-origin:left top;
   transform:scaleX(/*FLOW_TEXT_X_SCALE_CSS*/);
   width:calc(100% / /*FLOW_TEXT_X_SCALE_CSS*/);
@@ -329,8 +330,8 @@ blockquote{border-left:3px solid #6e7781;padding:3px .8em;margin:.5em 0;color:#3
 code{background:#f0f3f6;color:#24292f;padding:1px 4px;border-radius:2px;font-family:Consolas,monospace;font-size:.9em}
 pre{background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;padding:6px;margin:4px 0;overflow-x:auto}
 pre code{background:none;padding:0}
-table{border-collapse:collapse;width:auto;max-width:100%;margin:6px 0}
-th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:.9em;text-align:left;word-break:break-word;overflow-wrap:break-word}
+table{border-collapse:collapse;width:auto;max-width:100%;margin:6px auto}
+th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:.9em;text-align:center;vertical-align:middle;word-break:break-word;overflow-wrap:break-word}
 th{background:#f6f8fa;color:#111;font-weight:bold}
 tr:nth-child(even){background:#f8fafc}
 ";
@@ -348,6 +349,7 @@ var MARGIN_BOTTOM=/*FLOW_PAD_BOTTOM_NUM*/;
 var COLUMN_GAP=/*FLOW_GAP_NUM*/;
 var HANDLE_WIDTH=/*FLOW_HANDLE_WIDTH_NUM*/;
 var FRAME_BORDER_WIDTH=/*FLOW_BORDER_WIDTH_NUM*/;
+var CONTENT_PADDING_X=/*FLOW_CONTENT_PADDING_X*/;
 
 var sourceRoot=null;
 var pagesFlowEl=null;
@@ -424,6 +426,27 @@ function postHost(msg){
   var host=getHost();
   if(!host) return;
   host.postMessage(msg);
+}
+
+function postAgentDebug(hypothesisId,location,message,data){
+  // #region agent log
+  postHost({
+    type:'agentDebug',
+    sessionId:'1db17a',
+    runId:'pre-fix',
+    hypothesisId:hypothesisId,
+    location:location,
+    message:message,
+    data:data||{},
+    timestamp:Date.now()
+  });
+  // #endregion
+}
+
+function agentDebugLog(runId,hypothesisId,location,message,data){
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/2839b503-539e-44ce-a47b-cd0377f07e64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1db17a'},body:JSON.stringify({sessionId:'1db17a',runId:runId,hypothesisId:hypothesisId,location:location,message:message,data:data||{},timestamp:Date.now()})}).catch(function(){});
+  // #endregion
 }
 
 function postPageState(){
@@ -1222,6 +1245,10 @@ function bindColumnInputEvents(col){
   col.addEventListener('mousedown', function(){ setActiveColumn(col); });
   col.addEventListener('keydown', function(ev){
     if(!ev || (ev.key!=='Enter' && ev.keyCode!==13)) return;
+    // #region agent log
+    agentDebugLog('pre-fix','H1','PreviewHtmlRenderer:keydown-enter','enter keydown triggered',{shiftKey:!!ev.shiftKey,blockCount:(sourceRoot&&sourceRoot.children)?sourceRoot.children.length:0});
+    postAgentDebug('H1','PreviewHtmlRenderer:keydown-enter','enter keydown triggered',{shiftKey:!!ev.shiftKey,blockCount:(sourceRoot&&sourceRoot.children)?sourceRoot.children.length:0});
+    // #endregion
     ev.preventDefault();
     if(ev.shiftKey){
       try{ document.execCommand('insertLineBreak',false,null); }catch(_){
@@ -1233,12 +1260,38 @@ function bindColumnInputEvents(col){
         }
       }
     }else{
+      var beforeHtml=col.innerHTML;
       try{ document.execCommand('insertParagraph',false,null); }catch(_){}
+      if(col.innerHTML===beforeHtml){
+        var sel2=window.getSelection();
+        if(sel2 && sel2.rangeCount>0){
+          var r2=sel2.getRangeAt(0); r2.deleteContents();
+          var np=document.createElement('p');
+          np.appendChild(document.createElement('br'));
+          r2.insertNode(np);
+          r2.setStartAfter(np); r2.collapse(true);
+          sel2.removeAllRanges(); sel2.addRange(r2);
+        }
+      }
+      // #region agent log
+      agentDebugLog('pre-fix','H2','PreviewHtmlRenderer:insertParagraph','paragraph insertion result',{changed:col.innerHTML!==beforeHtml,beforeLength:beforeHtml.length,afterLength:(col.innerHTML||'').length});
+      postAgentDebug('H2','PreviewHtmlRenderer:insertParagraph','paragraph insertion result',{changed:col.innerHTML!==beforeHtml,beforeLength:beforeHtml.length,afterLength:(col.innerHTML||'').length});
+      // #endregion
     }
     normalizeContentEditableDivs(col);
     updateSourceMirrorFromColumns();
     debouncedColumnReflow();
-    notifyContentChanged();
+    var enterMd=extractMarkdown();
+    var enterHash=simpleHash(enterMd);
+    // #region agent log
+    agentDebugLog('pre-fix','H3','PreviewHtmlRenderer:enter-hash','enter extracted markdown/hash',{hash:enterHash,lastSentHash:lastSentHash,mdLength:enterMd.length});
+    postAgentDebug('H3','PreviewHtmlRenderer:enter-hash','enter extracted markdown/hash',{hash:enterHash,lastSentHash:lastSentHash,mdLength:enterMd.length});
+    // #endregion
+    if(enterHash!==lastSentHash){
+      lastSentHash=enterHash;
+      contentVersion++;
+      postHost({type:'contentChanged',markdown:enterMd,version:contentVersion,hash:enterHash,blockCount:(sourceRoot&&sourceRoot.children)?sourceRoot.children.length:0});
+    }
   });
   col.addEventListener('input', function(){
     normalizeContentEditableDivs(col);
@@ -1273,7 +1326,7 @@ function bindDragHandle(el, mode, index){
 }
 
 function estimateCharsPerLine(colWidth){
-  return Math.max(1, Math.floor(Math.max(20,colWidth-20)/Math.max(4,CHAR_WIDTH_PX)));
+  return Math.max(1, Math.floor(Math.max(8,colWidth-CONTENT_PADDING_X)/Math.max(4,CHAR_WIDTH_PX)));
 }
 
 function refreshFooterFromCurrentPage(){
@@ -1437,13 +1490,20 @@ function blockToMarkdown(el){
 
 function extractMarkdown(){
   if(!sourceRoot) return '';
-  var lines=[];
+  var result='';
   var blocks=sourceRoot.children || [];
   for(var i=0;i<blocks.length;i++){
     var md=blockToMarkdown(blocks[i]);
-    lines.push(md && md.trim() ? md.trim() : '');
+    var normalized=md && md.trim() ? md.trim() : '';
+    if(normalized){
+      if(result) result+='\n\n';
+      result+=normalized;
+    }else{
+      // empty paragraph should add one extra blank line, not two
+      if(result) result+='\n';
+    }
   }
-  return lines.join('\n\n');
+  return result;
 }
 
 function updateSourceMirrorFromColumns(){
@@ -1467,9 +1527,19 @@ function notifyContentChanged(){
   notifyTimer=setTimeout(function(){
     var markdown=extractMarkdown();
     var hash=simpleHash(markdown);
-    if(hash===lastSentHash) return;
+    if(hash===lastSentHash){
+      // #region agent log
+      agentDebugLog('pre-fix','H3','PreviewHtmlRenderer:notify-drop','notify dropped by hash dedupe',{hash:hash,mdLength:markdown.length});
+      postAgentDebug('H3','PreviewHtmlRenderer:notify-drop','notify dropped by hash dedupe',{hash:hash,mdLength:markdown.length});
+      // #endregion
+      return;
+    }
     lastSentHash=hash;
     contentVersion++;
+    // #region agent log
+    agentDebugLog('pre-fix','H3','PreviewHtmlRenderer:notify-send','notify sending contentChanged',{hash:hash,mdLength:markdown.length,contentVersion:contentVersion});
+    postAgentDebug('H3','PreviewHtmlRenderer:notify-send','notify sending contentChanged',{hash:hash,mdLength:markdown.length,contentVersion:contentVersion});
+    // #endregion
     postHost({
       type:'contentChanged',
       markdown:markdown,
@@ -1930,7 +2000,8 @@ else{window.onload=init;}
                 .Replace("/*FLOW_GAP_PX*/", $"{gapPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_BORDER_WIDTH*/", $"{borderWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_HANDLE_WIDTH*/", $"{handleWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
-                .Replace("/*FLOW_HANDLE_ACTIVE_WIDTH*/", $"{handleActiveWidth.ToString("0.###", CultureInfo.InvariantCulture)}px");
+                .Replace("/*FLOW_HANDLE_ACTIVE_WIDTH*/", $"{handleActiveWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*FLOW_CONTENT_PAD_PX*/", $"{contentPadPx.ToString("0.###", CultureInfo.InvariantCulture)}px");
 
             string flowJs = flowJsTemplate
                 .Replace("/*FLOW_PREVIEW_SCALE*/", scale.ToString("0.#####", CultureInfo.InvariantCulture))
@@ -1944,7 +2015,8 @@ else{window.onload=init;}
                 .Replace("/*FLOW_PAD_BOTTOM_NUM*/", bottomPx.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_GAP_NUM*/", gapPx.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_HANDLE_WIDTH_NUM*/", handleWidth.ToString("0.#####", CultureInfo.InvariantCulture))
-                .Replace("/*FLOW_BORDER_WIDTH_NUM*/", borderWidth.ToString("0.#####", CultureInfo.InvariantCulture));
+                .Replace("/*FLOW_BORDER_WIDTH_NUM*/", borderWidth.ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_CONTENT_PADDING_X*/", (contentPadPx * 2.0).ToString("0.#####", CultureInfo.InvariantCulture));
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"
@@ -1982,6 +2054,7 @@ else{window.onload=init;}
             double topPx = cfg.MarginTopMm * previewScale;
             double bottomPx = cfg.MarginBottomMm * previewScale;
             double gutterPx = Math.Max(0, cfg.ColumnGutter) * previewScale;
+            double contentPadPx = Math.Max(0, cfg.ColumnInnerPaddingMm) * previewScale;
             // 分栏间隔至少保留可见/可拖拽宽度，避免 0 时无法操作
             double gutterVisualPx = Math.Max(6, gutterPx);
 
@@ -2008,6 +2081,8 @@ else{window.onload=init;}
                 ("/*PAD_TOP*/", $"{Round(topPx):F0}px"),
                 ("/*PAD_BOTTOM*/", $"{Round(bottomPx):F0}px"),
                 ("/*GUTTER*/", $"{Round(gutterVisualPx):F0}px"),
+                ("/*CONTENT_PAD_X*/", $"{Round(contentPadPx):F0}px"),
+                ("/*CONTENT_PAD_Y*/", $"{Round(contentPadPx):F0}px"),
                 ("/*LIST_INDENT*/", $"{Round(listIndentPx):F0}px"),
                 ("/*QUOTE_INDENT*/", $"{Round(quoteIndentPx):F0}px"),
                 ("/*H1_MARGIN*/", h1Margin),
@@ -2032,7 +2107,7 @@ else{window.onload=init;}
             double pageWidthMm = Math.Max(1.0, cfg.PageWidthMm);
             double lineHeightFactor = Math.Max(1.0, cfg.LineSpacingFactor);
             double fontWidthFactor = ResolveFontWidthFactor(cfg);
-            const double contentPaddingX = 20.0; // .col-content 左右 padding 合计
+            double contentPaddingX = Math.Max(0, cfg.ColumnInnerPaddingMm) * safePreviewScale * 2.0; // .col-content 左右 padding 合计
             string layoutJson = layoutResult == null ? "null" : JsonConvert.SerializeObject(layoutResult);
             string customColumnWidths = BuildCustomColumnWidthsJson(layoutResult, safePreviewScale);
 
@@ -2051,15 +2126,21 @@ else{window.onload=init;}
 
         private static double ResolveFontWidthFactor(EditorConfig cfg)
         {
-            string name = (cfg?.FontFileName ?? cfg?.PreviewFontFamily ?? string.Empty).Trim().ToLowerInvariant();
+            string name = (cfg?.PreviewFontFamily ?? cfg?.FontFileName ?? string.Empty).Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(name))
                 return 1.0;
 
             // 经验系数：用于弥补 Web 字体渲染与 CAD 字体宽度口径差。
             if (name.Contains("yahei") || name.Contains("微软雅黑") || name.Contains("msyh"))
                 return 1.0;
+            if (name.Contains("simhei") || name.Contains("黑体"))
+                return 0.98;
             if (name.Contains("simsun") || name.Contains("宋体") || name.Contains("song"))
                 return 1.03;
+            if (name.Contains("fangsong") || name.Contains("仿宋"))
+                return 1.02;
+            if (name.Contains("kaiti") || name.Contains("楷体"))
+                return 1.01;
             if (name.EndsWith(".shx", StringComparison.Ordinal))
                 return 0.95;
 
@@ -2155,13 +2236,13 @@ body{
 }
 
 .col-wrap{-ms-flex:1;flex:1;display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;min-width:0;overflow:hidden}
-.col-content{-ms-flex:none;flex:none;overflow:hidden;padding:8px 10px;background:#ffffff;color:#111111;caret-color:#111}
+.col-content{-ms-flex:none;flex:none;overflow:hidden;padding:/*CONTENT_PAD_Y*/ /*CONTENT_PAD_X*/;background:#ffffff;color:#111111;caret-color:#111}
 .col-content.last{overflow:hidden}
 .col-content[contenteditable='true']{outline:none}
 .col-content[contenteditable='true']:focus{box-shadow:inset 0 0 0 1px #58a6ff}
 .col-vhandle{height:6px;background:#2b3138;cursor:ns-resize;-ms-flex-negative:0;flex-shrink:0}
 .col-vhandle:hover{background:#6e7681}
-.col-tables{flex-shrink:0;padding:4px 10px;background:#f8f9fb;border-top:1px dashed #adb5bd;overflow-x:auto;overflow-y:hidden}
+.col-tables{flex-shrink:0;padding:/*CONTENT_PAD_Y*/ /*CONTENT_PAD_X*/;background:#f8f9fb;border-top:1px dashed #adb5bd;overflow-x:auto;overflow-y:hidden}
 .col-tables:empty{display:none}
 .col-gap{
   width:var(--paper-column-gap);min-width:6px;background:transparent;
@@ -2222,8 +2303,8 @@ pre{background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;padding:6px;ma
 pre code{background:none;padding:0}
 blockquote{border-left:3px solid #6e7781;padding:3px /*QUOTE_INDENT*/;/*BQ_MARGIN*/;color:#333;background:#f6f8fa}
 hr{border:none;border-top:1px solid #d0d7de;margin:8px 0}
-table{border-collapse:collapse;width:auto;max-width:100%;margin:6px 0}
-th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:0.9em;text-align:left;word-break:break-word;overflow-wrap:break-word}
+table{border-collapse:collapse;width:auto;max-width:100%;margin:6px auto}
+th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:0.9em;text-align:center;vertical-align:middle;word-break:break-word;overflow-wrap:break-word}
 th{background:#f6f8fa;color:#111;font-weight:bold}
 tr:nth-child(even){background:#f8fafc}
 
@@ -3461,20 +3542,40 @@ function normalizeTableLayout(targetColumns){
       for(c=0;c<colUnits.length;c++) totalUnits+=Math.max(1,colUnits[c]);
       if(totalUnits<=0) totalUnits=maxCols;
 
-      table.style.tableLayout='fixed';
-      table.style.width='100%';
+      var availableW=Math.max(1, (col.clientWidth||0)-CONTENT_PADDING_X);
+      var minCellW=Math.max(2*CHAR_WIDTH_MM*PREVIEW_SCALE, availableW*0.08);
+      var reservedW=minCellW*maxCols;
+      var flexW=Math.max(0, availableW-reservedW);
+      var colWidthsPx=[];
+      var accW=0;
+      for(c=0;c<maxCols;c++){
+        var ratio=Math.max(1,colUnits[c])/Math.max(1,totalUnits);
+        var cw=minCellW + flexW*ratio;
+        colWidthsPx.push(cw);
+        accW+=cw;
+      }
+      if(maxCols>0 && Math.abs(accW-availableW)>0.1){
+        colWidthsPx[maxCols-1]=Math.max(minCellW, colWidthsPx[maxCols-1]+(availableW-accW));
+      }
+      var tableW=0;
+      for(c=0;c<colWidthsPx.length;c++) tableW+=colWidthsPx[c];
+      tableW=Math.max(1, Math.min(tableW, availableW));
 
-      var tableW=Math.max(1, table.clientWidth || (col.clientWidth-CONTENT_PADDING_X));
+      table.style.tableLayout='fixed';
+      table.style.width=tableW.toFixed(2)+'px';
+      table.style.marginLeft='auto';
+      table.style.marginRight='auto';
+
       for(r=0;r<rows.length;r++){
         var row=rows[r];
         var rowCells=row.querySelectorAll('th,td');
         var rowMaxLines=1;
         for(c=0;c<rowCells.length;c++){
-          var pct=(Math.max(1,colUnits[c])/totalUnits)*100;
-          rowCells[c].style.width=pct.toFixed(3)+'%';
-          rowCells[c].style.verticalAlign='top';
+          var cellWpx=Math.max(1, c<colWidthsPx.length ? colWidthsPx[c] : (tableW/Math.max(1,maxCols)));
+          rowCells[c].style.width=cellWpx.toFixed(2)+'px';
+          rowCells[c].style.verticalAlign='middle';
+          rowCells[c].style.textAlign='center';
 
-          var cellWpx=Math.max(1, tableW*(pct/100));
           var cellWmm=cellWpx/Math.max(0.01,PREVIEW_SCALE);
           var unitsPerLine=Math.max(1, Math.floor(cellWmm/CHAR_WIDTH_MM));
           var cellMetrics=calcTextMetrics(rowCells[c].innerText||rowCells[c].textContent||'');

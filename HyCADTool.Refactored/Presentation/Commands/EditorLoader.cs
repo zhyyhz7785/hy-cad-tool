@@ -505,6 +505,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cfg.MarginRightMm,
                 cfg.MarginTopMm,
                 cfg.MarginBottomMm,
+                cfg.ColumnInnerPaddingMm,
                 cfg.FontFileName,
                 cfg.BigFontFileName,
                 cfg.BoldFontName,
@@ -578,8 +579,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 PageHeightMm = Val("PageHeightMm", 420.0),
                 MarginLeftMm = Val("MarginLeftMm", 25.0),
                 MarginRightMm = Val("MarginRightMm", 10.0),
-                MarginTopMm = Val("MarginTopMm", 10.0),
+                MarginTopMm = Val("MarginTopMm", 5.0),
                 MarginBottomMm = Val("MarginBottomMm", 10.0),
+                ColumnInnerPaddingMm = Val("ColumnInnerPaddingMm", 5.0),
                 H1SpaceBefore = Val("H1SpaceBefore", 2.0),
                 H1SpaceAfter = Val("H1SpaceAfter", 0.8),
                 H2SpaceBefore = Val("H2SpaceBefore", 1.5),
@@ -792,7 +794,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 MarginLeftMm = cfg.MarginLeftMm,
                 MarginRightMm = cfg.MarginRightMm,
                 MarginTopMm = cfg.MarginTopMm,
-                MarginBottomMm = cfg.MarginBottomMm
+                MarginBottomMm = cfg.MarginBottomMm,
+                ColumnInnerPaddingMm = cfg.ColumnInnerPaddingMm
             };
             layoutConfig.Normalize();
             return layoutConfig;
