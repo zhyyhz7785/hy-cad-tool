@@ -16,37 +16,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
     /// </summary>
     public class EditorViewModel : INotifyPropertyChanged
     {
-        private const double DefaultDrawScale = 1.0;
-        private const int DefaultColumnCount = 2;
-        private const double DefaultColumnGutter = 5;
-        private const int DefaultMaxColumnCount = 10;
-        private const int DefaultMinColumnWidthPx = 80;
-        private const int DefaultMinColumnHeightPx = 80;
-        private const double DefaultTextSize = 2.5;
-        private const double DefaultTextXScale = 0.7;
-        private const double DefaultPreviewScale = 1.0;
-        private const double DefaultTotalHeight = 350;
         private const string DefaultPagePreset = "A2";
         private const bool DefaultIsLandscape = true;
-        private static readonly int[] DefaultCharsPerColumn = new[] { 28, 28 };
-
-        private const double DefaultH1SpaceBefore = 2.0;
-        private const double DefaultH1SpaceAfter = 0.8;
-        private const double DefaultH2SpaceBefore = 1.5;
-        private const double DefaultH2SpaceAfter = 0.6;
-        private const double DefaultH3SpaceBefore = 1.2;
-        private const double DefaultH3SpaceAfter = 0.4;
-        private const double DefaultPSpaceAfter = 0.5;
-        private const double DefaultLiSpaceAfter = 0.2;
-        private const double DefaultQuoteSpaceBefore = 0.5;
-        private const double DefaultQuoteSpaceAfter = 0.5;
-        private const double DefaultBorderWidth = 1;
-        private const double DefaultHandleWidth = 3;
-        private const double DefaultHandleActiveWidth = 6;
-        private const double DefaultColumnInnerPaddingMm = 5;
-        private const string DefaultFontFileName = "Microsoft YaHei";
-        private const string DefaultBoldFontName = "Microsoft YaHei";
-        private const string DefaultPreviewFontFamily = "Microsoft YaHei";
 
         private readonly EditorContentViewModel _content = new EditorContentViewModel();
         private readonly PreviewConfigViewModel _previewConfig = new PreviewConfigViewModel();
@@ -75,6 +46,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         /// <summary>请求将内容推送到编辑器（加载文件后触发）</summary>
         public event Action<string> EditorContentLoadRequested;
+
+        /// <summary>恢复默认后触发，供外部持久化</summary>
+        public event Action RestoredToDefaults;
 
         #endregion
 
@@ -124,7 +98,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             "1", "5", "10", "15", "25", "50", "100", "150", "200", "250"
         };
 
-        private double _scale = DefaultDrawScale;
+        private double _scale = EditorConfigDefaults.DrawScale;
         public double DrawScale
         {
             get => _scale;
@@ -155,7 +129,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private int _columnCount = DefaultColumnCount;
+        private int _columnCount = EditorConfigDefaults.ColumnCount;
         public int ColumnCount
         {
             get => _columnCount;
@@ -192,7 +166,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private int _maxColumnCount = DefaultMaxColumnCount;
+        private int _maxColumnCount = EditorConfigDefaults.MaxColumnCount;
         public int MaxColumnCount
         {
             get => _maxColumnCount;
@@ -212,7 +186,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private int _minColumnWidthPx = DefaultMinColumnWidthPx;
+        private int _minColumnWidthPx = EditorConfigDefaults.MinColumnWidthPx;
         public int MinColumnWidthPx
         {
             get => _minColumnWidthPx;
@@ -223,7 +197,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private int _minColumnHeightPx = DefaultMinColumnHeightPx;
+        private int _minColumnHeightPx = EditorConfigDefaults.MinColumnHeightPx;
         public int MinColumnHeightPx
         {
             get => _minColumnHeightPx;
@@ -234,7 +208,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _columnGutter = DefaultColumnGutter;
+        private double _columnGutter = EditorConfigDefaults.ColumnGutter;
         public double ColumnGutter
         {
             get => _columnGutter;
@@ -248,7 +222,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _textSize = DefaultTextSize;
+        private double _textSize = EditorConfigDefaults.TextSize;
         public double TextSize
         {
             get => _textSize;
@@ -262,7 +236,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _previewScale = DefaultPreviewScale;
+        private double _previewScale = EditorConfigDefaults.PreviewScale;
         public double PreviewScale
         {
             get => _previewScale;
@@ -276,7 +250,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _totalHeight = DefaultTotalHeight;
+        private double _totalHeight = EditorConfigDefaults.TotalHeight;
         public double TotalHeight
         {
             get => _totalHeight;
@@ -290,7 +264,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _textXScale = DefaultTextXScale;
+        private double _textXScale = EditorConfigDefaults.TextXScale;
         public double TextXScale
         {
             get => _textXScale;
@@ -304,13 +278,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private string _fontFileName = DefaultFontFileName;
+        private string _fontFileName = EditorConfigDefaults.FontFileName;
         public string FontFileName
         {
             get => _fontFileName;
             set
             {
-                if (SetProperty(ref _fontFileName, string.IsNullOrWhiteSpace(value) ? DefaultFontFileName : value.Trim()))
+                if (SetProperty(ref _fontFileName, string.IsNullOrWhiteSpace(value) ? EditorConfigDefaults.FontFileName : value.Trim()))
                     UpdateStatus();
             }
         }
@@ -326,24 +300,24 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private string _boldFontName = DefaultBoldFontName;
+        private string _boldFontName = EditorConfigDefaults.BoldFontName;
         public string BoldFontName
         {
             get => _boldFontName;
             set
             {
-                if (SetProperty(ref _boldFontName, string.IsNullOrWhiteSpace(value) ? DefaultBoldFontName : value.Trim()))
+                if (SetProperty(ref _boldFontName, string.IsNullOrWhiteSpace(value) ? EditorConfigDefaults.BoldFontName : value.Trim()))
                     UpdateStatus();
             }
         }
 
-        private string _previewFontFamily = DefaultPreviewFontFamily;
+        private string _previewFontFamily = EditorConfigDefaults.PreviewFontFamily;
         public string PreviewFontFamily
         {
             get => _previewFontFamily;
             set
             {
-                if (SetProperty(ref _previewFontFamily, string.IsNullOrWhiteSpace(value) ? DefaultPreviewFontFamily : value.Trim()))
+                if (SetProperty(ref _previewFontFamily, string.IsNullOrWhiteSpace(value) ? EditorConfigDefaults.PreviewFontFamily : value.Trim()))
                     UpdateStatus();
             }
         }
@@ -433,6 +407,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         /// <summary>点击转入样式按钮时在 StyleTName 与 StyleSName 之间切换</summary>
         public ICommand ToggleCadSyncStyleCommand { get; }
+
+        /// <summary>恢复全部默认配置</summary>
+        public ICommand ResetAllDefaultsCommand { get; }
 
         // ── MText 显示参数 ──
         private string _mTextAttachment = "TopLeft";
@@ -644,7 +621,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _columnInnerPaddingMm = DefaultColumnInnerPaddingMm;
+        private double _columnInnerPaddingMm = EditorConfigDefaults.ColumnInnerPaddingMm;
         public double ColumnInnerPaddingMm
         {
             get => _columnInnerPaddingMm;
@@ -668,7 +645,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _borderWidth = DefaultBorderWidth;
+        private double _borderWidth = EditorConfigDefaults.BorderWidth;
         public double BorderWidth
         {
             get => _borderWidth;
@@ -679,7 +656,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _handleWidth = DefaultHandleWidth;
+        private double _handleWidth = EditorConfigDefaults.HandleWidth;
         public double HandleWidth
         {
             get => _handleWidth;
@@ -696,7 +673,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
-        private double _handleActiveWidth = DefaultHandleActiveWidth;
+        private double _handleActiveWidth = EditorConfigDefaults.HandleActiveWidth;
         public double HandleActiveWidth
         {
             get => _handleActiveWidth;
@@ -709,34 +686,34 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         }
 
         // ── 段前段后间距（字高倍数） ──
-        private double _h1SpaceBefore = DefaultH1SpaceBefore;
+        private double _h1SpaceBefore = EditorConfigDefaults.H1SpaceBefore;
         public double H1SpaceBefore { get => _h1SpaceBefore; set { if (SetProperty(ref _h1SpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _h1SpaceAfter = DefaultH1SpaceAfter;
+        private double _h1SpaceAfter = EditorConfigDefaults.H1SpaceAfter;
         public double H1SpaceAfter { get => _h1SpaceAfter; set { if (SetProperty(ref _h1SpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _h2SpaceBefore = DefaultH2SpaceBefore;
+        private double _h2SpaceBefore = EditorConfigDefaults.H2SpaceBefore;
         public double H2SpaceBefore { get => _h2SpaceBefore; set { if (SetProperty(ref _h2SpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _h2SpaceAfter = DefaultH2SpaceAfter;
+        private double _h2SpaceAfter = EditorConfigDefaults.H2SpaceAfter;
         public double H2SpaceAfter { get => _h2SpaceAfter; set { if (SetProperty(ref _h2SpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _h3SpaceBefore = DefaultH3SpaceBefore;
+        private double _h3SpaceBefore = EditorConfigDefaults.H3SpaceBefore;
         public double H3SpaceBefore { get => _h3SpaceBefore; set { if (SetProperty(ref _h3SpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _h3SpaceAfter = DefaultH3SpaceAfter;
+        private double _h3SpaceAfter = EditorConfigDefaults.H3SpaceAfter;
         public double H3SpaceAfter { get => _h3SpaceAfter; set { if (SetProperty(ref _h3SpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _pSpaceAfter = DefaultPSpaceAfter;
+        private double _pSpaceAfter = EditorConfigDefaults.PSpaceAfter;
         public double PSpaceAfter { get => _pSpaceAfter; set { if (SetProperty(ref _pSpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _liSpaceAfter = DefaultLiSpaceAfter;
+        private double _liSpaceAfter = EditorConfigDefaults.LiSpaceAfter;
         public double LiSpaceAfter { get => _liSpaceAfter; set { if (SetProperty(ref _liSpaceAfter, value)) RefreshPreviewVia(); } }
 
-        private double _quoteSpaceBefore = DefaultQuoteSpaceBefore;
+        private double _quoteSpaceBefore = EditorConfigDefaults.QuoteSpaceBefore;
         public double QuoteSpaceBefore { get => _quoteSpaceBefore; set { if (SetProperty(ref _quoteSpaceBefore, value)) RefreshPreviewVia(); } }
 
-        private double _quoteSpaceAfter = DefaultQuoteSpaceAfter;
+        private double _quoteSpaceAfter = EditorConfigDefaults.QuoteSpaceAfter;
         public double QuoteSpaceAfter { get => _quoteSpaceAfter; set { if (SetProperty(ref _quoteSpaceAfter, value)) RefreshPreviewVia(); } }
 
         private void RefreshPreviewVia() => OnPropertyChanged("SpacingChanged");
@@ -814,6 +791,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             SaveFileCommand = new RelayCmd(ExecuteSave);
             EditorActionCommand = new AsyncRelayCmd(ExecuteEditorActionAsync);
             ToggleCadSyncStyleCommand = new RelayCmd(ToggleCadSyncStyle);
+            ResetAllDefaultsCommand = new RelayCmd(ResetAllDefaults);
+            _charsPerColumn = (int[])EditorConfigDefaults.CharsPerColumn.Clone();
             _markdownText = DefaultMarkdown;
             _content.SetMarkdown(_markdownText);
             _content.SetCurrentFilePath(_currentFilePath);
@@ -845,9 +824,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
             _totalHeight = cfg.TotalHeight;
             _scale = cfg.DrawScale;
-            _maxColumnCount = cfg.MaxColumnCount > 0 ? Math.Max(1, Math.Min(99, cfg.MaxColumnCount)) : DefaultMaxColumnCount;
-            _minColumnWidthPx = cfg.MinColumnWidthPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnWidthPx)) : DefaultMinColumnWidthPx;
-            _minColumnHeightPx = cfg.MinColumnHeightPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnHeightPx)) : DefaultMinColumnHeightPx;
+            _maxColumnCount = cfg.MaxColumnCount > 0 ? Math.Max(1, Math.Min(99, cfg.MaxColumnCount)) : EditorConfigDefaults.MaxColumnCount;
+            _minColumnWidthPx = cfg.MinColumnWidthPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnWidthPx)) : EditorConfigDefaults.MinColumnWidthPx;
+            _minColumnHeightPx = cfg.MinColumnHeightPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnHeightPx)) : EditorConfigDefaults.MinColumnHeightPx;
             int maxCol = Math.Max(1, _maxColumnCount);
             _columnCount = Math.Max(1, Math.Min(maxCol, cfg.ColumnCount));
             _columnGutter = cfg.ColumnGutter;
@@ -872,10 +851,10 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _quoteSpaceBefore = cfg.QuoteSpaceBefore;
             _quoteSpaceAfter = cfg.QuoteSpaceAfter;
             _columnInnerPaddingMm = Math.Max(0, cfg.ColumnInnerPaddingMm);
-            _fontFileName = string.IsNullOrWhiteSpace(cfg.FontFileName) ? DefaultFontFileName : cfg.FontFileName.Trim();
+            _fontFileName = string.IsNullOrWhiteSpace(cfg.FontFileName) ? EditorConfigDefaults.FontFileName : cfg.FontFileName.Trim();
             _bigFontFileName = (cfg.BigFontFileName ?? "").Trim();
-            _boldFontName = string.IsNullOrWhiteSpace(cfg.BoldFontName) ? DefaultBoldFontName : cfg.BoldFontName.Trim();
-            _previewFontFamily = string.IsNullOrWhiteSpace(cfg.PreviewFontFamily) ? DefaultPreviewFontFamily : cfg.PreviewFontFamily.Trim();
+            _boldFontName = string.IsNullOrWhiteSpace(cfg.BoldFontName) ? EditorConfigDefaults.BoldFontName : cfg.BoldFontName.Trim();
+            _previewFontFamily = string.IsNullOrWhiteSpace(cfg.PreviewFontFamily) ? EditorConfigDefaults.PreviewFontFamily : cfg.PreviewFontFamily.Trim();
             _styleTName = (cfg.StyleTName ?? "0-hy-说明-T").Trim();
             _styleTFont = string.IsNullOrWhiteSpace(cfg.StyleTFont) ? "微软雅黑" : cfg.StyleTFont.Trim();
             _styleSName = (cfg.StyleSName ?? "0-hy-说明-S").Trim();
@@ -1048,44 +1027,69 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MarginBottomMm = c;
         }
 
-        public void ResetLayoutDefaults()
+        /// <summary>恢复全部默认配置（含 CAD 样式、MText 等）</summary>
+        public void ResetAllDefaults()
         {
-            DrawScale = DefaultDrawScale;
-            MaxColumnCount = DefaultMaxColumnCount;
-            MinColumnWidthPx = DefaultMinColumnWidthPx;
-            MinColumnHeightPx = DefaultMinColumnHeightPx;
-            ColumnCount = DefaultColumnCount;
-            ColumnGutter = DefaultColumnGutter;
-            TextSize = DefaultTextSize;
-            TextXScale = DefaultTextXScale;
-            PreviewScale = DefaultPreviewScale;
-            TotalHeight = DefaultTotalHeight;
-            CharsPerColumn = (int[])DefaultCharsPerColumn.Clone();
+            var d = EditorConfigDefaults.Create();
+            DrawScale = d.DrawScale;
+            MaxColumnCount = d.MaxColumnCount;
+            MinColumnWidthPx = d.MinColumnWidthPx;
+            MinColumnHeightPx = d.MinColumnHeightPx;
+            ColumnCount = d.ColumnCount;
+            ColumnGutter = d.ColumnGutter;
+            TextSize = d.TextSize;
+            TextXScale = d.TextXScale;
+            PreviewScale = d.PreviewScale;
+            TotalHeight = d.TotalHeight;
+            CharsPerColumn = (int[])d.CharsPerColumn.Clone();
             ColumnParagraphIndices = string.Empty;
 
-            PagePreset = DefaultPagePreset;
-            IsLandscape = DefaultIsLandscape;
+            PagePreset = d.PagePreset;
+            IsLandscape = d.PagePreset.Contains("横");
             ApplyPagePreset(PagePreset);
             OnPropertyChanged(nameof(PageSizeLabel));
             OnPropertyChanged(nameof(PageOrientationLabel));
 
-            H1SpaceBefore = DefaultH1SpaceBefore;
-            H1SpaceAfter = DefaultH1SpaceAfter;
-            H2SpaceBefore = DefaultH2SpaceBefore;
-            H2SpaceAfter = DefaultH2SpaceAfter;
-            H3SpaceBefore = DefaultH3SpaceBefore;
-            H3SpaceAfter = DefaultH3SpaceAfter;
-            PSpaceAfter = DefaultPSpaceAfter;
-            LiSpaceAfter = DefaultLiSpaceAfter;
-            QuoteSpaceBefore = DefaultQuoteSpaceBefore;
-            QuoteSpaceAfter = DefaultQuoteSpaceAfter;
-            ColumnInnerPaddingMm = DefaultColumnInnerPaddingMm;
-            BorderWidth = DefaultBorderWidth;
-            HandleWidth = DefaultHandleWidth;
-            HandleActiveWidth = DefaultHandleActiveWidth;
+            H1SpaceBefore = d.H1SpaceBefore;
+            H1SpaceAfter = d.H1SpaceAfter;
+            H2SpaceBefore = d.H2SpaceBefore;
+            H2SpaceAfter = d.H2SpaceAfter;
+            H3SpaceBefore = d.H3SpaceBefore;
+            H3SpaceAfter = d.H3SpaceAfter;
+            PSpaceAfter = d.PSpaceAfter;
+            LiSpaceAfter = d.LiSpaceAfter;
+            QuoteSpaceBefore = d.QuoteSpaceBefore;
+            QuoteSpaceAfter = d.QuoteSpaceAfter;
+            ColumnInnerPaddingMm = d.ColumnInnerPaddingMm;
+            BorderWidth = d.BorderWidth;
+            HandleWidth = d.HandleWidth;
+            HandleActiveWidth = d.HandleActiveWidth;
+
+            FontFileName = d.FontFileName;
+            BigFontFileName = d.BigFontFileName;
+            BoldFontName = d.BoldFontName;
+            PreviewFontFamily = d.PreviewFontFamily;
+            StyleTName = d.StyleTName;
+            StyleTFont = d.StyleTFont;
+            StyleSName = d.StyleSName;
+            StyleSFont = d.StyleSFont;
+            StyleSBigFont = d.StyleSBigFont;
+            CadSyncStyleName = d.CadSyncStyleName;
+            MTextAttachment = d.MTextAttachment;
+            MTextLineSpacingStyle = d.MTextLineSpacingStyle;
+            MTextObliquingAngle = d.MTextObliquingAngle;
+            MTextCharSpacing = d.MTextCharSpacing;
+            MTextParagraphAlign = d.MTextParagraphAlign;
 
             SyncDrawScaleTextFromValue();
             UpdateStatus();
+            RestoredToDefaults?.Invoke();
+        }
+
+        /// <summary>恢复图纸排版默认（保留 CAD 样式等），供顶部工具栏「重置」按钮</summary>
+        public void ResetLayoutDefaults()
+        {
+            ResetAllDefaults();
         }
 
         #endregion

@@ -578,7 +578,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 CharsPerColumn = cpc ?? new[] { 28, 28 },
                 TotalHeight = Val("TotalHeight", 350.0),
                 TextSize = Val("TextSize", 2.5),
-                TextXScale = Val("TextXScale", 0.7),
+                TextXScale = Val("TextXScale", 1.0),
                 PagePreset = StrVal("PagePreset", "A2横向"),
                 PageWidthMm = Val("PageWidthMm", 594.0),
                 PageHeightMm = Val("PageHeightMm", 420.0),

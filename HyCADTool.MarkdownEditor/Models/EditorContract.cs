@@ -39,8 +39,8 @@ namespace HyCADTool.MarkdownEditor.Models
     public class EditorConfig
     {
         // ── 出图 ──
-        public double DrawScale { get; set; } = 1.0;
-        public double PreviewScale { get; set; } = 1.0;
+        public double DrawScale { get; set; } = EditorConfigDefaults.DrawScale;
+        public double PreviewScale { get; set; } = EditorConfigDefaults.PreviewScale;
 
         /// <summary>
         /// 兼容旧字段：Scale -> DrawScale。
@@ -57,31 +57,31 @@ namespace HyCADTool.MarkdownEditor.Models
         public bool ShouldSerializeScale() => false;
 
         // ── 栏 ──
-        public int ColumnCount { get; set; } = 2;
-        public double ColumnGutter { get; set; } = 5;
+        public int ColumnCount { get; set; } = EditorConfigDefaults.ColumnCount;
+        public double ColumnGutter { get; set; } = EditorConfigDefaults.ColumnGutter;
         /// <summary>栏最大数量（1～99）</summary>
-        public int MaxColumnCount { get; set; } = 10;
+        public int MaxColumnCount { get; set; } = EditorConfigDefaults.MaxColumnCount;
         /// <summary>最小栏宽（px）</summary>
-        public int MinColumnWidthPx { get; set; } = 80;
+        public int MinColumnWidthPx { get; set; } = EditorConfigDefaults.MinColumnWidthPx;
         /// <summary>最小栏高（px）</summary>
-        public int MinColumnHeightPx { get; set; } = 80;
-        public int[] CharsPerColumn { get; set; } = new[] { 28, 28 };
-        public double TotalHeight { get; set; } = 350;
+        public int MinColumnHeightPx { get; set; } = EditorConfigDefaults.MinColumnHeightPx;
+        public int[] CharsPerColumn { get; set; } = (int[])EditorConfigDefaults.CharsPerColumn.Clone();
+        public double TotalHeight { get; set; } = EditorConfigDefaults.TotalHeight;
 
         // ── 字体 ──
-        public double TextSize { get; set; } = 2.5;
-        public double TextXScale { get; set; } = 0.7;
-        public string PagePreset { get; set; } = "A2横向";
-        public double PageWidthMm { get; set; } = 594;
-        public double PageHeightMm { get; set; } = 420;
-        public double MarginLeftMm { get; set; } = 25;
-        public double MarginRightMm { get; set; } = 10;
-        public double MarginTopMm { get; set; } = 10;
-        public double MarginBottomMm { get; set; } = 10;
-        public double ColumnInnerPaddingMm { get; set; } = 5;
-        public double BorderWidth { get; set; } = 1;
-        public double HandleWidth { get; set; } = 3;
-        public double HandleActiveWidth { get; set; } = 6;
+        public double TextSize { get; set; } = EditorConfigDefaults.TextSize;
+        public double TextXScale { get; set; } = EditorConfigDefaults.TextXScale;
+        public string PagePreset { get; set; } = EditorConfigDefaults.PagePreset;
+        public double PageWidthMm { get; set; } = EditorConfigDefaults.PageWidthMm;
+        public double PageHeightMm { get; set; } = EditorConfigDefaults.PageHeightMm;
+        public double MarginLeftMm { get; set; } = EditorConfigDefaults.MarginLeftMm;
+        public double MarginRightMm { get; set; } = EditorConfigDefaults.MarginRightMm;
+        public double MarginTopMm { get; set; } = EditorConfigDefaults.MarginTopMm;
+        public double MarginBottomMm { get; set; } = EditorConfigDefaults.MarginBottomMm;
+        public double ColumnInnerPaddingMm { get; set; } = EditorConfigDefaults.ColumnInnerPaddingMm;
+        public double BorderWidth { get; set; } = EditorConfigDefaults.BorderWidth;
+        public double HandleWidth { get; set; } = EditorConfigDefaults.HandleWidth;
+        public double HandleActiveWidth { get; set; } = EditorConfigDefaults.HandleActiveWidth;
         /// <summary>
         /// 兼容旧字段：HandleHeight -> HandleWidth。
         /// 仅用于反序列化历史数据，不再参与序列化输出。
@@ -94,54 +94,49 @@ namespace HyCADTool.MarkdownEditor.Models
             set => HandleWidth = value;
         }
         public bool ShouldSerializeHandleHeight() => false;
-        public string FontFileName { get; set; } = "Microsoft YaHei";
-        public string BigFontFileName { get; set; } = "";
-        public string BoldFontName { get; set; } = "Microsoft YaHei";
-        public string PreviewFontFamily { get; set; } = "Microsoft YaHei";
+        public string FontFileName { get; set; } = EditorConfigDefaults.FontFileName;
+        public string BigFontFileName { get; set; } = EditorConfigDefaults.BigFontFileName;
+        public string BoldFontName { get; set; } = EditorConfigDefaults.BoldFontName;
+        public string PreviewFontFamily { get; set; } = EditorConfigDefaults.PreviewFontFamily;
 
         /// <summary>CAD 样式1：0-hy-说明-T，TrueType 标题/说明</summary>
-        public string StyleTName { get; set; } = "0-hy-说明-T";
-        public string StyleTFont { get; set; } = "微软雅黑";
+        public string StyleTName { get; set; } = EditorConfigDefaults.StyleTName;
+        public string StyleTFont { get; set; } = EditorConfigDefaults.StyleTFont;
         /// <summary>CAD 样式2：0-hy-说明-S，SHX 标注/引线/表格</summary>
-        public string StyleSName { get; set; } = "0-hy-说明-S";
-        public string StyleSFont { get; set; } = "tssdeng.shx";
-        public string StyleSBigFont { get; set; } = "tssdchn.shx";
+        public string StyleSName { get; set; } = EditorConfigDefaults.StyleSName;
+        public string StyleSFont { get; set; } = EditorConfigDefaults.StyleSFont;
+        public string StyleSBigFont { get; set; } = EditorConfigDefaults.StyleSBigFont;
         /// <summary>转入 CAD 时使用的样式名称（StyleTName 或 StyleSName）</summary>
-        public string CadSyncStyleName { get; set; } = "0-hy-说明-S";
+        public string CadSyncStyleName { get; set; } = EditorConfigDefaults.CadSyncStyleName;
 
         // ── MText 显示参数 ──
-        /// <summary>MText 对齐点：TopLeft/TopCenter/TopRight/MiddleLeft/MiddleCenter/MiddleRight/BottomLeft/BottomCenter/BottomRight</summary>
-        public string MTextAttachment { get; set; } = "TopLeft";
-        /// <summary>行间距模式：AtLeast / Exactly</summary>
-        public string MTextLineSpacingStyle { get; set; } = "Exactly";
-        /// <summary>文字倾斜角（度），-85～85</summary>
-        public double MTextObliquingAngle { get; set; } = 0;
-        /// <summary>字符间距倍数，0.75～4.0</summary>
-        public double MTextCharSpacing { get; set; } = 1.0;
-        /// <summary>段落对齐：Left/Center/Right/Justify</summary>
-        public string MTextParagraphAlign { get; set; } = "Left";
+        public string MTextAttachment { get; set; } = EditorConfigDefaults.MTextAttachment;
+        public string MTextLineSpacingStyle { get; set; } = EditorConfigDefaults.MTextLineSpacingStyle;
+        public double MTextObliquingAngle { get; set; } = EditorConfigDefaults.MTextObliquingAngle;
+        public double MTextCharSpacing { get; set; } = EditorConfigDefaults.MTextCharSpacing;
+        public string MTextParagraphAlign { get; set; } = EditorConfigDefaults.MTextParagraphAlign;
 
         // ── 标题倍率 ──
-        public double H1Scale { get; set; } = 1.6;
-        public double H2Scale { get; set; } = 1.3;
-        public double H3Scale { get; set; } = 1.1;
-        public double LineSpacingFactor { get; set; } = 1.2;
+        public double H1Scale { get; set; } = EditorConfigDefaults.H1Scale;
+        public double H2Scale { get; set; } = EditorConfigDefaults.H2Scale;
+        public double H3Scale { get; set; } = EditorConfigDefaults.H3Scale;
+        public double LineSpacingFactor { get; set; } = EditorConfigDefaults.LineSpacingFactor;
 
         // ── 缩进 ──
-        public double ListIndent { get; set; } = 4;
-        public double QuoteIndent { get; set; } = 5;
+        public double ListIndent { get; set; } = EditorConfigDefaults.ListIndent;
+        public double QuoteIndent { get; set; } = EditorConfigDefaults.QuoteIndent;
 
-        // ── 段前段后间距（字高倍数） ──
-        public double H1SpaceBefore { get; set; } = 2.0;
-        public double H1SpaceAfter { get; set; } = 0.8;
-        public double H2SpaceBefore { get; set; } = 1.5;
-        public double H2SpaceAfter { get; set; } = 0.6;
-        public double H3SpaceBefore { get; set; } = 1.2;
-        public double H3SpaceAfter { get; set; } = 0.4;
-        public double PSpaceAfter { get; set; } = 0.5;
-        public double LiSpaceAfter { get; set; } = 0.2;
-        public double QuoteSpaceBefore { get; set; } = 0.5;
-        public double QuoteSpaceAfter { get; set; } = 0.5;
+        // ── 段前段后间距 ──
+        public double H1SpaceBefore { get; set; } = EditorConfigDefaults.H1SpaceBefore;
+        public double H1SpaceAfter { get; set; } = EditorConfigDefaults.H1SpaceAfter;
+        public double H2SpaceBefore { get; set; } = EditorConfigDefaults.H2SpaceBefore;
+        public double H2SpaceAfter { get; set; } = EditorConfigDefaults.H2SpaceAfter;
+        public double H3SpaceBefore { get; set; } = EditorConfigDefaults.H3SpaceBefore;
+        public double H3SpaceAfter { get; set; } = EditorConfigDefaults.H3SpaceAfter;
+        public double PSpaceAfter { get; set; } = EditorConfigDefaults.PSpaceAfter;
+        public double LiSpaceAfter { get; set; } = EditorConfigDefaults.LiSpaceAfter;
+        public double QuoteSpaceBefore { get; set; } = EditorConfigDefaults.QuoteSpaceBefore;
+        public double QuoteSpaceAfter { get; set; } = EditorConfigDefaults.QuoteSpaceAfter;
     }
 
     /// <summary>

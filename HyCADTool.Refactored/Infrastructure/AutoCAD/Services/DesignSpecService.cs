@@ -6,6 +6,7 @@ using HyCADTool.Refactored.Presentation.ViewModels;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
 using LayoutPageModel = HyCADTool.TextLayout.LayoutPage;
@@ -750,9 +751,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 return;
             }
 
-            string fontFile = ResolveTrueTypeFontFile(rawFont);
+            string typeface = ResolveTrueTypeFontFile(rawFont);
+            rec.FileName = typeface;
             rec.BigFontFileName = string.Empty;
-            rec.FileName = fontFile;
         }
 
         private static AttachmentPoint ParseAttachmentPoint(string value)
@@ -787,7 +788,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         private static string ResolveTrueTypeFontFile(string fontName)
         {
             if (string.IsNullOrWhiteSpace(fontName))
-                return "msyh.ttc";
+                return "微软雅黑";
 
             string value = fontName.Trim();
             if (string.Equals(value, "msyh.ttc", StringComparison.OrdinalIgnoreCase)
@@ -796,11 +797,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 || string.Equals(value, "微软雅黑体", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(value, "Microsoft YaHei", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(value, "Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase))
-                return "msyh.ttc";
+                return "微软雅黑";
 
             if (value.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)
                 || value.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
-                return value;
+                return Path.GetFileNameWithoutExtension(value);
 
             return value;
         }

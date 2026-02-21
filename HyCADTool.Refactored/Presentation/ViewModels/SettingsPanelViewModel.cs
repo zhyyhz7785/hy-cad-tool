@@ -204,7 +204,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set { if (SetProperty(ref _textSize, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualTextHeight)); } }
         }
 
-        private double _textXScale = 0.7;
+        private double _textXScale = 1.0;
         public double TextXScale { get => _textXScale; set { if (SetProperty(ref _textXScale, value)) _stylesDirty = true; } }
 
         public double ActualTextHeight => TextSize * Scale;
@@ -468,7 +468,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             StyleSFont = "tssdeng.shx";
             StyleSBigFont = "tssdchn.shx";
             TextSize = 2.5;
-            TextXScale = 0.7;
+            TextXScale = 1.0;
             Dimtxt = 2.5; Dimexo = 1.0; Dimexe = 1.0; Dimdle = 0.5; Dimgap = 1.0; Dimasz = 1.0;
             DimArrowName = "_ARCHTICK";
             MLeaderArrowSize = 2.0; MLeaderArrowName = "_DotSmall"; MLeaderLandingGap = 0.5; MLeaderTextColorIndex = 7;
@@ -687,7 +687,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             [Obsolete("Use StyleSBigFont")]
             public string BigFontFileName { get; set; } = "hztxt.shx";
             public double TextSize { get; set; } = 2.5;
-            public double TextXScale { get; set; } = 0.7;
+            public double TextXScale { get; set; } = 1.0;
             public double Dimtxt { get; set; } = 2.5;
             public double Dimexo { get; set; } = 1.0;
             public double Dimexe { get; set; } = 1.0;

@@ -31,8 +31,10 @@ namespace HyCADTool.MarkdownEditor.Views
         private const int WM_MOUSEWHEEL = 0x020A;
         private const int PreviewRefreshDebounceMs = 220;
         private const int AutoCadSyncDebounceMs = 900;
+        private const int ConfigSaveDebounceMs = 1500;
 
         private readonly DispatcherTimer _rulerSyncTimer;
+        private readonly DispatcherTimer _configSaveDebounceTimer;
         private readonly DispatcherTimer _previewRefreshDebounceTimer;
         private readonly DispatcherTimer _autoCadSyncDebounceTimer;
         private readonly ThemeManager _themeManager = new ThemeManager();
@@ -56,6 +58,11 @@ namespace HyCADTool.MarkdownEditor.Views
         public EditorWindow(EditorInput input, bool isModal = true)
         {
             _isModalSession = isModal;
+            if (input != null && input.Config == null)
+            {
+                var persisted = new EditorConfigPersistenceService().Load();
+                input.Config = persisted ?? EditorConfigDefaults.Create();
+            }
             ViewModel = new EditorViewModel(input);
             DataContext = ViewModel;
             InitializeComponent();
@@ -130,6 +137,12 @@ namespace HyCADTool.MarkdownEditor.Views
                 _autoCadSyncDebounceTimer.Stop();
                 await TriggerLiveSyncAsync();
             };
+            _configSaveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ConfigSaveDebounceMs) };
+            _configSaveDebounceTimer.Tick += (_, __) =>
+            {
+                _configSaveDebounceTimer.Stop();
+                PersistConfig();
+            };
 
             EditorWebView.GotFocus += (_, __) => _syncCoordinator.ClaimOwnership(ContentOwner.CSharp);
             WireChildControlEvents();
@@ -146,6 +159,7 @@ namespace HyCADTool.MarkdownEditor.Views
             ViewModel.PropertyChanged += OnPropChanged;
             ViewModel.EditorContentLoadRequested += OnEditorContentLoadRequested;
             ViewModel.PreviewEditorActionRequested += OnPreviewEditorActionRequestedAsync;
+            ViewModel.RestoredToDefaults += OnRestoredToDefaults;
         }
 
         private T ResolveRequiredControl<T>(string name) where T : class
@@ -365,11 +379,13 @@ namespace HyCADTool.MarkdownEditor.Views
             _rulerSyncTimer.Stop();
             _previewRefreshDebounceTimer.Stop();
             _autoCadSyncDebounceTimer.Stop();
+            _configSaveDebounceTimer.Stop();
             SourceInitialized -= OnSourceInitialized;
             StateChanged -= OnWindowStateChanged;
             ViewModel.PropertyChanged -= OnPropChanged;
             ViewModel.EditorContentLoadRequested -= OnEditorContentLoadRequested;
             ViewModel.PreviewEditorActionRequested -= OnPreviewEditorActionRequestedAsync;
+            ViewModel.RestoredToDefaults -= OnRestoredToDefaults;
             ViewModel.SetJsHelper(null);
             if (_hwndSource != null)
             {
@@ -569,6 +585,31 @@ namespace HyCADTool.MarkdownEditor.Views
             }
         }
 
+        private void OnRestoredToDefaults()
+        {
+            PersistConfig();
+        }
+
+        private void PersistConfig()
+        {
+            try
+            {
+                var config = ViewModel.BuildConfig();
+                if (config != null)
+                    new EditorConfigPersistenceService().Save(config);
+            }
+            catch
+            {
+                // 持久化失败不影响主流程
+            }
+        }
+
+        private void ScheduleConfigSave()
+        {
+            _configSaveDebounceTimer.Stop();
+            _configSaveDebounceTimer.Start();
+        }
+
         private void OnPropChanged(object sender, PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
@@ -582,6 +623,7 @@ namespace HyCADTool.MarkdownEditor.Views
 
                 case nameof(EditorViewModel.ColumnCount):
                 case nameof(EditorViewModel.ColumnGutter):
+                    ScheduleConfigSave();
                     _ = ApplyPaperColumnLayoutAsync();
                     UpdateRulerScale();
                     break;
@@ -589,12 +631,14 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.MaxColumnCount):
                 case nameof(EditorViewModel.MinColumnWidthPx):
                 case nameof(EditorViewModel.MinColumnHeightPx):
+                    ScheduleConfigSave();
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
                     break;
 
                 case nameof(EditorViewModel.PagePreset):
                 case nameof(EditorViewModel.IsLandscape):
                 case nameof(EditorViewModel.DrawScale):
+                    ScheduleConfigSave();
                     _ = ApplyPaperGeometryAsync();
                     UpdateRulerScale();
                     break;
@@ -605,6 +649,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.MarginRightMm):
                 case nameof(EditorViewModel.MarginTopMm):
                 case nameof(EditorViewModel.MarginBottomMm):
+                    ScheduleConfigSave();
                     _ = ApplyPaperGeometryAsync();
                     UpdateRulerScale();
                     break;
@@ -620,6 +665,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.BoldFontName):
                 case nameof(EditorViewModel.PreviewFontFamily):
                 case "SpacingChanged":
+                    ScheduleConfigSave();
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
                     UpdateRulerScale();
                     break;
@@ -950,6 +996,8 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             var result = await BuildEditorResultAsync(confirmed: true);
             Result = result;
+            if (result?.Confirmed == true && result.Config != null)
+                new EditorConfigPersistenceService().Save(result.Config);
             CadSyncService.RaiseManualSync(result);
         }
 
@@ -957,6 +1005,8 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             var result = await BuildEditorResultAsync(confirmed: true);
             Result = result;
+            if (result?.Confirmed == true && result.Config != null)
+                new EditorConfigPersistenceService().Save(result.Config);
             CadSyncService.RaiseManualSync(result);
 
             if (_isModalSession)

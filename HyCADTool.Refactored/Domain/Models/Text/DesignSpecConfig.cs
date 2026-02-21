@@ -55,7 +55,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>CAD 文字样式名称（来自 MarkdownEditor 时使用，如 0-hy-说明-T / 0-hy-说明-S）</summary>
         public string TextStyleName { get; set; }
         public double TextSize { get; set; } = 2.5;        // 图纸 mm
-        public double TextXScale { get; set; } = 0.7;
+        public double TextXScale { get; set; } = 1.0;
 
         // ── 粗体用字体（SHX 不支持 Bold，切 TTF 模拟） ──
         public string BoldFontName { get; set; } = "Microsoft YaHei";
@@ -211,7 +211,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             PreviewScale = PreviewScale > 0 ? PreviewScale : 1.0;
             ColumnGutter = Math.Max(0, ColumnGutter);
             TextSize = TextSize > 0 ? TextSize : 2.5;
-            TextXScale = TextXScale > 0 ? TextXScale : 0.7;
+            TextXScale = TextXScale > 0 ? TextXScale : 1.0;
             TotalHeight = TotalHeight > 0 ? TotalHeight : 350;
             PageWidthMm = PageWidthMm > 0 ? PageWidthMm : 594;
             PageHeightMm = PageHeightMm > 0 ? PageHeightMm : 420;

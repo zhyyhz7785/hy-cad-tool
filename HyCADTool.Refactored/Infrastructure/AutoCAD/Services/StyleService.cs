@@ -37,8 +37,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         // 样式已存在 → 更新属性（与旧代码 CreateTextStyle 重载一致）
                         ObjectId styleId = textStyleTable[styleName];
                         var styleRec = (TextStyleTableRecord)tr.GetObject(styleId, OpenMode.ForWrite);
-                        styleRec.FileName = fontName;
-                        styleRec.BigFontFileName = bigFontName;
+                        ApplyTextStyleFont(styleRec, fontName, bigFontName);
                         styleRec.TextSize = textHeight;
                         styleRec.XScale = widthFactor;
                         db.Textstyle = styleId;
@@ -50,11 +49,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         var textStyleRecord = new TextStyleTableRecord
                         {
                             Name = styleName,
-                            FileName = fontName,
-                            BigFontFileName = bigFontName,
                             TextSize = textHeight,
                             XScale = widthFactor
                         };
+                        ApplyTextStyleFont(textStyleRecord, fontName, bigFontName);
 
                         textStyleTable.Add(textStyleRecord);
                         tr.AddNewlyCreatedDBObject(textStyleRecord, true);
@@ -270,6 +268,50 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     throw;
                 }
             }
+        }
+
+        private static void ApplyTextStyleFont(TextStyleTableRecord rec, string fontName, string bigFontName)
+        {
+            if (rec == null) return;
+
+            string rawFont = (fontName ?? string.Empty).Trim();
+            if (IsShxFont(rawFont))
+            {
+                rec.FileName = string.IsNullOrWhiteSpace(rawFont) ? "tssdeng.shx" : rawFont;
+                rec.BigFontFileName = (bigFontName ?? string.Empty).Trim();
+                return;
+            }
+
+            string typeface = ResolveTrueTypeTypeface(rawFont);
+            rec.FileName = typeface;
+            rec.BigFontFileName = string.Empty;
+        }
+
+        private static bool IsShxFont(string fontName)
+        {
+            return !string.IsNullOrWhiteSpace(fontName)
+                && fontName.EndsWith(".shx", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveTrueTypeTypeface(string fontName)
+        {
+            if (string.IsNullOrWhiteSpace(fontName))
+                return "微软雅黑";
+
+            string value = fontName.Trim();
+            if (string.Equals(value, "msyh.ttc", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "msyh.ttf", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "微软雅黑", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "微软雅黑体", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "Microsoft YaHei", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase))
+                return "微软雅黑";
+
+            if (value.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)
+                || value.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
+                return Path.GetFileNameWithoutExtension(value);
+
+            return value;
         }
 
         // === 多重引线样式 ===

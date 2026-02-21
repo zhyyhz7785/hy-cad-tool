@@ -10,7 +10,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public string ColumnParagraphIndices { get; set; } = "";
         public double ColumnGutter { get; set; }
         public double TextSize { get; set; } = 2.5;
-        public double TextXScale { get; set; } = 0.7;
+        public double TextXScale { get; set; } = 1.0;
         public double DrawScale { get; set; } = 1.0;
         public double PreviewScale { get; set; } = 1.0;
         public double TotalHeight { get; set; } = 350;

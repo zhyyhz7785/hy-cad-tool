@@ -117,7 +117,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         // TextXScale 在回退编辑器不暴露输入框，采用“已有配置优先，缺失才回退 Settings”。
-        private double _resolvedTextXScale = 0.7;
+        private double _resolvedTextXScale = 1.0;
 
         private double _previewScale = 1.0;
         /// <summary>预览缩放比例（仅预览用）</summary>
@@ -204,7 +204,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             if (vm != null)
             {
                 _textSize = vm.TextSize;
-                _resolvedTextXScale = vm.TextXScale > 0 ? vm.TextXScale : 0.7;
+                _resolvedTextXScale = vm.TextXScale > 0 ? vm.TextXScale : 1.0;
             }
 
             InsertCommand = new RelayCmd(ExecuteInsert);
