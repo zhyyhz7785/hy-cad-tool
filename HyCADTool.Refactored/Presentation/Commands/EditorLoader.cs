@@ -594,7 +594,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 QuoteSpaceAfter = Val("QuoteSpaceAfter", 0.5),
                 FontFileName = StrVal("FontFileName", "Microsoft YaHei"),
                 BigFontFileName = StrVal("BigFontFileName", string.Empty),
-                BoldFontName = StrVal("BoldFontName", "Microsoft YaHei")
+                BoldFontName = StrVal("BoldFontName", "Microsoft YaHei"),
+                TextStyleName = StrVal("CadSyncStyleName", null)
             };
 
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings

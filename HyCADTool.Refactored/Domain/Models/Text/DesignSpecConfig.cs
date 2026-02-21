@@ -52,6 +52,8 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         // ── 字体 ──
         public string FontFileName { get; set; } = "Microsoft YaHei";
         public string BigFontFileName { get; set; } = "";
+        /// <summary>CAD 文字样式名称（来自 MarkdownEditor 时使用，如 0-hy-说明-T / 0-hy-说明-S）</summary>
+        public string TextStyleName { get; set; }
         public double TextSize { get; set; } = 2.5;        // 图纸 mm
         public double TextXScale { get; set; } = 0.7;
 

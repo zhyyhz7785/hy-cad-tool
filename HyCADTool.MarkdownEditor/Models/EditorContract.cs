@@ -93,6 +93,16 @@ namespace HyCADTool.MarkdownEditor.Models
         public string BoldFontName { get; set; } = "Microsoft YaHei";
         public string PreviewFontFamily { get; set; } = "Microsoft YaHei";
 
+        /// <summary>CAD 样式1：0-hy-说明-T，TrueType 标题/说明</summary>
+        public string StyleTName { get; set; } = "0-hy-说明-T";
+        public string StyleTFont { get; set; } = "微软雅黑";
+        /// <summary>CAD 样式2：0-hy-说明-S，SHX 标注/引线/表格</summary>
+        public string StyleSName { get; set; } = "0-hy-说明-S";
+        public string StyleSFont { get; set; } = "tssdeng.shx";
+        public string StyleSBigFont { get; set; } = "tssdchn.shx";
+        /// <summary>转入 CAD 时使用的样式名称（StyleTName 或 StyleSName）</summary>
+        public string CadSyncStyleName { get; set; } = "0-hy-说明-S";
+
         // ── 标题倍率 ──
         public double H1Scale { get; set; } = 1.6;
         public double H2Scale { get; set; } = 1.3;

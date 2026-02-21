@@ -706,10 +706,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         private ObjectId EnsureTextStyle(Database db, Transaction tr, DesignSpecConfig config)
         {
-            string styleName = $"0_Hy_{config.Scale}";
+            string styleName = !string.IsNullOrWhiteSpace(config.TextStyleName)
+                ? config.TextStyleName.Trim()
+                : $"0_Hy_{config.Scale}";
 
             var vm = SettingsPanelViewModel.Current;
-            if (vm != null) styleName = vm.TextStyleName;
+            if (string.IsNullOrWhiteSpace(styleName) && vm != null) styleName = vm.TextStyleName;
 
             var tst = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
             if (tst.Has(styleName))

@@ -1,6 +1,7 @@
 <UserControl x:Class="HyCADTool.MarkdownEditor.Views.Controls.SettingsPanelControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:HyCADTool.MarkdownEditor.ViewModels">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -63,6 +64,97 @@
                                          Text="{Binding PreviewFontFamily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThemeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8"
+                        Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="文字样式(CAD)"
+                                   Style="{StaticResource ParamLabel}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6" />
+                        <!-- 图1 风格：按钮式转入样式，显示当前样式+字体 -->
+                        <Border Background="Transparent" CornerRadius="3" Padding="6,2" Margin="0,0,0,4">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ComboBox Style="{StaticResource StyleComboBtn}" MinWidth="110"
+                                         ItemsSource="{Binding CadStyleNames}"
+                                         Text="{Binding CadSyncStyleName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEditable="True" />
+                                <TextBlock Text="{Binding CurrentSyncFontDisplay}" Margin="8,0,0,0"
+                                           FontSize="10" Foreground="{DynamicResource ThemeTextMutedBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="样式1 0-hy-说明-T（TrueType 标题/说明）" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,4,0,2" />
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="样式名称" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding StyleTName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <!-- 图2 风格：标签+圆角下拉，显示当前字体 -->
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字体名称" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Style="{StaticResource FontCombo}"
+                                     ItemsSource="{Binding Source={x:Static vm:EditorViewModel.TrueTypeFontOptions}}"
+                                     Text="{Binding StyleTFont, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEditable="True"
+                                     ToolTip="{Binding StyleTFont}" />
+                        </Grid>
+                        <TextBlock Text="样式2 0-hy-说明-S（SHX 标注/引线/表格）" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,4,0,2" />
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="样式名称" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding StyleSName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字体文件" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Style="{StaticResource FontCombo}"
+                                     ItemsSource="{Binding Source={x:Static vm:EditorViewModel.ShxFontOptions}}"
+                                     Text="{Binding StyleSFont, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEditable="True"
+                                     ToolTip="{Binding StyleSFont}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="大字体" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Style="{StaticResource FontCombo}"
+                                     ItemsSource="{Binding Source={x:Static vm:EditorViewModel.BigFontOptions}}"
+                                     Text="{Binding StyleSBigFont, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEditable="True"
+                                     ToolTip="{Binding StyleSBigFont}" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

@@ -302,6 +302,80 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
+        // ── CAD 文字样式（同步到 AutoCAD 时使用） ──
+        private string _styleTName = "0-hy-说明-T";
+        public string StyleTName
+        {
+            get => _styleTName;
+            set { if (SetProperty(ref _styleTName, (value ?? "").Trim())) OnPropertyChanged(nameof(CadStyleNames)); }
+        }
+
+        private string _styleTFont = "微软雅黑";
+        public string StyleTFont
+        {
+            get => _styleTFont;
+            set { if (SetProperty(ref _styleTFont, string.IsNullOrWhiteSpace(value) ? "微软雅黑" : value.Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+        }
+
+        private string _styleSName = "0-hy-说明-S";
+        public string StyleSName
+        {
+            get => _styleSName;
+            set { if (SetProperty(ref _styleSName, (value ?? "").Trim())) OnPropertyChanged(nameof(CadStyleNames)); }
+        }
+
+        private string _styleSFont = "tssdeng.shx";
+        public string StyleSFont
+        {
+            get => _styleSFont;
+            set { if (SetProperty(ref _styleSFont, (value ?? "").Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+        }
+
+        private string _styleSBigFont = "tssdchn.shx";
+        public string StyleSBigFont
+        {
+            get => _styleSBigFont;
+            set { if (SetProperty(ref _styleSBigFont, (value ?? "").Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+        }
+
+        /// <summary>转入 CAD 时使用的样式名称</summary>
+        private string _cadSyncStyleName = "0-hy-说明-S";
+        public string CadSyncStyleName
+        {
+            get => _cadSyncStyleName;
+            set { if (SetProperty(ref _cadSyncStyleName, (value ?? "")?.Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+        }
+
+        /// <summary>当前转入样式对应的字体文件显示（用于 UI 展示）</summary>
+        public string CurrentSyncFontDisplay =>
+            string.Equals(CadSyncStyleName, StyleTName, StringComparison.OrdinalIgnoreCase)
+                ? StyleTFont
+                : string.IsNullOrEmpty(StyleSBigFont) ? StyleSFont : $"{StyleSFont} + {StyleSBigFont}";
+
+        /// <summary>转入 CAD 时可选样式列表（StyleTName, StyleSName）</summary>
+        public IReadOnlyList<string> CadStyleNames => new[] { StyleTName, StyleSName };
+
+        /// <summary>常用 TrueType 字体（标题/说明用）— ComboBox 数据源</summary>
+        public static IReadOnlyList<string> TrueTypeFontOptions { get; } = new[]
+        {
+            "微软雅黑", "Microsoft YaHei", "宋体", "SimSun", "黑体", "SimHei",
+            "楷体", "KaiTi", "仿宋", "FangSong", "Arial", "Times New Roman",
+            "Calibri", "Consolas", "Cambria", "Tahoma", "Verdana"
+        };
+
+        /// <summary>常用 SHX 字体 — ComboBox 数据源</summary>
+        public static IReadOnlyList<string> ShxFontOptions { get; } = new[]
+        {
+            "tssdeng.shx", "tssdchn.shx", "simplex.shx", "romans.shx", "romand.shx",
+            "txt.shx", "hztxt.shx", "gbcbig.shx", "chineset.shx"
+        };
+
+        /// <summary>常用大字体（SHX 中文）— ComboBox 数据源</summary>
+        public static IReadOnlyList<string> BigFontOptions { get; } = new[]
+        {
+            "tssdchn.shx", "hztxt.shx", "gbcbig.shx", "chineset.shx"
+        };
+
         // ── 图纸幅面定义（短边 b × 长边 l） ──
         private static readonly (string Name, double Short, double Long)[] PaperDefs = new[]
         {
@@ -640,6 +714,12 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _bigFontFileName = (cfg.BigFontFileName ?? "").Trim();
             _boldFontName = string.IsNullOrWhiteSpace(cfg.BoldFontName) ? DefaultBoldFontName : cfg.BoldFontName.Trim();
             _previewFontFamily = string.IsNullOrWhiteSpace(cfg.PreviewFontFamily) ? DefaultPreviewFontFamily : cfg.PreviewFontFamily.Trim();
+            _styleTName = (cfg.StyleTName ?? "0-hy-说明-T").Trim();
+            _styleTFont = string.IsNullOrWhiteSpace(cfg.StyleTFont) ? "微软雅黑" : cfg.StyleTFont.Trim();
+            _styleSName = (cfg.StyleSName ?? "0-hy-说明-S").Trim();
+            _styleSFont = (cfg.StyleSFont ?? "tssdeng.shx").Trim();
+            _styleSBigFont = (cfg.StyleSBigFont ?? "tssdchn.shx").Trim();
+            _cadSyncStyleName = (cfg.CadSyncStyleName ?? "0-hy-说明-S").Trim();
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
@@ -738,10 +818,16 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 LiSpaceAfter = LiSpaceAfter,
                 QuoteSpaceBefore = QuoteSpaceBefore,
                 QuoteSpaceAfter = QuoteSpaceAfter,
-                FontFileName = FontFileName,
-                BigFontFileName = BigFontFileName,
+                FontFileName = string.Equals(CadSyncStyleName, StyleTName, StringComparison.OrdinalIgnoreCase) ? StyleTFont : StyleSFont,
+                BigFontFileName = string.Equals(CadSyncStyleName, StyleTName, StringComparison.OrdinalIgnoreCase) ? "" : StyleSBigFont,
                 BoldFontName = BoldFontName,
-                PreviewFontFamily = PreviewFontFamily
+                PreviewFontFamily = PreviewFontFamily,
+                StyleTName = StyleTName,
+                StyleTFont = StyleTFont,
+                StyleSName = StyleSName,
+                StyleSFont = StyleSFont,
+                StyleSBigFont = StyleSBigFont,
+                CadSyncStyleName = CadSyncStyleName
             };
         }
 
