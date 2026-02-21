@@ -120,10 +120,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                                 var mtext = new MText();
                                 mtext.SetDatabaseDefaults();
                                 mtext.Location = new Point3d(textLeftX, textTopY, insertionPoint.Z);
-                                mtext.Attachment = AttachmentPoint.TopLeft;
+                                mtext.Attachment = ParseAttachmentPoint(config.MTextAttachment);
                                 mtext.TextStyleId = textStyleId;
                                 mtext.TextHeight = config.ActualTextHeight;
-                                mtext.LineSpacingStyle = LineSpacingStyle.Exactly;
+                                mtext.LineSpacingStyle = ParseLineSpacingStyle(config.MTextLineSpacingStyle);
                                 mtext.LineSpacingFactor = config.LineSpacingFactor;
                                 mtext.Width = textWidth;
                                 mtext.Contents = content;
@@ -261,10 +261,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                                 var newMtext = new MText();
                                 newMtext.SetDatabaseDefaults();
                                 newMtext.Location = new Point3d(textLeftX, textTopY, insertPt.Z);
-                                newMtext.Attachment = AttachmentPoint.TopLeft;
+                                newMtext.Attachment = ParseAttachmentPoint(config.MTextAttachment);
                                 newMtext.TextStyleId = textStyleId;
                                 newMtext.TextHeight = config.ActualTextHeight;
-                                newMtext.LineSpacingStyle = LineSpacingStyle.Exactly;
+                                newMtext.LineSpacingStyle = ParseLineSpacingStyle(config.MTextLineSpacingStyle);
                                 newMtext.LineSpacingFactor = config.LineSpacingFactor;
                                 newMtext.Width = textWidth;
                                 newMtext.Contents = content;
@@ -719,6 +719,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 var rec = (TextStyleTableRecord)tr.GetObject(tst[styleName], OpenMode.ForWrite);
                 rec.TextSize = 0;
                 rec.XScale = config.TextXScale;
+                rec.ObliquingAngle = config.MTextObliquingAngle * Math.PI / 180.0;
                 ApplyTextStyleFont(rec, config);
                 return tst[styleName];
             }
@@ -728,7 +729,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 Name = styleName,
                 TextSize = 0,
-                XScale = config.TextXScale
+                XScale = config.TextXScale,
+                ObliquingAngle = config.MTextObliquingAngle * Math.PI / 180.0
             };
             ApplyTextStyleFont(newRec, config);
             tst.Add(newRec);
@@ -751,6 +753,29 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string fontFile = ResolveTrueTypeFontFile(rawFont);
             rec.BigFontFileName = string.Empty;
             rec.FileName = fontFile;
+        }
+
+        private static AttachmentPoint ParseAttachmentPoint(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return AttachmentPoint.TopLeft;
+            var v = value.Trim();
+            if (string.Equals(v, "TopLeft", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.TopLeft;
+            if (string.Equals(v, "TopCenter", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.TopCenter;
+            if (string.Equals(v, "TopRight", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.TopRight;
+            if (string.Equals(v, "MiddleLeft", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.MiddleLeft;
+            if (string.Equals(v, "MiddleCenter", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.MiddleCenter;
+            if (string.Equals(v, "MiddleRight", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.MiddleRight;
+            if (string.Equals(v, "BottomLeft", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.BottomLeft;
+            if (string.Equals(v, "BottomCenter", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.BottomCenter;
+            if (string.Equals(v, "BottomRight", StringComparison.OrdinalIgnoreCase)) return AttachmentPoint.BottomRight;
+            return AttachmentPoint.TopLeft;
+        }
+
+        private static LineSpacingStyle ParseLineSpacingStyle(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return LineSpacingStyle.Exactly;
+            return string.Equals(value.Trim(), "AtLeast", StringComparison.OrdinalIgnoreCase)
+                ? LineSpacingStyle.AtLeast : LineSpacingStyle.Exactly;
         }
 
         private static bool IsShxFont(string fontName)

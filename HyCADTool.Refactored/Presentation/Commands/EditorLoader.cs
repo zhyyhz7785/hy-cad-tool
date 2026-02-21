@@ -524,7 +524,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cfg.PSpaceAfter,
                 cfg.LiSpaceAfter,
                 cfg.QuoteSpaceBefore,
-                cfg.QuoteSpaceAfter
+                cfg.QuoteSpaceAfter,
+                cfg.MTextAttachment,
+                cfg.MTextLineSpacingStyle,
+                cfg.MTextObliquingAngle,
+                cfg.MTextCharSpacing,
+                cfg.MTextParagraphAlign
             };
         }
 
@@ -595,7 +600,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 FontFileName = StrVal("FontFileName", "Microsoft YaHei"),
                 BigFontFileName = StrVal("BigFontFileName", string.Empty),
                 BoldFontName = StrVal("BoldFontName", "Microsoft YaHei"),
-                TextStyleName = StrVal("CadSyncStyleName", null)
+                TextStyleName = StrVal("CadSyncStyleName", null),
+                MTextAttachment = StrVal("MTextAttachment", "TopLeft"),
+                MTextLineSpacingStyle = StrVal("MTextLineSpacingStyle", "Exactly"),
+                MTextObliquingAngle = Val("MTextObliquingAngle", 0),
+                MTextCharSpacing = Val("MTextCharSpacing", 1.0),
+                MTextParagraphAlign = StrVal("MTextParagraphAlign", "Left")
             };
 
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings

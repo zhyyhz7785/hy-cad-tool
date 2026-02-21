@@ -59,6 +59,12 @@ namespace HyCADTool.MarkdownEditor.Models
         // ── 栏 ──
         public int ColumnCount { get; set; } = 2;
         public double ColumnGutter { get; set; } = 5;
+        /// <summary>栏最大数量（1～99）</summary>
+        public int MaxColumnCount { get; set; } = 10;
+        /// <summary>最小栏宽（px）</summary>
+        public int MinColumnWidthPx { get; set; } = 80;
+        /// <summary>最小栏高（px）</summary>
+        public int MinColumnHeightPx { get; set; } = 80;
         public int[] CharsPerColumn { get; set; } = new[] { 28, 28 };
         public double TotalHeight { get; set; } = 350;
 
@@ -102,6 +108,18 @@ namespace HyCADTool.MarkdownEditor.Models
         public string StyleSBigFont { get; set; } = "tssdchn.shx";
         /// <summary>转入 CAD 时使用的样式名称（StyleTName 或 StyleSName）</summary>
         public string CadSyncStyleName { get; set; } = "0-hy-说明-S";
+
+        // ── MText 显示参数 ──
+        /// <summary>MText 对齐点：TopLeft/TopCenter/TopRight/MiddleLeft/MiddleCenter/MiddleRight/BottomLeft/BottomCenter/BottomRight</summary>
+        public string MTextAttachment { get; set; } = "TopLeft";
+        /// <summary>行间距模式：AtLeast / Exactly</summary>
+        public string MTextLineSpacingStyle { get; set; } = "Exactly";
+        /// <summary>文字倾斜角（度），-85～85</summary>
+        public double MTextObliquingAngle { get; set; } = 0;
+        /// <summary>字符间距倍数，0.75～4.0</summary>
+        public double MTextCharSpacing { get; set; } = 1.0;
+        /// <summary>段落对齐：Left/Center/Right/Justify</summary>
+        public string MTextParagraphAlign { get; set; } = "Left";
 
         // ── 标题倍率 ──
         public double H1Scale { get; set; } = 1.6;

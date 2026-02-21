@@ -586,6 +586,12 @@ namespace HyCADTool.MarkdownEditor.Views
                     UpdateRulerScale();
                     break;
 
+                case nameof(EditorViewModel.MaxColumnCount):
+                case nameof(EditorViewModel.MinColumnWidthPx):
+                case nameof(EditorViewModel.MinColumnHeightPx):
+                    SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
+                    break;
+
                 case nameof(EditorViewModel.PagePreset):
                 case nameof(EditorViewModel.IsLandscape):
                 case nameof(EditorViewModel.DrawScale):

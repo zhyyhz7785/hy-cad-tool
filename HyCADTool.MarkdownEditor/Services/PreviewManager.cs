@@ -417,7 +417,7 @@ namespace HyCADTool.MarkdownEditor.Services
             if (previewWebView?.CoreWebView2 == null)
                 return;
 
-            int nextCount = Math.Max(1, Math.Min(10, columnCount));
+            int nextCount = Math.Max(1, columnCount);
             double gapPx = ComputePaperColumnGapPx(columnGutter, previewScale);
             string countJson = JsonConvert.SerializeObject(nextCount);
             string gapJson = JsonConvert.SerializeObject(Math.Round(gapPx, 2));

@@ -19,6 +19,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         private const double DefaultDrawScale = 1.0;
         private const int DefaultColumnCount = 2;
         private const double DefaultColumnGutter = 5;
+        private const int DefaultMaxColumnCount = 10;
+        private const int DefaultMinColumnWidthPx = 80;
+        private const int DefaultMinColumnHeightPx = 80;
         private const double DefaultTextSize = 2.5;
         private const double DefaultTextXScale = 0.7;
         private const double DefaultPreviewScale = 1.0;
@@ -158,7 +161,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             get => _columnCount;
             set
             {
-                if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(10, value))))
+                int maxCol = Math.Max(1, Math.Min(99, _maxColumnCount));
+                if (SetProperty(ref _columnCount, Math.Max(1, Math.Min(maxCol, value))))
                 {
                     _previewConfig.ColumnCount = _columnCount;
                     UpdateStatus();
@@ -185,6 +189,48 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             {
                 if (SetProperty(ref _columnParagraphIndices, value ?? ""))
                     _previewConfig.ColumnParagraphIndices = _columnParagraphIndices;
+            }
+        }
+
+        private int _maxColumnCount = DefaultMaxColumnCount;
+        public int MaxColumnCount
+        {
+            get => _maxColumnCount;
+            set
+            {
+                if (SetProperty(ref _maxColumnCount, Math.Max(1, Math.Min(99, value))))
+                {
+                    int maxCol = Math.Max(1, Math.Min(99, _maxColumnCount));
+                    if (_columnCount > maxCol)
+                    {
+                        _columnCount = maxCol;
+                        OnPropertyChanged(nameof(ColumnCount));
+                        _previewConfig.ColumnCount = _columnCount;
+                    }
+                    UpdateStatus();
+                }
+            }
+        }
+
+        private int _minColumnWidthPx = DefaultMinColumnWidthPx;
+        public int MinColumnWidthPx
+        {
+            get => _minColumnWidthPx;
+            set
+            {
+                if (SetProperty(ref _minColumnWidthPx, Math.Max(20, Math.Min(500, value))))
+                    UpdateStatus();
+            }
+        }
+
+        private int _minColumnHeightPx = DefaultMinColumnHeightPx;
+        public int MinColumnHeightPx
+        {
+            get => _minColumnHeightPx;
+            set
+            {
+                if (SetProperty(ref _minColumnHeightPx, Math.Max(20, Math.Min(500, value))))
+                    UpdateStatus();
             }
         }
 
@@ -307,35 +353,70 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public string StyleTName
         {
             get => _styleTName;
-            set { if (SetProperty(ref _styleTName, (value ?? "").Trim())) OnPropertyChanged(nameof(CadStyleNames)); }
+            set
+            {
+                if (SetProperty(ref _styleTName, (value ?? "").Trim()))
+                {
+                    OnPropertyChanged(nameof(CadStyleNames));
+                    OnPropertyChanged(nameof(CurrentCadStyleFileDisplay));
+                }
+            }
         }
 
         private string _styleTFont = "微软雅黑";
         public string StyleTFont
         {
             get => _styleTFont;
-            set { if (SetProperty(ref _styleTFont, string.IsNullOrWhiteSpace(value) ? "微软雅黑" : value.Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+            set
+            {
+                if (SetProperty(ref _styleTFont, string.IsNullOrWhiteSpace(value) ? "微软雅黑" : value.Trim()))
+                {
+                    OnPropertyChanged(nameof(CurrentCadStyleFileDisplay));
+                    OnPropertyChanged(nameof(StyleTFontOptionsWithCurrent));
+                }
+            }
         }
 
         private string _styleSName = "0-hy-说明-S";
         public string StyleSName
         {
             get => _styleSName;
-            set { if (SetProperty(ref _styleSName, (value ?? "").Trim())) OnPropertyChanged(nameof(CadStyleNames)); }
+            set
+            {
+                if (SetProperty(ref _styleSName, (value ?? "").Trim()))
+                {
+                    OnPropertyChanged(nameof(CadStyleNames));
+                    OnPropertyChanged(nameof(CurrentCadStyleFileDisplay));
+                }
+            }
         }
 
         private string _styleSFont = "tssdeng.shx";
         public string StyleSFont
         {
             get => _styleSFont;
-            set { if (SetProperty(ref _styleSFont, (value ?? "").Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+            set
+            {
+                if (SetProperty(ref _styleSFont, (value ?? "").Trim()))
+                {
+                    OnPropertyChanged(nameof(CurrentCadStyleFileDisplay));
+                    OnPropertyChanged(nameof(StyleSFontOptionsWithCurrent));
+                }
+            }
         }
 
         private string _styleSBigFont = "tssdchn.shx";
         public string StyleSBigFont
         {
             get => _styleSBigFont;
-            set { if (SetProperty(ref _styleSBigFont, (value ?? "").Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+            set
+            {
+                if (SetProperty(ref _styleSBigFont, (value ?? "").Trim()))
+                {
+                    OnPropertyChanged(nameof(CurrentCadStyleFileDisplay));
+                    OnPropertyChanged(nameof(StyleSBigFontOptionsWithCurrent));
+                }
+            }
         }
 
         /// <summary>转入 CAD 时使用的样式名称</summary>
@@ -343,17 +424,66 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public string CadSyncStyleName
         {
             get => _cadSyncStyleName;
-            set { if (SetProperty(ref _cadSyncStyleName, (value ?? "")?.Trim())) OnPropertyChanged(nameof(CurrentSyncFontDisplay)); }
+            set
+            {
+                if (SetProperty(ref _cadSyncStyleName, (value ?? "").Trim()))
+                    OnPropertyChanged(nameof(CurrentCadStyleFileDisplay));
+            }
         }
 
-        /// <summary>当前转入样式对应的字体文件显示（用于 UI 展示）</summary>
-        public string CurrentSyncFontDisplay =>
-            string.Equals(CadSyncStyleName, StyleTName, StringComparison.OrdinalIgnoreCase)
-                ? StyleTFont
-                : string.IsNullOrEmpty(StyleSBigFont) ? StyleSFont : $"{StyleSFont} + {StyleSBigFont}";
+        /// <summary>点击转入样式按钮时在 StyleTName 与 StyleSName 之间切换</summary>
+        public ICommand ToggleCadSyncStyleCommand { get; }
+
+        // ── MText 显示参数 ──
+        private string _mTextAttachment = "TopLeft";
+        public string MTextAttachment
+        {
+            get => _mTextAttachment;
+            set => SetProperty(ref _mTextAttachment, string.IsNullOrWhiteSpace(value) ? "TopLeft" : value.Trim());
+        }
+
+        private string _mTextLineSpacingStyle = "Exactly";
+        public string MTextLineSpacingStyle
+        {
+            get => _mTextLineSpacingStyle;
+            set => SetProperty(ref _mTextLineSpacingStyle, string.IsNullOrWhiteSpace(value) ? "Exactly" : value.Trim());
+        }
+
+        private double _mTextObliquingAngle = 0;
+        public double MTextObliquingAngle
+        {
+            get => _mTextObliquingAngle;
+            set => SetProperty(ref _mTextObliquingAngle, Math.Max(-85, Math.Min(85, value)));
+        }
+
+        private double _mTextCharSpacing = 1.0;
+        public double MTextCharSpacing
+        {
+            get => _mTextCharSpacing;
+            set => SetProperty(ref _mTextCharSpacing, Math.Max(0.75, Math.Min(4.0, value)));
+        }
+
+        private string _mTextParagraphAlign = "Left";
+        public string MTextParagraphAlign
+        {
+            get => _mTextParagraphAlign;
+            set => SetProperty(ref _mTextParagraphAlign, string.IsNullOrWhiteSpace(value) ? "Left" : value.Trim());
+        }
 
         /// <summary>转入 CAD 时可选样式列表（StyleTName, StyleSName）</summary>
         public IReadOnlyList<string> CadStyleNames => new[] { StyleTName, StyleSName };
+
+        /// <summary>当前选中样式对应的字体文件显示文本。</summary>
+        public string CurrentCadStyleFileDisplay
+        {
+            get
+            {
+                if (string.Equals(CadSyncStyleName, StyleTName, StringComparison.OrdinalIgnoreCase))
+                    return $"{StyleTName}  ->  {StyleTFont} (TrueType)";
+                return $"{StyleSName}  ->  {StyleSFont}" +
+                    (string.IsNullOrWhiteSpace(StyleSBigFont) ? string.Empty : $" + {StyleSBigFont}");
+            }
+        }
 
         /// <summary>常用 TrueType 字体（标题/说明用）— ComboBox 数据源</summary>
         public static IReadOnlyList<string> TrueTypeFontOptions { get; } = new[]
@@ -375,6 +505,33 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         {
             "tssdchn.shx", "hztxt.shx", "gbcbig.shx", "chineset.shx"
         };
+
+        /// <summary>TrueType 字体选项（含当前值，确保 ComboBox 能正确显示当前选择）</summary>
+        public IReadOnlyList<string> StyleTFontOptionsWithCurrent =>
+            TrueTypeFontOptions.Contains(_styleTFont)
+                ? TrueTypeFontOptions
+                : new[] { _styleTFont }.Concat(TrueTypeFontOptions).ToArray();
+
+        /// <summary>SHX 字体选项（含当前值）</summary>
+        public IReadOnlyList<string> StyleSFontOptionsWithCurrent =>
+            ShxFontOptions.Contains(_styleSFont)
+                ? ShxFontOptions
+                : new[] { _styleSFont }.Concat(ShxFontOptions).ToArray();
+
+        /// <summary>大字体选项（含当前值）</summary>
+        public IReadOnlyList<string> StyleSBigFontOptionsWithCurrent =>
+            BigFontOptions.Contains(_styleSBigFont)
+                ? BigFontOptions
+                : new[] { _styleSBigFont }.Concat(BigFontOptions).ToArray();
+
+        public IReadOnlyList<string> MTextAttachmentOptions => new[]
+        {
+            "TopLeft", "TopCenter", "TopRight",
+            "MiddleLeft", "MiddleCenter", "MiddleRight",
+            "BottomLeft", "BottomCenter", "BottomRight"
+        };
+        public IReadOnlyList<string> MTextLineSpacingStyleOptions => new[] { "AtLeast", "Exactly" };
+        public IReadOnlyList<string> MTextParagraphAlignOptions => new[] { "Left", "Center", "Right", "Justify" };
 
         // ── 图纸幅面定义（短边 b × 长边 l） ──
         private static readonly (string Name, double Short, double Long)[] PaperDefs = new[]
@@ -656,6 +813,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             LoadFileCommand = new RelayCmd(ExecuteLoad);
             SaveFileCommand = new RelayCmd(ExecuteSave);
             EditorActionCommand = new AsyncRelayCmd(ExecuteEditorActionAsync);
+            ToggleCadSyncStyleCommand = new RelayCmd(ToggleCadSyncStyle);
             _markdownText = DefaultMarkdown;
             _content.SetMarkdown(_markdownText);
             _content.SetCurrentFilePath(_currentFilePath);
@@ -687,7 +845,11 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
             _totalHeight = cfg.TotalHeight;
             _scale = cfg.DrawScale;
-            _columnCount = Math.Max(1, Math.Min(10, cfg.ColumnCount));
+            _maxColumnCount = cfg.MaxColumnCount > 0 ? Math.Max(1, Math.Min(99, cfg.MaxColumnCount)) : DefaultMaxColumnCount;
+            _minColumnWidthPx = cfg.MinColumnWidthPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnWidthPx)) : DefaultMinColumnWidthPx;
+            _minColumnHeightPx = cfg.MinColumnHeightPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnHeightPx)) : DefaultMinColumnHeightPx;
+            int maxCol = Math.Max(1, _maxColumnCount);
+            _columnCount = Math.Max(1, Math.Min(maxCol, cfg.ColumnCount));
             _columnGutter = cfg.ColumnGutter;
             _textSize = cfg.TextSize;
             _textXScale = cfg.TextXScale;
@@ -720,6 +882,11 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _styleSFont = (cfg.StyleSFont ?? "tssdeng.shx").Trim();
             _styleSBigFont = (cfg.StyleSBigFont ?? "tssdchn.shx").Trim();
             _cadSyncStyleName = (cfg.CadSyncStyleName ?? "0-hy-说明-S").Trim();
+            _mTextAttachment = string.IsNullOrWhiteSpace(cfg.MTextAttachment) ? "TopLeft" : cfg.MTextAttachment.Trim();
+            _mTextLineSpacingStyle = string.IsNullOrWhiteSpace(cfg.MTextLineSpacingStyle) ? "Exactly" : cfg.MTextLineSpacingStyle.Trim();
+            _mTextObliquingAngle = Math.Max(-85, Math.Min(85, cfg.MTextObliquingAngle));
+            _mTextCharSpacing = Math.Max(0.75, Math.Min(4.0, cfg.MTextCharSpacing));
+            _mTextParagraphAlign = string.IsNullOrWhiteSpace(cfg.MTextParagraphAlign) ? "Left" : cfg.MTextParagraphAlign.Trim();
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
@@ -794,6 +961,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 ColumnCount = ColumnCount,
                 CharsPerColumn = cpc,
                 ColumnGutter = ColumnGutter,
+                MaxColumnCount = MaxColumnCount,
+                MinColumnWidthPx = MinColumnWidthPx,
+                MinColumnHeightPx = MinColumnHeightPx,
                 TextSize = TextSize,
                 TextXScale = TextXScale,
                 PreviewScale = PreviewScale,
@@ -827,7 +997,12 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 StyleSName = StyleSName,
                 StyleSFont = StyleSFont,
                 StyleSBigFont = StyleSBigFont,
-                CadSyncStyleName = CadSyncStyleName
+                CadSyncStyleName = CadSyncStyleName,
+                MTextAttachment = MTextAttachment,
+                MTextLineSpacingStyle = MTextLineSpacingStyle,
+                MTextObliquingAngle = MTextObliquingAngle,
+                MTextCharSpacing = MTextCharSpacing,
+                MTextParagraphAlign = MTextParagraphAlign
             };
         }
 
@@ -876,6 +1051,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         public void ResetLayoutDefaults()
         {
             DrawScale = DefaultDrawScale;
+            MaxColumnCount = DefaultMaxColumnCount;
+            MinColumnWidthPx = DefaultMinColumnWidthPx;
+            MinColumnHeightPx = DefaultMinColumnHeightPx;
             ColumnCount = DefaultColumnCount;
             ColumnGutter = DefaultColumnGutter;
             TextSize = DefaultTextSize;
@@ -980,6 +1158,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 case "Link": await _jsHelper.InsertLinkAsync(); break;
                 case "ClearFormatting": await _jsHelper.ClearFormattingAsync(); break;
             }
+        }
+
+        private void ToggleCadSyncStyle()
+        {
+            CadSyncStyleName = string.Equals(CadSyncStyleName, StyleTName, StringComparison.OrdinalIgnoreCase)
+                ? StyleSName
+                : StyleTName;
         }
 
         private void ExecuteLoad()

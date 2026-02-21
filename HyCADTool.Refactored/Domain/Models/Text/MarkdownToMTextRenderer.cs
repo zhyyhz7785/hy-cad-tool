@@ -41,10 +41,14 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
             var document = Markdown.Parse(markdown, pipeline);
 
-            // 全局默认：设置基础字高和宽度系数，包裹整个内容
+            // 全局默认：设置基础字高、宽度系数、字符间距、倾斜角，包裹整个内容
             string hStr = F(_config.ActualTextHeight);
             string wStr = F(_config.TextXScale);
             _sb.Append("{\\H").Append(hStr).Append(";\\W").Append(wStr).Append(";");
+            if (_config.MTextCharSpacing >= 0.75 && _config.MTextCharSpacing <= 4.0)
+                _sb.Append("\\T").Append(F(_config.MTextCharSpacing)).Append(";");
+            if (Math.Abs(_config.MTextObliquingAngle) > 0.01)
+                _sb.Append("\\Q").Append(F(_config.MTextObliquingAngle)).Append(";");
 
             foreach (var block in document)
             {
@@ -228,6 +232,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             double spaceAfter = _config.ActualQuoteSpaceAfter;
             string indentInch = F(_config.ActualQuoteIndent / 25.4);
 
+            AppendParagraphAlign();
             // 引用块段前段后 + 左缩进
             string bInch = F(spaceBefore / 25.4);
             string aInch = F(spaceAfter / 25.4);
@@ -423,11 +428,28 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         #region 工具方法
 
         /// <summary>
+        /// 输出段落对齐格式码 \pxql/qr/qc/qj
+        /// </summary>
+        private void AppendParagraphAlign()
+        {
+            var align = (_config.MTextParagraphAlign ?? "Left").Trim();
+            if (string.Equals(align, "Center", StringComparison.OrdinalIgnoreCase))
+                _sb.Append("\\pxqc;");
+            else if (string.Equals(align, "Right", StringComparison.OrdinalIgnoreCase))
+                _sb.Append("\\pxqr;");
+            else if (string.Equals(align, "Justify", StringComparison.OrdinalIgnoreCase))
+                _sb.Append("\\pxqj;");
+            else
+                _sb.Append("\\pxql;");
+        }
+
+        /// <summary>
         /// 输出 \pxi 段前段后间距格式码
         /// b=段前（英寸），a=段后（英寸），值为0时省略
         /// </summary>
         private void AppendParaSpacing(double beforeMm, double afterMm)
         {
+            AppendParagraphAlign();
             if (beforeMm <= 0 && afterMm <= 0) return;
 
             _sb.Append("\\pxi0");

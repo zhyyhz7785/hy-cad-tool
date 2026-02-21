@@ -73,7 +73,10 @@ namespace HyCADTool.MarkdownEditor.Html
                 ? "<p class=\"empty\">(无内容)</p>"
                 : Markdown.ToHtml(preprocessed, Pipeline);
             EditorConfig cfg = config ?? new EditorConfig();
-            int cols = Math.Max(1, Math.Min(10, columnCount));
+            int maxCol = cfg.MaxColumnCount > 0 ? Math.Max(1, Math.Min(99, cfg.MaxColumnCount)) : 10;
+            int minColWidthPx = cfg.MinColumnWidthPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnWidthPx)) : 80;
+            int minColHeightPx = cfg.MinColumnHeightPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnHeightPx)) : 80;
+            int cols = Math.Max(1, Math.Min(maxCol, columnCount));
             double scale = Math.Max(0.1, Math.Min(5.0, previewScale));
             double textSizeMm = Math.Max(0.1, cfg.TextSize);
             double textXScale = Math.Max(0.1, cfg.TextXScale);
@@ -145,7 +148,7 @@ body{
   flex:1;
   padding-top:/*FLOW_BORDER_WIDTH*/;
   padding-bottom:/*FLOW_BORDER_WIDTH*/;
-  min-width:80px;
+  min-width:/*FLOW_MIN_COLUMN_WIDTH_PX*/px;
   min-height:0;
   overflow:hidden;
 }
@@ -170,7 +173,7 @@ body{
 }
 .col-content{
   flex:none;
-  min-height:80px;
+  min-height:/*FLOW_MIN_COLUMN_HEIGHT_PX*/px;
   overflow:hidden;
   padding:/*FLOW_CONTENT_PAD_PX*/;
   transform-origin:left top;
@@ -317,6 +320,9 @@ var COLUMN_GAP=/*FLOW_GAP_NUM*/;
 var HANDLE_WIDTH=/*FLOW_HANDLE_WIDTH_NUM*/;
 var FRAME_BORDER_WIDTH=/*FLOW_BORDER_WIDTH_NUM*/;
 var CONTENT_PADDING_X=/*FLOW_CONTENT_PADDING_X*/;
+var MAX_COLUMN_COUNT=/*FLOW_MAX_COLUMN_COUNT*/;
+var MIN_COLUMN_WIDTH_PX=/*FLOW_MIN_COLUMN_WIDTH_PX*/;
+var MIN_COLUMN_HEIGHT_PX=/*FLOW_MIN_COLUMN_HEIGHT_PX*/;
 
 var sourceRoot=null;
 var pagesFlowEl=null;
@@ -502,11 +508,11 @@ function resetColumnCaches(){
 
 function getDefaultColumnWidth(){
   var totalGap=Math.max(0,COLUMN_COUNT-1)*COLUMN_GAP;
-  return Math.max(80, (getInnerWidth()-totalGap)/Math.max(1,COLUMN_COUNT));
+  return Math.max(MIN_COLUMN_WIDTH_PX, (getInnerWidth()-totalGap)/Math.max(1,COLUMN_COUNT));
 }
 
 function getDefaultColumnHeight(){
-  return Math.max(80, getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2);
+  return Math.max(MIN_COLUMN_HEIGHT_PX, getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2);
 }
 
 function normalizeColumnCaches(){
@@ -520,9 +526,9 @@ function normalizeColumnCaches(){
   if(columnTopOffsets.length>COLUMN_COUNT) columnTopOffsets.length=COLUMN_COUNT;
   var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
   for(var i=0;i<COLUMN_COUNT;i++){
-    columnWidths[i]=Math.max(80,columnWidths[i]);
-    columnTopOffsets[i]=Math.max(0, Math.min(maxInner-80, columnTopOffsets[i]||0));
-    columnHeights[i]=Math.max(80, Math.min(maxInner-columnTopOffsets[i], columnHeights[i]));
+    columnWidths[i]=Math.max(MIN_COLUMN_WIDTH_PX,columnWidths[i]);
+    columnTopOffsets[i]=Math.max(0, Math.min(maxInner-MIN_COLUMN_HEIGHT_PX, columnTopOffsets[i]||0));
+    columnHeights[i]=Math.max(MIN_COLUMN_HEIGHT_PX, Math.min(maxInner-columnTopOffsets[i], columnHeights[i]));
   }
 }
 
@@ -1685,7 +1691,7 @@ function applyGeometryFinal(){
 }
 
 function setPaperColumnLayout(columnCount, gapPx){
-  var nextCount=Math.round(clampNumber(columnCount,1,10,COLUMN_COUNT));
+  var nextCount=Math.round(clampNumber(columnCount,1,MAX_COLUMN_COUNT,COLUMN_COUNT));
   var nextGap=clampNumber(gapPx,6,260,COLUMN_GAP);
   var bookmark=captureCaretBookmark(getActionTargetColumn());
   COLUMN_GAP=nextGap;
@@ -1827,9 +1833,9 @@ document.addEventListener('mousemove', function(ev){
     var dx=ev.clientX-dragStartX;
     var left=dragStartState.columnWidths[idx]+dx;
     var right=dragStartState.columnWidths[idx+1]-dx;
-    if(left<80){ right -= (80-left); left=80; }
-    if(right<80){ left -= (80-right); right=80; }
-    if(left<80 || right<80) return;
+    if(left<MIN_COLUMN_WIDTH_PX){ right -= (MIN_COLUMN_WIDTH_PX-left); left=MIN_COLUMN_WIDTH_PX; }
+    if(right<MIN_COLUMN_WIDTH_PX){ left -= (MIN_COLUMN_WIDTH_PX-right); right=MIN_COLUMN_WIDTH_PX; }
+    if(left<MIN_COLUMN_WIDTH_PX || right<MIN_COLUMN_WIDTH_PX) return;
     columnWidths[idx]=left;
     columnWidths[idx+1]=right;
     syncColumnSizesToDom();
@@ -1841,9 +1847,9 @@ document.addEventListener('mousemove', function(ev){
     var origOff=dragStartState.columnTopOffsets[ci]||0;
     var origH=dragStartState.columnHeights[ci];
     var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
-    var newOff=Math.max(0, Math.min(maxInner-80, origOff+dy));
+    var newOff=Math.max(0, Math.min(maxInner-MIN_COLUMN_HEIGHT_PX, origOff+dy));
     var deltaOff=newOff-origOff;
-    var newH=Math.max(80, Math.min(maxInner-newOff, origH-deltaOff));
+    var newH=Math.max(MIN_COLUMN_HEIGHT_PX, Math.min(maxInner-newOff, origH-deltaOff));
     columnTopOffsets[ci]=newOff;
     columnHeights[ci]=newH;
     syncColumnSizesToDom();
@@ -1855,7 +1861,7 @@ document.addEventListener('mousemove', function(ev){
     var h0=dragStartState.columnHeights[ci];
     var off=columnTopOffsets[ci]||0;
     var maxH=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2-off;
-    columnHeights[ci]=Math.max(80,Math.min(maxH, h0+dy));
+    columnHeights[ci]=Math.max(MIN_COLUMN_HEIGHT_PX,Math.min(maxH, h0+dy));
     syncColumnSizesToDom();
     rebuildPreviewStats();
   }else if(dragMode==='paper-right' || dragMode==='paper-bottom' || dragMode==='paper-corner'){
@@ -1981,7 +1987,9 @@ else{window.onload=init;}
                 .Replace("/*FLOW_BORDER_WIDTH*/", $"{borderWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_HANDLE_WIDTH*/", $"{handleWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_HANDLE_ACTIVE_WIDTH*/", $"{handleActiveWidth.ToString("0.###", CultureInfo.InvariantCulture)}px")
-                .Replace("/*FLOW_CONTENT_PAD_PX*/", $"{contentPadPx.ToString("0.###", CultureInfo.InvariantCulture)}px");
+                .Replace("/*FLOW_CONTENT_PAD_PX*/", $"{contentPadPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
+                .Replace("/*FLOW_MIN_COLUMN_WIDTH_PX*/", minColWidthPx.ToString(CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_MIN_COLUMN_HEIGHT_PX*/", minColHeightPx.ToString(CultureInfo.InvariantCulture));
 
             string flowJs = flowJsTemplate
                 .Replace("/*FLOW_PREVIEW_SCALE*/", scale.ToString("0.#####", CultureInfo.InvariantCulture))
@@ -1996,7 +2004,10 @@ else{window.onload=init;}
                 .Replace("/*FLOW_GAP_NUM*/", gapPx.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_HANDLE_WIDTH_NUM*/", handleWidth.ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_BORDER_WIDTH_NUM*/", borderWidth.ToString("0.#####", CultureInfo.InvariantCulture))
-                .Replace("/*FLOW_CONTENT_PADDING_X*/", (contentPadPx * 2.0).ToString("0.#####", CultureInfo.InvariantCulture));
+                .Replace("/*FLOW_CONTENT_PADDING_X*/", (contentPadPx * 2.0).ToString("0.#####", CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_MAX_COLUMN_COUNT*/", maxCol.ToString(CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_MIN_COLUMN_WIDTH_PX*/", minColWidthPx.ToString(CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_MIN_COLUMN_HEIGHT_PX*/", minColHeightPx.ToString(CultureInfo.InvariantCulture));
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"

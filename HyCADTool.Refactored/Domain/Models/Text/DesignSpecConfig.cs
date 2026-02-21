@@ -60,6 +60,18 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         // ── 粗体用字体（SHX 不支持 Bold，切 TTF 模拟） ──
         public string BoldFontName { get; set; } = "Microsoft YaHei";
 
+        // ── MText 显示参数 ──
+        /// <summary>MText 对齐点：TopLeft/TopCenter/.../BottomRight</summary>
+        public string MTextAttachment { get; set; } = "TopLeft";
+        /// <summary>行间距模式：AtLeast / Exactly</summary>
+        public string MTextLineSpacingStyle { get; set; } = "Exactly";
+        /// <summary>文字倾斜角（度），-85～85</summary>
+        public double MTextObliquingAngle { get; set; } = 0;
+        /// <summary>字符间距倍数，0.75～4.0</summary>
+        public double MTextCharSpacing { get; set; } = 1.0;
+        /// <summary>段落对齐：Left/Center/Right/Justify</summary>
+        public string MTextParagraphAlign { get; set; } = "Left";
+
         // ── 计算属性（× Scale → 模型空间 mm） ──
 
         public double ActualTextHeight => TextSize * Scale;
@@ -208,6 +220,8 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             MarginTopMm = Math.Max(0, MarginTopMm);
             MarginBottomMm = Math.Max(0, MarginBottomMm);
             ColumnInnerPaddingMm = Math.Max(0, ColumnInnerPaddingMm);
+            MTextObliquingAngle = Math.Max(-85, Math.Min(85, MTextObliquingAngle));
+            MTextCharSpacing = Math.Max(0.75, Math.Min(4.0, MTextCharSpacing));
 
             if (CharsPerColumn == null || CharsPerColumn.Length == 0)
             {
