@@ -304,6 +304,7 @@ namespace HyCADTool.MarkdownEditor.Views
                     OnEditorContentLoadRequested("");
                 },
                 OnTogglePageOrientationRequested = OnTogglePageOrientation,
+                OnToggleColumnHeightSyncRequested = OnToggleColumnHeightSync,
                 OnResetLayoutRequestedAsync = OnResetLayoutRequestedAsync,
                 OnPreviousPageRequestedAsync = () => ShiftPreviewPageAsync(-1),
                 OnNextPageRequestedAsync = () => ShiftPreviewPageAsync(1),
@@ -691,6 +692,11 @@ namespace HyCADTool.MarkdownEditor.Views
                     UpdateRulerScale();
                     break;
 
+                case nameof(EditorViewModel.IsColumnHeightSync):
+                    ScheduleConfigSave();
+                    _ = ApplyColumnHeightSyncAsync();
+                    break;
+
                 case nameof(EditorViewModel.MaxColumnCount):
                 case nameof(EditorViewModel.MinColumnWidthPx):
                 case nameof(EditorViewModel.MinColumnHeightPx):
@@ -917,6 +923,12 @@ namespace HyCADTool.MarkdownEditor.Views
         {
             ViewModel.IsLandscape = !ViewModel.IsLandscape;
             ViewModel.StatusText = $"图纸方向：{ViewModel.PageOrientationLabel}";
+        }
+
+        private void OnToggleColumnHeightSync()
+        {
+            ViewModel.IsColumnHeightSync = !ViewModel.IsColumnHeightSync;
+            ViewModel.StatusText = $"栏高度模式：{ViewModel.ColumnHeightSyncLabel}";
         }
 
         private async Task ShiftPreviewPageAsync(int delta)
@@ -1240,6 +1252,20 @@ namespace HyCADTool.MarkdownEditor.Views
         private async Task ApplyPaperColumnLayoutAsync()
         {
             await _previewInteractions.ApplyPaperColumnLayoutAsync();
+        }
+
+        private async Task ApplyColumnHeightSyncAsync()
+        {
+            try
+            {
+                await _previewManager.ApplyColumnHeightSyncAsync(
+                    _previewPanel.PreviewWebViewControl,
+                    ViewModel.IsColumnHeightSync);
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(ApplyColumnHeightSyncAsync), ex);
+            }
         }
 
         private async Task ApplyPaperGeometryAsync()

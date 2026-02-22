@@ -325,6 +325,7 @@ var CONTENT_PADDING_X=/*FLOW_CONTENT_PADDING_X*/;
 var MAX_COLUMN_COUNT=/*FLOW_MAX_COLUMN_COUNT*/;
 var MIN_COLUMN_WIDTH_PX=/*FLOW_MIN_COLUMN_WIDTH_PX*/;
 var MIN_COLUMN_HEIGHT_PX=/*FLOW_MIN_COLUMN_HEIGHT_PX*/;
+var COLUMN_HEIGHT_SYNC=/*FLOW_COLUMN_HEIGHT_SYNC*/;
 
 var sourceRoot=null;
 var pagesFlowEl=null;
@@ -363,6 +364,8 @@ var dragStartState=null;
 var columnWidths=[];
 var columnHeights=[];
 var columnTopOffsets=[];
+var pageColumnHeights={};
+var pageColumnTopOffsets={};
 
 window.colChars=[];
 window.colParas=[];
@@ -485,6 +488,96 @@ function getInnerHeight(){
   return Math.max(100, PAPER_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM);
 }
 
+function getPageColKey(pageIndex,colIndex){
+  return String(pageIndex) + '_' + String(colIndex);
+}
+
+function clearPerPageColumnLayoutCaches(){
+  pageColumnHeights={};
+  pageColumnTopOffsets={};
+}
+
+function getColumnTopOffsetForPage(pageIndex,colIndex){
+  var idx=Math.max(0, Math.min(COLUMN_COUNT-1, Number(colIndex)||0));
+  var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
+  if(COLUMN_HEIGHT_SYNC){
+    return Math.max(0, Math.min(maxInner-MIN_COLUMN_HEIGHT_PX, columnTopOffsets[idx]||0));
+  }
+  var key=getPageColKey(pageIndex, idx);
+  var raw=pageColumnTopOffsets.hasOwnProperty(key) ? Number(pageColumnTopOffsets[key]) : Number(columnTopOffsets[idx]||0);
+  if(!isFinite(raw)) raw=0;
+  return Math.max(0, Math.min(maxInner-MIN_COLUMN_HEIGHT_PX, raw));
+}
+
+function getColumnHeightForPage(pageIndex,colIndex){
+  var idx=Math.max(0, Math.min(COLUMN_COUNT-1, Number(colIndex)||0));
+  var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
+  var top=getColumnTopOffsetForPage(pageIndex, idx);
+  if(COLUMN_HEIGHT_SYNC){
+    return Math.max(MIN_COLUMN_HEIGHT_PX, Math.min(maxInner-top, columnHeights[idx]||MIN_COLUMN_HEIGHT_PX));
+  }
+  var key=getPageColKey(pageIndex, idx);
+  var raw=pageColumnHeights.hasOwnProperty(key) ? Number(pageColumnHeights[key]) : Number(columnHeights[idx]||MIN_COLUMN_HEIGHT_PX);
+  if(!isFinite(raw)) raw=columnHeights[idx]||MIN_COLUMN_HEIGHT_PX;
+  return Math.max(MIN_COLUMN_HEIGHT_PX, Math.min(maxInner-top, raw));
+}
+
+function setColumnTopOffsetForPage(pageIndex,colIndex,value){
+  var idx=Math.max(0, Math.min(COLUMN_COUNT-1, Number(colIndex)||0));
+  var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
+  var next=Math.max(0, Math.min(maxInner-MIN_COLUMN_HEIGHT_PX, Number(value)||0));
+  if(COLUMN_HEIGHT_SYNC){
+    columnTopOffsets[idx]=next;
+    return;
+  }
+  pageColumnTopOffsets[getPageColKey(pageIndex, idx)]=next;
+}
+
+function setColumnHeightForPage(pageIndex,colIndex,value){
+  var idx=Math.max(0, Math.min(COLUMN_COUNT-1, Number(colIndex)||0));
+  var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
+  var top=getColumnTopOffsetForPage(pageIndex, idx);
+  var next=Math.max(MIN_COLUMN_HEIGHT_PX, Math.min(maxInner-top, Number(value)||MIN_COLUMN_HEIGHT_PX));
+  if(COLUMN_HEIGHT_SYNC){
+    columnHeights[idx]=next;
+    return;
+  }
+  pageColumnHeights[getPageColKey(pageIndex, idx)]=next;
+}
+
+function syncPerPageHeightsFromGlobal(){
+  for(var p=0;p<Math.max(1,pageInners.length);p++){
+    for(var c=0;c<COLUMN_COUNT;c++){
+      pageColumnTopOffsets[getPageColKey(p,c)]=Math.max(0, columnTopOffsets[c]||0);
+      pageColumnHeights[getPageColKey(p,c)]=Math.max(MIN_COLUMN_HEIGHT_PX, columnHeights[c]||MIN_COLUMN_HEIGHT_PX);
+    }
+  }
+}
+
+function applyPageHeightsToGlobal(pageIndex){
+  var page=Math.max(0, Number(pageIndex)||0);
+  for(var c=0;c<COLUMN_COUNT;c++){
+    columnTopOffsets[c]=getColumnTopOffsetForPage(page,c);
+    columnHeights[c]=getColumnHeightForPage(page,c);
+  }
+  normalizeColumnCaches();
+}
+
+function resolveHandlePageIndex(node){
+  var cur=node;
+  while(cur){
+    if(cur.getAttribute){
+      var raw=cur.getAttribute('data-page-index');
+      if(raw!==null){
+        var parsed=parseInt(raw,10);
+        if(isFinite(parsed) && parsed>=0) return parsed;
+      }
+    }
+    cur=cur.parentNode;
+  }
+  return Math.max(0, currentPageIndex||0);
+}
+
 function ensureMarginBounds(){
   var maxH=Math.max(0, PAPER_WIDTH-120);
   var maxV=Math.max(0, PAPER_HEIGHT-100);
@@ -506,6 +599,7 @@ function resetColumnCaches(){
   columnWidths=[];
   columnHeights=[];
   columnTopOffsets=[];
+  clearPerPageColumnLayoutCaches();
 }
 
 function getDefaultColumnWidth(){
@@ -542,6 +636,7 @@ function redistributeColumnWidthsEvenly(){
     columnHeights[i]=defaultHeight;
     columnTopOffsets[i]=0;
   }
+  clearPerPageColumnLayoutCaches();
   normalizeColumnCaches();
 }
 
@@ -838,14 +933,14 @@ function buildPageColumns(pageIndex){
 
     var topSpacer=document.createElement('div');
     topSpacer.className='col-top-spacer';
-    topSpacer.style.height=toPx(columnTopOffsets[c]||0);
+    topSpacer.style.height=toPx(getColumnTopOffsetForPage(pageIndex,c));
 
     var col=document.createElement('div');
     col.className='col-content';
     col.setAttribute('contenteditable','true');
     col.setAttribute('data-page-index', String(pageIndex));
     col.setAttribute('data-col-index', String(c));
-    col.style.height=toPx(columnHeights[c]);
+    col.style.height=toPx(getColumnHeightForPage(pageIndex,c));
     bindColumnInputEvents(col);
 
     var bottomHandle=document.createElement('div');
@@ -1051,13 +1146,13 @@ function syncColumnSizesToDom(){
     for(var c=0;c<cols.length;c++){
       var ci=parseInt(cols[c].getAttribute('data-col-index')||'0',10);
       if(!isFinite(ci) || ci<0 || ci>=COLUMN_COUNT) ci=0;
-      cols[c].style.height=toPx(columnHeights[ci]);
+      cols[c].style.height=toPx(getColumnHeightForPage(p,ci));
     }
     for(var s=0;s<spacers.length;s++){
       var wrap=spacers[s].parentElement;
       var si=wrap ? parseInt(wrap.getAttribute('data-col-index')||'0',10) : 0;
       if(!isFinite(si) || si<0 || si>=COLUMN_COUNT) si=0;
-      spacers[s].style.height=toPx(columnTopOffsets[si]||0);
+      spacers[s].style.height=toPx(getColumnTopOffsetForPage(p,si));
     }
     var gaps=pageInners[p].querySelectorAll('.col-gap-handle');
     for(var g=0;g<gaps.length;g++) gaps[g].style.width=toPx(COLUMN_GAP);
@@ -1294,8 +1389,16 @@ function bindDragHandle(el, mode, index){
       marginBottom:MARGIN_BOTTOM,
       columnWidths:columnWidths.slice(),
       columnHeights:columnHeights.slice(),
-      columnTopOffsets:columnTopOffsets.slice()
+      columnTopOffsets:columnTopOffsets.slice(),
+      pageIndex:resolveHandlePageIndex(el)
     };
+    if(!COLUMN_HEIGHT_SYNC && (mode==='col-top' || mode==='col-bottom')){
+      var dragPage=dragStartState.pageIndex;
+      for(var ci=0;ci<COLUMN_COUNT;ci++){
+        dragStartState.columnTopOffsets[ci]=getColumnTopOffsetForPage(dragPage,ci);
+        dragStartState.columnHeights[ci]=getColumnHeightForPage(dragPage,ci);
+      }
+    }
     if(ev.preventDefault) ev.preventDefault();
   });
 }
@@ -1707,6 +1810,27 @@ function setPaperColumnLayout(columnCount, gapPx){
   return true;
 }
 
+function setColumnHeightSync(sync){
+  var next=!!sync;
+  if(next===COLUMN_HEIGHT_SYNC){
+    if(!next){
+      syncPerPageHeightsFromGlobal();
+      syncColumnSizesToDom();
+    }
+    return true;
+  }
+  if(next){
+    applyPageHeightsToGlobal(currentPageIndex);
+    clearPerPageColumnLayoutCaches();
+  }else{
+    syncPerPageHeightsFromGlobal();
+  }
+  COLUMN_HEIGHT_SYNC=next;
+  syncColumnSizesToDom();
+  rebuildColumnsFromCurrent();
+  return true;
+}
+
 function setPaperGeometry(pageWidthMm, pageHeightMm){
   var w=Math.max(120, Number(pageWidthMm||0) * Math.max(0.01,PREVIEW_SCALE));
   var h=Math.max(120, Number(pageHeightMm||0) * Math.max(0.01,PREVIEW_SCALE));
@@ -1848,12 +1972,13 @@ document.addEventListener('mousemove', function(ev){
     var dy=ev.clientY-dragStartY;
     var origOff=dragStartState.columnTopOffsets[ci]||0;
     var origH=dragStartState.columnHeights[ci];
+    var pageIndex=Math.max(0, dragStartState.pageIndex||0);
     var maxInner=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2;
     var newOff=Math.max(0, Math.min(maxInner-MIN_COLUMN_HEIGHT_PX, origOff+dy));
     var deltaOff=newOff-origOff;
     var newH=Math.max(MIN_COLUMN_HEIGHT_PX, Math.min(maxInner-newOff, origH-deltaOff));
-    columnTopOffsets[ci]=newOff;
-    columnHeights[ci]=newH;
+    setColumnTopOffsetForPage(pageIndex,ci,newOff);
+    setColumnHeightForPage(pageIndex,ci,newH);
     syncColumnSizesToDom();
     rebuildPreviewStats();
   }else if(dragMode==='col-bottom'){
@@ -1861,9 +1986,10 @@ document.addEventListener('mousemove', function(ev){
     if(ci<0 || ci>=COLUMN_COUNT) return;
     var dy=ev.clientY-dragStartY;
     var h0=dragStartState.columnHeights[ci];
-    var off=columnTopOffsets[ci]||0;
+    var pageIndex=Math.max(0, dragStartState.pageIndex||0);
+    var off=dragStartState.columnTopOffsets[ci]||0;
     var maxH=getInnerHeight()-HANDLE_WIDTH*2-FRAME_BORDER_WIDTH*2-off;
-    columnHeights[ci]=Math.max(MIN_COLUMN_HEIGHT_PX,Math.min(maxH, h0+dy));
+    setColumnHeightForPage(pageIndex,ci,Math.max(MIN_COLUMN_HEIGHT_PX,Math.min(maxH, h0+dy)));
     syncColumnSizesToDom();
     rebuildPreviewStats();
   }else if(dragMode==='paper-right' || dragMode==='paper-bottom' || dragMode==='paper-corner'){
@@ -1943,6 +2069,10 @@ function init(){
   resetToSinglePage();
   updatePaperGeometryStyles();
   rebuildColumnsFromSource();
+  if(!COLUMN_HEIGHT_SYNC){
+    syncPerPageHeightsFromGlobal();
+    syncColumnSizesToDom();
+  }
   updateSourceMirrorFromColumns();
   lastSentHash=simpleHash(extractMarkdown());
   currentPageIndex=0;
@@ -2023,7 +2153,8 @@ else{window.onload=init;}
                 .Replace("/*FLOW_CONTENT_PADDING_X*/", (contentPadPx * 2.0).ToString("0.#####", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_MAX_COLUMN_COUNT*/", maxCol.ToString(CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_MIN_COLUMN_WIDTH_PX*/", minColWidthPx.ToString(CultureInfo.InvariantCulture))
-                .Replace("/*FLOW_MIN_COLUMN_HEIGHT_PX*/", minColHeightPx.ToString(CultureInfo.InvariantCulture));
+                .Replace("/*FLOW_MIN_COLUMN_HEIGHT_PX*/", minColHeightPx.ToString(CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_COLUMN_HEIGHT_SYNC*/", cfg.IsColumnHeightSync ? "true" : "false");
 
             return "<!DOCTYPE html>\n<html><head>"
                 + "<meta charset=\"utf-8\" />"

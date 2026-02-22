@@ -45,6 +45,7 @@ namespace HyCADTool.MarkdownEditor.Services
             _leftPanel.CurrentFileClearedRequested += (_, __) => handlers.OnCurrentFileClearedRequested();
 
             _previewPanel.TogglePageOrientationRequested += (_, __) => handlers.OnTogglePageOrientationRequested();
+            _previewPanel.ToggleColumnHeightSyncRequested += (_, __) => handlers.OnToggleColumnHeightSyncRequested();
             _previewPanel.ResetLayoutRequested += async (_, __) => await handlers.OnResetLayoutRequestedAsync();
             _previewPanel.PreviousPageRequested += async (_, __) => await handlers.OnPreviousPageRequestedAsync();
             _previewPanel.NextPageRequested += async (_, __) => await handlers.OnNextPageRequestedAsync();
@@ -75,6 +76,7 @@ namespace HyCADTool.MarkdownEditor.Services
         public Action<string> OnCurrentFilePathChanged { get; init; } = _ => { };
         public Action OnCurrentFileClearedRequested { get; init; } = () => { };
         public Action OnTogglePageOrientationRequested { get; init; } = () => { };
+        public Action OnToggleColumnHeightSyncRequested { get; init; } = () => { };
         public Func<Task> OnResetLayoutRequestedAsync { get; init; } = () => Task.CompletedTask;
         public Func<Task> OnPreviousPageRequestedAsync { get; init; } = () => Task.CompletedTask;
         public Func<Task> OnNextPageRequestedAsync { get; init; } = () => Task.CompletedTask;

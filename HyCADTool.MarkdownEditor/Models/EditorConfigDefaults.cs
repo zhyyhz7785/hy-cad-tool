@@ -17,6 +17,7 @@ namespace HyCADTool.MarkdownEditor.Models
         public const int MaxColumnCount = 10;
         public const int MinColumnWidthPx = 50;
         public const int MinColumnHeightPx = 80;
+        public const bool IsColumnHeightSync = true;
         public static readonly int[] CharsPerColumn = new[] { 28, 28 };
         public const double TotalHeight = 350;
 
@@ -89,6 +90,7 @@ namespace HyCADTool.MarkdownEditor.Models
                 MaxColumnCount = MaxColumnCount,
                 MinColumnWidthPx = MinColumnWidthPx,
                 MinColumnHeightPx = MinColumnHeightPx,
+                IsColumnHeightSync = IsColumnHeightSync,
                 CharsPerColumn = (int[])CharsPerColumn.Clone(),
                 TotalHeight = TotalHeight,
                 TextSize = TextSize,

@@ -8,6 +8,7 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
     public partial class PreviewPanelControl : UserControl
     {
         public event EventHandler TogglePageOrientationRequested;
+        public event EventHandler ToggleColumnHeightSyncRequested;
         public event EventHandler ResetLayoutRequested;
         public event EventHandler PreviousPageRequested;
         public event EventHandler NextPageRequested;
@@ -44,6 +45,11 @@ namespace HyCADTool.MarkdownEditor.Views.Controls
         private void OnPrevPageClicked(object sender, RoutedEventArgs e)
         {
             PreviousPageRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void OnToggleColumnHeightSyncClicked(object sender, RoutedEventArgs e)
+        {
+            ToggleColumnHeightSyncRequested?.Invoke(this, EventArgs.Empty);
         }
 
         private void OnResetLayoutClicked(object sender, RoutedEventArgs e)

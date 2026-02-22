@@ -49,6 +49,15 @@
                         <TextBox Style="{StaticResource ParamInput}" Width="24"
                                  helper:TextBoxHelper.ScrollStep="1"
                                  Text="{Binding ColumnCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button x:Name="ColumnHeightSyncBtn"
+                                Style="{StaticResource ToolBtn}"
+                                Height="22"
+                                Padding="6,2"
+                                Margin="4,0,0,0"
+                                ToolTip="切换栏高度跨页同步/独立"
+                                Click="OnToggleColumnHeightSyncClicked">
+                            <TextBlock Text="{Binding ColumnHeightSyncLabel}" FontSize="11" VerticalAlignment="Center" />
+                        </Button>
                         <TextBlock Style="{StaticResource ParamLabel}" Text="间距" Margin="8,0,2,0" />
                         <TextBox Style="{StaticResource ParamInput}"
                                  Text="{Binding ColumnGutter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

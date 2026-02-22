@@ -578,6 +578,21 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         /// <summary>标题栏按钮文字："横向" 或 "竖向"</summary>
         public string PageOrientationLabel => _isLandscape ? "横" : "竖";
 
+        private bool _isColumnHeightSync = EditorConfigDefaults.IsColumnHeightSync;
+        /// <summary>栏高度是否跨页同步（true=同步，false=独立）</summary>
+        public bool IsColumnHeightSync
+        {
+            get => _isColumnHeightSync;
+            set
+            {
+                if (!SetProperty(ref _isColumnHeightSync, value)) return;
+                OnPropertyChanged(nameof(ColumnHeightSyncLabel));
+            }
+        }
+
+        /// <summary>标题栏按钮文字："栏同步" 或 "栏独立"</summary>
+        public string ColumnHeightSyncLabel => _isColumnHeightSync ? "栏同步" : "栏独立";
+
         /// <summary>标题栏尺寸标签：如 "594×420"</summary>
         public string PageSizeLabel => $"{PageWidthMm:F0}×{PageHeightMm:F0}";
 
@@ -876,6 +891,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _maxColumnCount = cfg.MaxColumnCount > 0 ? Math.Max(1, Math.Min(99, cfg.MaxColumnCount)) : EditorConfigDefaults.MaxColumnCount;
             _minColumnWidthPx = cfg.MinColumnWidthPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnWidthPx)) : EditorConfigDefaults.MinColumnWidthPx;
             _minColumnHeightPx = cfg.MinColumnHeightPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnHeightPx)) : EditorConfigDefaults.MinColumnHeightPx;
+            _isColumnHeightSync = cfg.IsColumnHeightSync;
             int maxCol = Math.Max(1, _maxColumnCount);
             _columnCount = Math.Max(1, Math.Min(maxCol, cfg.ColumnCount));
             _columnGutter = cfg.ColumnGutter;
@@ -946,6 +962,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             OnPropertyChanged(nameof(CharsPerColumn));
             OnPropertyChanged(nameof(PagePreset));
             OnPropertyChanged(nameof(IsLandscape));
+            OnPropertyChanged(nameof(IsColumnHeightSync));
+            OnPropertyChanged(nameof(ColumnHeightSyncLabel));
             OnPropertyChanged(nameof(PageSizeLabel));
             OnPropertyChanged(nameof(PageOrientationLabel));
             OnPropertyChanged(nameof(PageWidthMm));
@@ -1054,6 +1072,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MaxColumnCount = MaxColumnCount,
                 MinColumnWidthPx = MinColumnWidthPx,
                 MinColumnHeightPx = MinColumnHeightPx,
+                IsColumnHeightSync = IsColumnHeightSync,
                 TextSize = TextSize,
                 TextXScale = TextXScale,
                 PreviewScale = PreviewScale,
@@ -1148,6 +1167,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MaxColumnCount = d.MaxColumnCount;
             MinColumnWidthPx = d.MinColumnWidthPx;
             MinColumnHeightPx = d.MinColumnHeightPx;
+            IsColumnHeightSync = d.IsColumnHeightSync;
             ColumnCount = d.ColumnCount;
             ColumnGutter = d.ColumnGutter;
             TextSize = d.TextSize;
@@ -1162,6 +1182,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             ApplyPagePreset(PagePreset);
             OnPropertyChanged(nameof(PageSizeLabel));
             OnPropertyChanged(nameof(PageOrientationLabel));
+            OnPropertyChanged(nameof(ColumnHeightSyncLabel));
 
             H1SpaceBefore = d.H1SpaceBefore;
             H1SpaceAfter = d.H1SpaceAfter;

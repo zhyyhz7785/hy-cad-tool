@@ -447,6 +447,15 @@ namespace HyCADTool.MarkdownEditor.Services
             await previewWebView.CoreWebView2.ExecuteScriptAsync($"setPaperMargins({leftMmJson}, {rightMmJson}, {topMmJson}, {bottomMmJson})");
         }
 
+        public async Task ApplyColumnHeightSyncAsync(WebView2 previewWebView, bool isSync)
+        {
+            if (previewWebView?.CoreWebView2 == null)
+                return;
+
+            string syncJson = JsonConvert.SerializeObject(isSync);
+            await previewWebView.CoreWebView2.ExecuteScriptAsync($"setColumnHeightSync({syncJson})");
+        }
+
         public async Task ResetPaperLayoutAsync(WebView2 previewWebView)
         {
             if (previewWebView?.CoreWebView2 == null)

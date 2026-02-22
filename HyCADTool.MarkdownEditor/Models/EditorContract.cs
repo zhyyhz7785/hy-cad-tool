@@ -65,6 +65,8 @@ namespace HyCADTool.MarkdownEditor.Models
         public int MinColumnWidthPx { get; set; } = EditorConfigDefaults.MinColumnWidthPx;
         /// <summary>最小栏高（px）</summary>
         public int MinColumnHeightPx { get; set; } = EditorConfigDefaults.MinColumnHeightPx;
+        /// <summary>栏高度是否跨页同步（true=同步，false=各页独立）</summary>
+        public bool IsColumnHeightSync { get; set; } = EditorConfigDefaults.IsColumnHeightSync;
         public int[] CharsPerColumn { get; set; } = (int[])EditorConfigDefaults.CharsPerColumn.Clone();
         public double TotalHeight { get; set; } = EditorConfigDefaults.TotalHeight;
 
