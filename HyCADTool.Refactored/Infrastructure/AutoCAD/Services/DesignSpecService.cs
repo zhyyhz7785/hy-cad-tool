@@ -382,19 +382,24 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             bool TryFlushTextSegment(int overflowStartIndex, bool forcePlaceholder, out List<ColumnMarkdownSegment> overflow)
             {
                 overflow = null;
-                string segmentMarkdown = pendingTextBlocks.Count == 0
+                if (pendingTextBlocks.Count == 0 && !forcePlaceholder)
+                    return true;
+
+                var validBlocks = pendingTextBlocks.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                string segmentMarkdown = validBlocks.Count == 0
                     ? string.Empty
-                    : string.Join("\n\n", pendingTextBlocks.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    : string.Join("\n\n", validBlocks);
 
                 string content = string.Empty;
                 if (!string.IsNullOrWhiteSpace(segmentMarkdown))
                 {
                     content = renderer.Convert(segmentMarkdown) ?? string.Empty;
                     if (string.IsNullOrWhiteSpace(content) && !forcePlaceholder)
-                        return true;
+                    { pendingTextBlocks.Clear(); return true; }
                 }
                 else if (!forcePlaceholder)
                 {
+                    pendingTextBlocks.Clear();
                     return true;
                 }
 
@@ -410,27 +415,64 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     : EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
                 double actualBottomY = GetEntityBottomY(mtext, cursorTopY, estimatedHeight);
 
-                if (actualBottomY < contentBottomY && !forcePlaceholder && createdAnyEntity)
+                if (actualBottomY >= contentBottomY || forcePlaceholder || !createdAnyEntity)
                 {
-                    mtext.Erase();
-                    pendingTextBlocks.Add(segmentMarkdown);
+                    if (anchorLocal.IsNull)
+                        anchorLocal = mtext.ObjectId;
+                    WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataLocal);
+                    ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
+                    mtextLocal++;
+                    createdAnyEntity = true;
+                    if (!string.IsNullOrWhiteSpace(content))
+                        cursorTopY = actualBottomY;
+                    return true;
+                }
+
+                mtext.Erase();
+
+                if (validBlocks.Count <= 1)
+                {
+                    pendingTextBlocks.AddRange(validBlocks);
                     overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
                     return false;
                 }
 
-                if (anchorLocal.IsNull)
-                    anchorLocal = mtext.ObjectId;
-
-                WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataLocal);
-                ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
-                mtextLocal++;
-                createdAnyEntity = true;
-
-                if (!string.IsNullOrWhiteSpace(content))
+                int fitCount = 0;
+                for (int tryCount = validBlocks.Count - 1; tryCount >= 1; tryCount--)
                 {
-                    cursorTopY = actualBottomY;
+                    string partialMd = string.Join("\n\n", validBlocks.Take(tryCount));
+                    string partialContent = renderer.Convert(partialMd) ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(partialContent)) continue;
+
+                    var testMtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, partialContent);
+                    SetLayer(db, tr, testMtext, LAYER_TEXT);
+                    btr.AppendEntity(testMtext);
+                    tr.AddNewlyCreatedDBObject(testMtext, true);
+
+                    double testEstimate = EstimateMarkdownHeightFallback(partialMd, config, textWidth);
+                    double testBottom = GetEntityBottomY(testMtext, cursorTopY, testEstimate);
+
+                    if (testBottom >= contentBottomY)
+                    {
+                        if (anchorLocal.IsNull)
+                            anchorLocal = testMtext.ObjectId;
+                        WriteMetadataIfNeeded(tr, testMtext, markdownSource, config, ref metadataLocal);
+                        ExtensionDictionaryService.WriteLongString(tr, testMtext, groupId, XREC_KEY_GROUP);
+                        mtextLocal++;
+                        createdAnyEntity = true;
+                        cursorTopY = testBottom;
+                        fitCount = tryCount;
+                        break;
+                    }
+                    testMtext.Erase();
                 }
-                return true;
+
+                var remainingBlocks = validBlocks.Skip(fitCount).ToList();
+                foreach (var rb in remainingBlocks)
+                    pendingTextBlocks.Add(rb);
+
+                overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
+                return false;
             }
 
             for (int segIndex = 0; segIndex < segments.Count; segIndex++)
@@ -442,17 +484,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 if (!segment.IsTable)
                 {
                     if (!string.IsNullOrWhiteSpace(segment.Markdown))
-                    {
                         pendingTextBlocks.Add(segment.Markdown);
-                        if (!TryFlushTextSegment(segIndex + 1, forcePlaceholder: false, out var blockOverflow))
-                        {
-                            metadataWritten = metadataLocal;
-                            anchorEntityId = anchorLocal;
-                            mtextCount = mtextLocal;
-                            tableCount = tableLocal;
-                            return blockOverflow;
-                        }
-                    }
                     continue;
                 }
 
