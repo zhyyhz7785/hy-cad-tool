@@ -466,6 +466,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set => SetProperty(ref _mTextParagraphAlign, string.IsNullOrWhiteSpace(value) ? "Left" : value.Trim());
         }
 
+        private string _tableBreakMode = EditorConfigDefaults.TableBreakMode;
+        public string TableBreakMode
+        {
+            get => _tableBreakMode;
+            set => SetProperty(ref _tableBreakMode, NormalizeTableBreakMode(value));
+        }
+
         private double _lineSpacingFactor = EditorConfigDefaults.LineSpacingFactor;
         public double LineSpacingFactor
         {
@@ -535,6 +542,11 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         };
         public IReadOnlyList<string> MTextLineSpacingStyleOptions => new[] { "AtLeast", "Exactly" };
         public IReadOnlyList<string> MTextParagraphAlignOptions => new[] { "Left", "Center", "Right", "Justify" };
+        public IReadOnlyList<KeyValuePair<string, string>> TableBreakModeOptions => new[]
+        {
+            new KeyValuePair<string, string>("1. 空间不足后移", "Overflow"),
+            new KeyValuePair<string, string>("2. 边界处打断", "Split")
+        };
 
         // ── 图纸幅面定义（短边 b × 长边 l） ──
         private static readonly (string Name, double Short, double Long)[] PaperDefs = new[]
@@ -903,6 +915,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _mTextObliquingAngle = Math.Max(-85, Math.Min(85, cfg.MTextObliquingAngle));
             _mTextCharSpacing = Math.Max(0.75, Math.Min(4.0, cfg.MTextCharSpacing));
             _mTextParagraphAlign = string.IsNullOrWhiteSpace(cfg.MTextParagraphAlign) ? "Left" : cfg.MTextParagraphAlign.Trim();
+            _tableBreakMode = NormalizeTableBreakMode(cfg.TableBreakMode);
             _lineSpacingFactor = Math.Max(0.5, Math.Min(3.0, cfg.LineSpacingFactor));
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
@@ -958,6 +971,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             OnPropertyChanged(nameof(MTextObliquingAngle));
             OnPropertyChanged(nameof(MTextCharSpacing));
             OnPropertyChanged(nameof(MTextParagraphAlign));
+            OnPropertyChanged(nameof(TableBreakMode));
             OnPropertyChanged(nameof(LineSpacingFactor));
             OnPropertyChanged(nameof(H1SpaceBefore));
             OnPropertyChanged(nameof(H1SpaceAfter));
@@ -982,6 +996,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             if (preset.StartsWith("A3", StringComparison.OrdinalIgnoreCase)) return "A3";
             if (preset.StartsWith("A4", StringComparison.OrdinalIgnoreCase)) return "A4";
             return "A2";
+        }
+
+        private static string NormalizeTableBreakMode(string mode)
+        {
+            return string.Equals(mode?.Trim(), "Split", StringComparison.OrdinalIgnoreCase)
+                ? "Split"
+                : "Overflow";
         }
 
         private static void ParsePagePreset(string rawPreset, double pageWidthMm, double pageHeightMm, out string preset, out bool isLandscape)
@@ -1072,6 +1093,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MTextObliquingAngle = MTextObliquingAngle,
                 MTextCharSpacing = MTextCharSpacing,
                 MTextParagraphAlign = MTextParagraphAlign,
+                TableBreakMode = TableBreakMode,
                 LineSpacingFactor = LineSpacingFactor
             };
         }
@@ -1171,6 +1193,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MTextObliquingAngle = d.MTextObliquingAngle;
             MTextCharSpacing = d.MTextCharSpacing;
             MTextParagraphAlign = d.MTextParagraphAlign;
+            TableBreakMode = d.TableBreakMode;
             LineSpacingFactor = d.LineSpacingFactor;
 
             SyncDrawScaleTextFromValue();

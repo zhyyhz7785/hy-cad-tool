@@ -529,7 +529,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cfg.MTextLineSpacingStyle,
                 cfg.MTextObliquingAngle,
                 cfg.MTextCharSpacing,
-                cfg.MTextParagraphAlign
+                cfg.MTextParagraphAlign,
+                cfg.TableBreakMode
             };
         }
 
@@ -611,7 +612,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 MTextLineSpacingStyle = StrVal("MTextLineSpacingStyle", "Exactly"),
                 MTextObliquingAngle = Val("MTextObliquingAngle", 0),
                 MTextCharSpacing = Val("MTextCharSpacing", 1.0),
-                MTextParagraphAlign = StrVal("MTextParagraphAlign", "Left")
+                MTextParagraphAlign = StrVal("MTextParagraphAlign", "Left"),
+                TableBreakMode = StrVal("TableBreakMode", "Overflow")
             };
 
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings

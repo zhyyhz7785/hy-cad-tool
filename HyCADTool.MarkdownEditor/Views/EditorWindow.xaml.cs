@@ -737,6 +737,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.MTextObliquingAngle):
                 case nameof(EditorViewModel.MTextCharSpacing):
                 case nameof(EditorViewModel.MTextParagraphAlign):
+                case nameof(EditorViewModel.TableBreakMode):
                 case "SpacingChanged":
                     ScheduleConfigSave();
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);

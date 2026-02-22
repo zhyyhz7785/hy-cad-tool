@@ -53,6 +53,7 @@ namespace HyCADTool.MarkdownEditor.Models
         public const double MTextObliquingAngle = 0;
         public const double MTextCharSpacing = 1.0;
         public const string MTextParagraphAlign = "Left";
+        public const string TableBreakMode = "Overflow";
 
         // ── 标题倍率 ──
         public const double H1Scale = 1.6;
@@ -118,6 +119,7 @@ namespace HyCADTool.MarkdownEditor.Models
                 MTextObliquingAngle = MTextObliquingAngle,
                 MTextCharSpacing = MTextCharSpacing,
                 MTextParagraphAlign = MTextParagraphAlign,
+                TableBreakMode = TableBreakMode,
                 H1Scale = H1Scale,
                 H2Scale = H2Scale,
                 H3Scale = H3Scale,

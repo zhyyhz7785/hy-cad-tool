@@ -417,7 +417,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     : EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
                 double actualBottomY = GetEntityBottomY(mtext, cursorTopY, estimatedHeight);
 
-                if (actualBottomY >= contentBottomY || forcePlaceholder || !createdAnyEntity)
+                if (actualBottomY >= contentBottomY || forcePlaceholder)
                 {
                     if (anchorLocal.IsNull)
                         anchorLocal = mtext.ObjectId;
@@ -434,9 +434,78 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                 if (validBlocks.Count <= 1)
                 {
-                    pendingTextBlocks.AddRange(validBlocks);
+                    string singleBlock = validBlocks.FirstOrDefault() ?? string.Empty;
+                    var lines = singleBlock
+                        .Replace("\r\n", "\n")
+                        .Replace('\r', '\n')
+                        .Split('\n')
+                        .ToList();
+                    if (lines.Count == 0)
+                        lines.Add(string.Empty);
+
+                    int fitLineCount = 0;
+                    for (int tryCount = lines.Count - 1; tryCount >= 1; tryCount--)
+                    {
+                        string partialMd = string.Join("\n", lines.Take(tryCount));
+                        string partialContent = renderer.Convert(partialMd) ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(partialContent)) continue;
+
+                        var testMtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, partialContent);
+                        SetLayer(db, tr, testMtext, LAYER_TEXT);
+                        btr.AppendEntity(testMtext);
+                        tr.AddNewlyCreatedDBObject(testMtext, true);
+
+                        double testEstimate = EstimateMarkdownHeightFallback(partialMd, config, textWidth);
+                        double testBottom = GetEntityBottomY(testMtext, cursorTopY, testEstimate);
+
+                        if (testBottom >= contentBottomY)
+                        {
+                            if (anchorLocal.IsNull)
+                                anchorLocal = testMtext.ObjectId;
+                            WriteMetadataIfNeeded(tr, testMtext, markdownSource, config, ref metadataLocal);
+                            ExtensionDictionaryService.WriteLongString(tr, testMtext, groupId, XREC_KEY_GROUP);
+                            mtextLocal++;
+                            createdAnyEntity = true;
+                            cursorTopY = testBottom;
+                            fitLineCount = tryCount;
+                            break;
+                        }
+                        testMtext.Erase();
+                    }
+
+                    if (fitLineCount == 0 && !createdAnyEntity)
+                    {
+                        string firstLineMd = lines[0];
+                        string firstLineContent = renderer.Convert(firstLineMd) ?? firstLineMd;
+                        var firstLineMText = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, firstLineContent);
+                        SetLayer(db, tr, firstLineMText, LAYER_TEXT);
+                        btr.AppendEntity(firstLineMText);
+                        tr.AddNewlyCreatedDBObject(firstLineMText, true);
+                        double firstEstimate = EstimateMarkdownHeightFallback(firstLineMd, config, textWidth);
+                        double firstBottom = GetEntityBottomY(firstLineMText, cursorTopY, firstEstimate);
+                        if (anchorLocal.IsNull)
+                            anchorLocal = firstLineMText.ObjectId;
+                        WriteMetadataIfNeeded(tr, firstLineMText, markdownSource, config, ref metadataLocal);
+                        ExtensionDictionaryService.WriteLongString(tr, firstLineMText, groupId, XREC_KEY_GROUP);
+                        mtextLocal++;
+                        createdAnyEntity = true;
+                        cursorTopY = firstBottom;
+                        fitLineCount = 1;
+                    }
+
+                    if (fitLineCount == 0)
+                    {
+                        pendingTextBlocks.AddRange(validBlocks);
+                    }
+                    else
+                    {
+                        string remainingMd = string.Join("\n", lines.Skip(fitLineCount)).Trim();
+                        if (!string.IsNullOrWhiteSpace(remainingMd))
+                            pendingTextBlocks.Add(remainingMd);
+                    }
+
                     overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
-                    return false;
+                    return fitLineCount > 0 && pendingTextBlocks.Count == 0 && overflow.Count == 0;
                 }
 
                 int fitCount = 0;
@@ -467,6 +536,29 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         break;
                     }
                     testMtext.Erase();
+                }
+
+                if (fitCount == 0 && !createdAnyEntity)
+                {
+                    string firstBlockMd = validBlocks[0];
+                    string firstBlockContent = renderer.Convert(firstBlockMd) ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(firstBlockContent))
+                    {
+                        var firstBlockMText = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, firstBlockContent);
+                        SetLayer(db, tr, firstBlockMText, LAYER_TEXT);
+                        btr.AppendEntity(firstBlockMText);
+                        tr.AddNewlyCreatedDBObject(firstBlockMText, true);
+                        double firstEstimate = EstimateMarkdownHeightFallback(firstBlockMd, config, textWidth);
+                        double firstBottom = GetEntityBottomY(firstBlockMText, cursorTopY, firstEstimate);
+                        if (anchorLocal.IsNull)
+                            anchorLocal = firstBlockMText.ObjectId;
+                        WriteMetadataIfNeeded(tr, firstBlockMText, markdownSource, config, ref metadataLocal);
+                        ExtensionDictionaryService.WriteLongString(tr, firstBlockMText, groupId, XREC_KEY_GROUP);
+                        mtextLocal++;
+                        createdAnyEntity = true;
+                        cursorTopY = firstBottom;
+                        fitCount = 1;
+                    }
                 }
 
                 var remainingBlocks = validBlocks.Skip(fitCount).ToList();
@@ -534,6 +626,102 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     out var createdTable))
                 {
                     double tableBottomY = GetEntityBottomY(createdTable, cursorTopY, estimatedTableHeight);
+                    bool tableOverflow = tableBottomY < contentBottomY;
+                    bool splitTable = string.Equals(config.TableBreakMode, "Split", StringComparison.OrdinalIgnoreCase);
+
+                    if (tableOverflow && splitTable && segment.TableData != null && segment.TableData.Rows.Count > 1)
+                    {
+                        createdTable.Erase();
+                        metadataLocal = savedMeta;
+                        anchorLocal = savedAnchor;
+
+                        int totalRows = segment.TableData.Rows.Count;
+                        int fitRows = 0;
+                        double fitBottomY = cursorTopY;
+                        for (int rowsToTry = totalRows - 1; rowsToTry >= 1; rowsToTry--)
+                        {
+                            var partialTableData = SliceTableRows(segment.TableData, 0, rowsToTry);
+                            if (partialTableData == null || partialTableData.Rows.Count == 0 || partialTableData.ColumnCount <= 0)
+                                continue;
+
+                            bool testMeta = metadataLocal;
+                            ObjectId testAnchor = anchorLocal;
+                            if (!TryCreateTable(
+                                tr, btr, db, config,
+                                partialTableData,
+                                textLeftX, cursorTopY, z,
+                                textWidth, groupId, markdownSource, textStyleId,
+                                ref metadataLocal, ref anchorLocal,
+                                out var partialTable))
+                            {
+                                metadataLocal = testMeta;
+                                anchorLocal = testAnchor;
+                                continue;
+                            }
+
+                            double partialEstimate = EstimateTableHeightFallback(partialTableData, textWidth, config);
+                            double partialBottomY = GetEntityBottomY(partialTable, cursorTopY, partialEstimate);
+                            if (partialBottomY >= contentBottomY)
+                            {
+                                fitRows = rowsToTry;
+                                fitBottomY = partialBottomY;
+                                break;
+                            }
+
+                            partialTable.Erase();
+                            metadataLocal = testMeta;
+                            anchorLocal = testAnchor;
+                        }
+
+                        if (fitRows > 0)
+                        {
+                            tableLocal++;
+                            createdAnyEntity = true;
+                            cursorTopY = fitBottomY;
+
+                            var remainingTableData = SliceTableRows(segment.TableData, fitRows, totalRows - fitRows);
+                            var overflow = new List<ColumnMarkdownSegment>();
+                            if (remainingTableData != null && remainingTableData.Rows.Count > 0 && remainingTableData.ColumnCount > 0)
+                            {
+                                overflow.Add(new ColumnMarkdownSegment
+                                {
+                                    IsTable = true,
+                                    TableData = remainingTableData,
+                                    Markdown = BuildMarkdownFromTableData(remainingTableData)
+                                });
+                            }
+
+                            for (int k = segIndex + 1; k < segments.Count; k++)
+                            {
+                                if (segments[k] != null)
+                                    overflow.Add(segments[k]);
+                            }
+
+                            metadataWritten = metadataLocal;
+                            anchorEntityId = anchorLocal;
+                            mtextCount = mtextLocal;
+                            tableCount = tableLocal;
+                            return overflow;
+                        }
+
+                        if (!TryCreateTable(
+                            tr, btr, db, config,
+                            segment.TableData,
+                            textLeftX, cursorTopY, z,
+                            textWidth, groupId, markdownSource, textStyleId,
+                            ref metadataLocal, ref anchorLocal,
+                            out createdTable))
+                        {
+                            metadataWritten = metadataLocal;
+                            anchorEntityId = anchorLocal;
+                            mtextCount = mtextLocal;
+                            tableCount = tableLocal;
+                            return BuildOverflowFrom(segIndex, includePendingText: false);
+                        }
+
+                        tableBottomY = GetEntityBottomY(createdTable, cursorTopY, estimatedTableHeight);
+                    }
+
                     if (tableBottomY < contentBottomY && createdAnyEntity)
                     {
                         createdTable.Erase();
@@ -607,6 +795,55 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (blocks.Length == 0)
                 return string.Empty;
             return string.Join("\n\n", blocks);
+        }
+
+        private static MarkdownTableData SliceTableRows(MarkdownTableData source, int startIndex, int count)
+        {
+            if (source?.Rows == null || source.Rows.Count == 0 || count <= 0)
+                return null;
+
+            int start = Math.Max(0, startIndex);
+            if (start >= source.Rows.Count)
+                return null;
+
+            int end = Math.Min(source.Rows.Count, start + count);
+            if (end <= start)
+                return null;
+
+            var data = new MarkdownTableData();
+            for (int i = start; i < end; i++)
+            {
+                var row = source.Rows[i] ?? new List<string>();
+                data.Rows.Add(row.Select(cell => cell ?? string.Empty).ToList());
+            }
+
+            return data;
+        }
+
+        private static string BuildMarkdownFromTableData(MarkdownTableData tableData)
+        {
+            if (tableData?.Rows == null || tableData.Rows.Count == 0 || tableData.ColumnCount <= 0)
+                return string.Empty;
+
+            int cols = tableData.ColumnCount;
+            string BuildRow(List<string> row)
+            {
+                var cells = Enumerable.Range(0, cols)
+                    .Select(i => i < (row?.Count ?? 0) ? (row[i] ?? string.Empty) : string.Empty)
+                    .Select(cell => cell.Replace("|", "\\|"));
+                return "| " + string.Join(" | ", cells) + " |";
+            }
+
+            var lines = new List<string>
+            {
+                BuildRow(tableData.Rows[0]),
+                "| " + string.Join(" | ", Enumerable.Repeat("---", cols)) + " |"
+            };
+
+            for (int i = 1; i < tableData.Rows.Count; i++)
+                lines.Add(BuildRow(tableData.Rows[i]));
+
+            return string.Join("\n", lines);
         }
 
         private static List<ColumnMarkdownSegment> SplitColumnMarkdownByBlocks(string columnMarkdown)

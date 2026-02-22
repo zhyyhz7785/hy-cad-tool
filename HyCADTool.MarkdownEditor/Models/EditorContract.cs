@@ -115,6 +115,7 @@ namespace HyCADTool.MarkdownEditor.Models
         public double MTextObliquingAngle { get; set; } = EditorConfigDefaults.MTextObliquingAngle;
         public double MTextCharSpacing { get; set; } = EditorConfigDefaults.MTextCharSpacing;
         public string MTextParagraphAlign { get; set; } = EditorConfigDefaults.MTextParagraphAlign;
+        public string TableBreakMode { get; set; } = EditorConfigDefaults.TableBreakMode;
 
         // ── 标题倍率 ──
         public double H1Scale { get; set; } = EditorConfigDefaults.H1Scale;

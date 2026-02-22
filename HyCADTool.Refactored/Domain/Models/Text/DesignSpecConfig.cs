@@ -71,6 +71,8 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         public double MTextCharSpacing { get; set; } = 1.0;
         /// <summary>段落对齐：Left/Center/Right/Justify</summary>
         public string MTextParagraphAlign { get; set; } = "Left";
+        /// <summary>表格超出栏高时行为：Overflow(整体后移) / Split(边界打断)</summary>
+        public string TableBreakMode { get; set; } = "Overflow";
 
         // ── 计算属性（× Scale → 模型空间 mm） ──
 
@@ -222,6 +224,9 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             ColumnInnerPaddingMm = Math.Max(0, ColumnInnerPaddingMm);
             MTextObliquingAngle = Math.Max(-85, Math.Min(85, MTextObliquingAngle));
             MTextCharSpacing = Math.Max(0.75, Math.Min(4.0, MTextCharSpacing));
+            TableBreakMode = string.Equals(TableBreakMode, "Split", StringComparison.OrdinalIgnoreCase)
+                ? "Split"
+                : "Overflow";
 
             if (CharsPerColumn == null || CharsPerColumn.Length == 0)
             {
