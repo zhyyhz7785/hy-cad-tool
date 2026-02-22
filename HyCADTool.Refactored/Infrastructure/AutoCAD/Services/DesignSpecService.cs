@@ -398,21 +398,25 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     return true;
                 }
 
-                double estimatedHeight = string.IsNullOrWhiteSpace(content)
-                    ? config.ActualTextHeight
-                    : EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
-                bool outOfBottom = (cursorTopY - estimatedHeight) < contentBottomY;
-                if (outOfBottom && !forcePlaceholder && createdAnyEntity)
-                {
-                    overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
-                    return false;
-                }
                 pendingTextBlocks.Clear();
 
                 var mtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, content);
                 SetLayer(db, tr, mtext, LAYER_TEXT);
                 btr.AppendEntity(mtext);
                 tr.AddNewlyCreatedDBObject(mtext, true);
+
+                double estimatedHeight = string.IsNullOrWhiteSpace(content)
+                    ? config.ActualTextHeight
+                    : EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
+                double actualBottomY = GetEntityBottomY(mtext, cursorTopY, estimatedHeight);
+
+                if (actualBottomY < contentBottomY && !forcePlaceholder && createdAnyEntity)
+                {
+                    mtext.Erase();
+                    pendingTextBlocks.Add(segmentMarkdown);
+                    overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
+                    return false;
+                }
 
                 if (anchorLocal.IsNull)
                     anchorLocal = mtext.ObjectId;
@@ -424,7 +428,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                 if (!string.IsNullOrWhiteSpace(content))
                 {
-                    cursorTopY = GetEntityBottomY(mtext, cursorTopY, estimatedHeight);
+                    cursorTopY = actualBottomY;
                 }
                 return true;
             }
@@ -475,15 +479,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 }
 
                 double estimatedTableHeight = EstimateTableHeightFallback(segment.TableData, textWidth, config);
-                if (cursorTopY - estimatedTableHeight < contentBottomY && createdAnyEntity)
-                {
-                    metadataWritten = metadataLocal;
-                    anchorEntityId = anchorLocal;
-                    mtextCount = mtextLocal;
-                    tableCount = tableLocal;
-                    return BuildOverflowFrom(segIndex, includePendingText: false);
-                }
 
+                bool savedMeta = metadataLocal;
+                ObjectId savedAnchor = anchorLocal;
                 if (TryCreateTable(
                     tr,
                     btr,
@@ -501,9 +499,22 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     ref anchorLocal,
                     out var createdTable))
                 {
+                    double tableBottomY = GetEntityBottomY(createdTable, cursorTopY, estimatedTableHeight);
+                    if (tableBottomY < contentBottomY && createdAnyEntity)
+                    {
+                        createdTable.Erase();
+                        metadataLocal = savedMeta;
+                        anchorLocal = savedAnchor;
+                        metadataWritten = metadataLocal;
+                        anchorEntityId = anchorLocal;
+                        mtextCount = mtextLocal;
+                        tableCount = tableLocal;
+                        return BuildOverflowFrom(segIndex, includePendingText: false);
+                    }
+
                     tableLocal++;
                     createdAnyEntity = true;
-                    cursorTopY = GetEntityBottomY(createdTable, cursorTopY, estimatedTableHeight);
+                    cursorTopY = tableBottomY;
 
                     bool hasRemaining = segIndex < segments.Count - 1;
                     if (hasRemaining)
