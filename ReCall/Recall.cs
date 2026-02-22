@@ -31,6 +31,7 @@ namespace HyCADTool.ReCall
 
         private static Action _c1Action;
         private static bool _assemblyResolveRegistered = false;
+        private static bool _unhandledExceptionRegistered = false;
         private static string _currentDependenciesPath;
         private static string _currentNugetPackagesPath;
         private static ResolveEventHandler _assemblyResolveHandler;
@@ -70,6 +71,22 @@ namespace HyCADTool.ReCall
 
                 _currentDependenciesPath = loadDepsPath;
                 _currentNugetPackagesPath = nugetPath;
+
+                // 注册全局未处理异常捕获（防止 WPF 线程异常导致致命错误）
+                if (!_unhandledExceptionRegistered)
+                {
+                    _unhandledExceptionRegistered = true;
+                    AppDomain.CurrentDomain.UnhandledException += (s, ue) =>
+                    {
+                        try
+                        {
+                            var ex = ue.ExceptionObject as System.Exception;
+                            var ued = Application.DocumentManager.MdiActiveDocument?.Editor;
+                            ued?.WriteMessage($"\n[UnhandledException] {ex?.GetType().Name}: {ex?.Message}\n{ex?.StackTrace}");
+                        }
+                        catch { }
+                    };
+                }
 
                 // 只注册一次 AssemblyResolve 事件
                 if (!_assemblyResolveRegistered)
@@ -126,9 +143,18 @@ namespace HyCADTool.ReCall
             {
                 _c1Action.Invoke();
             }
+            catch (System.Reflection.TargetInvocationException tie)
+            {
+                var inner = tie.InnerException ?? tie;
+                ed.WriteMessage($"\n✗ 执行失败(TIE): {inner.GetType().Name}: {inner.Message}");
+                ed.WriteMessage($"\n  StackTrace: {inner.StackTrace}");
+            }
             catch (System.Exception ex)
             {
-                ed.WriteMessage("\n✗ 执行失败: " + ex.Message);
+                ed.WriteMessage($"\n✗ 执行失败: {ex.GetType().Name}: {ex.Message}");
+                ed.WriteMessage($"\n  StackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                    ed.WriteMessage($"\n  Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
             }
         }
 

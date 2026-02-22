@@ -1,3 +1,6 @@
+using System;
+using System.Reflection;
+using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.Refactored.Presentation.Commands;
 
 namespace HyCADTool.Refactored.Test
@@ -10,6 +13,10 @@ namespace HyCADTool.Refactored.Test
     {
         public static void Run()
         {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            var ver = Assembly.GetExecutingAssembly().GetName().Version;
+            var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
             SimpleLogger.LogElapsedTime("命令执行", () =>
             {
                 // 只改下面这一行即可切换 C1 测试命令

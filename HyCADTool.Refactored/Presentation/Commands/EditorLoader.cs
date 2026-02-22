@@ -26,6 +26,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private const string METHOD_NAME_IS_NON_MODAL_OPEN = "IsNonModalOpen";
         private const string REGISTER_SYNC_CALLBACKS_METHOD = "RegisterSyncCallbacks";
         private const string CLEAR_SYNC_CALLBACKS_METHOD = "ClearSyncCallbacks";
+        private const string FORCE_RESET_METHOD = "ForceResetWindowState";
 
         public delegate void EditorSyncDataHandler(
             string[] columnContents,
@@ -40,6 +41,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private static MethodInfo _isNonModalOpenMethod;
         private static MethodInfo _registerSyncCallbacksMethod;
         private static MethodInfo _clearSyncCallbacksMethod;
+        private static MethodInfo _forceResetMethod;
         private static bool _loadAttempted;
         private static string _net8Dir;
         public static string LastError { get; private set; }
@@ -155,6 +157,11 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 return false;
             }
 
+            // C2 后 MarkdownEditor 程序集被 LoadFrom 缓存复用，
+            // 旧窗口引用可能残留；调用 ForceReset 清理，确保能打开新窗口
+            try { _forceResetMethod?.Invoke(null, null); }
+            catch { }
+
             if (IsNonModalEditorOpen())
             {
                 LastError = "Markdown 编辑器已打开，请先关闭当前窗口。";
@@ -244,6 +251,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     BindingFlags.Public | BindingFlags.Static);
                 _clearSyncCallbacksMethod = launcherType.GetMethod(
                     CLEAR_SYNC_CALLBACKS_METHOD,
+                    BindingFlags.Public | BindingFlags.Static);
+                _forceResetMethod = launcherType.GetMethod(
+                    FORCE_RESET_METHOD,
                     BindingFlags.Public | BindingFlags.Static);
                 if (_showDialogMethod == null)
                 {

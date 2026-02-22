@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.Views;
 using Newtonsoft.Json;
@@ -87,24 +88,37 @@ namespace HyCADTool.MarkdownEditor
         {
             lock (_windowLock)
             {
-                if (_nonModalWindow != null && _nonModalWindow.IsVisible)
+                if (_nonModalWindow != null)
                 {
-                    try
+                    bool isAlive = false;
+                    try { isAlive = _nonModalWindow.IsVisible; }
+                    catch { _nonModalWindow = null; }
+
+                    if (isAlive)
                     {
-                        if (_nonModalWindow.WindowState == System.Windows.WindowState.Minimized)
-                            _nonModalWindow.WindowState = System.Windows.WindowState.Normal;
-                        _nonModalWindow.Activate();
+                        try
+                        {
+                            if (_nonModalWindow.WindowState == System.Windows.WindowState.Minimized)
+                                _nonModalWindow.WindowState = System.Windows.WindowState.Normal;
+                            _nonModalWindow.Activate();
+                        }
+                        catch
+                        {
+                            _nonModalWindow = null;
+                        }
+                        if (_nonModalWindow != null)
+                            return true;
                     }
-                    catch
+                    else
                     {
-                        // ignore activate failure
+                        _nonModalWindow = null;
                     }
-                    return true;
                 }
             }
 
             try
             {
+                EnsureDispatcherExceptionHandler();
                 EditorInput input = ParseInput(inputJson);
                 var window = new EditorWindow(input, isModal: false);
                 TrySetOwner(window, ownerHandle);
@@ -131,7 +145,36 @@ namespace HyCADTool.MarkdownEditor
         public static bool IsNonModalOpen()
         {
             lock (_windowLock)
-                return _nonModalWindow != null && _nonModalWindow.IsVisible;
+            {
+                if (_nonModalWindow == null) return false;
+                try
+                {
+                    if (_nonModalWindow.IsVisible) return true;
+                }
+                catch
+                {
+                    // window in bad state after crash
+                }
+                _nonModalWindow = null;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 强制重置窗口引用（供 EditorLoader 在新会话时调用）。
+        /// </summary>
+        public static void ForceResetWindowState()
+        {
+            lock (_windowLock)
+            {
+                if (_nonModalWindow != null)
+                {
+                    try { if (_nonModalWindow.IsVisible) _nonModalWindow.Close(); }
+                    catch { }
+                    _nonModalWindow = null;
+                }
+            }
+            ClearSyncCallbacks();
         }
 
         private static EditorInput ParseInput(string inputJson)
@@ -160,6 +203,30 @@ namespace HyCADTool.MarkdownEditor
             {
                 // ignore owner setup failure
             }
+        }
+
+        private static bool _dispatcherHandlerRegistered;
+
+        private static void EnsureDispatcherExceptionHandler()
+        {
+            if (_dispatcherHandlerRegistered) return;
+            _dispatcherHandlerRegistered = true;
+            try
+            {
+                Dispatcher.CurrentDispatcher.UnhandledException += (s, e) =>
+                {
+                    e.Handled = true;
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[MarkdownEditor] Dispatcher exception caught: {e.Exception?.Message}\n{e.Exception?.StackTrace}");
+                    try
+                    {
+                        lock (_windowLock) _nonModalWindow = null;
+                        ClearSyncCallbacks();
+                    }
+                    catch { }
+                };
+            }
+            catch { }
         }
 
         private static void OnNonModalWindowClosed(object sender, EventArgs e)
