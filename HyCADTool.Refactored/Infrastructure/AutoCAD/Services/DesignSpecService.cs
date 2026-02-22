@@ -402,7 +402,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     ? config.ActualTextHeight
                     : EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
                 bool outOfBottom = (cursorTopY - estimatedHeight) < contentBottomY;
-                if (outOfBottom && !forcePlaceholder)
+                if (outOfBottom && !forcePlaceholder && createdAnyEntity)
                 {
                     overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
                     return false;
@@ -438,7 +438,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 if (!segment.IsTable)
                 {
                     if (!string.IsNullOrWhiteSpace(segment.Markdown))
+                    {
                         pendingTextBlocks.Add(segment.Markdown);
+                        if (!TryFlushTextSegment(segIndex + 1, forcePlaceholder: false, out var blockOverflow))
+                        {
+                            metadataWritten = metadataLocal;
+                            anchorEntityId = anchorLocal;
+                            mtextCount = mtextLocal;
+                            tableCount = tableLocal;
+                            return blockOverflow;
+                        }
+                    }
                     continue;
                 }
 
@@ -465,7 +475,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 }
 
                 double estimatedTableHeight = EstimateTableHeightFallback(segment.TableData, textWidth, config);
-                if (cursorTopY - estimatedTableHeight < contentBottomY)
+                if (cursorTopY - estimatedTableHeight < contentBottomY && createdAnyEntity)
                 {
                     metadataWritten = metadataLocal;
                     anchorEntityId = anchorLocal;
