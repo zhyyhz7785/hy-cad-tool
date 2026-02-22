@@ -9,11 +9,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
-using LayoutPageModel = HyCADTool.TextLayout.LayoutPage;
 using SharedMarkdownBlockParser = HyCADTool.TextLayout.MarkdownBlockParser;
 using SharedDocumentBlock = HyCADTool.TextLayout.DocumentBlock;
 using SharedDocumentBlockType = HyCADTool.TextLayout.DocumentBlockType;
-using SharedColumnSplitter = HyCADTool.TextLayout.MarkdownColumnSplitter;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
@@ -38,16 +36,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             public MarkdownTableData TableData { get; set; }
         }
 
-        /// <summary>
-        /// 每页每列的 MText 内容和 Markdown 源码
-        /// </summary>
-        private sealed class PageColumnData
-        {
-            public int PageIndex { get; set; }
-            public string[] ColumnContents { get; set; }
-            public string[] ColumnMarkdowns { get; set; }
-        }
-
         private sealed class ColumnMarkdownSegment
         {
             public bool IsTable { get; set; }
@@ -70,15 +58,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 throw new ArgumentNullException(nameof(config));
             config.Normalize();
 
-            if (columnContents == null || columnContents.Length == 0)
-                throw new ArgumentException("MText 内容不能为空");
-
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) throw new InvalidOperationException("无活动文档");
 
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
-            var allPageData = BuildAllPageColumnData(columnContents, columnMarkdowns, markdownSource, config, layoutResult);
             var ed = doc.Editor;
 
             ObjectId anchorEntityId = ObjectId.Null;
@@ -97,49 +81,48 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     int mtextCount = 0;
                     int tableCount = 0;
                     bool metadataWritten = false;
-                    int totalPages = allPageData.Count;
+                    int outputPageCount = 0;
+                    int pageColCount = Math.Max(1, config.ColumnCount);
+                    string pendingMarkdown = markdownSource ?? string.Empty;
 
-                    for (int pageIdx = 0; pageIdx < totalPages; pageIdx++)
+                    while (!string.IsNullOrWhiteSpace(pendingMarkdown) || outputPageCount == 0)
                     {
-                        var pageData = allPageData[pageIdx];
-                        double pageTopY = insertionPoint.Y - pageIdx * pageHeightScaled;
-
-                        // 绘制图框
+                        double pageTopY = insertionPoint.Y - outputPageCount * pageHeightScaled;
                         DrawTitleBlock(tr, btr, db, config, insertionPoint.X, pageTopY, insertionPoint.Z, groupId);
 
                         double contentTopY = pageTopY - config.MarginTopMm * config.Scale;
+                        double contentBottomY = pageTopY - (config.PageHeightMm - config.MarginBottomMm) * config.Scale;
                         double contentLeftX = insertionPoint.X + config.MarginLeftMm * config.Scale;
                         double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
-
-                        int pageColCount = ResolvePageColumnCount(pageData, area);
                         double xOffset = 0;
+
                         for (int i = 0; i < pageColCount; i++)
                         {
-                            string colMd = (pageData.ColumnMarkdowns != null && i < pageData.ColumnMarkdowns.Length)
-                                ? (pageData.ColumnMarkdowns[i] ?? "")
-                                : "";
-                            double colWidth = ResolveColumnWidthMm(i, area, config, layoutResult, pageColCount);
+                            double colWidth = ResolveColumnWidthMm(i, config, pageColCount);
                             double colLeftX = contentLeftX + xOffset;
                             double textLeftX = colLeftX + innerPad;
                             double textTopY = contentTopY - innerPad;
                             double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
-                            InsertColumnEntities(
+                            var overflowSegments = InsertColumnEntities(
                                 tr, btr, db, config,
-                                pageIdx, i, colMd,
+                                outputPageCount, i, pendingMarkdown,
                                 textLeftX, textTopY, insertionPoint.Z,
-                                textWidth, groupId, markdownSource,
+                                textWidth, contentBottomY, groupId, markdownSource,
                                 textStyleId,
                                 ref metadataWritten, ref anchorEntityId,
                                 ref mtextCount, ref tableCount);
 
+                            pendingMarkdown = BuildMarkdownFromSegments(overflowSegments);
                             xOffset += colWidth + area.ColumnGutter;
                         }
+
+                        outputPageCount++;
                     }
 
                     tr.Commit();
                     string widthInfo = string.Join("+", area.ColumnWidths.Select(w => w.ToString("0.0")));
-                    ed.WriteMessage($"\n已插入设计说明：MText={mtextCount}, Table={tableCount}（{totalPages}页，{area.ColumnCount}栏，栏宽={widthInfo}mm，总宽={area.TotalWidth:0.0}mm）");
+                    ed.WriteMessage($"\n已插入设计说明：MText={mtextCount}, Table={tableCount}（{outputPageCount}页，{area.ColumnCount}栏，栏宽={widthInfo}mm，总宽={area.TotalWidth:0.0}mm）");
                     return anchorEntityId;
                 }
                 catch (System.Exception ex)
@@ -171,7 +154,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
-            var allPageData = BuildAllPageColumnData(columnContents, columnMarkdowns, markdownSource, config, layoutResult);
             var ed = doc.Editor;
 
             ObjectId newAnchorEntityId = ObjectId.Null;
@@ -218,48 +200,48 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     bool metadataWritten = false;
                     int mtextCount = 0;
                     int tableCount = 0;
-                    int totalPages = allPageData.Count;
+                    int outputPageCount = 0;
+                    int pageColCount = Math.Max(1, config.ColumnCount);
+                    string pendingMarkdown = markdownSource ?? string.Empty;
 
-                    for (int pageIdx = 0; pageIdx < totalPages; pageIdx++)
+                    while (!string.IsNullOrWhiteSpace(pendingMarkdown) || outputPageCount == 0)
                     {
-                        var pageData = allPageData[pageIdx];
-                        double pageTopY = insertPt.Y - pageIdx * pageHeightScaled;
-
+                        double pageTopY = insertPt.Y - outputPageCount * pageHeightScaled;
                         DrawTitleBlock(tr, btr2, db, config, insertPt.X, pageTopY, insertPt.Z, newGroupId);
 
                         double contentTopY = pageTopY - config.MarginTopMm * config.Scale;
+                        double contentBottomY = pageTopY - (config.PageHeightMm - config.MarginBottomMm) * config.Scale;
                         double contentLeftX = insertPt.X + config.MarginLeftMm * config.Scale;
                         double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
-
-                        int pageColCount = ResolvePageColumnCount(pageData, area);
                         double xOffset = 0;
+
                         for (int i = 0; i < pageColCount; i++)
                         {
-                            string colMd = (pageData.ColumnMarkdowns != null && i < pageData.ColumnMarkdowns.Length)
-                                ? (pageData.ColumnMarkdowns[i] ?? "")
-                                : "";
-                            double colWidth = ResolveColumnWidthMm(i, area, config, layoutResult, pageColCount);
+                            double colWidth = ResolveColumnWidthMm(i, config, pageColCount);
                             double colLeftX = contentLeftX + xOffset;
                             double textLeftX = colLeftX + innerPad;
                             double textTopY = contentTopY - innerPad;
                             double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
-                            InsertColumnEntities(
+                            var overflowSegments = InsertColumnEntities(
                                 tr, btr2, db, config,
-                                pageIdx, i, colMd,
+                                outputPageCount, i, pendingMarkdown,
                                 textLeftX, textTopY, insertPt.Z,
-                                textWidth, newGroupId, markdownSource,
+                                textWidth, contentBottomY, newGroupId, markdownSource,
                                 textStyleId,
                                 ref metadataWritten, ref newAnchorEntityId,
                                 ref mtextCount, ref tableCount);
 
+                            pendingMarkdown = BuildMarkdownFromSegments(overflowSegments);
                             xOffset += colWidth + area.ColumnGutter;
                         }
+
+                        outputPageCount++;
                     }
 
                     tr.Commit();
                     string widthInfo = string.Join("+", area.ColumnWidths.Select(w => w.ToString("0.0")));
-                    ed.WriteMessage($"\n已更新设计说明：MText={mtextCount}, Table={tableCount}（{totalPages}页，{area.ColumnCount}栏，栏宽={widthInfo}mm，总宽={area.TotalWidth:0.0}mm）");
+                    ed.WriteMessage($"\n已更新设计说明：MText={mtextCount}, Table={tableCount}（{outputPageCount}页，{area.ColumnCount}栏，栏宽={widthInfo}mm，总宽={area.TotalWidth:0.0}mm）");
                     return newAnchorEntityId;
                 }
                 catch (System.Exception ex)
@@ -320,34 +302,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             metadataWritten = true;
         }
 
-        private static int ResolvePageColumnCount(PageColumnData pageData, TextAreaCalculator.TextAreaResult area)
-        {
-            int byContent = pageData?.ColumnContents?.Length ?? 0;
-            int byMarkdown = pageData?.ColumnMarkdowns?.Length ?? 0;
-            int byArea = area?.ColumnCount ?? 0;
-            return Math.Max(1, Math.Max(byArea, Math.Max(byContent, byMarkdown)));
-        }
-
         private static double ResolveColumnWidthMm(
             int colIndex,
-            TextAreaCalculator.TextAreaResult area,
             DesignSpecConfig config,
-            LayoutResultModel layoutResult,
             int pageColCount)
         {
-            if (layoutResult?.ColumnWidthsMm != null
-                && colIndex < layoutResult.ColumnWidthsMm.Length
-                && layoutResult.ColumnWidthsMm[colIndex] > 0)
-            {
-                return layoutResult.ColumnWidthsMm[colIndex];
-            }
-
-            if (area?.ColumnWidths != null
-                && colIndex < area.ColumnWidths.Length
-                && area.ColumnWidths[colIndex] > 0)
-            {
-                return area.ColumnWidths[colIndex];
-            }
+            _ = colIndex;
 
             int cols = Math.Max(1, pageColCount);
             double availableWidth = (config.PageWidthMm - config.MarginLeftMm - config.MarginRightMm) * config.Scale;
@@ -359,7 +319,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             return config.GetPageDrivenColumnWidth();
         }
 
-        private void InsertColumnEntities(
+        private List<ColumnMarkdownSegment> InsertColumnEntities(
             Transaction tr,
             BlockTableRecord btr,
             Database db,
@@ -371,6 +331,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             double textTopY,
             double z,
             double textWidth,
+            double contentBottomY,
             string groupId,
             string markdownSource,
             ObjectId textStyleId,
@@ -385,6 +346,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var segments = SplitColumnMarkdownByBlocks(columnMarkdown);
             var renderer = new MarkdownToMTextRenderer(config);
             var pendingTextBlocks = new List<string>();
+            double entityGap = Math.Max(config.ActualTextHeight * 0.5, config.ActualTextHeight * 0.25);
 
             bool metadataLocal = metadataWritten;
             ObjectId anchorLocal = anchorEntityId;
@@ -393,24 +355,59 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             bool createdAnyEntity = false;
             double cursorTopY = textTopY;
 
-            void FlushTextSegment(bool forcePlaceholder)
+            List<ColumnMarkdownSegment> BuildOverflowFrom(int index, bool includePendingText)
             {
+                var overflow = new List<ColumnMarkdownSegment>();
+                if (includePendingText)
+                {
+                    string md = string.Join("\n\n", pendingTextBlocks.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    if (!string.IsNullOrWhiteSpace(md))
+                    {
+                        overflow.Add(new ColumnMarkdownSegment
+                        {
+                            IsTable = false,
+                            Markdown = md
+                        });
+                    }
+                }
+
+                for (int i = index; i < segments.Count; i++)
+                {
+                    if (segments[i] != null)
+                        overflow.Add(segments[i]);
+                }
+                return overflow;
+            }
+
+            bool TryFlushTextSegment(int overflowStartIndex, bool forcePlaceholder, out List<ColumnMarkdownSegment> overflow)
+            {
+                overflow = null;
                 string segmentMarkdown = pendingTextBlocks.Count == 0
                     ? string.Empty
                     : string.Join("\n\n", pendingTextBlocks.Where(x => !string.IsNullOrWhiteSpace(x)));
-                pendingTextBlocks.Clear();
 
                 string content = string.Empty;
                 if (!string.IsNullOrWhiteSpace(segmentMarkdown))
                 {
                     content = renderer.Convert(segmentMarkdown) ?? string.Empty;
                     if (string.IsNullOrWhiteSpace(content) && !forcePlaceholder)
-                        return;
+                        return true;
                 }
                 else if (!forcePlaceholder)
                 {
-                    return;
+                    return true;
                 }
+
+                double estimatedHeight = string.IsNullOrWhiteSpace(content)
+                    ? config.ActualTextHeight
+                    : EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
+                bool outOfBottom = (cursorTopY - estimatedHeight) < contentBottomY;
+                if (outOfBottom && !forcePlaceholder)
+                {
+                    overflow = BuildOverflowFrom(overflowStartIndex, includePendingText: true);
+                    return false;
+                }
+                pendingTextBlocks.Clear();
 
                 var mtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, content);
                 SetLayer(db, tr, mtext, LAYER_TEXT);
@@ -427,13 +424,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                 if (!string.IsNullOrWhiteSpace(content))
                 {
-                    double estimatedHeight = EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
                     cursorTopY = GetEntityBottomY(mtext, cursorTopY, estimatedHeight);
                 }
+                return true;
             }
 
-            foreach (var segment in segments)
+            for (int segIndex = 0; segIndex < segments.Count; segIndex++)
             {
+                var segment = segments[segIndex];
                 if (segment == null)
                     continue;
 
@@ -444,7 +442,37 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     continue;
                 }
 
-                FlushTextSegment(forcePlaceholder: false);
+                if (!TryFlushTextSegment(segIndex, forcePlaceholder: false, out var textOverflow))
+                {
+                    metadataWritten = metadataLocal;
+                    anchorEntityId = anchorLocal;
+                    mtextCount = mtextLocal;
+                    tableCount = tableLocal;
+                    return textOverflow;
+                }
+
+                if (createdAnyEntity)
+                {
+                    if (cursorTopY - entityGap < contentBottomY)
+                    {
+                        metadataWritten = metadataLocal;
+                        anchorEntityId = anchorLocal;
+                        mtextCount = mtextLocal;
+                        tableCount = tableLocal;
+                        return BuildOverflowFrom(segIndex, includePendingText: false);
+                    }
+                    cursorTopY -= entityGap;
+                }
+
+                double estimatedTableHeight = EstimateTableHeightFallback(segment.TableData, textWidth, config);
+                if (cursorTopY - estimatedTableHeight < contentBottomY)
+                {
+                    metadataWritten = metadataLocal;
+                    anchorEntityId = anchorLocal;
+                    mtextCount = mtextLocal;
+                    tableCount = tableLocal;
+                    return BuildOverflowFrom(segIndex, includePendingText: false);
+                }
 
                 if (TryCreateTable(
                     tr,
@@ -465,23 +493,65 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 {
                     tableLocal++;
                     createdAnyEntity = true;
-                    double estimatedTableHeight = EstimateTableHeightFallback(segment.TableData, textWidth, config);
                     cursorTopY = GetEntityBottomY(createdTable, cursorTopY, estimatedTableHeight);
+
+                    bool hasRemaining = segIndex < segments.Count - 1;
+                    if (hasRemaining)
+                    {
+                        if (cursorTopY - entityGap < contentBottomY)
+                        {
+                            metadataWritten = metadataLocal;
+                            anchorEntityId = anchorLocal;
+                            mtextCount = mtextLocal;
+                            tableCount = tableLocal;
+                            return BuildOverflowFrom(segIndex + 1, includePendingText: false);
+                        }
+                        cursorTopY -= entityGap;
+                    }
                 }
             }
 
-            FlushTextSegment(forcePlaceholder: false);
+            if (!TryFlushTextSegment(segments.Count, forcePlaceholder: false, out var finalOverflow))
+            {
+                metadataWritten = metadataLocal;
+                anchorEntityId = anchorLocal;
+                mtextCount = mtextLocal;
+                tableCount = tableLocal;
+                return finalOverflow;
+            }
 
             if (!createdAnyEntity)
             {
                 // 该栏完全为空时，仍放置空 MText 占位，保证页栏计数稳定。
-                FlushTextSegment(forcePlaceholder: true);
+                if (!TryFlushTextSegment(segments.Count, forcePlaceholder: true, out _))
+                {
+                    metadataWritten = metadataLocal;
+                    anchorEntityId = anchorLocal;
+                    mtextCount = mtextLocal;
+                    tableCount = tableLocal;
+                    return new List<ColumnMarkdownSegment>();
+                }
             }
 
             metadataWritten = metadataLocal;
             anchorEntityId = anchorLocal;
             mtextCount = mtextLocal;
             tableCount = tableLocal;
+            return new List<ColumnMarkdownSegment>();
+        }
+
+        private static string BuildMarkdownFromSegments(List<ColumnMarkdownSegment> segments)
+        {
+            if (segments == null || segments.Count == 0)
+                return string.Empty;
+
+            var blocks = segments
+                .Where(s => s != null && !string.IsNullOrWhiteSpace(s.Markdown))
+                .Select(s => s.Markdown.Trim())
+                .ToArray();
+            if (blocks.Length == 0)
+                return string.Empty;
+            return string.Join("\n\n", blocks);
         }
 
         private static List<ColumnMarkdownSegment> SplitColumnMarkdownByBlocks(string columnMarkdown)
@@ -1155,78 +1225,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 return Point3d.Origin;
             }
-        }
-
-        /// <summary>
-        /// 根据 layoutResult 为每页生成列内容。单页时直接使用传入的 columnContents。
-        /// </summary>
-        private static List<PageColumnData> BuildAllPageColumnData(
-            string[] columnContents,
-            string[] columnMarkdowns,
-            string markdownSource,
-            DesignSpecConfig config,
-            LayoutResultModel layoutResult)
-        {
-            var pages = new List<PageColumnData>();
-            int pageCount = layoutResult?.Pages?.Length ?? 0;
-
-            if (pageCount <= 1)
-            {
-                // 单页或无布局：直接使用传入的数据
-                pages.Add(new PageColumnData
-                {
-                    PageIndex = 0,
-                    ColumnContents = columnContents ?? Array.Empty<string>(),
-                    ColumnMarkdowns = columnMarkdowns ?? Array.Empty<string>()
-                });
-                return pages;
-            }
-
-            // 多页：根据 layoutResult 的 ColumnBlockIndices 为每页切分 markdown
-            var allBlocks = SharedColumnSplitter.ExtractTopLevelBlocks(markdownSource ?? "");
-            if (allBlocks == null || allBlocks.Length == 0)
-            {
-                pages.Add(new PageColumnData
-                {
-                    PageIndex = 0,
-                    ColumnContents = columnContents ?? Array.Empty<string>(),
-                    ColumnMarkdowns = columnMarkdowns ?? Array.Empty<string>()
-                });
-                return pages;
-            }
-
-            for (int p = 0; p < pageCount; p++)
-            {
-                var page = layoutResult.Pages[p];
-                int colCount = page?.ColumnBlockIndices?.Length ?? 0;
-                var pageContents = new string[colCount];
-                var pageMds = new string[colCount];
-
-                for (int c = 0; c < colCount; c++)
-                {
-                    int[] indices = page.ColumnBlockIndices[c] ?? Array.Empty<int>();
-                    var blockTexts = indices
-                        .Where(idx => idx >= 0 && idx < allBlocks.Length)
-                        .Select(idx => allBlocks[idx])
-                        .ToArray();
-                    string colMarkdown = string.Join("\n\n", blockTexts);
-                    pageMds[c] = colMarkdown;
-
-                    // 表格从 MText 中移除，单独插入
-                    string mdWithoutTables = MarkdownTableExtractor.RemoveTopLevelTables(colMarkdown);
-                    var renderer = new MarkdownToMTextRenderer(config);
-                    pageContents[c] = renderer.Convert(mdWithoutTables);
-                }
-
-                pages.Add(new PageColumnData
-                {
-                    PageIndex = p,
-                    ColumnContents = pageContents,
-                    ColumnMarkdowns = pageMds
-                });
-            }
-
-            return pages;
         }
 
         /// <summary>
