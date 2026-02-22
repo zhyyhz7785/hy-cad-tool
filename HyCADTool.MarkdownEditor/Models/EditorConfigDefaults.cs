@@ -15,7 +15,7 @@ namespace HyCADTool.MarkdownEditor.Models
         public const int ColumnCount = 2;
         public const double ColumnGutter = 5;
         public const int MaxColumnCount = 10;
-        public const int MinColumnWidthPx = 80;
+        public const int MinColumnWidthPx = 50;
         public const int MinColumnHeightPx = 80;
         public static readonly int[] CharsPerColumn = new[] { 28, 28 };
         public const double TotalHeight = 350;

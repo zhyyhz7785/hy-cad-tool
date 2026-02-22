@@ -870,6 +870,8 @@ namespace HyCADTool.MarkdownEditor.Views
 
         private void OnToggleOutline()
         {
+            if (WindowState == WindowState.Maximized && _layoutManager.IsOutlineVisible)
+                return;
             _layoutManager.ToggleOutline();
             RelayoutPreviewIfNeeded();
         }

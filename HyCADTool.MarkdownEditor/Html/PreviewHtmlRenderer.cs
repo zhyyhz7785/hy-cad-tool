@@ -74,10 +74,10 @@ namespace HyCADTool.MarkdownEditor.Html
                 : Markdown.ToHtml(preprocessed, Pipeline);
             EditorConfig cfg = config ?? new EditorConfig();
             int maxCol = cfg.MaxColumnCount > 0 ? Math.Max(1, Math.Min(99, cfg.MaxColumnCount)) : 10;
-            int minColWidthPx = cfg.MinColumnWidthPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnWidthPx)) : 80;
             int minColHeightPx = cfg.MinColumnHeightPx > 0 ? Math.Max(20, Math.Min(500, cfg.MinColumnHeightPx)) : 80;
             int cols = Math.Max(1, Math.Min(maxCol, columnCount));
             double scale = Math.Max(0.1, Math.Min(5.0, previewScale));
+            int minColWidthPx = (int)Math.Max(20, Round((cfg.MinColumnWidthPx > 0 ? cfg.MinColumnWidthPx : 50) * scale));
             double textSizeMm = Math.Max(0.1, cfg.TextSize);
             double textXScale = Math.Max(0.1, cfg.TextXScale);
             double fontWidthFactor = ResolveFontWidthFactor(cfg);

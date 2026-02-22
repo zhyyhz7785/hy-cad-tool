@@ -46,7 +46,7 @@ namespace HyCADTool.MarkdownEditor.Services
 
         private bool _previewVisible = true;
         private bool _outlineVisible = true;
-        private bool _bottomPanelVisible = true;
+        private bool _bottomPanelVisible = false;
         private bool _rulerVisible = true;
         private bool _editorVisible = true;
         private bool _paperPrimaryEditMode = DefaultPaperPrimaryMode;
@@ -321,9 +321,9 @@ namespace HyCADTool.MarkdownEditor.Services
             _previewPanelWidth = Math.Max(MinPreviewVisibleWidth, unit * DefaultRatioPreview);
             _bottomPanelHeight = Math.Max(_bottomPanelHeight, 160);
 
-            _outlineVisible = false;
+            _outlineVisible = true;
             _previewVisible = true;
-            _bottomPanelVisible = true;
+            _bottomPanelVisible = false;
             _rulerVisible = true;
             _paperPrimaryEditMode = DefaultPaperPrimaryMode;
             _editorVisible = !_paperPrimaryEditMode;

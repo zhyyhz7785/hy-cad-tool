@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 
 namespace HyCADTool.MarkdownEditor.Views.Helpers
@@ -35,6 +36,32 @@ namespace HyCADTool.MarkdownEditor.Views.Helpers
 
         #endregion
 
+        #region ScrollStepValues
+
+        public static readonly DependencyProperty ScrollStepValuesProperty =
+            DependencyProperty.RegisterAttached(
+                "ScrollStepValues", typeof(string), typeof(TextBoxHelper),
+                new PropertyMetadata(null));
+
+        public static string GetScrollStepValues(DependencyObject obj) => (string)obj.GetValue(ScrollStepValuesProperty);
+        public static void SetScrollStepValues(DependencyObject obj, string value) => obj.SetValue(ScrollStepValuesProperty, value);
+
+        private static double[] ParseStepValues(string csv)
+        {
+            if (string.IsNullOrWhiteSpace(csv)) return null;
+            var parts = csv.Split(',');
+            var result = new double[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (!double.TryParse(parts[i].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out result[i]))
+                    return null;
+            }
+            Array.Sort(result);
+            return result.Length > 0 ? result : null;
+        }
+
+        #endregion
+
         private static void OnEnableCustomHandlersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is not TextBox textBox) return;
@@ -50,16 +77,18 @@ namespace HyCADTool.MarkdownEditor.Views.Helpers
                 var binding = textBox.GetBindingExpression(TextBox.TextProperty);
                 if (binding != null)
                 {
-                    var newBinding = new System.Windows.Data.Binding(binding.ParentBinding.Path.Path)
+                    var pb = binding.ParentBinding;
+                    var newBinding = new Binding(pb.Path.Path)
                     {
-                        Source = binding.ParentBinding.Source,
-                        Mode = binding.ParentBinding.Mode,
-                        UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus,
-                        StringFormat = binding.ParentBinding.StringFormat,
+                        Source = pb.Source,
+                        Mode = pb.Mode,
+                        UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
+                        StringFormat = pb.StringFormat,
+                        Converter = pb.Converter ?? new SafeNumericConverter(),
                         ConverterCulture = CultureInfo.InvariantCulture
                     };
-                    if (binding.ParentBinding.RelativeSource != null)
-                        newBinding.RelativeSource = binding.ParentBinding.RelativeSource;
+                    if (pb.RelativeSource != null)
+                        newBinding.RelativeSource = pb.RelativeSource;
                     textBox.SetBinding(TextBox.TextProperty, newBinding);
                 }
             }
@@ -99,6 +128,12 @@ namespace HyCADTool.MarkdownEditor.Views.Helpers
             if (sender is not TextBox tb) return;
             if (e.Key == Key.Enter)
             {
+                try
+                {
+                    if (InputMethod.Current?.ImeState == InputMethodState.On)
+                        return;
+                }
+                catch { }
                 tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
                 Keyboard.ClearFocus();
                 e.Handled = true;
@@ -119,14 +154,30 @@ namespace HyCADTool.MarkdownEditor.Views.Helpers
 
         private static void AdjustValue(TextBox tb, int direction)
         {
-            double step = GetScrollStep(tb);
-            if (double.TryParse(tb.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double current))
+            if (!double.TryParse(tb.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double current))
+                return;
+
+            string csv = GetScrollStepValues(tb);
+            double[] steps = ParseStepValues(csv);
+            double newVal;
+
+            if (steps != null && steps.Length > 0)
             {
-                double newVal = Math.Round(current + step * direction, 4);
-                tb.Text = newVal.ToString(CultureInfo.InvariantCulture);
-                tb.SelectAll();
-                tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                int idx = Array.BinarySearch(steps, current);
+                if (idx < 0) idx = ~idx;
+                int next = idx + direction;
+                next = Math.Max(0, Math.Min(steps.Length - 1, next));
+                newVal = steps[next];
             }
+            else
+            {
+                double step = GetScrollStep(tb);
+                newVal = Math.Round(current + step * direction, 4);
+            }
+
+            tb.Text = newVal.ToString(CultureInfo.InvariantCulture);
+            tb.SelectAll();
+            tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         }
     }
 }

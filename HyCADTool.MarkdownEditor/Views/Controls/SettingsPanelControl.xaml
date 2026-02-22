@@ -58,6 +58,7 @@
                                 <TextBlock Style="{StaticResource ParamSmallLabel}" Text="出图比例" />
                                 <TextBox Style="{StaticResource ParamInput}"
                                          Width="72"
+                                         helper:TextBoxHelper.ScrollStepValues="1,5,10,15,20,25,30,50,75,100,125,150,175,200,250,300,350,400,450,500"
                                          Text="{Binding DrawScaleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,6,6">
@@ -281,7 +282,7 @@
                                          Text="{Binding MaxColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="最小栏宽(px)" />
+                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="最小栏宽(mm)" />
                                 <TextBox Style="{StaticResource ParamInput}"
                                          Width="72"
                                          helper:TextBoxHelper.ScrollStep="1"

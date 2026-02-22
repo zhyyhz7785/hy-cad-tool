@@ -1,18 +1,18 @@
 {
   "DrawScale": 1.0,
-  "PreviewScale": 1.0,
+  "PreviewScale": 1.5,
   "ColumnCount": 2,
   "ColumnGutter": 5.0,
   "MaxColumnCount": 10,
   "MinColumnWidthPx": 80,
   "MinColumnHeightPx": 80,
   "CharsPerColumn": [
-    28,
-    28
+    66,
+    66
   ],
   "TotalHeight": 350.0,
   "TextSize": 2.5,
-  "TextXScale": 0.7,
+  "TextXScale": 1.0,
   "PagePreset": "A2横向",
   "PageWidthMm": 594.0,
   "PageHeightMm": 420.0,
