@@ -31,6 +31,9 @@ namespace HyCADTool.ReCall
 
         private static Action _c1Action;
         private static bool _assemblyResolveRegistered = false;
+        private static string _currentDependenciesPath;
+        private static string _currentNugetPackagesPath;
+        private static ResolveEventHandler _assemblyResolveHandler;
 
         /// <summary>C2 - 重新加载插件（仅在此命令执行时加载，不在构造函数中调用，避免加载时执行两次）</summary>
         [CommandMethod("C2")]
@@ -65,11 +68,14 @@ namespace HyCADTool.ReCall
                 string loadDepsPath = Path.GetDirectoryName(loadPath);
                 swCopy.Stop();
 
+                _currentDependenciesPath = loadDepsPath;
+                _currentNugetPackagesPath = nugetPath;
+
                 // 只注册一次 AssemblyResolve 事件
                 if (!_assemblyResolveRegistered)
                 {
-                    AppDomain.CurrentDomain.AssemblyResolve += (s, args) =>
-                        ResolveAssembly(args, loadDepsPath, nugetPath);
+                    _assemblyResolveHandler = CurrentDomain_AssemblyResolve;
+                    AppDomain.CurrentDomain.AssemblyResolve += _assemblyResolveHandler;
                     _assemblyResolveRegistered = true;
                 }
 
@@ -96,6 +102,11 @@ namespace HyCADTool.ReCall
             {
                 ed.WriteMessage("\n✗ 加载失败: " + ex.Message);
             }
+        }
+
+        private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            return ResolveAssembly(args, _currentDependenciesPath, _currentNugetPackagesPath);
         }
 
         /// <summary>C1 - 执行当前配置的一个测试命令</summary>
@@ -248,6 +259,8 @@ namespace HyCADTool.ReCall
         private static Assembly ResolveAssembly(ResolveEventArgs args, string dependenciesPath, string nugetPackagesPath)
         {
             if (args.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
+                return null;
+            if (string.IsNullOrWhiteSpace(dependenciesPath))
                 return null;
 
             string name = new AssemblyName(args.Name).Name + ".dll";

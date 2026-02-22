@@ -466,6 +466,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set => SetProperty(ref _mTextParagraphAlign, string.IsNullOrWhiteSpace(value) ? "Left" : value.Trim());
         }
 
+        private double _lineSpacingFactor = EditorConfigDefaults.LineSpacingFactor;
+        public double LineSpacingFactor
+        {
+            get => _lineSpacingFactor;
+            set => SetProperty(ref _lineSpacingFactor, Math.Max(0.5, Math.Min(3.0, value)));
+        }
+
         /// <summary>转入 CAD 时可选样式列表（StyleTName, StyleSName）</summary>
         public IReadOnlyList<string> CadStyleNames => new[] { StyleTName, StyleSName };
 
@@ -896,6 +903,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _mTextObliquingAngle = Math.Max(-85, Math.Min(85, cfg.MTextObliquingAngle));
             _mTextCharSpacing = Math.Max(0.75, Math.Min(4.0, cfg.MTextCharSpacing));
             _mTextParagraphAlign = string.IsNullOrWhiteSpace(cfg.MTextParagraphAlign) ? "Left" : cfg.MTextParagraphAlign.Trim();
+            _lineSpacingFactor = Math.Max(0.5, Math.Min(3.0, cfg.LineSpacingFactor));
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
@@ -950,6 +958,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             OnPropertyChanged(nameof(MTextObliquingAngle));
             OnPropertyChanged(nameof(MTextCharSpacing));
             OnPropertyChanged(nameof(MTextParagraphAlign));
+            OnPropertyChanged(nameof(LineSpacingFactor));
             OnPropertyChanged(nameof(H1SpaceBefore));
             OnPropertyChanged(nameof(H1SpaceAfter));
             OnPropertyChanged(nameof(H2SpaceBefore));
@@ -1062,7 +1071,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MTextLineSpacingStyle = MTextLineSpacingStyle,
                 MTextObliquingAngle = MTextObliquingAngle,
                 MTextCharSpacing = MTextCharSpacing,
-                MTextParagraphAlign = MTextParagraphAlign
+                MTextParagraphAlign = MTextParagraphAlign,
+                LineSpacingFactor = LineSpacingFactor
             };
         }
 
@@ -1161,6 +1171,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MTextObliquingAngle = d.MTextObliquingAngle;
             MTextCharSpacing = d.MTextCharSpacing;
             MTextParagraphAlign = d.MTextParagraphAlign;
+            LineSpacingFactor = d.LineSpacingFactor;
 
             SyncDrawScaleTextFromValue();
             UpdateStatus();

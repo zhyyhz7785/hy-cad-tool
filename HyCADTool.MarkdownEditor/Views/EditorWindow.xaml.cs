@@ -733,6 +733,7 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.CadSyncStyleName):
                 case nameof(EditorViewModel.MTextAttachment):
                 case nameof(EditorViewModel.MTextLineSpacingStyle):
+                case nameof(EditorViewModel.LineSpacingFactor):
                 case nameof(EditorViewModel.MTextObliquingAngle):
                 case nameof(EditorViewModel.MTextCharSpacing):
                 case nameof(EditorViewModel.MTextParagraphAlign):

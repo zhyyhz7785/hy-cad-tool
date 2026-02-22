@@ -176,8 +176,10 @@ body{
   min-height:/*FLOW_MIN_COLUMN_HEIGHT_PX*/px;
   overflow:hidden;
   padding:/*FLOW_CONTENT_PAD_PX*/;
+  text-align:/*FLOW_TEXT_ALIGN*/;
+  letter-spacing:/*FLOW_LETTER_SPACING*/;
   transform-origin:left top;
-  transform:scaleX(/*FLOW_TEXT_X_SCALE_CSS*/);
+  transform:scaleX(/*FLOW_TEXT_X_SCALE_CSS*/) skewX(/*FLOW_OBLIQUE_ANGLE*/deg);
   width:calc(100% / /*FLOW_TEXT_X_SCALE_CSS*/);
   background:#ffffff;
   color:#111111;
@@ -1969,6 +1971,9 @@ else{window.onload=init;}
             string liSpaceAfter = $"{cfg.LiSpaceAfter:F1}em";
             string quoteSpaceBefore = $"{cfg.QuoteSpaceBefore:F1}em";
             string quoteSpaceAfter = $"{cfg.QuoteSpaceAfter:F1}em";
+            string textAlign = ToCssTextAlign(cfg.MTextParagraphAlign);
+            string letterSpacing = ToCssLetterSpacing(cfg.MTextCharSpacing);
+            string obliqueAngle = ToCssSkewAngle(cfg.MTextObliquingAngle);
 
             string flowCss = flowCssTemplate
                 .Replace("/*FLOW_FONT_FAMILY*/", fontFamily)
@@ -1985,6 +1990,9 @@ else{window.onload=init;}
                 .Replace("/*FLOW_QUOTE_SPACE_AFTER*/", quoteSpaceAfter)
                 .Replace("/*FLOW_LINE_HEIGHT*/", Math.Max(1.0, cfg.LineSpacingFactor).ToString("0.###", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_TEXT_X_SCALE_CSS*/", textXScale.ToString("0.###", CultureInfo.InvariantCulture))
+                .Replace("/*FLOW_TEXT_ALIGN*/", textAlign)
+                .Replace("/*FLOW_LETTER_SPACING*/", letterSpacing)
+                .Replace("/*FLOW_OBLIQUE_ANGLE*/", obliqueAngle)
                 .Replace("/*FLOW_PAPER_WIDTH*/", $"{paperWidthPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_PAPER_HEIGHT*/", $"{paperHeightPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
                 .Replace("/*FLOW_PAD_LEFT*/", $"{leftPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
@@ -2070,6 +2078,9 @@ else{window.onload=init;}
             string fontFamily = ResolvePreviewFontFamily(cfg);
             double listIndentPx = Math.Max(8, cfg.ListIndent * drawScale * previewScale);
             double quoteIndentPx = Math.Max(8, cfg.QuoteIndent * drawScale * previewScale);
+            string textAlign = ToCssTextAlign(cfg.MTextParagraphAlign);
+            string letterSpacing = ToCssLetterSpacing(cfg.MTextCharSpacing);
+            string obliqueAngle = ToCssSkewAngle(cfg.MTextObliquingAngle);
 
             var tokens = new (string token, string value)[]
             {
@@ -2077,6 +2088,9 @@ else{window.onload=init;}
                 ("/*BASE_LINE_HEIGHT*/", lineHeightFactor.ToString("0.###", CultureInfo.InvariantCulture)),
                 ("/*BASE_FONT_FAMILY*/", fontFamily),
                 ("/*TEXT_X_SCALE_CSS*/", textXScale.ToString("0.###", CultureInfo.InvariantCulture)),
+                ("/*TEXT_ALIGN*/", textAlign),
+                ("/*LETTER_SPACING*/", letterSpacing),
+                ("/*OBLIQUE_ANGLE*/", obliqueAngle),
                 ("/*PAPER_WIDTH*/", $"{Round(pageWidthPx):F0}px"),
                 ("/*PAPER_HEIGHT*/", $"{Round(pageHeightPx):F0}px"),
                 ("/*PAD_LEFT*/", $"{Round(leftPx):F0}px"),
@@ -2152,6 +2166,36 @@ else{window.onload=init;}
                 return 0.95;
 
             return 1.0;
+        }
+
+        private static string ToCssTextAlign(string align)
+        {
+            string value = (align ?? "Left").Trim();
+            if (string.Equals(value, "Center", StringComparison.OrdinalIgnoreCase))
+                return "center";
+            if (string.Equals(value, "Right", StringComparison.OrdinalIgnoreCase))
+                return "right";
+            if (string.Equals(value, "Justify", StringComparison.OrdinalIgnoreCase))
+                return "justify";
+            return "left";
+        }
+
+        private static string ToCssLetterSpacing(double charSpacing)
+        {
+            double clamped = Math.Max(0.75, Math.Min(4.0, charSpacing));
+            double em = clamped - 1.0;
+            if (Math.Abs(em) < 0.0001)
+                return "0";
+            return $"{em.ToString("0.###", CultureInfo.InvariantCulture)}em";
+        }
+
+        private static string ToCssSkewAngle(double obliquingAngle)
+        {
+            double clamped = Math.Max(-85, Math.Min(85, obliquingAngle));
+            double skew = -clamped;
+            if (Math.Abs(skew) < 0.0001)
+                return "0";
+            return skew.ToString("0.###", CultureInfo.InvariantCulture);
         }
 
         internal static string BuildCustomColumnWidthsJson(LayoutResult layoutResult, double previewScale)
@@ -2243,7 +2287,7 @@ body{
 }
 
 .col-wrap{-ms-flex:1;flex:1;display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;min-width:0;overflow:hidden}
-.col-content{-ms-flex:none;flex:none;overflow:hidden;padding:/*CONTENT_PAD_Y*/ /*CONTENT_PAD_X*/;background:#ffffff;color:#111111;caret-color:#111}
+.col-content{-ms-flex:none;flex:none;overflow:hidden;padding:/*CONTENT_PAD_Y*/ /*CONTENT_PAD_X*/;background:#ffffff;color:#111111;caret-color:#111;text-align:/*TEXT_ALIGN*/;letter-spacing:/*LETTER_SPACING*/}
 .col-content.last{overflow:hidden}
 .col-content[contenteditable='true']{outline:none}
 .col-content[contenteditable='true']:focus{box-shadow:inset 0 0 0 1px #58a6ff}
@@ -2318,7 +2362,7 @@ tr:nth-child(even){background:#f8fafc}
 .col-content h1,.col-content h2,.col-content h3,.col-content h4,.col-content h5,.col-content h6,
 .col-content p,.col-content ul,.col-content ol,.col-content blockquote,.col-content pre{
   transform-origin:left top;
-  transform:scaleX(/*TEXT_X_SCALE_CSS*/);
+  transform:scaleX(/*TEXT_X_SCALE_CSS*/) skewX(/*OBLIQUE_ANGLE*/deg);
   width:calc(100% / /*TEXT_X_SCALE_CSS*/);
 }
 ";

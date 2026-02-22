@@ -6,8 +6,10 @@ using HyCADTool.Refactored.Presentation.ViewModels;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
 using SharedMarkdownBlockParser = HyCADTool.TextLayout.MarkdownBlockParser;
 using SharedDocumentBlock = HyCADTool.TextLayout.DocumentBlock;
@@ -673,8 +675,47 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             mtext.LineSpacingStyle = ParseLineSpacingStyle(config.MTextLineSpacingStyle);
             mtext.LineSpacingFactor = config.LineSpacingFactor;
             mtext.Width = Math.Max(config.ActualTextHeight, width);
-            mtext.Contents = content ?? string.Empty;
+            mtext.Contents = ApplyMTextInlineFormatting(content ?? string.Empty, config);
             return mtext;
+        }
+
+        private static string ApplyMTextInlineFormatting(string content, DesignSpecConfig config)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return content ?? string.Empty;
+
+            var inlineCodes = new StringBuilder();
+            bool hasTracking = content.IndexOf("\\T", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!hasTracking && config.MTextCharSpacing >= 0.75 && config.MTextCharSpacing <= 4.0)
+            {
+                inlineCodes.Append("\\T").Append(config.MTextCharSpacing.ToString("0.###", CultureInfo.InvariantCulture)).Append(";");
+            }
+
+            bool hasParagraphAlign = content.IndexOf("\\pxq", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!hasParagraphAlign)
+            {
+                inlineCodes.Append(GetParagraphAlignCode(config.MTextParagraphAlign));
+            }
+
+            if (inlineCodes.Length == 0)
+                return content;
+
+            return "{"
+                + inlineCodes.ToString()
+                + content
+                + "}";
+        }
+
+        private static string GetParagraphAlignCode(string value)
+        {
+            string v = (value ?? "Left").Trim();
+            if (string.Equals(v, "Center", StringComparison.OrdinalIgnoreCase))
+                return "\\pxqc;";
+            if (string.Equals(v, "Right", StringComparison.OrdinalIgnoreCase))
+                return "\\pxqr;";
+            if (string.Equals(v, "Justify", StringComparison.OrdinalIgnoreCase))
+                return "\\pxqj;";
+            return "\\pxql;";
         }
 
         private static double EstimateMarkdownHeightFallback(string markdown, DesignSpecConfig config, double columnWidth)

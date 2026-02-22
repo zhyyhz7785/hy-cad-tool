@@ -179,6 +179,17 @@
                                 <ColumnDefinition Width="70" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="行距因子" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
+                                     Width="72"
+                                     helper:TextBoxHelper.ScrollStep="0.1"
+                                     Text="{Binding LineSpacingFactor, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock Style="{StaticResource ParamSmallLabel}" Text="倾斜角(°)" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
                                      Width="72"
