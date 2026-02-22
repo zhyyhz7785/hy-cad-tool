@@ -17,6 +17,7 @@ using HyCADTool.MarkdownEditor.Services;
 using HyCADTool.MarkdownEditor.ViewModels;
 using HyCADTool.MarkdownEditor.Views.Controls;
 using HyCADTool.MarkdownEditor.Views.Helpers;
+using Microsoft.Win32;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -160,6 +161,9 @@ namespace HyCADTool.MarkdownEditor.Views
             ViewModel.EditorContentLoadRequested += OnEditorContentLoadRequested;
             ViewModel.PreviewEditorActionRequested += OnPreviewEditorActionRequestedAsync;
             ViewModel.RestoredToDefaults += OnRestoredToDefaults;
+            ViewModel.SaveAsDefaultRequested += OnSaveAsDefaultRequested;
+            ViewModel.SaveToFileRequested += OnSaveToFileRequested;
+            ViewModel.LoadFromFileRequested += OnLoadFromFileRequested;
         }
 
         private T ResolveRequiredControl<T>(string name) where T : class
@@ -386,6 +390,9 @@ namespace HyCADTool.MarkdownEditor.Views
             ViewModel.EditorContentLoadRequested -= OnEditorContentLoadRequested;
             ViewModel.PreviewEditorActionRequested -= OnPreviewEditorActionRequestedAsync;
             ViewModel.RestoredToDefaults -= OnRestoredToDefaults;
+            ViewModel.SaveAsDefaultRequested -= OnSaveAsDefaultRequested;
+            ViewModel.SaveToFileRequested -= OnSaveToFileRequested;
+            ViewModel.LoadFromFileRequested -= OnLoadFromFileRequested;
             ViewModel.SetJsHelper(null);
             if (_hwndSource != null)
             {
@@ -590,17 +597,73 @@ namespace HyCADTool.MarkdownEditor.Views
             PersistConfig();
         }
 
-        private void PersistConfig()
+        private void OnSaveAsDefaultRequested()
+        {
+            _configSaveDebounceTimer.Stop();
+            if (PersistConfig())
+                ViewModel.StatusText = "已存为默认配置";
+            else
+                ViewModel.StatusText = "存为默认失败，请重试";
+        }
+
+        private void OnSaveToFileRequested()
+        {
+            var dlg = new SaveFileDialog
+            {
+                Filter = "JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                DefaultExt = ".json",
+                FileName = "editor-config.json"
+            };
+            if (dlg.ShowDialog(this) != true) return;
+
+            try
+            {
+                var config = ViewModel.BuildConfig();
+                new EditorConfigPersistenceService().SaveToFile(config, dlg.FileName);
+                ViewModel.StatusText = $"已保存到 {Path.GetFileName(dlg.FileName)}";
+            }
+            catch (Exception ex)
+            {
+                ViewModel.StatusText = $"保存失败: {ex.Message}";
+            }
+        }
+
+        private void OnLoadFromFileRequested()
+        {
+            var dlg = new OpenFileDialog
+            {
+                Filter = "JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                DefaultExt = ".json"
+            };
+            if (dlg.ShowDialog(this) != true) return;
+
+            var config = new EditorConfigPersistenceService().LoadFromFile(dlg.FileName);
+            if (config == null)
+            {
+                ViewModel.StatusText = "读取失败或文件格式无效";
+                return;
+            }
+
+            ViewModel.ApplyConfig(config);
+            PersistConfig();
+            SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);
+            ViewModel.StatusText = $"已从 {Path.GetFileName(dlg.FileName)} 加载配置";
+        }
+
+        /// <returns>是否保存成功</returns>
+        private bool PersistConfig()
         {
             try
             {
                 var config = ViewModel.BuildConfig();
-                if (config != null)
-                    new EditorConfigPersistenceService().Save(config);
+                if (config == null) return false;
+                new EditorConfigPersistenceService().Save(config);
+                return true;
             }
-            catch
+            catch (Exception ex)
             {
-                // 持久化失败不影响主流程
+                LogSilentException(nameof(PersistConfig), ex);
+                return false;
             }
         }
 
@@ -664,6 +727,15 @@ namespace HyCADTool.MarkdownEditor.Views
                 case nameof(EditorViewModel.BigFontFileName):
                 case nameof(EditorViewModel.BoldFontName):
                 case nameof(EditorViewModel.PreviewFontFamily):
+                case nameof(EditorViewModel.StyleTFont):
+                case nameof(EditorViewModel.StyleSFont):
+                case nameof(EditorViewModel.StyleSBigFont):
+                case nameof(EditorViewModel.CadSyncStyleName):
+                case nameof(EditorViewModel.MTextAttachment):
+                case nameof(EditorViewModel.MTextLineSpacingStyle):
+                case nameof(EditorViewModel.MTextObliquingAngle):
+                case nameof(EditorViewModel.MTextCharSpacing):
+                case nameof(EditorViewModel.MTextParagraphAlign):
                 case "SpacingChanged":
                     ScheduleConfigSave();
                     SchedulePreviewRefresh(PreviewRefreshReason.ConfigChanged);

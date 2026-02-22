@@ -50,6 +50,15 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         /// <summary>恢复默认后触发，供外部持久化</summary>
         public event Action RestoredToDefaults;
 
+        /// <summary>请求将当前配置存为默认（editor-config.json）</summary>
+        public event Action SaveAsDefaultRequested;
+
+        /// <summary>请求将当前配置存为设置文档（用户选择路径）</summary>
+        public event Action SaveToFileRequested;
+
+        /// <summary>请求从设置文档读取配置</summary>
+        public event Action LoadFromFileRequested;
+
         #endregion
 
         #region Markdown 文本
@@ -410,6 +419,15 @@ namespace HyCADTool.MarkdownEditor.ViewModels
 
         /// <summary>恢复全部默认配置</summary>
         public ICommand ResetAllDefaultsCommand { get; }
+
+        /// <summary>将当前配置存为默认</summary>
+        public ICommand SaveAsDefaultCommand { get; }
+
+        /// <summary>将当前配置存为设置文档</summary>
+        public ICommand SaveToFileCommand { get; }
+
+        /// <summary>从设置文档读取配置</summary>
+        public ICommand LoadFromFileCommand { get; }
 
         // ── MText 显示参数 ──
         private string _mTextAttachment = "TopLeft";
@@ -792,6 +810,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             EditorActionCommand = new AsyncRelayCmd(ExecuteEditorActionAsync);
             ToggleCadSyncStyleCommand = new RelayCmd(ToggleCadSyncStyle);
             ResetAllDefaultsCommand = new RelayCmd(ResetAllDefaults);
+            SaveAsDefaultCommand = new RelayCmd(() => SaveAsDefaultRequested?.Invoke());
+            SaveToFileCommand = new RelayCmd(() => SaveToFileRequested?.Invoke());
+            LoadFromFileCommand = new RelayCmd(() => LoadFromFileRequested?.Invoke());
             _charsPerColumn = (int[])EditorConfigDefaults.CharsPerColumn.Clone();
             _markdownText = DefaultMarkdown;
             _content.SetMarkdown(_markdownText);
@@ -820,6 +841,14 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _content.SetCurrentFilePath(_currentFilePath);
 
             var cfg = input.Config;
+            if (cfg == null) return;
+
+            ApplyConfig(cfg);
+        }
+
+        /// <summary>将配置应用到 ViewModel，供「读取设置文档」等场景复用</summary>
+        public void ApplyConfig(EditorConfig cfg)
+        {
             if (cfg == null) return;
 
             _totalHeight = cfg.TotalHeight;
@@ -880,6 +909,57 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _previewConfig.DrawScale = _scale;
             _previewConfig.PreviewScale = _previewScale;
             _previewConfig.TotalHeight = _totalHeight;
+
+            OnPropertyChanged(nameof(TotalHeight));
+            OnPropertyChanged(nameof(DrawScale));
+            OnPropertyChanged(nameof(DrawScaleText));
+            OnPropertyChanged(nameof(MaxColumnCount));
+            OnPropertyChanged(nameof(MinColumnWidthPx));
+            OnPropertyChanged(nameof(MinColumnHeightPx));
+            OnPropertyChanged(nameof(ColumnCount));
+            OnPropertyChanged(nameof(ColumnGutter));
+            OnPropertyChanged(nameof(TextSize));
+            OnPropertyChanged(nameof(TextXScale));
+            OnPropertyChanged(nameof(PreviewScale));
+            OnPropertyChanged(nameof(CharsPerColumn));
+            OnPropertyChanged(nameof(PagePreset));
+            OnPropertyChanged(nameof(IsLandscape));
+            OnPropertyChanged(nameof(PageSizeLabel));
+            OnPropertyChanged(nameof(PageOrientationLabel));
+            OnPropertyChanged(nameof(PageWidthMm));
+            OnPropertyChanged(nameof(PageHeightMm));
+            OnPropertyChanged(nameof(MarginLeftMm));
+            OnPropertyChanged(nameof(MarginRightMm));
+            OnPropertyChanged(nameof(MarginTopMm));
+            OnPropertyChanged(nameof(MarginBottomMm));
+            OnPropertyChanged(nameof(ColumnInnerPaddingMm));
+            OnPropertyChanged(nameof(BorderWidth));
+            OnPropertyChanged(nameof(HandleWidth));
+            OnPropertyChanged(nameof(HandleActiveWidth));
+            OnPropertyChanged(nameof(FontFileName));
+            OnPropertyChanged(nameof(BigFontFileName));
+            OnPropertyChanged(nameof(BoldFontName));
+            OnPropertyChanged(nameof(PreviewFontFamily));
+            OnPropertyChanged(nameof(StyleTFont));
+            OnPropertyChanged(nameof(StyleSFont));
+            OnPropertyChanged(nameof(StyleSBigFont));
+            OnPropertyChanged(nameof(CadSyncStyleName));
+            OnPropertyChanged(nameof(MTextAttachment));
+            OnPropertyChanged(nameof(MTextLineSpacingStyle));
+            OnPropertyChanged(nameof(MTextObliquingAngle));
+            OnPropertyChanged(nameof(MTextCharSpacing));
+            OnPropertyChanged(nameof(MTextParagraphAlign));
+            OnPropertyChanged(nameof(H1SpaceBefore));
+            OnPropertyChanged(nameof(H1SpaceAfter));
+            OnPropertyChanged(nameof(H2SpaceBefore));
+            OnPropertyChanged(nameof(H2SpaceAfter));
+            OnPropertyChanged(nameof(H3SpaceBefore));
+            OnPropertyChanged(nameof(H3SpaceAfter));
+            OnPropertyChanged(nameof(PSpaceAfter));
+            OnPropertyChanged(nameof(LiSpaceAfter));
+            OnPropertyChanged(nameof(QuoteSpaceBefore));
+            OnPropertyChanged(nameof(QuoteSpaceAfter));
+            OnPropertyChanged("SpacingChanged");
             UpdateStatus();
         }
 

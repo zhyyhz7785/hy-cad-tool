@@ -89,7 +89,8 @@
 
             <controls:SettingsPanelControl x:Name="SettingsPanel"
                                            Grid.Row="1"
-                                           Visibility="Collapsed" />
+                                           Visibility="Collapsed"
+                                           DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
 
             <Border Grid.Row="2"
                     BorderBrush="{DynamicResource ThemeBorderBrush}"

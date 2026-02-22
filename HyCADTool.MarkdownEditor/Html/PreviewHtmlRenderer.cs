@@ -289,14 +289,14 @@ body{
 }
 .col-chars{color:#58a6ff}
 .empty{color:#6e7681;font-style:italic}
-h1{font-size:1.6em;/*FLOW_H1_MARGIN*/;border-bottom:1px solid #d0d7de;padding-bottom:3px}
-h2{font-size:1.3em;/*FLOW_H2_MARGIN*/}
-h3{font-size:1.1em;/*FLOW_H3_MARGIN*/}
+h1{font-size:1.6em;margin-top:/*FLOW_H1_SPACE_BEFORE*/;margin-bottom:/*FLOW_H1_SPACE_AFTER*/;border-bottom:1px solid #d0d7de;padding-bottom:3px}
+h2{font-size:1.3em;margin-top:/*FLOW_H2_SPACE_BEFORE*/;margin-bottom:/*FLOW_H2_SPACE_AFTER*/}
+h3{font-size:1.1em;margin-top:/*FLOW_H3_SPACE_BEFORE*/;margin-bottom:/*FLOW_H3_SPACE_AFTER*/}
 h4,h5,h6{font-size:1em;margin:.8em 0 .3em}
-p{/*FLOW_P_MARGIN*/}
+p{margin-top:0;margin-bottom:/*FLOW_P_SPACE_AFTER*/}
 ul,ol{padding-left:1.4em;margin:.3em 0}
-li{/*FLOW_LI_MARGIN*/}
-blockquote{border-left:3px solid #6e7781;padding:3px .8em;/*FLOW_BQ_MARGIN*/;color:#333;background:#f6f8fa}
+li{margin-top:0;margin-bottom:/*FLOW_LI_SPACE_AFTER*/}
+blockquote{border-left:3px solid #6e7781;padding:3px .8em;margin-top:/*FLOW_QUOTE_SPACE_BEFORE*/;margin-bottom:/*FLOW_QUOTE_SPACE_AFTER*/;color:#333;background:#f6f8fa}
 code{background:#f0f3f6;color:#24292f;padding:1px 4px;border-radius:2px;font-family:Consolas,monospace;font-size:.9em}
 pre{background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;padding:6px;margin:4px 0;overflow-x:auto}
 pre code{background:none;padding:0}
@@ -1959,22 +1959,30 @@ if(document.readyState==='complete'||document.readyState==='interactive'){setTim
 else{window.onload=init;}
 ";
 
-            string h1Margin = $"margin:{cfg.H1SpaceBefore:F1}em 0 {cfg.H1SpaceAfter:F1}em";
-            string h2Margin = $"margin:{cfg.H2SpaceBefore:F1}em 0 {cfg.H2SpaceAfter:F1}em";
-            string h3Margin = $"margin:{cfg.H3SpaceBefore:F1}em 0 {cfg.H3SpaceAfter:F1}em";
-            string pMargin = $"margin:0 0 {cfg.PSpaceAfter:F1}em";
-            string liMargin = $"margin:0 0 {cfg.LiSpaceAfter:F1}em";
-            string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
+            string h1SpaceBefore = $"{cfg.H1SpaceBefore:F1}em";
+            string h1SpaceAfter = $"{cfg.H1SpaceAfter:F1}em";
+            string h2SpaceBefore = $"{cfg.H2SpaceBefore:F1}em";
+            string h2SpaceAfter = $"{cfg.H2SpaceAfter:F1}em";
+            string h3SpaceBefore = $"{cfg.H3SpaceBefore:F1}em";
+            string h3SpaceAfter = $"{cfg.H3SpaceAfter:F1}em";
+            string pSpaceAfter = $"{cfg.PSpaceAfter:F1}em";
+            string liSpaceAfter = $"{cfg.LiSpaceAfter:F1}em";
+            string quoteSpaceBefore = $"{cfg.QuoteSpaceBefore:F1}em";
+            string quoteSpaceAfter = $"{cfg.QuoteSpaceAfter:F1}em";
 
             string flowCss = flowCssTemplate
                 .Replace("/*FLOW_FONT_FAMILY*/", fontFamily)
                 .Replace("/*FLOW_BASE_FONT_SIZE*/", $"{basePx.ToString("0.###", CultureInfo.InvariantCulture)}px")
-                .Replace("/*FLOW_H1_MARGIN*/", h1Margin)
-                .Replace("/*FLOW_H2_MARGIN*/", h2Margin)
-                .Replace("/*FLOW_H3_MARGIN*/", h3Margin)
-                .Replace("/*FLOW_P_MARGIN*/", pMargin)
-                .Replace("/*FLOW_LI_MARGIN*/", liMargin)
-                .Replace("/*FLOW_BQ_MARGIN*/", bqMargin)
+                .Replace("/*FLOW_H1_SPACE_BEFORE*/", h1SpaceBefore)
+                .Replace("/*FLOW_H1_SPACE_AFTER*/", h1SpaceAfter)
+                .Replace("/*FLOW_H2_SPACE_BEFORE*/", h2SpaceBefore)
+                .Replace("/*FLOW_H2_SPACE_AFTER*/", h2SpaceAfter)
+                .Replace("/*FLOW_H3_SPACE_BEFORE*/", h3SpaceBefore)
+                .Replace("/*FLOW_H3_SPACE_AFTER*/", h3SpaceAfter)
+                .Replace("/*FLOW_P_SPACE_AFTER*/", pSpaceAfter)
+                .Replace("/*FLOW_LI_SPACE_AFTER*/", liSpaceAfter)
+                .Replace("/*FLOW_QUOTE_SPACE_BEFORE*/", quoteSpaceBefore)
+                .Replace("/*FLOW_QUOTE_SPACE_AFTER*/", quoteSpaceAfter)
                 .Replace("/*FLOW_LINE_HEIGHT*/", Math.Max(1.0, cfg.LineSpacingFactor).ToString("0.###", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_TEXT_X_SCALE_CSS*/", textXScale.ToString("0.###", CultureInfo.InvariantCulture))
                 .Replace("/*FLOW_PAPER_WIDTH*/", $"{paperWidthPx.ToString("0.###", CultureInfo.InvariantCulture)}px")
@@ -2049,12 +2057,16 @@ else{window.onload=init;}
             // 分栏间隔至少保留可见/可拖拽宽度，避免 0 时无法操作
             double gutterVisualPx = Math.Max(6, gutterPx);
 
-            string h1Margin = $"margin:{cfg.H1SpaceBefore:F1}em 0 {cfg.H1SpaceAfter:F1}em";
-            string h2Margin = $"margin:{cfg.H2SpaceBefore:F1}em 0 {cfg.H2SpaceAfter:F1}em";
-            string h3Margin = $"margin:{cfg.H3SpaceBefore:F1}em 0 {cfg.H3SpaceAfter:F1}em";
-            string pMargin = $"margin:0 0 {cfg.PSpaceAfter:F1}em";
-            string liMargin = $"margin:0 0 {cfg.LiSpaceAfter:F1}em";
-            string bqMargin = $"margin:{cfg.QuoteSpaceBefore:F1}em 0 {cfg.QuoteSpaceAfter:F1}em";
+            string h1SpaceBefore = $"{cfg.H1SpaceBefore:F1}em";
+            string h1SpaceAfter = $"{cfg.H1SpaceAfter:F1}em";
+            string h2SpaceBefore = $"{cfg.H2SpaceBefore:F1}em";
+            string h2SpaceAfter = $"{cfg.H2SpaceAfter:F1}em";
+            string h3SpaceBefore = $"{cfg.H3SpaceBefore:F1}em";
+            string h3SpaceAfter = $"{cfg.H3SpaceAfter:F1}em";
+            string pSpaceAfter = $"{cfg.PSpaceAfter:F1}em";
+            string liSpaceAfter = $"{cfg.LiSpaceAfter:F1}em";
+            string quoteSpaceBefore = $"{cfg.QuoteSpaceBefore:F1}em";
+            string quoteSpaceAfter = $"{cfg.QuoteSpaceAfter:F1}em";
             string fontFamily = ResolvePreviewFontFamily(cfg);
             double listIndentPx = Math.Max(8, cfg.ListIndent * drawScale * previewScale);
             double quoteIndentPx = Math.Max(8, cfg.QuoteIndent * drawScale * previewScale);
@@ -2076,12 +2088,16 @@ else{window.onload=init;}
                 ("/*CONTENT_PAD_Y*/", $"{Round(contentPadPx):F0}px"),
                 ("/*LIST_INDENT*/", $"{Round(listIndentPx):F0}px"),
                 ("/*QUOTE_INDENT*/", $"{Round(quoteIndentPx):F0}px"),
-                ("/*H1_MARGIN*/", h1Margin),
-                ("/*H2_MARGIN*/", h2Margin),
-                ("/*H3_MARGIN*/", h3Margin),
-                ("/*P_MARGIN*/", pMargin),
-                ("/*LI_MARGIN*/", liMargin),
-                ("/*BQ_MARGIN*/", bqMargin),
+                ("/*H1_SPACE_BEFORE*/", h1SpaceBefore),
+                ("/*H1_SPACE_AFTER*/", h1SpaceAfter),
+                ("/*H2_SPACE_BEFORE*/", h2SpaceBefore),
+                ("/*H2_SPACE_AFTER*/", h2SpaceAfter),
+                ("/*H3_SPACE_BEFORE*/", h3SpaceBefore),
+                ("/*H3_SPACE_AFTER*/", h3SpaceAfter),
+                ("/*P_SPACE_AFTER*/", pSpaceAfter),
+                ("/*LI_SPACE_AFTER*/", liSpaceAfter),
+                ("/*QUOTE_SPACE_BEFORE*/", quoteSpaceBefore),
+                ("/*QUOTE_SPACE_AFTER*/", quoteSpaceAfter),
             };
 
             var sb = new StringBuilder(CSS_TEMPLATE);
@@ -2280,19 +2296,19 @@ body{
 
 .empty{color:#555;font-style:italic;text-align:center;padding:30px}
 
-h1{font-size:1.6em;color:#333333;/*H1_MARGIN*/;border-bottom:1px solid #d0d7de;padding-bottom:3px}
-h2{font-size:1.3em;color:#333333;/*H2_MARGIN*/}
-h3{font-size:1.1em;color:#333333;/*H3_MARGIN*/}
+h1{font-size:1.6em;color:#333333;margin-top:/*H1_SPACE_BEFORE*/;margin-bottom:/*H1_SPACE_AFTER*/;border-bottom:1px solid #d0d7de;padding-bottom:3px}
+h2{font-size:1.3em;color:#333333;margin-top:/*H2_SPACE_BEFORE*/;margin-bottom:/*H2_SPACE_AFTER*/}
+h3{font-size:1.1em;color:#333333;margin-top:/*H3_SPACE_BEFORE*/;margin-bottom:/*H3_SPACE_AFTER*/}
 h4,h5,h6{font-size:1em;color:#333333;margin:5px 0 2px}
-p{/*P_MARGIN*/}
+p{margin-top:0;margin-bottom:/*P_SPACE_AFTER*/}
 strong{color:#000}
 em{color:#444}
 ul,ol{padding-left:/*LIST_INDENT*/;margin:4px 0}
-li{/*LI_MARGIN*/}
+li{margin-top:0;margin-bottom:/*LI_SPACE_AFTER*/}
 code{background:#f0f3f6;color:#24292f;padding:1px 4px;border-radius:2px;font-family:Consolas,monospace;font-size:0.9em}
 pre{background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;padding:6px;margin:4px 0;overflow-x:auto}
 pre code{background:none;padding:0}
-blockquote{border-left:3px solid #6e7781;padding:3px /*QUOTE_INDENT*/;/*BQ_MARGIN*/;color:#333;background:#f6f8fa}
+blockquote{border-left:3px solid #6e7781;padding:3px /*QUOTE_INDENT*/;margin-top:/*QUOTE_SPACE_BEFORE*/;margin-bottom:/*QUOTE_SPACE_AFTER*/;color:#333;background:#f6f8fa}
 hr{border:none;border-top:1px solid #d0d7de;margin:8px 0}
 table{border-collapse:collapse;width:auto;max-width:100%;margin:6px auto}
 th,td{border:1px solid #d0d7de;padding:3px 6px;font-size:0.9em;text-align:center;vertical-align:middle;word-break:break-word;overflow-wrap:break-word}

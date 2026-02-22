@@ -56,5 +56,42 @@ namespace HyCADTool.MarkdownEditor.Services
                 // 持久化失败不影响主流程
             }
         }
+
+        /// <summary>将配置保存到指定文件路径</summary>
+        public void SaveToFile(EditorConfig config, string filePath)
+        {
+            if (config == null || string.IsNullOrWhiteSpace(filePath)) return;
+
+            try
+            {
+                string dir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrWhiteSpace(dir))
+                    Directory.CreateDirectory(dir);
+
+                string json = JsonConvert.SerializeObject(config, Formatting.Indented);
+                File.WriteAllText(filePath, json);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        /// <summary>从指定文件路径加载配置，失败返回 null</summary>
+        public EditorConfig LoadFromFile(string filePath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                    return null;
+
+                string json = File.ReadAllText(filePath);
+                return JsonConvert.DeserializeObject<EditorConfig>(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }

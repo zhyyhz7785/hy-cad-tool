@@ -48,6 +48,13 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             public string[] ColumnMarkdowns { get; set; }
         }
 
+        private sealed class ColumnMarkdownSegment
+        {
+            public bool IsTable { get; set; }
+            public string Markdown { get; set; }
+            public MarkdownTableData TableData { get; set; }
+        }
+
         /// <summary>
         /// 插入多个独立 MText（每栏一个），横向排列，支持多页
         /// </summary>
@@ -59,6 +66,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string[] columnMarkdowns = null,
             LayoutResultModel layoutResult = null)
         {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+            config.Normalize();
+
             if (columnContents == null || columnContents.Length == 0)
                 throw new ArgumentException("MText 内容不能为空");
 
@@ -68,7 +79,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
             var allPageData = BuildAllPageColumnData(columnContents, columnMarkdowns, markdownSource, config, layoutResult);
-            var tablePlacements = BuildTablePlacements(markdownSource, layoutResult, config, area.ColumnWidths);
             var ed = doc.Editor;
 
             ObjectId anchorEntityId = ObjectId.Null;
@@ -101,52 +111,27 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         double contentLeftX = insertionPoint.X + config.MarginLeftMm * config.Scale;
                         double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
 
+                        int pageColCount = ResolvePageColumnCount(pageData, area);
                         double xOffset = 0;
-                        for (int i = 0; i < area.ColumnCount; i++)
+                        for (int i = 0; i < pageColCount; i++)
                         {
-                            string content = (i < pageData.ColumnContents.Length && !string.IsNullOrWhiteSpace(pageData.ColumnContents[i]))
-                                ? pageData.ColumnContents[i]
-                                : "";
                             string colMd = (pageData.ColumnMarkdowns != null && i < pageData.ColumnMarkdowns.Length)
                                 ? (pageData.ColumnMarkdowns[i] ?? "")
                                 : "";
-                            double colWidth = area.ColumnWidths[i];
+                            double colWidth = ResolveColumnWidthMm(i, area, config, layoutResult, pageColCount);
                             double colLeftX = contentLeftX + xOffset;
                             double textLeftX = colLeftX + innerPad;
                             double textTopY = contentTopY - innerPad;
                             double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
-                            if (!string.IsNullOrWhiteSpace(content))
-                            {
-                                var mtext = new MText();
-                                mtext.SetDatabaseDefaults();
-                                mtext.Location = new Point3d(textLeftX, textTopY, insertionPoint.Z);
-                                mtext.Attachment = ParseAttachmentPoint(config.MTextAttachment);
-                                mtext.TextStyleId = textStyleId;
-                                mtext.TextHeight = config.ActualTextHeight;
-                                mtext.LineSpacingStyle = ParseLineSpacingStyle(config.MTextLineSpacingStyle);
-                                mtext.LineSpacingFactor = config.LineSpacingFactor;
-                                mtext.Width = textWidth;
-                                mtext.Contents = content;
-
-                                SetLayer(db, tr, mtext, LAYER_TEXT);
-                                btr.AppendEntity(mtext);
-                                tr.AddNewlyCreatedDBObject(mtext, true);
-                                if (anchorEntityId.IsNull)
-                                    anchorEntityId = mtext.ObjectId;
-
-                                WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataWritten);
-                                ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
-                                mtextCount++;
-                            }
-
-                            tableCount += InsertTablesForColumn(
-                                tr, btr, db, config, tablePlacements,
+                            InsertColumnEntities(
+                                tr, btr, db, config,
                                 pageIdx, i, colMd,
                                 textLeftX, textTopY, insertionPoint.Z,
                                 textWidth, groupId, markdownSource,
                                 textStyleId,
-                                ref metadataWritten, ref anchorEntityId);
+                                ref metadataWritten, ref anchorEntityId,
+                                ref mtextCount, ref tableCount);
 
                             xOffset += colWidth + area.ColumnGutter;
                         }
@@ -177,13 +162,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string[] columnMarkdowns = null,
             LayoutResultModel layoutResult = null)
         {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+            config.Normalize();
+
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) throw new InvalidOperationException("无活动文档");
 
             var db = doc.Database;
             var area = CalculateArea(config, layoutResult);
             var allPageData = BuildAllPageColumnData(columnContents, columnMarkdowns, markdownSource, config, layoutResult);
-            var tablePlacements = BuildTablePlacements(markdownSource, layoutResult, config, area.ColumnWidths);
             var ed = doc.Editor;
 
             ObjectId newAnchorEntityId = ObjectId.Null;
@@ -243,51 +231,27 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         double contentLeftX = insertPt.X + config.MarginLeftMm * config.Scale;
                         double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
 
+                        int pageColCount = ResolvePageColumnCount(pageData, area);
                         double xOffset = 0;
-                        for (int i = 0; i < area.ColumnCount; i++)
+                        for (int i = 0; i < pageColCount; i++)
                         {
-                            string content = (i < pageData.ColumnContents.Length && !string.IsNullOrWhiteSpace(pageData.ColumnContents[i]))
-                                ? pageData.ColumnContents[i] : "";
                             string colMd = (pageData.ColumnMarkdowns != null && i < pageData.ColumnMarkdowns.Length)
                                 ? (pageData.ColumnMarkdowns[i] ?? "")
                                 : "";
-                            double colWidth = area.ColumnWidths[i];
+                            double colWidth = ResolveColumnWidthMm(i, area, config, layoutResult, pageColCount);
                             double colLeftX = contentLeftX + xOffset;
                             double textLeftX = colLeftX + innerPad;
                             double textTopY = contentTopY - innerPad;
                             double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
-                            if (!string.IsNullOrWhiteSpace(content))
-                            {
-                                var newMtext = new MText();
-                                newMtext.SetDatabaseDefaults();
-                                newMtext.Location = new Point3d(textLeftX, textTopY, insertPt.Z);
-                                newMtext.Attachment = ParseAttachmentPoint(config.MTextAttachment);
-                                newMtext.TextStyleId = textStyleId;
-                                newMtext.TextHeight = config.ActualTextHeight;
-                                newMtext.LineSpacingStyle = ParseLineSpacingStyle(config.MTextLineSpacingStyle);
-                                newMtext.LineSpacingFactor = config.LineSpacingFactor;
-                                newMtext.Width = textWidth;
-                                newMtext.Contents = content;
-
-                                SetLayer(db, tr, newMtext, LAYER_TEXT);
-                                btr2.AppendEntity(newMtext);
-                                tr.AddNewlyCreatedDBObject(newMtext, true);
-                                if (newAnchorEntityId.IsNull)
-                                    newAnchorEntityId = newMtext.ObjectId;
-
-                                WriteMetadataIfNeeded(tr, newMtext, markdownSource, config, ref metadataWritten);
-                                ExtensionDictionaryService.WriteLongString(tr, newMtext, newGroupId, XREC_KEY_GROUP);
-                                mtextCount++;
-                            }
-
-                            tableCount += InsertTablesForColumn(
-                                tr, btr2, db, config, tablePlacements,
+                            InsertColumnEntities(
+                                tr, btr2, db, config,
                                 pageIdx, i, colMd,
                                 textLeftX, textTopY, insertPt.Z,
                                 textWidth, newGroupId, markdownSource,
                                 textStyleId,
-                                ref metadataWritten, ref newAnchorEntityId);
+                                ref metadataWritten, ref newAnchorEntityId,
+                                ref mtextCount, ref tableCount);
 
                             xOffset += colWidth + area.ColumnGutter;
                         }
@@ -354,6 +318,299 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string cfgJson = JsonConvert.SerializeObject(config);
             ExtensionDictionaryService.WriteLongString(tr, entity, cfgJson, XREC_KEY_CFG);
             metadataWritten = true;
+        }
+
+        private static int ResolvePageColumnCount(PageColumnData pageData, TextAreaCalculator.TextAreaResult area)
+        {
+            int byContent = pageData?.ColumnContents?.Length ?? 0;
+            int byMarkdown = pageData?.ColumnMarkdowns?.Length ?? 0;
+            int byArea = area?.ColumnCount ?? 0;
+            return Math.Max(1, Math.Max(byArea, Math.Max(byContent, byMarkdown)));
+        }
+
+        private static double ResolveColumnWidthMm(
+            int colIndex,
+            TextAreaCalculator.TextAreaResult area,
+            DesignSpecConfig config,
+            LayoutResultModel layoutResult,
+            int pageColCount)
+        {
+            if (layoutResult?.ColumnWidthsMm != null
+                && colIndex < layoutResult.ColumnWidthsMm.Length
+                && layoutResult.ColumnWidthsMm[colIndex] > 0)
+            {
+                return layoutResult.ColumnWidthsMm[colIndex];
+            }
+
+            if (area?.ColumnWidths != null
+                && colIndex < area.ColumnWidths.Length
+                && area.ColumnWidths[colIndex] > 0)
+            {
+                return area.ColumnWidths[colIndex];
+            }
+
+            int cols = Math.Max(1, pageColCount);
+            double availableWidth = (config.PageWidthMm - config.MarginLeftMm - config.MarginRightMm) * config.Scale;
+            double gutter = config.ActualColumnGutter;
+            double width = (availableWidth - gutter * Math.Max(0, cols - 1)) / cols;
+            if (width > 0)
+                return Math.Max(config.ActualTextHeight, width);
+
+            return config.GetPageDrivenColumnWidth();
+        }
+
+        private void InsertColumnEntities(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            DesignSpecConfig config,
+            int pageIdx,
+            int colIdx,
+            string columnMarkdown,
+            double textLeftX,
+            double textTopY,
+            double z,
+            double textWidth,
+            string groupId,
+            string markdownSource,
+            ObjectId textStyleId,
+            ref bool metadataWritten,
+            ref ObjectId anchorEntityId,
+            ref int mtextCount,
+            ref int tableCount)
+        {
+            _ = pageIdx;
+            _ = colIdx;
+
+            var segments = SplitColumnMarkdownByBlocks(columnMarkdown);
+            var renderer = new MarkdownToMTextRenderer(config);
+            var pendingTextBlocks = new List<string>();
+
+            bool metadataLocal = metadataWritten;
+            ObjectId anchorLocal = anchorEntityId;
+            int mtextLocal = mtextCount;
+            int tableLocal = tableCount;
+            bool createdAnyEntity = false;
+            double cursorTopY = textTopY;
+
+            void FlushTextSegment(bool forcePlaceholder)
+            {
+                string segmentMarkdown = pendingTextBlocks.Count == 0
+                    ? string.Empty
+                    : string.Join("\n\n", pendingTextBlocks.Where(x => !string.IsNullOrWhiteSpace(x)));
+                pendingTextBlocks.Clear();
+
+                string content = string.Empty;
+                if (!string.IsNullOrWhiteSpace(segmentMarkdown))
+                {
+                    content = renderer.Convert(segmentMarkdown) ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(content) && !forcePlaceholder)
+                        return;
+                }
+                else if (!forcePlaceholder)
+                {
+                    return;
+                }
+
+                var mtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, content);
+                SetLayer(db, tr, mtext, LAYER_TEXT);
+                btr.AppendEntity(mtext);
+                tr.AddNewlyCreatedDBObject(mtext, true);
+
+                if (anchorLocal.IsNull)
+                    anchorLocal = mtext.ObjectId;
+
+                WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataLocal);
+                ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
+                mtextLocal++;
+                createdAnyEntity = true;
+
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    double estimatedHeight = EstimateMarkdownHeightFallback(segmentMarkdown, config, textWidth);
+                    cursorTopY = GetEntityBottomY(mtext, cursorTopY, estimatedHeight);
+                }
+            }
+
+            foreach (var segment in segments)
+            {
+                if (segment == null)
+                    continue;
+
+                if (!segment.IsTable)
+                {
+                    if (!string.IsNullOrWhiteSpace(segment.Markdown))
+                        pendingTextBlocks.Add(segment.Markdown);
+                    continue;
+                }
+
+                FlushTextSegment(forcePlaceholder: false);
+
+                if (TryCreateTable(
+                    tr,
+                    btr,
+                    db,
+                    config,
+                    segment.TableData,
+                    textLeftX,
+                    cursorTopY,
+                    z,
+                    textWidth,
+                    groupId,
+                    markdownSource,
+                    textStyleId,
+                    ref metadataLocal,
+                    ref anchorLocal,
+                    out var createdTable))
+                {
+                    tableLocal++;
+                    createdAnyEntity = true;
+                    double estimatedTableHeight = EstimateTableHeightFallback(segment.TableData, textWidth, config);
+                    cursorTopY = GetEntityBottomY(createdTable, cursorTopY, estimatedTableHeight);
+                }
+            }
+
+            FlushTextSegment(forcePlaceholder: false);
+
+            if (!createdAnyEntity)
+            {
+                // 该栏完全为空时，仍放置空 MText 占位，保证页栏计数稳定。
+                FlushTextSegment(forcePlaceholder: true);
+            }
+
+            metadataWritten = metadataLocal;
+            anchorEntityId = anchorLocal;
+            mtextCount = mtextLocal;
+            tableCount = tableLocal;
+        }
+
+        private static List<ColumnMarkdownSegment> SplitColumnMarkdownByBlocks(string columnMarkdown)
+        {
+            var result = new List<ColumnMarkdownSegment>();
+            if (string.IsNullOrWhiteSpace(columnMarkdown))
+                return result;
+
+            var blocks = SharedMarkdownBlockParser.ParseTopLevelBlocks(columnMarkdown ?? string.Empty);
+            if (blocks == null || blocks.Count == 0)
+            {
+                result.Add(new ColumnMarkdownSegment
+                {
+                    IsTable = false,
+                    Markdown = columnMarkdown
+                });
+                return result;
+            }
+
+            foreach (var block in blocks)
+            {
+                string blockMarkdown = block?.SourceText ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(blockMarkdown))
+                    continue;
+
+                if (block.Type == SharedDocumentBlockType.Table)
+                {
+                    var tableData = MarkdownTableExtractor.ExtractTopLevelTables(blockMarkdown).FirstOrDefault();
+                    if (tableData != null && tableData.Rows.Count > 0 && tableData.ColumnCount > 0)
+                    {
+                        result.Add(new ColumnMarkdownSegment
+                        {
+                            IsTable = true,
+                            Markdown = blockMarkdown,
+                            TableData = tableData
+                        });
+                        continue;
+                    }
+                }
+
+                result.Add(new ColumnMarkdownSegment
+                {
+                    IsTable = false,
+                    Markdown = blockMarkdown
+                });
+            }
+
+            return result;
+        }
+
+        private static MText CreateMTextEntity(
+            DesignSpecConfig config,
+            ObjectId textStyleId,
+            double leftX,
+            double topY,
+            double z,
+            double width,
+            string content)
+        {
+            var mtext = new MText();
+            mtext.SetDatabaseDefaults();
+            mtext.Location = new Point3d(leftX, topY, z);
+            mtext.Attachment = ParseAttachmentPoint(config.MTextAttachment);
+            mtext.TextStyleId = textStyleId;
+            mtext.TextHeight = config.ActualTextHeight;
+            mtext.LineSpacingStyle = ParseLineSpacingStyle(config.MTextLineSpacingStyle);
+            mtext.LineSpacingFactor = config.LineSpacingFactor;
+            mtext.Width = Math.Max(config.ActualTextHeight, width);
+            mtext.Contents = content ?? string.Empty;
+            return mtext;
+        }
+
+        private static double EstimateMarkdownHeightFallback(string markdown, DesignSpecConfig config, double columnWidth)
+        {
+            if (string.IsNullOrWhiteSpace(markdown))
+                return config.ActualTextHeight;
+
+            var blocks = SharedMarkdownBlockParser.ParseTopLevelBlocks(markdown);
+            if (blocks == null || blocks.Count == 0)
+                return config.ActualTextHeight * config.LineSpacingFactor;
+
+            double total = 0;
+            foreach (var block in blocks)
+                total += Math.Max(config.ActualTextHeight, EstimateBlockHeightFallback(block, config, columnWidth));
+            return Math.Max(config.ActualTextHeight, total);
+        }
+
+        private static double EstimateTableHeightFallback(MarkdownTableData tableData, double columnWidth, DesignSpecConfig config)
+        {
+            int rows = tableData?.Rows?.Count ?? 0;
+            if (rows <= 0)
+                return config.ActualTextHeight;
+
+            double[] colWidths = BuildTableColumnWidths(tableData, columnWidth, config);
+            int[] rowLines = BuildTableRowLineCounts(tableData, colWidths, config);
+            double cellPadding = Math.Max(config.ActualTextHeight * 0.08, config.ActualTextHeight * 0.12);
+            double baseRowHeight = Math.Max(
+                config.ActualTextHeight,
+                config.ActualTextHeight * config.LineSpacingFactor + cellPadding * 2.0);
+
+            double total = 0;
+            for (int r = 0; r < rows; r++)
+            {
+                int lineCount = (rowLines != null && r < rowLines.Length) ? Math.Max(1, rowLines[r]) : 1;
+                total += Math.Max(baseRowHeight, baseRowHeight * lineCount);
+            }
+
+            return Math.Max(config.ActualTextHeight, total);
+        }
+
+        private static double GetEntityBottomY(Entity entity, double currentTopY, double fallbackHeight)
+        {
+            double safeHeight = Math.Max(0.1, fallbackHeight);
+            try
+            {
+                var ext = entity.GeometricExtents;
+                if (!double.IsNaN(ext.MinPoint.Y)
+                    && !double.IsInfinity(ext.MinPoint.Y)
+                    && ext.MinPoint.Y < currentTopY - 0.01)
+                {
+                    return ext.MinPoint.Y;
+                }
+            }
+            catch
+            {
+                // 几何范围偶发不可得，回退估算高度。
+            }
+
+            return currentTopY - safeHeight;
         }
 
         private int InsertTablesForColumn(
@@ -438,7 +695,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     ref anchorEntityId))
                 {
                     created++;
-                    var rowHeight = Math.Max(config.ActualTextHeight * config.LineSpacingFactor * 1.3, config.ActualTextHeight);
+                    double cellPadding = Math.Max(config.ActualTextHeight * 0.08, config.ActualTextHeight * 0.12);
+                    var rowHeight = Math.Max(
+                        config.ActualTextHeight,
+                        config.ActualTextHeight * config.LineSpacingFactor + cellPadding * 2.0);
                     y -= Math.Max(rowHeight * Math.Max(1, tableData.Rows.Count), config.ActualTextHeight);
                 }
             }
@@ -565,6 +825,42 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             ref bool metadataWritten,
             ref ObjectId anchorEntityId)
         {
+            return TryCreateTable(
+                tr,
+                btr,
+                db,
+                config,
+                tableData,
+                columnLeftX,
+                tableTopY,
+                z,
+                columnWidth,
+                groupId,
+                markdownSource,
+                textStyleId,
+                ref metadataWritten,
+                ref anchorEntityId,
+                out _);
+        }
+
+        private bool TryCreateTable(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            DesignSpecConfig config,
+            MarkdownTableData tableData,
+            double columnLeftX,
+            double tableTopY,
+            double z,
+            double columnWidth,
+            string groupId,
+            string markdownSource,
+            ObjectId textStyleId,
+            ref bool metadataWritten,
+            ref ObjectId anchorEntityId,
+            out Table createdTable)
+        {
+            createdTable = null;
             int rows = tableData?.Rows?.Count ?? 0;
             int cols = tableData?.ColumnCount ?? 0;
             if (rows <= 0 || cols <= 0)
@@ -589,7 +885,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             double[] colWidths = BuildTableColumnWidths(tableData, columnWidth, config);
             int[] rowLines = BuildTableRowLineCounts(tableData, colWidths, config);
-            double baseRowHeight = Math.Max(config.ActualTextHeight * config.LineSpacingFactor * 1.3, config.ActualTextHeight);
+            double cellPadding = Math.Max(config.ActualTextHeight * 0.08, config.ActualTextHeight * 0.12);
+            double baseRowHeight = Math.Max(
+                config.ActualTextHeight,
+                config.ActualTextHeight * config.LineSpacingFactor + cellPadding * 2.0);
 
             for (int r = 0; r < rows; r++)
             {
@@ -612,6 +911,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             }
 
             table.GenerateLayout();
+            double totalWidth = SumTableColumnWidths(table, cols);
+            if (columnWidth > 0 && totalWidth > columnWidth + 0.01)
+            {
+                double scale = columnWidth / totalWidth;
+                for (int c = 0; c < cols; c++)
+                {
+                    table.Columns[c].Width = Math.Max(config.ActualTextHeight, table.Columns[c].Width * scale);
+                }
+                table.GenerateLayout();
+            }
+
             SetLayer(db, tr, table, LAYER_TEXT);
             btr.AppendEntity(table);
             tr.AddNewlyCreatedDBObject(table, true);
@@ -620,7 +930,19 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
             ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
+            createdTable = table;
             return true;
+        }
+
+        private static double SumTableColumnWidths(Table table, int cols)
+        {
+            if (table == null || cols <= 0)
+                return 0;
+
+            double total = 0;
+            for (int c = 0; c < cols; c++)
+                total += table.Columns[c].Width;
+            return total;
         }
 
         private static double[] BuildTableColumnWidths(MarkdownTableData tableData, double totalColumnWidth, DesignSpecConfig config)
@@ -957,24 +1279,29 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         private static TextAreaCalculator.TextAreaResult CalculateArea(DesignSpecConfig config, LayoutResultModel layoutResult)
         {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+            config.Normalize();
+
             if (layoutResult?.ColumnWidthsMm != null && layoutResult.ColumnWidthsMm.Length > 0)
             {
-                var widths = layoutResult.ColumnWidthsMm
-                    .Where(w => w > 0)
-                    .ToArray();
-                if (widths.Length > 0)
+                int cols = Math.Max(1, config.ColumnCount);
+                var widths = new double[cols];
+                for (int i = 0; i < cols; i++)
                 {
-                    int cols = widths.Length;
-                    double gutter = config.ActualColumnGutter;
-                    return new TextAreaCalculator.TextAreaResult
-                    {
-                        ColumnCount = cols,
-                        ColumnWidths = widths,
-                        ColumnGutter = gutter,
-                        TotalHeight = config.ActualTotalHeight,
-                        TotalWidth = widths.Sum() + gutter * Math.Max(0, cols - 1)
-                    };
+                    double fromLayout = i < layoutResult.ColumnWidthsMm.Length ? layoutResult.ColumnWidthsMm[i] : 0;
+                    widths[i] = fromLayout > 0 ? fromLayout : config.GetPageDrivenColumnWidth();
                 }
+
+                double gutter = config.ActualColumnGutter;
+                return new TextAreaCalculator.TextAreaResult
+                {
+                    ColumnCount = cols,
+                    ColumnWidths = widths,
+                    ColumnGutter = gutter,
+                    TotalHeight = config.ActualTotalHeight,
+                    TotalWidth = widths.Sum() + gutter * Math.Max(0, cols - 1)
+                };
             }
 
             return TextAreaCalculator.Calculate(config);

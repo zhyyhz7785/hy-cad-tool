@@ -662,14 +662,16 @@ namespace HyCADTool.Refactored.Presentation.Commands
             layoutResult = ParseLayoutResult(result, markdownSource, config);
 
             string colParaIndices = ExtractColumnParagraphIndices(result, layoutResult);
+            int targetColumnCount = Math.Max(1, config?.ColumnCount ?? 1);
             if (layoutResult?.Pages != null && layoutResult.Pages.Length > 0)
             {
                 var page0 = layoutResult.Pages[0];
                 if (page0?.CharsPerColumn != null && page0.CharsPerColumn.Length > 0)
                     config.CharsPerColumn = page0.CharsPerColumn;
+                targetColumnCount = Math.Max(targetColumnCount, page0?.ColumnBlockIndices?.Length ?? 0);
             }
 
-            var colMarkdowns = SplitMarkdownByColumns(markdownSource, colParaIndices);
+            var colMarkdowns = NormalizeColumnArray(SplitMarkdownByColumns(markdownSource, colParaIndices), targetColumnCount);
             columnMarkdowns = colMarkdowns;
             columnContents = new string[colMarkdowns.Length];
             for (int i = 0; i < colMarkdowns.Length; i++)
@@ -815,6 +817,15 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private static string[] SplitMarkdownByColumns(string markdown, string paraIndices)
         {
             return MarkdownColumnSplitter.SplitByColumnIndices(markdown, paraIndices);
+        }
+
+        private static string[] NormalizeColumnArray(string[] source, int targetLength)
+        {
+            int length = Math.Max(1, targetLength);
+            var result = new string[length];
+            for (int i = 0; i < length; i++)
+                result[i] = (source != null && i < source.Length) ? (source[i] ?? string.Empty) : string.Empty;
+            return result;
         }
 
         #endregion
