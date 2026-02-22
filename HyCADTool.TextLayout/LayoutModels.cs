@@ -57,6 +57,10 @@ namespace HyCADTool.TextLayout
         public double[][] ColumnBlockHeightsMm { get; set; } = Array.Empty<double[]>();
         public double[] ColumnUsedHeightsMm { get; set; } = Array.Empty<double>();
         public int[] CharsPerColumn { get; set; } = Array.Empty<int>();
+        /// <summary>每栏顶部偏移（mm，相对于页面内边距顶部），由预览拖拽产生</summary>
+        public double[] ColumnTopOffsetsMm { get; set; } = Array.Empty<double>();
+        /// <summary>每栏可用高度（mm），由预览拖拽产生；0 表示使用全高</summary>
+        public double[] ColumnHeightsMm { get; set; } = Array.Empty<double>();
     }
 
     public sealed class IncrementalLayoutMetadata

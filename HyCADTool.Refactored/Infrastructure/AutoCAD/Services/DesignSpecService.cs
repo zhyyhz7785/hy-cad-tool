@@ -97,20 +97,28 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         double contentLeftX = insertionPoint.X + config.MarginLeftMm * config.Scale;
                         double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
                         double xOffset = 0;
+                        var pageLayout = layoutResult?.Pages != null && outputPageCount < layoutResult.Pages.Length
+                            ? layoutResult.Pages[outputPageCount] : null;
 
                         for (int i = 0; i < pageColCount; i++)
                         {
                             double colWidth = ResolveColumnWidthMm(i, config, pageColCount);
                             double colLeftX = contentLeftX + xOffset;
                             double textLeftX = colLeftX + innerPad;
-                            double textTopY = contentTopY - innerPad;
+                            double colTopOffsetMm = pageLayout?.ColumnTopOffsetsMm != null && i < pageLayout.ColumnTopOffsetsMm.Length
+                                ? Math.Max(0, pageLayout.ColumnTopOffsetsMm[i]) : 0;
+                            double fullInnerHeightMm = config.PageHeightMm - config.MarginTopMm - config.MarginBottomMm;
+                            double colHeightMm = pageLayout?.ColumnHeightsMm != null && i < pageLayout.ColumnHeightsMm.Length && pageLayout.ColumnHeightsMm[i] > 0
+                                ? Math.Min(pageLayout.ColumnHeightsMm[i], fullInnerHeightMm - colTopOffsetMm) : fullInnerHeightMm - colTopOffsetMm;
+                            double textTopY = contentTopY - colTopOffsetMm * config.Scale - innerPad;
+                            double colContentBottomY = contentTopY - (colTopOffsetMm + colHeightMm) * config.Scale;
                             double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
                             var overflowSegments = InsertColumnEntities(
                                 tr, btr, db, config,
                                 outputPageCount, i, pendingMarkdown,
                                 textLeftX, textTopY, insertionPoint.Z,
-                                textWidth, contentBottomY, groupId, markdownSource,
+                                textWidth, colContentBottomY, groupId, markdownSource,
                                 textStyleId,
                                 ref metadataWritten, ref anchorEntityId,
                                 ref mtextCount, ref tableCount);
@@ -216,20 +224,28 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         double contentLeftX = insertPt.X + config.MarginLeftMm * config.Scale;
                         double innerPad = Math.Max(0, config.ActualColumnInnerPadding);
                         double xOffset = 0;
+                        var pageLayout = layoutResult?.Pages != null && outputPageCount < layoutResult.Pages.Length
+                            ? layoutResult.Pages[outputPageCount] : null;
 
                         for (int i = 0; i < pageColCount; i++)
                         {
                             double colWidth = ResolveColumnWidthMm(i, config, pageColCount);
                             double colLeftX = contentLeftX + xOffset;
                             double textLeftX = colLeftX + innerPad;
-                            double textTopY = contentTopY - innerPad;
+                            double colTopOffsetMm = pageLayout?.ColumnTopOffsetsMm != null && i < pageLayout.ColumnTopOffsetsMm.Length
+                                ? Math.Max(0, pageLayout.ColumnTopOffsetsMm[i]) : 0;
+                            double fullInnerHeightMm = config.PageHeightMm - config.MarginTopMm - config.MarginBottomMm;
+                            double colHeightMm = pageLayout?.ColumnHeightsMm != null && i < pageLayout.ColumnHeightsMm.Length && pageLayout.ColumnHeightsMm[i] > 0
+                                ? Math.Min(pageLayout.ColumnHeightsMm[i], fullInnerHeightMm - colTopOffsetMm) : fullInnerHeightMm - colTopOffsetMm;
+                            double textTopY = contentTopY - colTopOffsetMm * config.Scale - innerPad;
+                            double colContentBottomY = contentTopY - (colTopOffsetMm + colHeightMm) * config.Scale;
                             double textWidth = Math.Max(config.ActualTextHeight, colWidth - innerPad * 2.0);
 
                             var overflowSegments = InsertColumnEntities(
                                 tr, btr2, db, config,
                                 outputPageCount, i, pendingMarkdown,
                                 textLeftX, textTopY, insertPt.Z,
-                                textWidth, contentBottomY, newGroupId, markdownSource,
+                                textWidth, colContentBottomY, newGroupId, markdownSource,
                                 textStyleId,
                                 ref metadataWritten, ref newAnchorEntityId,
                                 ref mtextCount, ref tableCount);

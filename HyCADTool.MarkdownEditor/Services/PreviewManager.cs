@@ -532,6 +532,51 @@ namespace HyCADTool.MarkdownEditor.Services
 
             if (!string.IsNullOrWhiteSpace(paraText))
                 viewModel.ColumnParagraphIndices = paraText;
+
+            // 将每页每栏的几何信息（px）转换为 mm 写入 LayoutResult，供 CAD 端使用
+            ApplyColumnGeometryToLayoutResult(stats, viewModel.PreviewScale);
+        }
+
+        private void ApplyColumnGeometryToLayoutResult(PreviewStats stats, double previewScale)
+        {
+            if (stats?.Pages == null || stats.Pages.Length == 0)
+                return;
+
+            double scale = Math.Max(0.01, previewScale);
+
+            // 若没有现有 LayoutResult 则创建一个最小结构
+            if (_latestLayoutResult == null)
+                _latestLayoutResult = new LayoutResultModel();
+
+            var pages = _latestLayoutResult.Pages ?? Array.Empty<LayoutPage>();
+
+            // 确保 LayoutResult.Pages 数量不小于 stats.Pages 数量
+            if (pages.Length < stats.Pages.Length)
+            {
+                var extended = new LayoutPage[stats.Pages.Length];
+                for (int i = 0; i < extended.Length; i++)
+                    extended[i] = i < pages.Length ? pages[i] : new LayoutPage { PageIndex = i };
+                pages = extended;
+                _latestLayoutResult.Pages = pages;
+            }
+
+            for (int p = 0; p < stats.Pages.Length; p++)
+            {
+                var pageStat = stats.Pages[p];
+                if (pageStat == null) continue;
+
+                var layoutPage = pages[p] ?? new LayoutPage { PageIndex = p };
+                pages[p] = layoutPage;
+
+                double[] topOffsetsPx = pageStat.ColumnTopOffsetsPx;
+                double[] heightsPx = pageStat.ColumnHeightsPx;
+
+                if (topOffsetsPx != null && topOffsetsPx.Length > 0)
+                    layoutPage.ColumnTopOffsetsMm = topOffsetsPx.Select(px => px / scale).ToArray();
+
+                if (heightsPx != null && heightsPx.Length > 0)
+                    layoutPage.ColumnHeightsMm = heightsPx.Select(px => px / scale).ToArray();
+            }
         }
 
         private static string BuildParagraphText(int[][] columns)

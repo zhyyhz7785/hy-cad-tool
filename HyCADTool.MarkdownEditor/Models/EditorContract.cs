@@ -169,6 +169,10 @@ namespace HyCADTool.MarkdownEditor.Models
         public int[][] ColumnParagraphIndices { get; set; } = Array.Empty<int[]>();
         public PreviewColumnStats[] Columns { get; set; } = Array.Empty<PreviewColumnStats>();
         public Dictionary<string, int> BlockTypeCounts { get; set; } = new Dictionary<string, int>();
+        /// <summary>每栏顶部偏移（px，相对于页面内边距顶部）</summary>
+        public double[] ColumnTopOffsetsPx { get; set; } = Array.Empty<double>();
+        /// <summary>每栏可用高度（px）</summary>
+        public double[] ColumnHeightsPx { get; set; } = Array.Empty<double>();
     }
 
     /// <summary>

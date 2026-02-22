@@ -527,6 +527,13 @@ namespace HyCADTool.MarkdownEditor.Views
                     return;
                 }
 
+                if (string.Equals(type, "layoutChanged", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = TriggerLayoutSyncAsync();
+                    UpdatePreviewPageState();
+                    return;
+                }
+
                 if (_syncCoordinator.Owner == ContentOwner.Preview
                     && string.Equals(type, "contentChanged", StringComparison.OrdinalIgnoreCase))
                 {
@@ -1124,8 +1131,21 @@ namespace HyCADTool.MarkdownEditor.Views
             return await _cadSyncService.BuildEditorResultAsync(
                 confirmed,
                 SyncMarkdownFromEditorAsync,
-                RefreshPreviewAsync,
                 SyncFromPreviewAsync);
+        }
+
+        private async Task TriggerLayoutSyncAsync()
+        {
+            try
+            {
+                var result = await _cadSyncService.BuildEditorResultFromCurrentLayoutAsync(SyncFromPreviewAsync);
+                Result = result;
+                CadSyncService.RaiseLiveSync(result);
+            }
+            catch (Exception ex)
+            {
+                LogSilentException(nameof(TriggerLayoutSyncAsync), ex);
+            }
         }
 
         private async Task SyncMarkdownFromEditorAsync()

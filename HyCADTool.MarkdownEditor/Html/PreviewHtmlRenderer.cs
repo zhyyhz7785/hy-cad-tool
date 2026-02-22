@@ -1435,6 +1435,8 @@ function rebuildPreviewStats(){
     var columns=[];
     var pageBlockTypes={};
     var blockCursor=0;
+    var colTopOffsets=[];
+    var colHeights=[];
     for(var c=0;c<COLUMN_COUNT;c++){
       var col=(c<row.length)?row[c]:null;
       var paraIndices=[];
@@ -1454,6 +1456,8 @@ function rebuildPreviewStats(){
       colParas[c]=paraIndices;
       var cpl=estimateCharsPerLine(columnWidths[c] || getDefaultColumnWidth());
       charsPerColumn.push(cpl);
+      colTopOffsets.push(getColumnTopOffsetForPage(p,c));
+      colHeights.push(getColumnHeightForPage(p,c));
       columns.push({
         index:c,
         charsPerLine:cpl,
@@ -1470,7 +1474,9 @@ function rebuildPreviewStats(){
       columnParagraphIndicesText:toColParasText(colParas),
       columnParagraphIndices:colParas,
       columns:columns,
-      blockTypeCounts:pageBlockTypes
+      blockTypeCounts:pageBlockTypes,
+      columnTopOffsetsPx:colTopOffsets,
+      columnHeightsPx:colHeights
     });
   }
   if(pages.length===0){
@@ -2033,7 +2039,9 @@ document.addEventListener('mouseup', function(){
     }
   }
   if(!dragMode) return;
-  var resizedPaper=(dragMode==='paper-right' || dragMode==='paper-bottom' || dragMode==='paper-corner');
+  var completedDragMode=dragMode;
+  var resizedPaper=(completedDragMode==='paper-right' || completedDragMode==='paper-bottom' || completedDragMode==='paper-corner');
+  var layoutAdjusted=(completedDragMode==='col-top' || completedDragMode==='col-bottom' || completedDragMode==='col-gap');
   dragMode='';
   dragIndex=-1;
   dragStartState=null;
@@ -2043,6 +2051,9 @@ document.addEventListener('mouseup', function(){
   }
   rebuildColumnsFromCurrent();
   updateSourceMirrorFromColumns();
+  if(layoutAdjusted){
+    postHost({ type:'layoutChanged' });
+  }
   if(resizedPaper){
     postPaperGeometry();
     postPaperScale();

@@ -22,21 +22,40 @@ namespace HyCADTool.MarkdownEditor.Services
         public async Task<EditorResult> BuildEditorResultAsync(
             bool confirmed,
             Func<Task> syncMarkdownFromEditorAsync,
-            Func<PreviewRefreshReason, Task> refreshPreviewAsync,
             Func<Task> syncFromPreviewAsync)
         {
             if (syncMarkdownFromEditorAsync == null) throw new ArgumentNullException(nameof(syncMarkdownFromEditorAsync));
-            if (refreshPreviewAsync == null) throw new ArgumentNullException(nameof(refreshPreviewAsync));
             if (syncFromPreviewAsync == null) throw new ArgumentNullException(nameof(syncFromPreviewAsync));
 
             await syncMarkdownFromEditorAsync();
-            await refreshPreviewAsync(PreviewRefreshReason.ContentInput);
-            await Task.Delay(200);
             await syncFromPreviewAsync();
 
             return new EditorResult
             {
                 Confirmed = confirmed,
+                Markdown = _viewModel.MarkdownText,
+                Config = _viewModel.BuildConfig(),
+                CharsPerColumn = _viewModel.CharsPerColumn,
+                ColumnParagraphIndices = _viewModel.ColumnParagraphIndices,
+                PreviewStats = _previewManager.LatestPreviewStats,
+                LayoutResult = _previewManager.LatestLayoutResult
+            };
+        }
+
+        /// <summary>
+        /// 仅从当前预览状态构建 EditorResult，不刷新预览、不同步编辑器 Markdown。
+        /// 用于栏高/栏距拖拽等纯布局变更场景。
+        /// </summary>
+        public async Task<EditorResult> BuildEditorResultFromCurrentLayoutAsync(
+            Func<Task> syncFromPreviewAsync)
+        {
+            if (syncFromPreviewAsync == null) throw new ArgumentNullException(nameof(syncFromPreviewAsync));
+
+            await syncFromPreviewAsync();
+
+            return new EditorResult
+            {
+                Confirmed = true,
                 Markdown = _viewModel.MarkdownText,
                 Config = _viewModel.BuildConfig(),
                 CharsPerColumn = _viewModel.CharsPerColumn,
