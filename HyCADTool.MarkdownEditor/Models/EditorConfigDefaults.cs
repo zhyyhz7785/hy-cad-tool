@@ -8,7 +8,7 @@ namespace HyCADTool.MarkdownEditor.Models
     public static class EditorConfigDefaults
     {
         // ── 出图 ──
-        public const double DrawScale = 1.0;
+        public const double DrawScale = 2.0;
         public const double PreviewScale = 1.0;
 
         // ── 栏 ──
@@ -55,6 +55,14 @@ namespace HyCADTool.MarkdownEditor.Models
         public const double MTextCharSpacing = 1.0;
         public const string MTextParagraphAlign = "Left";
         public const string TableBreakMode = "Overflow";
+
+        // ── MText 字体策略 ──
+        public const string MTextBoldMode = "FontSwitch";
+        public const double MTextBoldWidthScale = 1.15;
+        public const string MTextCodeMode = "FontSwitch";
+        public const string MTextCodeFontName = "Consolas";
+        public const double MTextItalicAngle = 15;
+        public const bool MTextHeadingBold = false;
 
         // ── 标题倍率 ──
         public const double H1Scale = 1.6;
@@ -122,6 +130,12 @@ namespace HyCADTool.MarkdownEditor.Models
                 MTextCharSpacing = MTextCharSpacing,
                 MTextParagraphAlign = MTextParagraphAlign,
                 TableBreakMode = TableBreakMode,
+                MTextBoldMode = MTextBoldMode,
+                MTextBoldWidthScale = MTextBoldWidthScale,
+                MTextCodeMode = MTextCodeMode,
+                MTextCodeFontName = MTextCodeFontName,
+                MTextItalicAngle = MTextItalicAngle,
+                MTextHeadingBold = MTextHeadingBold,
                 H1Scale = H1Scale,
                 H2Scale = H2Scale,
                 H3Scale = H3Scale,

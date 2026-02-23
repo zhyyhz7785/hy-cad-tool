@@ -480,6 +480,49 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             set => SetProperty(ref _lineSpacingFactor, Math.Max(0.5, Math.Min(3.0, value)));
         }
 
+        // ── MText 字体策略 ──
+        private string _mTextBoldMode = EditorConfigDefaults.MTextBoldMode;
+        public string MTextBoldMode
+        {
+            get => _mTextBoldMode;
+            set => SetProperty(ref _mTextBoldMode, NormalizeMTextBoldMode(value));
+        }
+
+        private double _mTextBoldWidthScale = EditorConfigDefaults.MTextBoldWidthScale;
+        public double MTextBoldWidthScale
+        {
+            get => _mTextBoldWidthScale;
+            set => SetProperty(ref _mTextBoldWidthScale, Math.Max(1.0, Math.Min(2.0, value)));
+        }
+
+        private string _mTextCodeMode = EditorConfigDefaults.MTextCodeMode;
+        public string MTextCodeMode
+        {
+            get => _mTextCodeMode;
+            set => SetProperty(ref _mTextCodeMode, NormalizeMTextCodeMode(value));
+        }
+
+        private string _mTextCodeFontName = EditorConfigDefaults.MTextCodeFontName;
+        public string MTextCodeFontName
+        {
+            get => _mTextCodeFontName;
+            set => SetProperty(ref _mTextCodeFontName, string.IsNullOrWhiteSpace(value) ? "Consolas" : value.Trim());
+        }
+
+        private double _mTextItalicAngle = EditorConfigDefaults.MTextItalicAngle;
+        public double MTextItalicAngle
+        {
+            get => _mTextItalicAngle;
+            set => SetProperty(ref _mTextItalicAngle, Math.Max(0, Math.Min(45, value)));
+        }
+
+        private bool _mTextHeadingBold = EditorConfigDefaults.MTextHeadingBold;
+        public bool MTextHeadingBold
+        {
+            get => _mTextHeadingBold;
+            set => SetProperty(ref _mTextHeadingBold, value);
+        }
+
         /// <summary>转入 CAD 时可选样式列表（StyleTName, StyleSName）</summary>
         public IReadOnlyList<string> CadStyleNames => new[] { StyleTName, StyleSName };
 
@@ -547,6 +590,37 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             new KeyValuePair<string, string>("1. 空间不足后移", "Overflow"),
             new KeyValuePair<string, string>("2. 边界处打断", "Split")
         };
+
+        public IReadOnlyList<KeyValuePair<string, string>> MTextBoldModeOptions => new[]
+        {
+            new KeyValuePair<string, string>("切换字体(TTF)", "FontSwitch"),
+            new KeyValuePair<string, string>("加宽模拟", "WidthScale"),
+            new KeyValuePair<string, string>("忽略(无粗体)", "None")
+        };
+
+        public IReadOnlyList<KeyValuePair<string, string>> MTextCodeModeOptions => new[]
+        {
+            new KeyValuePair<string, string>("切换字体(TTF)", "FontSwitch"),
+            new KeyValuePair<string, string>("跟随正文", "SameFont")
+        };
+
+        /// <summary>代码字体选项（等宽 TTF）</summary>
+        public static IReadOnlyList<string> CodeFontOptions { get; } = new[]
+        {
+            "Consolas", "Courier New", "Lucida Console", "Monaco", "Source Code Pro"
+        };
+
+        /// <summary>代码字体选项（含当前值）</summary>
+        public IReadOnlyList<string> CodeFontOptionsWithCurrent =>
+            CodeFontOptions.Contains(_mTextCodeFontName)
+                ? CodeFontOptions
+                : new[] { _mTextCodeFontName }.Concat(CodeFontOptions).ToArray();
+
+        /// <summary>SHX 纯净策略：BoldMode=WidthScale, CodeMode=SameFont，不产生任何 \f 码</summary>
+        public ICommand ApplyShxPurePresetCommand { get; }
+
+        /// <summary>TrueType 混排策略：BoldMode=FontSwitch, CodeMode=FontSwitch（默认行为）</summary>
+        public ICommand ApplyTrueTypeMixPresetCommand { get; }
 
         // ── 图纸幅面定义（短边 b × 长边 l） ──
         private static readonly (string Name, double Short, double Long)[] PaperDefs = new[]
@@ -738,6 +812,16 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             }
         }
 
+        // ── 标题字号倍率 ──
+        private double _h1Scale = EditorConfigDefaults.H1Scale;
+        public double H1Scale { get => _h1Scale; set { if (SetProperty(ref _h1Scale, Math.Max(0.5, Math.Min(5.0, value)))) RefreshPreviewVia(); } }
+
+        private double _h2Scale = EditorConfigDefaults.H2Scale;
+        public double H2Scale { get => _h2Scale; set { if (SetProperty(ref _h2Scale, Math.Max(0.5, Math.Min(5.0, value)))) RefreshPreviewVia(); } }
+
+        private double _h3Scale = EditorConfigDefaults.H3Scale;
+        public double H3Scale { get => _h3Scale; set { if (SetProperty(ref _h3Scale, Math.Max(0.5, Math.Min(5.0, value)))) RefreshPreviewVia(); } }
+
         // ── 段前段后间距（字高倍数） ──
         private double _h1SpaceBefore = EditorConfigDefaults.H1SpaceBefore;
         public double H1SpaceBefore { get => _h1SpaceBefore; set { if (SetProperty(ref _h1SpaceBefore, value)) RefreshPreviewVia(); } }
@@ -848,6 +932,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             SaveAsDefaultCommand = new RelayCmd(() => SaveAsDefaultRequested?.Invoke());
             SaveToFileCommand = new RelayCmd(() => SaveToFileRequested?.Invoke());
             LoadFromFileCommand = new RelayCmd(() => LoadFromFileRequested?.Invoke());
+            ApplyShxPurePresetCommand = new RelayCmd(ApplyShxPurePreset);
+            ApplyTrueTypeMixPresetCommand = new RelayCmd(ApplyTrueTypeMixPreset);
             _charsPerColumn = (int[])EditorConfigDefaults.CharsPerColumn.Clone();
             _markdownText = DefaultMarkdown;
             _content.SetMarkdown(_markdownText);
@@ -905,6 +991,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _isLandscape = landscape;
             ApplyPagePreset(_pagePreset);
 
+            _h1Scale = Math.Max(0.5, Math.Min(5.0, cfg.H1Scale));
+            _h2Scale = Math.Max(0.5, Math.Min(5.0, cfg.H2Scale));
+            _h3Scale = Math.Max(0.5, Math.Min(5.0, cfg.H3Scale));
             _h1SpaceBefore = cfg.H1SpaceBefore;
             _h1SpaceAfter = cfg.H1SpaceAfter;
             _h2SpaceBefore = cfg.H2SpaceBefore;
@@ -933,6 +1022,12 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _mTextParagraphAlign = string.IsNullOrWhiteSpace(cfg.MTextParagraphAlign) ? "Left" : cfg.MTextParagraphAlign.Trim();
             _tableBreakMode = NormalizeTableBreakMode(cfg.TableBreakMode);
             _lineSpacingFactor = Math.Max(0.5, Math.Min(3.0, cfg.LineSpacingFactor));
+            _mTextBoldMode = NormalizeMTextBoldMode(cfg.MTextBoldMode);
+            _mTextBoldWidthScale = Math.Max(1.0, Math.Min(2.0, cfg.MTextBoldWidthScale));
+            _mTextCodeMode = NormalizeMTextCodeMode(cfg.MTextCodeMode);
+            _mTextCodeFontName = string.IsNullOrWhiteSpace(cfg.MTextCodeFontName) ? "Consolas" : cfg.MTextCodeFontName.Trim();
+            _mTextItalicAngle = Math.Max(0, Math.Min(45, cfg.MTextItalicAngle));
+            _mTextHeadingBold = cfg.MTextHeadingBold;
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
@@ -991,6 +1086,16 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             OnPropertyChanged(nameof(MTextParagraphAlign));
             OnPropertyChanged(nameof(TableBreakMode));
             OnPropertyChanged(nameof(LineSpacingFactor));
+            OnPropertyChanged(nameof(MTextBoldMode));
+            OnPropertyChanged(nameof(MTextBoldWidthScale));
+            OnPropertyChanged(nameof(MTextCodeMode));
+            OnPropertyChanged(nameof(MTextCodeFontName));
+            OnPropertyChanged(nameof(MTextItalicAngle));
+            OnPropertyChanged(nameof(MTextHeadingBold));
+            OnPropertyChanged(nameof(CodeFontOptionsWithCurrent));
+            OnPropertyChanged(nameof(H1Scale));
+            OnPropertyChanged(nameof(H2Scale));
+            OnPropertyChanged(nameof(H3Scale));
             OnPropertyChanged(nameof(H1SpaceBefore));
             OnPropertyChanged(nameof(H1SpaceAfter));
             OnPropertyChanged(nameof(H2SpaceBefore));
@@ -1021,6 +1126,32 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             return string.Equals(mode?.Trim(), "Split", StringComparison.OrdinalIgnoreCase)
                 ? "Split"
                 : "Overflow";
+        }
+
+        private static string NormalizeMTextBoldMode(string mode)
+        {
+            string m = mode?.Trim() ?? string.Empty;
+            if (m == "WidthScale" || m == "None") return m;
+            return "FontSwitch";
+        }
+
+        private static string NormalizeMTextCodeMode(string mode)
+        {
+            return string.Equals(mode?.Trim(), "SameFont", StringComparison.OrdinalIgnoreCase)
+                ? "SameFont"
+                : "FontSwitch";
+        }
+
+        private void ApplyShxPurePreset()
+        {
+            MTextBoldMode = "WidthScale";
+            MTextCodeMode = "SameFont";
+        }
+
+        private void ApplyTrueTypeMixPreset()
+        {
+            MTextBoldMode = "FontSwitch";
+            MTextCodeMode = "FontSwitch";
         }
 
         private static void ParsePagePreset(string rawPreset, double pageWidthMm, double pageHeightMm, out string preset, out bool isLandscape)
@@ -1087,6 +1218,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 BorderWidth = BorderWidth,
                 HandleWidth = HandleWidth,
                 HandleActiveWidth = HandleActiveWidth,
+                H1Scale = H1Scale,
+                H2Scale = H2Scale,
+                H3Scale = H3Scale,
                 H1SpaceBefore = H1SpaceBefore,
                 H1SpaceAfter = H1SpaceAfter,
                 H2SpaceBefore = H2SpaceBefore,
@@ -1113,7 +1247,13 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MTextCharSpacing = MTextCharSpacing,
                 MTextParagraphAlign = MTextParagraphAlign,
                 TableBreakMode = TableBreakMode,
-                LineSpacingFactor = LineSpacingFactor
+                LineSpacingFactor = LineSpacingFactor,
+                MTextBoldMode = MTextBoldMode,
+                MTextBoldWidthScale = MTextBoldWidthScale,
+                MTextCodeMode = MTextCodeMode,
+                MTextCodeFontName = MTextCodeFontName,
+                MTextItalicAngle = MTextItalicAngle,
+                MTextHeadingBold = MTextHeadingBold
             };
         }
 
@@ -1184,6 +1324,9 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             OnPropertyChanged(nameof(PageOrientationLabel));
             OnPropertyChanged(nameof(ColumnHeightSyncLabel));
 
+            H1Scale = d.H1Scale;
+            H2Scale = d.H2Scale;
+            H3Scale = d.H3Scale;
             H1SpaceBefore = d.H1SpaceBefore;
             H1SpaceAfter = d.H1SpaceAfter;
             H2SpaceBefore = d.H2SpaceBefore;
@@ -1216,6 +1359,12 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MTextParagraphAlign = d.MTextParagraphAlign;
             TableBreakMode = d.TableBreakMode;
             LineSpacingFactor = d.LineSpacingFactor;
+            MTextBoldMode = d.MTextBoldMode;
+            MTextBoldWidthScale = d.MTextBoldWidthScale;
+            MTextCodeMode = d.MTextCodeMode;
+            MTextCodeFontName = d.MTextCodeFontName;
+            MTextItalicAngle = d.MTextItalicAngle;
+            MTextHeadingBold = d.MTextHeadingBold;
 
             SyncDrawScaleTextFromValue();
             UpdateStatus();

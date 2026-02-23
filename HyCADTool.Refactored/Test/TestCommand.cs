@@ -20,7 +20,7 @@ namespace HyCADTool.Refactored.Test
             SimpleLogger.LogElapsedTime("命令执行", () =>
             {
                 // 只改下面这一行即可切换 C1 测试命令
-                new DesignSpecCommand().Execute();
+                new DesignSpecCommand().Execute();   // MText 样式设置页：C2→C1 打开编辑器，切 Tab "MText 样式" 验证
                 // 例如：new OverKillCommand().Execute();
             });
         }

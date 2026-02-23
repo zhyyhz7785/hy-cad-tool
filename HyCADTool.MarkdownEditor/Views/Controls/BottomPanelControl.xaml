@@ -18,9 +18,9 @@
             <Border Grid.Row="0" Background="{DynamicResource ThemeBgPanelBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                        <Button Style="{StaticResource DevBarBtn}" Content="终端" />
-                        <Button Style="{StaticResource DevBarBtn}" Content="问题" />
-                        <Button Style="{StaticResource DevBarBtn}" Content="输出" />
+                        <Button Style="{StaticResource DevBarBtn}" Content="终端11" />
+                        <Button Style="{StaticResource DevBarBtn}" Content="问题22" />
+                        <Button Style="{StaticResource DevBarBtn}" Content="输出33" />
                         <Button Style="{StaticResource DevBarBtn}" Content="调试控制台" />
                         <Button Style="{StaticResource DevBarBtn}" Content="端口" />
                     </StackPanel>

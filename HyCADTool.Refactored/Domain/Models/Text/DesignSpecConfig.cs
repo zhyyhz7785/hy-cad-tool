@@ -74,6 +74,20 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>表格超出栏高时行为：Overflow(整体后移) / Split(边界打断)</summary>
         public string TableBreakMode { get; set; } = "Overflow";
 
+        // ── MText 字体策略 ──
+        /// <summary>粗体渲染：FontSwitch(切TTF) / WidthScale(加宽模拟) / None(忽略)</summary>
+        public string MTextBoldMode { get; set; } = "FontSwitch";
+        /// <summary>加宽模拟粗体的宽度因子（WidthScale 模式用）</summary>
+        public double MTextBoldWidthScale { get; set; } = 1.15;
+        /// <summary>代码渲染：FontSwitch(切TTF) / SameFont(跟随正文)</summary>
+        public string MTextCodeMode { get; set; } = "FontSwitch";
+        /// <summary>代码用 TTF 字体名（FontSwitch 模式用）</summary>
+        public string MTextCodeFontName { get; set; } = "Consolas";
+        /// <summary>斜体倾斜角度（度），0-45</summary>
+        public double MTextItalicAngle { get; set; } = 15;
+        /// <summary>标题是否自动加粗</summary>
+        public bool MTextHeadingBold { get; set; } = false;
+
         // ── 计算属性（× Scale → 模型空间 mm） ──
 
         public double ActualTextHeight => TextSize * Scale;
@@ -227,6 +241,12 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             TableBreakMode = string.Equals(TableBreakMode, "Split", StringComparison.OrdinalIgnoreCase)
                 ? "Split"
                 : "Overflow";
+
+            MTextBoldMode = MTextBoldMode == "WidthScale" || MTextBoldMode == "None" ? MTextBoldMode : "FontSwitch";
+            MTextBoldWidthScale = Math.Max(1.0, Math.Min(2.0, MTextBoldWidthScale));
+            MTextCodeMode = string.Equals(MTextCodeMode, "SameFont", StringComparison.OrdinalIgnoreCase) ? "SameFont" : "FontSwitch";
+            if (string.IsNullOrWhiteSpace(MTextCodeFontName)) MTextCodeFontName = "Consolas";
+            MTextItalicAngle = Math.Max(0, Math.Min(45, MTextItalicAngle));
 
             if (CharsPerColumn == null || CharsPerColumn.Length == 0)
             {

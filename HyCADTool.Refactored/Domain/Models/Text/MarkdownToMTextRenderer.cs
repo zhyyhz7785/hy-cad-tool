@@ -105,6 +105,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// <summary>
         /// 标题 H1-H3 → 放大字号 + 段前段后间距
         /// 使用 \pxi 格式码的 b(段前) 和 a(段后)，单位英寸
+        /// MTextHeadingBold=true 时标题内容套用粗体格式
         /// </summary>
         private void RenderHeading(HeadingBlock heading)
         {
@@ -120,14 +121,20 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             double spaceBefore = _config.GetHeadingSpaceBefore(heading.Level);
             double spaceAfter = _config.GetHeadingSpaceAfter(heading.Level);
 
-            // \pxi 段前段后间距（mm → inch）
             AppendParaSpacing(spaceBefore, spaceAfter);
 
             string hStr = F(height);
             string wStr = F(_config.TextXScale);
 
             _sb.Append("{\\H").Append(hStr).Append(";\\W").Append(wStr).Append(";");
-            RenderInlines(heading.Inline);
+            if (_config.MTextHeadingBold && heading.Inline != null)
+            {
+                RenderBoldInlines(heading.Inline);
+            }
+            else
+            {
+                RenderInlines(heading.Inline);
+            }
             _sb.Append("}\\P");
         }
 
@@ -331,11 +338,11 @@ namespace HyCADTool.Refactored.Domain.Models.Text
             return DisplayWidthCalculator.GetDisplayUnits(text);
         }
 
-        /// <summary>代码块 → 原样输出（等宽缩进）</summary>
+        /// <summary>代码块 → 按 MTextCodeMode 渲染（等宽缩进）</summary>
         private void RenderCodeBlock(FencedCodeBlock code)
         {
-            // \pxi 缩进参数单位为英寸
             string indentInch = F(_config.ActualListIndent / 25.4);
+            bool useFontSwitch = !string.Equals(_config.MTextCodeMode, "SameFont", StringComparison.OrdinalIgnoreCase);
             var lines = code.Lines;
             for (int i = 0; i < lines.Count; i++)
             {
@@ -344,9 +351,16 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                 if (!string.IsNullOrEmpty(text))
                 {
                     _sb.Append("\\pxi0,l").Append(indentInch).Append(";");
-                    _sb.Append("{\\fConsolas|b0|i0;")
-                       .Append(EscapeMText(text))
-                       .Append("}\\P");
+                    if (useFontSwitch)
+                    {
+                        _sb.Append("{\\f").Append(_config.MTextCodeFontName).Append("|b0|i0;")
+                           .Append(EscapeMText(text))
+                           .Append("}\\P");
+                    }
+                    else
+                    {
+                        _sb.Append(EscapeMText(text)).Append("\\P");
+                    }
                 }
             }
         }
@@ -398,8 +412,8 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
         /// <summary>
         /// 粗体/斜体
-        /// - **粗体** → {\fSimHei;文字}（切 TTF 黑体模拟粗体）
-        /// - *斜体*  → {\Q15;文字\Q0;}（倾斜角 15°）
+        /// - **粗体**：FontSwitch → \f 切TTF | WidthScale → \W 加宽 | None → 直接输出
+        /// - *斜体*：\Q{MTextItalicAngle}；角度为0时不输出格式码
         /// </summary>
         private void RenderEmphasis(EmphasisInline emphasis)
         {
@@ -407,19 +421,52 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
             if (isBold)
             {
-                // 粗体：切换到 TTF 黑体
-                _sb.Append("{\\f").Append(_config.BoldFontName).Append(";");
-                foreach (var child in emphasis)
-                    RenderInline(child);
-                _sb.Append("}");
+                RenderBoldInlines(emphasis);
             }
             else
             {
-                // 斜体：倾斜角
-                _sb.Append("{\\Q15;");
-                foreach (var child in emphasis)
+                double angle = _config.MTextItalicAngle;
+                if (angle > 0.01)
+                {
+                    _sb.Append("{\\Q").Append(F(angle)).Append(";");
+                    foreach (var child in emphasis)
+                        RenderInline(child);
+                    _sb.Append("\\Q0;}");
+                }
+                else
+                {
+                    foreach (var child in emphasis)
+                        RenderInline(child);
+                }
+            }
+        }
+
+        /// <summary>按 MTextBoldMode 渲染粗体内容</summary>
+        private void RenderBoldInlines(ContainerInline container)
+        {
+            string boldMode = _config.MTextBoldMode ?? "FontSwitch";
+
+            if (string.Equals(boldMode, "WidthScale", StringComparison.OrdinalIgnoreCase))
+            {
+                string boldW = F(_config.MTextBoldWidthScale);
+                string origW = F(_config.TextXScale);
+                _sb.Append("{\\W").Append(boldW).Append(";");
+                foreach (var child in container)
                     RenderInline(child);
-                _sb.Append("\\Q0;}");
+                _sb.Append("\\W").Append(origW).Append(";}");
+            }
+            else if (string.Equals(boldMode, "None", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var child in container)
+                    RenderInline(child);
+            }
+            else
+            {
+                // FontSwitch（默认）：切换到 TTF 粗体字体
+                _sb.Append("{\\f").Append(_config.BoldFontName).Append(";");
+                foreach (var child in container)
+                    RenderInline(child);
+                _sb.Append("}");
             }
         }
 

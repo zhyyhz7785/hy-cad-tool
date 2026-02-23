@@ -119,6 +119,20 @@ namespace HyCADTool.MarkdownEditor.Models
         public string MTextParagraphAlign { get; set; } = EditorConfigDefaults.MTextParagraphAlign;
         public string TableBreakMode { get; set; } = EditorConfigDefaults.TableBreakMode;
 
+        // ── MText 字体策略 ──
+        /// <summary>粗体渲染：FontSwitch(切TTF) / WidthScale(加宽模拟) / None(忽略)</summary>
+        public string MTextBoldMode { get; set; } = EditorConfigDefaults.MTextBoldMode;
+        /// <summary>加宽模拟粗体的宽度因子（WidthScale 模式用）</summary>
+        public double MTextBoldWidthScale { get; set; } = EditorConfigDefaults.MTextBoldWidthScale;
+        /// <summary>代码渲染：FontSwitch(切TTF) / SameFont(跟随正文)</summary>
+        public string MTextCodeMode { get; set; } = EditorConfigDefaults.MTextCodeMode;
+        /// <summary>代码用 TTF 字体名（FontSwitch 模式用）</summary>
+        public string MTextCodeFontName { get; set; } = EditorConfigDefaults.MTextCodeFontName;
+        /// <summary>斜体倾斜角度（度）</summary>
+        public double MTextItalicAngle { get; set; } = EditorConfigDefaults.MTextItalicAngle;
+        /// <summary>标题是否自动加粗</summary>
+        public bool MTextHeadingBold { get; set; } = EditorConfigDefaults.MTextHeadingBold;
+
         // ── 标题倍率 ──
         public double H1Scale { get; set; } = EditorConfigDefaults.H1Scale;
         public double H2Scale { get; set; } = EditorConfigDefaults.H2Scale;

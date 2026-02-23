@@ -174,38 +174,7 @@ namespace HyCADTool.ReCall
             string tempDir = Path.Combine(tempBase, DateTime.UtcNow.Ticks.ToString());
             try
             {
-                Directory.CreateDirectory(tempDir);
-                foreach (string file in Directory.GetFiles(sourceDir))
-                {
-                    string dest = Path.Combine(tempDir, Path.GetFileName(file));
-                    try
-                    {
-                        File.Copy(file, dest, true);
-                    }
-                    catch (System.Exception)
-                    {
-                        // 忽略单文件失败
-                    }
-                }
-
-                // 递归复制子目录（如 net8/ 中的 MarkdownEditor）
-                foreach (string subDir in Directory.GetDirectories(sourceDir))
-                {
-                    string subDirName = Path.GetFileName(subDir);
-                    string destSubDir = Path.Combine(tempDir, subDirName);
-                    try
-                    {
-                        Directory.CreateDirectory(destSubDir);
-                        foreach (string file in Directory.GetFiles(subDir))
-                        {
-                            string dest = Path.Combine(destSubDir, Path.GetFileName(file));
-                            try { File.Copy(file, dest, true); }
-                            catch (System.Exception) { }
-                        }
-                    }
-                    catch (System.Exception) { }
-                }
-
+                CopyDirectoryRecursive(sourceDir, tempDir);
                 string loadPath = Path.Combine(tempDir, Path.GetFileName(mainDllPath));
                 return File.Exists(loadPath) ? loadPath : null;
             }
@@ -213,6 +182,21 @@ namespace HyCADTool.ReCall
             {
                 ed?.WriteMessage("\n✗ 复制到临时目录失败: " + ex.Message);
                 return null;
+            }
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+        {
+            Directory.CreateDirectory(destDir);
+            foreach (string file in Directory.GetFiles(sourceDir))
+            {
+                try { File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true); }
+                catch (System.Exception) { }
+            }
+            foreach (string subDir in Directory.GetDirectories(sourceDir))
+            {
+                try { CopyDirectoryRecursive(subDir, Path.Combine(destDir, Path.GetFileName(subDir))); }
+                catch (System.Exception) { }
             }
         }
 

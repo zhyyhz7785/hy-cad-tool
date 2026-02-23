@@ -12,405 +12,651 @@
     </UserControl.Resources>
 
     <Border Background="{DynamicResource ThemeBgPanelBrush}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="8,8,8,12">
-                <TextBlock Text="排版设置"
-                           Foreground="{DynamicResource ThemeTextPrimaryBrush}"
-                           FontSize="12"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,8" />
-                <WrapPanel Margin="0,0,0,8">
-                    <Button Style="{StaticResource ToolBtn}"
-                            Content="恢复默认"
-                            Command="{Binding ResetAllDefaultsCommand}"
-                            ToolTip="恢复全部配置为默认值并保存"
-                            Margin="0,0,6,4" />
-                    <Button Style="{StaticResource ToolBtn}"
-                            Content="存为默认"
-                            Command="{Binding SaveAsDefaultCommand}"
-                            ToolTip="将当前配置保存为默认（下次启动加载）"
-                            Margin="0,0,6,4" />
-                    <Button Style="{StaticResource ToolBtn}"
-                            Content="存为设置文档"
-                            Command="{Binding SaveToFileCommand}"
-                            ToolTip="将当前配置保存到用户选择的 JSON 文件"
-                            Margin="0,0,6,4" />
-                    <Button Style="{StaticResource ToolBtn}"
-                            Content="读取设置文档"
-                            Command="{Binding LoadFromFileCommand}"
-                            ToolTip="从用户选择的 JSON 文件加载配置"
-                            Margin="0,0,0,4" />
-                </WrapPanel>
+        <TabControl Background="{DynamicResource ThemeBgPanelBrush}"
+                    BorderThickness="0"
+                    Padding="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondaryBrush}" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="10,4" />
+                    <Setter Property="FontSize" Value="11" />
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimaryBrush}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </TabControl.Resources>
 
-                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThemeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8"
-                        Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="字体与比例"
-                                   Style="{StaticResource ParamLabel}"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <WrapPanel ItemWidth="88">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="出图比例" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         helper:TextBoxHelper.ScrollStepValues="1,5,10,15,20,25,30,50,75,100,125,150,175,200,250,300,350,400,450,500"
-                                         Text="{Binding DrawScaleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字高" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding TextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字宽" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="预览缩放" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding PreviewScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </WrapPanel>
-                        <WrapPanel ItemWidth="170" Margin="0,2,0,0">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="预览字体(TrueType)" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="154"
-                                         Text="{Binding PreviewFontFamily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
+            <!-- ════════════════════════════ Tab 1：排版 ════════════════════════════ -->
+            <TabItem Header="排版">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="8,8,8,12">
 
-                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThemeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8"
-                        Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="文字样式(CAD)"
-                                   Style="{StaticResource ParamLabel}"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <Grid Margin="0,0,0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="转入样式" VerticalAlignment="Center" />
-                            <Button Grid.Column="1"
-                                    Content="{Binding CadSyncStyleName}"
-                                    Command="{Binding ToggleCadSyncStyleCommand}"
-                                    Style="{StaticResource ToolBtn}"
-                                    Height="22"
-                                    Padding="6,2"
-                                    ToolTip="点击切换 0-hy-说明-T / 0-hy-说明-S" />
-                        </Grid>
-                        <TextBlock Text="样式1 0-hy-说明-T（TrueType 标题/说明）" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,4,0,2" />
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字体名称" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding StyleTFontOptionsWithCurrent}"
-                                     SelectedItem="{Binding StyleTFont, Mode=TwoWay}" />
-                        </Grid>
-                        <TextBlock Text="样式2 0-hy-说明-S（SHX 标注/引线/表格）" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,4,0,2" />
-                        <Grid Margin="0,0,0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字体文件" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding StyleSFontOptionsWithCurrent}"
-                                     SelectedItem="{Binding StyleSFont, Mode=TwoWay}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="大字体" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding StyleSBigFontOptionsWithCurrent}"
-                                     SelectedItem="{Binding StyleSBigFont, Mode=TwoWay}" />
-                        </Grid>
-                        <TextBlock Text="MText 显示" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,8,0,2" />
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="对齐点" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding MTextAttachmentOptions}"
-                                     SelectedItem="{Binding MTextAttachment, Mode=TwoWay}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="行间距" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding MTextLineSpacingStyleOptions}"
-                                     SelectedItem="{Binding MTextLineSpacingStyle, Mode=TwoWay}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="行距因子" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
-                                     Width="72"
-                                     helper:TextBoxHelper.ScrollStep="0.1"
-                                     Text="{Binding LineSpacingFactor, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="倾斜角(°)" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
-                                     Width="72"
-                                     Text="{Binding MTextObliquingAngle, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字符间距" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
-                                     Width="72"
-                                     Text="{Binding MTextCharSpacing, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="段落对齐" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding MTextParagraphAlignOptions}"
-                                     SelectedItem="{Binding MTextParagraphAlign, Mode=TwoWay}" />
-                        </Grid>
-                        <Grid Margin="0,0,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource ParamSmallLabel}" Text="表格溢出" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
-                                     MinWidth="120"
-                                     ItemsSource="{Binding TableBreakModeOptions}"
-                                     DisplayMemberPath="Key"
-                                     SelectedValuePath="Value"
-                                     SelectedValue="{Binding TableBreakMode, Mode=TwoWay}" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThemeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8"
-                        Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="页边距(mm)"
-                                   Style="{StaticResource ParamLabel}"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <WrapPanel ItemWidth="78">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="L" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="64"
-                                         Text="{Binding MarginLeftMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="R" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="64"
-                                         Text="{Binding MarginRightMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="T" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="64"
-                                         Text="{Binding MarginTopMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="B" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="64"
-                                         Text="{Binding MarginBottomMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
+                        <!-- 操作按钮 -->
+                        <WrapPanel Margin="0,0,0,8">
+                            <Button Style="{StaticResource ToolBtn}"
+                                    Content="恢复默认"
+                                    Command="{Binding ResetAllDefaultsCommand}"
+                                    ToolTip="恢复全部配置为默认值并保存"
+                                    Margin="0,0,6,4" />
+                            <Button Style="{StaticResource ToolBtn}"
+                                    Content="存为默认"
+                                    Command="{Binding SaveAsDefaultCommand}"
+                                    ToolTip="将当前配置保存为默认（下次启动加载）"
+                                    Margin="0,0,6,4" />
+                            <Button Style="{StaticResource ToolBtn}"
+                                    Content="存为设置文档"
+                                    Command="{Binding SaveToFileCommand}"
+                                    ToolTip="将当前配置保存到用户选择的 JSON 文件"
+                                    Margin="0,0,6,4" />
+                            <Button Style="{StaticResource ToolBtn}"
+                                    Content="读取设置文档"
+                                    Command="{Binding LoadFromFileCommand}"
+                                    ToolTip="从用户选择的 JSON 文件加载配置"
+                                    Margin="0,0,0,4" />
                         </WrapPanel>
-                        <WrapPanel ItemWidth="88" Margin="0,4,0,0">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="图框宽度" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding BorderWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="栏内边距" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding ColumnInnerPaddingMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
 
-                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThemeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8"
-                        Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="栏约束"
-                                   Style="{StaticResource ParamLabel}"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <WrapPanel ItemWidth="88">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="栏最大数量" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         helper:TextBoxHelper.ScrollStep="1"
-                                         Text="{Binding MaxColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="最小栏宽(mm)" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         helper:TextBoxHelper.ScrollStep="1"
-                                         Text="{Binding MinColumnWidthPx, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="最小栏高(px)" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         helper:TextBoxHelper.ScrollStep="1"
-                                         Text="{Binding MinColumnHeightPx, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                            </StackPanel>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThemeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8"
-                        Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="栏拉伸条"
-                                   Style="{StaticResource ParamLabel}"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <WrapPanel ItemWidth="88">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="默认宽度" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding HandleWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="选中宽度" />
-                                <TextBox Style="{StaticResource ParamInput}"
-                                         Width="72"
-                                         Text="{Binding HandleActiveWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThemeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8">
-                    <StackPanel>
-                        <TextBlock Text="段前后间距"
-                                   Style="{StaticResource ParamLabel}"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <UniformGrid Columns="2">
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1 前/后" />
-                                <WrapPanel>
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <!-- 字体与比例 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="字体与比例"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <WrapPanel ItemWidth="88">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="出图比例" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStepValues="1,5,10,15,20,25,30,50,75,100,125,150,175,200,250,300,350,400,450,500"
+                                                 Text="{Binding DrawScaleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字高" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding TextSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字宽" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding TextXScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="预览缩放" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding PreviewScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <WrapPanel ItemWidth="170" Margin="0,2,0,0">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="预览字体(TrueType)" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="154"
+                                                 Text="{Binding PreviewFontFamily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
                                 </WrapPanel>
                             </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2 前/后" />
-                                <WrapPanel>
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Border>
+
+                        <!-- 文字样式(CAD) -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="文字样式(CAD)"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <Grid Margin="0,0,0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="转入样式" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            Content="{Binding CadSyncStyleName}"
+                                            Command="{Binding ToggleCadSyncStyleCommand}"
+                                            Style="{StaticResource ToolBtn}"
+                                            Height="22"
+                                            Padding="6,2"
+                                            ToolTip="点击切换 0-hy-说明-T / 0-hy-说明-S" />
+                                </Grid>
+                                <TextBlock Text="样式1 0-hy-说明-T（TrueType 标题/说明）" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,4,0,2" />
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字体名称" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding StyleTFontOptionsWithCurrent}"
+                                             SelectedItem="{Binding StyleTFont, Mode=TwoWay}" />
+                                </Grid>
+                                <TextBlock Text="样式2 0-hy-说明-S（SHX 标注/引线/表格）" Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,4,0,2" />
+                                <Grid Margin="0,0,0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字体文件" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding StyleSFontOptionsWithCurrent}"
+                                             SelectedItem="{Binding StyleSFont, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="大字体" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding StyleSBigFontOptionsWithCurrent}"
+                                             SelectedItem="{Binding StyleSBigFont, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 页边距 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="页边距(mm)"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <WrapPanel ItemWidth="78">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="L" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="64"
+                                                 Text="{Binding MarginLeftMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="R" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="64"
+                                                 Text="{Binding MarginRightMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="T" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="64"
+                                                 Text="{Binding MarginTopMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="B" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="64"
+                                                 Text="{Binding MarginBottomMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <WrapPanel ItemWidth="88" Margin="0,4,0,0">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="图框宽度" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding BorderWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="栏内边距" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding ColumnInnerPaddingMm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
                                 </WrapPanel>
                             </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3 前/后" />
-                                <WrapPanel>
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Border>
+
+                        <!-- 栏约束 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="栏约束"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <WrapPanel ItemWidth="88">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="栏最大数量" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStep="1"
+                                                 Text="{Binding MaxColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="最小栏宽(mm)" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStep="1"
+                                                 Text="{Binding MinColumnWidthPx, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="最小栏高(px)" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStep="1"
+                                                 Text="{Binding MinColumnHeightPx, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                    </StackPanel>
                                 </WrapPanel>
                             </StackPanel>
-                            <StackPanel Margin="0,0,6,6">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P / Li" />
-                                <WrapPanel>
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Border>
+
+                        <!-- 栏拉伸条 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="栏拉伸条"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <WrapPanel ItemWidth="88">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="默认宽度" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding HandleWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="选中宽度" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 Text="{Binding HandleActiveWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
                                 </WrapPanel>
                             </StackPanel>
-                            <StackPanel Margin="0,0,6,0">
-                                <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q 前/后" />
-                                <WrapPanel>
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Style="{StaticResource ParamInput}" Width="58"
-                                             Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </WrapPanel>
+                        </Border>
+
+                        <!-- 段前后间距 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8">
+                            <StackPanel>
+                                <TextBlock Text="段前后间距"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1 前/后" />
+                                        <WrapPanel>
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding H1SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding H1SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2 前/后" />
+                                        <WrapPanel>
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding H2SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding H2SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3 前/后" />
+                                        <WrapPanel>
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding H3SpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding H3SpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="P / Li" />
+                                        <WrapPanel>
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding PSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding LiSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,0">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="Q 前/后" />
+                                        <WrapPanel>
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding QuoteSpaceBefore, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource ParamInput}" Width="58"
+                                                     Text="{Binding QuoteSpaceAfter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </UniformGrid>
                             </StackPanel>
-                        </UniformGrid>
+                        </Border>
+
                     </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ════════════════════════════ Tab 2：MText 样式 ════════════════════════════ -->
+            <TabItem Header="MText 样式">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="8,8,8,12">
+
+                        <!-- 快捷策略 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="快捷策略"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <TextBlock Foreground="{DynamicResource ThemeTextSecondaryBrush}"
+                                           FontSize="10"
+                                           Text="根据转入的 CAD 样式选择策略，以避免字体混乱"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,6" />
+                                <WrapPanel>
+                                    <Button Style="{StaticResource ToolBtn}"
+                                            Content="SHX 纯净"
+                                            Command="{Binding ApplyShxPurePresetCommand}"
+                                            ToolTip="BoldMode=加宽模拟  CodeMode=跟随正文&#10;不产生任何 \f 字体切换码，适合 SHX 样式"
+                                            Margin="0,0,6,0" />
+                                    <Button Style="{StaticResource ToolBtn}"
+                                            Content="TrueType 混排"
+                                            Command="{Binding ApplyTrueTypeMixPresetCommand}"
+                                            ToolTip="BoldMode=切换字体  CodeMode=切换字体&#10;粗体/代码切换 TTF，适合 TrueType 样式" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 粗体 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="粗体 **text**"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="模式" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding MTextBoldModeOptions}"
+                                             DisplayMemberPath="Key"
+                                             SelectedValuePath="Value"
+                                             SelectedValue="{Binding MTextBoldMode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="粗体字体" VerticalAlignment="Center"
+                                               ToolTip="切换字体模式下使用的 TTF 字体名" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding StyleTFontOptionsWithCurrent}"
+                                             SelectedItem="{Binding BoldFontName, Mode=TwoWay}"
+                                             IsEnabled="{Binding MTextBoldMode, Converter={x:Static helper:StringEqualityConverter.Instance}, ConverterParameter=FontSwitch}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="加宽因子"
+                                               VerticalAlignment="Center"
+                                               ToolTip="加宽模拟模式下的字宽系数（1.0=不加宽，1.15=加宽15%）" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
+                                             Width="72"
+                                             helper:TextBoxHelper.ScrollStep="0.05"
+                                             Text="{Binding MTextBoldWidthScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                             IsEnabled="{Binding MTextBoldMode, Converter={x:Static helper:StringEqualityConverter.Instance}, ConverterParameter=WidthScale}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 斜体 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="斜体 *text*"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="倾斜角(°)"
+                                               VerticalAlignment="Center"
+                                               ToolTip="MText \Q 倾斜角，0=关闭斜体，通常用 10-15°" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
+                                             Width="72"
+                                             helper:TextBoxHelper.ScrollStep="1"
+                                             Text="{Binding MTextItalicAngle, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 代码 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="`code` 及代码块"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="模式" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding MTextCodeModeOptions}"
+                                             DisplayMemberPath="Key"
+                                             SelectedValuePath="Value"
+                                             SelectedValue="{Binding MTextCodeMode, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="代码字体" VerticalAlignment="Center"
+                                               ToolTip="切换字体模式下使用的等宽 TTF 字体" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding CodeFontOptionsWithCurrent}"
+                                             SelectedItem="{Binding MTextCodeFontName, Mode=TwoWay}"
+                                             IsEnabled="{Binding MTextCodeMode, Converter={x:Static helper:StringEqualityConverter.Instance}, ConverterParameter=FontSwitch}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 标题 -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="标题 # ## ###"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="自动加粗" VerticalAlignment="Center" />
+                                    <CheckBox Grid.Column="1"
+                                              IsChecked="{Binding MTextHeadingBold, Mode=TwoWay}"
+                                              Foreground="{DynamicResource ThemeTextPrimaryBrush}"
+                                              VerticalAlignment="Center"
+                                              ToolTip="标题使用粗体格式码（依赖粗体模式设置）" />
+                                </Grid>
+                                <TextBlock Foreground="{DynamicResource ThemeTextSecondaryBrush}" FontSize="10" Margin="0,0,0,4" Text="标题字号倍率（相对正文字高）" />
+                                <WrapPanel ItemWidth="88">
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H1 倍率" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStep="0.1"
+                                                 Text="{Binding H1Scale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H2 倍率" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStep="0.1"
+                                                 Text="{Binding H2Scale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,6,6">
+                                        <TextBlock Style="{StaticResource ParamSmallLabel}" Text="H3 倍率" />
+                                        <TextBox Style="{StaticResource ParamInput}"
+                                                 Width="72"
+                                                 helper:TextBoxHelper.ScrollStep="0.1"
+                                                 Text="{Binding H3Scale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- MText 显示参数（从 Tab1 移来） -->
+                        <Border Background="{DynamicResource ThemeBgSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8">
+                            <StackPanel>
+                                <TextBlock Text="MText 显示"
+                                           Style="{StaticResource ParamLabel}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6" />
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="对齐点" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding MTextAttachmentOptions}"
+                                             SelectedItem="{Binding MTextAttachment, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="行间距" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding MTextLineSpacingStyleOptions}"
+                                             SelectedItem="{Binding MTextLineSpacingStyle, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="行距因子" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
+                                             Width="72"
+                                             helper:TextBoxHelper.ScrollStep="0.1"
+                                             Text="{Binding LineSpacingFactor, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="字符间距" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource ParamInput}"
+                                             Width="72"
+                                             Text="{Binding MTextCharSpacing, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="段落对齐" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding MTextParagraphAlignOptions}"
+                                             SelectedItem="{Binding MTextParagraphAlign, Mode=TwoWay}" />
+                                </Grid>
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource ParamSmallLabel}" Text="表格溢出" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                             MinWidth="120"
+                                             ItemsSource="{Binding TableBreakModeOptions}"
+                                             DisplayMemberPath="Key"
+                                             SelectedValuePath="Value"
+                                             SelectedValue="{Binding TableBreakMode, Mode=TwoWay}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
     </Border>
 </UserControl>

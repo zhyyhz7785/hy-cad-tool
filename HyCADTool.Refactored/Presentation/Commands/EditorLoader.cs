@@ -44,6 +44,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private static MethodInfo _forceResetMethod;
         private static bool _loadAttempted;
         private static string _net8Dir;
+        private static ResolveEventHandler _editorResolveHandler;
+        private const string APPDATA_KEY_NET8DIR = "HyCADTool.EditorLoader.Net8Dir";
         public static string LastError { get; private set; }
 
         /// <summary>
@@ -201,9 +203,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private static bool EnsureLoaded()
         {
             if (_showDialogMethod != null)
-            {
                 return true;
-            }
 
             if (_loadAttempted)
             {
@@ -217,8 +217,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
             try
             {
                 // 策略1: 从当前程序集目录加载（NETLOAD 直接部署场景）
-                _editorAssembly = TryLoadFromDirectory(
-                    Assembly.GetExecutingAssembly().Location);
+                string execLocation = Assembly.GetExecutingAssembly().Location;
+                _editorAssembly = TryLoadFromDirectory(execLocation);
 
                 // 策略2: 从 ReCall 临时目录加载（C2 热重载场景）
                 // ReCall 用 Assembly.Load(byte[]) 加载 Refactored.dll，Location 为空
@@ -423,8 +423,24 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     return null;
 
                 _net8Dir = Path.GetDirectoryName(dllPath);
-                AppDomain.CurrentDomain.AssemblyResolve += ResolveEditorDeps;
-                var asm = Assembly.LoadFrom(dllPath);
+
+                // 将 net8 目录写入 AppDomain 共享数据，供跨程序集的解析器使用
+                AppDomain.CurrentDomain.SetData(APPDATA_KEY_NET8DIR, _net8Dir);
+
+                // 移除旧的 handler（可能来自上一次 C2 的不同程序集），再注册新的
+                RemoveOldEditorResolveHandler();
+                _editorResolveHandler = ResolveEditorDeps;
+                AppDomain.CurrentDomain.AssemblyResolve += _editorResolveHandler;
+                AppDomain.CurrentDomain.SetData("HyCADTool.EditorLoader.ResolveHandler", _editorResolveHandler);
+
+                // 先用 LoadFrom 把 WebView2 托管依赖放进 LoadFrom context
+                // 这样 MarkdownEditor(Load byte[]) 使用 WebView2 时 CLR 能找到正确版本，
+                // 避免使用 AutoCAD 进程中可能存在的旧版 WebView2（导致 MissingMethodException）
+                PreloadManagedDependencies(_net8Dir);
+
+                // 用 Load(byte[]) 绕过 .NET 同名程序集缓存
+                // LoadFrom 在发现同 AssemblyName 已加载时会返回旧版本，导致 C2 后代码不更新
+                var asm = Assembly.Load(File.ReadAllBytes(dllPath));
                 return asm;
             }
             catch (System.Exception ex)
@@ -432,6 +448,29 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 LastError = $"找到编辑器 DLL 但加载失败: {ex.Message}";
                 return null;
             }
+        }
+
+        private static void RemoveOldEditorResolveHandler()
+        {
+            // 优先移除本类型自己的 handler
+            if (_editorResolveHandler != null)
+            {
+                try { AppDomain.CurrentDomain.AssemblyResolve -= _editorResolveHandler; }
+                catch { }
+                _editorResolveHandler = null;
+            }
+
+            // 也尝试移除由前一轮 C2（不同程序集类型）注册的 handler
+            try
+            {
+                var prev = AppDomain.CurrentDomain.GetData("HyCADTool.EditorLoader.ResolveHandler") as ResolveEventHandler;
+                if (prev != null)
+                {
+                    AppDomain.CurrentDomain.AssemblyResolve -= prev;
+                    AppDomain.CurrentDomain.SetData("HyCADTool.EditorLoader.ResolveHandler", null);
+                }
+            }
+            catch { }
         }
 
         /// <summary>
@@ -477,15 +516,45 @@ namespace HyCADTool.Refactored.Presentation.Commands
             }
         }
 
+        /// <summary>
+        /// 预加载 WebView2 托管依赖（Wpf + Core）via LoadFrom，
+        /// 使其进入 LoadFrom context，供后续 MarkdownEditor(Load byte[]) 绑定时查找。
+        /// </summary>
+        private static void PreloadManagedDependencies(string net8Dir)
+        {
+            if (string.IsNullOrEmpty(net8Dir)) return;
+            string[] webView2Dlls = new[]
+            {
+                "Microsoft.Web.WebView2.Wpf.dll",
+                "Microsoft.Web.WebView2.Core.dll",
+            };
+            foreach (string dllName in webView2Dlls)
+            {
+                string path = Path.Combine(net8Dir, dllName);
+                if (!File.Exists(path)) continue;
+                try
+                {
+                    Assembly.LoadFrom(path);
+                }
+                catch { }
+            }
+        }
+
         private static Assembly ResolveEditorDeps(object sender, ResolveEventArgs args)
         {
-            if (string.IsNullOrEmpty(_net8Dir))
+            // 优先用本类静态字段，其次从 AppDomain 共享数据取（跨程序集兼容）
+            string dir = _net8Dir;
+            if (string.IsNullOrEmpty(dir))
+                dir = AppDomain.CurrentDomain.GetData(APPDATA_KEY_NET8DIR) as string;
+            if (string.IsNullOrEmpty(dir))
                 return null;
 
             string name = new AssemblyName(args.Name).Name + ".dll";
-            string path = Path.Combine(_net8Dir, name);
+            string path = Path.Combine(dir, name);
             if (File.Exists(path))
             {
+                // 用 LoadFrom 取代 Load(byte[])，
+                // 避免 type-identity 问题（尤其对 WebView2 等有跨程序集类型交互的依赖）
                 try { return Assembly.LoadFrom(path); }
                 catch { }
             }
@@ -540,7 +609,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cfg.MTextObliquingAngle,
                 cfg.MTextCharSpacing,
                 cfg.MTextParagraphAlign,
-                cfg.TableBreakMode
+                cfg.TableBreakMode,
+                cfg.MTextBoldMode,
+                cfg.MTextBoldWidthScale,
+                cfg.MTextCodeMode,
+                cfg.MTextCodeFontName,
+                cfg.MTextItalicAngle,
+                cfg.MTextHeadingBold
             };
         }
 
@@ -623,7 +698,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 MTextObliquingAngle = Val("MTextObliquingAngle", 0),
                 MTextCharSpacing = Val("MTextCharSpacing", 1.0),
                 MTextParagraphAlign = StrVal("MTextParagraphAlign", "Left"),
-                TableBreakMode = StrVal("TableBreakMode", "Overflow")
+                TableBreakMode = StrVal("TableBreakMode", "Overflow"),
+                MTextBoldMode = StrVal("MTextBoldMode", "FontSwitch"),
+                MTextBoldWidthScale = Val("MTextBoldWidthScale", 1.15),
+                MTextCodeMode = StrVal("MTextCodeMode", "FontSwitch"),
+                MTextCodeFontName = StrVal("MTextCodeFontName", "Consolas"),
+                MTextItalicAngle = Val("MTextItalicAngle", 15),
+                MTextHeadingBold = cfg != null && cfg["MTextHeadingBold"] != null && (bool)cfg["MTextHeadingBold"]
             };
 
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings
