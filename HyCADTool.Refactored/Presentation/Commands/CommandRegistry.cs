@@ -309,6 +309,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("HYpileG")]
         public void Cmd_HYpileG() => Run(() => new GroupCirclesByElevationCommand().Execute());
 
+        /// <summary>在圆心/形心写入标高文字 (HYpileGT)</summary>
+        [CommandMethod("HYpileGT")]
+        public void Cmd_HYpileGT() => Run(() => new GroupCirclesByElevationCommand().ExecutePlaceElevationTextAtCentroids());
+
         // ================================================================
         //  面板内部执行命令（直接加载 DLL 时替代 ReCall 的 C1）
         // ================================================================

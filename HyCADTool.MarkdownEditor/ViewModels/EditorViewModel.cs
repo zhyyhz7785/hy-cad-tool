@@ -1386,7 +1386,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _jsHelper = jsHelper;
         }
 
-        private async Task ExecuteEditorActionAsync(string action)
+        internal async Task ExecuteEditorActionAsync(string action)
         {
             if (string.IsNullOrWhiteSpace(action))
                 return;
@@ -1422,17 +1422,28 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 case "H2": await _jsHelper.InsertHeadingAsync(2); break;
                 case "H3": await _jsHelper.InsertHeadingAsync(3); break;
                 case "H4": await _jsHelper.InsertHeadingAsync(4); break;
+                case "H5": await _jsHelper.InsertHeadingAsync(5); break;
+                case "H6": await _jsHelper.InsertHeadingAsync(6); break;
                 case "Paragraph": await _jsHelper.InsertParagraphAsync(); break;
+                case "PromoteHeading": await _jsHelper.PromoteHeadingAsync(); break;
+                case "DemoteHeading": await _jsHelper.DemoteHeadingAsync(); break;
                 case "Quote": await _jsHelper.InsertQuoteAsync(); break;
                 case "OrderedList": await _jsHelper.InsertOrderedListAsync(); break;
                 case "UnorderedList": await _jsHelper.InsertUnorderedListAsync(); break;
                 case "TaskList": await _jsHelper.InsertTaskListAsync(); break;
+                case "ToggleTaskStatus": await _jsHelper.ToggleTaskStatusAsync(); break;
+                case "IndentList": await _jsHelper.IndentListAsync(); break;
+                case "OutdentList": await _jsHelper.OutdentListAsync(); break;
                 case "Table": await _jsHelper.InsertTableAsync(); break;
                 case "CodeBlock": await _jsHelper.InsertCodeBlockAsync(); break;
                 case "MathBlock": await _jsHelper.InsertMathBlockAsync(); break;
                 case "Toc": await _jsHelper.InsertTocAsync(); break;
                 case "Footnote": await _jsHelper.InsertFootnoteAsync(); break;
                 case "HorizontalRule": await _jsHelper.InsertHorizontalRuleAsync(); break;
+                case "InsertParagraphAbove": await _jsHelper.InsertParagraphAboveAsync(); break;
+                case "InsertParagraphBelow": await _jsHelper.InsertParagraphBelowAsync(); break;
+                case "LinkReference": await _jsHelper.InsertLinkReferenceAsync(); break;
+                case "InsertImage": await _jsHelper.InsertImageAsync(); break;
 
                 case "Bold": await _jsHelper.ToggleBoldAsync(); break;
                 case "Italic": await _jsHelper.ToggleItalicAsync(); break;

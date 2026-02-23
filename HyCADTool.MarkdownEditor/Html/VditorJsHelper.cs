@@ -58,6 +58,16 @@ namespace HyCADTool.MarkdownEditor.Html
         public Task InsertFootnoteAsync() => _exec("vditor.insertValue('[^1]\\n\\n[^1]: ')");
         public Task InsertMathBlockAsync() => _exec("vditor.insertValue('\\n$$\\n\\n$$\\n')");
 
+        public Task PromoteHeadingAsync() => _exec("promoteHeading()");
+        public Task DemoteHeadingAsync() => _exec("demoteHeading()");
+        public Task IndentListAsync() => _exec("indentList()");
+        public Task OutdentListAsync() => _exec("outdentList()");
+        public Task InsertParagraphAboveAsync() => _exec("insertParagraphAbove()");
+        public Task InsertParagraphBelowAsync() => _exec("insertParagraphBelow()");
+        public Task ToggleTaskStatusAsync() => _exec("toggleTaskStatus()");
+        public Task InsertImageAsync() => _exec("insertImage('', '')");
+        public Task InsertLinkReferenceAsync() => _exec("insertLinkReference()");
+
         // ═══ 格式 ═══
 
         public Task ToggleBoldAsync() => _exec("clickToolbar('bold')");
@@ -77,5 +87,9 @@ namespace HyCADTool.MarkdownEditor.Html
         // ═══ 查找 ═══
 
         public Task FindReplaceAsync() => _exec("triggerFind()");
+
+        // ═══ 主题 ═══
+
+        public Task SwitchThemeAsync(bool isDark) => _exec($"switchEditorTheme({(isDark ? "true" : "false")})");
     }
 }

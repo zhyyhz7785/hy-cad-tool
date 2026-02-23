@@ -79,6 +79,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             GroupCirclesByElevationCommand = new RelayCommand(
                 () => SendCommand(() => new Commands.GroupCirclesByElevationCommand().Execute()));
+            MarkElevationAtCentroidsCommand = new RelayCommand(
+                () => SendCommand(() => new Commands.GroupCirclesByElevationCommand().ExecutePlaceElevationTextAtCentroids()));
             PileVoronoiOptimizationCommand = new RelayCommand(
                 () => SendCommand(() => new Commands.PileVoronoiOptimizationCommand().Execute()));
             PileVoronoiFromCirclesCommand = new RelayCommand(
@@ -257,6 +259,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
+        private double _markerElevation;
+        /// <summary>批量写入形心文字使用的标高值</summary>
+        public double MarkerElevation
+        {
+            get => _markerElevation;
+            set => SetProperty(ref _markerElevation, value);
+        }
+
+        private double _markerTextHeightScale = 1.0;
+        /// <summary>文字高度倍率（最终高度 = 倍率 * 当前比例）</summary>
+        public double MarkerTextHeightScale
+        {
+            get => _markerTextHeightScale;
+            set => SetProperty(ref _markerTextHeightScale, value);
+        }
+
         #endregion
 
         #region 命令
@@ -265,6 +283,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public ICommand DrawPilesCommand { get; }
 
         public ICommand GroupCirclesByElevationCommand { get; }
+        public ICommand MarkElevationAtCentroidsCommand { get; }
         public ICommand PileVoronoiOptimizationCommand { get; }
         public ICommand PileVoronoiFromCirclesCommand { get; }
 
@@ -329,6 +348,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 IsRectangular = true;
                 IsCirclePile = true;
                 ManualControl = false;
+                MarkerElevation = 0.0;
+                MarkerTextHeightScale = 1.0;
                 StatusMessage = "已恢复默认值";
             }
             finally
@@ -395,7 +416,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     IsCircular = IsCircular,
                     IsCirclePile = IsCirclePile,
                     IsRectPile = IsRectPile,
-                    ManualControl = ManualControl
+                    ManualControl = ManualControl,
+                    MarkerElevation = MarkerElevation,
+                    MarkerTextHeightScale = MarkerTextHeightScale
                 };
 
                 var json = JsonConvert.SerializeObject(data, Formatting.Indented);
@@ -439,6 +462,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 IsCirclePile = data.IsCirclePile;
                 IsRectPile = data.IsRectPile;
                 ManualControl = data.ManualControl;
+                MarkerElevation = data.MarkerElevation;
+                MarkerTextHeightScale = data.MarkerTextHeightScale;
             }
             catch (System.Exception ex)
             {
@@ -471,6 +496,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public bool IsCirclePile { get; set; } = true;
             public bool IsRectPile { get; set; }
             public bool ManualControl { get; set; }
+            public double MarkerElevation { get; set; }
+            public double MarkerTextHeightScale { get; set; } = 1.0;
         }
 
         #endregion

@@ -33,49 +33,82 @@
                         <MenuItem Header="关闭" Click="OnCloseClick" />
                     </MenuItem>
                     <MenuItem Header="编辑" Style="{StaticResource DarkMenuItem}">
-                        <MenuItem Header="撤消" Command="{Binding EditorActionCommand}" CommandParameter="Undo" />
-                        <MenuItem Header="重做" Command="{Binding EditorActionCommand}" CommandParameter="Redo" />
+                        <MenuItem Header="撤消" Command="{Binding EditorActionCommand}" CommandParameter="Undo" InputGestureText="Ctrl+Z" />
+                        <MenuItem Header="重做" Command="{Binding EditorActionCommand}" CommandParameter="Redo" InputGestureText="Ctrl+Y" />
                         <Separator />
-                        <MenuItem Header="剪切" Command="{Binding EditorActionCommand}" CommandParameter="Cut" />
-                        <MenuItem Header="复制" Command="{Binding EditorActionCommand}" CommandParameter="Copy" />
-                        <MenuItem Header="粘贴" Command="{Binding EditorActionCommand}" CommandParameter="Paste" />
-                        <MenuItem Header="全选" Command="{Binding EditorActionCommand}" CommandParameter="SelectAll" />
+                        <MenuItem Header="剪切" Command="{Binding EditorActionCommand}" CommandParameter="Cut" InputGestureText="Ctrl+X" />
+                        <MenuItem Header="复制" Command="{Binding EditorActionCommand}" CommandParameter="Copy" InputGestureText="Ctrl+C" />
+                        <MenuItem Header="粘贴" Command="{Binding EditorActionCommand}" CommandParameter="Paste" InputGestureText="Ctrl+V" />
+                        <MenuItem Header="全选" Command="{Binding EditorActionCommand}" CommandParameter="SelectAll" InputGestureText="Ctrl+A" />
                         <Separator />
-                        <MenuItem Header="查找替换" Command="{Binding EditorActionCommand}" CommandParameter="FindReplace" />
+                        <MenuItem Header="查找替换" Command="{Binding EditorActionCommand}" CommandParameter="FindReplace" InputGestureText="Ctrl+F" />
                     </MenuItem>
                     <MenuItem Header="段落" Style="{StaticResource DarkMenuItem}">
-                        <MenuItem Header="标题 1" Command="{Binding EditorActionCommand}" CommandParameter="H1" />
-                        <MenuItem Header="标题 2" Command="{Binding EditorActionCommand}" CommandParameter="H2" />
-                        <MenuItem Header="标题 3" Command="{Binding EditorActionCommand}" CommandParameter="H3" />
-                        <MenuItem Header="标题 4" Command="{Binding EditorActionCommand}" CommandParameter="H4" />
-                        <MenuItem Header="普通段落" Command="{Binding EditorActionCommand}" CommandParameter="Paragraph" />
+                        <MenuItem Header="一级标题" Command="{Binding EditorActionCommand}" CommandParameter="H1" InputGestureText="Ctrl+1" />
+                        <MenuItem Header="二级标题" Command="{Binding EditorActionCommand}" CommandParameter="H2" InputGestureText="Ctrl+2" />
+                        <MenuItem Header="三级标题" Command="{Binding EditorActionCommand}" CommandParameter="H3" InputGestureText="Ctrl+3" />
+                        <MenuItem Header="四级标题" Command="{Binding EditorActionCommand}" CommandParameter="H4" InputGestureText="Ctrl+4" />
+                        <MenuItem Header="五级标题" Command="{Binding EditorActionCommand}" CommandParameter="H5" InputGestureText="Ctrl+5" />
+                        <MenuItem Header="六级标题" Command="{Binding EditorActionCommand}" CommandParameter="H6" InputGestureText="Ctrl+6" />
+                        <MenuItem Header="段落" Command="{Binding EditorActionCommand}" CommandParameter="Paragraph" InputGestureText="Ctrl+0" />
                         <Separator />
-                        <MenuItem Header="引用" Command="{Binding EditorActionCommand}" CommandParameter="Quote" />
-                        <MenuItem Header="有序列表" Command="{Binding EditorActionCommand}" CommandParameter="OrderedList" />
-                        <MenuItem Header="无序列表" Command="{Binding EditorActionCommand}" CommandParameter="UnorderedList" />
-                        <MenuItem Header="任务列表" Command="{Binding EditorActionCommand}" CommandParameter="TaskList" />
+                        <MenuItem Header="提升标题级别" Command="{Binding EditorActionCommand}" CommandParameter="PromoteHeading" InputGestureText="Ctrl+=" />
+                        <MenuItem Header="降低标题级别" Command="{Binding EditorActionCommand}" CommandParameter="DemoteHeading" InputGestureText="Ctrl+-" />
                         <Separator />
                         <MenuItem Header="表格" Command="{Binding EditorActionCommand}" CommandParameter="Table" />
-                        <MenuItem Header="代码块" Command="{Binding EditorActionCommand}" CommandParameter="CodeBlock" />
-                        <MenuItem Header="数学块" Command="{Binding EditorActionCommand}" CommandParameter="MathBlock" />
-                        <MenuItem Header="目录 [toc]" Command="{Binding EditorActionCommand}" CommandParameter="Toc" />
+                        <MenuItem Header="公式块" Command="{Binding EditorActionCommand}" CommandParameter="MathBlock" InputGestureText="Ctrl+Shift+M" />
+                        <MenuItem Header="代码块" Command="{Binding EditorActionCommand}" CommandParameter="CodeBlock" InputGestureText="Ctrl+Shift+K" />
+                        <MenuItem Header="代码工具" ToolTip="代码相关扩展">
+                            <MenuItem Header="行内代码" Command="{Binding EditorActionCommand}" CommandParameter="InlineCode" InputGestureText="Ctrl+Shift+`" />
+                        </MenuItem>
+                        <MenuItem Header="警告框">
+                            <MenuItem Header="引用" Command="{Binding EditorActionCommand}" CommandParameter="Quote" InputGestureText="Ctrl+Shift+Q" />
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="引用" Command="{Binding EditorActionCommand}" CommandParameter="Quote" InputGestureText="Ctrl+Shift+Q" />
+                        <Separator />
+                        <MenuItem Header="有序列表" Command="{Binding EditorActionCommand}" CommandParameter="OrderedList" InputGestureText="Ctrl+Shift+[" />
+                        <MenuItem Header="无序列表" Command="{Binding EditorActionCommand}" CommandParameter="UnorderedList" InputGestureText="Ctrl+Shift+]" />
+                        <MenuItem Header="任务列表" Command="{Binding EditorActionCommand}" CommandParameter="TaskList" InputGestureText="Ctrl+Shift+X" />
+                        <MenuItem Header="任务状态">
+                            <MenuItem Header="切换完成状态" Command="{Binding EditorActionCommand}" CommandParameter="ToggleTaskStatus" />
+                        </MenuItem>
+                        <MenuItem Header="列表缩进">
+                            <MenuItem Header="增加缩进" Command="{Binding EditorActionCommand}" CommandParameter="IndentList" InputGestureText="Tab" />
+                            <MenuItem Header="减少缩进" Command="{Binding EditorActionCommand}" CommandParameter="OutdentList" InputGestureText="Shift+Tab" />
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="在上方插入段落" Command="{Binding EditorActionCommand}" CommandParameter="InsertParagraphAbove" />
+                        <MenuItem Header="在下方插入段落" Command="{Binding EditorActionCommand}" CommandParameter="InsertParagraphBelow" />
+                        <Separator />
+                        <MenuItem Header="链接引用" Command="{Binding EditorActionCommand}" CommandParameter="LinkReference" />
                         <MenuItem Header="脚注" Command="{Binding EditorActionCommand}" CommandParameter="Footnote" />
-                        <MenuItem Header="分割线" Command="{Binding EditorActionCommand}" CommandParameter="HorizontalRule" />
+                        <Separator />
+                        <MenuItem Header="水平分割线" Command="{Binding EditorActionCommand}" CommandParameter="HorizontalRule" />
+                        <MenuItem Header="内容目录" Command="{Binding EditorActionCommand}" CommandParameter="Toc" />
                     </MenuItem>
                     <MenuItem Header="格式" Style="{StaticResource DarkMenuItem}">
-                        <MenuItem Header="加粗" Command="{Binding EditorActionCommand}" CommandParameter="Bold" />
-                        <MenuItem Header="斜体" Command="{Binding EditorActionCommand}" CommandParameter="Italic" />
-                        <MenuItem Header="删除线" Command="{Binding EditorActionCommand}" CommandParameter="Strikethrough" />
-                        <MenuItem Header="行内代码" Command="{Binding EditorActionCommand}" CommandParameter="InlineCode" />
-                        <MenuItem Header="下划线" Command="{Binding EditorActionCommand}" CommandParameter="Underline" />
+                        <MenuItem Header="加粗" Command="{Binding EditorActionCommand}" CommandParameter="Bold" InputGestureText="Ctrl+B" />
+                        <MenuItem Header="斜体" Command="{Binding EditorActionCommand}" CommandParameter="Italic" InputGestureText="Ctrl+I" />
+                        <MenuItem Header="下划线" Command="{Binding EditorActionCommand}" CommandParameter="Underline" InputGestureText="Ctrl+U" />
+                        <MenuItem Header="代码" Command="{Binding EditorActionCommand}" CommandParameter="InlineCode" InputGestureText="Ctrl+Shift+`" />
+                        <Separator />
+                        <MenuItem Header="内联公式" Command="{Binding EditorActionCommand}" CommandParameter="InlineMath" />
+                        <MenuItem Header="删除线" Command="{Binding EditorActionCommand}" CommandParameter="Strikethrough" InputGestureText="Alt+Shift+5" />
                         <MenuItem Header="高亮" Command="{Binding EditorActionCommand}" CommandParameter="Highlight" />
                         <MenuItem Header="上标" Command="{Binding EditorActionCommand}" CommandParameter="Superscript" />
                         <MenuItem Header="下标" Command="{Binding EditorActionCommand}" CommandParameter="Subscript" />
                         <MenuItem Header="注释" Command="{Binding EditorActionCommand}" CommandParameter="Comment" />
-                        <MenuItem Header="行内数学" Command="{Binding EditorActionCommand}" CommandParameter="InlineMath" />
-                        <MenuItem Header="链接" Command="{Binding EditorActionCommand}" CommandParameter="Link" />
                         <Separator />
-                        <MenuItem Header="清除样式" Command="{Binding EditorActionCommand}" CommandParameter="ClearFormatting" />
+                        <MenuItem Header="超链接" Command="{Binding EditorActionCommand}" CommandParameter="Link" InputGestureText="Ctrl+K" />
+                        <MenuItem Header="链接操作">
+                            <MenuItem Header="链接引用" Command="{Binding EditorActionCommand}" CommandParameter="LinkReference" />
+                        </MenuItem>
+                        <MenuItem Header="图像">
+                            <MenuItem Header="插入图像" Command="{Binding EditorActionCommand}" CommandParameter="InsertImage" />
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="清除样式" Command="{Binding EditorActionCommand}" CommandParameter="ClearFormatting" InputGestureText="Ctrl+\" />
                     </MenuItem>
                     <MenuItem Header="主题" Style="{StaticResource DarkMenuItem}">
                         <MenuItem Header="黑色为主" Click="OnThemeDarkClick" />

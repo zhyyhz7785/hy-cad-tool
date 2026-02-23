@@ -1,0 +1,149 @@
+/* Vditor 编辑器暗色主题 — HyCADTool.MarkdownEditor
+   此文件会在构建时复制到输出目录，可独立编辑调整配色。
+   色值与 ThemeManager.ApplyTheme(dark:true) 对齐。 */
+
+html, body {
+  margin: 0; padding: 0;
+  height: 100%; overflow: hidden;
+  background: #111418;
+  color: #c9d1d9;
+}
+#vditor {
+  height: 100%;
+  background: #111418;
+}
+:root {
+  --toolbar-h: 34px;
+}
+.vditor-ir .vditor-reset {
+  padding: calc(8px + var(--toolbar-h)) 16px 8px 16px !important;
+}
+.vditor {
+  border: 0 !important;
+  background: #111418 !important;
+}
+
+/* ── 工具栏 ── */
+.vditor-toolbar {
+  background: #161b22 !important;
+  border-bottom: 1px solid #24292e !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  min-height: var(--toolbar-h) !important;
+  height: var(--toolbar-h) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+.vditor-toolbar > div,
+.vditor-toolbar__left,
+.vditor-toolbar__right {
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+.vditor-toolbar__left::before,
+.vditor-toolbar__right::before {
+  content: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.vditor-toolbar > * {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+.vditor-toolbar__item {
+  color: #8b949e !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding: 4px 6px !important;
+}
+.vditor-toolbar__item:first-child {
+  margin-left: 0 !important;
+}
+.vditor-toolbar__item:hover,
+.vditor-toolbar__item--current {
+  background: #24292e !important;
+  color: #c9d1d9 !important;
+}
+.vditor-toolbar__divider {
+  background: #24292e !important;
+}
+
+/* ── 内容区 ── */
+.vditor-content,
+.vditor-ir {
+  background: #111418 !important;
+}
+.vditor-reset {
+  color: #c9d1d9 !important;
+}
+.vditor-ir pre.vditor-reset__marker--heading {
+  color: #6e7681 !important;
+}
+
+/* ── 计数器 ── */
+.vditor-counter {
+  background: #161b22 !important;
+  color: #6e7681 !important;
+  border-top: 1px solid #24292e !important;
+}
+
+/* ── 代码块 ── */
+.vditor-ir pre.vditor-reset code {
+  background: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+
+/* ── 引用 ── */
+.vditor-ir blockquote {
+  border-left-color: #30363d !important;
+  color: #8b949e !important;
+}
+
+/* ── 链接 ── */
+.vditor-ir a {
+  color: #58a6ff !important;
+}
+
+/* ── 表格 ── */
+.vditor-ir table th,
+.vditor-ir table td {
+  border-color: #30363d !important;
+}
+.vditor-ir table th {
+  background: #161b22 !important;
+}
+
+/* ── 分割线 ── */
+.vditor-ir hr {
+  border-color: #24292e !important;
+}
+
+/* ── 选区高亮 ── */
+::selection {
+  background: #263545 !important;
+}
+
+/* ── 提示面板 ── */
+.vditor-hint {
+  background: #1c2128 !important;
+  border-color: #30363d !important;
+}
+.vditor-hint button {
+  color: #c9d1d9 !important;
+}
+.vditor-hint button:hover,
+.vditor-hint button.vditor-hint--current {
+  background: #263545 !important;
+}
+
+/* ── 隐藏滚动条 ── */
+* { scrollbar-width: none; }
+::-webkit-scrollbar { display: none; }

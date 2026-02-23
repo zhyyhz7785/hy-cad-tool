@@ -153,6 +153,7 @@ namespace HyCADTool.MarkdownEditor.Views
             ApplyBottomPanelLayout();
             UpdateWindowCaptionButtons();
 
+            PreviewKeyDown += OnPreviewKeyDown;
             Loaded += OnLoaded;
             Closed += OnClosed;
             SourceInitialized += OnSourceInitialized;
@@ -319,6 +320,14 @@ namespace HyCADTool.MarkdownEditor.Views
             _themeManager.ApplyTheme(Resources, dark);
             _leftPanel.SetThemeMode(dark);
             UpdateTitleBarToggleState();
+            _ = SwitchEditorThemeAsync(dark);
+        }
+
+        private async Task SwitchEditorThemeAsync(bool dark)
+        {
+            if (_js == null || !_editorReady || EditorWebView?.CoreWebView2 == null) return;
+            try { await _js.SwitchThemeAsync(dark); }
+            catch (Exception ex) { LogSilentException(nameof(SwitchEditorThemeAsync), ex); }
         }
 
         private void OnThemeDark()
@@ -1324,6 +1333,64 @@ namespace HyCADTool.MarkdownEditor.Views
             }
 
             ViewModel.SetJsHelper(_js);
+        }
+
+        private async void OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var mod = e.KeyboardDevice.Modifiers;
+            string action = ResolveTyporaShortcut(mod, e.Key);
+            if (action == null) return;
+
+            e.Handled = true;
+            try { await ViewModel.ExecuteEditorActionAsync(action); }
+            catch (Exception ex) { LogSilentException(nameof(OnPreviewKeyDown), ex); }
+        }
+
+        private static string ResolveTyporaShortcut(ModifierKeys mod, Key key)
+        {
+            if (mod == ModifierKeys.Control)
+            {
+                switch (key)
+                {
+                    case Key.D1: return "H1";
+                    case Key.D2: return "H2";
+                    case Key.D3: return "H3";
+                    case Key.D4: return "H4";
+                    case Key.D5: return "H5";
+                    case Key.D6: return "H6";
+                    case Key.D0: return "Paragraph";
+                    case Key.OemPlus: return "PromoteHeading";
+                    case Key.OemMinus: return "DemoteHeading";
+                    case Key.B: return "Bold";
+                    case Key.I: return "Italic";
+                    case Key.U: return "Underline";
+                    case Key.K: return "Link";
+                    case Key.OemBackslash: return "ClearFormatting";
+                    case Key.OemPipe: return "ClearFormatting";
+                    case Key.F: return "FindReplace";
+                    case Key.Z: return "Undo";
+                    case Key.Y: return "Redo";
+                }
+            }
+            else if (mod == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                switch (key)
+                {
+                    case Key.M: return "MathBlock";
+                    case Key.K: return "CodeBlock";
+                    case Key.Q: return "Quote";
+                    case Key.OemOpenBrackets: return "OrderedList";
+                    case Key.OemCloseBrackets: return "UnorderedList";
+                    case Key.X: return "TaskList";
+                    case Key.Oem3: return "InlineCode";
+                }
+            }
+            else if (mod == (ModifierKeys.Alt | ModifierKeys.Shift))
+            {
+                if (key == Key.D5) return "Strikethrough";
+            }
+
+            return null;
         }
     }
 }

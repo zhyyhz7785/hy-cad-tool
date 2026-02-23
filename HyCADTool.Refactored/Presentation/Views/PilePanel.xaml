@@ -28,10 +28,28 @@
             <TextBlock Text="命令" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
             <UniformGrid Columns="2" Margin="0,0,0,4">
                 <Button Content="绘制桩" Command="{Binding DrawPilesCommand}" Margin="1" Padding="2,4" />
-                <Button Content="圆分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="2,4" />
+                <Button Content="封闭图形分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="2,4" />
                 <Button Content="Voronoi优化" Command="{Binding PileVoronoiOptimizationCommand}" Margin="1" Padding="2,4" />
                 <Button Content="优化(已有圆)" Command="{Binding PileVoronoiFromCirclesCommand}" Margin="1" Padding="2,4" />
             </UniformGrid>
+
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40" />
+                    <ColumnDefinition  Width="80"/>
+                    <ColumnDefinition Width="65" />
+                    <ColumnDefinition Width="72" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="标高" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1"
+                         Text="{Binding MarkerElevation, UpdateSourceTrigger=PropertyChanged}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True" />
+                <TextBlock Grid.Column="2" Text="字高倍率" VerticalAlignment="Center" Margin="4,0,0,0" />
+                <TextBox Grid.Column="3"
+                         Text="{Binding MarkerTextHeightScale, UpdateSourceTrigger=PropertyChanged}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True" />
+            </Grid>
+            <Button Content="写入标高到圆心/形心" Command="{Binding MarkElevationAtCentroidsCommand}" Margin="1,0,1,4" Padding="2,4" />
 
             <Separator Margin="0,2,0,4" Background="#555" />
 

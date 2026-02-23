@@ -25,6 +25,12 @@ new Presentation.Commands.OverKillCommand().Execute();
 
 不要改 ReCall、不要改 TestRunner；换测命令只改 TestCommand.cs。
 
+### 当前双文件约定（必须遵守）
+
+- `HyCADTool.Refactored/Test/TestCommand.cs`：Refactored 实测入口，默认“一键打开统一面板”用于联调。
+- `HyCADTool.Refactored/Test/TestCommand - 复制.cs`：仅作为 MarkdownEditor 文档测试参考模板，保持注释态，不作为 Refactored 编译入口。
+- 当测试 Refactored 面板时，只执行 `C2 -> C1`，并且只改 `TestCommand.cs` 一行命令。
+
 ---
 
 ## 二、开发循环

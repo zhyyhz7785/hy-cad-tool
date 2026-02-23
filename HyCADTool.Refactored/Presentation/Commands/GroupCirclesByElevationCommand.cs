@@ -19,6 +19,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class GroupCirclesByElevationCommand
     {
+        private const string NoTextLayerName = "00_hy_Z_NoText";
+        private const string LeaderLayerName = "00_hy_3公共_标注3_引线";
+        private const string ElevationTextLayerName = "00_hy_3公共_标注4_标高";
+
         private readonly Document _doc;
         private readonly Database _db;
         private readonly Editor _ed;
@@ -46,11 +50,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 if (pkr.Status != PromptStatus.OK) return;
                 bool includeElevation = pkr.StringResult == "是";
 
-                // 2. 选择圆和文字
+                // 2. 选择圆/闭合多段线和文字
                 var filter = new[]
                 {
                     new TypedValue((int)DxfCode.Operator, "<or"),
                     new TypedValue((int)DxfCode.Start, "CIRCLE"),
+                    new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),
                     new TypedValue((int)DxfCode.Start, "TEXT"),
                     new TypedValue((int)DxfCode.Start, "MTEXT"),
                     new TypedValue((int)DxfCode.Operator, "or>")
@@ -64,32 +69,39 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     var ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(_db), OpenMode.ForWrite);
                     var lt = (LayerTable)tr.GetObject(_db.LayerTableId, OpenMode.ForRead);
 
-                    // 3. 提取圆和文字
-                    var circles = new List<Circle>();
+                    // 3. 提取桩对象（圆 + 闭合多段线）和文字
+                    var piles = new List<(Entity Entity, Point3d Anchor)>();
                     var texts = new List<(string Content, Point3d Position)>();
 
                     foreach (SelectedObject sel in psr.Value)
                     {
                         if (sel == null || sel.ObjectId.IsNull) continue;
                         var ent = tr.GetObject(sel.ObjectId, OpenMode.ForRead) as Entity;
-                        if (ent is Circle c) circles.Add(c);
+                        if (ent is Circle c)
+                        {
+                            piles.Add((c, c.Center));
+                        }
+                        else if (ent is Polyline pl && pl.Closed && pl.NumberOfVertices >= 3)
+                        {
+                            piles.Add((pl, GetPolylineCentroid(pl)));
+                        }
                         else if (ent is DBText t) texts.Add((t.TextString, t.Position));
                         else if (ent is MText mt) texts.Add((mt.Text, mt.Location));
                     }
 
-                    // 4. 匹配圆和文字，解析标高
-                    var items = new List<(Circle circle, string text, double elevation, bool hasText)>();
-                    foreach (var circle in circles)
+                    // 4. 匹配桩对象和文字，解析标高
+                    var items = new List<((Entity Entity, Point3d Anchor) pile, string text, double elevation, bool hasText)>();
+                    foreach (var pile in piles)
                     {
-                        var nearest = texts.OrderBy(t => t.Position.DistanceTo(circle.Center)).FirstOrDefault();
+                        var nearest = texts.OrderBy(t => t.Position.DistanceTo(pile.Anchor)).FirstOrDefault();
                         if (!string.IsNullOrEmpty(nearest.Content) &&
                             double.TryParse(nearest.Content, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
                         {
-                            items.Add((circle, nearest.Content, Math.Round(val + 0.050, 3), true));
+                            items.Add((pile, nearest.Content, Math.Round(val + 0.050, 3), true));
                         }
                         else
                         {
-                            items.Add((circle, "", 0.0, false));
+                            items.Add((pile, "", 0.0, false));
                         }
                     }
 
@@ -102,7 +114,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     // 6. 按最小 X → Y 排序 → 编号 A, B, C...
                     var orderedGroups = elevationGroups.Select(g =>
                     {
-                        var minPt = g.Select(i => i.circle.Center).OrderBy(p => p.X).ThenBy(p => p.Y).First();
+                        var minPt = g.Select(i => i.pile.Anchor).OrderBy(p => p.X).ThenBy(p => p.Y).First();
                         return new { Elevation = g.Key, Items = g.ToList(), KeyPoint = minPt };
                     })
                     .OrderBy(g => g.KeyPoint.X)
@@ -136,24 +148,22 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                         foreach (var item in g.Items)
                         {
-                            item.circle.UpgradeOpen();
-                            item.circle.Layer = layerName;
+                            item.pile.Entity.UpgradeOpen();
+                            item.pile.Entity.Layer = layerName;
                         }
                     }
 
-                    // 9. 为无文字的圆创建默认图层
-                    string noTextLayerName = "00_hy_Z_NoText";
+                    // 9. 为无文字对象创建默认图层
                     if (noTextCircles.Any())
                     {
-                        CreateLayerIfNotExists(tr, lt, noTextLayerName, 7);
+                        CreateLayerIfNotExists(tr, lt, NoTextLayerName, 7);
                     }
 
                     // 10. 创建引线图层
-                    string mleaderLayerName = "00_hy_3公共_标注3_引线";
-                    CreateLayerIfNotExists(tr, lt, mleaderLayerName, 7);
+                    CreateLayerIfNotExists(tr, lt, LeaderLayerName, 7);
 
-                    // 11. 编号顺序：所有圆按 XY 排序 → A1, B1, ... 或 1, 2, ...
-                    var orderedItems = items.OrderBy(i => i.circle.Center.X).ThenBy(i => i.circle.Center.Y).ToList();
+                    // 11. 编号顺序：所有对象按 XY 排序 → A1, B1, ... 或 1, 2, ...
+                    var orderedItems = items.OrderBy(i => i.pile.Anchor.X).ThenBy(i => i.pile.Anchor.Y).ToList();
                     totalCount = orderedItems.Count;
                     var countPerCode = new Dictionary<string, int>();
                     int globalCount = 0;
@@ -176,18 +186,18 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         }
 
                         string content = item.hasText && includeElevation ? $"{label}\\P标高 = {item.elevation:F3}" : label;
-                        var pt = item.circle.Center;
+                        var pt = item.pile.Anchor;
                         var pt2 = new Point3d(pt.X + 5 * scale, pt.Y + 5 * scale, pt.Z);
 
                         // 使用 MLeaderExtensions
                         var mleader = MLeaderExtensions.CreateMLeaderSinglePoint(pt, pt2, content);
-                        mleader.Layer = mleaderLayerName;
+                        mleader.Layer = LeaderLayerName;
                         ms.AppendEntity(mleader);
                         tr.AddNewlyCreatedDBObject(mleader, true);
 
-                        // 设置圆的图层
-                        item.circle.UpgradeOpen();
-                        item.circle.Layer = item.hasText ? $"00_hy_Z_{elevToCode[item.elevation]}" : noTextLayerName;
+                        // 设置对象图层
+                        item.pile.Entity.UpgradeOpen();
+                        item.pile.Entity.Layer = item.hasText ? $"00_hy_Z_{elevToCode[item.elevation]}" : NoTextLayerName;
                     }
 
                     // 12. 创建统计表格
@@ -225,11 +235,94 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     tr.Commit();
                 }
 
-                _ed.WriteMessage($"\n圆分组标注完成，共 {totalCount} 个圆。");
+                _ed.WriteMessage($"\n封闭图形分组标注完成，共 {totalCount} 个对象（圆+闭合多段线）。");
             }
             catch (System.Exception ex)
             {
                 _ed.WriteMessage($"\n错误: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从面板读取输入标高，在选中圆心/闭合多段线形心处写入文字。
+        /// </summary>
+        public void ExecutePlaceElevationTextAtCentroids()
+        {
+            try
+            {
+                var vm = PilePanelViewModel.Current;
+                if (vm == null)
+                {
+                    _ed.WriteMessage("\n桩基面板未初始化。");
+                    return;
+                }
+
+                double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+                double textHeight = vm.MarkerTextHeightScale * scale;
+                double elevation = vm.MarkerElevation;
+                string textContent = elevation.ToString("F3", CultureInfo.InvariantCulture);
+
+                var filter = new SelectionFilter(new[]
+                {
+                    new TypedValue((int)DxfCode.Operator, "<or"),
+                    new TypedValue((int)DxfCode.Start, "CIRCLE"),
+                    new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),
+                    new TypedValue((int)DxfCode.Operator, "or>")
+                });
+                var psr = _ed.GetSelection(new PromptSelectionOptions
+                {
+                    MessageForAdding = "\n选择要写入标高文字的圆或闭合多段线: "
+                }, filter);
+                if (psr.Status != PromptStatus.OK) return;
+
+                int createdCount = 0;
+                using (var tr = _db.TransactionManager.StartTransaction())
+                {
+                    var ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(_db), OpenMode.ForWrite);
+                    var lt = (LayerTable)tr.GetObject(_db.LayerTableId, OpenMode.ForRead);
+                    CreateLayerIfNotExists(tr, lt, ElevationTextLayerName, 7);
+
+                    foreach (SelectedObject sel in psr.Value)
+                    {
+                        if (sel == null || sel.ObjectId.IsNull) continue;
+                        var ent = tr.GetObject(sel.ObjectId, OpenMode.ForRead) as Entity;
+                        if (ent == null) continue;
+
+                        Point3d targetPoint;
+                        if (ent is Circle c)
+                        {
+                            targetPoint = c.Center;
+                        }
+                        else if (ent is Polyline pl && pl.Closed && pl.NumberOfVertices >= 3)
+                        {
+                            targetPoint = GetPolylineCentroid(pl);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+                        var text = new DBText
+                        {
+                            Position = targetPoint,
+                            Height = textHeight,
+                            WidthFactor = 0.7,
+                            TextString = textContent,
+                            Layer = ElevationTextLayerName
+                        };
+                        ms.AppendEntity(text);
+                        tr.AddNewlyCreatedDBObject(text, true);
+                        createdCount++;
+                    }
+
+                    tr.Commit();
+                }
+
+                _ed.WriteMessage($"\n已在 {createdCount} 个对象中心写入标高文字: {textContent}");
+            }
+            catch (System.Exception ex)
+            {
+                _ed.WriteMessage($"\n写入标高文字失败: {ex.Message}");
             }
         }
 
@@ -246,6 +339,30 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 lt.Add(ltr);
                 tr.AddNewlyCreatedDBObject(ltr, true);
             }
+        }
+
+        private static Point3d GetPolylineCentroid(Polyline pline)
+        {
+            double area = 0;
+            double cx = 0;
+            double cy = 0;
+            int n = pline.NumberOfVertices;
+            for (int i = 0; i < n; i++)
+            {
+                var p0 = pline.GetPoint2dAt(i);
+                var p1 = pline.GetPoint2dAt((i + 1) % n);
+                double cross = p0.X * p1.Y - p1.X * p0.Y;
+                area += cross;
+                cx += (p0.X + p1.X) * cross;
+                cy += (p0.Y + p1.Y) * cross;
+            }
+            area *= 0.5;
+            if (Math.Abs(area) < 1e-10)
+            {
+                return pline.GetPoint3dAt(0);
+            }
+
+            return new Point3d(cx / (6 * area), cy / (6 * area), pline.Elevation);
         }
     }
 }
