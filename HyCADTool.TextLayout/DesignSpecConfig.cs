@@ -29,6 +29,7 @@ namespace HyCADTool.TextLayout
         public double QuoteSpaceAfter { get; set; } = 0.5;
         public double ListIndent { get; set; } = 4;
         public double QuoteIndent { get; set; } = 5;
+        public MultilevelListConfig MultilevelList { get; set; }
         public string FontFileName { get; set; } = "Microsoft YaHei";
         public string BigFontFileName { get; set; } = "";
         public double TextSize { get; set; } = 2.5;
@@ -51,6 +52,17 @@ namespace HyCADTool.TextLayout
         public double H3Height => TextSize * H3Scale * Scale;
         public double ActualListIndent => ListIndent * Scale;
         public double ActualQuoteIndent => QuoteIndent * Scale;
+        public double CharWidth => TextSize * TextXScale * Scale;
+
+        public double GetListIndentMm(int depth)
+        {
+            if (MultilevelList != null)
+            {
+                var level = MultilevelList.GetLevel(depth);
+                return level.IndentChars * CharWidth;
+            }
+            return ActualListIndent * depth;
+        }
         public double ActualColumnGutter => ColumnGutter * Scale;
         public double ActualColumnInnerPadding => ColumnInnerPaddingMm * Scale;
         public double ActualPSpaceAfter => PSpaceAfter * TextSize * Scale;

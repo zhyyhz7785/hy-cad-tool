@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using HyCADTool.TextLayout;
@@ -142,6 +143,9 @@ namespace HyCADTool.MarkdownEditor.Models
         // ── 缩进 ──
         public double ListIndent { get; set; } = EditorConfigDefaults.ListIndent;
         public double QuoteIndent { get; set; } = EditorConfigDefaults.QuoteIndent;
+
+        // ── 多级列表 ──
+        public MultilevelListConfig MultilevelList { get; set; }
 
         // ── 段前段后间距 ──
         public double H1SpaceBefore { get; set; } = EditorConfigDefaults.H1SpaceBefore;

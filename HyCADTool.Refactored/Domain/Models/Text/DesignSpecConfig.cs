@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using HyCADTool.TextLayout;
 
 namespace HyCADTool.Refactored.Domain.Models.Text
 {
@@ -48,6 +49,7 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         // ── 列表缩进（图纸 mm） ──
         public double ListIndent { get; set; } = 4;
         public double QuoteIndent { get; set; } = 5;
+        public MultilevelListConfig MultilevelList { get; set; }
 
         // ── 字体 ──
         public string FontFileName { get; set; } = "Microsoft YaHei";
@@ -164,6 +166,17 @@ namespace HyCADTool.Refactored.Domain.Models.Text
 
         public double ActualListIndent => ListIndent * Scale;
         public double ActualQuoteIndent => QuoteIndent * Scale;
+        public double CharWidth => TextSize * TextXScale * Scale;
+
+        public double GetListIndentMm(int depth)
+        {
+            if (MultilevelList != null)
+            {
+                var level = MultilevelList.GetLevel(depth);
+                return level.IndentChars * CharWidth;
+            }
+            return ActualListIndent * depth;
+        }
         public double ActualColumnGutter => ColumnGutter * Scale;
         public double ActualColumnInnerPadding => ColumnInnerPaddingMm * Scale;
 

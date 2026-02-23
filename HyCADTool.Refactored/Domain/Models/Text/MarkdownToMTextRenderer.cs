@@ -2,6 +2,7 @@ using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using HyCADTool.TextLayout;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -158,14 +159,31 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// </summary>
         private void RenderList(ListBlock list, int depth)
         {
-            bool ordered = list.IsOrdered;
+            bool markdownOrdered = list.IsOrdered;
+            var mlc = _config.MultilevelList;
+            bool ordered = mlc != null
+                ? mlc.ResolveIsOrdered(depth, markdownOrdered)
+                : markdownOrdered;
+
             int index = 1;
 
             foreach (var item in list)
             {
                 if (item is ListItemBlock listItem)
                 {
-                    string bullet = ordered ? $"{index}. " : "\\U+2022 ";
+                    string bullet = FormatBullet(depth, ordered, index);
+                    string fontOpen = null, fontClose = null;
+                    if (mlc != null)
+                    {
+                        var levelDef = mlc.GetLevel(depth);
+                        if (levelDef.FontSizeOverride.HasValue)
+                        {
+                            double h = levelDef.FontSizeOverride.Value * _config.Scale;
+                            fontOpen = "{\\H" + F(h) + ";";
+                            fontClose = "}";
+                        }
+                    }
+
                     bool wrotePrimaryParagraph = false;
                     foreach (var child in listItem)
                     {
@@ -175,8 +193,10 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                             {
                                 AppendParaSpacing(0, _config.ActualLiSpaceAfter);
                                 AppendListIndent(depth);
+                                if (fontOpen != null) _sb.Append(fontOpen);
                                 _sb.Append(bullet);
                                 RenderInlines(p.Inline);
+                                if (fontClose != null) _sb.Append(fontClose);
                                 _sb.Append("\\P");
                                 wrotePrimaryParagraph = true;
                             }
@@ -193,7 +213,10 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                             {
                                 AppendParaSpacing(0, _config.ActualLiSpaceAfter);
                                 AppendListIndent(depth);
-                                _sb.Append(bullet).Append("\\P");
+                                if (fontOpen != null) _sb.Append(fontOpen);
+                                _sb.Append(bullet);
+                                if (fontClose != null) _sb.Append(fontClose);
+                                _sb.Append("\\P");
                                 wrotePrimaryParagraph = true;
                             }
                             RenderList(nested, depth + 1);
@@ -204,10 +227,12 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                             {
                                 AppendParaSpacing(0, _config.ActualLiSpaceAfter);
                                 AppendListIndent(depth);
+                                if (fontOpen != null) _sb.Append(fontOpen);
                                 _sb.Append(bullet);
                                 wrotePrimaryParagraph = true;
                             }
                             RenderBlock(child);
+                            if (fontClose != null) _sb.Append(fontClose);
                         }
                     }
 
@@ -215,12 +240,65 @@ namespace HyCADTool.Refactored.Domain.Models.Text
                     {
                         AppendParaSpacing(0, _config.ActualLiSpaceAfter);
                         AppendListIndent(depth);
-                        _sb.Append(bullet).Append("\\P");
+                        if (fontOpen != null) _sb.Append(fontOpen);
+                        _sb.Append(bullet);
+                        if (fontClose != null) _sb.Append(fontClose);
+                        _sb.Append("\\P");
                     }
 
                     if (ordered) index++;
                 }
             }
+        }
+
+        private string FormatBullet(int depth, bool ordered, int index)
+        {
+            var mlc = _config.MultilevelList;
+            if (mlc == null)
+                return ordered ? $"{index}. " : "\\U+2022 ";
+
+            var level = mlc.GetLevel(depth);
+            if (!ordered)
+            {
+                string ch = string.IsNullOrEmpty(level.BulletChar) ? "\u2022" : level.BulletChar;
+                return "\\U+" + ((int)ch[0]).ToString("X4") + " ";
+            }
+
+            switch (level.NumberStyle)
+            {
+                case ListNumberStyle.LowerLetter:
+                    return (char)('a' + ((index - 1) % 26)) + ") ";
+                case ListNumberStyle.UpperLetter:
+                    return (char)('A' + ((index - 1) % 26)) + ") ";
+                case ListNumberStyle.LowerRoman:
+                    return ToRoman(index).ToLowerInvariant() + ". ";
+                case ListNumberStyle.UpperRoman:
+                    return ToRoman(index) + ". ";
+                case ListNumberStyle.Bullet:
+                {
+                    string ch = string.IsNullOrEmpty(level.BulletChar) ? "\u2022" : level.BulletChar;
+                    return "\\U+" + ((int)ch[0]).ToString("X4") + " ";
+                }
+                default:
+                    return $"{index}. ";
+            }
+        }
+
+        private static string ToRoman(int number)
+        {
+            if (number <= 0 || number > 3999) return number.ToString();
+            var values = new[] { 1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1 };
+            var symbols = new[] { "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I" };
+            var sb = new StringBuilder();
+            for (int i = 0; i < values.Length; i++)
+            {
+                while (number >= values[i])
+                {
+                    sb.Append(symbols[i]);
+                    number -= values[i];
+                }
+            }
+            return sb.ToString();
         }
 
         /// <summary>分隔线 --- → 虚线</summary>
@@ -512,10 +590,11 @@ namespace HyCADTool.Refactored.Domain.Models.Text
         /// </summary>
         private void AppendListIndent(int depth)
         {
+            double indentMm = _config.GetListIndentMm(depth);
             _sb.Append("\\pxi0");
-            if (depth > 0)
+            if (indentMm > 0)
             {
-                string indentInch = F((_config.ActualListIndent * depth) / 25.4);
+                string indentInch = F(indentMm / 25.4);
                 _sb.Append(",l").Append(indentInch);
             }
             _sb.Append(";");

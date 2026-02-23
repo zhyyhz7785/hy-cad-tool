@@ -1,5 +1,6 @@
 using HyCADTool.MarkdownEditor.Models;
 using HyCADTool.MarkdownEditor.Html;
+using HyCADTool.TextLayout;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -853,6 +854,32 @@ namespace HyCADTool.MarkdownEditor.ViewModels
         private double _quoteSpaceAfter = EditorConfigDefaults.QuoteSpaceAfter;
         public double QuoteSpaceAfter { get => _quoteSpaceAfter; set { if (SetProperty(ref _quoteSpaceAfter, value)) RefreshPreviewVia(); } }
 
+        // ── 多级列表 ──
+        private MultilevelListConfig _multilevelList;
+        public MultilevelListConfig MultilevelList
+        {
+            get => _multilevelList;
+            set { if (SetProperty(ref _multilevelList, value)) RefreshPreviewVia(); }
+        }
+
+        public MultilevelListConfig EnsureMultilevelList()
+        {
+            if (_multilevelList == null)
+            {
+                _multilevelList = MultilevelListConfig.CreateDefault();
+                OnPropertyChanged(nameof(MultilevelList));
+            }
+            return _multilevelList;
+        }
+
+        public void NotifyMultilevelListChanged()
+        {
+            OnPropertyChanged(nameof(MultilevelList));
+            RefreshPreviewVia();
+        }
+
+        public ICommand ApplyUniformStepCommand { get; private set; }
+
         private void RefreshPreviewVia() => OnPropertyChanged("SpacingChanged");
 
         private static bool TryParseScale(string text, out double value)
@@ -934,6 +961,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             LoadFromFileCommand = new RelayCmd(() => LoadFromFileRequested?.Invoke());
             ApplyShxPurePresetCommand = new RelayCmd(ApplyShxPurePreset);
             ApplyTrueTypeMixPresetCommand = new RelayCmd(ApplyTrueTypeMixPreset);
+            ApplyUniformStepCommand = new RelayCmd(() => { });
             _charsPerColumn = (int[])EditorConfigDefaults.CharsPerColumn.Clone();
             _markdownText = DefaultMarkdown;
             _content.SetMarkdown(_markdownText);
@@ -1028,6 +1056,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             _mTextCodeFontName = string.IsNullOrWhiteSpace(cfg.MTextCodeFontName) ? "Consolas" : cfg.MTextCodeFontName.Trim();
             _mTextItalicAngle = Math.Max(0, Math.Min(45, cfg.MTextItalicAngle));
             _mTextHeadingBold = cfg.MTextHeadingBold;
+            _multilevelList = cfg.MultilevelList?.Clone();
             _borderWidth = Math.Max(0.5, Math.Min(5, cfg.BorderWidth));
             _handleWidth = Math.Max(1, Math.Min(10, cfg.HandleWidth));
             _handleActiveWidth = Math.Max(_handleWidth, Math.Min(14, cfg.HandleActiveWidth));
@@ -1106,6 +1135,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             OnPropertyChanged(nameof(LiSpaceAfter));
             OnPropertyChanged(nameof(QuoteSpaceBefore));
             OnPropertyChanged(nameof(QuoteSpaceAfter));
+            OnPropertyChanged(nameof(MultilevelList));
             OnPropertyChanged("SpacingChanged");
             UpdateStatus();
         }
@@ -1253,7 +1283,8 @@ namespace HyCADTool.MarkdownEditor.ViewModels
                 MTextCodeMode = MTextCodeMode,
                 MTextCodeFontName = MTextCodeFontName,
                 MTextItalicAngle = MTextItalicAngle,
-                MTextHeadingBold = MTextHeadingBold
+                MTextHeadingBold = MTextHeadingBold,
+                MultilevelList = MultilevelList?.Clone()
             };
         }
 
@@ -1365,6 +1396,7 @@ namespace HyCADTool.MarkdownEditor.ViewModels
             MTextCodeFontName = d.MTextCodeFontName;
             MTextItalicAngle = d.MTextItalicAngle;
             MTextHeadingBold = d.MTextHeadingBold;
+            MultilevelList = d.MultilevelList?.Clone();
 
             SyncDrawScaleTextFromValue();
             UpdateStatus();

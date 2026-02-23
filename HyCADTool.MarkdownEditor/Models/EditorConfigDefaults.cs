@@ -1,4 +1,5 @@
 using System;
+using HyCADTool.TextLayout;
 
 namespace HyCADTool.MarkdownEditor.Models
 {
@@ -151,7 +152,8 @@ namespace HyCADTool.MarkdownEditor.Models
                 PSpaceAfter = PSpaceAfter,
                 LiSpaceAfter = LiSpaceAfter,
                 QuoteSpaceBefore = QuoteSpaceBefore,
-                QuoteSpaceAfter = QuoteSpaceAfter
+                QuoteSpaceAfter = QuoteSpaceAfter,
+                MultilevelList = MultilevelListConfig.CreateDefault()
             };
         }
     }

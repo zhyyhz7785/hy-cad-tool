@@ -707,6 +707,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 MTextHeadingBold = cfg != null && cfg["MTextHeadingBold"] != null && (bool)cfg["MTextHeadingBold"]
             };
 
+            try
+            {
+                var mlToken = cfg?["MultilevelList"];
+                if (mlToken != null && mlToken.Type != JTokenType.Null)
+                    config.MultilevelList = mlToken.ToObject<HyCADTool.TextLayout.MultilevelListConfig>();
+            }
+            catch { }
+
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings
             var vm = ViewModels.SettingsPanelViewModel.Current;
             if (vm != null)
