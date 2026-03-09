@@ -5,10 +5,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Controls;
 using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.Views.Helpers;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
@@ -89,7 +91,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             _styleService = styleService;
 
-            ApplyStyleCommand = new RelayCommand(ApplyStyle);
+            ApplyStyleCommand = new RelayCommand(SaveAsDefault);
             ResetCommand = new RelayCommand(ResetToDefaults);
             DrawCommand = new RelayCommand(() => SendCommand(() => new Commands.DrawReinforcementCommand().Execute()));
 
@@ -396,11 +398,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// </summary>
         private void SendCommand(System.Action commandAction)
         {
+            CommitFocusedTextBoxValue();
             SaveSettings();
+            if (_stylesDirty) EnsureStylesApplied();
             PendingCommand = () =>
             {
-                // 仅在面板样式参数有变更时同步（dirty flag）
-                if (_stylesDirty) EnsureStylesApplied();
                 commandAction();
             };
             try
@@ -459,6 +461,27 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             if (!_stylesDirty) return;
             ApplyStyle();
             _stylesDirty = false;
+        }
+
+        private void SaveAsDefault()
+        {
+            CommitFocusedTextBoxValue();
+            SaveSettings();
+            if (_stylesDirty)
+                EnsureStylesApplied();
+            StatusMessage = "当前设置已保存为默认值";
+        }
+
+        public static void CommitFocusedTextBoxValue()
+        {
+            if (Keyboard.FocusedElement is TextBox textBox)
+            {
+                textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+            }
+
+            // 兜底：PaletteSet 中焦点转移到 AutoCAD 命令行时
+            // Keyboard.FocusedElement 已不是 TextBox，且 LostFocus 未触发
+            TextBoxHelper.CommitPendingInput();
         }
 
         private void ResetToDefaults()

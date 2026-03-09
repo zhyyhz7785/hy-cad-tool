@@ -30,6 +30,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale;
             double anchorageLength = vm?.AnchorageLength ?? 500.0;
             double hookLength = (vm?.HookLength ?? 1.0) * scale;
+            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();
@@ -85,6 +86,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     int last = rein.NumberOfVertices - 1;
                     var hookEnd = CalculateHook(rein.GetPoint3dAt(last - 1), rein.GetPoint3dAt(last), hookLength);
                     rein.AddVertexAt(rein.NumberOfVertices, hookEnd.Point3dTo2d(), 0, 0, 0);
+                    rein.ApplyReinforcementWidth(reinWidth);
 
                     reinPolys.Add(rein);
                 }

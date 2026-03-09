@@ -31,6 +31,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
         {
             try
             {
+                // 强制提交面板中正在编辑的 TextBox 值（LostFocus 模式下命令行输入不会触发）
+                SettingsPanelViewModel.CommitFocusedTextBoxValue();
+
                 // 从文件加载最新参数（面板改值会即时写入文件）
                 var vm = SettingsPanelViewModel.Current;
                 vm?.LoadSettings();

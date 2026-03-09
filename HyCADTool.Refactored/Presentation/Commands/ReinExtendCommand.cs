@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
@@ -40,6 +41,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;                      // 红色参数，直接 mm
             double hookLength15d = 15.0 * rebarDiameter;                           // 15d = 210mm
+            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();
@@ -122,6 +124,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                     if (pr.Status == PromptStatus.OK)
                     {
+                        poly.ApplyReinforcementWidth(reinWidth);
                         trans.Commit();
                     }
                     // 用户取消 → 事务自动回滚，恢复原始多段线

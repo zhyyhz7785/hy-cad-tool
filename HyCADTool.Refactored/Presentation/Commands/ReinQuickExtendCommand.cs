@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
@@ -31,6 +32,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             var vm = SettingsPanelViewModel.Current;
             double scale = vm?.Scale ?? 40.0;
             double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
+            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();
@@ -79,6 +81,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         // 延伸至边界减去保护层厚度
                         ReinExtendCommand.ExtendSegmentToBoundary(
                             pline, segIndex, closestPt, boundary, protectionThickness);
+
+                        pline.ApplyReinforcementWidth(reinWidth);
 
                         trans.Commit();
                     }

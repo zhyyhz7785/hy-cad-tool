@@ -21,6 +21,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
         private double _angle;
         private bool _isCompleted;
         private readonly Vector3d _segDirection;
+        private readonly double _hookSegmentWidth;
 
         /// <summary>
         /// 构造函数
@@ -43,6 +44,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
 
             // 计算最后一段的方向向量
             _segDirection = polyline.GetPoint3dAt(_numVertices - 2).GetVectorTo(_lastVertex).GetNormal();
+            _hookSegmentWidth = ResolveHookSegmentWidth(polyline, _numVertices - 2);
         }
 
         /// <summary>
@@ -120,8 +122,30 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
             Vector3d hookDirection = _segDirection.RotateBy(_angle, Vector3d.ZAxis);
             Point3d hookPoint = _lastVertex + hookDirection * _hookLength;
             _polyline.AddVertexAt(_numVertices, new Point2d(hookPoint.X, hookPoint.Y), 0, 0, 0);
+            _polyline.SetStartWidthAt(_numVertices - 1, _hookSegmentWidth);
+            _polyline.SetEndWidthAt(_numVertices - 1, _hookSegmentWidth);
 
             return true; // 实体已更新，需要重绘
+        }
+
+        private static double ResolveHookSegmentWidth(AcDbPolyline polyline, int sourceSegmentIndex)
+        {
+            if (polyline == null || sourceSegmentIndex < 0)
+                return 0;
+
+            double constantWidth = polyline.ConstantWidth;
+            if (constantWidth > 0)
+                return constantWidth;
+
+            double endWidth = polyline.GetEndWidthAt(sourceSegmentIndex);
+            if (endWidth > 0)
+                return endWidth;
+
+            double startWidth = polyline.GetStartWidthAt(sourceSegmentIndex);
+            if (startWidth > 0)
+                return startWidth;
+
+            return 0;
         }
     }
 }

@@ -2,7 +2,9 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -32,6 +34,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
+            var vm = SettingsPanelViewModel.Current;
+            double scale = vm?.Scale ?? 40.0;
+            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             try
             {
@@ -64,6 +69,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                     // 5. 上半段首端缩短（制造搭接断口）
                     ShortenStart(upperPl, SpliceGap);
+
+                    lowerPl.ApplyReinforcementWidth(reinWidth);
+                    upperPl.ApplyReinforcementWidth(reinWidth);
 
                     // 6. 替换原多段线
                     var btr = (BlockTableRecord)trans.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);

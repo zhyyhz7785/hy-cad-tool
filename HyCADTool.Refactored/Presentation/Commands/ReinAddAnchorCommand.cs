@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
@@ -43,6 +44,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             var vm = SettingsPanelViewModel.Current;
             double scale = vm?.Scale ?? 40.0;
             double hookLength = (vm?.HookLength ?? 1.0) * scale; // 绿色参数 × Scale
+            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();
@@ -72,6 +74,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                     if (pr.Status == PromptStatus.OK)
                     {
+                        polyline.ApplyReinforcementWidth(reinWidth);
                         trans.Commit();
                     }
                     // 用户取消 → 不提交，事务自动回滚（含方向反转）

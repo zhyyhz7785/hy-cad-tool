@@ -179,7 +179,7 @@
                     </Expander>
 
                     <!-- 操作按钮 -->
-                    <Button Content="应用样式" Command="{Binding ApplyStyleCommand}" Margin="0,6,0,2" />
+                    <Button Content="存为默认" Command="{Binding ApplyStyleCommand}" Margin="0,6,0,2" />
                     <Button Content="恢复默认" Command="{Binding ResetCommand}" Margin="0,2,0,2" />
 
                     <!-- 状态信息 -->

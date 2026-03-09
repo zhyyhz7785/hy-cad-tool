@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
@@ -37,6 +38,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double scale = vm?.Scale ?? 40.0;
             double offsetDistance = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
             double hookLength = (vm?.HookLength ?? 1.0) * scale;             // 绿色参数 × Scale
+            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();
@@ -67,6 +69,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     if (ent is Polyline offsetPoly)
                     {
                         AddHooksAtBothEnds(offsetPoly, hookLength);
+                        offsetPoly.ApplyReinforcementWidth(reinWidth);
                     }
 
                     // 5. 写入模型空间
