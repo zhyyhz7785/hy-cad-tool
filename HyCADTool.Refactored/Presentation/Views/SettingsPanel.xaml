@@ -385,6 +385,11 @@
                                 <TextBlock Text="点钢偏移" />
                                 <TextBox Grid.Column="1" Text="{Binding DotReinOffset}" helper:TextBoxHelper.EnableCustomHandlers="True" />
                             </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="100" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="钢筋绘制宽度" />
+                                <TextBox Grid.Column="1" Text="{Binding PolylineWidth}" helper:TextBoxHelper.EnableCustomHandlers="True" />
+                            </Grid>
                         </StackPanel>
                     </Expander>
 

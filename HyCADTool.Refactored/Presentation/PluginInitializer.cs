@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autofac;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
+using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 // 已移除 [assembly: CommandClass(typeof(PluginInitializer))]
@@ -18,6 +19,8 @@ namespace HyCADTool.Refactored.Presentation
     /// </summary>
     public class PluginInitializer : IExtensionApplication
     {
+        private static readonly HashSet<string> _initializedDocuments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
         /// 插件初始化
         /// </summary>
@@ -128,82 +131,7 @@ namespace HyCADTool.Refactored.Presentation
         {
             try
             {
-                var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
-                var layerService = ServiceLocator.Resolve<Domain.Interfaces.ILayerService>();
-
-                // 从 SettingsPanelViewModel 获取持久化参数（构造时已自动 LoadSettings）
-                var vm = ViewModels.SettingsPanelViewModel.GetOrCreate(
-                    AcApp.DocumentManager.MdiActiveDocument?.Name ?? "default",
-                    styleService);
-
-                double scale = vm.Scale;
-                string dimStyleName = vm.DimStyleName;
-                string mleaderStyleName = vm.MLeaderStyleName;
-                string tableStyleName = vm.TableStyleName;
-
-                styleService.CreateTextStyle(vm.StyleTName, vm.StyleTFont, "", vm.TextSize * scale, vm.TextXScale);
-                styleService.CreateTextStyle(vm.StyleSName, vm.StyleSFont, vm.StyleSBigFont, vm.TextSize * scale, vm.TextXScale);
-                styleService.SetCurrentTextStyle(vm.StyleSName);
-                styleService.CreateDimensionStyle(dimStyleName, vm.TextStyleName, scale, vm.Dimtxt, vm.Dimexo, vm.Dimexe, vm.Dimdle, vm.Dimgap, vm.Dimasz);
-                styleService.SetCurrentDimensionStyle(dimStyleName);
-                styleService.CreateMLeaderStyle(mleaderStyleName, vm.TextStyleName, scale, vm.MLeaderArrowSize, vm.MLeaderLandingGap, vm.TextSize, vm.MLeaderTextColorIndex);
-                styleService.SetCurrentMLeaderStyle(mleaderStyleName);
-                styleService.CreateTableStyle(tableStyleName, vm.TextStyleName);
-                styleService.SetCurrentTableStyle(tableStyleName);
-
-                WriteMessage($"\n  ✓ 样式已创建 (Scale={scale}, 从 hy-settings.json 加载)");
-
-                // 创建所有需要的图层（静默模式，不输出每个图层）
-                layerService.CreateMultipleLayers(
-                    // ── 钢筋 ──
-                    ("01_hy_1钢筋_线钢筋", 1),
-                    ("01_hy_1钢筋_点钢筋", 5),
-                    ("01_hy_1钢筋_线钢筋_外部", 1),
-                    // ── 公共标注 ──
-                    ("00_hy_3公共_标注1_外", 3),
-                    ("00_hy_3公共_标注3_引线", 92),
-                    // ── 筏板附加配筋 ──
-                    ("00_hy_配筋轮廓", 1),
-                    ("00_hy_调整配筋轮廓", 3),
-                    ("00_hy_筏板附加配筋x_上", 1),
-                    ("00_hy_筏板附加配筋x_下", 1),
-                    ("00_hy_筏板附加配筋y_上", 3),
-                    ("00_hy_筏板附加配筋y_下", 3),
-                    ("00_hy_筏板附加配筋文字_x", 7),
-                    ("00_hy_筏板附加配筋文字_y", 7),
-                    ("00_hy_筏板附加配筋x_标注", 1),
-                    ("00_hy_筏板附加配筋Y_标注", 3),
-                    // ── 视口 ──
-                    ("00_hy_2公共_视口", 1),
-                    // ── 桩基 ──
-                    ("02_hy_1桩_主", 3),
-                    ("02_hy_3桩_地基内轮廓", 8),
-                    // ── 垫层 ──
-                    ("00_hy_垫层", 7),
-                    // ── 图框 ──
-                    ("00_hy_图框", 7),
-                    // ── 配筋文字分类 ──
-                    ("HY_H向钢筋", 7),
-                    ("HY_V向钢筋", 2),
-                    ("HY_手动配筋", 1),
-                    // ── 聚类分析 ──
-                    ("00_hy_BP", 3),
-                    ("00_hy_AAP", 1),
-                    ("00_hy_BAP", 4),
-                    ("00_hy_ABolt", 2),
-                    ("00_hy_SteelPlate", 5),
-                    ("00_hy_AxisCircle", 7),
-                    ("00_hy_AxisText", 7),
-                    ("00_hy_Region", 9),
-                    ("00_hy_RegionText", 9),
-                    ("00_hy_Dim_X", 7),
-                    ("00_hy_Dim_Y", 7),
-                    ("00_hy_ClusterEP", 8),
-                    ("00_hy_ClusterEEP", 8),
-                    ("00_hy_ClusterHull", 6),
-                    ("00_hy_ClusterPts", 34)
-                );
-
+                EnsureCurrentDocumentResourcesInitialized(force: true);
                 WriteMessage("\n  ✓ 图层已创建");
                 WriteMessage($"\n  ✓ 设置文件: {ViewModels.SettingsPanelViewModel.GetSettingsFilePath()}");
             }
@@ -250,7 +178,7 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         private void OnDocumentActivated(object sender, DocumentCollectionEventArgs e)
         {
-            // 可以在这里处理文档切换逻辑
+            EnsureCurrentDocumentResourcesInitialized(force: false);
         }
 
         /// <summary>
@@ -258,7 +186,98 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         private void OnDocumentCreated(object sender, DocumentCollectionEventArgs e)
         {
-            // 可以在这里为新文档初始化默认设置
+            if (e.Document == null) return;
+
+            try
+            {
+                var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
+                ViewModels.SettingsPanelViewModel.GetOrCreate(e.Document.Name, styleService);
+            }
+            catch
+            {
+                // 忽略新文档预热失败，切换到该文档时会再次初始化
+            }
+        }
+
+        private void EnsureCurrentDocumentResourcesInitialized(bool force)
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            string documentName = doc.Name ?? "default";
+            if (!force && _initializedDocuments.Contains(documentName))
+                return;
+
+            try
+            {
+                var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
+                var layerService = ServiceLocator.Resolve<Domain.Interfaces.ILayerService>();
+
+                var vm = ViewModels.SettingsPanelViewModel.GetOrCreate(documentName, styleService);
+                vm.LoadSettings();
+                vm.EnsureStylesApplied();
+
+                layerService.CreateMultipleLayers(GetRequiredLayers());
+                _initializedDocuments.Add(documentName);
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ 文档资源初始化警告：{ex.Message}");
+            }
+        }
+
+        private static (string layerName, short colorIndex)[] GetRequiredLayers()
+        {
+            return new[]
+            {
+                // ── 钢筋 ──
+                ("01_hy_1钢筋_线钢筋", (short)1),
+                ("01_hy_1钢筋_点钢筋", (short)5),
+                ("01_hy_1钢筋_线钢筋_外部", (short)1),
+                // ── 公共标注 ──
+                ("00_hy_3公共_标注1_外", (short)3),
+                ("00_hy_3公共_标注3_引线", (short)92),
+                // ── 筏板附加配筋 ──
+                ("00_hy_配筋轮廓", (short)1),
+                ("00_hy_调整配筋轮廓", (short)3),
+                ("00_hy_筏板附加配筋x_上", (short)1),
+                ("00_hy_筏板附加配筋x_下", (short)1),
+                ("00_hy_筏板附加配筋y_上", (short)3),
+                ("00_hy_筏板附加配筋y_下", (short)3),
+                ("00_hy_筏板附加配筋文字_x", (short)7),
+                ("00_hy_筏板附加配筋文字_y", (short)7),
+                ("00_hy_筏板附加配筋x_标注", (short)1),
+                ("00_hy_筏板附加配筋Y_标注", (short)3),
+                // ── 视口 ──
+                ("00_hy_2公共_视口", (short)1),
+                // ── 桩基 ──
+                ("02_hy_1桩_主", (short)3),
+                ("02_hy_3桩_地基内轮廓", (short)8),
+                // ── 垫层 ──
+                ("00_hy_垫层", (short)7),
+                // ── 图框 ──
+                ("00_hy_图框", (short)7),
+                // ── 配筋文字分类 ──
+                ("HY_H向钢筋", (short)7),
+                ("HY_V向钢筋", (short)2),
+                ("HY_手动配筋", (short)1),
+                // ── 聚类分析 ──
+                ("00_hy_BP", (short)3),
+                ("00_hy_AAP", (short)1),
+                ("00_hy_BAP", (short)4),
+                ("00_hy_ABolt", (short)2),
+                ("00_hy_SteelPlate", (short)5),
+                ("00_hy_AxisCircle", (short)7),
+                ("00_hy_AxisText", (short)7),
+                ("00_hy_Region", (short)9),
+                ("00_hy_RegionText", (short)9),
+                ("00_hy_Dim_X", (short)7),
+                ("00_hy_Dim_Y", (short)7),
+                ("00_hy_ClusterEP", (short)8),
+                ("00_hy_ClusterEEP", (short)8),
+                ("00_hy_ClusterHull", (short)6),
+                ("00_hy_ClusterPts", (short)34)
+            };
         }
 
         /// <summary>

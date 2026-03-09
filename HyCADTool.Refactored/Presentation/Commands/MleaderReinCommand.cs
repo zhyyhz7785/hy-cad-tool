@@ -59,6 +59,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;
             double rebarSpacing = vm?.RebarSpacing ?? 200.0;
             double reinDiameter = (vm?.ReinforcementDiameter ?? 0.35) * scale;
+            double globalReinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
             // DotReinOffsetOut = (DotReinOffset - 1) * Scale，与旧 Reinforcement.DotReinOffsetOut 一致
             double dotReinOffsetRaw = vm?.DotReinOffset ?? 1.35;
             double dotReinOffsetOut = (dotReinOffsetRaw - 1) * scale;
@@ -76,13 +77,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 switch (_mode)
                 {
                     case Mode.Standard:
-                        ExecuteStandard(db, ed, mleaderDistance, content, reinDiameter, dotReinOffsetOut);
+                        ExecuteStandard(db, ed, mleaderDistance, content, reinDiameter, dotReinOffsetOut, globalReinWidth);
                         break;
                     case Mode.Single:
                         ExecuteSingle(db, ed, mleaderDistance, content, dotReinOffsetOut);
                         break;
                     case Mode.Six:
-                        ExecuteSix(db, ed, content, reinDiameter, dotReinOffsetOut);
+                        ExecuteSix(db, ed, content, reinDiameter, dotReinOffsetOut, globalReinWidth);
                         break;
                 }
             }
@@ -98,7 +99,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         /// <summary>gb: 多引线标注 + 点钢筋</summary>
         private void ExecuteStandard(Database db, Editor ed, double mleaderDistance, string content,
-            double reinDiameter, double dotReinOffset)
+            double reinDiameter, double dotReinOffset, double globalReinWidth)
         {
             var points = GetReinPoints(db, ed, dotReinOffset);
             if (points == null || points.Count < 3) return;
@@ -108,7 +109,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             // 点钢筋：排除 index=1（中心点），仅保留两侧偏移点
             var dotPoints = ps.Where((p, i) => i != 1);
-            var psDraw = dotPoints.PointsToDotRein(reinDiameter);
+            var psDraw = dotPoints.PointsToDotRein(reinDiameter, globalReinWidth);
 
             AddEntitiesToSpace(db, ml, psDraw);
         }
@@ -128,7 +129,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         /// <summary>gb2: 六点引线标注 + 点钢筋</summary>
         private void ExecuteSix(Database db, Editor ed, string content,
-            double reinDiameter, double dotReinOffset)
+            double reinDiameter, double dotReinOffset, double globalReinWidth)
         {
             var points = GetReinPointsSix(db, ed, dotReinOffset);
             if (points == null || points.Count < 6) return;
@@ -138,7 +139,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             // 点钢筋：排除 index=1 和 index=4（两组的中心点）
             var dotPoints = ps.Where((p, i) => i != 1 && i != 4);
-            var psDraw = dotPoints.PointsToDotRein(reinDiameter);
+            var psDraw = dotPoints.PointsToDotRein(reinDiameter, globalReinWidth);
 
             AddEntitiesToSpace(db, ml, psDraw);
         }

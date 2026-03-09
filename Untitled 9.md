@@ -395,3 +395,14 @@ reinService.DrawReinforcement(result);
 1. 合并重复代码：将 SingleFunsE 和 SingleFunsF 合并为一个命令
 
 1. 核心算法测试：为 ReinforcementUtils 中的 GenerateAll() 准备边界多边形测试数据
+
+​     
+
+
+ollama/qwen3:14b        
+
+ollama/qwen3:8b  
+
+ollama/deepseek-r1:8b  
+
+ollama/gemma3:12b   

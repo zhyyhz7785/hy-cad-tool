@@ -22,8 +22,7 @@ namespace HyCADTool.Refactored.Test
             SimpleLogger.LogElapsedTime("命令执行", () =>
             {
                 // 只改下面这一行即可切换 C1 测试命令
-               // ServiceLocator.Resolve<PanelManager>().ShowHyToolPanel();
-                new DesignSpecCommand().Execute();
+                ShowPanelCommand.ShowSettingsPanel();
                 // 例如：new Presentation.Commands.DesignSpecCommand().Execute();
             });
         }

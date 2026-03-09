@@ -64,23 +64,24 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
         /// 创建实心圆（多段线近似，带宽度填充）
         /// 对应旧代码 ZTools.CreateSolidCircle
         /// </summary>
-        public static Polyline CreateSolidCircle(double r, Point3d basePoint)
+        public static Polyline CreateSolidCircle(double r, Point3d basePoint, double width = -1)
         {
             double x = basePoint.X;
             double y = basePoint.Y;
             var poly = new Polyline();
             double bulge = Math.Tan(Math.PI / 4); // = 1.0
+            double polyWidth = width > 0 ? width : r;
             // 两个顶点，间距 r*0.5，宽度为 r → 填充效果
-            poly.AddVertexAt(0, new Point2d(x + r * 0.5, y), bulge, r, r);
-            poly.AddVertexAt(1, new Point2d(x - r * 0.5, y), bulge, r, r);
+            poly.AddVertexAt(0, new Point2d(x + r * 0.5, y), bulge, polyWidth, polyWidth);
+            poly.AddVertexAt(1, new Point2d(x - r * 0.5, y), bulge, polyWidth, polyWidth);
             poly.Closed = true;
             return poly;
         }
 
         /// <summary>创建实心圆（坐标版本）</summary>
-        public static Polyline CreateSolidCircle(double r, double x, double y)
+        public static Polyline CreateSolidCircle(double r, double x, double y, double width = -1)
         {
-            return CreateSolidCircle(r, new Point3d(x, y, 0));
+            return CreateSolidCircle(r, new Point3d(x, y, 0), width);
         }
 
         /// <summary>选择单个实体</summary>
@@ -106,12 +107,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
         }
 
         /// <summary>Point3d 数组转为实心圆多段线数组（点钢筋）</summary>
-        public static Polyline[] PointsToDotRein(this IEnumerable<Point3d> points, double diameter)
+        public static Polyline[] PointsToDotRein(this IEnumerable<Point3d> points, double diameter, double width = -1)
         {
             var list = new List<Polyline>();
             foreach (var pt in points)
             {
-                list.Add(CreateSolidCircle(diameter, pt));
+                list.Add(CreateSolidCircle(diameter, pt, width));
             }
             return list.ToArray();
         }

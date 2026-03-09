@@ -303,6 +303,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private double _dotReinOffset = 1.35;
         public double DotReinOffset { get => _dotReinOffset; set => SetProperty(ref _dotReinOffset, value); }
 
+        private double _polylineWidth = 0.4;
+        public double PolylineWidth { get => _polylineWidth; set => SetProperty(ref _polylineWidth, value); }
+
         #endregion
 
         #region 钢筋尺寸参数
@@ -477,7 +480,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             RebarDiameter = 14.0; RebarSpacing = 200.0;
             AnchorageLength = 500.0; DotSeparation = 200.0; BendingLineMinLength = 150.0;
             AnchorageJoinLength = 1500.0; HookLength = 1.0; ProtectionThickness = 1.0;
-            ReinforcementDiameter = 0.35; DotReinOffset = 1.35;
+            ReinforcementDiameter = 0.35; DotReinOffset = 1.35; PolylineWidth = 0.4;
             DimensionDistanceInside = 6.0; DimensionDistanceOutside = 14.0;
             DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0; DimDistanceTolerance = 30.0;
 
@@ -508,6 +511,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 ProtectionThickness = ProtectionThickness,
                 ReinforcementDiameter = ReinforcementDiameter,
                 DotReinOffset = DotReinOffset,
+                PolylineWidth = PolylineWidth,
                 DimensionDistanceInside = DimensionDistanceInside,
                 DimensionDistanceOutside = DimensionDistanceOutside,
                 DimensionDistanceWithDim = DimensionDistanceWithDim,
@@ -583,6 +587,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     ProtectionThickness = ProtectionThickness,
                     ReinforcementDiameter = ReinforcementDiameter,
                     DotReinOffset = DotReinOffset,
+                    PolylineWidth = PolylineWidth,
                     DimensionDistanceInside = DimensionDistanceInside,
                     DimensionDistanceOutside = DimensionDistanceOutside,
                     DimensionDistanceWithDim = DimensionDistanceWithDim,
@@ -610,6 +615,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             _isLoading = true;
             try
             {
+                string beforeStyleSignature = BuildStyleSignature();
                 var path = GetSettingsFilePath();
                 if (!File.Exists(path)) { _isLoading = false; return; }
 
@@ -648,6 +654,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 ProtectionThickness = data.ProtectionThickness;
                 ReinforcementDiameter = data.ReinforcementDiameter;
                 DotReinOffset = data.DotReinOffset;
+                PolylineWidth = data.PolylineWidth;
                 DimensionDistanceInside = data.DimensionDistanceInside;
                 DimensionDistanceOutside = data.DimensionDistanceOutside;
                 DimensionDistanceWithDim = data.DimensionDistanceWithDim;
@@ -657,7 +664,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 if (!string.IsNullOrEmpty(data.EquipmentDataFilePath))
                     EquipmentDataFilePath = data.EquipmentDataFilePath;
 
-                _stylesDirty = true; // 加载后需重新应用样式
+                // 只有样式相关参数实际变化时，才标记需要重新同步样式。
+                // 否则 gj/gb 等每次执行都会白白重建一轮样式，造成重复执行前的明显停顿。
+                string afterStyleSignature = BuildStyleSignature();
+                if (!string.Equals(beforeStyleSignature, afterStyleSignature, StringComparison.Ordinal))
+                    _stylesDirty = true;
             }
             catch (Exception ex)
             {
@@ -710,6 +721,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double ProtectionThickness { get; set; } = 1.0;
             public double ReinforcementDiameter { get; set; } = 0.35;
             public double DotReinOffset { get; set; } = 1.35;
+            public double PolylineWidth { get; set; } = 0.4;
             public double DimensionDistanceInside { get; set; } = 6.0;
             public double DimensionDistanceOutside { get; set; } = 14.0;
             public double DimensionDistanceWithDim { get; set; } = 6.0;
@@ -724,6 +736,30 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        private string BuildStyleSignature()
+        {
+            return string.Join("|",
+                Scale,
+                StyleTName,
+                StyleTFont,
+                StyleSName,
+                StyleSFont,
+                StyleSBigFont,
+                TextSize,
+                TextXScale,
+                Dimtxt,
+                Dimexo,
+                Dimexe,
+                Dimdle,
+                Dimgap,
+                Dimasz,
+                DimArrowName,
+                MLeaderArrowSize,
+                MLeaderArrowName,
+                MLeaderLandingGap,
+                MLeaderTextColorIndex);
+        }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

@@ -33,7 +33,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         private const string LayerDotRein = "01_hy_1钢筋_点钢筋";
         private const string LayerDimOutside = "00_hy_3公共_标注1_外";
         private const string LayerLeader = "00_hy_3公共_标注3_引线";
-
         public ReinService(ILayerService layerService, IStyleService styleService)
         {
             _layerService = layerService ?? throw new ArgumentNullException(nameof(layerService));
@@ -56,6 +55,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
+            double globalReinWidth = parameters.PolylineWidth * parameters.Scale;
 
             using (var tr = db.TransactionManager.StartTransaction())
             {
@@ -68,6 +68,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     foreach (var polyDomain in result.FinalReinforcements)
                     {
                         var acadPoly = polyDomain.ToAcadPolyline();
+                        acadPoly.ConstantWidth = globalReinWidth;
                         acadPoly.Layer = LayerLineRein;
                         btr.AppendEntity(acadPoly);
                         tr.AddNewlyCreatedDBObject(acadPoly, true);
@@ -81,7 +82,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 {
                     foreach (var pt in result.ReduceDotReinPoints)
                     {
-                        var circle = CreateSolidCircle(dotDiameter, pt);
+                        var circle = CreateSolidCircle(dotDiameter, pt, globalReinWidth);
                         circle.Layer = LayerDotRein;
                         btr.AppendEntity(circle);
                         tr.AddNewlyCreatedDBObject(circle, true);
@@ -121,14 +122,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         /// <summary>
         /// 创建实心圆（多段线近似）代表点钢筋
         /// </summary>
-        private static Polyline CreateSolidCircle(double diameter, Point2D center)
+        private static Polyline CreateSolidCircle(double diameter, Point2D center, double width)
         {
             double radius = diameter / 2.0;
             var poly = new Polyline();
 
             // 用两段弧近似圆
-            poly.AddVertexAt(0, new Point2d(center.X - radius, center.Y), 1.0, 0, 0);
-            poly.AddVertexAt(1, new Point2d(center.X + radius, center.Y), 1.0, 0, 0);
+            poly.AddVertexAt(0, new Point2d(center.X - radius, center.Y), 1.0, width, width);
+            poly.AddVertexAt(1, new Point2d(center.X + radius, center.Y), 1.0, width, width);
             poly.Closed = true;
 
             return poly;
