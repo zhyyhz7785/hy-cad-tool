@@ -502,7 +502,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         // Circle作为完整Arc处理
                         var center = new Point2D(circle.Center.X, circle.Center.Y);
                         var radius = circle.Radius;
-                        var arc2d = new Arc2D(center, radius, 0, 360);
+                        var arc2d = new Arc2D(center, radius, 0, 2.0 * Math.PI);
                         
                         var simplified = simplificationService.SimplifyArc(arc2d, arcSegmentCount);
                         
@@ -618,12 +618,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var startDir = new Vector2D(start.X - center.X, start.Y - center.Y);
             var endDir = new Vector2D(end.X - center.X, end.Y - center.Y);
             
-            double startAngle = Math.Atan2(startDir.Y, startDir.X) * 180 / Math.PI;
-            double endAngle = Math.Atan2(endDir.Y, endDir.X) * 180 / Math.PI;
+            double startAngle = Math.Atan2(startDir.Y, startDir.X);
+            double endAngle = Math.Atan2(endDir.Y, endDir.X);
             
-            // 规范化角度
-            if (startAngle < 0) startAngle += 360;
-            if (endAngle < 0) endAngle += 360;
+            // Arc2D 统一使用弧度制，规范化到 [0, 2π)
+            if (startAngle < 0) startAngle += 2.0 * Math.PI;
+            if (endAngle < 0) endAngle += 2.0 * Math.PI;
             
             return new Arc2D(center, Math.Abs(radius), startAngle, endAngle);
         }

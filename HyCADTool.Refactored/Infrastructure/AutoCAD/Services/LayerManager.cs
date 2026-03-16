@@ -15,7 +15,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         
         public LayerManager()
         {
-            _database = Application.DocumentManager.MdiActiveDocument.Database;
+            _database = Application.DocumentManager.MdiActiveDocument?.Database;
         }
         
         public LayerManager(Database database)
@@ -28,7 +28,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         /// </summary>
         public void EnsureLayer(Transaction tr, string layerName, short colorIndex)
         {
-            var layerTable = (LayerTable)tr.GetObject(_database.LayerTableId, OpenMode.ForRead);
+            var database = ResolveDatabase();
+            var layerTable = (LayerTable)tr.GetObject(database.LayerTableId, OpenMode.ForRead);
             
             if (!layerTable.Has(layerName))
             {
@@ -58,6 +59,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 EnsureLayer(tr, name, colorIndex);
             }
+        }
+
+        private Database ResolveDatabase()
+        {
+            var currentDatabase = Application.DocumentManager.MdiActiveDocument?.Database;
+            return currentDatabase ?? _database ?? throw new System.InvalidOperationException("无法获取当前文档数据库。");
         }
     }
 }

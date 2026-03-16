@@ -61,6 +61,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         var vertices = face.Components
                             .Select(he => he.StartVertex.Position)
                             .Select(p => new Point2d(p.X, p.Y))
+                            .Where(IsValidPoint)
+                            .Distinct(new Point2dEqualityComparer())
                             .ToList();
 
                         if (vertices.Count < 3)
@@ -673,14 +675,23 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             List<HalfEdge> halfEdges)
         {
             int vertexIndex = 0;
+            Point2d? lastPoint = null;
 
             foreach (var halfEdge in halfEdges)
             {
                 var startPt = halfEdge.StartVertex.Position;
+                var point = new Point2d(startPt.X, startPt.Y);
+                if (!IsValidPoint(point))
+                    continue;
+
+                if (lastPoint.HasValue && AreSamePoint(lastPoint.Value, point))
+                    continue;
+
                 polyline.AddVertexAt(vertexIndex, 
-                    new Point2d(startPt.X, startPt.Y), 
+                    point, 
                     0, 0, 0);
                 vertexIndex++;
+                lastPoint = point;
             }
         }
         
@@ -827,8 +838,36 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         private double CalculateBulgeFromArc(Arc2D arc)
         {
             // Bulge = tan(θ/4), θ为圆心角
-            var sweepAngle = arc.SweepAngle * Math.PI / 180.0; // 转为弧度
-            return Math.Tan(sweepAngle / 4.0);
+            return Math.Tan(arc.SweepAngle / 4.0);
+        }
+
+        private static bool IsValidPoint(Point2d point)
+        {
+            return !(double.IsNaN(point.X) || double.IsNaN(point.Y) ||
+                     double.IsInfinity(point.X) || double.IsInfinity(point.Y));
+        }
+
+        private static bool AreSamePoint(Point2d a, Point2d b, double tolerance = 1e-9)
+        {
+            return a.GetDistanceTo(b) <= tolerance;
+        }
+
+        private sealed class Point2dEqualityComparer : IEqualityComparer<Point2d>
+        {
+            public bool Equals(Point2d x, Point2d y)
+            {
+                return AreSamePoint(x, y);
+            }
+
+            public int GetHashCode(Point2d obj)
+            {
+                unchecked
+                {
+                    int x = Math.Round(obj.X, 9).GetHashCode();
+                    int y = Math.Round(obj.Y, 9).GetHashCode();
+                    return (x * 397) ^ y;
+                }
+            }
         }
     }
 }

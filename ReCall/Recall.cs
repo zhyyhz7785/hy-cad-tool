@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Resources;
+using System.Text;
 
 [assembly: CommandClass(typeof(HyCADTool.ReCall.ReCallClass))]
 
@@ -35,6 +36,21 @@ namespace HyCADTool.ReCall
         private static string _currentDependenciesPath;
         private static string _currentNugetPackagesPath;
         private static ResolveEventHandler _assemblyResolveHandler;
+
+        private static void AgentDebugLog(string runId, string hypothesisId, string location, string message, string dataJson)
+        {
+            try
+            {
+                var line = "{\"sessionId\":\"24de30\",\"runId\":\"" + runId + "\",\"hypothesisId\":\"" + hypothesisId +
+                           "\",\"location\":\"" + location + "\",\"message\":\"" + message + "\",\"data\":" + dataJson +
+                           ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}";
+                File.AppendAllText(@"E:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-24de30.log",
+                    line + Environment.NewLine, Encoding.UTF8);
+            }
+            catch
+            {
+            }
+        }
 
         /// <summary>C2 - 重新加载插件（仅在此命令执行时加载，不在构造函数中调用，避免加载时执行两次）</summary>
         [CommandMethod("C2")]
@@ -133,14 +149,27 @@ namespace HyCADTool.ReCall
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
             if (ed == null) return;
 
+            #region agent log
+            AgentDebugLog("routing", "H8", "ReCall.RunTest", "c1 command entered",
+                "{\"hasC1Action\":" + (_c1Action != null ? "true" : "false") + "}");
+            #endregion
+
             if (_c1Action == null)
             {
+                #region agent log
+                AgentDebugLog("routing", "H9", "ReCall.RunTest", "c1 action missing",
+                    "{\"hasC1Action\":false}");
+                #endregion
                 ed.WriteMessage("\n✗ 请先执行 C2 加载插件");
                 return;
             }
 
             try
             {
+                #region agent log
+                AgentDebugLog("routing", "H8", "ReCall.RunTest", "invoking c1 action",
+                    "{\"hasC1Action\":true}");
+                #endregion
                 _c1Action.Invoke();
             }
             catch (System.Reflection.TargetInvocationException tie)

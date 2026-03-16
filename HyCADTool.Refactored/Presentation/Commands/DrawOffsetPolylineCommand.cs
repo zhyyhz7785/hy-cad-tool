@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
@@ -39,6 +40,19 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double offsetDistance = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
             double hookLength = (vm?.HookLength ?? 1.0) * scale;             // 绿色参数 × Scale
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
+
+            #region agent log
+            AgentDebugLogger.Log("initial", "H1", "DrawOffsetPolylineCommand.Execute", "gg width parameters",
+                new
+                {
+                    hasViewModel = vm != null,
+                    scale,
+                    polylineWidth = vm?.PolylineWidth,
+                    offsetDistance,
+                    hookLength,
+                    reinWidth
+                });
+            #endregion
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();

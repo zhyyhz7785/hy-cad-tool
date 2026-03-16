@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
@@ -42,6 +43,20 @@ namespace HyCADTool.Refactored.Presentation.Commands
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;                      // 红色参数，直接 mm
             double hookLength15d = 15.0 * rebarDiameter;                           // 15d = 210mm
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
+
+            #region agent log
+            AgentDebugLogger.Log("initial", "H1", "ReinExtendCommand.Execute", "ge width parameters",
+                new
+                {
+                    hasViewModel = vm != null,
+                    scale,
+                    polylineWidth = vm?.PolylineWidth,
+                    protectionThickness,
+                    rebarDiameter,
+                    hookLength15d,
+                    reinWidth
+                });
+            #endregion
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();

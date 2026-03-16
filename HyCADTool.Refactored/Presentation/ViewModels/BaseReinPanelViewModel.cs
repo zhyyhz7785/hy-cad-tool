@@ -241,7 +241,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             try
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
-                doc.SendStringToExecute("_HyExec\n", true, false, false);
+                doc.SendStringToExecute("C1\n", true, false, false);
             }
             catch (System.Exception ex)
             {

@@ -315,7 +315,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     SettingsPanelViewModel.PendingCommand = null;
                     return;
                 }
-                doc.SendStringToExecute("_HyExec\n", true, false, false);
+                doc.SendStringToExecute("C1\n", true, false, false);
             }
             catch (System.Exception ex)
             {

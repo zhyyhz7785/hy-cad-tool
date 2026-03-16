@@ -9,6 +9,8 @@ namespace HyCADTool.Refactored.Domain.Services
     /// </summary>
     public class CurveSimplificationService
     {
+        private const double FifteenDegreesInRadians = Math.PI / 12.0;
+
         /// <summary>
         /// 简化Arc为连续线段
         /// </summary>
@@ -19,8 +21,8 @@ namespace HyCADTool.Refactored.Domain.Services
         {
             var segments = new List<Line2D>();
             
-            // 自动计算分段数：每15度一段，最少4段
-            int count = segmentCount ?? Math.Max(4, (int)Math.Ceiling(Math.Abs(arc.SweepAngle) / 15.0));
+            // Arc2D 使用弧度制，这里统一按 15° 对应的弧度计算。
+            int count = segmentCount ?? Math.Max(4, (int)Math.Ceiling(Math.Abs(arc.SweepAngle) / FifteenDegreesInRadians));
             
             var startAngle = arc.StartAngle;
             var endAngle = arc.EndAngle;
@@ -39,8 +41,8 @@ namespace HyCADTool.Refactored.Domain.Services
                 {
                     var angle1 = startAngle + angleStep * i;
                     p1 = new Point2D(
-                        arc.Center.X + arc.Radius * Math.Cos(angle1 * Math.PI / 180.0),
-                        arc.Center.Y + arc.Radius * Math.Sin(angle1 * Math.PI / 180.0));
+                        arc.Center.X + arc.Radius * Math.Cos(angle1),
+                        arc.Center.Y + arc.Radius * Math.Sin(angle1));
                 }
                 
                 if (i == count - 1)
@@ -51,8 +53,8 @@ namespace HyCADTool.Refactored.Domain.Services
                 {
                     var angle2 = startAngle + angleStep * (i + 1);
                     p2 = new Point2D(
-                        arc.Center.X + arc.Radius * Math.Cos(angle2 * Math.PI / 180.0),
-                        arc.Center.Y + arc.Radius * Math.Sin(angle2 * Math.PI / 180.0));
+                        arc.Center.X + arc.Radius * Math.Cos(angle2),
+                        arc.Center.Y + arc.Radius * Math.Sin(angle2));
                 }
                 
                 segments.Add(new Line2D(p1, p2));

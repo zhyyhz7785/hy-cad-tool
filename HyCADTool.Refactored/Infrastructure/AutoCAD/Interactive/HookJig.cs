@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using System;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
 
@@ -124,6 +125,20 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
             _polyline.AddVertexAt(_numVertices, new Point2d(hookPoint.X, hookPoint.Y), 0, 0, 0);
             _polyline.SetStartWidthAt(_numVertices - 1, _hookSegmentWidth);
             _polyline.SetEndWidthAt(_numVertices - 1, _hookSegmentWidth);
+
+            #region agent log
+            AgentDebugLogger.Log("initial", "H3", "HookJig.Update", "hook segment width applied",
+                new
+                {
+                    numVerticesBeforeHook = _numVertices,
+                    hookLength = _hookLength,
+                    isVertical = _isVertical,
+                    hookSegmentWidth = _hookSegmentWidth,
+                    constantWidth = _polyline.ConstantWidth,
+                    appliedStartWidth = _polyline.GetStartWidthAt(_numVertices - 1),
+                    appliedEndWidth = _polyline.GetEndWidthAt(_numVertices - 1)
+                });
+            #endregion
 
             return true; // 实体已更新，需要重绘
         }

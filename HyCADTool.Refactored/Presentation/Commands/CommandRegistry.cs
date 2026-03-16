@@ -1,5 +1,7 @@
 using Autodesk.AutoCAD.Runtime;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Presentation.ViewModels;
+using System.Reflection;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.CommandRegistry))]
@@ -31,6 +33,11 @@ namespace HyCADTool.Refactored.Presentation.Commands
         {
             try
             {
+                #region agent log
+                AgentDebugLogger.Log("routing", "H6", "CommandRegistry.Run", "registry run entered",
+                    new { actionType = action?.Method?.DeclaringType?.FullName, actionName = action?.Method?.Name });
+                #endregion
+
                 // 强制提交面板中正在编辑的 TextBox 值（LostFocus 模式下命令行输入不会触发）
                 SettingsPanelViewModel.CommitFocusedTextBoxValue();
 
@@ -45,6 +52,41 @@ namespace HyCADTool.Refactored.Presentation.Commands
             {
                 AcApp.DocumentManager.MdiActiveDocument?.Editor
                     ?.WriteMessage($"\n错误：{ex.Message}");
+            }
+        }
+
+        private static bool IsHotReloadedAssembly()
+        {
+            return string.IsNullOrWhiteSpace(Assembly.GetExecutingAssembly().Location);
+        }
+
+        private static void RouteThroughC1(string commandKey, System.Action fallbackAction)
+        {
+            if (!IsHotReloadedAssembly())
+            {
+                Run(fallbackAction);
+                return;
+            }
+
+            try
+            {
+                #region agent log
+                AgentDebugLogger.Log("post-fix", "H13", "CommandRegistry.RouteThroughC1", "routing command alias through c1",
+                    new { commandKey });
+                #endregion
+
+                SettingsPanelViewModel.CommitFocusedTextBoxValue();
+                var vm = SettingsPanelViewModel.Current;
+                vm?.LoadSettings();
+                vm?.EnsureStylesApplied();
+
+                CommandRelayStore.Save(commandKey);
+                AcApp.DocumentManager.MdiActiveDocument?.SendStringToExecute("C1\n", true, false, false);
+            }
+            catch (System.Exception ex)
+            {
+                AcApp.DocumentManager.MdiActiveDocument?.Editor
+                    ?.WriteMessage($"\n命令转发失败：{ex.Message}");
             }
         }
 
@@ -66,7 +108,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         /// <summary>绘制偏移多段线 (gg)</summary>
         [CommandMethod("gg")]
-        public void Cmd_gg() => Run(() => new DrawOffsetPolylineCommand().Execute());
+        public void Cmd_gg()
+        {
+            #region agent log
+            AgentDebugLogger.Log("routing", "H5", "CommandRegistry.Cmd_gg", "gg alias entered", new { });
+            #endregion
+            RouteThroughC1("gg", () => new DrawOffsetPolylineCommand().Execute());
+        }
 
         /// <summary>外侧钢筋 (ggj)</summary>
         [CommandMethod("ggj")]
@@ -78,15 +126,33 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         /// <summary>添加水平锚固 (g1)</summary>
         [CommandMethod("g1")]
-        public void Cmd_g1() => Run(() => new ReinAddAnchorCommand(isVertical: false).Execute());
+        public void Cmd_g1()
+        {
+            #region agent log
+            AgentDebugLogger.Log("routing", "H5", "CommandRegistry.Cmd_g1", "g1 alias entered", new { });
+            #endregion
+            RouteThroughC1("g1", () => new ReinAddAnchorCommand(isVertical: false).Execute());
+        }
 
         /// <summary>添加竖直锚固 (g2)</summary>
         [CommandMethod("g2")]
-        public void Cmd_g2() => Run(() => new ReinAddAnchorCommand(isVertical: true).Execute());
+        public void Cmd_g2()
+        {
+            #region agent log
+            AgentDebugLogger.Log("routing", "H5", "CommandRegistry.Cmd_g2", "g2 alias entered", new { });
+            #endregion
+            RouteThroughC1("g2", () => new ReinAddAnchorCommand(isVertical: true).Execute());
+        }
 
         /// <summary>钢筋延伸 (ge)</summary>
         [CommandMethod("ge")]
-        public void Cmd_ge() => Run(() => new ReinExtendCommand().Execute());
+        public void Cmd_ge()
+        {
+            #region agent log
+            AgentDebugLogger.Log("routing", "H5", "CommandRegistry.Cmd_ge", "ge alias entered", new { });
+            #endregion
+            RouteThroughC1("ge", () => new ReinExtendCommand().Execute());
+        }
 
         /// <summary>钢筋快速延伸 (ge1)</summary>
         [CommandMethod("ge1")]
@@ -265,6 +331,18 @@ namespace HyCADTool.Refactored.Presentation.Commands
         public void Cmd_hyDcP() => Run(() => new CreatePadFromPolylineCommand().Execute());
 
         // ================================================================
+        //  设计说明 (Design Spec / Markdown Editor)
+        // ================================================================
+
+        /// <summary>Markdown 设计说明排版 (hymd)</summary>
+        [CommandMethod("hymd")]
+        public void Cmd_hymd() => Run(() => new DesignSpecCommand().Execute());
+
+        /// <summary>二次编辑 Markdown 设计说明 (hymdE)</summary>
+        [CommandMethod("hymdE")]
+        public void Cmd_hymdE() => Run(() => new DesignSpecEditCommand().Execute());
+
+        // ================================================================
         //  导出 (Export)
         // ================================================================
 
@@ -328,6 +406,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("_HyExec")]
         public void Cmd_HyExec()
         {
+            #region agent log
+            AgentDebugLogger.Log("routing", "H6", "CommandRegistry.Cmd_HyExec", "hyexec entered", new { });
+            #endregion
             var command = SettingsPanelViewModel.ConsumePendingCommand();
             if (command != null)
             {

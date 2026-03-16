@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.Views.Helpers;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -401,6 +402,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             CommitFocusedTextBoxValue();
             SaveSettings();
             if (_stylesDirty) EnsureStylesApplied();
+
+            #region agent log
+            AgentDebugLogger.Log("routing", "H6", "SettingsPanelViewModel.SendCommand", "panel send command",
+                new
+                {
+                    commandType = commandAction?.Method?.DeclaringType?.FullName,
+                    commandName = commandAction?.Method?.Name
+                });
+            #endregion
+
             PendingCommand = () =>
             {
                 commandAction();
@@ -408,7 +419,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             try
             {
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-                doc.SendStringToExecute("_HyExec\n", true, false, false);
+                #region agent log
+                AgentDebugLogger.Log("routing", "H11", "SettingsPanelViewModel.SendCommand", "before queue c1",
+                    new
+                    {
+                        hasPendingCommand = PendingCommand != null,
+                        hasDocument = doc != null,
+                        commandInProgress = doc?.CommandInProgress,
+                        documentName = doc?.Name
+                    });
+                #endregion
+                doc.SendStringToExecute("C1\n", true, false, false);
             }
             catch (System.Exception ex)
             {
