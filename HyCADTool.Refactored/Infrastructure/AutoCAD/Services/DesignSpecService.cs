@@ -1289,6 +1289,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             table.Position = new Point3d(columnLeftX, tableTopY, z);
             table.SetSize(rows, cols);
 
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    try
+                    {
+                        var range = table.Cells[r, c].GetMergeRange();
+                        if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                            table.UnmergeCells(range);
+                    }
+                    catch { }
+                }
+
             // 应用与 MText 相同的文字样式（含 TextXScale）
             if (!textStyleId.IsNull)
             {

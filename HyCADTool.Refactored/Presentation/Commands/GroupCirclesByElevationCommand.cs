@@ -50,6 +50,17 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 if (pkr.Status != PromptStatus.OK) return;
                 bool includeElevation = pkr.StringResult == "是";
 
+                // 1.5 输入标高偏移值（选择文字值 + 偏移值 = 输出标注标高）
+                var pdo = new PromptDoubleOptions("\n输入标高偏移值（文字值 + 偏移值 = 标注标高）: ")
+                {
+                    DefaultValue = 0.050,
+                    AllowNegative = true,
+                    AllowZero = true
+                };
+                var pdr = _ed.GetDouble(pdo);
+                if (pdr.Status != PromptStatus.OK) return;
+                double elevationOffset = pdr.Value;
+
                 // 2. 选择圆/闭合多段线和文字
                 var filter = new[]
                 {
@@ -81,23 +92,56 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         {
                             piles.Add((c, c.Center));
                         }
-                        else if (ent is Polyline pl && pl.Closed && pl.NumberOfVertices >= 3)
+                        else if (ent is Polyline pl)
                         {
-                            piles.Add((pl, GetPolylineCentroid(pl)));
+                            if (!pl.Closed)
+                            {
+                                _ed.WriteMessage($"\n跳过未闭合的多段线 (Handle: {pl.Handle})");
+                            }
+                            else if (pl.NumberOfVertices >= 2)
+                            {
+                                piles.Add((pl, GetPolylineCentroid(pl)));
+                            }
                         }
                         else if (ent is DBText t) texts.Add((t.TextString, t.Position));
                         else if (ent is MText mt) texts.Add((mt.Text, mt.Location));
                     }
 
-                    // 4. 匹配桩对象和文字，解析标高
+                    // 3.5 去重：形心距离 < 半径/2 视为重合，保留先遇到的，删除后续重复
+                    int removedCount = 0;
+                    var uniquePiles = new List<(Entity Entity, Point3d Anchor)>();
+                    foreach (var pile in piles)
+                    {
+                        double radius = GetPileRadius(pile.Entity);
+                        double tolerance = radius / 2.0;
+                        if (uniquePiles.Any(u => u.Anchor.DistanceTo(pile.Anchor) < tolerance))
+                        {
+                            pile.Entity.UpgradeOpen();
+                            pile.Entity.Erase();
+                            removedCount++;
+                        }
+                        else
+                        {
+                            uniquePiles.Add(pile);
+                        }
+                    }
+                    if (removedCount > 0)
+                        _ed.WriteMessage($"\n已删除 {removedCount} 个重合对象");
+                    piles = uniquePiles;
+
+                    // 4. 匹配桩对象和文字，解析标高（文字必须在半径范围内才算匹配）
                     var items = new List<((Entity Entity, Point3d Anchor) pile, string text, double elevation, bool hasText)>();
                     foreach (var pile in piles)
                     {
-                        var nearest = texts.OrderBy(t => t.Position.DistanceTo(pile.Anchor)).FirstOrDefault();
+                        double radius = GetPileRadius(pile.Entity);
+                        var nearest = texts
+                            .Where(t => t.Position.DistanceTo(pile.Anchor) <= radius * 3.0)
+                            .OrderBy(t => t.Position.DistanceTo(pile.Anchor))
+                            .FirstOrDefault();
                         if (!string.IsNullOrEmpty(nearest.Content) &&
                             double.TryParse(nearest.Content, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
                         {
-                            items.Add((pile, nearest.Content, Math.Round(val + 0.050, 3), true));
+                            items.Add((pile, nearest.Content, Math.Round(val + elevationOffset, 3), true));
                         }
                         else
                         {
@@ -153,39 +197,41 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         }
                     }
 
-                    // 9. 为无文字对象创建默认图层
+                    // 9. 无文字对象：绘制红色警示圆（直径 = 原来 2 倍）+ 提示
                     if (noTextCircles.Any())
                     {
-                        CreateLayerIfNotExists(tr, lt, NoTextLayerName, 7);
+                        const string warningLayerName = "00_hy_Z_Warning";
+                        CreateLayerIfNotExists(tr, lt, warningLayerName, 1); // 1 = 红色
+                        foreach (var item in noTextCircles)
+                        {
+                            double r = GetPileRadius(item.pile.Entity);
+                            var warningCircle = new Circle(item.pile.Anchor, Vector3d.ZAxis, r * 2);
+                            warningCircle.Layer = warningLayerName;
+                            warningCircle.ColorIndex = 1;
+                            ms.AppendEntity(warningCircle);
+                            tr.AddNewlyCreatedDBObject(warningCircle, true);
+                        }
+                        _ed.WriteMessage($"\n⚠ 警告：{noTextCircles.Count} 个对象内部无标高数字，已绘制红色警示圆，请检查！");
                     }
 
                     // 10. 创建引线图层
                     CreateLayerIfNotExists(tr, lt, LeaderLayerName, 7);
 
-                    // 11. 编号顺序：所有对象按 XY 排序 → A1, B1, ... 或 1, 2, ...
-                    var orderedItems = items.OrderBy(i => i.pile.Anchor.X).ThenBy(i => i.pile.Anchor.Y).ToList();
+                    // 11. 仅对有标高文字的对象按 XY 排序 → 编号 A1, B1, ...
+                    var orderedItems = items.Where(i => i.hasText)
+                        .OrderBy(i => i.pile.Anchor.X).ThenBy(i => i.pile.Anchor.Y).ToList();
                     totalCount = orderedItems.Count;
                     var countPerCode = new Dictionary<string, int>();
-                    int globalCount = 0;
 
                     foreach (var item in orderedItems)
                     {
-                        string label;
-                        if (item.hasText)
-                        {
-                            string code = elevToCode[item.elevation];
-                            countPerCode.TryGetValue(code, out int cnt);
-                            cnt++;
-                            countPerCode[code] = cnt;
-                            label = $"{code}{cnt}";
-                        }
-                        else
-                        {
-                            globalCount++;
-                            label = globalCount.ToString();
-                        }
+                        string code = elevToCode[item.elevation];
+                        countPerCode.TryGetValue(code, out int cnt);
+                        cnt++;
+                        countPerCode[code] = cnt;
+                        string label = $"{code}{cnt}";
 
-                        string content = item.hasText && includeElevation ? $"{label}\\P标高 = {item.elevation:F3}" : label;
+                        string content = includeElevation ? $"{label}\\P标高 = {item.elevation:F3}" : label;
                         var pt = item.pile.Anchor;
                         var pt2 = new Point3d(pt.X + 5 * scale, pt.Y + 5 * scale, pt.Z);
 
@@ -195,15 +241,19 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         ms.AppendEntity(mleader);
                         tr.AddNewlyCreatedDBObject(mleader, true);
 
-                        // 设置对象图层
                         item.pile.Entity.UpgradeOpen();
-                        item.pile.Entity.Layer = item.hasText ? $"00_hy_Z_{elevToCode[item.elevation]}" : NoTextLayerName;
+                        item.pile.Entity.Layer = $"00_hy_Z_{code}";
                     }
 
                     // 12. 创建统计表格
+                    int warningCount = noTextCircles.Count;
+                    int dataRows = codeToElevation.Count;
+                    int extraRows = warningCount > 0 ? 2 : 1; // 总计行 + 可选的警告行
+                    int totalRows = 1 + dataRows + extraRows;  // 表头 + 数据 + 额外
+
                     Table table = new Table();
                     table.TableStyle = _db.Tablestyle;
-                    table.SetSize(codeToElevation.Count + 2, 3);
+                    table.SetSize(totalRows, 3);
                     table.SetRowHeight(2.5 * scale);
                     table.SetColumnWidth(10 * scale);
 
@@ -222,13 +272,31 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         row++;
                     }
 
+                    if (warningCount > 0)
+                    {
+                        table.Cells[row, 0].TextString = "⚠";
+                        table.Cells[row, 1].TextString = "无标高";
+                        table.Cells[row, 2].TextString = warningCount.ToString();
+                        for (int j = 0; j < 3; j++) table.Cells[row, j].TextHeight = scale;
+                        row++;
+                    }
+
                     // 总计行
+                    int grandTotal = orderedItems.Count + warningCount;
                     table.Cells[row, 0].TextString = "总计";
                     table.Cells[row, 1].TextString = "";
-                    table.Cells[row, 2].TextString = orderedItems.Count.ToString();
+                    table.Cells[row, 2].TextString = grandTotal.ToString();
                     for (int j = 0; j < 3; j++) table.Cells[row, j].TextHeight = scale;
 
-                    table.Position = new Point3d(0, 0, 0);
+                    table.GenerateLayout();
+
+                    // 让用户选择表格插入点
+                    var ptResult = _ed.GetPoint("\n选择表格插入点: ");
+                    if (ptResult.Status == PromptStatus.OK)
+                        table.Position = ptResult.Value;
+                    else
+                        table.Position = new Point3d(0, 0, 0);
+
                     ms.AppendEntity(table);
                     tr.AddNewlyCreatedDBObject(table, true);
 
@@ -293,8 +361,15 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         {
                             targetPoint = c.Center;
                         }
-                        else if (ent is Polyline pl && pl.Closed && pl.NumberOfVertices >= 3)
+                        else if (ent is Polyline pl)
                         {
+                            if (!pl.Closed)
+                            {
+                                _ed.WriteMessage($"\n跳过未闭合的多段线 (Handle: {pl.Handle})");
+                                continue;
+                            }
+                            if (pl.NumberOfVertices < 2)
+                                continue;
                             targetPoint = GetPolylineCentroid(pl);
                         }
                         else
@@ -339,6 +414,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 lt.Add(ltr);
                 tr.AddNewlyCreatedDBObject(ltr, true);
             }
+        }
+
+        private static double GetPileRadius(Entity entity)
+        {
+            if (entity is Circle c) return c.Radius;
+            var ext = entity.GeometricExtents;
+            return Math.Max(ext.MaxPoint.X - ext.MinPoint.X, ext.MaxPoint.Y - ext.MinPoint.Y) / 2.0;
         }
 
         private static Point3d GetPolylineCentroid(Polyline pline)
