@@ -135,20 +135,113 @@ namespace HyCADTool.Refactored.Domain.Services
             if (!Validate(input, result))
                 return result;
 
-            switch (input.Type)
+            // 裁剪土层：用户输入从孔口开始，计算从基底开始
+            // 孔口到基底的距离 = 相对高程 + 基础埋深
+            double skipDepth = input.RelativeElevation + input.FoundationDepth;
+            var effectiveLayers = GetSoilLayersBelowDepth(input.SoilLayers, skipDepth);
+            if (!effectiveLayers.Any())
             {
-                case FoundationType.Natural:
-                    CalculateNatural(input, result);
-                    break;
-                case FoundationType.Composite:
-                    CalculateComposite(input, result);
-                    break;
-                case FoundationType.Pile:
-                    CalculatePile(input, result);
-                    break;
+                result.Message = $"基底以下无有效土层（孔口到基底距离 {skipDepth:F2}m 超过总土层厚度）";
+                return result;
+            }
+
+            var effectiveInput = CloneInputWithLayers(input, effectiveLayers);
+
+            if (input.AdditionalPressure > 0)
+            {
+                switch (input.Type)
+                {
+                    case FoundationType.Natural:
+                        CalculateNatural(effectiveInput, result);
+                        break;
+                    case FoundationType.Composite:
+                        CalculateComposite(effectiveInput, result);
+                        break;
+                    case FoundationType.Pile:
+                        CalculatePile(effectiveInput, result);
+                        break;
+                }
+            }
+            else
+            {
+                result.Success = true;
+            }
+
+            if (result.Success && input.EnableRebound)
+                CalculateRebound(effectiveInput, result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// 从孔口表面向下跳过 skipDepth 米，返回基底以下的有效土层
+        /// </summary>
+        private static List<SoilLayer> GetSoilLayersBelowDepth(List<SoilLayer> layers, double skipDepth)
+        {
+            if (skipDepth <= 0) return layers.ToList();
+
+            var result = new List<SoilLayer>();
+            double depthAccum = 0;
+
+            foreach (var layer in layers)
+            {
+                double layerTop = depthAccum;
+                double layerBottom = depthAccum + layer.Thickness;
+                depthAccum = layerBottom;
+
+                if (layerBottom <= skipDepth) continue;
+
+                double remainThickness = layerBottom - Math.Max(layerTop, skipDepth);
+                if (remainThickness <= 0) continue;
+
+                result.Add(new SoilLayer
+                {
+                    Id = layer.Id,
+                    Name = layer.Name,
+                    Thickness = remainThickness,
+                    Es = layer.Es,
+                    Eci = layer.Eci,
+                    Description = layer.Description
+                });
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 复制 input 但替换土层列表（避免修改原始输入）
+        /// </summary>
+        private static SettlementInput CloneInputWithLayers(SettlementInput src, List<SoilLayer> layers)
+        {
+            return new SettlementInput
+            {
+                BoreholeElevation = src.BoreholeElevation,
+                StructureZeroElevation = src.StructureZeroElevation,
+                FoundationDepth = src.FoundationDepth,
+                Type = src.Type,
+                FoundationLength = src.FoundationLength,
+                FoundationWidth = src.FoundationWidth,
+                AdditionalPressure = src.AdditionalPressure,
+                BearingCapacity = src.BearingCapacity,
+                CompositeBearingCapacity = src.CompositeBearingCapacity,
+                TreatedDepth = src.TreatedDepth,
+                PileLength = src.PileLength,
+                PileDiameter = src.PileDiameter,
+                PileSpacing = src.PileSpacing,
+                CapLength = src.CapLength,
+                CapWidth = src.CapWidth,
+                TotalPileCount = src.TotalPileCount,
+                IsBoxFoundation = src.IsBoxFoundation,
+                BoxConcreteThickness = src.BoxConcreteThickness,
+                GammaM = src.GammaM,
+                EnableRebound = src.EnableRebound,
+                EciEsiRatio = src.EciEsiRatio,
+                PsiC = src.PsiC,
+                Kappa = src.Kappa,
+                ReboundCompletionRatio = src.ReboundCompletionRatio,
+                ReboundDepthRatio = src.ReboundDepthRatio,
+                SoilLayers = layers
+            };
         }
 
         #endregion
@@ -175,7 +268,8 @@ namespace HyCADTool.Refactored.Domain.Services
             result.EquivalentEs = CalculateEquivalentEs(withinDepth, m, b);
             result.PressureRatio = input.BearingCapacity > 0 ? p0 / input.BearingCapacity : 0;
             result.PsiS = InterpolatePsiS_Natural(result.EquivalentEs, result.PressureRatio > 0.75);
-            result.FinalSettlement = result.PsiS * result.TheoreticalSettlement;
+            result.CompressionSettlement = result.PsiS * result.TheoreticalSettlement;
+            result.FinalSettlement = result.CompressionSettlement;
             result.Success = true;
         }
 
@@ -204,7 +298,8 @@ namespace HyCADTool.Refactored.Domain.Services
             result.EquivalentEs = CalculateEquivalentEs(withinDepth, m, b);
             result.PressureRatio = input.BearingCapacity > 0 ? p0 / input.BearingCapacity : 0;
             result.PsiS = InterpolatePsiS_Composite(result.EquivalentEs);
-            result.FinalSettlement = result.PsiS * result.TheoreticalSettlement;
+            result.CompressionSettlement = result.PsiS * result.TheoreticalSettlement;
+            result.FinalSettlement = result.CompressionSettlement;
             result.Success = true;
         }
 
@@ -236,7 +331,8 @@ namespace HyCADTool.Refactored.Domain.Services
             result.EquivalentEs = CalculateEquivalentEs(withinDepth, m, b);
             result.PsiS = InterpolatePsiS_Pile(result.EquivalentEs);
             result.PsiE = CalculatePsiE(input);
-            result.FinalSettlement = result.PsiS * result.PsiE * result.TheoreticalSettlement;
+            result.CompressionSettlement = result.PsiS * result.PsiE * result.TheoreticalSettlement;
+            result.FinalSettlement = result.CompressionSettlement;
             result.Success = true;
         }
 
@@ -522,6 +618,131 @@ namespace HyCADTool.Refactored.Domain.Services
 
         #endregion
 
+        #region 回弹再压缩计算（GB 50007 §5.3.10~5.3.11）
+
+        /// <summary>
+        /// 回弹再压缩计算 — 三种 p₀ 情况分支
+        ///
+        /// §5.3.10 回弹量：sc = ψc × Σ (pc/Eci)(zi·ᾱi - z(i-1)·ᾱ(i-1))
+        /// §5.3.11 再压缩：根据 R'=p/pc 确定再压缩量
+        ///
+        /// p₀ ≤ 0（超补偿/完全补偿）：仅回弹再压缩
+        ///   再压缩 = κ·η·sc·R'（简化 5.3.11，R'≤1）
+        ///   净变形 = 再压缩 - η·sc
+        ///
+        /// p₀ > 0（非补偿）：压缩 + 滞回附加
+        ///   滞回附加 = η·sc·(κ-1)
+        ///   最终 = 压缩沉降 + 滞回附加
+        /// </summary>
+        private static void CalculateRebound(SettlementInput input, SettlementResult result)
+        {
+            double b = input.FoundationWidth;
+            double l = input.FoundationLength;
+            double m = l / b;
+            double gammaM = input.GammaM > 0 ? input.GammaM : 20.0;
+            double pc = gammaM * input.FoundationDepth;
+            double p0 = input.AdditionalPressure;
+            double p = p0 + pc;
+            double kappa = input.Kappa;
+            double eta = input.ReboundCompletionRatio;
+
+            if (pc <= 0) return;
+
+            // ── Step 1: 计算 sc（回弹量，§5.3.10）──────────────────
+            double sc = CalculateReboundSc(input.SoilLayers, m, b, pc, input);
+            if (sc <= 0) return;
+
+            // ── Step 2: 记录基本参数 ──────────────────────────────
+            result.HasRebound = true;
+            result.ReboundSettlement = Math.Round(sc, 3);
+            result.OverburdenPressure = Math.Round(pc, 1);
+            result.TotalReloadPressure = Math.Round(p, 1);
+            result.ReloadRatio = pc > 0 ? Math.Round(p / pc, 3) : 0;
+            result.ActualRebound = Math.Round(eta * sc, 3);
+
+            double Rprime = pc > 0 ? p / pc : 0;
+
+            // ── Step 3: 三种情况分支 ──────────────────────────────
+            if (p0 <= 0)
+            {
+                // p₀ ≤ 0：超补偿或完全补偿，仅回弹再压缩
+                // 简化 5.3.11：s'c = κ·η·sc·R'（线性，R'∈[0,1]）
+                double R = Math.Max(Math.Min(Rprime, 1.0), 0);
+                double recompression = kappa * eta * sc * R;
+                double actualRebound = eta * sc;
+                double net = recompression - actualRebound;
+
+                result.RecompressionSettlement = Math.Round(recompression, 3);
+                result.NetReboundSettlement = Math.Round(net, 3);
+                result.FinalSettlement = Math.Round(net, 2);
+            }
+            else
+            {
+                // p₀ > 0：非补偿基础，三部分叠加
+                // ① 滞回附加 = η·sc·(κ-1)，方向向下
+                double hysteresisExtra = eta * sc * (kappa - 1);
+                // ② 压缩沉降已在 result.CompressionSettlement 中
+                double compression = result.CompressionSettlement;
+                // ③ 总再压缩量（用于显示）= κ·η·sc
+                double recompression = kappa * eta * sc;
+
+                result.RecompressionSettlement = Math.Round(recompression, 3);
+                result.NetReboundSettlement = Math.Round(hysteresisExtra, 3);
+                result.FinalSettlement = Math.Round(compression + hysteresisExtra, 2);
+            }
+        }
+
+        /// <summary>
+        /// 计算回弹量 sc（§5.3.10），含深度判定
+        /// </summary>
+        private static double CalculateReboundSc(
+            List<SoilLayer> layers, double m, double b, double pc, SettlementInput input)
+        {
+            double depthRatio = input.ReboundDepthRatio > 0 ? input.ReboundDepthRatio : 0.025;
+
+            var layerDeltas = new List<double>();
+            double zPrev = 0;
+            double alphaBarPrev = CalculateAlphaBar(m, 0);
+            double scTotal = 0;
+
+            foreach (var layer in layers)
+            {
+                double zi = zPrev + layer.Thickness;
+                double zbRatio = zi / b;
+                double alphaBarI = CalculateAlphaBar(m, zbRatio);
+                double zAlphaDiff = zi * alphaBarI - zPrev * alphaBarPrev;
+
+                double eci = layer.Eci > 0 ? layer.Eci : layer.Es * input.EciEsiRatio;
+                if (eci <= 0) eci = layer.Es * 5.0;
+
+                double deltaSc = (pc / (eci * 1000.0)) * zAlphaDiff * 1000.0;
+                layerDeltas.Add(deltaSc);
+                scTotal += deltaSc;
+
+                zPrev = zi;
+                alphaBarPrev = alphaBarI;
+            }
+
+            if (scTotal <= 0) return 0;
+
+            double threshold = depthRatio * scTotal;
+            int effectiveCount = layerDeltas.Count;
+            for (int i = layerDeltas.Count - 1; i >= 0; i--)
+            {
+                if (layerDeltas[i] > threshold) break;
+                effectiveCount = i;
+            }
+            if (effectiveCount <= 0) effectiveCount = 1;
+
+            double sc = 0;
+            for (int i = 0; i < effectiveCount; i++)
+                sc += layerDeltas[i];
+
+            return sc * input.PsiC;
+        }
+
+        #endregion
+
         #region 输入验证
 
         private static bool Validate(SettlementInput input, SettlementResult result)
@@ -536,9 +757,9 @@ namespace HyCADTool.Refactored.Domain.Services
                 result.Message = "基础长度 l 必须大于 0";
                 return false;
             }
-            if (input.AdditionalPressure <= 0)
+            if (input.AdditionalPressure <= 0 && !input.EnableRebound)
             {
-                result.Message = "基底附加压力 p₀ 必须大于 0";
+                result.Message = "基底附加压力 p₀ 必须大于 0（或启用回弹再压缩计算）";
                 return false;
             }
             if (input.SoilLayers == null || !input.SoilLayers.Any())

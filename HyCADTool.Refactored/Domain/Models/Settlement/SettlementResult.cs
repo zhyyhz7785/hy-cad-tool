@@ -37,6 +37,33 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>附加压力与承载力之比 p₀ / f_ak</summary>
         public double PressureRatio { get; set; }
 
+        /// <summary>附加应力压缩沉降 (mm) = ψs × ψe × s'（不含回弹效应）</summary>
+        public double CompressionSettlement { get; set; }
+
+        /// <summary>覆土自重压力 pc = γm·d (kPa)</summary>
+        public double OverburdenPressure { get; set; }
+
+        /// <summary>再加荷总压力 p = p₀ + γm·d (kPa)</summary>
+        public double TotalReloadPressure { get; set; }
+
+        /// <summary>再加荷比 R' = p / pc</summary>
+        public double ReloadRatio { get; set; }
+
+        /// <summary>回弹量 sc (mm)，§5.3.10（正值，物理方向向上）</summary>
+        public double ReboundSettlement { get; set; }
+
+        /// <summary>再压缩量 (mm)，方向向下</summary>
+        public double RecompressionSettlement { get; set; }
+
+        /// <summary>实际回弹量 η·sc (mm)（施工期间实际发生的回弹）</summary>
+        public double ActualRebound { get; set; }
+
+        /// <summary>回弹再压缩净沉降 (mm)（正=向下，负=向上）</summary>
+        public double NetReboundSettlement { get; set; }
+
+        /// <summary>是否包含回弹再压缩计算</summary>
+        public bool HasRebound { get; set; }
+
         /// <summary>计算是否成功</summary>
         public bool Success { get; set; }
 

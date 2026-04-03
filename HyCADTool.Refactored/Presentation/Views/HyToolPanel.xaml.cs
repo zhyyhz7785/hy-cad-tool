@@ -66,17 +66,7 @@ namespace HyCADTool.Refactored.Presentation.Views
                 // PilePanel 初始化失败，静默处理
             }
 
-            // SettlementPanel: 使用 per-document ViewModel
-            try
-            {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                var docName = doc?.Name ?? "default";
-                EmbeddedSettlementPanel.DataContext = SettlementPanelViewModel.GetOrCreate(docName);
-            }
-            catch
-            {
-                // SettlementPanel 初始化失败，静默处理
-            }
+            // SettlementPanel 已改为独立窗口，不再嵌入 Tab
         }
 
         /// <summary>
@@ -87,14 +77,12 @@ namespace HyCADTool.Refactored.Presentation.Views
             if (Dispatcher.CheckAccess())
             {
                 EmbeddedPilePanel.DataContext = PilePanelViewModel.GetOrCreate(documentName);
-                EmbeddedSettlementPanel.DataContext = SettlementPanelViewModel.GetOrCreate(documentName);
             }
             else
             {
                 Dispatcher.Invoke(() =>
                 {
                     EmbeddedPilePanel.DataContext = PilePanelViewModel.GetOrCreate(documentName);
-                    EmbeddedSettlementPanel.DataContext = SettlementPanelViewModel.GetOrCreate(documentName);
                 });
             }
         }

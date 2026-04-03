@@ -17,6 +17,9 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>压缩模量 Es (MPa)</summary>
         public double Es { get; set; }
 
+        /// <summary>回弹模量 Eci (MPa)，0 表示按倍率自动估算</summary>
+        public double Eci { get; set; }
+
         /// <summary>状态描述</summary>
         public string Description { get; set; } = "";
     }

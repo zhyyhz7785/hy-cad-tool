@@ -83,5 +83,40 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         public List<SoilLayer> SoilLayers { get; set; } = new List<SoilLayer>();
 
         #endregion
+
+        #region 基础子类型
+
+        /// <summary>是否为箱型基础（影响 G_k 和 p₀ 自动计算）</summary>
+        public bool IsBoxFoundation { get; set; }
+
+        /// <summary>箱型基础混凝土折算厚度 (m)，用于计算基础自重</summary>
+        public double BoxConcreteThickness { get; set; }
+
+        /// <summary>覆土/基础复合平均重度 γ_m (kN/m³)，默认 20</summary>
+        public double GammaM { get; set; } = 20.0;
+
+        #endregion
+
+        #region 回弹再压缩参数
+
+        /// <summary>是否考虑回弹再压缩（深基础时启用）</summary>
+        public bool EnableRebound { get; set; }
+
+        /// <summary>Eci/Esi 默认倍率（当 SoilLayer.Eci=0 时使用）</summary>
+        public double EciEsiRatio { get; set; } = 5.0;
+
+        /// <summary>回弹经验系数 ψ_c（无经验时取 1.0）</summary>
+        public double PsiC { get; set; } = 1.0;
+
+        /// <summary>再压缩增大系数 κ（黏性土 1.19，砂土 1.10）</summary>
+        public double Kappa { get; set; } = 1.19;
+
+        /// <summary>施工期间回弹完成比例 η（0~1），默认 0.5</summary>
+        public double ReboundCompletionRatio { get; set; } = 0.5;
+
+        /// <summary>回弹计算深度终止比值（Δsc_i / Σsc ≤ 此值时终止），默认 0.025</summary>
+        public double ReboundDepthRatio { get; set; } = 0.025;
+
+        #endregion
     }
 }

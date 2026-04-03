@@ -23,6 +23,9 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>z_i/b 比值</summary>
         public double N { get; set; }
 
+        public double LbRatio => M;
+        public double ZbRatio => N;
+
         /// <summary>附加应力系数 α</summary>
         public double Alpha { get; set; }
 
