@@ -94,7 +94,10 @@ namespace HyCADTool.TextLayout
             }
 
             AppendParaSpacing(_config.GetHeadingSpaceBefore(heading.Level), _config.GetHeadingSpaceAfter(heading.Level));
-            _sb.Append("{\\H").Append(F(height)).Append(";\\W").Append(F(_config.TextXScale)).Append(";");
+            _sb.Append("{");
+            if (!string.IsNullOrEmpty(_config.BoldFontName))
+                _sb.Append("\\f").Append(_config.BoldFontName).Append("|b1|i0;");
+            _sb.Append("\\H").Append(F(height)).Append(";\\W").Append(F(_config.TextXScale)).Append(";");
             RenderInlines(heading.Inline);
             _sb.Append("}\\P");
         }
@@ -377,7 +380,7 @@ namespace HyCADTool.TextLayout
             bool isBold = emphasis.DelimiterCount >= 2;
             if (isBold)
             {
-                _sb.Append("{\\f").Append(_config.BoldFontName).Append(";");
+                _sb.Append("{\\f").Append(_config.BoldFontName).Append("|b1|i0;");
                 foreach (var child in emphasis) RenderInline(child);
                 _sb.Append("}");
             }

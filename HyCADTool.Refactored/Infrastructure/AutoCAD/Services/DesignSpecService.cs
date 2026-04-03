@@ -1351,6 +1351,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 table.GenerateLayout();
             }
 
+            for (int r = 0; r < rows; r++)
+            {
+                int lc = (rowLines != null && r < rowLines.Length) ? Math.Max(1, rowLines[r]) : 1;
+                table.Rows[r].Height = baseRowHeight * lc;
+            }
+
             SetLayer(db, tr, table, LAYER_TEXT);
             btr.AppendEntity(table);
             tr.AddNewlyCreatedDBObject(table, true);
@@ -1415,7 +1421,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             for (int c = 0; c < cols; c++)
             {
                 double width = (colWidths != null && c < colWidths.Length) ? colWidths[c] : config.GetColumnWidth(0) / cols;
-                charsPerLine[c] = Math.Max(1, (int)Math.Floor(width / Math.Max(0.01, config.ActualTextHeight * config.TextXScale)));
+                charsPerLine[c] = Math.Max(1, (int)Math.Floor(width / Math.Max(0.01, config.ActualTextHeight * 0.5)));
             }
 
             var rowLines = new int[rows];

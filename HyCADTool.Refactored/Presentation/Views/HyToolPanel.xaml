@@ -350,5 +350,10 @@
             <views:FilterPanel x:Name="EmbeddedFilterPanel" />
         </TabItem>
 
+        <!-- ==================== Tab 7: 沉降 ==================== -->
+        <TabItem Header="沉降" Style="{StaticResource AcadTabItemStyle}">
+            <views:SettlementPanel x:Name="EmbeddedSettlementPanel" />
+        </TabItem>
+
     </TabControl>
 </UserControl>

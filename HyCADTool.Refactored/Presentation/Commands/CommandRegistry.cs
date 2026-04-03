@@ -395,6 +395,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
         public void Cmd_HYpileGT() => Run(() => new GroupCirclesByElevationCommand().ExecutePlaceElevationTextAtCentroids());
 
         // ================================================================
+        //  沉降计算 (Settlement)
+        // ================================================================
+
+        /// <summary>沉降计算结果绘制 (hySC)</summary>
+        [CommandMethod("hySC")]
+        public void Cmd_hySC() => Run(() => new SettlementCalculationCommand().Execute());
+
+        // ================================================================
         //  面板内部执行命令（直接加载 DLL 时替代 ReCall 的 C1）
         // ================================================================
 
