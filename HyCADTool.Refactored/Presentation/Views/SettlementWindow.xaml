@@ -191,6 +191,8 @@
                                 Command="{Binding CalculateCommand}" />
                         <Button Content="计算书" Style="{StaticResource ActionBtn}"
                                 Click="BtnReport_Click" />
+                        <Button Content="导出Word" Style="{StaticResource ActionBtn}"
+                                Click="BtnExportWord_Click" />
                         <Button Content="绘制表格" Style="{StaticResource ActionBtn}"
                                 Click="BtnDrawTable_Click" />
                         <Button Content="关闭" Style="{StaticResource ActionBtn}"
@@ -291,10 +293,10 @@
                                                TextWrapping="Wrap">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="独基: p₀ = (F+G)/A - γm·d" />
+                                                <Setter Property="Text" Value="独基: G=γm·A·(d−Δh/2), p₀=(F+G)/A−γm·d" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsBoxFoundation}" Value="True">
-                                                        <Setter Property="Text" Value="箱型: p₀ = (F+γc·tc·A)/A - γm·d" />
+                                                        <Setter Property="Text" Value="箱型: G=γc·tc·A, p₀=(F+G)/A−γm·d" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -333,6 +335,70 @@
                                         <Run Text="ξ = fspk/fak = " />
                                         <Run Text="{Binding CompositeXi, Mode=OneWay, StringFormat=F3}" />
                                     </TextBlock>
+                                    <!-- 承载力验算参数 -->
+                                    <TextBlock Text="─ 承载力验算(§7.1.5) ─" Foreground="#5e81ac" FontSize="10"
+                                               HorizontalAlignment="Center" Margin="0,6,0,2" />
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="λ" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding CompLambda, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="β" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding CompBeta, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="fsk" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding CompFsk, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="fcu" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding CompFcu, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="αp" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding CompAlphaP, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="qp" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding CompQp, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="桩径m" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding CompPileDiameter, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="桩距m" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding CompPileSpacing, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <TextBlock Text="侧阻力(每行:名称,厚度,qsi)" Foreground="#888" FontSize="9" Margin="0,3,0,1" />
+                                    <TextBox Text="{Binding CompSideResistanceText, UpdateSourceTrigger=PropertyChanged}"
+                                             MinHeight="36" MaxHeight="80" AcceptsReturn="True"
+                                             VerticalScrollBarVisibility="Auto" FontSize="10"
+                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </StackPanel>
                             </Border>
 
@@ -382,6 +448,59 @@
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                         <TextBlock Grid.Column="2" Text="台宽m" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding CapWidth, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <!-- 承载力验算参数 -->
+                                    <TextBlock Text="─ 承载力验算(§5.2~5.4) ─" Foreground="#5e81ac" FontSize="10"
+                                               HorizontalAlignment="Center" Margin="0,6,0,2" />
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="qp(kPa)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding PileQp, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="Nk(kN)" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding PileNk, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <TextBlock Text="侧阻力(每行:名称,厚度,qsi,土类)" Foreground="#888" FontSize="9" Margin="0,3,0,1" />
+                                    <TextBox Text="{Binding PileSideResistanceText, UpdateSourceTrigger=PropertyChanged}"
+                                             MinHeight="36" MaxHeight="80" AcceptsReturn="True"
+                                             VerticalScrollBarVisibility="Auto" FontSize="10"
+                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    <!-- 桩身结构验算参数 -->
+                                    <TextBlock Text="─ 桩身结构(§5.8~5.9) ─" Foreground="#5e81ac" FontSize="10"
+                                               HorizontalAlignment="Center" Margin="0,6,0,2" />
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="N(kN)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding PileAxialForceDesign, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="ψc" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding PilePsiC, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    </Grid>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="fc(kPa)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBox Grid.Column="1" Text="{Binding PileFc, UpdateSourceTrigger=PropertyChanged}"
+                                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                        <TextBlock Grid.Column="2" Text="As(mm²)" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBox Grid.Column="3" Text="{Binding PileSteelArea, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
                                 </StackPanel>
@@ -444,11 +563,15 @@
                                   SelectedIndex="{Binding SelectedSoilLayerIndex}"
                                   IsReadOnly="False">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="编号" Binding="{Binding Id}" Width="50" />
-                                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="70" />
-                                <DataGridTextColumn Header="厚度(m)" Binding="{Binding Thickness, StringFormat=F2}" Width="60" />
-                                <DataGridTextColumn Header="Es(MPa)" Binding="{Binding Es, StringFormat=F1}" Width="65" />
-                                <DataGridTextColumn Header="Eci(MPa)" Binding="{Binding Eci, StringFormat=F1}" Width="65" />
+                                <DataGridTextColumn Header="编号" Binding="{Binding Id}" Width="40" />
+                                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="62" />
+                                <DataGridTextColumn Header="厚(m)" Binding="{Binding Thickness, StringFormat=F2}" Width="48" />
+                                <DataGridTextColumn Header="Es" Binding="{Binding Es, StringFormat=F1}" Width="42" />
+                                <DataGridTextColumn Header="Eci" Binding="{Binding Eci, StringFormat=F1}" Width="42" />
+                                <DataGridTextColumn Header="fak" Binding="{Binding Fak, StringFormat=F0}" Width="40" />
+                                <DataGridTextColumn Header="γ" Binding="{Binding Gamma, StringFormat=F1}" Width="36" />
+                                <DataGridTextColumn Header="qsik" Binding="{Binding Qsik, StringFormat=F0}" Width="40" />
+                                <DataGridTextColumn Header="qpk" Binding="{Binding Qpk, StringFormat=F0}" Width="42" />
                                 <DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="*" />
                             </DataGrid.Columns>
                         </DataGrid>
@@ -526,17 +649,22 @@
                             </TextBlock>
 
                             <DataGrid Style="{StaticResource DarkDataGrid}"
-                                      ItemsSource="{Binding CalculationResults}" IsReadOnly="True">
+                                      ItemsSource="{Binding CalculationResults}" IsReadOnly="True"
+                                      FontSize="10.5">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="30" />
-                                    <DataGridTextColumn Header="地层" Binding="{Binding LayerId}" Width="45" />
-                                    <DataGridTextColumn Header="z(m)" Binding="{Binding Zi, StringFormat=F2}" Width="55" />
-                                    <DataGridTextColumn Header="l/b" Binding="{Binding LbRatio, StringFormat=F2}" Width="45" />
-                                    <DataGridTextColumn Header="z/b" Binding="{Binding ZbRatio, StringFormat=F2}" Width="45" />
-                                    <DataGridTextColumn Header="α" Binding="{Binding Alpha, StringFormat=F4}" Width="60" />
-                                    <DataGridTextColumn Header="ᾱ" Binding="{Binding AlphaBar, StringFormat=F4}" Width="60" />
-                                    <DataGridTextColumn Header="Es" Binding="{Binding Es, StringFormat=F1}" Width="50" />
-                                    <DataGridTextColumn Header="Δs'(mm)" Binding="{Binding DeltaS, StringFormat=F3}" Width="65" />
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="26" />
+                                    <DataGridTextColumn Header="地层" Binding="{Binding LayerId}" Width="38" />
+                                    <DataGridTextColumn Header="z(m)" Binding="{Binding Zi, StringFormat=F2}" Width="46" />
+                                    <DataGridTextColumn Header="l/b" Binding="{Binding M, StringFormat=F2}" Width="36" />
+                                    <DataGridTextColumn Header="z/0.5b" Binding="{Binding NHalf, StringFormat=F2}" Width="46" />
+                                    <DataGridTextColumn Header="ᾱ" Binding="{Binding AlphaBarCorner, StringFormat=F4}" Width="50" />
+                                    <DataGridTextColumn Header="4ᾱ" Binding="{Binding AlphaBar, StringFormat=F4}" Width="50" />
+                                    <DataGridTextColumn Header="4ᾱz(mm)" Binding="{Binding AlphaBarZi, StringFormat=F1}" Width="58" />
+                                    <DataGridTextColumn Header="Δ4ᾱz" Binding="{Binding ZAlphaBarDiff, StringFormat=F1}" Width="50" />
+                                    <DataGridTextColumn Header="p₀/Es" Binding="{Binding P0overEs, StringFormat=F4}" Width="48" />
+                                    <DataGridTextColumn Header="Δs'" Binding="{Binding DeltaS, StringFormat=F2}" Width="42" />
+                                    <DataGridTextColumn Header="Σ" Binding="{Binding CumulativeDeltaS, StringFormat=F2}" Width="44" />
+                                    <DataGridTextColumn Header="Es" Binding="{Binding Es, StringFormat=F1}" Width="40" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
@@ -579,6 +707,16 @@
                                     <TextBox Grid.Column="1" Style="{StaticResource ElevationTextBox}"
                                              Text="{Binding AbsStructureZero, UpdateSourceTrigger=PropertyChanged}"
                                              IsReadOnly="{Binding IsRelativeMode}" />
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="82" />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="室内外高差" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding IndoorOutdoorDiff, UpdateSourceTrigger=PropertyChanged}"
+                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </Grid>
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
@@ -648,10 +786,12 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="γm (kN/m³)" Style="{StaticResource ParamLabel}" FontSize="11" />
-                                    <TextBox Grid.Column="1"
-                                             Text="{Binding GammaM, UpdateSourceTrigger=PropertyChanged}"
-                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                    <TextBlock Text="γm (kN/m³)" Style="{StaticResource ParamLabel}" FontSize="11"
+                                               ToolTip="基底以上土的加权平均重度，由土层γ加权计算（地下水位以下取有效重度）" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource ElevationTextBox}"
+                                             Text="{Binding GammaM, Mode=OneWay, StringFormat=F2}"
+                                             IsReadOnly="True"
+                                             ToolTip="自动计算: Σ(γi·hi)/Σhi" />
                                 </Grid>
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
@@ -678,7 +818,8 @@
                         <TextBlock Text="荷载参数" Style="{StaticResource SectionHeader}" />
                         <Border Background="#353d4a" CornerRadius="3" Padding="8,6" Margin="0,0,0,4">
                             <StackPanel>
-                                <Grid Margin="0,2">
+                                <Grid Margin="0,2"
+                                      Visibility="{Binding IsP0Auto, Converter={StaticResource BoolToVis}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
@@ -688,15 +829,18 @@
                                              Text="{Binding AxialForce, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </Grid>
-                                <Grid Margin="0,2">
+                                <Grid Margin="0,2"
+                                      Visibility="{Binding IsP0Auto, Converter={StaticResource BoolToVis}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="覆土自重G(kN)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="覆土自重G(kN)" Style="{StaticResource ParamLabel}" FontSize="11"
+                                               ToolTip="G = γm × A × (d − Δh/2)" />
                                     <TextBox Grid.Column="1"
-                                             Text="{Binding SelfWeightLoad, UpdateSourceTrigger=PropertyChanged}"
-                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                             Text="{Binding SelfWeightLoad, Mode=OneWay, StringFormat=F1}"
+                                             IsReadOnly="True" Foreground="#808080"
+                                             ToolTip="自动计算: γm × A × (d − Δh/2)" />
                                 </Grid>
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
@@ -770,9 +914,39 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="η (完成率)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="η₁ (完成比)" Style="{StaticResource ParamLabel}" FontSize="11" />
                                     <TextBox Grid.Column="1"
-                                             Text="{Binding ReboundCompletionRatio, UpdateSourceTrigger=PropertyChanged}"
+                                             Text="{Binding Eta1, UpdateSourceTrigger=PropertyChanged}"
+                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="95" />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="η₂ (清除比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding Eta2, UpdateSourceTrigger=PropertyChanged}"
+                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="95" />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="R'₀ (临界荷比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding R0PrimeRatio, UpdateSourceTrigger=PropertyChanged}"
+                                             helper:TextBoxHelper.EnableCustomHandlers="True" />
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="95" />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="r'₀ (临界压比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding R0PrimeR, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </Grid>
                                 <Grid Margin="0,2">
@@ -786,7 +960,7 @@
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </Grid>
                                 <TextBlock Foreground="#808080" FontSize="9" Margin="0,3,0,0" TextWrapping="Wrap"
-                                           Text="η: 施工期回弹完成比(0~1)&#x0a;κ: 黏性土1.19, 砂土1.10&#x0a;深度比: Δsc/Σsc≤此值停止(默认0.025)" />
+                                           Text="η₁: 回弹完成比(0~1)  η₂: 清除比(0~1)&#x0a;R'₀: 临界再加荷比(§5.3.11)&#x0a;r'₀: 临界再压缩比率(§5.3.11)&#x0a;κ: 黏性土1.19, 砂土1.10" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

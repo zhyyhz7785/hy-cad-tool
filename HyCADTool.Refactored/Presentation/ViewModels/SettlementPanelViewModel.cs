@@ -168,6 +168,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 if (SetProperty(ref _foundationDepth, value))
                 {
+                    RecalcGammaM();
                     RecalcAutoP0();
                     OnPropertyChanged(nameof(AbsFoundationDepthElevation));
                 }
@@ -176,6 +177,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         /// <summary>基础底面绝对高程 = ±0.000绝对 - 埋深</summary>
         public double AbsFoundationDepthElevation => AbsStructureZero - FoundationDepth;
+
+        private double _indoorOutdoorDiff;
+        /// <summary>室内外高差 Δh (m)</summary>
+        public double IndoorOutdoorDiff
+        {
+            get => _indoorOutdoorDiff;
+            set
+            {
+                if (SetProperty(ref _indoorOutdoorDiff, value))
+                    RecalcAutoP0();
+            }
+        }
 
         public double RelativeElevation => UseAbsoluteElevation
             ? AbsBoreholeElevation - AbsStructureZero
@@ -314,11 +327,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public double SelfWeightLoad
         {
             get => _selfWeightLoad;
-            set
-            {
-                if (SetProperty(ref _selfWeightLoad, value))
-                    RecalcAutoP0();
-            }
+            set => SetProperty(ref _selfWeightLoad, value);
         }
 
         private bool _isP0Auto;
@@ -360,15 +369,21 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 double gammaConcrete = 25.0;
                 double gk = gammaConcrete * BoxConcreteThickness * area;
                 double pk = (AxialForce + gk) / area;
-                double overburdenSelfWeight = gm * FoundationDepth;
-                p0 = pk - overburdenSelfWeight;
+                p0 = pk - gm * FoundationDepth;
             }
             else
             {
-                p0 = (AxialForce + SelfWeightLoad) / area - gm * FoundationDepth;
+                double dEff = FoundationDepth - IndoorOutdoorDiff * 0.5;
+                if (dEff < 0) dEff = 0;
+                double g = gm * area * dEff;
+
+                _selfWeightLoad = Math.Round(g, 1);
+                OnPropertyChanged(nameof(SelfWeightLoad));
+
+                double pk = (AxialForce + g) / area;
+                p0 = pk - gm * FoundationDepth;
             }
 
-            if (p0 < 0) p0 = 0;
             _additionalPressure = Math.Round(p0, 1);
             OnPropertyChanged(nameof(AdditionalPressure));
             SaveSettings();
@@ -382,14 +397,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public bool HasGroundwater
         {
             get => _hasGroundwater;
-            set => SetProperty(ref _hasGroundwater, value);
+            set
+            {
+                if (SetProperty(ref _hasGroundwater, value))
+                    RecalcGammaM();
+            }
         }
 
         private double _groundwaterDepth;
         public double GroundwaterDepth
         {
             get => _groundwaterDepth;
-            set => SetProperty(ref _groundwaterDepth, value);
+            set
+            {
+                if (SetProperty(ref _groundwaterDepth, value))
+                    RecalcGammaM();
+            }
         }
 
         private double _gammaM = 20.0;
@@ -400,6 +423,71 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 if (SetProperty(ref _gammaM, value))
                     RecalcAutoP0();
+            }
+        }
+
+        /// <summary>
+        /// 从已解析土层计算 γm：基底以上土的加权平均重度，地下水位以下取有效重度 γ'=γ−10。
+        /// 无可用 γ 数据时保持当前值不变。
+        /// </summary>
+        private void RecalcGammaM()
+        {
+            if (_isLoading || ParsedSoilLayers == null || ParsedSoilLayers.Count == 0) return;
+
+            double relElev = RelativeElevation;
+            double d = FoundationDepth;
+            double targetStart = relElev;
+            double targetEnd = relElev + d;
+            if (targetEnd <= 0) return;
+
+            double gwDepthFromBorehole = HasGroundwater ? GroundwaterDepth : double.MaxValue;
+            const double gammaWater = 9.8;
+            const double defaultGamma = 18.0;
+
+            double totalWeight = 0;
+            double totalThick = 0;
+            double currentDepth = 0;
+
+            foreach (var layer in ParsedSoilLayers)
+            {
+                if (layer.Thickness <= 0) continue;
+                double layerTop = currentDepth;
+                double layerBottom = currentDepth + layer.Thickness;
+                currentDepth = layerBottom;
+
+                if (layerBottom <= targetStart) continue;
+                if (layerTop >= targetEnd) break;
+
+                double top = Math.Max(layerTop, targetStart);
+                double bot = Math.Min(layerBottom, targetEnd);
+                double h = bot - top;
+                if (h <= 0) continue;
+
+                double gamma = layer.Gamma > 0 ? layer.Gamma : defaultGamma;
+
+                if (gwDepthFromBorehole >= bot)
+                {
+                    totalWeight += gamma * h;
+                }
+                else if (gwDepthFromBorehole <= top)
+                {
+                    totalWeight += Math.Max(gamma - gammaWater, 1.0) * h;
+                }
+                else
+                {
+                    double above = gwDepthFromBorehole - top;
+                    double below = bot - gwDepthFromBorehole;
+                    totalWeight += gamma * above + Math.Max(gamma - gammaWater, 1.0) * below;
+                }
+                totalThick += h;
+            }
+
+            if (totalThick > 0)
+            {
+                double calc = Math.Round(totalWeight / totalThick, 2);
+                _gammaM = calc;
+                OnPropertyChanged(nameof(GammaM));
+                RecalcAutoP0();
             }
         }
 
@@ -435,11 +523,32 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set => SetProperty(ref _kappa, value);
         }
 
-        private double _reboundCompletionRatio = 0.5;
-        public double ReboundCompletionRatio
+        private double _eta1 = 0.5;
+        public double Eta1
         {
-            get => _reboundCompletionRatio;
-            set => SetProperty(ref _reboundCompletionRatio, value);
+            get => _eta1;
+            set => SetProperty(ref _eta1, value);
+        }
+
+        private double _eta2 = 0.8;
+        public double Eta2
+        {
+            get => _eta2;
+            set => SetProperty(ref _eta2, value);
+        }
+
+        private double _r0Prime = 0.4;
+        public double R0PrimeR
+        {
+            get => _r0Prime;
+            set => SetProperty(ref _r0Prime, value);
+        }
+
+        private double _R0Prime = 0.3;
+        public double R0PrimeRatio
+        {
+            get => _R0Prime;
+            set => SetProperty(ref _R0Prime, value);
         }
 
         private double _reboundDepthRatio = 0.025;
@@ -469,6 +578,76 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             get => _treatedDepth;
             set => SetProperty(ref _treatedDepth, value);
+        }
+
+        private double _compLambda = 1.0;
+        public double CompLambda
+        {
+            get => _compLambda;
+            set => SetProperty(ref _compLambda, value);
+        }
+
+        private double _compBeta = 0.5;
+        public double CompBeta
+        {
+            get => _compBeta;
+            set => SetProperty(ref _compBeta, value);
+        }
+
+        private double _compFsk;
+        public double CompFsk
+        {
+            get => _compFsk;
+            set => SetProperty(ref _compFsk, value);
+        }
+
+        private double _compFcu;
+        public double CompFcu
+        {
+            get => _compFcu;
+            set => SetProperty(ref _compFcu, value);
+        }
+
+        private double _compAlphaP = 1.0;
+        public double CompAlphaP
+        {
+            get => _compAlphaP;
+            set => SetProperty(ref _compAlphaP, value);
+        }
+
+        private double _compQp;
+        public double CompQp
+        {
+            get => _compQp;
+            set => SetProperty(ref _compQp, value);
+        }
+
+        private double _compPileDiameter = 0.5;
+        public double CompPileDiameter
+        {
+            get => _compPileDiameter;
+            set => SetProperty(ref _compPileDiameter, value);
+        }
+
+        private double _compPileSpacing = 1.5;
+        public double CompPileSpacing
+        {
+            get => _compPileSpacing;
+            set => SetProperty(ref _compPileSpacing, value);
+        }
+
+        private int _compArrangementType = 1;
+        public int CompArrangementType
+        {
+            get => _compArrangementType;
+            set => SetProperty(ref _compArrangementType, value);
+        }
+
+        private string _compSideResistanceText = "";
+        public string CompSideResistanceText
+        {
+            get => _compSideResistanceText;
+            set => SetProperty(ref _compSideResistanceText, value);
         }
 
         #endregion
@@ -517,6 +696,66 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set => SetProperty(ref _totalPileCount, value);
         }
 
+        private double _pileQp;
+        public double PileQp
+        {
+            get => _pileQp;
+            set => SetProperty(ref _pileQp, value);
+        }
+
+        private double _pileNk;
+        public double PileNk
+        {
+            get => _pileNk;
+            set => SetProperty(ref _pileNk, value);
+        }
+
+        private string _pileSideResistanceText = "";
+        public string PileSideResistanceText
+        {
+            get => _pileSideResistanceText;
+            set => SetProperty(ref _pileSideResistanceText, value);
+        }
+
+        #endregion
+
+        #region 桩身结构参数
+
+        private double _pileAxialForceDesign;
+        public double PileAxialForceDesign
+        {
+            get => _pileAxialForceDesign;
+            set => SetProperty(ref _pileAxialForceDesign, value);
+        }
+
+        private double _pilePsiC = 0.7;
+        public double PilePsiC
+        {
+            get => _pilePsiC;
+            set => SetProperty(ref _pilePsiC, value);
+        }
+
+        private double _pileFc = 14300;
+        public double PileFc
+        {
+            get => _pileFc;
+            set => SetProperty(ref _pileFc, value);
+        }
+
+        private string _pileConcreteGrade = "C30";
+        public string PileConcreteGrade
+        {
+            get => _pileConcreteGrade;
+            set => SetProperty(ref _pileConcreteGrade, value);
+        }
+
+        private double _pileSteelArea;
+        public double PileSteelArea
+        {
+            get => _pileSteelArea;
+            set => SetProperty(ref _pileSteelArea, value);
+        }
+
         #endregion
 
         #region 地层数据
@@ -525,7 +764,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public string SoilLayerMarkdown
         {
             get => _soilLayerMarkdown;
-            set => SetProperty(ref _soilLayerMarkdown, value);
+            set
+            {
+                if (!SetProperty(ref _soilLayerMarkdown, value)) return;
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    ParsedSoilLayers = new ObservableCollection<SoilLayer>();
+                    SelectedSoilLayerIndex = -1;
+                }
+            }
         }
 
         private ObservableCollection<SoilLayer> _parsedSoilLayers = new ObservableCollection<SoilLayer>();
@@ -636,14 +883,84 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             try
             {
-                var layers = MarkdownTableParser.Parse(SoilLayerMarkdown);
-                ParsedSoilLayers = new ObservableCollection<SoilLayer>(layers);
-                StatusMessage = $"解析成功：{layers.Count} 层";
+                var parseResult = MarkdownTableParser.ParseAll(SoilLayerMarkdown);
+                if (parseResult.Layers.Count == 0 && parseResult.DetectedTableTypes.Count == 0)
+                {
+                    StatusMessage = "未检测到有效表格";
+                    return;
+                }
+
+                if (ParsedSoilLayers.Count > 0 && parseResult.Layers.Count > 0)
+                {
+                    MergeIntoExisting(parseResult.Layers);
+                }
+                else if (parseResult.Layers.Count > 0)
+                {
+                    ParsedSoilLayers = new ObservableCollection<SoilLayer>(parseResult.Layers);
+                }
+
+                if (parseResult.GroundwaterDepth.HasValue)
+                {
+                    HasGroundwater = true;
+                    GroundwaterDepth = parseResult.GroundwaterDepth.Value;
+                }
+
+                RecalcGammaM();
+
+                StatusMessage = $"解析成功：{parseResult.Summary}";
             }
             catch (System.Exception ex)
             {
                 StatusMessage = $"解析失败: {ex.Message}";
             }
+        }
+
+        /// <summary>
+        /// 将新解析的土层数据增量合并到已有列表（按地层编号匹配）
+        /// </summary>
+        private void MergeIntoExisting(List<SoilLayer> incoming)
+        {
+            var existing = ParsedSoilLayers.ToDictionary(
+                l => MarkdownTableParser.CanonicalLayerKey(string.IsNullOrEmpty(l.Id) ? l.Name : l.Id),
+                l => l, StringComparer.Ordinal);
+
+            foreach (var newLayer in incoming)
+            {
+                string key = MarkdownTableParser.CanonicalLayerKey(
+                    string.IsNullOrEmpty(newLayer.Id) ? newLayer.Name : newLayer.Id);
+                if (string.IsNullOrEmpty(key)) continue;
+
+                if (existing.TryGetValue(key, out SoilLayer target))
+                {
+                    if (string.IsNullOrEmpty(target.Name) && !string.IsNullOrEmpty(newLayer.Name))
+                        target.Name = newLayer.Name;
+                    if (target.Thickness <= 0 && newLayer.Thickness > 0)
+                        target.Thickness = newLayer.Thickness;
+                    if (target.Es <= 0 && newLayer.Es > 0)
+                        target.Es = newLayer.Es;
+                    if (target.Eci <= 0 && newLayer.Eci > 0)
+                        target.Eci = newLayer.Eci;
+                    if (target.Fak <= 0 && newLayer.Fak > 0)
+                        target.Fak = newLayer.Fak;
+                    if (target.Gamma <= 0 && newLayer.Gamma > 0)
+                        target.Gamma = newLayer.Gamma;
+                    if (target.Nspt <= 0 && newLayer.Nspt > 0)
+                        target.Nspt = newLayer.Nspt;
+                    if (target.Qsik <= 0 && newLayer.Qsik > 0)
+                        target.Qsik = newLayer.Qsik;
+                    if (target.Qpk <= 0 && newLayer.Qpk > 0)
+                        target.Qpk = newLayer.Qpk;
+                    if (string.IsNullOrEmpty(target.Description) && !string.IsNullOrEmpty(newLayer.Description))
+                        target.Description = newLayer.Description;
+                }
+                else
+                {
+                    ParsedSoilLayers.Add(newLayer);
+                    existing[key] = newLayer;
+                }
+            }
+
+            OnPropertyChanged(nameof(ParsedSoilLayers));
         }
 
         private void ExecuteCalculate()
@@ -675,36 +992,35 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
                 if (result.HasRebound)
                 {
-                    // ━━ 启用回弹再压缩：根据 p₀ 分支显示 ━━
-
-                    // Column 1: 回弹量（负方向，向上）
+                    // ━━ Column 1: 回弹量 ━━
                     var sbRebound = new StringBuilder();
                     sbRebound.AppendLine($"pc = γm·d = {result.OverburdenPressure:F1} kPa");
                     sbRebound.AppendLine($"p = p₀+pc = {result.TotalReloadPressure:F1} kPa");
                     sbRebound.AppendLine($"R' = p/pc = {result.ReloadRatio:F3}");
                     sbRebound.AppendLine($"ψc={PsiC:F2}  Eci/Esi={EciEsiRatio:F1}");
-                    sbRebound.AppendLine($"理论回弹 sc = {result.ReboundSettlement:F3} mm (↑)");
-                    sbRebound.AppendLine($"η = {ReboundCompletionRatio:P0}");
-                    sbRebound.Append($"实际回弹 η·sc = {result.ActualRebound:F3} mm (↑)");
-                    ReboundSummary = "一、回弹量\r\n" + sbRebound.ToString();
+                    sbRebound.AppendLine($"理论回弹 sc = {result.ReboundSettlement:F3} mm");
+                    sbRebound.AppendLine($"η₁={Eta1:F2} η₂={Eta2:F2}");
+                    sbRebound.AppendLine($"完成回弹 η₁·sc = {result.CompletedRebound:F3} mm");
+                    sbRebound.Append($"清除量 η₂η₁sc = {result.ClearedRebound:F3} mm");
+                    ReboundSummary = "一、回弹量(§5.3.10)\r\n" + sbRebound.ToString();
 
                     if (p0 <= 0)
                     {
-                        // p₀ ≤ 0: 超补偿/完全补偿，仅回弹再压缩
-
-                        // Column 2: 再压缩（5.3.11 简化）
+                        // p ≤ pc: 补偿/超补偿，全程 §5.3.11
+                        double remainRebound = result.ReboundSettlement - result.ClearedRebound;
                         var sbRecomp = new StringBuilder();
-                        sbRecomp.AppendLine($"κ = {Kappa:F2}");
-                        sbRecomp.AppendLine($"简化 5.3.11:");
-                        sbRecomp.AppendLine($"s'c = κ·η·sc·R'");
-                        sbRecomp.AppendLine($"   = {Kappa:F2}×{result.ActualRebound:F3}×{result.ReloadRatio:F3}");
-                        sbRecomp.Append($"   = {result.RecompressionSettlement:F3} mm (↓)");
+                        sbRecomp.AppendLine($"§5.3.11 分段公式:");
+                        sbRecomp.AppendLine($"R'₀={R0PrimeRatio:F2} r'₀={R0PrimeR:F2} κ={Kappa:F2}");
+                        sbRecomp.AppendLine($"s'c = {result.RecompressionSettlement:F3} mm (↓)");
+                        sbRecomp.AppendLine($"────────────");
+                        sbRecomp.AppendLine($"剩余回弹 = sc−清除");
+                        sbRecomp.AppendLine($"  = {result.ReboundSettlement:F3}−{result.ClearedRebound:F3}");
+                        sbRecomp.Append($"  = {remainRebound:F3} mm");
                         CompressSummary = "二、再压缩(§5.3.11)\r\n" + sbRecomp.ToString();
 
-                        // Column 3: 净变形
                         var sbNet = new StringBuilder();
-                        sbNet.AppendLine($"净变形 = 再压缩 - 实际回弹");
-                        sbNet.AppendLine($"  = {result.RecompressionSettlement:F3} - {result.ActualRebound:F3}");
+                        sbNet.AppendLine($"净沉降 = s'c − 剩余回弹");
+                        sbNet.AppendLine($"  = {result.RecompressionSettlement:F3} − {remainRebound:F3}");
                         sbNet.AppendLine($"  = {result.FinalSettlement:F2} mm");
                         string direction = result.FinalSettlement < 0 ? "(↑ 净隆起)" : result.FinalSettlement > 0 ? "(↓ 净沉降)" : "(无变形)";
                         sbNet.Append(direction);
@@ -712,31 +1028,32 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     }
                     else
                     {
-                        // p₀ > 0: 非补偿基础 — 压缩 + 滞回附加
-                        // Column 2 → 压缩沉降
+                        // p > pc: 非补偿，段1净沉降 + 段2压缩
                         var sbCompress = new StringBuilder();
                         sbCompress.AppendLine($"【{type} · {subType}】");
                         if (skipD > 0)
                             sbCompress.AppendLine($"孔口→基底跳过 {skipD:F2} m");
+                        sbCompress.AppendLine($"段1(0→pc): 再压缩净沉降");
+                        sbCompress.AppendLine($"  s'c(R'=1) = sc·κ = {result.RecompressionSettlement:F3} mm");
+                        double remainRb = result.ReboundSettlement - result.ClearedRebound;
+                        sbCompress.AppendLine($"  剩余回弹 = sc−清除 = {remainRb:F3} mm");
+                        sbCompress.AppendLine($"  段1净沉降 = {result.NetReboundSettlement:F3} mm");
+                        sbCompress.AppendLine($"────────────");
+                        sbCompress.AppendLine($"段2: p−pc = p₀ = {p0:F1} kPa");
                         sbCompress.AppendLine($"zn = {result.CalculationDepth:F1} m");
                         sbCompress.AppendLine($"s' = {result.TheoreticalSettlement:F2} mm");
-                        sbCompress.AppendLine($"Ēs = {result.EquivalentEs:F1} MPa");
                         sbCompress.AppendLine($"ψs = {result.PsiS:F3}");
                         if (result.PsiE < 1.0)
                             sbCompress.AppendLine($"ψe = {result.PsiE:F3}");
-                        sbCompress.Append($"压缩沉降 = {result.CompressionSettlement:F2} mm (↓)");
-                        CompressSummary = "二、压缩沉降(§5.3.5)\r\n" + sbCompress.ToString();
+                        sbCompress.Append($"段2压缩 = {result.CompressionSettlement:F2} mm");
+                        CompressSummary = "二、附加应力(§5.3.5)\r\n" + sbCompress.ToString();
 
-                        // Column 3 → 滞回附加 + 最终沉降
-                        var sbRecomp = new StringBuilder();
-                        sbRecomp.AppendLine($"κ = {Kappa:F2}");
-                        sbRecomp.AppendLine($"滞回附加 = η·sc·(κ-1)");
-                        sbRecomp.AppendLine($"  = {result.ActualRebound:F3}×{(Kappa - 1):F2}");
-                        sbRecomp.AppendLine($"  = {result.NetReboundSettlement:F3} mm (↓)");
-                        sbRecomp.AppendLine($"────────────");
-                        sbRecomp.AppendLine($"最终沉降 = 压缩 + 滞回");
-                        sbRecomp.Append($"  = {result.FinalSettlement:F2} mm");
-                        RecompSummary = "三、最终沉降\r\n" + sbRecomp.ToString();
+                        var sbTotal = new StringBuilder();
+                        sbTotal.AppendLine($"段1(0→pc)净沉降 = {result.NetReboundSettlement:F3} mm");
+                        sbTotal.AppendLine($"段2(p₀)压缩沉降 = {result.CompressionSettlement:F2} mm");
+                        sbTotal.AppendLine($"────────────");
+                        sbTotal.Append($"最终沉降 = {result.FinalSettlement:F2} mm");
+                        RecompSummary = "三、最终沉降\r\n" + sbTotal.ToString();
                     }
                 }
                 else
@@ -762,7 +1079,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
                 StatusMessage = $"计算完成：最终沉降 {result.FinalSettlement:F2} mm";
 
-                ReportText = GenerateCalculationReport(result);
+                ReportText = GenerateFullReport(result);
             }
             catch (System.Exception ex)
             {
@@ -790,6 +1107,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 AbsStructureZero = 0;
                 RelBoreholeElevation = 0;
                 FoundationDepth = 1.5;
+                IndoorOutdoorDiff = 0;
                 IsCompositeEnabled = false;
                 IsPileEnabled = false;
                 FoundationLength = 3.0;
@@ -810,7 +1128,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 EciEsiRatio = 5.0;
                 PsiC = 1.0;
                 Kappa = 1.19;
-                ReboundCompletionRatio = 0.5;
+                Eta1 = 0.5;
+                Eta2 = 0.8;
+                R0PrimeRatio = 0.3;
+                R0PrimeR = 0.4;
                 ReboundDepthRatio = 0.025;
                 CompositeBearingCapacity = 250.0;
                 TreatedDepth = 10.0;
@@ -889,7 +1210,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 StatusMessage = "请先执行计算";
                 return;
             }
-            ReportText = GenerateCalculationReport(LastResult);
+            ReportText = GenerateFullReport(LastResult);
             StatusMessage = "计算书已生成";
         }
 
@@ -938,11 +1259,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 IsBoxFoundation = IsBoxFoundation,
                 BoxConcreteThickness = BoxConcreteThickness,
                 GammaM = GammaM,
+                IndoorOutdoorDiff = IndoorOutdoorDiff,
                 EnableRebound = EnableRebound,
                 EciEsiRatio = EciEsiRatio,
                 PsiC = PsiC,
                 Kappa = Kappa,
-                ReboundCompletionRatio = ReboundCompletionRatio,
+                Eta1 = Eta1,
+                Eta2 = Eta2,
+                R0Prime = R0PrimeRatio,
+                r0Prime = R0PrimeR,
                 ReboundDepthRatio = ReboundDepthRatio
             };
         }
@@ -951,175 +1276,127 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 计算书生成
 
-        private string GenerateCalculationReport(SettlementResult result)
+        private ReportContext BuildReportContext(SettlementResult result)
         {
-            var sb = new StringBuilder();
-            var type = new[] { "天然基础", "复合地基", "桩基础" }[FoundationTypeIndex];
-
-            sb.AppendLine("# 基础沉降计算书");
-            sb.AppendLine();
-            sb.AppendLine($"计算类型: {type}{(IsBoxFoundation ? "（箱型基础）" : "")}");
-            sb.AppendLine($"计算日期: {DateTime.Now:yyyy-MM-dd HH:mm}");
-            sb.AppendLine();
-
-            sb.AppendLine("## 一、工程参数");
-            sb.AppendLine();
-            sb.AppendLine("| 参数 | 数值 | 单位 |");
-            sb.AppendLine("|------|------|------|");
-            if (UseAbsoluteElevation)
+            var input = BuildInput();
+            var ctx = new ReportContext
             {
-                sb.AppendLine($"| 孔点高程(绝对) | {AbsBoreholeElevation:F3} | m |");
-                sb.AppendLine($"| 结构±0.000(绝对) | {AbsStructureZero:F3} | m |");
-            }
-            sb.AppendLine($"| 孔点相对高程 | {RelativeElevation:F3} | m |");
-            sb.AppendLine($"| 基础埋深 d | {FoundationDepth:F2} | m |");
-            sb.AppendLine($"| 基础宽度 b | {FoundationWidth:F2} | m |");
-            sb.AppendLine($"| 基础长度 l | {FoundationLength:F2} | m |");
-            sb.AppendLine($"| l/b | {(FoundationWidth > 0 ? FoundationLength / FoundationWidth : 0):F2} | - |");
-            sb.AppendLine($"| γm | {GammaM:F1} | kN/m³ |");
-            if (IsBoxFoundation)
-                sb.AppendLine($"| 混凝土折算厚度 | {BoxConcreteThickness:F2} | m |");
-            sb.AppendLine($"| fak | {BearingCapacity:F1} | kPa |");
-            sb.AppendLine($"| p₀ | {AdditionalPressure:F1} | kPa |");
+                Input = input,
+                Result = result,
+                Date = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+                UseAbsoluteElevation = UseAbsoluteElevation,
+                AbsBoreholeElevation = AbsBoreholeElevation,
+                AbsStructureZero = AbsStructureZero,
+                OriginalSoilLayers = ParsedSoilLayers.ToList(),
+                IsP0Auto = IsP0Auto,
+                AxialForce = AxialForce,
+                SelfWeightLoad = SelfWeightLoad,
+                HasGroundwater = HasGroundwater,
+                GroundwaterDepth = GroundwaterDepth
+            };
 
-            if (FoundationTypeIndex == 1)
+            // Phase 2: 承载力验算
+            try
             {
-                sb.AppendLine($"| fspk | {CompositeBearingCapacity:F1} | kPa |");
-                sb.AppendLine($"| ξ = fspk/fak | {CompositeXi:F3} | - |");
-                sb.AppendLine($"| 加固层深度 | {TreatedDepth:F2} | m |");
-            }
-            else if (FoundationTypeIndex == 2)
-            {
-                sb.AppendLine($"| 桩长 | {PileLength:F2} | m |");
-                sb.AppendLine($"| 桩径 | {PileDiameter:F2} | m |");
-                sb.AppendLine($"| 桩距 | {PileSpacing:F2} | m |");
-                sb.AppendLine($"| 承台 | {CapLength:F2}×{CapWidth:F2} | m |");
-                sb.AppendLine($"| 桩数 | {TotalPileCount} | 根 |");
-            }
-            double skipDepth = RelativeElevation + FoundationDepth;
-            if (skipDepth > 0)
-                sb.AppendLine($"| 孔口→基底跳过 | {skipDepth:F2} | m |");
-            sb.AppendLine();
-
-            sb.AppendLine("## 二、地层参数");
-            sb.AppendLine();
-            if (EnableRebound)
-            {
-                sb.AppendLine("| 编号 | 名称 | 厚度(m) | Es(MPa) | Eci(MPa) | 描述 |");
-                sb.AppendLine("|------|------|---------|---------|----------|------|");
-                foreach (var layer in ParsedSoilLayers)
+                if (FoundationTypeIndex == 1 && CompFsk > 0)
                 {
-                    double eci = layer.Eci > 0 ? layer.Eci : layer.Es * EciEsiRatio;
-                    sb.AppendLine($"| {layer.Id} | {layer.Name} | {layer.Thickness:F2} | {layer.Es:F1} | {eci:F1}{(layer.Eci <= 0 ? "*" : "")} | {layer.Description} |");
+                    var bearingInput = BuildCompositeBearingInput();
+                    ctx.BearingResult = BearingCapacityService.CalculateComposite(input, bearingInput);
                 }
-                sb.AppendLine();
-                sb.AppendLine("*: Eci 由 Es×倍率 自动估算");
-            }
-            else
-            {
-                sb.AppendLine("| 编号 | 名称 | 厚度(m) | Es(MPa) | 描述 |");
-                sb.AppendLine("|------|------|---------|---------|------|");
-                foreach (var layer in ParsedSoilLayers)
-                    sb.AppendLine($"| {layer.Id} | {layer.Name} | {layer.Thickness:F2} | {layer.Es:F1} | {layer.Description} |");
-            }
-            sb.AppendLine();
-
-            sb.AppendLine("## 三、计算公式");
-            sb.AppendLine();
-            sb.AppendLine("依据 GB 50007-2011 第 5.3.5 条，采用分层总和法：");
-            sb.AppendLine();
-            sb.AppendLine("    s' = Σ p₀/Esᵢ × (zᵢ·ᾱᵢ - z_{i-1}·ᾱ_{i-1})");
-            sb.AppendLine("    s  = ψs × s'");
-            sb.AppendLine();
-            sb.AppendLine("附加应力系数 α 采用 Newmark (1935) 公式；");
-            sb.AppendLine("平均附加应力系数 ᾱ 采用解析积分公式 (式3/4)。");
-            sb.AppendLine();
-
-            sb.AppendLine("## 四、逐层计算结果");
-            sb.AppendLine();
-            sb.AppendLine("| # | 地层 | z(m) | l/b | z/b | α | ᾱ | Es(MPa) | Δs'(mm) |");
-            sb.AppendLine("|---|------|------|-----|-----|-------|-------|---------|---------|");
-            foreach (var r in result.LayerResults)
-            {
-                sb.AppendLine($"| {r.Index} | {r.LayerId} | {r.Zi:F2} | {r.M:F2} | {r.N:F2} | {r.Alpha:F4} | {r.AlphaBar:F4} | {r.Es:F1} | {r.DeltaS:F3} |");
-            }
-            sb.AppendLine();
-
-            sb.AppendLine("## 五、计算结果汇总");
-            sb.AppendLine();
-
-            double p0 = AdditionalPressure;
-
-            if (p0 > 0)
-            {
-                sb.AppendLine($"- 理论沉降 s' = {result.TheoreticalSettlement:F2} mm");
-                sb.AppendLine($"- 当量模量 Ēs = {result.EquivalentEs:F1} MPa");
-                sb.AppendLine($"- 经验系数 ψs = {result.PsiS:F3}");
-                if (result.PsiE < 1.0)
-                    sb.AppendLine($"- 等效系数 ψe = {result.PsiE:F3}");
-                sb.AppendLine($"- 压缩沉降 = {result.CompressionSettlement:F2} mm");
-                sb.AppendLine($"- 计算深度 zn = {result.CalculationDepth:F1} m");
-            }
-            else
-            {
-                sb.AppendLine($"- p₀ = {p0:F1} kPa ≤ 0，无附加应力压缩沉降");
-            }
-            sb.AppendLine();
-
-            if (result.HasRebound)
-            {
-                sb.AppendLine("## 六、回弹再压缩计算（GB 50007 §5.3.10~5.3.11）");
-                sb.AppendLine();
-                sb.AppendLine("### 6.1 回弹参数");
-                sb.AppendLine();
-                sb.AppendLine($"- 覆土平均重度 γm = {GammaM:F1} kN/m³");
-                sb.AppendLine($"- 覆土自重压力 pc = γm × d = {GammaM:F1} × {FoundationDepth:F2} = {result.OverburdenPressure:F1} kPa");
-                sb.AppendLine($"- 再加荷总压力 p = p₀ + pc = {p0:F1} + {result.OverburdenPressure:F1} = {result.TotalReloadPressure:F1} kPa");
-                sb.AppendLine($"- 再加荷比 R' = p/pc = {result.ReloadRatio:F3}");
-                sb.AppendLine($"- Eci/Esi 默认倍率 = {EciEsiRatio:F1}");
-                sb.AppendLine($"- 回弹经验系数 ψc = {PsiC:F2}");
-                sb.AppendLine($"- 再压缩增大系数 κ = {Kappa:F2}");
-                sb.AppendLine($"- 施工期回弹完成率 η = {ReboundCompletionRatio:P0}");
-                sb.AppendLine($"- 深度终止比值 = {ReboundDepthRatio}");
-                sb.AppendLine();
-                sb.AppendLine("### 6.2 回弹量（§5.3.10）");
-                sb.AppendLine();
-                sb.AppendLine($"- 理论回弹量 sc = {result.ReboundSettlement:F3} mm (方向↑)");
-                sb.AppendLine($"- 实际回弹量 η·sc = {result.ActualRebound:F3} mm");
-                sb.AppendLine();
-
-                if (p0 <= 0)
+                else if (FoundationTypeIndex == 2 && PileQp > 0)
                 {
-                    sb.AppendLine("### 6.3 再压缩（§5.3.11 简化，R'≤1）");
-                    sb.AppendLine();
-                    sb.AppendLine($"- s'c = κ·η·sc·R' = {Kappa:F2}×{result.ActualRebound:F3}×{result.ReloadRatio:F3} = {result.RecompressionSettlement:F3} mm (方向↓)");
-                    sb.AppendLine($"- 净变形 = s'c - η·sc = {result.RecompressionSettlement:F3} - {result.ActualRebound:F3} = {result.FinalSettlement:F2} mm");
-                    string dir = result.FinalSettlement < 0 ? "（净隆起↑）" : "（净沉降↓）";
-                    sb.AppendLine($"- {dir}");
+                    var bearingInput = BuildPileBearingInput();
+                    ctx.BearingResult = BearingCapacityService.CalculatePile(input, bearingInput);
                 }
-                else
-                {
-                    sb.AppendLine("### 6.3 滞回附加（p₀>0，R'>1）");
-                    sb.AppendLine();
-                    sb.AppendLine($"- 滞回附加 = η·sc·(κ-1) = {result.ActualRebound:F3}×{(Kappa - 1):F2} = {result.NetReboundSettlement:F3} mm (方向↓)");
-                    sb.AppendLine($"- 压缩沉降 = {result.CompressionSettlement:F2} mm");
-                    sb.AppendLine($"- 最终沉降 = 压缩 + 滞回 = {result.CompressionSettlement:F2} + {result.NetReboundSettlement:F3} = {result.FinalSettlement:F2} mm");
-                }
-                sb.AppendLine();
             }
+            catch { }
 
-            sb.AppendLine($"- **最终沉降 s = {result.FinalSettlement:F2} mm**");
-            sb.AppendLine();
-
-            if (p0 > 0)
+            // Phase 3: 桩身结构验算
+            try
             {
-                sb.AppendLine($"## {(result.HasRebound ? "七" : "六")}、深度判定");
-                sb.AppendLine();
-                sb.AppendLine("依据 GB 50007-2011 式5.3.7：Δs'n ≤ 0.025 × Σ Δs'i");
-                sb.AppendLine();
+                if (FoundationTypeIndex == 2 && PileAxialForceDesign > 0 && PileFc > 0)
+                {
+                    var structInput = BuildPileStructuralInput();
+                    ctx.StructuralResult = PileStructuralService.Calculate(input, structInput);
+                }
             }
+            catch { }
 
-            return sb.ToString();
+            return ctx;
+        }
+
+        private BearingCapacityInput BuildCompositeBearingInput()
+        {
+            return new BearingCapacityInput
+            {
+                Lambda = CompLambda,
+                Beta = CompBeta,
+                Fsk = CompFsk,
+                Fcu = CompFcu,
+                AlphaP = CompAlphaP,
+                CompQp = CompQp,
+                CompPileDiameter = CompPileDiameter,
+                CompPileSpacing = CompPileSpacing,
+                ArrangementType = CompArrangementType,
+                CompSideResistance = ParseSideResistance(CompSideResistanceText)
+            };
+        }
+
+        private BearingCapacityInput BuildPileBearingInput()
+        {
+            return new BearingCapacityInput
+            {
+                PileQp = PileQp,
+                Nk = PileNk,
+                PileSideResistance = ParseSideResistance(PileSideResistanceText)
+            };
+        }
+
+        private PileStructuralInput BuildPileStructuralInput()
+        {
+            return new PileStructuralInput
+            {
+                AxialForceDesign = PileAxialForceDesign,
+                PsiC = PilePsiC,
+                Fc = PileFc,
+                ConcreteGrade = PileConcreteGrade,
+                SteelArea = PileSteelArea,
+                PileLength = PileLength
+            };
+        }
+
+        /// <summary>
+        /// 解析侧阻力文本，格式为每行一层：土层名称,厚度,qsi
+        /// 例如：粉质黏土,3.0,30
+        /// </summary>
+        private List<SideResistanceLayer> ParseSideResistance(string text)
+        {
+            var result = new List<SideResistanceLayer>();
+            if (string.IsNullOrWhiteSpace(text)) return result;
+
+            foreach (var line in text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = line.Split(new[] { ',', '，', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 3) continue;
+                if (!double.TryParse(parts[1].Trim(), out double thickness)) continue;
+                if (!double.TryParse(parts[2].Trim(), out double qsi)) continue;
+
+                result.Add(new SideResistanceLayer
+                {
+                    LayerName = parts[0].Trim(),
+                    SoilType = parts.Length > 3 ? parts[3].Trim() : "",
+                    Thickness = thickness,
+                    Qsi = qsi
+                });
+            }
+            return result;
+        }
+
+        private string GenerateFullReport(SettlementResult result)
+        {
+            var generator = new SettlementReportGenerator();
+            var ctx = BuildReportContext(result);
+            return generator.Generate(ctx);
         }
 
         #endregion
@@ -1180,6 +1457,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     BoreholeElevation = AbsBoreholeElevation,
                     StructureZeroElevation = AbsStructureZero,
                     FoundationDepth = FoundationDepth,
+                    IndoorOutdoorDiff = IndoorOutdoorDiff,
                     UseAbsoluteElevation = UseAbsoluteElevation,
                     RelBoreholeElevation = RelBoreholeElevation,
                     FoundationTypeIndex = FoundationTypeIndex,
@@ -1203,7 +1481,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     EciEsiRatio = EciEsiRatio,
                     PsiC = PsiC,
                     Kappa = Kappa,
-                    ReboundCompletionRatio = ReboundCompletionRatio,
+                    Eta1 = Eta1,
+                    Eta2 = Eta2,
+                    R0PrimeRatio = R0PrimeRatio,
+                    R0PrimeR = R0PrimeR,
                     ReboundDepthRatio = ReboundDepthRatio,
                     CompositeBearingCapacity = CompositeBearingCapacity,
                     TreatedDepth = TreatedDepth,
@@ -1240,6 +1521,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 AbsBoreholeElevation = data.BoreholeElevation;
                 AbsStructureZero = data.StructureZeroElevation;
                 FoundationDepth = data.FoundationDepth;
+                IndoorOutdoorDiff = data.IndoorOutdoorDiff;
                 UseAbsoluteElevation = data.UseAbsoluteElevation;
                 RelBoreholeElevation = data.RelBoreholeElevation;
 
@@ -1270,7 +1552,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 EciEsiRatio = data.EciEsiRatio > 0 ? data.EciEsiRatio : 5.0;
                 PsiC = data.PsiC > 0 ? data.PsiC : 1.0;
                 Kappa = data.Kappa > 0 ? data.Kappa : 1.19;
-                ReboundCompletionRatio = data.ReboundCompletionRatio;
+                Eta1 = data.Eta1 > 0 ? data.Eta1 : 0.5;
+                Eta2 = data.Eta2 > 0 ? data.Eta2 : 0.8;
+                R0PrimeRatio = data.R0PrimeRatio > 0 ? data.R0PrimeRatio : 0.3;
+                R0PrimeR = data.R0PrimeR > 0 ? data.R0PrimeR : 0.4;
                 ReboundDepthRatio = data.ReboundDepthRatio > 0 ? data.ReboundDepthRatio : 0.025;
                 CompositeBearingCapacity = data.CompositeBearingCapacity;
                 TreatedDepth = data.TreatedDepth;
@@ -1287,6 +1572,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     var layers = MarkdownTableParser.Parse(SoilLayerMarkdown);
                     ParsedSoilLayers = new ObservableCollection<SoilLayer>(layers);
                 }
+                else
+                    ParsedSoilLayers = new ObservableCollection<SoilLayer>();
             }
             catch (System.Exception ex)
             {
@@ -1303,6 +1590,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double BoreholeElevation { get; set; }
             public double StructureZeroElevation { get; set; }
             public double FoundationDepth { get; set; } = 1.5;
+            public double IndoorOutdoorDiff { get; set; }
             public bool UseAbsoluteElevation { get; set; }
             public double RelBoreholeElevation { get; set; }
             public int FoundationTypeIndex { get; set; }
@@ -1326,7 +1614,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double EciEsiRatio { get; set; } = 5.0;
             public double PsiC { get; set; } = 1.0;
             public double Kappa { get; set; } = 1.19;
-            public double ReboundCompletionRatio { get; set; } = 0.5;
+            public double Eta1 { get; set; } = 0.5;
+            public double Eta2 { get; set; } = 0.8;
+            public double R0PrimeRatio { get; set; } = 0.3;
+            public double R0PrimeR { get; set; } = 0.4;
             public double ReboundDepthRatio { get; set; } = 0.025;
             public double CompositeBearingCapacity { get; set; } = 250.0;
             public double TreatedDepth { get; set; } = 10.0;

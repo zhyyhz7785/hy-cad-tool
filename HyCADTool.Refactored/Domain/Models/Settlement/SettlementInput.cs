@@ -92,8 +92,21 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>箱型基础混凝土折算厚度 (m)，用于计算基础自重</summary>
         public double BoxConcreteThickness { get; set; }
 
-        /// <summary>覆土/基础复合平均重度 γ_m (kN/m³)，默认 20</summary>
+        /// <summary>基础底面以上土的加权平均重度 γ_m (kN/m³)</summary>
         public double GammaM { get; set; } = 20.0;
+
+        /// <summary>室内外高差 Δh (m)，用于计算覆土平均厚度 d_eff = d − Δh/2</summary>
+        public double IndoorOutdoorDiff { get; set; }
+
+        #endregion
+
+        #region 承载力验算参数
+
+        /// <summary>承载力验算输入（Phase 2），为 null 时不计算承载力</summary>
+        public BearingCapacityInput BearingInput { get; set; }
+
+        /// <summary>桩身结构验算输入（Phase 3），为 null 时不验算</summary>
+        public PileStructuralInput StructuralInput { get; set; }
 
         #endregion
 
@@ -108,11 +121,20 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>回弹经验系数 ψ_c（无经验时取 1.0）</summary>
         public double PsiC { get; set; } = 1.0;
 
-        /// <summary>再压缩增大系数 κ（黏性土 1.19，砂土 1.10）</summary>
+        /// <summary>再压缩增大系数 κ = r'(R'=1.0)（黏性土 1.19，砂土 1.10）</summary>
         public double Kappa { get; set; } = 1.19;
 
-        /// <summary>施工期间回弹完成比例 η（0~1），默认 0.5</summary>
-        public double ReboundCompletionRatio { get; set; } = 0.5;
+        /// <summary>η₁ 回弹完成比（0~1）：开挖到加载期间理论回弹完成比例</summary>
+        public double Eta1 { get; set; } = 0.5;
+
+        /// <summary>η₂ 回弹清除比（0~1）：已完成回弹中因基底整平被移除的比例</summary>
+        public double Eta2 { get; set; } = 0.8;
+
+        /// <summary>R'₀ 临界再加荷比（§5.3.11），默认 0.3</summary>
+        public double R0Prime { get; set; } = 0.3;
+
+        /// <summary>r'₀ 临界再压缩比率（§5.3.11），默认 0.4</summary>
+        public double r0Prime { get; set; } = 0.4;
 
         /// <summary>回弹计算深度终止比值（Δsc_i / Σsc ≤ 此值时终止），默认 0.025</summary>
         public double ReboundDepthRatio { get; set; } = 0.025;

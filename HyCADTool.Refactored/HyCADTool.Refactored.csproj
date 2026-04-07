@@ -37,6 +37,7 @@
     <PackageReference Include="AutoCAD.NET" Version="24.3.0" />
     <PackageReference Include="Autofac" Version="7.1.0" />
     <PackageReference Include="Clipper2" Version="1.4.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
     <PackageReference Include="NetTopologySuite" Version="2.5.0" />
     <PackageReference Include="Markdig" Version="0.37.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

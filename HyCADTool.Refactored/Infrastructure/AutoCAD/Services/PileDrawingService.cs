@@ -169,6 +169,24 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             var table = new Table();
             table.TableStyle = Application.DocumentManager.MdiActiveDocument.Database.Tablestyle;
             table.SetSize(12, 2);
+
+            for (int r = 0; r < 12; r++)
+            {
+                for (int c = 0; c < 2; c++)
+                {
+                    try
+                    {
+                        var range = table.Cells[r, c].GetMergeRange();
+                        if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                            table.UnmergeCells(range);
+                    }
+                    catch
+                    {
+                        // 仅用于消除默认标题行自动合并。
+                    }
+                }
+            }
+
             table.SetRowHeight(2.5 * scale);
             table.SetColumnWidth(15 * scale);
 

@@ -25,6 +25,10 @@ new Presentation.Commands.OverKillCommand().Execute();
 
 不要改 ReCall、不要改 TestRunner；换测命令只改 TestCommand.cs。
 
+### 基础沉降（固定命令，不必用 C1）
+
+在命令行直接输入 **`HYJC`** 或 **`hySC`** 即可打开「基础沉降计算」独立窗口（与 C1 联调无关）。C1 仅用于开发时从 `TestCommand.cs` 一键触发任意命令。
+
 ### 当前双文件约定（必须遵守）
 
 - `HyCADTool.Refactored/Test/TestCommand.cs`：Refactored 实测入口，默认“一键打开统一面板”用于联调。

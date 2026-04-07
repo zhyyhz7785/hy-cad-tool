@@ -526,6 +526,23 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     table.Position = tablePosition;
                     table.SetSize(circles.Count + 1, 3);
 
+                    for (int r = 0; r < table.Rows.Count; r++)
+                    {
+                        for (int c = 0; c < table.Columns.Count; c++)
+                        {
+                            try
+                            {
+                                var range = table.Cells[r, c].GetMergeRange();
+                                if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                                    table.UnmergeCells(range);
+                            }
+                            catch
+                            {
+                                // 仅用于消除默认标题行自动合并。
+                            }
+                        }
+                    }
+
                     // 表头行
                     table.Rows[0].TextHeight = 2.5 * scale;
                     table.Rows[0].Height = 2.5 * scale;

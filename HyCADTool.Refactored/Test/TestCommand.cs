@@ -73,6 +73,9 @@ namespace HyCADTool.Refactored.Test
                         case "ge":
                             new ReinExtendCommand().Execute();
                             return;
+                        case "hyjc":
+                            new SettlementCalculationCommand().Execute();
+                            return;
                     }
                 }
 

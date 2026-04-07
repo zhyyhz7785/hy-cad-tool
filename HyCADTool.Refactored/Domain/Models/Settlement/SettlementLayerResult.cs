@@ -1,11 +1,11 @@
 namespace HyCADTool.Refactored.Domain.Models.Settlement
 {
     /// <summary>
-    /// 单层沉降计算结果
+    /// 单层沉降计算结果（对应表 5-7 各列）
     /// </summary>
     public class SettlementLayerResult
     {
-        /// <summary>层序号（从 1 开始）</summary>
+        /// <summary>点号（从 0 开始，0 为基底面）</summary>
         public int Index { get; set; }
 
         /// <summary>地层编号</summary>
@@ -14,32 +14,41 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>地层名称</summary>
         public string LayerName { get; set; } = "";
 
-        /// <summary>本层底面距基底距离 z_i (m)</summary>
+        /// <summary>z_i (m) 本层底面距基底距离</summary>
         public double Zi { get; set; }
 
-        /// <summary>l/b 比值</summary>
+        /// <summary>l/b（全宽比）= L/B，子矩形 l'/b' 相同</summary>
         public double M { get; set; }
 
-        /// <summary>z_i/b 比值</summary>
-        public double N { get; set; }
+        /// <summary>z/(0.5b) = 2z/B（子矩形 z/b'，查表参数）</summary>
+        public double NHalf { get; set; }
 
-        public double LbRatio => M;
-        public double ZbRatio => N;
-
-        /// <summary>附加应力系数 α</summary>
-        public double Alpha { get; set; }
-
-        /// <summary>平均附加应力系数 ᾱ</summary>
+        /// <summary>ᾱ_i（中心点）= 4 × 角点值</summary>
         public double AlphaBar { get; set; }
 
-        /// <summary>z_i * ᾱ_i - z_{i-1} * ᾱ_{i-1}</summary>
+        /// <summary>角点 ᾱ 值（= AlphaBar / 4，用于显示 "4×0.xxxx"）</summary>
+        public double AlphaBarCorner { get; set; }
+
+        /// <summary>ᾱ_i · z_i (mm)</summary>
+        public double AlphaBarZi { get; set; }
+
+        /// <summary>ᾱ_i·z_i − ᾱ_{i-1}·z_{i-1} (mm)</summary>
         public double ZAlphaBarDiff { get; set; }
+
+        /// <summary>p₀ / E_si（无量纲）</summary>
+        public double P0overEs { get; set; }
+
+        /// <summary>Δs'_i (mm)</summary>
+        public double DeltaS { get; set; }
+
+        /// <summary>Σ Δs'_i (mm) 累计到本层</summary>
+        public double CumulativeDeltaS { get; set; }
+
+        /// <summary>Δs'_n / Σ Δs'_i（最后有效层才有意义）</summary>
+        public double DepthCheckRatio { get; set; }
 
         /// <summary>压缩模量 Es (MPa)，复合地基已乘 ξ</summary>
         public double Es { get; set; }
-
-        /// <summary>本层变形增量 Δs' (mm)</summary>
-        public double DeltaS { get; set; }
 
         /// <summary>是否在计算深度范围内</summary>
         public bool WithinDepth { get; set; } = true;

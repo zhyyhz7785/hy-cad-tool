@@ -254,6 +254,24 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     Table table = new Table();
                     table.TableStyle = _db.Tablestyle;
                     table.SetSize(totalRows, 3);
+
+                    for (int r = 0; r < totalRows; r++)
+                    {
+                        for (int c = 0; c < 3; c++)
+                        {
+                            try
+                            {
+                                var range = table.Cells[r, c].GetMergeRange();
+                                if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                                    table.UnmergeCells(range);
+                            }
+                            catch
+                            {
+                                // 仅用于消除默认标题行自动合并。
+                            }
+                        }
+                    }
+
                     table.SetRowHeight(2.5 * scale);
                     table.SetColumnWidth(10 * scale);
 

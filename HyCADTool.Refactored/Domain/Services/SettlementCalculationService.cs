@@ -66,6 +66,19 @@ namespace HyCADTool.Refactored.Domain.Services
             return (A * B + C) / (4 * Math.PI);
         }
 
+        /// <summary>
+        /// 矩形中心点附加应力系数 α_center
+        /// 四块角点叠加：子矩形 l'=L/2, b'=B/2
+        ///   m' = l'/b' = L/B（不变）, z/b' = z/(B/2) = 2z/B
+        ///   α_center = 4 × α_corner(l/b, 2z/b)
+        /// </summary>
+        /// <param name="lbRatio">l/b（全宽）</param>
+        /// <param name="zbRatio">z/b（全宽）</param>
+        public static double CalculateAlphaCenter(double lbRatio, double zbRatio)
+        {
+            return 4.0 * CalculateAlpha(lbRatio, 2.0 * zbRatio);
+        }
+
         #endregion
 
         #region 平均附加应力系数 ᾱ（解析公式 3）
@@ -119,6 +132,20 @@ namespace HyCADTool.Refactored.Domain.Services
                 term3 = z * Math.Atan(l * b / arcDen);
 
             return (term1 + term2 + term3) / (2 * Math.PI * z);
+        }
+
+        /// <summary>
+        /// 矩形中心点的平均附加应力系数 ᾱ_center
+        /// 四块角点叠加：子矩形 l'=L/2, b'=B/2
+        ///   m' = l'/b' = L/B（不变）, z/b' = z/(B/2) = 2z/B
+        ///   ᾱ_center = 4 × ᾱ_corner(l/b, 2z/b)
+        /// </summary>
+        /// <param name="lbRatio">l/b（全宽）</param>
+        /// <param name="zbRatio">z/b（全宽）</param>
+        public static double CalculateAlphaBarCenter(double lbRatio, double zbRatio)
+        {
+            if (zbRatio < 1e-10) return lbRatio > 0 ? 1.0 : 0;
+            return 4.0 * CalculateAlphaBar(lbRatio, 2.0 * zbRatio);
         }
 
         #endregion
@@ -238,7 +265,10 @@ namespace HyCADTool.Refactored.Domain.Services
                 EciEsiRatio = src.EciEsiRatio,
                 PsiC = src.PsiC,
                 Kappa = src.Kappa,
-                ReboundCompletionRatio = src.ReboundCompletionRatio,
+                Eta1 = src.Eta1,
+                Eta2 = src.Eta2,
+                R0Prime = src.R0Prime,
+                r0Prime = src.r0Prime,
                 ReboundDepthRatio = src.ReboundDepthRatio,
                 SoilLayers = layers
             };
@@ -404,7 +434,8 @@ namespace HyCADTool.Refactored.Domain.Services
             foreach (var layer in layers)
             {
                 depthAccum = layer.Zi;
-                double sigmaZ = p0 * CalculateAlpha(layer.M, layer.N);
+                double zbFull = layer.NHalf * 0.5;
+                double sigmaZ = p0 * CalculateAlphaCenter(layer.M, zbFull);
                 double sigmaC = sigmaC_base + gamma * depthAccum;
 
                 if (sigmaZ <= 0.2 * sigmaC && depthAccum > 0)
@@ -436,8 +467,11 @@ namespace HyCADTool.Refactored.Domain.Services
             double? xi, double treatedDepth)
         {
             var results = new List<SettlementLayerResult>();
+            double halfB = b * 0.5;
             double zPrev = 0;
-            double alphaBarPrev = CalculateAlphaBar(m, 0); // z=0 时
+            double alphaBarPrev = CalculateAlphaBarCenter(m, 0);
+            double alphaBarZiPrev = 0;
+            double cumDeltaS = 0;
             int index = 1;
 
             foreach (var layer in layers)
@@ -446,12 +480,13 @@ namespace HyCADTool.Refactored.Domain.Services
 
                 double zi = zPrev + layer.Thickness;
                 double ni = b > 0 ? zi / b : 0;
+                double nHalf = halfB > 0 ? zi / halfB : 0;
 
-                double alphaBar_i = CalculateAlphaBar(m, ni);
-                double alpha_i = CalculateAlpha(m, ni);
-                double zAlphaDiff = zi * alphaBar_i - zPrev * alphaBarPrev;
+                double alphaBar_i = CalculateAlphaBarCenter(m, ni);
+                double alphaBarCorner = alphaBar_i / 4.0;
+                double alphaBarZi = alphaBar_i * zi * 1000;
+                double zAlphaDiffMm = alphaBarZi - alphaBarZiPrev;
 
-                // 复合地基：加固层内 Es 乘以 ξ
                 double es = layer.Es;
                 if (xi.HasValue && zPrev < treatedDepth)
                 {
@@ -463,10 +498,9 @@ namespace HyCADTool.Refactored.Domain.Services
                         es = layer.Es * (treatedPortion * xi.Value + naturalPortion) / layer.Thickness;
                 }
 
-                // Δs'_i = (p₀ / E_si) * (z_i·ᾱ_i - z_{i-1}·ᾱ_{i-1})
-                // 注意单位：p₀(kPa) / Es(MPa) = kPa / (1000 kPa) = 1/1000
-                // 结果乘 1000 转 mm
-                double deltaS = es > 0 ? (p0 / (es * 1000)) * zAlphaDiff * 1000 : 0;
+                double p0overEs = es > 0 ? p0 / (es * 1000) : 0;
+                double deltaS = p0overEs * zAlphaDiffMm;
+                cumDeltaS += deltaS;
 
                 results.Add(new SettlementLayerResult
                 {
@@ -475,16 +509,20 @@ namespace HyCADTool.Refactored.Domain.Services
                     LayerName = layer.Name,
                     Zi = zi,
                     M = m,
-                    N = ni,
-                    Alpha = alpha_i,
+                    NHalf = nHalf,
                     AlphaBar = alphaBar_i,
-                    ZAlphaBarDiff = zAlphaDiff,
+                    AlphaBarCorner = alphaBarCorner,
+                    AlphaBarZi = alphaBarZi,
+                    ZAlphaBarDiff = zAlphaDiffMm,
+                    P0overEs = p0overEs,
                     Es = es,
-                    DeltaS = deltaS
+                    DeltaS = deltaS,
+                    CumulativeDeltaS = cumDeltaS
                 });
 
                 zPrev = zi;
                 alphaBarPrev = alphaBar_i;
+                alphaBarZiPrev = alphaBarZi;
             }
 
             return results;
@@ -522,11 +560,18 @@ namespace HyCADTool.Refactored.Domain.Services
             // 如果没找到需要截断的位置，全部层都在计算深度内
             if (!foundDepth) return;
 
-            // 重新从后向前标记：最后一个 DeltaS > threshold 的层之后都超出
             for (int i = layers.Count - 1; i >= 0; i--)
             {
                 if (layers[i].DeltaS > threshold) break;
                 layers[i].WithinDepth = false;
+            }
+
+            var withinLayers = layers.Where(r => r.WithinDepth).ToList();
+            if (withinLayers.Any())
+            {
+                double cumSum = withinLayers.Sum(r => r.DeltaS);
+                var last = withinLayers.Last();
+                last.DepthCheckRatio = cumSum > 0 ? last.DeltaS / cumSum : 0;
             }
         }
 
@@ -621,18 +666,43 @@ namespace HyCADTool.Refactored.Domain.Services
         #region 回弹再压缩计算（GB 50007 §5.3.10~5.3.11）
 
         /// <summary>
-        /// 回弹再压缩计算 — 三种 p₀ 情况分支
+        /// §5.3.11 分段线性再压缩公式：
+        ///   p &lt; R'₀·pc:  s'c = r'₀·sc · p/(R'₀·pc)
+        ///   R'₀·pc ≤ p ≤ pc:  s'c = sc·[r'₀ + (κ-r'₀)/(1-R'₀)·(p/pc - R'₀)]
+        ///   p &gt; pc:  s'c = κ·sc（取 R'=1 上限）
+        /// </summary>
+        private static double CalculateRecompression531(
+            double sc, double Rprime, double R0Prime, double r0Prime, double kappa)
+        {
+            if (sc <= 0 || Rprime <= 0) return 0;
+            if (R0Prime <= 0) R0Prime = 0.3;
+            if (r0Prime <= 0) r0Prime = 0.4;
+
+            if (Rprime >= 1.0)
+                return kappa * sc;
+
+            if (Rprime < R0Prime)
+                return r0Prime * sc * Rprime / R0Prime;
+
+            double slope = (kappa - r0Prime) / (1.0 - R0Prime);
+            return sc * (r0Prime + slope * (Rprime - R0Prime));
+        }
+
+        /// <summary>
+        /// 回弹再压缩计算 — 严格遵循物理过程
         ///
-        /// §5.3.10 回弹量：sc = ψc × Σ (pc/Eci)(zi·ᾱi - z(i-1)·ᾱ(i-1))
-        /// §5.3.11 再压缩：根据 R'=p/pc 确定再压缩量
+        /// 物理过程：
+        /// 1. 开挖卸荷 → 理论回弹 sc (§5.3.10)
+        /// 2. 施工期实际完成回弹 η₁·sc，其中 η₂ 比例被基底整平清除
+        /// 3. 再加荷 p = p₀ + pc
         ///
-        /// p₀ ≤ 0（超补偿/完全补偿）：仅回弹再压缩
-        ///   再压缩 = κ·η·sc·R'（简化 5.3.11，R'≤1）
-        ///   净变形 = 再压缩 - η·sc
+        /// 情况 A (p ≤ pc): 土体未超过原始应力，仅按 §5.3.11 分段公式
+        ///   净变形 = s'c − η₂·η₁·sc
         ///
-        /// p₀ > 0（非补偿）：压缩 + 滞回附加
-        ///   滞回附加 = η·sc·(κ-1)
-        ///   最终 = 压缩沉降 + 滞回附加
+        /// 情况 B (p > pc): 两阶段
+        ///   段 1 (0→pc): s'c(R'=1)=sc·κ，扣除剩余回弹后的净沉降
+        ///   段 2 (p−pc→): 超出原始应力的部分 (p−pc)=p₀ 按 §5.3.5 计算沉降
+        ///   最终沉降 = 段1净沉降 + 段2压缩沉降（保证 p=pc 边界连续）
         /// </summary>
         private static void CalculateRebound(SettlementInput input, SettlementResult result)
         {
@@ -644,51 +714,56 @@ namespace HyCADTool.Refactored.Domain.Services
             double p0 = input.AdditionalPressure;
             double p = p0 + pc;
             double kappa = input.Kappa;
-            double eta = input.ReboundCompletionRatio;
+            double eta1 = input.Eta1;
+            double eta2 = input.Eta2;
 
             if (pc <= 0) return;
 
-            // ── Step 1: 计算 sc（回弹量，§5.3.10）──────────────────
             double sc = CalculateReboundSc(input.SoilLayers, m, b, pc, input);
             if (sc <= 0) return;
 
-            // ── Step 2: 记录基本参数 ──────────────────────────────
+            double completedRebound = eta1 * sc;
+            double clearedRebound = eta2 * completedRebound;
+            double Rprime = p / pc;
+
             result.HasRebound = true;
             result.ReboundSettlement = Math.Round(sc, 3);
+            result.CompletedRebound = Math.Round(completedRebound, 3);
+            result.ClearedRebound = Math.Round(clearedRebound, 3);
             result.OverburdenPressure = Math.Round(pc, 1);
             result.TotalReloadPressure = Math.Round(p, 1);
-            result.ReloadRatio = pc > 0 ? Math.Round(p / pc, 3) : 0;
-            result.ActualRebound = Math.Round(eta * sc, 3);
+            result.ReloadRatio = Math.Round(Rprime, 3);
 
-            double Rprime = pc > 0 ? p / pc : 0;
-
-            // ── Step 3: 三种情况分支 ──────────────────────────────
-            if (p0 <= 0)
+            if (p <= pc)
             {
-                // p₀ ≤ 0：超补偿或完全补偿，仅回弹再压缩
-                // 简化 5.3.11：s'c = κ·η·sc·R'（线性，R'∈[0,1]）
-                double R = Math.Max(Math.Min(Rprime, 1.0), 0);
-                double recompression = kappa * eta * sc * R;
-                double actualRebound = eta * sc;
-                double net = recompression - actualRebound;
+                // 情况 A：p ≤ pc（补偿/超补偿），全程 §5.3.11
+                double sPrimeC = CalculateRecompression531(sc, Rprime,
+                    input.R0Prime, input.r0Prime, kappa);
 
-                result.RecompressionSettlement = Math.Round(recompression, 3);
-                result.NetReboundSettlement = Math.Round(net, 3);
-                result.FinalSettlement = Math.Round(net, 2);
+                // 土中剩余回弹 = sc − 清除量（理论回弹扣除永久损失）
+                double remainingRebound = sc - clearedRebound;
+                // s'c 先抵消剩余回弹，仅超出部分为实际沉降
+                double netSettlement = sPrimeC - remainingRebound;
+
+                result.RecompressionSettlement = Math.Round(sPrimeC, 3);
+                result.NetReboundSettlement = Math.Round(netSettlement, 3);
+                result.FinalSettlement = Math.Round(netSettlement, 2);
             }
             else
             {
-                // p₀ > 0：非补偿基础，三部分叠加
-                // ① 滞回附加 = η·sc·(κ-1)，方向向下
-                double hysteresisExtra = eta * sc * (kappa - 1);
-                // ② 压缩沉降已在 result.CompressionSettlement 中
-                double compression = result.CompressionSettlement;
-                // ③ 总再压缩量（用于显示）= κ·η·sc
-                double recompression = kappa * eta * sc;
+                // 情况 B：p > pc（非补偿）
+                // 段 1 (0→pc): 再压缩量 s'c = sc·κ，但清除的回弹不可恢复
+                double sPrimeC = kappa * sc;
+                double remainingRebound = sc - clearedRebound;
+                double recompNet = sPrimeC - remainingRebound;
+                if (recompNet < 0) recompNet = 0;
 
-                result.RecompressionSettlement = Math.Round(recompression, 3);
-                result.NetReboundSettlement = Math.Round(hysteresisExtra, 3);
-                result.FinalSettlement = Math.Round(compression + hysteresisExtra, 2);
+                result.RecompressionSettlement = Math.Round(sPrimeC, 3);
+                result.NetReboundSettlement = Math.Round(recompNet, 3);
+
+                // 段 2: p₀ 引起的附加应力沉降 (已在 §5.3.5 计算)
+                // 最终 = 段1净沉降 + 段2压缩
+                result.FinalSettlement = Math.Round(recompNet + result.CompressionSettlement, 2);
             }
         }
 
@@ -702,14 +777,14 @@ namespace HyCADTool.Refactored.Domain.Services
 
             var layerDeltas = new List<double>();
             double zPrev = 0;
-            double alphaBarPrev = CalculateAlphaBar(m, 0);
+            double alphaBarPrev = CalculateAlphaBarCenter(m, 0);
             double scTotal = 0;
 
             foreach (var layer in layers)
             {
                 double zi = zPrev + layer.Thickness;
                 double zbRatio = zi / b;
-                double alphaBarI = CalculateAlphaBar(m, zbRatio);
+                double alphaBarI = CalculateAlphaBarCenter(m, zbRatio);
                 double zAlphaDiff = zi * alphaBarI - zPrev * alphaBarPrev;
 
                 double eci = layer.Eci > 0 ? layer.Eci : layer.Es * input.EciEsiRatio;

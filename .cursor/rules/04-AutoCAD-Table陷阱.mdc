@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+---
+# 04-AutoCAD Table 已知陷阱
+
+## Title 行自动合并
+
+AutoCAD `Table` 使用 `db.Tablestyle` 时，Row 0 默认为 **"Title"** 样式，
+该行会自动合并所有列为单个单元格。直接向 `Cells[0, c]` 逐列写入文字时，
+仅第一列内容可见（其余被合并覆盖），表现为表头只显示 `#` 或第一列标题。
+
+### 修复模式
+
+不要写死 `table.Rows[r].Style = "Data"`。
+部分图纸/自定义 `TableStyle` 中不存在该命名行样式，会直接抛出 `eKeyNotFound`。
+
+稳妥做法是在 `SetSize()` 之后、写入任何单元格之前，遍历单元格并解除默认自动合并：
+
+```csharp
+table.SetSize(totalRows, cols);
+
+for (int r = 0; r < totalRows; r++)
+{
+    for (int c = 0; c < cols; c++)
+    {
+        try
+        {
+            var range = table.Cells[r, c].GetMergeRange();
+            if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                table.UnmergeCells(range);
+        }
+        catch
+        {
+        }
+    }
+}
+```
+
+### 已修复文件清单
+
+| 文件 | 修复日期 |
+|------|----------|
+| `SettlementTableService.cs` | 2026-04 |
+| `DesignSpecService.cs` | 2026-04 |
+| `EquipmentFoundationService.cs` | 2026-04 |
+| `GroupCirclesByElevationCommand.cs` | 2026-04 |
+| `PileDrawingService.cs` | 2026-04 |
+
+> **规则**：今后任何新建 `new Table()` 的代码，若首行需要逐列写表头，必须在 `SetSize` 后先解除默认自动合并；不要依赖字符串样式名 `"Data"`。

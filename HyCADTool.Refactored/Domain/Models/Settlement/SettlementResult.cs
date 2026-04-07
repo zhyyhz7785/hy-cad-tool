@@ -49,16 +49,19 @@ namespace HyCADTool.Refactored.Domain.Models.Settlement
         /// <summary>再加荷比 R' = p / pc</summary>
         public double ReloadRatio { get; set; }
 
-        /// <summary>回弹量 sc (mm)，§5.3.10（正值，物理方向向上）</summary>
+        /// <summary>理论回弹量 sc (mm)，§5.3.10</summary>
         public double ReboundSettlement { get; set; }
 
-        /// <summary>再压缩量 (mm)，方向向下</summary>
+        /// <summary>实际完成回弹 η₁·sc (mm)</summary>
+        public double CompletedRebound { get; set; }
+
+        /// <summary>被清除的回弹量 η₂·η₁·sc (mm)，永久不可恢复</summary>
+        public double ClearedRebound { get; set; }
+
+        /// <summary>再压缩量 s'c (mm)，§5.3.11 计算结果</summary>
         public double RecompressionSettlement { get; set; }
 
-        /// <summary>实际回弹量 η·sc (mm)（施工期间实际发生的回弹）</summary>
-        public double ActualRebound { get; set; }
-
-        /// <summary>回弹再压缩净沉降 (mm)（正=向下，负=向上）</summary>
+        /// <summary>回弹再压缩段净变形 (mm) = s'c - η₂·η₁·sc</summary>
         public double NetReboundSettlement { get; set; }
 
         /// <summary>是否包含回弹再压缩计算</summary>

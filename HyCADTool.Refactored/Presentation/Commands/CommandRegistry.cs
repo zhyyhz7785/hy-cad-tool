@@ -398,9 +398,16 @@ namespace HyCADTool.Refactored.Presentation.Commands
         //  沉降计算 (Settlement)
         // ================================================================
 
-        /// <summary>沉降计算结果绘制 (hySC)</summary>
+        /// <summary>
+        /// 基础沉降计算：打开独立窗口（计算后可落图表格）。
+        /// C2 热重载后通过 RouteThroughC1 转发，避免旧程序集 XAML 资源失效。
+        /// </summary>
+        [CommandMethod("HYJC")]
+        public void Cmd_HYJC() => RouteThroughC1("hyjc", () => new SettlementCalculationCommand().Execute());
+
+        /// <summary>同 HYJC（短别名）</summary>
         [CommandMethod("hySC")]
-        public void Cmd_hySC() => Run(() => new SettlementCalculationCommand().Execute());
+        public void Cmd_hySC() => RouteThroughC1("hyjc", () => new SettlementCalculationCommand().Execute());
 
         // ================================================================
         //  面板内部执行命令（直接加载 DLL 时替代 ReCall 的 C1）

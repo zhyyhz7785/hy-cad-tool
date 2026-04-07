@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using HyCADTool.Refactored.Infrastructure.Services;
 using HyCADTool.Refactored.Presentation.ViewModels;
+using Microsoft.Win32;
 
 namespace HyCADTool.Refactored.Presentation.Views
 {
@@ -105,6 +107,42 @@ namespace HyCADTool.Refactored.Presentation.Views
 
             reportWin.Content = dp;
             reportWin.ShowDialog();
+        }
+
+        private void BtnExportWord_Click(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as SettlementPanelViewModel;
+            if (vm == null) return;
+
+            vm.GenerateReportCommand?.Execute(null);
+
+            if (string.IsNullOrWhiteSpace(vm.ReportText))
+            {
+                vm.StatusMessage = "请先执行计算后再导出";
+                return;
+            }
+
+            var dlg = new SaveFileDialog
+            {
+                Title = "导出沉降计算书",
+                Filter = "Word 文档 (*.docx)|*.docx",
+                FileName = $"沉降计算书_{System.DateTime.Now:yyyyMMdd_HHmm}.docx",
+                DefaultExt = ".docx"
+            };
+
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    var exporter = new WordExportService();
+                    exporter.Export(vm.ReportText, dlg.FileName);
+                    vm.StatusMessage = $"已导出：{dlg.FileName}";
+                }
+                catch (System.Exception ex)
+                {
+                    vm.StatusMessage = $"导出失败：{ex.Message}";
+                }
+            }
         }
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
