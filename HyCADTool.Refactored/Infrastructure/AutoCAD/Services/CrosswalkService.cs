@@ -7,9 +7,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
     /// <summary>
     /// 人行横道绘制服务
-    /// 从选中的直线和圆弧中识别交叉口道路方向，
-    /// 绘制辅助线、偏移线、斑马线条纹和停止线。
-    /// 容错：不要求固定数量，自动过滤无关实体。
+    /// 斑马线在 Line2/Line3 与弧线围成的区域内绘制，弧线处自动裁切。
     /// </summary>
     public class CrosswalkService
     {
@@ -24,6 +22,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             public Point3d LeftCorner { get; set; }
             public Point3d RightCorner { get; set; }
             public Vector3d OutwardDirection { get; set; }
+            public Arc LeftArc { get; set; }
+            public Arc RightArc { get; set; }
         }
 
         public class AnalysisResult
@@ -37,9 +37,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             public int SkippedArcCount { get; set; }
         }
 
-        /// <summary>
-        /// 分析交叉口：容错模式，自动过滤无关实体
-        /// </summary>
         public AnalysisResult AnalyzeIntersection(List<Line> lines, List<Arc> arcs)
         {
             var result = new AnalysisResult
@@ -57,8 +54,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             if (lineInfos.Count < 2)
                 throw new Exception(
-                    $"至少需要 2 条与圆弧相连的直线才能构成 1 个方向，" +
-                    $"当前仅 {lineInfos.Count} 条相连（共选 {lines.Count} 条直线）。");
+                    $"至少需要 2 条与圆弧相连的直线，当前仅 {lineInfos.Count} 条。");
 
             var arcCorners = ComputeArcCornersTolerant(lineInfos,
                 out int validArcCount, out int skippedArcCount);
@@ -67,13 +63,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             if (arcCorners.Count < 2)
                 throw new Exception(
-                    $"至少需要 2 个有效角点才能构成 1 个方向，" +
-                    $"当前仅 {arcCorners.Count} 个（需每个圆弧恰好连接 2 条直线）。");
+                    $"至少需要 2 个有效角点，当前仅 {arcCorners.Count} 个。");
 
             result.Arms = GroupIntoArmsTolerant(lineInfos, arcCorners);
 
             if (result.Arms.Count == 0)
-                throw new Exception("无法配对出任何道路方向，请检查选择的实体。");
+                throw new Exception("无法配对出任何道路方向。");
 
             return result;
         }
@@ -98,13 +93,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         }
 
         /// <summary>
-        /// 为一个道路方向绘制人行横道（所有距离均为绘图单位）
+        /// 为一个道路方向绘制人行横道。
+        /// 算法：1) Line2/Line3 两端延伸到弧线得 4 交点；
+        ///       2) 从 roadDir 最小到最大全覆盖绘制条纹；
+        ///       3) 每条条纹双端裁切（内端+外端均可能被弧线截断）。
         /// </summary>
         public void DrawCrosswalkForArm(Transaction tr, BlockTableRecord ms, RoadArm arm,
             double gapWidth, double crosswalkWidth, double stopLineDistance, double stripeSpacing,
             string auxLayerName, string crosswalkLayerName, string stopLineLayerName)
         {
             var outward = arm.OutwardDirection;
+            var inward = new Vector3d(-outward.X, -outward.Y, -outward.Z);
             var baseLeft = arm.LeftCorner;
             var baseRight = arm.RightCorner;
 
@@ -114,35 +113,90 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var l2Left = baseLeft + vecGap;
             var l2Right = baseRight + vecGap;
-            AddLine(tr, ms, l2Left, l2Right, auxLayerName);
-
             var l3Left = baseLeft + vecCrosswalk;
             var l3Right = baseRight + vecCrosswalk;
-            AddLine(tr, ms, l3Left, l3Right, auxLayerName);
-
-            var l4Left = baseLeft + vecStop;
-            var l4Right = baseRight + vecStop;
-            AddLine(tr, ms, l4Left, l4Right, stopLineLayerName);
 
             var roadWidthVec = l2Right - l2Left;
             var roadWidth = roadWidthVec.Length;
             if (roadWidth < 1e-6)
                 throw new Exception($"路宽≈0（{roadWidth:G4}），角点可能重合。");
-
             var roadDir = roadWidthVec.GetNormal();
+            var negRoadDir = new Vector3d(-roadDir.X, -roadDir.Y, -roadDir.Z);
 
-            int stripeCount = (int)(roadWidth / stripeSpacing);
-            for (int i = 0; i <= stripeCount; i++)
+            // ---- Step 1: 延伸 Line2/Line3 到弧线，得 4 个交点 ----
+            var hitL2L = RayHitArc(l2Left, negRoadDir, arm.LeftArc);
+            var hitL2R = RayHitArc(l2Right, roadDir, arm.RightArc);
+            var hitL3L = RayHitArc(l3Left, negRoadDir, arm.LeftArc);
+            var hitL3R = RayHitArc(l3Right, roadDir, arm.RightArc);
+
+            AddLine(tr, ms, hitL2L ?? l2Left, hitL2R ?? l2Right, auxLayerName);
+            AddLine(tr, ms, hitL3L ?? l3Left, hitL3R ?? l3Right, auxLayerName);
+
+            // 停止线（不延伸）
+            var l4Left = baseLeft + vecStop;
+            var l4Right = baseRight + vecStop;
+            AddLine(tr, ms, l4Left, l4Right, stopLineLayerName);
+
+            // ---- Step 2: 从 roadDir 最小到最大全覆盖 ----
+            // 把 4 个交点投影到 roadDir 上（以 l2Left 为原点），求 tMin / tMax
+            double tMin = 0, tMax = roadWidth;
+            foreach (var pt in new Point3d?[] { hitL2L, hitL2R, hitL3L, hitL3R })
+            {
+                if (!pt.HasValue) continue;
+                var diff = pt.Value - l2Left;
+                double proj = diff.X * roadDir.X + diff.Y * roadDir.Y;
+                if (proj < tMin) tMin = proj;
+                if (proj > tMax) tMax = proj;
+            }
+
+            int startIdx = (int)Math.Ceiling(tMin / stripeSpacing);
+            int endIdx = (int)Math.Floor(tMax / stripeSpacing);
+
+            // ---- Step 3: 逐条绘制 + 双端裁切 ----
+            for (int i = startIdx; i <= endIdx; i++)
             {
                 double t = i * stripeSpacing;
-                if (t > roadWidth + 0.001) break;
+                var innerPt = l2Left + roadDir * t;
+                var outerPt = l3Left + roadDir * t;
 
-                var offset = roadDir * t;
-                AddLine(tr, ms, l2Left + offset, l3Left + offset, crosswalkLayerName);
+                // 裁切外端：从 innerPt 沿 outward 射线，取最近弧线交点
+                var clippedOuter = outerPt;
+                double outerBestDist = crosswalkWidth;
+                foreach (var arc in new[] { arm.LeftArc, arm.RightArc })
+                {
+                    var hit = RayHitArc(innerPt, outward, arc);
+                    if (hit == null) continue;
+                    var hv = hit.Value - innerPt;
+                    double d = hv.X * outward.X + hv.Y * outward.Y;
+                    if (d > 1e-4 && d < outerBestDist)
+                    {
+                        clippedOuter = hit.Value;
+                        outerBestDist = d;
+                    }
+                }
+
+                // 裁切内端：从 clippedOuter 沿 inward 射线，取最近弧线交点
+                var clippedInner = innerPt;
+                double innerMaxDist = clippedOuter.DistanceTo(innerPt);
+                foreach (var arc in new[] { arm.LeftArc, arm.RightArc })
+                {
+                    var hit = RayHitArc(clippedOuter, inward, arc);
+                    if (hit == null) continue;
+                    double d = clippedOuter.DistanceTo(hit.Value);
+                    if (d > 1e-4 && d < innerMaxDist)
+                    {
+                        clippedInner = hit.Value;
+                        innerMaxDist = d;
+                    }
+                }
+
+                double len = clippedInner.DistanceTo(clippedOuter);
+                if (len > stripeSpacing * 0.05)
+                    AddLine(tr, ms, clippedInner, clippedOuter, crosswalkLayerName);
             }
         }
 
-        #region Private
+        #region Private — 分析
 
         private class LineInfo
         {
@@ -152,17 +206,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             public Vector3d Direction;
         }
 
-        /// <summary>
-        /// 容错连接：跳过无法匹配圆弧的直线（不抛异常）
-        /// </summary>
         private List<LineInfo> BuildConnectivityTolerant(List<Line> lines, List<Arc> arcs)
         {
             var result = new List<LineInfo>();
-
             foreach (var line in lines)
             {
                 LineInfo info = null;
-
                 foreach (var arc in arcs)
                 {
                     if (IsNear(line.StartPoint, arc.StartPoint) || IsNear(line.StartPoint, arc.EndPoint))
@@ -186,19 +235,13 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         break;
                     }
                 }
-
                 if (info == null) continue;
-
                 info.Direction = (info.OuterPoint - info.InnerPoint).GetNormal();
                 result.Add(info);
             }
-
             return result;
         }
 
-        /// <summary>
-        /// 容错角点：跳过连接数 ≠ 2 的圆弧和平行线对
-        /// </summary>
         private Dictionary<Arc, Point3d> ComputeArcCornersTolerant(
             List<LineInfo> lineInfos, out int validCount, out int skippedCount)
         {
@@ -212,7 +255,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var corners = new Dictionary<Arc, Point3d>();
             int skipped = 0;
-
             foreach (var kvp in arcToLines)
             {
                 var pair = kvp.Value;
@@ -220,7 +262,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
                 var a = pair[0];
                 var b = pair[1];
-
                 var dA = (a.InnerPoint - a.OuterPoint).GetNormal();
                 var dB = (b.InnerPoint - b.OuterPoint).GetNormal();
 
@@ -231,34 +272,26 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     (a.InnerPoint.X + b.InnerPoint.X) / 2,
                     (a.InnerPoint.Y + b.InnerPoint.Y) / 2,
                     (a.InnerPoint.Z + b.InnerPoint.Z) / 2);
-                double distToMid = corner.Value.DistanceTo(arcMid);
-                double span = a.InnerPoint.DistanceTo(b.InnerPoint);
-                if (span > 1e-6 && distToMid > span * 20)
+                if (a.InnerPoint.DistanceTo(b.InnerPoint) > 1e-6 &&
+                    corner.Value.DistanceTo(arcMid) > a.InnerPoint.DistanceTo(b.InnerPoint) * 20)
                 {
-                    skipped++;
-                    continue;
+                    skipped++; continue;
                 }
 
                 corners[kvp.Key] = corner.Value;
             }
-
             validCount = corners.Count;
             skippedCount = skipped;
             return corners;
         }
 
-        /// <summary>
-        /// 容错配对：跳过无法配对的直线（不抛异常）
-        /// </summary>
         private List<RoadArm> GroupIntoArmsTolerant(
             List<LineInfo> lineInfos, Dictionary<Arc, Point3d> arcCorners)
         {
             var validLines = new List<LineInfo>();
             foreach (var li in lineInfos)
-            {
                 if (arcCorners.ContainsKey(li.ConnectedArc))
                     validLines.Add(li);
-            }
 
             var arms = new List<RoadArm>();
             var used = new HashSet<int>();
@@ -266,7 +299,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             for (int i = 0; i < validLines.Count; i++)
             {
                 if (used.Contains(i)) continue;
-
                 double bestDot = -2;
                 int bestJ = -1;
 
@@ -275,68 +307,120 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     if (used.Contains(j)) continue;
                     if (ReferenceEquals(validLines[i].ConnectedArc, validLines[j].ConnectedArc))
                         continue;
-
                     double dot = validLines[i].Direction.DotProduct(validLines[j].Direction);
-                    if (dot > bestDot)
-                    {
-                        bestDot = dot;
-                        bestJ = j;
-                    }
+                    if (dot > bestDot) { bestDot = dot; bestJ = j; }
                 }
 
                 if (bestJ < 0 || bestDot < 0.5) continue;
-
                 used.Add(i);
                 used.Add(bestJ);
 
                 var li = validLines[i];
                 var lj = validLines[bestJ];
                 var avgDir = (li.Direction + lj.Direction).GetNormal();
-
                 var lateral = lj.InnerPoint - li.InnerPoint;
                 var cross = avgDir.CrossProduct(lateral);
 
                 RoadArm arm;
                 if (cross.Z >= 0)
-                {
                     arm = new RoadArm
                     {
-                        LeftInner = li.InnerPoint,
-                        LeftOuter = li.OuterPoint,
-                        RightInner = lj.InnerPoint,
-                        RightOuter = lj.OuterPoint,
+                        LeftInner = li.InnerPoint, LeftOuter = li.OuterPoint,
+                        RightInner = lj.InnerPoint, RightOuter = lj.OuterPoint,
                         LeftCorner = arcCorners[li.ConnectedArc],
                         RightCorner = arcCorners[lj.ConnectedArc],
+                        LeftArc = li.ConnectedArc, RightArc = lj.ConnectedArc,
                     };
-                }
                 else
-                {
                     arm = new RoadArm
                     {
-                        LeftInner = lj.InnerPoint,
-                        LeftOuter = lj.OuterPoint,
-                        RightInner = li.InnerPoint,
-                        RightOuter = li.OuterPoint,
+                        LeftInner = lj.InnerPoint, LeftOuter = lj.OuterPoint,
+                        RightInner = li.InnerPoint, RightOuter = li.OuterPoint,
                         LeftCorner = arcCorners[lj.ConnectedArc],
                         RightCorner = arcCorners[li.ConnectedArc],
+                        LeftArc = lj.ConnectedArc, RightArc = li.ConnectedArc,
                     };
-                }
 
                 arm.OutwardDirection = avgDir;
                 arms.Add(arm);
             }
-
             return arms;
+        }
+
+        #endregion
+
+        #region Private — 几何
+
+        /// <summary>
+        /// 射线与弧线求交，返回最近的有效交点（最小正 t 且在弧线角度范围内）。
+        /// </summary>
+        private Point3d? RayHitArc(Point3d origin, Vector3d dir, Arc arc)
+        {
+            if (arc == null) return null;
+
+            double cx = arc.Center.X, cy = arc.Center.Y;
+            double r = arc.Radius;
+            double ox = origin.X - cx, oy = origin.Y - cy;
+            double dx = dir.X, dy = dir.Y;
+
+            double a = dx * dx + dy * dy;
+            if (a < 1e-20) return null;
+
+            double b = 2.0 * (ox * dx + oy * dy);
+            double c = ox * ox + oy * oy - r * r;
+            double disc = b * b - 4.0 * a * c;
+            if (disc < 0) return null;
+
+            double sqrtDisc = Math.Sqrt(disc);
+            double t1 = (-b - sqrtDisc) / (2.0 * a);
+            double t2 = (-b + sqrtDisc) / (2.0 * a);
+
+            Point3d? result = null;
+            double bestT = double.MaxValue;
+
+            foreach (double t in new[] { t1, t2 })
+            {
+                if (t < -1e-6) continue;
+                double px = origin.X + dx * t;
+                double py = origin.Y + dy * t;
+                double angle = Math.Atan2(py - cy, px - cx);
+
+                if (IsAngleOnArc(angle, arc.StartAngle, arc.EndAngle) && t < bestT)
+                {
+                    bestT = t;
+                    result = new Point3d(px, py, origin.Z);
+                }
+            }
+            return result;
+        }
+
+        private bool IsAngleOnArc(double testAngle, double arcStart, double arcEnd)
+        {
+            testAngle = NormAngle(testAngle);
+            arcStart = NormAngle(arcStart);
+            arcEnd = NormAngle(arcEnd);
+            const double eps = 0.002;
+
+            if (arcEnd >= arcStart)
+                return testAngle >= arcStart - eps && testAngle <= arcEnd + eps;
+            else
+                return testAngle >= arcStart - eps || testAngle <= arcEnd + eps;
+        }
+
+        private double NormAngle(double a)
+        {
+            const double TwoPi = Math.PI * 2.0;
+            a = a % TwoPi;
+            if (a < 0) a += TwoPi;
+            return a;
         }
 
         private Point3d? LineLineIntersection2D(Point3d p1, Vector3d d1, Point3d p2, Vector3d d2)
         {
             double cross = d1.X * d2.Y - d1.Y * d2.X;
             if (Math.Abs(cross) < 1e-10) return null;
-
             var dp = p2 - p1;
             double t = (dp.X * d2.Y - dp.Y * d2.X) / cross;
-
             return p1 + d1 * t;
         }
 
@@ -362,10 +446,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             tr.AddNewlyCreatedDBObject(line, true);
         }
 
-        private bool IsNear(Point3d a, Point3d b)
-        {
-            return a.DistanceTo(b) < PointTolerance;
-        }
+        private bool IsNear(Point3d a, Point3d b) => a.DistanceTo(b) < PointTolerance;
 
         #endregion
     }
