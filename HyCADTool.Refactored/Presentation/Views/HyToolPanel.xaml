@@ -354,8 +354,28 @@
         <TabItem Header="道路" Style="{StaticResource AcadTabItemStyle}">
             <ScrollViewer Style="{StaticResource SmallScrollViewer}" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="5,8,5,5" Background="#3b4453">
-                    <TextBlock Text="人行横道" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
-                    <Button Content="绘制人行横道" Command="{Binding CmdRoad}" Margin="1" Padding="2,6" />
+                    <TextBlock Text="人行横道参数（m）" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="95" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                        <TextBlock Text="空隙宽度" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding RoadGapWidth, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" helper:TextBoxHelper.ScrollStep="0.5" />
+                    </Grid>
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="95" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                        <TextBlock Text="人行横道宽度" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding RoadCrosswalkWidth, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" helper:TextBoxHelper.ScrollStep="0.5" />
+                    </Grid>
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="95" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                        <TextBlock Text="停止线距离" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding RoadStopLineDistance, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" helper:TextBoxHelper.ScrollStep="0.5" />
+                    </Grid>
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="95" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                        <TextBlock Text="斑马线间距" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding RoadStripeSpacing, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" helper:TextBoxHelper.ScrollStep="0.1" />
+                    </Grid>
+                    <Button Content="绘制人行横道" Command="{Binding CmdRoad}" Margin="1,6,1,1" Padding="2,6" />
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

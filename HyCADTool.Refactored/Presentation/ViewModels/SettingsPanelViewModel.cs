@@ -334,6 +334,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #endregion
 
+        #region 道路参数
+
+        private double _roadGapWidth = 5.0;
+        public double RoadGapWidth { get => _roadGapWidth; set => SetProperty(ref _roadGapWidth, value); }
+
+        private double _roadCrosswalkWidth = 5.0;
+        public double RoadCrosswalkWidth { get => _roadCrosswalkWidth; set => SetProperty(ref _roadCrosswalkWidth, value); }
+
+        private double _roadStopLineDistance = 2.0;
+        public double RoadStopLineDistance { get => _roadStopLineDistance; set => SetProperty(ref _roadStopLineDistance, value); }
+
+        private double _roadStripeSpacing = 1.0;
+        public double RoadStripeSpacing { get => _roadStripeSpacing; set => SetProperty(ref _roadStripeSpacing, value); }
+
+        #endregion
+
         // ================================================================
         //  状态 & 命令
         // ================================================================
@@ -644,6 +660,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     DimensionDistanceWithDim = DimensionDistanceWithDim,
                     MleaderDistance = MleaderDistance,
                     DimDistanceTolerance = DimDistanceTolerance,
+                    // Tab C: 道路
+                    RoadGapWidth = RoadGapWidth,
+                    RoadCrosswalkWidth = RoadCrosswalkWidth,
+                    RoadStopLineDistance = RoadStopLineDistance,
+                    RoadStripeSpacing = RoadStripeSpacing,
                     // 其他
                     EquipmentDataFilePath = EquipmentDataFilePath
                 };
@@ -711,6 +732,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 DimensionDistanceWithDim = data.DimensionDistanceWithDim;
                 MleaderDistance = data.MleaderDistance;
                 DimDistanceTolerance = data.DimDistanceTolerance;
+                // Tab C: 道路
+                RoadGapWidth = data.RoadGapWidth;
+                RoadCrosswalkWidth = data.RoadCrosswalkWidth;
+                RoadStopLineDistance = data.RoadStopLineDistance;
+                RoadStripeSpacing = data.RoadStripeSpacing;
                 // 其他
                 if (!string.IsNullOrEmpty(data.EquipmentDataFilePath))
                     EquipmentDataFilePath = data.EquipmentDataFilePath;
@@ -778,6 +804,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double DimensionDistanceWithDim { get; set; } = 6.0;
             public double MleaderDistance { get; set; } = 6.0;
             public double DimDistanceTolerance { get; set; } = 30.0;
+            // Tab C: 道路
+            public double RoadGapWidth { get; set; } = 5.0;
+            public double RoadCrosswalkWidth { get; set; } = 5.0;
+            public double RoadStopLineDistance { get; set; } = 2.0;
+            public double RoadStripeSpacing { get; set; } = 1.0;
             // 其他
             public string EquipmentDataFilePath { get; set; } = "";
         }
