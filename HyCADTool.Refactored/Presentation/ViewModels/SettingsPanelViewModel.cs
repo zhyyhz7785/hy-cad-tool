@@ -112,6 +112,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             CmdGb1 = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Single).Execute()));
             CmdGb2 = new RelayCommand(() => SendCommand(() => new Commands.MleaderReinCommand(Commands.MleaderReinCommand.Mode.Six).Execute()));
 
+            // 道路
+            CmdRoad = new RelayCommand(() => SendCommand(() => new Commands.DrawCrosswalkCommand().Execute()));
+
             // 从持久化文件加载上次保存的设置
             LoadSettings();
         }
@@ -124,6 +127,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             CmdGj = CmdGg = new RelayCommand(() => { });
             CmdG1 = CmdG2 = CmdGe = CmdGe1 = CmdGd = new RelayCommand(() => { });
             CmdGb = CmdGb1 = CmdGb2 = new RelayCommand(() => { });
+            CmdRoad = new RelayCommand(() => { });
         }
 
         #endregion
@@ -362,6 +366,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public ICommand CmdGb { get; }
         public ICommand CmdGb1 { get; }
         public ICommand CmdGb2 { get; }
+
+        // 道路命令
+        public ICommand CmdRoad { get; }
 
         #endregion
 

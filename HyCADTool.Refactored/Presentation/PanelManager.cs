@@ -140,6 +140,16 @@ namespace HyCADTool.Refactored.Presentation
                 SetActiveTab(5);
         }
 
+        /// <summary>
+        /// 显示道路面板 → 打开统一面板并切到道路 Tab
+        /// </summary>
+        public void ShowRoadPanel()
+        {
+            ShowHyToolPanel();
+            if (_panelInstance != null)
+                SetActiveTab(6);
+        }
+
         // ===== 私有方法 =====
 
         /// <summary>

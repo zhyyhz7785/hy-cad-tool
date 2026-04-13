@@ -410,6 +410,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
         public void Cmd_hySC() => RouteThroughC1("hyjc", () => new SettlementCalculationCommand().Execute());
 
         // ================================================================
+        //  道路 (Road)
+        // ================================================================
+
+        /// <summary>绘制人行横道 (hyRoad)</summary>
+        [CommandMethod("hyRoad")]
+        public void Cmd_hyRoad() => Run(() => new DrawCrosswalkCommand().Execute());
+
+        // ================================================================
         //  面板内部执行命令（直接加载 DLL 时替代 ReCall 的 C1）
         // ================================================================
 
