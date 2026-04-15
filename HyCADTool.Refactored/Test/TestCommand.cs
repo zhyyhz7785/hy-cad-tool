@@ -85,7 +85,7 @@ namespace HyCADTool.Refactored.Test
                 #endregion
 
                 // 只改下面这一行即可切换 C1 测试命令
-                new DrawCrosswalkCommand().Execute();
+                new DimensionAlignCommand().Execute();
                 // 例如：new SettlementCalculationCommand().Execute();
             });
         }

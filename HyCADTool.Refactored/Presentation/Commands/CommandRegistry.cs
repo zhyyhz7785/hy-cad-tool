@@ -218,6 +218,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("sd")]
         public void Cmd_sd() => Run(() => new SplitDimensionCommand().Execute());
 
+        /// <summary>标注文字防重叠 (ddaa)</summary>
+        [CommandMethod("ddaa")]
+        public void Cmd_ddaa() => Run(() => new DimensionAlignCommand().Execute());
+
         /// <summary>交叉点添加顶点 (hydimA)</summary>
         [CommandMethod("hydimA")]
         public void Cmd_hydimA() => Run(() => new AddVertexAtIntersectionsCommand().Execute());
