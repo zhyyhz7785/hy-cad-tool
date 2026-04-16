@@ -56,8 +56,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 }
 
                 var service = new DimensionTextAlignService();
-                int count = service.AlignDimensionTexts(dimIds);
+                string diagnostics;
+                int count = service.AlignDimensionTexts(dimIds, out diagnostics);
 
+                ed.WriteMessage($"\n{diagnostics}");
                 ed.WriteMessage(count > 0
                     ? $"\n已调整 {count} 个标注文字位置。"
                     : "\n未检测到文字重叠，无需调整。");

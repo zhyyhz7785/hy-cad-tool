@@ -8,66 +8,129 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 {
     /// <summary>
-    /// 标注文字防重叠服务：检测同一标注链上的文字包围盒重叠，
-    /// 通过交错偏移 TextPosition 解决重叠，AutoCAD 会自动绘制引线。
+    /// 标注文字防重叠服务：支持所有 Dimension 子类。
+    /// 迭代式贪心：每轮移动碰撞对中 Measurement 最小的标注，推最小距离，重新检测。
     /// </summary>
     public class DimensionTextAlignService
     {
-        private const double RotationTolerance = 0.01;
-        private const double DimLineTolerance = 1.0;
+        private const double RotationTolerance = 0.05;
         private const double CharWidthRatio = 0.7;
+        private const int MaxIterations = 50;
+        private const double MinGapRatio = 0.3;
 
-        /// <summary>
-        /// 对一组 RotatedDimension 进行文字防重叠处理
-        /// </summary>
-        public int AlignDimensionTexts(ObjectId[] dimIds)
+        public int AlignDimensionTexts(ObjectId[] dimIds, out string diagnostics)
         {
+            diagnostics = "";
             if (dimIds == null || dimIds.Length == 0) return 0;
 
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             int adjustedCount = 0;
+            var diag = new System.Text.StringBuilder();
 
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
-                var dims = new List<RotatedDimension>();
+                var dims = new List<Dimension>();
                 foreach (var id in dimIds)
                 {
-                    var dim = tr.GetObject(id, OpenMode.ForWrite) as RotatedDimension;
-                    if (dim != null) dims.Add(dim);
+                    var ent = tr.GetObject(id, OpenMode.ForWrite);
+                    if (ent is Dimension dim)
+                        dims.Add(dim);
                 }
 
-                if (dims.Count == 0) { tr.Commit(); return 0; }
+                diag.AppendLine($"Dimension 数量: {dims.Count} ({string.Join("/", dims.Select(d => d.GetType().Name).Distinct())})");
+                if (dims.Count == 0) { tr.Commit(); diagnostics = diag.ToString(); return 0; }
+
+                foreach (var d in dims)
+                {
+                    double rot = GetDimRotation(d);
+                    var dlp = GetDimLinePoint(d);
+                    diag.AppendLine($"  [{d.GetType().Name}] M={d.Measurement:F0} Rot={rot:F4} " +
+                        $"DLP=({dlp.X:F0},{dlp.Y:F0}) " +
+                        $"TP=({d.TextPosition.X:F0},{d.TextPosition.Y:F0}) " +
+                        $"sc={d.Dimscale} txt={d.Dimtxt}");
+                }
 
                 var chains = GroupIntoDimChains(dims);
+                diag.AppendLine($"标注链: {chains.Count} 条");
+                for (int c = 0; c < chains.Count; c++)
+                {
+                    diag.Append($"  [{c}] ");
+                    diag.AppendLine(string.Join(", ", chains[c].Select(d => d.Measurement.ToString("F0"))));
+                }
 
                 foreach (var chain in chains)
                 {
-                    adjustedCount += ResolveChainOverlaps(chain);
+                    adjustedCount += ResolveChainOverlaps(chain, diag);
                 }
 
                 tr.Commit();
             }
 
+            diagnostics = diag.ToString();
             return adjustedCount;
         }
 
-        #region 分组：按标注线共线关系组成标注链
+        #region Dimension 属性提取（适配所有子类）
 
-        private List<List<RotatedDimension>> GroupIntoDimChains(List<RotatedDimension> dims)
+        private static Point3d GetXLine1Point(Dimension dim)
         {
-            var rotationGroups = dims.GroupBy(d => Math.Round(d.Rotation / (Math.PI / 2)) * (Math.PI / 2),
+            if (dim is RotatedDimension rd) return rd.XLine1Point;
+            if (dim is AlignedDimension ad) return ad.XLine1Point;
+            if (dim is Point3AngularDimension p3) return p3.XLine1Point;
+            if (dim is LineAngularDimension2 la) return la.XLine1Start;
+            return dim.TextPosition;
+        }
+
+        private static Point3d GetXLine2Point(Dimension dim)
+        {
+            if (dim is RotatedDimension rd) return rd.XLine2Point;
+            if (dim is AlignedDimension ad) return ad.XLine2Point;
+            if (dim is Point3AngularDimension p3) return p3.XLine2Point;
+            if (dim is LineAngularDimension2 la) return la.XLine1End;
+            return dim.TextPosition;
+        }
+
+        private static Point3d GetDimLinePoint(Dimension dim)
+        {
+            if (dim is RotatedDimension rd) return rd.DimLinePoint;
+            if (dim is AlignedDimension ad) return ad.DimLinePoint;
+            if (dim is Point3AngularDimension p3) return p3.ArcPoint;
+            return dim.TextPosition;
+        }
+
+        private double GetDimRotation(Dimension dim)
+        {
+            if (dim is RotatedDimension rd)
+                return rd.Rotation;
+
+            var p1 = GetXLine1Point(dim);
+            var p2 = GetXLine2Point(dim);
+            var v = p2 - p1;
+            if (v.Length < 1e-6) return 0;
+            bool vertical = Math.Abs(v.Y) > Math.Abs(v.X);
+            return vertical ? Math.PI / 2 : 0;
+        }
+
+        #endregion
+
+        #region 分组
+
+        private List<List<Dimension>> GroupIntoDimChains(List<Dimension> dims)
+        {
+            var rotationGroups = dims.GroupBy(
+                d => Math.Round(GetDimRotation(d) / (Math.PI / 2)) * (Math.PI / 2),
                 new DoubleApproxComparer(RotationTolerance));
 
-            var chains = new List<List<RotatedDimension>>();
+            var chains = new List<List<Dimension>>();
 
             foreach (var rotGroup in rotationGroups)
             {
                 var remaining = rotGroup.ToList();
                 while (remaining.Count > 0)
                 {
-                    var chain = new List<RotatedDimension> { remaining[0] };
+                    var chain = new List<Dimension> { remaining[0] };
                     remaining.RemoveAt(0);
 
                     bool added = true;
@@ -76,7 +139,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         added = false;
                         for (int i = remaining.Count - 1; i >= 0; i--)
                         {
-                            if (IsOnSameDimLine(chain[0], remaining[i]))
+                            if (IsOnSameDimLine(chain, remaining[i]))
                             {
                                 chain.Add(remaining[i]);
                                 remaining.RemoveAt(i);
@@ -96,23 +159,34 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             return chains;
         }
 
-        private bool IsOnSameDimLine(RotatedDimension a, RotatedDimension b)
+        private bool IsOnSameDimLine(List<Dimension> chain, Dimension candidate)
         {
-            if (Math.Abs(a.Rotation - b.Rotation) > RotationTolerance)
-                return false;
+            double candRot = GetDimRotation(candidate);
+            foreach (var member in chain)
+            {
+                double memRot = GetDimRotation(member);
+                if (Math.Abs(memRot - candRot) > RotationTolerance)
+                    continue;
 
-            var dimDir = Vector3d.XAxis.RotateBy(a.Rotation, Vector3d.ZAxis);
-            var perpDir = dimDir.RotateBy(Math.PI / 2, Vector3d.ZAxis);
+                var dimDir = Vector3d.XAxis.RotateBy(memRot, Vector3d.ZAxis);
+                var perpDir = dimDir.RotateBy(Math.PI / 2, Vector3d.ZAxis);
 
-            var diff = b.DimLinePoint - a.DimLinePoint;
-            double perpDist = Math.Abs(diff.DotProduct(perpDir));
+                var diff = GetDimLinePoint(candidate) - GetDimLinePoint(member);
+                double perpDist = Math.Abs(diff.DotProduct(perpDir));
 
-            return perpDist < DimLineTolerance;
+                double scale = Math.Max(member.Dimscale, 1.0);
+                double tolerance = scale * 10;
+
+                if (perpDist < tolerance)
+                    return true;
+            }
+            return false;
         }
 
-        private void SortChain(List<RotatedDimension> chain)
+        private void SortChain(List<Dimension> chain)
         {
-            var dimDir = Vector3d.XAxis.RotateBy(chain[0].Rotation, Vector3d.ZAxis);
+            double rot = GetDimRotation(chain[0]);
+            var dimDir = Vector3d.XAxis.RotateBy(rot, Vector3d.ZAxis);
 
             chain.Sort((a, b) =>
             {
@@ -122,127 +196,176 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             });
         }
 
-        private Point3d MidPoint(RotatedDimension dim)
+        private Point3d MidPoint(Dimension dim)
         {
-            return new Point3d(
-                (dim.XLine1Point.X + dim.XLine2Point.X) / 2,
-                (dim.XLine1Point.Y + dim.XLine2Point.Y) / 2,
-                0);
+            var p1 = GetXLine1Point(dim);
+            var p2 = GetXLine2Point(dim);
+            return new Point3d((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2, 0);
         }
 
         #endregion
 
-        #region 重叠检测与解决
+        #region 迭代式贪心
 
-        private int ResolveChainOverlaps(List<RotatedDimension> chain)
+        private int ResolveChainOverlaps(List<Dimension> chain, System.Text.StringBuilder diag)
         {
             if (chain.Count < 2) return 0;
 
+            double rot = GetDimRotation(chain[0]);
+            bool isVertical = Math.Abs(Math.Abs(rot) - Math.PI / 2) < RotationTolerance;
+            var dimDir = Vector3d.XAxis.RotateBy(rot, Vector3d.ZAxis);
+            var perpDir = dimDir.RotateBy(Math.PI / 2, Vector3d.ZAxis);
+
             var boxes = chain.Select(d => GetTextBoundingBox(d)).ToList();
+            var adjustedSet = new HashSet<int>();
 
-            var overlapIndices = new HashSet<int>();
-            for (int i = 0; i < boxes.Count - 1; i++)
+            for (int round = 0; round < MaxIterations; round++)
             {
-                if (BoxesOverlap(boxes[i], boxes[i + 1]))
+                var pair = FindSmallestCollidingTarget(chain, boxes);
+                if (pair == null) break;
+
+                int targetIdx = pair.Item1;
+                int otherIdx = pair.Item2;
+
+                double overlap = OverlapDepth(boxes[targetIdx], boxes[otherIdx], isVertical);
+                double textH = GetTextHeight(chain[targetIdx]);
+                double moveAmount = overlap + textH * MinGapRatio;
+
+                diag.AppendLine($"  R{round}: M={chain[targetIdx].Measurement:F0}(#{targetIdx})" +
+                    $" <- M={chain[otherIdx].Measurement:F0}(#{otherIdx})" +
+                    $" olap={overlap:F0} mv={moveAmount:F0}");
+
+                var flipDir = GetFlipDirection(chain[targetIdx], perpDir);
+                FlipTextToOtherSide(chain[targetIdx], flipDir, textH);
+                boxes[targetIdx] = GetTextBoundingBox(chain[targetIdx]);
+
+                if (CheckNewCollision(targetIdx, boxes))
                 {
-                    overlapIndices.Add(i);
-                    overlapIndices.Add(i + 1);
+                    diag.AppendLine($"    -> 对侧仍碰撞，沿链方向外推");
+                    var chainDir = ChooseMoveDirection(targetIdx, otherIdx, chain, dimDir);
+                    ShiftTextPosition(chain[targetIdx], chainDir, moveAmount);
+                    boxes[targetIdx] = GetTextBoundingBox(chain[targetIdx]);
                 }
+
+                adjustedSet.Add(targetIdx);
             }
 
-            if (overlapIndices.Count == 0) return 0;
-
-            var overlapGroups = FindContiguousOverlapGroups(boxes);
-            int adjustedCount = 0;
-
-            foreach (var group in overlapGroups)
-            {
-                adjustedCount += StaggerGroup(chain, group);
-            }
-
-            return adjustedCount;
+            return adjustedSet.Count;
         }
 
-        private List<List<int>> FindContiguousOverlapGroups(List<TextBox> boxes)
+        private Tuple<int, int> FindSmallestCollidingTarget(List<Dimension> chain, List<TextBox> boxes)
         {
-            var groups = new List<List<int>>();
-            int i = 0;
+            int bestTarget = -1, bestOther = -1;
+            double bestMeasurement = double.MaxValue;
 
-            while (i < boxes.Count - 1)
+            for (int i = 0; i < boxes.Count; i++)
             {
-                if (BoxesOverlap(boxes[i], boxes[i + 1]))
+                for (int j = i + 1; j < boxes.Count; j++)
                 {
-                    var group = new List<int> { i };
-                    while (i < boxes.Count - 1 && BoxesOverlap(boxes[i], boxes[i + 1]))
+                    if (!BoxesOverlap(boxes[i], boxes[j])) continue;
+
+                    double mI = chain[i].Measurement;
+                    double mJ = chain[j].Measurement;
+
+                    if (mI <= mJ && mI < bestMeasurement)
                     {
-                        group.Add(i + 1);
-                        i++;
+                        bestMeasurement = mI;
+                        bestTarget = i;
+                        bestOther = j;
                     }
-                    groups.Add(group);
-                }
-                else
-                {
-                    i++;
+                    else if (mJ < mI && mJ < bestMeasurement)
+                    {
+                        bestMeasurement = mJ;
+                        bestTarget = j;
+                        bestOther = i;
+                    }
                 }
             }
 
-            return groups;
+            return bestTarget >= 0 ? Tuple.Create(bestTarget, bestOther) : null;
+        }
+
+        private double OverlapDepth(TextBox a, TextBox b, bool isVertical)
+        {
+            double depth = isVertical
+                ? Math.Min(a.MaxY, b.MaxY) - Math.Max(a.MinY, b.MinY)
+                : Math.Min(a.MaxX, b.MaxX) - Math.Max(a.MinX, b.MinX);
+            return Math.Max(depth, 0);
         }
 
         /// <summary>
-        /// 对一组连续重叠的标注进行交错偏移。
-        /// 保留中间位置的标注不动，其余向两侧交替偏移。
+        /// 判断文字当前在标注线哪一侧，返回指向对侧的方向。
         /// </summary>
-        private int StaggerGroup(List<RotatedDimension> chain, List<int> groupIndices)
+        private Vector3d GetFlipDirection(Dimension dim, Vector3d perpDir)
         {
-            if (groupIndices.Count < 2) return 0;
+            var textPos = dim.TextPosition;
+            var dlp = GetDimLinePoint(dim);
+            double side = (textPos - dlp).DotProduct(perpDir);
+            return side >= 0 ? perpDir.Negate() : perpDir;
+        }
 
-            var dim0 = chain[groupIndices[0]];
-            var perpDir = Vector3d.XAxis.RotateBy(dim0.Rotation + Math.PI / 2, Vector3d.ZAxis);
+        /// <summary>
+        /// 将文字翻转到标注线对侧：以 DimLinePoint 为镜像基准，
+        /// 把文字放到对称位置（再加 gap+textH/2 确保不贴线）。
+        /// </summary>
+        private void FlipTextToOtherSide(Dimension dim, Vector3d flipDir, double textH)
+        {
+            var mid = MidPoint(dim);
+            var dlp = GetDimLinePoint(dim);
+            var perpDir = flipDir.Length > 0.5 ? flipDir.GetNormal() : flipDir;
 
-            double textH = GetTextHeight(dim0);
-            double offsetStep = textH * 2.5;
+            double gap = dim.Dimscale * dim.Dimgap;
+            if (gap < 1e-6) gap = textH * 0.5;
 
-            int count = groupIndices.Count;
-            int midIndex = count / 2;
-            int adjusted = 0;
+            var dimLineCenter = mid + (dlp - mid);
+            dim.TextPosition = dimLineCenter + perpDir * (gap + textH / 2);
+        }
 
-            for (int i = 0; i < count; i++)
+        private Vector3d ChooseMoveDirection(int targetIdx, int otherIdx,
+            List<Dimension> chain, Vector3d dimDir)
+        {
+            var targetMid = MidPoint(chain[targetIdx]);
+            var otherMid = MidPoint(chain[otherIdx]);
+            double proj = (targetMid - otherMid).DotProduct(dimDir);
+            return proj >= 0 ? dimDir : dimDir.Negate();
+        }
+
+        private void ShiftTextPosition(Dimension dim, Vector3d direction, double amount)
+        {
+            dim.TextPosition = dim.TextPosition + direction * amount;
+        }
+
+        private bool CheckNewCollision(int targetIdx, List<TextBox> boxes)
+        {
+            for (int i = 0; i < boxes.Count; i++)
             {
-                int dimIdx = groupIndices[i];
-                var dim = chain[dimIdx];
-
-                int staggerOrder = i - midIndex;
-                if (staggerOrder == 0) continue;
-
-                double offset = staggerOrder * offsetStep;
-                var defaultTextPos = GetDefaultTextPosition(dim);
-                dim.TextPosition = defaultTextPos + perpDir * offset;
-                adjusted++;
+                if (i == targetIdx) continue;
+                if (BoxesOverlap(boxes[targetIdx], boxes[i]))
+                    return true;
             }
-
-            return adjusted;
+            return false;
         }
 
         #endregion
 
-        #region 文字包围盒计算
+        #region 包围盒
 
         private struct TextBox
         {
             public double MinX, MaxX, MinY, MaxY;
         }
 
-        private TextBox GetTextBoundingBox(RotatedDimension dim)
+        private TextBox GetTextBoundingBox(Dimension dim)
         {
             var textPos = dim.TextPosition;
             double textH = GetTextHeight(dim);
             string measureText = dim.Measurement.ToString("F0");
             if (!string.IsNullOrWhiteSpace(dim.DimensionText))
                 measureText = dim.DimensionText.Replace("<>", dim.Measurement.ToString("F0"));
-            double textW = measureText.Length * textH * CharWidthRatio;
+            double textW = Math.Max(measureText.Length, 1) * textH * CharWidthRatio;
 
-            bool isVertical = Math.Abs(Math.Abs(dim.Rotation) - Math.PI / 2) < RotationTolerance;
+            double rot = GetDimRotation(dim);
+            bool isVertical = Math.Abs(Math.Abs(rot) - Math.PI / 2) < RotationTolerance;
 
             double halfW, halfH;
             if (isVertical)
@@ -265,30 +388,13 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             };
         }
 
-        private double GetTextHeight(RotatedDimension dim)
+        private double GetTextHeight(Dimension dim)
         {
             double scale = dim.Dimscale;
             if (scale < 1e-6) scale = 1.0;
             double txtSize = dim.Dimtxt;
             if (txtSize < 1e-6) txtSize = 2.5;
             return scale * txtSize;
-        }
-
-        private Point3d GetDefaultTextPosition(RotatedDimension dim)
-        {
-            var dimDir = Vector3d.XAxis.RotateBy(dim.Rotation, Vector3d.ZAxis);
-            var mid = MidPoint(dim);
-            var perpDir = dimDir.RotateBy(Math.PI / 2, Vector3d.ZAxis);
-
-            var diff = dim.DimLinePoint - mid;
-            double perpOffset = diff.DotProduct(perpDir);
-            var dimLineCenter = mid + perpDir * perpOffset;
-
-            double textH = GetTextHeight(dim);
-            double gap = dim.Dimscale * dim.Dimgap;
-            if (gap < 1e-6) gap = textH * 0.5;
-
-            return dimLineCenter + perpDir * (gap + textH / 2);
         }
 
         private bool BoxesOverlap(TextBox a, TextBox b)
@@ -300,7 +406,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         #endregion
 
-        #region 辅助类
+        #region 辅助
 
         private class DoubleApproxComparer : IEqualityComparer<double>
         {
