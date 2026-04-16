@@ -3,6 +3,7 @@ using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation;
 using HyCADTool.Refactored.Presentation.Commands;
+using HyCADTool.Refactored.Presentation.Commands.Road;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
 using System.Reflection;
@@ -75,6 +76,29 @@ namespace HyCADTool.Refactored.Test
                             return;
                         case "hyjc":
                             new SettlementCalculationCommand().Execute();
+                            return;
+
+                        // --- P0/P1 市政道路设计命令（C2 后只能走 C1 转发，见 CommandRegistry 注释）---
+                        case "hyRoadA":
+                            new RoadAlignmentCommand().Execute();
+                            return;
+                        case "hyRoadP":
+                            new RoadProfileCommand().Execute();
+                            return;
+                        case "hyRoadT":
+                            new RoadTemplateCommand().Execute();
+                            return;
+                        case "hyRoadC":
+                            new RoadCorridorCommand().Execute();
+                            return;
+                        case "hyRoadSave":
+                            new RoadOpenJsonCommand().Execute();
+                            return;
+                        case "hyRoadLoad":
+                            new RoadImportJsonCommand().Execute();
+                            return;
+                        case "hyRoad3dExportGltf":
+                            new Road3dExportGltfCommand().Execute();
                             return;
                     }
                 }

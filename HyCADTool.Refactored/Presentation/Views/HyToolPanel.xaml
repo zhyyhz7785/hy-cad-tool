@@ -376,6 +376,67 @@
                         <TextBox Grid.Column="1" Text="{Binding RoadStripeSpacing, UpdateSourceTrigger=PropertyChanged}" helper:TextBoxHelper.EnableCustomHandlers="True" helper:TextBoxHelper.ScrollStep="0.1" />
                     </Grid>
                     <Button Content="绘制人行横道" Command="{Binding CmdRoad}" Margin="1,6,1,1" Padding="2,6" />
+
+                    <!-- ========== P0：市政道路设计（Domain 驱动）========== -->
+                    <Separator Margin="0,12,0,6" Background="#556072" />
+                    <TextBlock Text="市政道路设计（P0）" Foreground="#B0B8C4" FontSize="11" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBlock
+                        Text="平面 / 纵断面 / 模板 / 走廊 + JSON 持久化"
+                        Foreground="#808080" FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap" />
+
+                    <!-- 状态诊断 -->
+                    <Grid Margin="0,2" DataContext="{Binding RoadDesign}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="70" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                        <TextBlock Text="项目" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding ProjectName}" VerticalAlignment="Center" Foreground="#AAAAAA" />
+                    </Grid>
+                    <Grid Margin="0,2" DataContext="{Binding RoadDesign}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" HorizontalAlignment="Center" Foreground="#AAAAAA">
+                            <Run Text="线位 " /><Run Text="{Binding AlignmentCount, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Grid.Column="1" HorizontalAlignment="Center" Foreground="#AAAAAA">
+                            <Run Text="模板 " /><Run Text="{Binding TemplateCount, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Grid.Column="2" HorizontalAlignment="Center" Foreground="#AAAAAA">
+                            <Run Text="走廊 " /><Run Text="{Binding CorridorCount, Mode=OneWay}" />
+                        </TextBlock>
+                    </Grid>
+
+                    <!-- P0 占位命令按钮 -->
+                    <StackPanel Orientation="Vertical" Margin="0,6,0,0" DataContext="{Binding RoadDesign}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="新建线位 A" Command="{Binding CmdAlignment}" Margin="1,2" Padding="2,5" ToolTip="P0：hyRoadA（P1 支持拾取多段线）" />
+                            <Button Grid.Column="1" Content="设计纵断面 P" Command="{Binding CmdProfile}" Margin="1,2" Padding="2,5" ToolTip="P0：hyRoadP（P3 扩展 PVI 序列）" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="横断面模板 T" Command="{Binding CmdTemplate}" Margin="1,2" Padding="2,5" ToolTip="P0：hyRoadT（P2 上线模板编辑器）" />
+                            <Button Grid.Column="1" Content="走廊 C" Command="{Binding CmdCorridor}" Margin="1,2" Padding="2,5" ToolTip="P0：hyRoadC（P4 分段 + 目标映射）" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="立即保存 JSON" Command="{Binding CmdOpenJson}" Margin="1,2" Padding="2,5" ToolTip="hyRoadSave：跳过防抖立即写 .roaddesign.json" />
+                            <Button Grid.Column="1" Content="加载 JSON" Command="{Binding CmdImportJson}" Margin="1,2" Padding="2,5" ToolTip="hyRoadLoad：从 .roaddesign.json 重载" />
+                        </Grid>
+                        <Button Content="刷新计数" Command="{Binding CmdRefreshCounts}" Margin="1,4,1,2" Padding="2,5" />
+
+                        <!-- v2 预留：glTF 导出 -->
+                        <Separator Margin="0,8,0,4" Background="#556072" />
+                        <TextBlock
+                            Text="v2 预留（P7 启用）"
+                            Foreground="#808080" FontSize="9" Margin="0,0,0,2" />
+                        <Button Content="glTF 三维导出（预留）" Command="{Binding CmdExportGltf}" Margin="1,2" Padding="2,5"
+                                ToolTip="hyRoad3dExportGltf：当前为未实现端口，v2 切换到真实实现后立即可用" />
+
+                        <!-- 状态条 -->
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="#808080" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

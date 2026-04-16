@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.GraphicsInterface;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
+using AcGiGeometry = Autodesk.AutoCAD.GraphicsInterface.Geometry;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
 {
@@ -40,7 +41,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
         /// </summary>
         protected override bool WorldDraw(WorldDraw draw)
         {
-            Geometry geometry = draw.Geometry;
+            AcGiGeometry geometry = draw.Geometry;
             if (geometry != null)
             {
                 // 清空多段线的顶点

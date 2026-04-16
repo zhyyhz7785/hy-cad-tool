@@ -269,6 +269,61 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
+            // ===== P0 道路设计（市政道路）=====
+
+            // 事件总线（单例，全插件共享；对应决策 3 - 真实发布订阅）
+            builder.RegisterType<HyCADTool.Refactored.Domain.Events.Road.RoadEventBus>()
+                .As<HyCADTool.Refactored.Domain.Events.Road.IRoadEventBus>()
+                .SingleInstance();
+
+            // Corridor Mesh Builder（v1 占位，v2 替换）
+            builder.RegisterType<HyCADTool.Refactored.Domain.Services.Road.NotImplementedCorridorMeshBuilder>()
+                .As<HyCADTool.Refactored.Domain.Services.Road.ICorridorMeshBuilder>()
+                .SingleInstance();
+
+            // 三维导出端口（v1 占位，v2 替换为 GltfExportPort）
+            builder.RegisterType<HyCADTool.Refactored.Domain.Ports.Road.NotImplementedThreeDExportPort>()
+                .As<HyCADTool.Refactored.Domain.Ports.Road.IThreeDExportPort>()
+                .SingleInstance();
+
+            // 活动道路设计注册表（按文档名索引）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadDesignRegistry>()
+                .AsSelf()
+                .SingleInstance();
+
+            // JSON I/O 服务
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadJsonExportService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // 道路服务骨架
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentService>()
+                .AsSelf()
+                .SingleInstance();
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadProfileService>()
+                .AsSelf()
+                .SingleInstance();
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadTemplateService>()
+                .AsSelf()
+                .SingleInstance();
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadCorridorService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // v1.1 起取消防抖持久化服务：命令收尾处由 RoadJsonExportService.SaveForDocument 同步落盘，
+            // 彻底消除 SAVEAS / 多文档切换导致的 key 漂移与"空 JSON"时序 bug（详见 Doc/MASTER 决策 3 的 v1.1 更新）。
+            // v2 Blender 联动的单向推送改由命令收尾同步写盘 + 文件监听器 RoadDesignFileWatcher 实现。
+
+            // 文件变化监听器（v1 不启用 Start，仅作为单例存在以便 v2 接入）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.IO.Road.RoadDesignFileWatcher>()
+                .AsSelf()
+                .SingleInstance();
+
+            // 道路设计 ViewModel（P0 占位，P1 起接入 HyToolPanel.xaml 的道路 Tab）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.RoadDesignViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
         }
     }
 }

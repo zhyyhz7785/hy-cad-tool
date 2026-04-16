@@ -115,6 +115,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             // 道路
             CmdRoad = new RelayCommand(() => SendCommand(() => new Commands.DrawCrosswalkCommand().Execute()));
 
+            // P0：市政道路设计 ViewModel（Domain 驱动，独立 RoadDesignViewModel）
+            RoadDesign = new RoadDesignViewModel();
+
             // 从持久化文件加载上次保存的设置
             LoadSettings();
         }
@@ -385,6 +388,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         // 道路命令
         public ICommand CmdRoad { get; }
+
+        /// <summary>
+        /// 市政道路设计 ViewModel（P0 落地）。
+        /// XAML 中通过 <c>{Binding RoadDesign.CmdAlignment}</c> 等方式使用。
+        /// 默认构造（设计器占位）未实例化；主构造函数中初始化。
+        /// </summary>
+        public RoadDesignViewModel RoadDesign { get; }
 
         #endregion
 

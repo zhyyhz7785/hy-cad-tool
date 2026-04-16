@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json;
 
 namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
 {
@@ -24,8 +25,11 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         public double Z { get; }
 
         /// <summary>
-        /// 构造函数
+        /// 主构造函数，同时作为 Newtonsoft.Json 反序列化入口。
+        /// readonly struct 无公共无参构造函数，必须显式 <see cref="JsonConstructorAttribute"/> 告诉
+        /// Newtonsoft 使用三参版本而不是 <see cref="Point3D(Point2D)"/>（后者参数名不匹配 X/Y/Z）。
         /// </summary>
+        [JsonConstructor]
         public Point3D(double x, double y, double z)
         {
             X = x;

@@ -421,6 +421,52 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("hyRoad")]
         public void Cmd_hyRoad() => Run(() => new DrawCrosswalkCommand().Execute());
 
+        // --- P0 市政道路设计（Alignment / Profile / Template / Corridor）---
+        //
+        // 注意：以下命令均走 RouteThroughC1 转发。
+        // [CommandMethod] 只在程序集 "首次 NETLOAD" 时被 AutoCAD 扫描注册；
+        // C2 热重载用 Assembly.Load(byte[]) 把新程序集挂进来，AutoCAD **不会** 重扫新程序集的
+        // [CommandMethod]。所以直接 new XxxCommand().Execute() 会被 AutoCAD 路由到"旧程序集"里的
+        // 同名类型（代码还是改动前那份）。
+        //
+        // RouteThroughC1 模式：旧程序集里的 Cmd_* 方法只做一件事——把 commandKey 落到临时文件
+        // (CommandRelayStore)，然后 SendStringToExecute("C1\n")；AutoCAD 执行 C1 → ReCall._c1Action
+        // 指向的就是 *最新程序集* 里 TestCommand.Run，它读 CommandRelayStore 并分派到对应的
+        // new RoadXxxCommand().Execute()——此时 "new" 出来的是最新程序集里的类型，代码即刻生效。
+        //
+        // 与 gg / g1 / g2 / ge / HYJC 等命令完全一致。
+
+        /// <summary>新建平面线位（P0 占位，P1 支持拾取多段线）</summary>
+        [CommandMethod("hyRoadA")]
+        public void Cmd_hyRoadA() => RouteThroughC1("hyRoadA", () => new Road.RoadAlignmentCommand().Execute());
+
+        /// <summary>为首条 Alignment 创建设计纵断面（P0 占位，P3 扩展）</summary>
+        [CommandMethod("hyRoadP")]
+        public void Cmd_hyRoadP() => RouteThroughC1("hyRoadP", () => new Road.RoadProfileCommand().Execute());
+
+        /// <summary>创建横断面模板（P0 占位，P2 上线模板编辑器）</summary>
+        [CommandMethod("hyRoadT")]
+        public void Cmd_hyRoadT() => RouteThroughC1("hyRoadT", () => new Road.RoadTemplateCommand().Execute());
+
+        /// <summary>创建走廊 Corridor（P0 占位，P4 上线分段/目标映射）</summary>
+        [CommandMethod("hyRoadC")]
+        public void Cmd_hyRoadC() => RouteThroughC1("hyRoadC", () => new Road.RoadCorridorCommand().Execute());
+
+        /// <summary>立即将 RoadDesign 同步落盘到 .roaddesign.json（v1.1 已无防抖）</summary>
+        [CommandMethod("hyRoadSave")]
+        public void Cmd_hyRoadSave() => RouteThroughC1("hyRoadSave", () => new Road.RoadOpenJsonCommand().Execute());
+
+        /// <summary>从 .roaddesign.json 重新加载 RoadDesign</summary>
+        [CommandMethod("hyRoadLoad")]
+        public void Cmd_hyRoadLoad() => RouteThroughC1("hyRoadLoad", () => new Road.RoadImportJsonCommand().Execute());
+
+        /// <summary>
+        /// 预留命令（v1 调用将得到"v2 启用"提示）：glTF 三维导出。
+        /// v2（P7）在 Autofac 中将 IThreeDExportPort 切换为真实实现后立即可用。
+        /// </summary>
+        [CommandMethod("hyRoad3dExportGltf")]
+        public void Cmd_hyRoad3dExportGltf() => RouteThroughC1("hyRoad3dExportGltf", () => new Road.Road3dExportGltfCommand().Execute());
+
         // ================================================================
         //  面板内部执行命令（直接加载 DLL 时替代 ReCall 的 C1）
         // ================================================================

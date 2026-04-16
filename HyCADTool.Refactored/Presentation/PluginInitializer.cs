@@ -53,6 +53,9 @@ namespace HyCADTool.Refactored.Presentation
                 // 注册文档事件（可选）
                 RegisterDocumentEvents();
 
+                // 道路子系统启动（P0 落地：事件总线 + JSON 持久化）
+                InitializeRoadSubsystem();
+
                 WriteMessage("\n========================================");
                 WriteMessage("\n✓ HyCADTool.Refactored 插件初始化完成！");
                 WriteMessage("\n========================================\n");
@@ -80,6 +83,10 @@ namespace HyCADTool.Refactored.Presentation
                     ViewModels.SettingsPanelViewModel.Current?.SaveSettings();
                 }
                 catch { }
+
+                // 道路子系统收尾：
+                // v1.1 起各命令在 tr.Commit() 后已同步写盘，卸载时不再需要 FlushAll；
+                // 如果用户在执行过命令后直接关闭 AutoCAD，数据已经在 .roaddesign.json 里。
 
                 // 清理事件订阅
                 UnregisterDocumentEvents();
@@ -199,6 +206,33 @@ namespace HyCADTool.Refactored.Presentation
             }
         }
 
+        /// <summary>
+        /// 启动道路子系统（v1.1）。
+        ///
+        /// 变更历史：
+        /// - v1.0：事件驱动 + 500ms 防抖自动持久化；
+        /// - v1.1：取消防抖服务，各写命令（hyRoadA / P / T / C / Save）在 <c>tr.Commit()</c> 后同步落盘，
+        ///   彻底消除 SAVEAS / 多文档切换时 Timer 回调与 <c>doc.Name</c> 不一致导致的"空 JSON / 路径失配"bug。
+        ///   事件总线（<see cref="Domain.Events.Road.IRoadEventBus"/>）仍保留，供 v2 UI / Blender 插件等未来订阅者使用。
+        ///
+        /// v2（P7）会在此处启动 <c>RoadDesignFileWatcher</c> 监听外部 JSON 修改（Blender → AutoCAD 回推）。
+        /// </summary>
+        private void InitializeRoadSubsystem()
+        {
+            try
+            {
+                // 预解析核心服务，保证 AutoCAD 启动后第一次 Resolve 的成本不落在用户命令上
+                ServiceLocator.Resolve<Infrastructure.AutoCAD.Services.Road.RoadDesignRegistry>();
+                ServiceLocator.Resolve<Infrastructure.AutoCAD.Services.Road.RoadJsonExportService>();
+
+                WriteMessage("\n  ✓ 道路子系统已启动（命令收尾同步落盘，无防抖 Timer）");
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ 道路子系统启动警告：{ex.Message}");
+            }
+        }
+
         private void EnsureCurrentDocumentResourcesInitialized(bool force)
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -276,7 +310,16 @@ namespace HyCADTool.Refactored.Presentation
                 ("00_hy_ClusterEP", (short)8),
                 ("00_hy_ClusterEEP", (short)8),
                 ("00_hy_ClusterHull", (short)6),
-                ("00_hy_ClusterPts", (short)34)
+                ("00_hy_ClusterPts", (short)34),
+                // ── 道路（P1+）──
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.AlignmentLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.AlignmentColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.ProfileLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.ProfileColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CorridorLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CorridorColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingColor),
             };
         }
 

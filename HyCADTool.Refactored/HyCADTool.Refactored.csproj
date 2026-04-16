@@ -50,6 +50,19 @@
     </None>
   </ItemGroup>
 
+  <!-- P0 道路：_libraries 字典资源随 DLL 同级部署（v1 不读取，v2/P7 由 Blender Addon 消费） -->
+  <ItemGroup>
+    <None Include="_libraries\feature-catalog.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="_libraries\blender-material-mapping.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="_libraries\README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <!-- 排除不需要的文件（如果有） -->
   <ItemGroup>
     <!-- 排除备份文件、临时文件等 -->
