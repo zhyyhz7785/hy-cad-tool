@@ -7,22 +7,33 @@ using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-// 已移除 [assembly: CommandClass(typeof(PluginInitializer))]
-// 不指定 CommandClass 时 AutoCAD 自动扫描所有类型的 [CommandMethod]
-// CommandRegistry.cs 集中注册所有命令简写
+// v2 架构：Refactored 不再被 AutoCAD 直接 NETLOAD，故不需要 [assembly: CommandClass]。
+// 所有 AutoCAD 命令都注册在 ReCall.CommandFacade（只 NETLOAD ReCall.dll）。
+// PluginInitializer.Initialize 由 ReCall.C2 通过反射每次重载后调用，等价原 IExtensionApplication 入口。
+//
+// 为什么不继承 IExtensionApplication？
+// AutoCAD 会监听 AppDomain.AssemblyLoad 事件，即使 Refactored.dll 是通过 Assembly.Load(byte[])
+// 加载的，AutoCAD 也会扫到它里面的 IExtensionApplication 实现并自动调 Initialize/Terminate，
+// 结果就是 C2 反射调一次 + AutoCAD 自动调一次 = 两次初始化。去掉接口后这个自动路径消失，
+// 生命周期完全由 ReCall 控制，符合 v2 架构。
 
 namespace HyCADTool.Refactored.Presentation
 {
     /// <summary>
-    /// 插件初始化器
-    /// 实现 IExtensionApplication 接口，由 AutoCAD 自动调用
+    /// 插件初始化器（v2：不再是 IExtensionApplication，由 ReCall.ReCallClass.Reload 反射调用）。
     /// </summary>
-    public class PluginInitializer : IExtensionApplication
+    public class PluginInitializer
     {
         private static readonly HashSet<string> _initializedDocuments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
-        /// 插件初始化
+        /// 插件初始化：构建 Autofac 容器、加载配置、初始化样式/图层、订阅文档事件、启动道路子系统。
+        ///
+        /// 调用时机（v2）：
+        /// - 由 <c>ReCall.ReCallClass.Reload()</c>（C2）反射创建实例并调用，每次 C2 一个新实例。
+        /// - ReCall 会在调用本方法前，先对上一次 C2 保存的旧实例调用 <see cref="Terminate"/>，
+        ///   通过旧实例自己的方法引用把文档事件解绑，确保跨 C2 幂等。
+        /// - 因此本方法内部无需担心"旧实例事件残留"问题。
         /// </summary>
         public void Initialize()
         {

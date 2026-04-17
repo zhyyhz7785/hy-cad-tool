@@ -1,0 +1,128 @@
+{
+    "version": 1,
+    "_description": "ReCall 命令表：key = CommandFacade 里 [CommandMethod] 的字符串；type = Refactored 中 Command 类的完全限定名；method = 调用方法名（默认 Execute）；ctor = 可选构造参数；ctorEnumTypes = 与 ctor 同位置，若该位置是枚举则填枚举类型全名（枚举值请在 ctor 里用字符串书写，如 \"Standard\"）。改 JSON 后 ReCall 按 mtime 自动重载，无需关 AutoCAD。",
+    "commands": {
+
+        "Hy":      { "type": "HyCADTool.Refactored.Presentation.Commands.ShowPanelCommand", "method": "ShowHyToolPanel" },
+        "_HyExec": { "type": "__PANEL_PENDING__",                                            "method": "ConsumePendingCommand" },
+
+        "gj":  { "type": "HyCADTool.Refactored.Presentation.Commands.DrawReinforcementCommand", "method": "Execute" },
+        "gg":  { "type": "HyCADTool.Refactored.Presentation.Commands.DrawOffsetPolylineCommand", "method": "Execute" },
+        "ggj": { "type": "HyCADTool.Refactored.Presentation.Commands.ReinOutsideCommand",        "method": "Execute" },
+
+        "g1":  { "type": "HyCADTool.Refactored.Presentation.Commands.ReinAddAnchorCommand", "method": "Execute", "ctor": [false] },
+        "g2":  { "type": "HyCADTool.Refactored.Presentation.Commands.ReinAddAnchorCommand", "method": "Execute", "ctor": [true]  },
+        "ge":  { "type": "HyCADTool.Refactored.Presentation.Commands.ReinExtendCommand",       "method": "Execute" },
+        "ge1": { "type": "HyCADTool.Refactored.Presentation.Commands.ReinQuickExtendCommand",  "method": "Execute" },
+        "gd":  { "type": "HyCADTool.Refactored.Presentation.Commands.ReinCutCommand",          "method": "Execute" },
+
+        "gb":    { "type": "HyCADTool.Refactored.Presentation.Commands.MleaderReinCommand",
+                   "method": "Execute", "ctor": ["Standard"],
+                   "ctorEnumTypes": ["HyCADTool.Refactored.Presentation.Commands.MleaderReinCommand+Mode"] },
+        "gb1":   { "type": "HyCADTool.Refactored.Presentation.Commands.MleaderReinCommand",
+                   "method": "Execute", "ctor": ["Single"],
+                   "ctorEnumTypes": ["HyCADTool.Refactored.Presentation.Commands.MleaderReinCommand+Mode"] },
+        "gb2":   { "type": "HyCADTool.Refactored.Presentation.Commands.MleaderReinCommand",
+                   "method": "Execute", "ctor": ["Six"],
+                   "ctorEnumTypes": ["HyCADTool.Refactored.Presentation.Commands.MleaderReinCommand+Mode"] },
+        "hysrt": { "type": "HyCADTool.Refactored.Presentation.Commands.SelectReinTextCommand", "method": "Execute" },
+
+        "bg":      { "type": "HyCADTool.Refactored.Presentation.Commands.DrawElevationCommand",         "method": "Execute" },
+        "bgu":     { "type": "HyCADTool.Refactored.Presentation.Commands.UpdateElevationTextCommand",   "method": "Execute" },
+        "bgR":     { "type": "HyCADTool.Refactored.Presentation.Commands.RotateElevationCommand",       "method": "Execute" },
+        "hybgTCE": { "type": "HyCADTool.Refactored.Presentation.Commands.TextsCreateElevationCommand",  "method": "Execute" },
+
+        "dds":    { "type": "HyCADTool.Refactored.Presentation.Commands.DimensionForReinforcementCommand",      "method": "Execute" },
+        "ddss":   { "type": "HyCADTool.Refactored.Presentation.Commands.DimensionForReinforcementBatchCommand", "method": "Execute" },
+        "sd":     { "type": "HyCADTool.Refactored.Presentation.Commands.SplitDimensionCommand",                 "method": "Execute" },
+        "ddaa":   { "type": "HyCADTool.Refactored.Presentation.Commands.DimensionAlignCommand",                 "method": "Execute" },
+        "hydimA": { "type": "HyCADTool.Refactored.Presentation.Commands.AddVertexAtIntersectionsCommand",       "method": "Execute" },
+
+        "hyab":   { "type": "HyCADTool.Refactored.Presentation.Commands.AnchorBoltCommand",              "method": "Execute" },
+        "hyabA":  { "type": "HyCADTool.Refactored.Presentation.Commands.AnchorBoltAlignCommand",         "method": "Execute" },
+        "hyabC":  { "type": "HyCADTool.Refactored.Presentation.Commands.AnchorBoltCalcCommand",          "method": "Execute" },
+        "hyabCD": { "type": "HyCADTool.Refactored.Presentation.Commands.AnchorBoltToggleDisplayCommand", "method": "Execute" },
+        "hyabCT": { "type": "HyCADTool.Refactored.Presentation.Commands.AnchorBoltTableCommand",         "method": "Execute" },
+        "hyabR":  { "type": "HyCADTool.Refactored.Presentation.Commands.AnchorBoltSectionCommand",       "method": "Execute" },
+
+        "hyef_Base_ConstructBaseData": { "type": "HyCADTool.Refactored.Presentation.Commands.EF_ConstructBaseDataCommand", "method": "Execute" },
+        "hyef_Base_HighlightBoltData": { "type": "HyCADTool.Refactored.Presentation.Commands.EF_HighlightBoltDataCommand", "method": "Execute" },
+        "hyef_Axis_Construct":         { "type": "HyCADTool.Refactored.Presentation.Commands.EF_AxisConstructCommand",    "method": "Execute" },
+        "hyef_Axis_Initialize":        { "type": "HyCADTool.Refactored.Presentation.Commands.EF_AxisInitializeCommand",   "method": "Execute" },
+        "hyef_Axis_Display":           { "type": "HyCADTool.Refactored.Presentation.Commands.EF_AxisDisplayCommand",      "method": "Execute" },
+        "hyef_Axis_CreateTable":       { "type": "HyCADTool.Refactored.Presentation.Commands.EF_AxisCreateTableCommand",  "method": "Execute" },
+
+        "HYMBRD":           { "type": "HyCADTool.Refactored.Presentation.Commands.DrawTitleBlockCommand",      "method": "Execute" },
+        "HYMBRC":           { "type": "HyCADTool.Refactored.Presentation.Commands.CreateLayoutViewportsCommand", "method": "Execute" },
+        "HY_PackViewports": { "type": "HyCADTool.Refactored.Presentation.Commands.PackViewportsCommand",       "method": "Execute" },
+
+        "HYc2bc": { "type": "HyCADTool.Refactored.Presentation.Commands.BlockColorCommand",     "method": "Execute" },
+        "HYc2bl": { "type": "HyCADTool.Refactored.Presentation.Commands.BlockToMLeaderCommand", "method": "Execute" },
+
+        "abrc":  { "type": "HyCADTool.Refactored.Presentation.Commands.ReplacePolygonCommand",      "method": "Execute" },
+        "abrcs": { "type": "HyCADTool.Refactored.Presentation.Commands.ReplacePolygonBatchCommand", "method": "Execute" },
+
+        "HyDcL": { "type": "HyCADTool.Refactored.Presentation.Commands.CreatePadFromLineCommand",     "method": "Execute" },
+        "hyDcP": { "type": "HyCADTool.Refactored.Presentation.Commands.CreatePadFromPolylineCommand", "method": "Execute" },
+
+        "hymd":  { "type": "HyCADTool.Refactored.Presentation.Commands.DesignSpecCommand",     "method": "Execute" },
+        "hymdE": { "type": "HyCADTool.Refactored.Presentation.Commands.DesignSpecEditCommand", "method": "Execute" },
+
+        "hyex":     { "type": "HyCADTool.Refactored.Presentation.Commands.ExportMarkdownTableCommand",         "method": "Execute" },
+        "hyex_csv": { "type": "HyCADTool.Refactored.Presentation.Commands.ExportEntityPropertiesToCsvCommand", "method": "Execute" },
+
+        "hyAxis": { "type": "HyCADTool.Refactored.Presentation.Commands.AlignedAxisTextCommand",    "method": "Execute" },
+        "HyRT":   { "type": "HyCADTool.Refactored.Presentation.Commands.RaftThicknessTextCommand",  "method": "Execute" },
+        "hydl":   { "type": "HyCADTool.Refactored.Presentation.Commands.DrawLinesOnEachLayerCommand", "method": "Execute" },
+        "HYBL":   { "type": "HyCADTool.Refactored.Presentation.Commands.BreakLinesCommand",         "method": "Execute" },
+
+        "HYpile":   { "type": "HyCADTool.Refactored.Presentation.Commands.DrawPilesCommand",               "method": "Execute" },
+        "HYpileV":  { "type": "HyCADTool.Refactored.Presentation.Commands.PileVoronoiOptimizationCommand", "method": "Execute" },
+        "HYpileG":  { "type": "HyCADTool.Refactored.Presentation.Commands.GroupCirclesByElevationCommand", "method": "Execute" },
+        "HYpileGT": { "type": "HyCADTool.Refactored.Presentation.Commands.GroupCirclesByElevationCommand", "method": "ExecutePlaceElevationTextAtCentroids" },
+
+        "HYJC": { "type": "HyCADTool.Refactored.Presentation.Commands.SettlementCalculationCommand", "method": "Execute" },
+        "hySC": { "type": "HyCADTool.Refactored.Presentation.Commands.SettlementCalculationCommand", "method": "Execute" },
+
+        "hyRoad":             { "type": "HyCADTool.Refactored.Presentation.Commands.DrawCrosswalkCommand",                 "method": "Execute" },
+        "hyRoadA":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentCommand",            "method": "Execute" },
+        "hyRoadAlnByPi":      { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentByPiCommand",        "method": "Execute" },
+        "hyRoadAlnStation":   { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentStationCommand",     "method": "Execute" },
+        "hyRoadP":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadProfileCommand",              "method": "Execute" },
+        "hyRoadT":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadTemplateCommand",             "method": "Execute" },
+        "hyRoadC":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadCorridorCommand",             "method": "Execute" },
+        "hyRoadSave":         { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadOpenJsonCommand",             "method": "Execute" },
+        "hyRoadLoad":         { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadImportJsonCommand",           "method": "Execute" },
+            "hyRoad3dExportGltf": { "type": "HyCADTool.Refactored.Presentation.Commands.Road.Road3dExportGltfCommand",         "method": "Execute" },
+
+            "ph":  { "type": "HyCADTool.Refactored.Presentation.Commands.PaperH",  "method": "Test" },
+            "pv":  { "type": "HyCADTool.Refactored.Presentation.Commands.PaperV",  "method": "Test" },
+            "phh": { "type": "HyCADTool.Refactored.Presentation.Commands.PaperHH", "method": "Test" },
+            "pvv": { "type": "HyCADTool.Refactored.Presentation.Commands.PaperVV", "method": "Test" },
+
+            "HYDCEL":    { "type": "HyCADTool.Refactored.Presentation.Commands.DCELCommand",         "method": "Execute" },
+            "HYDCELSET": { "type": "HyCADTool.Refactored.Presentation.Commands.DCELSettingsCommand", "method": "Execute" },
+            "HYMBR":     { "type": "HyCADTool.Refactored.Presentation.Commands.MBRCommand",          "method": "Execute" },
+            "HYJP":      { "type": "HyCADTool.Refactored.Presentation.Commands.JoinParallelLinesCommand", "method": "Execute" },
+            "HYOV":      { "type": "HyCADTool.Refactored.Presentation.Commands.OverKillCommand",     "method": "Execute" },
+            "HYOVSET":   { "type": "HyCADTool.Refactored.Presentation.Commands.OverKillCommand",     "method": "ExecuteSettings" },
+            "HYBC":      { "type": "HyCADTool.Refactored.Presentation.Commands.BreakCurvesCommand",  "method": "Execute" },
+
+            "HY3": { "type": "HyCADTool.Refactored.Presentation.Commands.Elevation3DCommand", "method": "Execute" },
+
+            "HYLOCATETIF": { "type": "HyCADTool.Refactored.Presentation.Commands.LocateTifCommand",      "method": "Execute" },
+            "CHECKWPF":    { "type": "HyCADTool.Refactored.Presentation.Commands.CheckWPFLoadedCommand", "method": "CheckWPF" },
+
+            "N1":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentByPiCommand", "method": "Execute", "_alias": "hyRoadAlnByPi（正名在下次重启 CAD 重 NETLOAD ReCall 后生效；此处占位保证不关 CAD 即可测）" },
+            "N2":  null, "N3":  null, "N4":  null, "N5":  null,
+        "N6":  null, "N7":  null, "N8":  null, "N9":  null, "N10": null,
+        "N11": null, "N12": null, "N13": null, "N14": null, "N15": null,
+        "N16": null, "N17": null, "N18": null, "N19": null, "N20": null,
+        "N21": null, "N22": null, "N23": null, "N24": null, "N25": null,
+        "N26": null, "N27": null, "N28": null, "N29": null, "N30": null,
+        "N31": null, "N32": null, "N33": null, "N34": null, "N35": null,
+        "N36": null, "N37": null, "N38": null, "N39": null, "N40": null,
+        "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
+        "N46": null, "N47": null, "N48": null, "N49": null, "N50": null
+    }
+}

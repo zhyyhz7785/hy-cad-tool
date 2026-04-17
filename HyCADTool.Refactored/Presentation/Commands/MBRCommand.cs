@@ -12,8 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.MBRCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -45,7 +43,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// <summary>
         /// 执行 MBR 命令
         /// </summary>
-        [CommandMethod("HYMBR")]
         public void Execute()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;

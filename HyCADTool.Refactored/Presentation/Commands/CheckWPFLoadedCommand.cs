@@ -4,8 +4,6 @@ using System.Linq;
 using System.Reflection;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.CheckWPFLoadedCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -14,7 +12,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class CheckWPFLoadedCommand
     {
-        [CommandMethod("CHECKWPF")]
         public void CheckWPF()
         {
             var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;

@@ -4,8 +4,6 @@ using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Refactored.Domain.Services;
 using System;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.DCELSettingsCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -14,7 +12,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class DCELSettingsCommand
     {
-        [CommandMethod("HYDCELSET")]
         public void Execute()
         {
             var doc = Application.DocumentManager.MdiActiveDocument;

@@ -12,8 +12,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.DCELCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -54,7 +52,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// AutoCAD 命令入口
         /// 命令名：HYDCEL（统一大写，保持命名一致性）
         /// </summary>
-        [CommandMethod("HYDCEL")]
         public void Execute()
         {
             var doc = Application.DocumentManager.MdiActiveDocument;

@@ -5,7 +5,6 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Geometry;
 using System;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.PaperHH))]
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -13,7 +12,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class PaperHH
     {
-        [CommandMethod("phh", CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)]
         public static void Test()
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;

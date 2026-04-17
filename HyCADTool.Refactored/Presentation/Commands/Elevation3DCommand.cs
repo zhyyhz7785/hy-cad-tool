@@ -12,8 +12,6 @@ using HyCADTool.Refactored.Domain.ValueObjects;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.Elevation3DCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -60,7 +58,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// <summary>
         /// HY3 命令入口（保持原命令名称）
         /// </summary>
-        [CommandMethod("HY3")]
         public void Execute()
         {
             var doc = Application.DocumentManager.MdiActiveDocument;

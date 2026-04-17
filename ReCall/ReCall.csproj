@@ -1,89 +1,47 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{7E0D133E-AAA0-4869-A27D-589D293BE20D}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ReCall</RootNamespace>
     <AssemblyName>ReCall</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
-    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <RootNamespace>ReCall</RootNamespace>
+    <LangVersion>8.0</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- 依赖 DLL 复制到 bin\Debug，方便 C2 把副本 Copy 到 %TEMP% 后能解析 -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DefineConstants>TRACE</DefineConstants>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup>
-    <!--
-      ReCall 目标是 .NET Framework 4.8。
-      AutoCAD 2025/2026 的托管 DLL 在某些环境会触发 System.Runtime 版本冲突（CS7069/CS1705），
-      因此默认优先选择 2024/2023/2021（与 net48 更稳定）。
-      如需强制指定版本，可在本机环境变量或 VS 属性中设置 AutoCADManagedPath。
-    -->
-    <AutoCADManagedPath Condition="'$(AutoCADManagedPath)'=='' and Exists('C:\Program Files\Autodesk\AutoCAD 2024')">C:\Program Files\Autodesk\AutoCAD 2024</AutoCADManagedPath>
-    <AutoCADManagedPath Condition="'$(AutoCADManagedPath)'=='' and Exists('C:\Program Files\Autodesk\AutoCAD 2023')">C:\Program Files\Autodesk\AutoCAD 2023</AutoCADManagedPath>
-    <AutoCADManagedPath Condition="'$(AutoCADManagedPath)'=='' and Exists('C:\Program Files\Autodesk\AutoCAD 2021')">C:\Program Files\Autodesk\AutoCAD 2021</AutoCADManagedPath>
-    <AutoCADManagedPath Condition="'$(AutoCADManagedPath)'=='' and Exists('C:\Program Files\Autodesk\AutoCAD 2025')">C:\Program Files\Autodesk\AutoCAD 2025</AutoCADManagedPath>
-    <AutoCADManagedPath Condition="'$(AutoCADManagedPath)'=='' and Exists('C:\Program Files\Autodesk\AutoCAD 2026')">C:\Program Files\Autodesk\AutoCAD 2026</AutoCADManagedPath>
-    <AutoCADManagedPath Condition="'$(AutoCADManagedPath)'==''">$(MSBuildProjectDirectory)\bin\Debug</AutoCADManagedPath>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-    <!-- WPF References (for WarmupWPF) -->
-    <Reference Include="WindowsBase" />
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="System.Xaml" />
-    <!-- AutoCAD .NET API References -->
-    <Reference Include="AcCoreMgd">
-      <HintPath>$(AutoCADManagedPath)\AcCoreMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="AcDbMgd">
-      <HintPath>$(AutoCADManagedPath)\AcDbMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="AcMgd">
-      <HintPath>$(AutoCADManagedPath)\AcMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
+    <!-- 与 HyCADTool.Refactored 共用同一版本 AutoCAD.NET，避免 Managed DLL 版本不一致 -->
+    <!-- ExcludeAssets=runtime: 只引用头、不 copy Ac*.dll 到 bin\Debug（AutoCAD 进程已加载对应版本） -->
+    <PackageReference Include="AutoCAD.NET" Version="24.3.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Recall.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="config.json">
+    <None Update="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="commands.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
 </Project>

@@ -13,8 +13,6 @@ using System.Diagnostics;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.BreakCurvesCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     public class BreakCurvesCommand
@@ -34,7 +32,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
             _spatialIndexService = ServiceLocator.Resolve<SpatialIndexService<Curve>>();
         }
 
-        [CommandMethod("HYBC")]
         public void Execute()
         {
             Document doc = AcApp.DocumentManager.MdiActiveDocument;

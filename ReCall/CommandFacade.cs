@@ -1,0 +1,228 @@
+using Autodesk.AutoCAD.Runtime;
+
+[assembly: CommandClass(typeof(HyCADTool.ReCall.CommandFacade))]
+
+namespace HyCADTool.ReCall
+{
+    /// <summary>
+    /// AutoCAD 命令总入口。
+    ///
+    /// 每个 <c>[CommandMethod(key)]</c> 都只做一件事：转发给 <see cref="ReCallClass.Invoke"/>，
+    /// 由 <see cref="CommandTable"/>（commands.json）决定真实目标 Type.Method。
+    ///
+    /// 日常开发：
+    /// - 改 Refactored 业务代码 → C2 热重载 → 立即生效（命令名不变）
+    /// - 新增命令：Refactored 写 XxxCommand.Execute → 编辑 commands.json 把某 "N?" 槽位指向它 → C2 → 输 N?
+    ///   （零关 CAD）
+    ///
+    /// 仅当要把 N? 升级为正式命令名（如 hyRoadXxx）时，才需要在本文件加新的 [CommandMethod]
+    /// 并关 CAD 重 NETLOAD ReCall.dll —— 这是唯一需要重启 AutoCAD 的时刻。
+    ///
+    /// ReCall.dll 本身不热重载；本文件的 80+ 业务命令 + 50 占位符是稳定基座。
+    /// </summary>
+    public class CommandFacade
+    {
+        #region 面板 (Panel)
+        [CommandMethod("hy")]      public void Cmd_hy()       => ReCallClass.Invoke("hy");
+        [CommandMethod("_HyExec")] public void Cmd__HyExec()  => ReCallClass.Invoke("_HyExec");
+        #endregion
+
+        #region 钢筋绘制 (Reinforcement - Draw)
+        [CommandMethod("gj")]  public void Cmd_gj()  => ReCallClass.Invoke("gj");
+        [CommandMethod("gg")]  public void Cmd_gg()  => ReCallClass.Invoke("gg");
+        [CommandMethod("ggj")] public void Cmd_ggj() => ReCallClass.Invoke("ggj");
+        #endregion
+
+        #region 钢筋修改 (Reinforcement - Modify)
+        [CommandMethod("g1")]  public void Cmd_g1()  => ReCallClass.Invoke("g1");
+        [CommandMethod("g2")]  public void Cmd_g2()  => ReCallClass.Invoke("g2");
+        [CommandMethod("ge")]  public void Cmd_ge()  => ReCallClass.Invoke("ge");
+        [CommandMethod("ge1")] public void Cmd_ge1() => ReCallClass.Invoke("ge1");
+        [CommandMethod("gd")]  public void Cmd_gd()  => ReCallClass.Invoke("gd");
+        #endregion
+
+        #region 钢筋标注 (Reinforcement - Label)
+        [CommandMethod("gb")]    public void Cmd_gb()    => ReCallClass.Invoke("gb");
+        [CommandMethod("gb1")]   public void Cmd_gb1()   => ReCallClass.Invoke("gb1");
+        [CommandMethod("gb2")]   public void Cmd_gb2()   => ReCallClass.Invoke("gb2");
+        [CommandMethod("hysrt")] public void Cmd_hysrt() => ReCallClass.Invoke("hysrt");
+        #endregion
+
+        #region 标高 (Elevation)
+        [CommandMethod("bg")]      public void Cmd_bg()      => ReCallClass.Invoke("bg");
+        [CommandMethod("bgu")]     public void Cmd_bgu()     => ReCallClass.Invoke("bgu");
+        [CommandMethod("bgR")]     public void Cmd_bgR()     => ReCallClass.Invoke("bgR");
+        [CommandMethod("hybgTCE")] public void Cmd_hybgTCE() => ReCallClass.Invoke("hybgTCE");
+        #endregion
+
+        #region 尺寸标注 (Dimension)
+        [CommandMethod("dds")]    public void Cmd_dds()    => ReCallClass.Invoke("dds");
+        [CommandMethod("ddss")]   public void Cmd_ddss()   => ReCallClass.Invoke("ddss");
+        [CommandMethod("sd")]     public void Cmd_sd()     => ReCallClass.Invoke("sd");
+        [CommandMethod("ddaa")]   public void Cmd_ddaa()   => ReCallClass.Invoke("ddaa");
+        [CommandMethod("hydimA")] public void Cmd_hydimA() => ReCallClass.Invoke("hydimA");
+        #endregion
+
+        #region 地脚螺栓 (Anchor Bolt)
+        [CommandMethod("hyab")]   public void Cmd_hyab()   => ReCallClass.Invoke("hyab");
+        [CommandMethod("hyabA")]  public void Cmd_hyabA()  => ReCallClass.Invoke("hyabA");
+        [CommandMethod("hyabC")]  public void Cmd_hyabC()  => ReCallClass.Invoke("hyabC");
+        [CommandMethod("hyabCD")] public void Cmd_hyabCD() => ReCallClass.Invoke("hyabCD");
+        [CommandMethod("hyabCT")] public void Cmd_hyabCT() => ReCallClass.Invoke("hyabCT");
+        [CommandMethod("hyabR")]  public void Cmd_hyabR()  => ReCallClass.Invoke("hyabR");
+        #endregion
+
+        #region 设备基础 (Equipment Foundation)
+        [CommandMethod("hyef_Base_ConstructBaseData")] public void Cmd_hyef_Base_ConstructBaseData() => ReCallClass.Invoke("hyef_Base_ConstructBaseData");
+        [CommandMethod("hyef_Base_HighlightBoltData")] public void Cmd_hyef_Base_HighlightBoltData() => ReCallClass.Invoke("hyef_Base_HighlightBoltData");
+        [CommandMethod("hyef_Axis_Construct")]         public void Cmd_hyef_Axis_Construct()         => ReCallClass.Invoke("hyef_Axis_Construct");
+        [CommandMethod("hyef_Axis_Initialize")]        public void Cmd_hyef_Axis_Initialize()        => ReCallClass.Invoke("hyef_Axis_Initialize");
+        [CommandMethod("hyef_Axis_Display")]           public void Cmd_hyef_Axis_Display()           => ReCallClass.Invoke("hyef_Axis_Display");
+        [CommandMethod("hyef_Axis_CreateTable")]       public void Cmd_hyef_Axis_CreateTable()       => ReCallClass.Invoke("hyef_Axis_CreateTable");
+        #endregion
+
+        #region 图框 / 布局 (Title Block / Layout)
+        [CommandMethod("HYMBRD")]           public void Cmd_HYMBRD()           => ReCallClass.Invoke("HYMBRD");
+        [CommandMethod("HYMBRC")]           public void Cmd_HYMBRC()           => ReCallClass.Invoke("HYMBRC");
+        [CommandMethod("HY_PackViewports")] public void Cmd_HY_PackViewports() => ReCallClass.Invoke("HY_PackViewports");
+        #endregion
+
+        #region 图纸视口 (Paper Viewport)
+        [CommandMethod("ph",  CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)] public void Cmd_ph()  => ReCallClass.Invoke("ph");
+        [CommandMethod("pv",  CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)] public void Cmd_pv()  => ReCallClass.Invoke("pv");
+        [CommandMethod("phh", CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)] public void Cmd_phh() => ReCallClass.Invoke("phh");
+        [CommandMethod("pvv", CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)] public void Cmd_pvv() => ReCallClass.Invoke("pvv");
+        #endregion
+
+        #region 块操作 (Block)
+        [CommandMethod("HYc2bc")] public void Cmd_HYc2bc() => ReCallClass.Invoke("HYc2bc");
+        [CommandMethod("HYc2bl")] public void Cmd_HYc2bl() => ReCallClass.Invoke("HYc2bl");
+        #endregion
+
+        #region 多边形替换 (Polygon Replace)
+        [CommandMethod("abrc")]  public void Cmd_abrc()  => ReCallClass.Invoke("abrc");
+        [CommandMethod("abrcs")] public void Cmd_abrcs() => ReCallClass.Invoke("abrcs");
+        #endregion
+
+        #region 垫层 (Pad)
+        [CommandMethod("HyDcL")] public void Cmd_HyDcL() => ReCallClass.Invoke("HyDcL");
+        [CommandMethod("hyDcP")] public void Cmd_hyDcP() => ReCallClass.Invoke("hyDcP");
+        #endregion
+
+        #region 设计说明 (Design Spec / Markdown)
+        [CommandMethod("hymd")]  public void Cmd_hymd()  => ReCallClass.Invoke("hymd");
+        [CommandMethod("hymdE")] public void Cmd_hymdE() => ReCallClass.Invoke("hymdE");
+        #endregion
+
+        #region 导出 (Export)
+        [CommandMethod("hyex")]     public void Cmd_hyex()     => ReCallClass.Invoke("hyex");
+        [CommandMethod("hyex_csv")] public void Cmd_hyex_csv() => ReCallClass.Invoke("hyex_csv");
+        #endregion
+
+        #region 其他工具 (Misc)
+        [CommandMethod("hyAxis")] public void Cmd_hyAxis() => ReCallClass.Invoke("hyAxis");
+        [CommandMethod("HyRT")]   public void Cmd_HyRT()   => ReCallClass.Invoke("HyRT");
+        [CommandMethod("hydl")]   public void Cmd_hydl()   => ReCallClass.Invoke("hydl");
+        [CommandMethod("HYBL")]   public void Cmd_HYBL()   => ReCallClass.Invoke("HYBL");
+        #endregion
+
+        #region 桩基 (Pile)
+        [CommandMethod("HYpile")]   public void Cmd_HYpile()   => ReCallClass.Invoke("HYpile");
+        [CommandMethod("HYpileV")]  public void Cmd_HYpileV()  => ReCallClass.Invoke("HYpileV");
+        [CommandMethod("HYpileG")]  public void Cmd_HYpileG()  => ReCallClass.Invoke("HYpileG");
+        [CommandMethod("HYpileGT")] public void Cmd_HYpileGT() => ReCallClass.Invoke("HYpileGT");
+        #endregion
+
+        #region 沉降 (Settlement)
+        [CommandMethod("HYJC")] public void Cmd_HYJC() => ReCallClass.Invoke("HYJC");
+        [CommandMethod("hySC")] public void Cmd_hySC() => ReCallClass.Invoke("hySC");
+        #endregion
+
+        #region 道路 (Road)
+        [CommandMethod("hyRoad")]             public void Cmd_hyRoad()             => ReCallClass.Invoke("hyRoad");
+        [CommandMethod("hyRoadA")]            public void Cmd_hyRoadA()            => ReCallClass.Invoke("hyRoadA");
+        [CommandMethod("hyRoadAlnByPi")]      public void Cmd_hyRoadAlnByPi()      => ReCallClass.Invoke("hyRoadAlnByPi");
+        [CommandMethod("hyRoadAlnStation")]   public void Cmd_hyRoadAlnStation()   => ReCallClass.Invoke("hyRoadAlnStation");
+        [CommandMethod("hyRoadP")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
+        [CommandMethod("hyRoadT")]            public void Cmd_hyRoadT()            => ReCallClass.Invoke("hyRoadT");
+        [CommandMethod("hyRoadC")]            public void Cmd_hyRoadC()            => ReCallClass.Invoke("hyRoadC");
+        [CommandMethod("hyRoadSave")]         public void Cmd_hyRoadSave()         => ReCallClass.Invoke("hyRoadSave");
+        [CommandMethod("hyRoadLoad")]         public void Cmd_hyRoadLoad()         => ReCallClass.Invoke("hyRoadLoad");
+        [CommandMethod("hyRoad3dExportGltf")] public void Cmd_hyRoad3dExportGltf() => ReCallClass.Invoke("hyRoad3dExportGltf");
+        #endregion
+
+        #region 几何工具 (Geometry Tools)
+        [CommandMethod("HYDCEL")]    public void Cmd_HYDCEL()    => ReCallClass.Invoke("HYDCEL");
+        [CommandMethod("HYDCELSET")] public void Cmd_HYDCELSET() => ReCallClass.Invoke("HYDCELSET");
+        [CommandMethod("HYMBR")]     public void Cmd_HYMBR()     => ReCallClass.Invoke("HYMBR");
+        [CommandMethod("HYJP")]      public void Cmd_HYJP()      => ReCallClass.Invoke("HYJP");
+        [CommandMethod("HYOV")]      public void Cmd_HYOV()      => ReCallClass.Invoke("HYOV");
+        [CommandMethod("HYOVSET")]   public void Cmd_HYOVSET()   => ReCallClass.Invoke("HYOVSET");
+        [CommandMethod("HYBC")]      public void Cmd_HYBC()      => ReCallClass.Invoke("HYBC");
+        #endregion
+
+        #region 三维建模 (3D Modeling)
+        [CommandMethod("HY3")] public void Cmd_HY3() => ReCallClass.Invoke("HY3");
+        #endregion
+
+        #region 诊断 (Diagnostic)
+        [CommandMethod("HYLOCATETIF")] public void Cmd_HYLOCATETIF() => ReCallClass.Invoke("HYLOCATETIF");
+        [CommandMethod("CHECKWPF")]    public void Cmd_CHECKWPF()    => ReCallClass.Invoke("CHECKWPF");
+        #endregion
+
+        #region 占位符 (Placeholders N1~N50)
+        // 使用：在 commands.json 把某个 "N?" 从 null 改为 { "type": "...", "method": "..." }，
+        // 然后 AutoCAD 里 C2 一下、输入 N? 即可执行。零关 CAD。
+        [CommandMethod("N1")]  public void Cmd_N1()  => ReCallClass.Invoke("N1");
+        [CommandMethod("N2")]  public void Cmd_N2()  => ReCallClass.Invoke("N2");
+        [CommandMethod("N3")]  public void Cmd_N3()  => ReCallClass.Invoke("N3");
+        [CommandMethod("N4")]  public void Cmd_N4()  => ReCallClass.Invoke("N4");
+        [CommandMethod("N5")]  public void Cmd_N5()  => ReCallClass.Invoke("N5");
+        [CommandMethod("N6")]  public void Cmd_N6()  => ReCallClass.Invoke("N6");
+        [CommandMethod("N7")]  public void Cmd_N7()  => ReCallClass.Invoke("N7");
+        [CommandMethod("N8")]  public void Cmd_N8()  => ReCallClass.Invoke("N8");
+        [CommandMethod("N9")]  public void Cmd_N9()  => ReCallClass.Invoke("N9");
+        [CommandMethod("N10")] public void Cmd_N10() => ReCallClass.Invoke("N10");
+        [CommandMethod("N11")] public void Cmd_N11() => ReCallClass.Invoke("N11");
+        [CommandMethod("N12")] public void Cmd_N12() => ReCallClass.Invoke("N12");
+        [CommandMethod("N13")] public void Cmd_N13() => ReCallClass.Invoke("N13");
+        [CommandMethod("N14")] public void Cmd_N14() => ReCallClass.Invoke("N14");
+        [CommandMethod("N15")] public void Cmd_N15() => ReCallClass.Invoke("N15");
+        [CommandMethod("N16")] public void Cmd_N16() => ReCallClass.Invoke("N16");
+        [CommandMethod("N17")] public void Cmd_N17() => ReCallClass.Invoke("N17");
+        [CommandMethod("N18")] public void Cmd_N18() => ReCallClass.Invoke("N18");
+        [CommandMethod("N19")] public void Cmd_N19() => ReCallClass.Invoke("N19");
+        [CommandMethod("N20")] public void Cmd_N20() => ReCallClass.Invoke("N20");
+        [CommandMethod("N21")] public void Cmd_N21() => ReCallClass.Invoke("N21");
+        [CommandMethod("N22")] public void Cmd_N22() => ReCallClass.Invoke("N22");
+        [CommandMethod("N23")] public void Cmd_N23() => ReCallClass.Invoke("N23");
+        [CommandMethod("N24")] public void Cmd_N24() => ReCallClass.Invoke("N24");
+        [CommandMethod("N25")] public void Cmd_N25() => ReCallClass.Invoke("N25");
+        [CommandMethod("N26")] public void Cmd_N26() => ReCallClass.Invoke("N26");
+        [CommandMethod("N27")] public void Cmd_N27() => ReCallClass.Invoke("N27");
+        [CommandMethod("N28")] public void Cmd_N28() => ReCallClass.Invoke("N28");
+        [CommandMethod("N29")] public void Cmd_N29() => ReCallClass.Invoke("N29");
+        [CommandMethod("N30")] public void Cmd_N30() => ReCallClass.Invoke("N30");
+        [CommandMethod("N31")] public void Cmd_N31() => ReCallClass.Invoke("N31");
+        [CommandMethod("N32")] public void Cmd_N32() => ReCallClass.Invoke("N32");
+        [CommandMethod("N33")] public void Cmd_N33() => ReCallClass.Invoke("N33");
+        [CommandMethod("N34")] public void Cmd_N34() => ReCallClass.Invoke("N34");
+        [CommandMethod("N35")] public void Cmd_N35() => ReCallClass.Invoke("N35");
+        [CommandMethod("N36")] public void Cmd_N36() => ReCallClass.Invoke("N36");
+        [CommandMethod("N37")] public void Cmd_N37() => ReCallClass.Invoke("N37");
+        [CommandMethod("N38")] public void Cmd_N38() => ReCallClass.Invoke("N38");
+        [CommandMethod("N39")] public void Cmd_N39() => ReCallClass.Invoke("N39");
+        [CommandMethod("N40")] public void Cmd_N40() => ReCallClass.Invoke("N40");
+        [CommandMethod("N41")] public void Cmd_N41() => ReCallClass.Invoke("N41");
+        [CommandMethod("N42")] public void Cmd_N42() => ReCallClass.Invoke("N42");
+        [CommandMethod("N43")] public void Cmd_N43() => ReCallClass.Invoke("N43");
+        [CommandMethod("N44")] public void Cmd_N44() => ReCallClass.Invoke("N44");
+        [CommandMethod("N45")] public void Cmd_N45() => ReCallClass.Invoke("N45");
+        [CommandMethod("N46")] public void Cmd_N46() => ReCallClass.Invoke("N46");
+        [CommandMethod("N47")] public void Cmd_N47() => ReCallClass.Invoke("N47");
+        [CommandMethod("N48")] public void Cmd_N48() => ReCallClass.Invoke("N48");
+        [CommandMethod("N49")] public void Cmd_N49() => ReCallClass.Invoke("N49");
+        [CommandMethod("N50")] public void Cmd_N50() => ReCallClass.Invoke("N50");
+        #endregion
+    }
+}

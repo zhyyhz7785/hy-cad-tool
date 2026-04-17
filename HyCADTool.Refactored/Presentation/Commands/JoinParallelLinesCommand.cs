@@ -9,8 +9,6 @@ using System.Linq;
 using Autodesk.AutoCAD.GraphicsInterface;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.JoinParallelLinesCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -24,7 +22,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private const double DISTANCE_TOLERANCE = 0.001; // 向量长度容差
         private const double PARALLEL_LINE_DISTANCE_THRESHOLD = 1.0; // 两条平行线之间的距离容差（用于判断是否共线）
 
-        [CommandMethod("HYJP")]
         public void Execute()
         {
             short originalOrthoMode = 0;

@@ -11,8 +11,6 @@ using System.Diagnostics;
 using System.IO;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.LocateTifCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -30,7 +28,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// <summary>
         /// 执行命令：选择TFW文件并定位对应的TIF图像
         /// </summary>
-        [CommandMethod("HYLOCATETIF")]
         public void Execute()
         {
             Document doc = AcApp.DocumentManager.MdiActiveDocument;

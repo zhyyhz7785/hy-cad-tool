@@ -4,15 +4,11 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored;
-//   ^\s*(?=\r?$)\n   (删除空行正则表达式）
-//[assembly: ExtensionApplication(typeof(MoveCopyDemo.TestCommand))]
-//[assembly: CommandClass(typeof(MoveCopyDemo.TestCommand))]
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.PaperV))]
+
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     public class PaperV
     {
-        [CommandMethod("pv", CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)]
         public static void Test()
         {
             Editor ed = Application.DocumentManager.MdiActiveDocument.Editor;

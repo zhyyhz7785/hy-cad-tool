@@ -72,10 +72,6 @@
     <None Remove="**/*.bak" />
     <None Remove="**/*.old" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Test\TestCommand - 复制.cs" />
-  </ItemGroup>
-
   <!-- 只编译需要的 XAML（EnableDefaultPageItems=false 时必须显式列出） -->
   <ItemGroup>
     <Page Include="Presentation\Resources\LibraryResources.xaml">

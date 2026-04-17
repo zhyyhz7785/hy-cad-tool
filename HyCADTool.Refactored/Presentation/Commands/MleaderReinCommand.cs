@@ -51,7 +51,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
             var db = doc.Database;
             var ed = doc.Editor;
 
-            // 从面板读取最新参数（样式已在 CommandRegistry.Run 中同步，无需重复调用）
+            // 从面板读取最新参数（样式已在 ReCall.Invoke 前置钩子里同步，无需重复调用）
             var vm = SettingsPanelViewModel.Current;
 
             double scale = vm?.Scale ?? 40.0;

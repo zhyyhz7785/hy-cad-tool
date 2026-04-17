@@ -11,8 +11,6 @@ using System.Collections.Generic;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-[assembly: CommandClass(typeof(HyCADTool.Refactored.Presentation.Commands.OverKillCommand))]
-
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
@@ -32,7 +30,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// <summary>
         /// HYOV 命令 - OVERKILL + FILLET 综合清理
         /// </summary>
-        [CommandMethod("HYOV")]
         public void Execute()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -156,7 +153,6 @@ namespace HyCADTool.Refactored.Presentation.Commands
         /// <summary>
         /// HYOVSET 命令 - 打开 HYOV 参数设置窗口
         /// </summary>
-        [CommandMethod("HYOVSET")]
         public static void ExecuteSettings()
         {
             try
