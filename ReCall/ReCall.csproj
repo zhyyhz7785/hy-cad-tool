@@ -78,13 +78,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Recall - 复制.cs" />
-    <!-- 旧的热重启文件（已注释，仅保留作为参考） -->
-    <!-- <Compile Include="Recall -  - EquipmentFoundation.cs" /> -->
-    <!-- <Compile Include="Recall -  -HyRetainingWallSolver.cs" /> -->
-    <!-- <Compile Include="Recall -  -HyCADTool - 复制.cs" /> -->
-    <!-- <Compile Include="Recall-ReinPanel.cs" /> -->
-    <!-- 通用热重启文件（后续不再修改） -->
     <Compile Include="Recall.cs" />
   </ItemGroup>
   <ItemGroup>

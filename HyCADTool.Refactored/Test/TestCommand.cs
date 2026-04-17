@@ -1,4 +1,5 @@
 using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation;
@@ -60,46 +61,46 @@ namespace HyCADTool.Refactored.Test
                     vm?.LoadSettings();
                     vm?.EnsureStylesApplied();
 
-                    switch (commandKey)
-                    {
-                        case "gg":
-                            new DrawOffsetPolylineCommand().Execute();
-                            return;
-                        case "g1":
-                            new ReinAddAnchorCommand(isVertical: false).Execute();
-                            return;
-                        case "g2":
-                            new ReinAddAnchorCommand(isVertical: true).Execute();
-                            return;
-                        case "ge":
-                            new ReinExtendCommand().Execute();
-                            return;
-                        case "hyjc":
-                            new SettlementCalculationCommand().Execute();
-                            return;
+                    if (TryDispatchCommandKey(commandKey))
+                        return;
+                    ed?.WriteMessage($"\n[C1] 未识别的命令 key（来自 CommandRelayStore）: {commandKey}");
+                    return;
+                }
 
-                        // --- P0/P1 市政道路设计命令（C2 后只能走 C1 转发，见 CommandRegistry 注释）---
-                        case "hyRoadA":
-                            new RoadAlignmentCommand().Execute();
+                // ================================================================
+                //  C2 热重载"新命令"救急通道（P1.c 新增）
+                //
+                //  背景：AutoCAD 只在**首次 NETLOAD** 时扫描 [CommandMethod]，C2 的
+                //  Assembly.Load(byte[]) 无法让命令表感知新命令。如果本轮热重载新增了
+                //  hyRoadAlnStation 这种新命令，在命令行输入命令名会提示"未知命令"。
+                //
+                //  解决：在走 fallback 之前给用户一次交互式输入命令 key 的机会 —— 由于
+                //  C2 会把 C1 重新绑定到**最新** TestCommand.Run，TryDispatchCommandKey
+                //  这段 switch 就是最新的，任何新命令都能在这里分派，无需重启 AutoCAD。
+                //
+                //  使用：C2 → C1 → 命令行提示"输入命令 key" → 输入 hyRoadAlnStation 回车。
+                //  回车跳过则走最下面的内置 fallback（调试测试用）。
+                // ================================================================
+                if (ed != null)
+                {
+                    var pso = new PromptStringOptions(
+                        "\n[C1] 输入要执行的命令 key（回车跳过走内置 fallback）: ")
+                    {
+                        AllowSpaces = false
+                    };
+                    var pr = ed.GetString(pso);
+                    if (pr.Status == PromptStatus.OK && !string.IsNullOrWhiteSpace(pr.StringResult))
+                    {
+                        var key = pr.StringResult.Trim();
+                        SettingsPanelViewModel.CommitFocusedTextBoxValue();
+                        var vm2 = SettingsPanelViewModel.Current;
+                        vm2?.LoadSettings();
+                        vm2?.EnsureStylesApplied();
+
+                        if (TryDispatchCommandKey(key))
                             return;
-                        case "hyRoadP":
-                            new RoadProfileCommand().Execute();
-                            return;
-                        case "hyRoadT":
-                            new RoadTemplateCommand().Execute();
-                            return;
-                        case "hyRoadC":
-                            new RoadCorridorCommand().Execute();
-                            return;
-                        case "hyRoadSave":
-                            new RoadOpenJsonCommand().Execute();
-                            return;
-                        case "hyRoadLoad":
-                            new RoadImportJsonCommand().Execute();
-                            return;
-                        case "hyRoad3dExportGltf":
-                            new Road3dExportGltfCommand().Execute();
-                            return;
+                        ed.WriteMessage($"\n[C1] 未识别的命令 key: {key}");
+                        return;
                     }
                 }
 
@@ -112,6 +113,63 @@ namespace HyCADTool.Refactored.Test
                 new DimensionAlignCommand().Execute();
                 // 例如：new SettlementCalculationCommand().Execute();
             });
+        }
+
+        /// <summary>
+        /// 统一的命令 key → 实现分派表。两个调用点共享：
+        /// - <see cref="CommandRelayStore"/> 的 key 消费（老流程）
+        /// - C2 热重载"新命令"救急通道（用户在 C1 交互式输入的 key）
+        ///
+        /// 未识别 key 返回 <c>false</c>，由调用方决定 fallback。
+        /// </summary>
+        private static bool TryDispatchCommandKey(string key)
+        {
+            switch (key)
+            {
+                case "gg":
+                    new DrawOffsetPolylineCommand().Execute();
+                    return true;
+                case "g1":
+                    new ReinAddAnchorCommand(isVertical: false).Execute();
+                    return true;
+                case "g2":
+                    new ReinAddAnchorCommand(isVertical: true).Execute();
+                    return true;
+                case "ge":
+                    new ReinExtendCommand().Execute();
+                    return true;
+                case "hyjc":
+                    new SettlementCalculationCommand().Execute();
+                    return true;
+
+                // --- P0/P1 市政道路设计命令（C2 后只能走 C1 转发，见 CommandRegistry 注释）---
+                case "hyRoadA":
+                    new RoadAlignmentCommand().Execute();
+                    return true;
+                case "hyRoadAlnStation":
+                    new RoadAlignmentStationCommand().Execute();
+                    return true;
+                case "hyRoadP":
+                    new RoadProfileCommand().Execute();
+                    return true;
+                case "hyRoadT":
+                    new RoadTemplateCommand().Execute();
+                    return true;
+                case "hyRoadC":
+                    new RoadCorridorCommand().Execute();
+                    return true;
+                case "hyRoadSave":
+                    new RoadOpenJsonCommand().Execute();
+                    return true;
+                case "hyRoadLoad":
+                    new RoadImportJsonCommand().Execute();
+                    return true;
+                case "hyRoad3dExportGltf":
+                    new Road3dExportGltfCommand().Execute();
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }

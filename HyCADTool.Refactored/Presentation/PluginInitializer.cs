@@ -320,6 +320,8 @@ namespace HyCADTool.Refactored.Presentation
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CorridorColor),
                 (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingLayer,
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.StationLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.StationColor),
             };
         }
 

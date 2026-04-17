@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FluentAssertions;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using Xunit;
@@ -226,6 +227,163 @@ namespace HyCADTool.Refactored.Tests.Domain.ValueObjects.Geometry
                 isClosed: false,
                 bulges: new[] { 0.25, 0.0 });
             curved.ShouldSerializeBulges().Should().BeTrue();
+        }
+
+        // ===== P1.c：平面桩号采样（hyRoadAlnStation 使用）=====
+
+        [Fact]
+        public void PointAtPlanarStation_OnStraightPolyline_InterpolatesLinearly()
+        {
+            // L 形：(0,0) → (10,0) → (10,10)，总平面长度 = 20
+            var p = new Polyline3D(new[]
+            {
+                new Point3D(0, 0, 0),
+                new Point3D(10, 0, 0),
+                new Point3D(10, 10, 0)
+            });
+
+            p.PointAtPlanarStation(0).Should().Be(new Point3D(0, 0, 0));
+            p.PointAtPlanarStation(5).Should().Be(new Point3D(5, 0, 0));
+            p.PointAtPlanarStation(10).Should().Be(new Point3D(10, 0, 0), "首段终点 = 第二段起点");
+            p.PointAtPlanarStation(15).Should().Be(new Point3D(10, 5, 0));
+            p.PointAtPlanarStation(20).Should().Be(new Point3D(10, 10, 0));
+        }
+
+        [Fact]
+        public void PointAtPlanarStation_OutOfRange_ClampsToEndpoints()
+        {
+            var p = new Polyline3D(new[] { new Point3D(0, 0, 0), new Point3D(10, 0, 0) });
+
+            p.PointAtPlanarStation(-5).Should().Be(new Point3D(0, 0, 0));
+            p.PointAtPlanarStation(100).Should().Be(new Point3D(10, 0, 0));
+        }
+
+        [Fact]
+        public void TangentAtPlanarStation_OnStraightPolyline_MatchesSegmentDirection()
+        {
+            // L 形：首段沿 +X，次段沿 +Y
+            var p = new Polyline3D(new[]
+            {
+                new Point3D(0, 0, 0),
+                new Point3D(10, 0, 0),
+                new Point3D(10, 10, 0)
+            });
+
+            var t1 = p.TangentAtPlanarStation(5);
+            t1.X.Should().BeApproximately(1, 1e-9);
+            t1.Y.Should().BeApproximately(0, 1e-9);
+
+            var t2 = p.TangentAtPlanarStation(15);
+            t2.X.Should().BeApproximately(0, 1e-9);
+            t2.Y.Should().BeApproximately(1, 1e-9);
+        }
+
+        [Fact]
+        public void PointAtPlanarStation_OnSemicircleBulge_MatchesArcGeometry()
+        {
+            // bulge = 1 ⇒ θ = π，AutoCAD 约定 bulge>0 = 逆时针
+            // 起点 (0,0)、终点 (10,0)、中心 (5,0)、R = 5、sweep = +π
+            // 起点 angle = atan2(0-0, 0-5) = π；t=0.5 时 angle = 1.5π → 弧顶 (5,-5)
+            var p = new Polyline3D(
+                vertices: new[] { new Point3D(0, 0, 0), new Point3D(10, 0, 0) },
+                isClosed: false,
+                bulges: new[] { 1.0, 0.0 });
+
+            double halfArc = Math.PI * 5.0 / 2.0;
+
+            var start = p.PointAtPlanarStation(0);
+            start.X.Should().BeApproximately(0, 1e-9);
+            start.Y.Should().BeApproximately(0, 1e-9);
+
+            var apex = p.PointAtPlanarStation(halfArc);
+            apex.X.Should().BeApproximately(5, 1e-9);
+            apex.Y.Should().BeApproximately(-5, 1e-9);
+
+            var end = p.PointAtPlanarStation(Math.PI * 5.0);
+            end.X.Should().BeApproximately(10, 1e-9);
+            end.Y.Should().BeApproximately(0, 1e-9);
+        }
+
+        [Fact]
+        public void TangentAtPlanarStation_OnSemicircleBulge_IsPerpendicularToRadius()
+        {
+            // 同上半圆：在起点、弧顶、终点处切线应分别为 (0,-1) / (1,0) / (0,1)
+            var p = new Polyline3D(
+                vertices: new[] { new Point3D(0, 0, 0), new Point3D(10, 0, 0) },
+                isClosed: false,
+                bulges: new[] { 1.0, 0.0 });
+
+            double halfArc = Math.PI * 5.0 / 2.0;
+            double fullArc = Math.PI * 5.0;
+
+            var t0 = p.TangentAtPlanarStation(0);
+            t0.X.Should().BeApproximately(0, 1e-9);
+            t0.Y.Should().BeApproximately(-1, 1e-9, "起点 (0,0) 径向 (-1,0) 绕圆心逆时针 90° → (0,-1)");
+
+            var t1 = p.TangentAtPlanarStation(halfArc);
+            t1.X.Should().BeApproximately(1, 1e-9);
+            t1.Y.Should().BeApproximately(0, 1e-9);
+
+            var t2 = p.TangentAtPlanarStation(fullArc);
+            t2.X.Should().BeApproximately(0, 1e-9);
+            t2.Y.Should().BeApproximately(1, 1e-9);
+        }
+
+        [Fact]
+        public void SamplePlanarStations_EqualSpacing_IncludesAllFullSteps()
+        {
+            // 总长 20，interval 5：期望样点 {0, 5, 10, 15, 20}
+            var p = new Polyline3D(new[] { new Point3D(0, 0, 0), new Point3D(20, 0, 0) });
+
+            var samples = p.SamplePlanarStations(5).ToArray();
+            samples.Select(s => s.Station).Should().Equal(new[] { 0.0, 5.0, 10.0, 15.0, 20.0 });
+            samples[0].Point.Should().Be(new Point3D(0, 0, 0));
+            samples[4].Point.Should().Be(new Point3D(20, 0, 0));
+        }
+
+        [Fact]
+        public void SamplePlanarStations_IncludeEnd_AppendsTailWhenMissed()
+        {
+            // 总长 17，interval 5 → 正常 {0, 5, 10, 15}；includeEnd 补 {17}
+            var p = new Polyline3D(new[] { new Point3D(0, 0, 0), new Point3D(17, 0, 0) });
+
+            var defaultRun = p.SamplePlanarStations(5).Select(s => s.Station).ToArray();
+            defaultRun.Should().Equal(new[] { 0.0, 5.0, 10.0, 15.0 });
+
+            var tailed = p.SamplePlanarStations(5, startOffset: 0, includeEnd: true)
+                          .Select(s => s.Station).ToArray();
+            tailed.Should().Equal(new[] { 0.0, 5.0, 10.0, 15.0, 17.0 });
+        }
+
+        [Fact]
+        public void SamplePlanarStations_NonPositiveInterval_Throws()
+        {
+            var p = new Polyline3D(new[] { new Point3D(0, 0, 0), new Point3D(10, 0, 0) });
+
+            Action zero = () => p.SamplePlanarStations(0).ToArray();
+            Action neg = () => p.SamplePlanarStations(-1).ToArray();
+
+            zero.Should().Throw<ArgumentOutOfRangeException>();
+            neg.Should().Throw<ArgumentOutOfRangeException>();
+        }
+
+        [Fact]
+        public void SamplePlanarStations_StartOffsetPastTotal_YieldsNothing()
+        {
+            var p = new Polyline3D(new[] { new Point3D(0, 0, 0), new Point3D(10, 0, 0) });
+
+            p.SamplePlanarStations(5, startOffset: 100).Should().BeEmpty();
+        }
+
+        [Fact]
+        public void StationSample_FormatStation_UsesKilometerPlusMeters()
+        {
+            new StationSample(0, Point3D.Origin, Vector2D.UnitX).FormatStation().Should().Be("K0+000.000");
+            new StationSample(20, Point3D.Origin, Vector2D.UnitX).FormatStation().Should().Be("K0+020.000");
+            new StationSample(1234.567, Point3D.Origin, Vector2D.UnitX).FormatStation().Should().Be("K1+234.567");
+            new StationSample(999.9995, Point3D.Origin, Vector2D.UnitX).FormatStation().Should().Be("K1+000.000",
+                "格式化进位后对齐 km 边界");
+            new StationSample(-10, Point3D.Origin, Vector2D.UnitX).FormatStation().Should().Be("-K0+010.000");
         }
     }
 }

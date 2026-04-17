@@ -440,6 +440,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
         [CommandMethod("hyRoadA")]
         public void Cmd_hyRoadA() => RouteThroughC1("hyRoadA", () => new Road.RoadAlignmentCommand().Execute());
 
+        /// <summary>为当前 DWG 全部 Alignment 生成桩号标注（P1，主 20m + 副 5m，幂等可重跑）</summary>
+        [CommandMethod("hyRoadAlnStation")]
+        public void Cmd_hyRoadAlnStation() => RouteThroughC1("hyRoadAlnStation", () => new Road.RoadAlignmentStationCommand().Execute());
+
         /// <summary>为首条 Alignment 创建设计纵断面（P0 占位，P3 扩展）</summary>
         [CommandMethod("hyRoadP")]
         public void Cmd_hyRoadP() => RouteThroughC1("hyRoadP", () => new Road.RoadProfileCommand().Execute());

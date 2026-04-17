@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Events.Road;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 
@@ -204,6 +206,179 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             if (string.IsNullOrWhiteSpace(layerName)) return false;
             var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
             return lt.Has(layerName);
+        }
+
+        /// <summary>
+        /// HY_ROAD 里桩号标注实体统一的 KIND 值。
+        /// 清理 / 识别逻辑基于它 + <c>ID = AlignmentId</c>，实现"针对某条 Alignment 的重绘幂等"。
+        /// </summary>
+        private const string StationLabelKind = "StationLabel";
+
+        /// <summary>
+        /// 沿指定 Alignment 生成一组"桩号标注"实体（短刻度线 + 主桩文字）。
+        ///
+        /// 幂等策略（与 <see cref="RedrawCenterlines"/> 一致）：
+        /// - 本方法内部先调 <see cref="ClearStationLabels"/> 删除同一 AlignmentId 的历史桩号实体；
+        /// - 再按 <paramref name="options"/> 的主 / 副间隔批量生成。
+        /// 这样用户可以反复跑 <c>hyRoadAlnStation</c> 更新标注，而不会累积重复图元。
+        ///
+        /// 落图规则：
+        /// - 刻度线：<see cref="Line"/>，跨中心线两侧（法向对称），挂到 <see cref="HyRoadLayers.StationLayer"/> 图层；
+        /// - 主桩文字：<see cref="DBText"/>，默认沿中心线切向旋转、放在 <see cref="StationTextSide.Left"/> 侧；
+        /// - 所有新生实体挂 HY_ROAD XData：<c>KIND=<see cref="StationLabelKind"/></c>，<c>ID=alignmentId</c>。
+        /// </summary>
+        /// <param name="documentName">当前 DWG 名（用于从 Registry 取 design）。</param>
+        /// <param name="transaction">调用方开启的 Transaction（本方法不自主 Commit）。</param>
+        /// <param name="database">活动 Database。</param>
+        /// <param name="alignmentId">要标注的 Alignment GUID。</param>
+        /// <param name="options">标注参数；<c>null</c> 时使用 <see cref="RoadStationLabelOptions.Default"/>。</param>
+        /// <returns>(mainCount, subCount) 本次生成的主桩数量与副桩数量。</returns>
+        public (int MainCount, int SubCount) DrawStationLabels(
+            string documentName,
+            Transaction transaction,
+            Database database,
+            Guid alignmentId,
+            RoadStationLabelOptions options = null)
+        {
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+            if (database == null) throw new ArgumentNullException(nameof(database));
+            if (alignmentId == Guid.Empty) throw new ArgumentException("alignmentId cannot be empty", nameof(alignmentId));
+
+            options = options ?? RoadStationLabelOptions.Default;
+            options.Validate();
+
+            if (!_registry.TryGet(documentName, out var design)) return (0, 0);
+            var alignment = design.Alignments.FirstOrDefault(a => a.Id == alignmentId);
+            if (alignment == null) return (0, 0);
+            if (alignment.Centerline == null || alignment.Centerline.VertexCount < 2) return (0, 0);
+
+            // 先清旧，保证幂等；不依赖调用方的 Clear。
+            ClearStationLabels(transaction, database, alignmentId);
+
+            string layerName = HyRoadLayers.StationLayer;
+            bool useLayer = LayerExists(transaction, database, layerName);
+
+            var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)transaction.GetObject(
+                bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+
+            // 主桩：每 MainInterval 一个，首尾包含。
+            int mainCount = 0;
+            foreach (var s in alignment.Centerline.SamplePlanarStations(options.MainInterval, startOffset: 0, includeEnd: true))
+            {
+                AppendStationTick(transaction, ms, database, alignment, s, options, isMain: true, layerName: useLayer ? layerName : null);
+                mainCount++;
+            }
+
+            // 副桩：只在非主桩位置补（避免和主桩重叠）。
+            int subCount = 0;
+            if (options.SubInterval > 0 && options.SubInterval < options.MainInterval)
+            {
+                const double overlapTol = 1e-6;
+                foreach (var s in alignment.Centerline.SamplePlanarStations(options.SubInterval))
+                {
+                    // 跳过与主桩重合的点
+                    double modMain = s.Station % options.MainInterval;
+                    if (modMain < overlapTol || options.MainInterval - modMain < overlapTol) continue;
+
+                    AppendStationTick(transaction, ms, database, alignment, s, options, isMain: false, layerName: useLayer ? layerName : null);
+                    subCount++;
+                }
+            }
+
+            return (mainCount, subCount);
+        }
+
+        /// <summary>
+        /// 清除指定 Alignment 挂在 DWG 上的全部桩号标注实体（HY_ROAD KIND=StationLabel，ID=alignmentId）。
+        /// 当 Alignment 被删除或用户主动擦除标注时调用。
+        /// </summary>
+        /// <returns>被擦除的实体数量。</returns>
+        public int ClearStationLabels(Transaction transaction, Database database, Guid alignmentId)
+        {
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+            if (database == null) throw new ArgumentNullException(nameof(database));
+            if (alignmentId == Guid.Empty) return 0;
+
+            var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)transaction.GetObject(
+                bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+
+            var toErase = new List<ObjectId>();
+            foreach (ObjectId id in ms)
+            {
+                var ent = transaction.GetObject(id, OpenMode.ForRead);
+                if (ent == null) continue;
+                var kind = HyRoadXdata.ReadKind(transaction, ent);
+                if (!string.Equals(kind, StationLabelKind, StringComparison.Ordinal)) continue;
+                var gid = HyRoadXdata.ReadId(transaction, ent);
+                if (gid != alignmentId) continue;
+                toErase.Add(id);
+            }
+
+            foreach (var id in toErase)
+            {
+                var ent = transaction.GetObject(id, OpenMode.ForWrite);
+                if (ent != null && !ent.IsErased) ent.Erase();
+            }
+            return toErase.Count;
+        }
+
+        /// <summary>
+        /// 单个桩号"钉子"：刻度线 + （主桩时）桩号文字。
+        /// 切向 / 法向 / 锚点计算全部基于 Domain 的 <see cref="Vector2D"/>，避免与 AutoCAD 几何库反复转换。
+        /// </summary>
+        private static void AppendStationTick(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Alignment alignment,
+            StationSample sample,
+            RoadStationLabelOptions options,
+            bool isMain,
+            string layerName)
+        {
+            var tangent = sample.Tangent;
+            if (!tangent.TryNormalize(out var tUnit)) tUnit = Vector2D.UnitX;
+
+            // 左侧法向（逆时针 90°）；根据 TextSide 决定文字朝哪侧
+            var leftNormal = tUnit.Perpendicular();
+            double tickHalf = (isMain ? options.TickLengthMain : options.TickLengthSub) / 2.0;
+
+            var center = sample.Point;
+            var a = new Point3d(center.X - leftNormal.X * tickHalf, center.Y - leftNormal.Y * tickHalf, center.Z);
+            var b = new Point3d(center.X + leftNormal.X * tickHalf, center.Y + leftNormal.Y * tickHalf, center.Z);
+
+            // 刻度线
+            var line = new Line(a, b);
+            if (!string.IsNullOrEmpty(layerName)) line.Layer = layerName;
+            ms.AppendEntity(line);
+            tr.AddNewlyCreatedDBObject(line, true);
+            HyRoadXdata.Write(tr, db, line, alignment.Id, StationLabelKind, SchemaVersion.Current);
+
+            // 仅主桩才写文字
+            if (!isMain) return;
+
+            var textSideNormal = options.TextSide == StationTextSide.Left ? leftNormal : -leftNormal;
+            double textAnchorOffset = tickHalf + options.TextMargin;
+            double textX = center.X + textSideNormal.X * textAnchorOffset;
+            double textY = center.Y + textSideNormal.Y * textAnchorOffset;
+
+            var text = new DBText
+            {
+                TextString = sample.FormatStation(),
+                Height = options.TextHeight,
+                Position = new Point3d(textX, textY, center.Z)
+            };
+            if (!string.IsNullOrEmpty(layerName)) text.Layer = layerName;
+            if (options.RotateTextAlongTangent)
+            {
+                text.Rotation = Math.Atan2(tUnit.Y, tUnit.X);
+            }
+
+            ms.AppendEntity(text);
+            tr.AddNewlyCreatedDBObject(text, true);
+            HyRoadXdata.Write(tr, db, text, alignment.Id, StationLabelKind, SchemaVersion.Current);
         }
 
         /// <summary>

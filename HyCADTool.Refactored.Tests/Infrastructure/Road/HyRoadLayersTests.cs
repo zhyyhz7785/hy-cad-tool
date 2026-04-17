@@ -13,10 +13,13 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
     public class HyRoadLayersTests
     {
         [Fact]
-        public void GetAll_Returns4Layers()
+        public void GetAll_ReturnsAllKnownLayers()
         {
             var all = HyRoadLayers.GetAll();
-            all.Should().HaveCount(4);
+            // P0: Alignment / Profile / Corridor / Marking（4）
+            // P1.c 新增：Station
+            all.Should().HaveCount(5);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
         }
 
         [Fact]

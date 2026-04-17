@@ -23,6 +23,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string MarkingLayer = "05_hy_道路_标线";
         public const short MarkingColor = 3; // 绿：P3 预留
 
+        public const string StationLayer = "05_hy_道路_桩号";
+        public const short StationColor = 7; // 白/黑：与图底线色反白，主桩文字清晰可读
+
         /// <summary>
         /// 返回本模块需要注册的所有图层（(name, color) 对）。
         /// </summary>
@@ -34,6 +37,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (ProfileLayer, ProfileColor),
                 (CorridorLayer, CorridorColor),
                 (MarkingLayer, MarkingColor),
+                (StationLayer, StationColor),
             };
         }
     }

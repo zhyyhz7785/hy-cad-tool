@@ -718,7 +718,7 @@ YJK/PKPM 有限元网格 (DWG)
 
 ### 相关文档
 
-- [README.md](../HyCADtool/README.md) - 项目总览
+- [Refactored 项目](../../HyCADTool.Refactored/HyCADTool.Refactored.csproj) - 当前主项目入口
 - [快速开始](./快速开始.md) - 入门指南
 - [阶段完成报告](./阶段5.0.6-ReinPanel功能实现完成报告.md) - 重构进度
 
