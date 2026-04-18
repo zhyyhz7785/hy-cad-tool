@@ -42,8 +42,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
 
         /// <summary>
         /// 确保 CUIX 已加载到 AutoCAD：必要时重建文件，再 LoadPartialMenu。
+        /// 返回 true 表示菜单已成功 Load（可能仍隐藏：MENUBAR=0 时菜单栏整体不显示）。
         /// </summary>
-        public static void EnsureLoaded()
+        public static bool EnsureLoaded()
         {
             string target = TargetCuixPath;
             EnsureDirectoryExists(Path.GetDirectoryName(target));
@@ -56,25 +57,43 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    return;
+                    return false;
                 }
                 catch
                 {
                     // 构建失败：防止留下 0 字节或半成品 cuix 触发后续 AutoCAD CUI 体系破坏
                     // （会导致 Autodesk.Internal.Windows.Badge.xaml 加载时 native 崩）
                     SafeDeleteCorruptCuix(target);
-                    return;
+                    return false;
                 }
             }
 
             try
             {
                 LoadPartialMenu(target);
+                return true;
             }
             catch
             {
                 // LoadPartialMenu 失败 → 文件破损、删除避免下次启动再触发
                 SafeDeleteCorruptCuix(target);
+                return false;
+            }
+        }
+
+        /// <summary>当前 MENUBAR 系统变量是否处于隐藏状态（0=隐藏，1=显示）。</summary>
+        public static bool IsMenuBarHidden()
+        {
+            try
+            {
+                var v = AcApp.GetSystemVariable("MENUBAR");
+                if (v is short s) return s == 0;
+                if (v is int i) return i == 0;
+                return Convert.ToInt32(v) == 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 

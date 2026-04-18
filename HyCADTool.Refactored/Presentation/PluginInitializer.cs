@@ -87,6 +87,8 @@ namespace HyCADTool.Refactored.Presentation
                 WriteMessage("\n========================================");
                 WriteMessage("\n✓ HyCADTool.Refactored 插件初始化完成！");
                 WriteMessage("\n========================================\n");
+
+                WriteEntryGuide();
             }
             catch (System.Exception ex)
             {
@@ -481,10 +483,17 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         private void InitializeRibbonAndMenus()
         {
+            // 这两个状态供 WriteEntryGuide 末尾的提示文案使用，避免重复尝试。
+            _ribbonReady = false;
+            _cuixLoaded = false;
+
             try
             {
                 Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Build();
-                WriteMessage("\n  ✓ Ribbon 选项卡 HyCAD 已挂载");
+                _ribbonReady = Autodesk.Windows.ComponentManager.Ribbon != null;
+                WriteMessage(_ribbonReady
+                    ? "\n  ✓ Ribbon 选项卡 HyCAD 已挂载"
+                    : "\n  ⚠ Ribbon 未启用（ComponentManager.Ribbon == null），输 _RIBBON 打开后会自动重挂");
             }
             catch (System.Exception ex)
             {
@@ -493,13 +502,50 @@ namespace HyCADTool.Refactored.Presentation
 
             try
             {
-                Infrastructure.AutoCAD.UI.CuiMenuBuilder.EnsureLoaded();
-                WriteMessage("\n  ✓ CUIX 菜单栏 HyCAD 已加载");
+                _cuixLoaded = Infrastructure.AutoCAD.UI.CuiMenuBuilder.EnsureLoaded();
+                WriteMessage(_cuixLoaded
+                    ? "\n  ✓ CUIX 菜单栏 HyCAD 已加载"
+                    : "\n  ⚠ CUIX 菜单加载未成功（详见上方日志）");
             }
             catch (System.Exception ex)
             {
                 WriteMessage($"\n  ⚠ CUIX 菜单加载失败（跳过，不影响其他入口）：{ex.Message}");
             }
+        }
+
+        /// <summary>状态位：用于 WriteEntryGuide 末尾输出针对性的引导。</summary>
+        private bool _ribbonReady;
+        private bool _cuixLoaded;
+
+        /// <summary>
+        /// 在所有初始化完成后输出"三入口"提示，让用户首次启动就知道往哪点。
+        /// 包含 MENUBAR=0 / RIBBONCLOSE 这种"看不到入口"场景的具体救急命令。
+        /// </summary>
+        private void WriteEntryGuide()
+        {
+            WriteMessage("\n┌─ HyCAD 入口指引 ─────────────────────────");
+            WriteMessage("\n│ 1) 命令面板（推荐）：在 AutoCAD 命令行输 Hy 打开统一面板");
+            WriteMessage("\n│                       或 HyB 打开 Blender 风格命令检索");
+
+            if (_ribbonReady)
+                WriteMessage("\n│ 2) Ribbon 选项卡：顶部切到 \"HyCAD\" 选项卡（看不见？输 _RIBBON）");
+            else
+                WriteMessage("\n│ 2) Ribbon 选项卡：当前 Ribbon 未启用，输 _RIBBON 打开后会自动重挂");
+
+            if (_cuixLoaded)
+            {
+                if (Infrastructure.AutoCAD.UI.CuiMenuBuilder.IsMenuBarHidden())
+                    WriteMessage("\n│ 3) 菜单栏 \"HyCAD\"：当前 MENUBAR=0 隐藏中，输 MENUBAR 设为 1 即可看到");
+                else
+                    WriteMessage("\n│ 3) 菜单栏 \"HyCAD\"：顶部菜单栏的 HyCAD 菜单");
+            }
+            else
+            {
+                WriteMessage("\n│ 3) 菜单栏 \"HyCAD\"：本次未加载（看 ⚠ 日志），命令面板与 Ribbon 仍可用");
+            }
+
+            WriteMessage("\n│ 4) 出问题时：输 hyRecallSelfCheck 看诊断快照；改业务后输 C2 热重载");
+            WriteMessage("\n└──────────────────────────────────────────\n");
         }
 
         /// <summary>卸载 Ribbon 选项卡 + CUIX 菜单（Terminate 时调用，防 C2 热重载累积）。</summary>
