@@ -1,0 +1,53 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ctrl="clr-namespace:HyCAD.BlenderUI.Controls"
+                    xmlns:prim="clr-namespace:HyCAD.BlenderUI.Controls.Primitives">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/ScrollBar.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <prim:BoolToVisibility x:Key="BoolToVisibility"/>
+
+    <Style TargetType="{x:Type ctrl:PropertyEditor}">
+        <Setter Property="Background" Value="{DynamicResource Brush_RegionBack}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:PropertyEditor}">
+                    <Border Background="{TemplateBinding Background}">
+                        <DockPanel LastChildFill="True">
+                            <ctrl:PanelHeader DockPanel.Dock="Top"
+                                              Title="{TemplateBinding Title}"
+                                              SearchText="{Binding SearchText, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                              IsPinned="{Binding IsPinned, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                              ShowSearch="{TemplateBinding ShowSearch}"
+                                              ShowPin="{TemplateBinding ShowPin}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ctrl:IconTabBar Grid.Column="0"
+                                                 ItemsSource="{TemplateBinding Tabs}"
+                                                 SelectedIndex="{Binding SelectedTabIndex, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                 Visibility="{Binding ShowIconBar, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}"/>
+                                <ScrollViewer Grid.Column="1"
+                                              Style="{StaticResource BlenderScrollViewer}"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto"
+                                              Padding="6">
+                                    <ContentPresenter/>
+                                </ScrollViewer>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

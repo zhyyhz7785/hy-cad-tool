@@ -1,0 +1,196 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ctrl="clr-namespace:HyCAD.BlenderUI.Controls"
+                    xmlns:prim="clr-namespace:HyCAD.BlenderUI.Controls.Primitives">
+
+    <prim:BoolToVisibility x:Key="BoolToVisibility"/>
+    <prim:InverseBoolToVisibility x:Key="InverseBoolToVisibility"/>
+
+    <!-- SearchBox -->
+    <Style TargetType="{x:Type prim:SearchBox}">
+        <Setter Property="Background" Value="{DynamicResource Brush_InputBack}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_InputBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="MinWidth" Value="120"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type prim:SearchBox}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Metric_CornerRadius}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0"
+                                  Width="10" Height="10"
+                                  Stretch="Uniform"
+                                  Stroke="{DynamicResource Brush_TextSecondary}"
+                                  StrokeThickness="1.3"
+                                  Data="M 3.5,0 A 3.5,3.5 0 1 1 3.5,7 A 3.5,3.5 0 1 1 3.5,0 M 6,6 L 9,9"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Grid Grid.Column="1">
+                                <TextBlock Text="{TemplateBinding Placeholder}"
+                                           Foreground="{DynamicResource Brush_TextDisabled}"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"
+                                           Margin="2,0,0,0"
+                                           Visibility="{Binding HasText, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource InverseBoolToVisibility}}"/>
+                                <TextBox x:Name="PART_TextBox"
+                                         Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="Transparent"
+                                         Foreground="{TemplateBinding Foreground}"
+                                         BorderThickness="0"
+                                         Padding="2,0"
+                                         VerticalContentAlignment="Center"
+                                         CaretBrush="{DynamicResource Brush_TextPrimary}"
+                                         SelectionBrush="{DynamicResource Brush_AccentBlue}"/>
+                            </Grid>
+                            <Button x:Name="PART_ClearButton" Grid.Column="2"
+                                    Width="18" Height="18" Margin="0,0,2,0"
+                                    Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                    Focusable="False"
+                                    Visibility="{Binding HasText, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="{x:Type Button}">
+                                        <Border Background="{TemplateBinding Background}">
+                                            <Path Stroke="{DynamicResource Brush_TextSecondary}" StrokeThickness="1.3"
+                                                  Data="M 0,0 L 8,8 M 8,0 L 0,8"
+                                                  Stretch="Uniform" Width="8" Height="8"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_InputFocusBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- PinButton -->
+    <Style TargetType="{x:Type prim:PinButton}">
+        <Setter Property="Width" Value="22"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type prim:PinButton}">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource Metric_CornerRadiusSmall}">
+                        <Path x:Name="Ico" Stretch="Uniform" Width="11" Height="11"
+                              Fill="{DynamicResource Brush_TextSecondary}"
+                              Data="M 5,0 L 7,0 L 7,5 L 9,7 L 9,8 L 0,8 L 0,7 L 2,5 L 2,0 L 4,0 Z M 5.5,8 L 5.5,11 L 6,12 L 6,8 Z"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Ico" Property="Fill" Value="{DynamicResource Brush_AccentBlue}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- PanelHeader -->
+    <Style TargetType="{x:Type ctrl:PanelHeader}">
+        <Setter Property="Background" Value="{DynamicResource Brush_PanelHeaderBack}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontHeader}"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:PanelHeader}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderThickness="0,0,0,1"
+                            BorderBrush="{DynamicResource Brush_BorderDark}">
+                        <Grid Margin="6,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{TemplateBinding Title}"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <prim:SearchBox Grid.Column="1"
+                                            Text="{Binding SearchText, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            MinWidth="120" Margin="6,0"
+                                            Visibility="{Binding ShowSearch, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}"/>
+                            <prim:PinButton Grid.Column="2"
+                                            IsChecked="{Binding IsPinned, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                            Visibility="{Binding ShowPin, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Popover -->
+    <Style TargetType="{x:Type ctrl:Popover}">
+        <Setter Property="Background" Value="{DynamicResource Brush_PanelBack}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderDark}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:Popover}">
+                    <Popup AllowsTransparency="True"
+                           IsOpen="{Binding IsOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                           PlacementTarget="{TemplateBinding PlacementTarget}"
+                           Placement="{TemplateBinding Placement}"
+                           StaysOpen="False"
+                           PopupAnimation="Fade">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{DynamicResource Metric_CornerRadius}"
+                                MinWidth="200" MinHeight="60"
+                                SnapsToDevicePixels="True">
+                            <DockPanel LastChildFill="True">
+                                <Border DockPanel.Dock="Top"
+                                        Background="{DynamicResource Brush_PanelHeaderBack}"
+                                        Height="24" Padding="6,0"
+                                        Visibility="{Binding HasHeader, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}">
+                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
+                                                      TextElement.Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </Border>
+                                <ContentPresenter Margin="6"/>
+                            </DockPanel>
+                        </Border>
+                    </Popup>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

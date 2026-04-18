@@ -1,0 +1,104 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ctrl="clr-namespace:HyCAD.BlenderUI.Controls">
+
+    <!-- ctrl 命名空间仅为 TargetType 引用 NumericSlider 使用 -->
+
+    <Style TargetType="{x:Type ctrl:NumericSlider}">
+        <Setter Property="Background" Value="{DynamicResource Brush_SliderBack}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize"   Value="{DynamicResource Metric_FontMain}"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Focusable" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:NumericSlider}">
+                    <Grid x:Name="PART_Root">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{DynamicResource Metric_CornerRadius}"
+                                BorderBrush="{DynamicResource Brush_InputBorder}"
+                                BorderThickness="1"
+                                SnapsToDevicePixels="True"
+                                ClipToBounds="True">
+                            <Grid>
+                                <!-- 填充条：由后台代码按 ActualWidth*FillPercent 直接设 Width，HorizontalAlignment=Left -->
+                                <Rectangle x:Name="PART_FillBar"
+                                           HorizontalAlignment="Left"
+                                           Fill="{DynamicResource Brush_SliderFill}"
+                                           SnapsToDevicePixels="True"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="14"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="14"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <RepeatButton x:Name="PART_DecButton" Grid.Column="0"
+                                                  Focusable="False"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Cursor="Hand">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                <Border Background="{TemplateBinding Background}">
+                                                    <Path Fill="{DynamicResource Brush_TextPrimary}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                          Data="M 5,0 L 5,8 L 0,4 Z"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+
+                                    <Grid Grid.Column="1">
+                                        <TextBlock x:Name="PART_ValueText"
+                                                   Text="{Binding DisplayText, RelativeSource={RelativeSource TemplatedParent}}"
+                                                   Foreground="{TemplateBinding Foreground}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   IsHitTestVisible="True"/>
+                                        <TextBox x:Name="PART_Editor"
+                                                 Visibility="Collapsed"
+                                                 Background="{DynamicResource Brush_InputBack}"
+                                                 Foreground="{DynamicResource Brush_TextPrimary}"
+                                                 BorderThickness="0"
+                                                 Padding="4,0"
+                                                 VerticalContentAlignment="Center"
+                                                 HorizontalContentAlignment="Center"/>
+                                    </Grid>
+
+                                    <RepeatButton x:Name="PART_IncButton" Grid.Column="2"
+                                                  Focusable="False"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Cursor="Hand">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="{x:Type RepeatButton}">
+                                                <Border Background="{TemplateBinding Background}">
+                                                    <Path Fill="{DynamicResource Brush_TextPrimary}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                          Data="M 0,0 L 5,4 L 0,8 Z"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_FillBar" Property="Fill" Value="{DynamicResource Brush_SliderFillHover}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_InputFocusBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

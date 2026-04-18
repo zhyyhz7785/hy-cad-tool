@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.TextLayout", "HyC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.Refactored.Tests", "HyCADTool.Refactored.Tests\HyCADTool.Refactored.Tests.csproj", "{1AF60BBB-4E81-4847-9584-B39F7D41FD5E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI", "HyCAD.BlenderUI\HyCAD.BlenderUI.csproj", "{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{1AF60BBB-4E81-4847-9584-B39F7D41FD5E}.Release|x64.Build.0 = Release|Any CPU
 		{1AF60BBB-4E81-4847-9584-B39F7D41FD5E}.Release|x86.ActiveCfg = Release|Any CPU
 		{1AF60BBB-4E81-4847-9584-B39F7D41FD5E}.Release|x86.Build.0 = Release|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Debug|x64.Build.0 = Debug|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Debug|x86.Build.0 = Debug|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Release|x64.ActiveCfg = Release|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Release|x64.Build.0 = Release|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Release|x86.ActiveCfg = Release|Any CPU
+		{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

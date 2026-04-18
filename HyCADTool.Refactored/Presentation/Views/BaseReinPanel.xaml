@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
+             xmlns:converters="clr-namespace:HyCADTool.Refactored.Presentation.Views.Converters"
              d:DesignWidth="230"
              Background="{DynamicResource Brush_RegionBack}"
              Foreground="{DynamicResource Brush_TextPrimary}"
@@ -13,6 +14,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <converters:EnumToIndexConverter x:Key="EnumToIndexConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 

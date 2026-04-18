@@ -43,6 +43,14 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <!-- 引用 Blender WPF 控件库（主题 + NumericSlider / PropertyRow / IconTabBar 等） -->
+  <ItemGroup>
+    <ProjectReference Include="..\HyCAD.BlenderUI\HyCAD.BlenderUI.csproj">
+      <Project>{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}</Project>
+      <Name>HyCAD.BlenderUI</Name>
+    </ProjectReference>
+  </ItemGroup>
+
   <!-- 配置文件复制到输出目录 -->
   <ItemGroup>
     <None Update="config.json">

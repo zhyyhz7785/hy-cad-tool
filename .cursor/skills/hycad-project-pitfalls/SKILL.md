@@ -1,0 +1,565 @@
+---
+name: hycad-project-pitfalls
+description: |
+  HyCADTool 项目（HyCADTool.Refactored + HyCAD.BlenderUI + AutoCAD 插件）全部已验证的陷阱清单。
+  覆盖：AutoCAD API 多文档 / 单例 Database 缓存 / Table Title 自动合并 / 样式与图层初始化 / 配置分裂；
+  WPF + PaletteSet 宿主：隐式 Style 原生崩溃 / StaticResource 跨字典 / DynamicResource 类型错配 /
+  ControlTemplate.Triggers 位置 / Trigger.TargetName 可达性 / MarkupExtension 当 Converter 递归 /
+  子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆。
+  使用场景：写 AutoCAD 命令 / 新建 WPF 面板 / 改资源字典 / 迁移命令到 Refactored / 多文档联调 / 建 Table。
+  本 skill 替代：wpf-paletteset-avoid-implicit-styles / wpf-blender-panel-guideline /
+  hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
+  .cursor/rules/04-AutoCAD-Table陷阱.mdc。
+author: Cursor Agent
+version: 1.0.0
+date: 2026-04-18
+---
+
+# HyCAD 项目级闭坑清单
+
+> 本 skill 收录本仓库**已踩过且已修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
+>
+> 两大域：
+>
+> - **A 域**：AutoCAD 运行时（多文档、事务、Table、配置、样式）
+> - **B 域**：WPF + PaletteSet 宿主 + XAML 资源字典
+
+---
+
+## A 域：AutoCAD 运行时
+
+### A1 单例服务缓存 `Database` → `eNotFromThisDocument`
+
+**现象**
+
+- 切换 DWG 后，命令在选择/计算阶段正常，渲染或写库阶段抛 `eNotFromThisDocument`
+- 堆栈落在 `LayerManager` / Renderer / Marker / Style 或 `Transaction.GetObject`
+- 热重载（C2→C1）、多文档联调后更易复现
+
+**触发条件**
+
+- 服务通过 Autofac 注册为 `SingleInstance()`
+- 构造里缓存了 `Application.DocumentManager.MdiActiveDocument.Database`
+
+**根因**：事务与 `ObjectId` 必须来自**同一文档数据库**；单例固化了旧文档上下文。
+
+**正确做法**
+
+1. 单例服务**不要**在构造里保存 `Document` / `Database`
+2. 每个方法入口重新解析当前 `Database = Application.DocumentManager.MdiActiveDocument.Database`
+3. 事务、`LayerTableId` / `BlockTableId` / 字典 Id 都从当前数据库取
+4. 服务本身无状态时，不必改 `InstancePerDependency()`，只修上下文获取即可
+
+**反例**
+
+```csharp
+public class LayerManager : ILayerManager
+{
+    private readonly Database _db;
+    public LayerManager()
+    {
+        _db = Application.DocumentManager.MdiActiveDocument.Database;
+    }
+}
+```
+
+**正例**
+
+```csharp
+public class LayerManager : ILayerManager
+{
+    public void EnsureLayer(string name)
+    {
+        var db = Application.DocumentManager.MdiActiveDocument.Database;
+        using var tr = db.TransactionManager.StartTransaction();
+        var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+    }
+}
+```
+
+---
+
+### A2 多文档切换后面板参数在但样式/图层缺失
+
+**现象**
+
+- `HY` 面板切到新文档后参数显示正常
+- `gj` / `gb` / `gb1` 等命令在新图纸**首次执行**才发现样式或图层没建
+- 或每次命令都卡顿一下（A3 复合现象）
+
+**触发条件**
+
+- `PluginInitializer.OnDocumentActivated / OnDocumentCreated` 为空实现
+- `PanelManager` 已按文档切 `DataContext`，但资源未同步
+
+**正确做法**
+
+1. 分层：`PanelManager` 只管 UI / `DataContext` 切换；`PluginInitializer` 管文档级资源
+2. `Initialize()` 时先对当前文档执行一次初始化
+3. 订阅 `DocumentActivated` + `DocumentCreated`，每事件调用 `EnsureCurrentDocumentResourcesInitialized(force: false)`
+4. 用 `HashSet<string> _initializedDocs` 按文档名幂等
+5. 资源初始化固定流程：
+
+   ```csharp
+   var vm = SettingsPanelViewModel.GetOrCreate(docName, styleService);
+   vm.LoadSettings();
+   vm.EnsureStylesApplied();
+   layerService.CreateMultipleLayers(...);
+   ```
+
+不要把资源初始化逻辑写进 WPF 面板事件。
+
+---
+
+### A3 `_stylesDirty` 每次 `LoadSettings` 无脑置脏 → 命令重复卡顿
+
+**现象**：`gj` / `gb` / `gb1` 重复执行前有明显停顿（每次都在重建样式）。
+
+**根因**
+
+```csharp
+// 错误：LoadSettings 末尾一律置脏
+public void LoadSettings()
+{
+    ...
+    _stylesDirty = true;   // ← 每次进命令都会再跑 EnsureStylesApplied
+}
+```
+
+**正确做法**：LoadSettings 前后算"样式签名"，**变化时**才标 dirty：
+
+```csharp
+var oldSig = ComputeStyleSignature();
+// ... 读 hy-settings.json 到 VM
+var newSig = ComputeStyleSignature();
+if (!string.Equals(oldSig, newSig, StringComparison.Ordinal))
+    _stylesDirty = true;
+```
+
+命令执行前统一调 `EnsureStylesApplied()`；插件启动时 `PluginInitializer.InitializeStylesAndLayers()` 做一次基础初始化即可。
+
+---
+
+### A4 配置参数来源分裂
+
+**现象**：同一个参数（如 `Scale`、钢筋直径）在 ViewModel、命令常量、`config.json`、旧静态类里都有一份，改一处不生效。
+
+**正确做法**（参数真相源单一化）
+
+| 参数类别 | 真相源 | 文件 |
+|---|---|---|
+| 样式、`Scale`、钢筋主参数、锚固、保护层 | `SettingsPanelViewModel.Current` | `hy-settings.json` |
+| 底板配筋专用参数 | `BaseReinforcementConfig` | 嵌入 `hy-settings.json` |
+| 容差、桩基路径、少量模块参数 | `ConfigurationService` | `config.json` |
+
+新增面板参数优先挂 `SettingsPanelViewModel`。命令类里**不准**出现裸常量默认值，统一从 VM 读。
+
+---
+
+### A5 `Table` Row 0 默认 Title 样式自动合并所有列
+
+**现象**
+
+- AutoCAD 表格表头**只显示第一列**内容，其余被合并吞（用户看到 `#` 或首列标题覆盖全行）
+- 若在 `SetSize` 后写 `table.Rows[r].Style = "Data"` 想避开 Title 行样式，在某些图纸/自定义 `TableStyle` 下直接抛 `eKeyNotFound`
+
+**根因**：`db.Tablestyle` 的 Row 0 默认是 `Title` 样式，该行自动合并所有列为单个单元格。
+
+**正确做法**：`SetSize(totalRows, cols)` 之后、写入任何单元格之前，遍历所有单元格解除默认自动合并：
+
+```csharp
+table.SetSize(totalRows, cols);
+
+for (int r = 0; r < totalRows; r++)
+{
+    for (int c = 0; c < cols; c++)
+    {
+        try
+        {
+            var range = table.Cells[r, c].GetMergeRange();
+            if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                table.UnmergeCells(range);
+        }
+        catch
+        {
+            // 单元格本身未合并时 GetMergeRange 可能抛，吃掉即可
+        }
+    }
+}
+```
+
+**不要**依赖字符串行样式名 `"Data"` / `"Title"`——部分图纸/自定义 `TableStyle` 没有。
+
+**已修复文件清单**（2026-04）
+
+| 文件 | 修复日期 |
+|---|---|
+| `SettlementTableService.cs` | 2026-04 |
+| `DesignSpecService.cs` | 2026-04 |
+| `EquipmentFoundationService.cs` | 2026-04 |
+| `GroupCirclesByElevationCommand.cs` | 2026-04 |
+| `PileDrawingService.cs` | 2026-04 |
+
+**规则**：今后任何新建 `new Table()` 并逐列写表头的代码，必须先解除默认自动合并。
+
+---
+
+## B 域：WPF + PaletteSet 宿主 + XAML 资源字典
+
+> 所有 B 类坑的公共背景：`HyCADTool.Refactored` 的 WPF 面板被托管在 AutoCAD `PaletteSet` 里，而 PaletteSet 会把 UserControl 嵌入宿主控件树。任何资源污染都可能通过可视/逻辑树反向命中 AutoCAD 原生控件，导致**无托管异常的原生崩溃**。
+
+---
+
+### B1 隐式 `Style TargetType` 污染 PaletteSet → AutoCAD 原生崩溃
+
+**现象**
+
+- `PaletteSet.AddVisual(...)` 无任何 .NET 异常抛到命令行
+- AutoCAD 弹"错误报告"对话框 / 整个 AutoCAD 进程 native stack overflow
+- 面板首次 `new HyXxxPanel()` 构造耗时 2+ 秒
+- 同一套控件放独立 WPF 窗口中不崩——**只在 PaletteSet 里崩**
+
+**触发条件**：`ResourceDictionary`（或其 Merge 字典）含形如下列的**隐式** Style（无 `x:Key`，纯 `TargetType`）：
+
+```xml
+<Style TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButton}"/>
+<Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource BlenderTextBox}"/>
+<Style TargetType="{x:Type Expander}" BasedOn="{StaticResource BlenderExpander}"/>
+```
+
+**根因**：隐式 Style 没有 `x:Key`，WPF 资源查找沿逻辑树向上冒泡，AutoCAD Palette 宿主本身是上游节点，其内部 `Button` / `TextBox` / `Expander` 被这些隐式 Style 反向命中 → `ControlTemplate` 递归或空引用 → native crash。
+
+**正确做法**：**所有** Style 必须命名（`x:Key`），控件处显式引用：
+
+```xml
+<!-- BlenderTheme.xaml -->
+<Style x:Key="BlenderButtonFlat" TargetType="{x:Type Button}"> ... </Style>
+<Style x:Key="BlenderTextBox"    TargetType="{x:Type TextBox}"> ... </Style>
+<Style x:Key="BlenderExpander"   TargetType="{x:Type Expander}"> ... </Style>
+```
+
+```xml
+<!-- Panel.xaml -->
+<Button  Style="{StaticResource BlenderButtonFlat}" .../>
+<TextBox Style="{StaticResource BlenderTextBox}"   .../>
+<Expander Style="{StaticResource BlenderExpander}" .../>
+```
+
+**已修复**：2026-04-18 `BlenderTheme.xaml` 移除 9 条隐式 Style（Button / ToggleButton / TextBox / CheckBox / ComboBox / ScrollBar / Expander / ListBoxItem / Separator / GroupBox）。完整复盘见 `doc/Debug/045-Blender面板隐式样式致AutoCAD崩溃-2026-04-18-180000.md`。
+
+**调试定位法**（原生崩溃通用）：在关键路径打 NDJSON 日志（`HyCADTool.Refactored/Presentation/DebugLogger.cs`）——`CreateXxxPanel:enter` / `ViewModel:before_init` / `after_init` / `View:before_create` / `after_create` / `PaletteSet:before_add_visual` / `after_add_visual`。**最后一条成功日志之后的下一段代码 = 根因点**。
+
+**同类宿主**同样风险：Revit `DockablePaneProvider` / Office VSTO `CustomTaskPane` / Visual Studio `ToolWindowPane`。
+
+---
+
+### B2 ScrollBar 隐式 Style"子字典隔离"在 PaletteSet 宿主下**依然必崩**
+
+**现象**：同 B1（native stack overflow）。
+
+**背景**：B1 修复后曾设想：把隐式 `<Style TargetType="ScrollBar"/>` 放进独立子字典 `BlenderScrollBars.xaml`，只在 UserControl 的 `Resources.MergedDictionaries` 里 Merge，应该能避免污染宿主。
+
+**2026-04-18 H1 对照实验结论**：**子字典隔离不可靠**。
+
+- 对照：注释掉 Merge → 3 次 C1 均不崩；启用 → 首次 C1 崩溃
+- 根因：WPF 资源查找对 `ScrollViewer → ScrollBar` / `ListBox → ScrollBar` / `Popup` 等场景会沿可视/逻辑树向上搜索。PaletteSet 把 UserControl 嵌入宿主控件树时，宿主某些嵌套 ScrollBar 仍会命中子字典里的隐式 Style → 应用 `BlenderScrollBar` 模板 → native 递归栈溢出
+
+**结论**：**PaletteSet 托管的 UserControl 不得使用任何形式的隐式 ScrollBar Style。**
+
+**两条安全路径**
+
+1. **命名 + 显式套**：定义命名 `BlenderScrollBar` + 命名 `BlenderScrollViewer`（`BlenderScrollViewer.Template` 里嵌 `ScrollBar` 显式 `Style="{StaticResource BlenderScrollBar}"`），控件处 `Style="{StaticResource BlenderScrollViewer}"`
+2. **接受 Windows 默认滚动条**（本仓库当前方案）。视觉略不匹配 Blender 黑主题，但在 PaletteSet 内这是可接受折中
+
+**反例**（已实测必崩）
+
+```xml
+<!-- BlenderScrollBars.xaml -->
+<ResourceDictionary>
+    <Style TargetType="ScrollBar" BasedOn="{StaticResource BlenderScrollBar}"/>
+</ResourceDictionary>
+```
+
+---
+
+### B3 子 UserControl 用 `{StaticResource BlenderXxx}` 但未本地 Merge 主题
+
+**现象**：`"在 System.Windows.StaticResourceExtension 上提供值时引发了异常"`（运行时抛，编译可通过）。
+
+**根因**：新建的子 `UserControl`（例如 `XxxSettingsView.xaml`）用 `{StaticResource BlenderButtonFlat}` 引用主题资源，但该 UserControl 自己的 `Resources` 没 Merge 主题字典。XAML 在解析期必须能从**本控件的 Resources 链**上解析 StaticResource，**不会穿透**到父 UserControl 的 Resources。
+
+**正确做法**：**每个** 需要 Blender 主题的 UserControl，`UserControl.Resources` 必须独立合并一次主字典。
+
+```xml
+<UserControl.Resources>
+    <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+        </ResourceDictionary.MergedDictionaries>
+        <!-- 本视图的局部 Style / DataTemplate 写在这里 -->
+    </ResourceDictionary>
+</UserControl.Resources>
+```
+
+---
+
+### B4 `DynamicResource` 绑 `double` 赋给 `GridLength` / `Thickness`
+
+**现象**：`"设置属性 System.Windows.Controls.ColumnDefinition.Width 时引发了异常"`，指向某行 `ColumnDefinition.Width="{DynamicResource Metric_IconBarWidth}"`。
+
+**根因**：`DynamicResource` 在运行时解析，错配类型不会编译报错，但 WPF 不会把 `double` 隐式转到 `GridLength` / `Thickness`。
+
+**正确做法**
+
+| 属性类型 | 取值方式 |
+|---|---|
+| `Brush` | `DynamicResource Brush_WindowBack` ✓ |
+| `double`（FontSize 等） | `DynamicResource Metric_FontMain` ✓ |
+| `GridLength` / `Thickness` / `CornerRadius` | 字面量 `Width="32"` 或 `StaticResource`（资源本身就是该类型） |
+
+反例：`ColumnDefinition.Width="{DynamicResource Metric_IconBarWidth}"`（后者是 `double`）  
+正例：`ColumnDefinition.Width="32"`
+
+---
+
+### B5【新 2026-04-18】`ResourceDictionary` 之间 `StaticResource` 跨字典查找在设计器失效
+
+**现象**
+
+- `XDG0066 "在 System.Windows.Markup.StaticResourceHolder 上提供值时引发了异常"`
+- 运行时 OK 但 XAML 设计器报红波浪（例如 `Samples/DemoWindow.xaml` 线 21 附近）
+- 或首次加载路径偶发抛异常
+
+**触发条件**：`ResourceDictionary A` 内某个 `ControlTemplate` 用 `{StaticResource X}`，而 `X` 定义在 `ResourceDictionary B`；哪怕上层聚合字典已按"B 早于 A"顺序 Merge，设计器静态解析仍可能失败。
+
+**根因**：XAML 静态解析阶段要求 `StaticResource X` 能从**本字典自身**或**本字典已声明的 `MergedDictionaries`**直接命中；"上层聚合字典 Merge 顺序正确"对设计器和某些运行时解析路径**不够可靠**。
+
+**正确做法（自包含字典原则）**：凡 `Themes/Controls/*.xaml` 内部模板引用别字典资源（`BlenderScrollViewer` / `BoolToVisibility` / 命名 Brush），**该字典顶部必须显式 `MergedDictionaries` merge 依赖字典**，哪怕聚合字典已 merge 过。
+
+**反例**
+
+```xml
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style TargetType="ComboBox">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <ScrollViewer Style="{StaticResource BlenderScrollViewer}"/>  <!-- XDG0066 -->
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>
+```
+
+**正例**
+
+```xml
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/ScrollBar.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <Style TargetType="ComboBox">
+        <!-- 现在 BlenderScrollViewer 可在本字典局部解析 -->
+        ...
+    </Style>
+</ResourceDictionary>
+```
+
+**已修复**（2026-04-18）
+
+- `HyCAD.BlenderUI/Themes/Controls/IconTabBar.xaml`
+- `HyCAD.BlenderUI/Themes/Controls/PropertyEditor.xaml`
+- `HyCAD.BlenderUI/Themes/Controls/ComboBox.xaml`
+- `HyCAD.BlenderUI/Themes/Controls/ListBox.xaml`
+
+---
+
+### B6【新】`{x:Static MyMarkupExt.Instance}` 当 Converter 会在设计器触发 `ProvideValue` 递归
+
+**现象**：`XDG0066 StaticResourceHolder` 异常；设计器崩/红波浪。
+
+**触发条件**：某个 `IValueConverter` 继承 `MarkupExtension`，实现成可重用单例（`public static readonly MyConv Instance = new MyConv()`），XAML 里用：
+
+```xml
+<TextBlock Visibility="{Binding IsPinned, Converter={x:Static prim:BoolToVisibility.Instance}}"/>
+```
+
+设计器在静态解析阶段重复调用 `ProvideValue` / `StaticResourceHolder`，易触发递归或上下文缺失异常。
+
+**正确做法**：把 `IValueConverter` 声明为 `ResourceDictionary` 命名资源，用 `{StaticResource}`：
+
+```xml
+<ResourceDictionary ...
+                    xmlns:prim="clr-namespace:HyCAD.BlenderUI.Controls.Primitives">
+    <prim:BoolToVisibility x:Key="BoolToVisibility"/>
+    <prim:InverseBoolToVisibility x:Key="InverseBoolToVisibility"/>
+    ...
+</ResourceDictionary>
+```
+
+```xml
+<TextBlock Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibility}}"/>
+```
+
+**已修复**（2026-04-18）：`HyCAD.BlenderUI/Themes/Controls/PanelHeader.xaml`、`PropertyEditor.xaml`。
+
+---
+
+### B7【新】`ControlTemplate.Triggers` 必须是 `ControlTemplate` 直接子元素
+
+**现象**：`MC3015 "Grid 或其一个基类上未定义附加属性 ControlTemplate.Triggers"`。
+
+**触发条件**：把 `<ControlTemplate.Triggers>` 写进根 `<Grid>` / `<StackPanel>` 内部了。
+
+**正确做法**：`<ControlTemplate.Triggers>` 放在 `<ControlTemplate>` 同级末尾，与根元素并列。
+
+**反例**
+
+```xml
+<ControlTemplate TargetType="...">
+    <Grid>
+        <!-- 根 Panel -->
+        <Rectangle .../>
+        <ControlTemplate.Triggers>   <!-- ✗ MC3015 -->
+            <Trigger Property="IsMouseOver" Value="True">...</Trigger>
+        </ControlTemplate.Triggers>
+    </Grid>
+</ControlTemplate>
+```
+
+**正例**
+
+```xml
+<ControlTemplate TargetType="...">
+    <Grid>
+        <Rectangle .../>
+    </Grid>
+    <ControlTemplate.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">...</Trigger>
+    </ControlTemplate.Triggers>
+</ControlTemplate>
+```
+
+**已修复**：`HyCAD.BlenderUI/Themes/Controls/NumericSlider.xaml`（2026-04-18）。
+
+---
+
+### B8【新】`Trigger.TargetName` 不能穿透进 `RenderTransform` / 命名资源
+
+**现象**：`MC4111 "无法找到 Trigger 目标 ArrowRotate"`。
+
+**触发条件**：尝试给 `Path.RenderTransform` 里的 `RotateTransform` 起 `x:Name="ArrowRotate"`，然后 `<Setter TargetName="ArrowRotate" Property="Angle" Value="90"/>`。
+
+**根因**：`Trigger.TargetName` 只能指向 `ControlTemplate` 可视树里**同级、已具名**的元素；`RenderTransform` 中的 `Transform` 对象属于资源/变换树，不可达。
+
+**正确做法**
+
+- **推荐**：改 `Path.Data`，定义两套 geometry（折叠 / 展开）：
+
+  ```xml
+  <Path x:Name="Arrow" Fill="..." Data="M 0,0 L 8,4 L 0,8 Z"/>
+  ...
+  <ControlTemplate.Triggers>
+      <Trigger Property="IsChecked" Value="True">
+          <Setter TargetName="Arrow" Property="Data" Value="M 0,0 L 8,0 L 4,8 Z"/>
+      </Trigger>
+  </ControlTemplate.Triggers>
+  ```
+
+- 备选：用 `Storyboard` 控制 `(Path.RenderTransform).(RotateTransform.Angle)` 属性路径（而不是 `TargetName`）。
+
+**已修复**：`HyCAD.BlenderUI/Themes/Controls/Expander.xaml`（2026-04-18）。
+
+---
+
+### B9 PaletteSet 原框不要强拆
+
+**现象**：曾尝试调用 `PaletteSet.Style = PaletteSetStyles.NameEditable` / `ShowPropertiesMenu = false` 等方式去掉 AutoCAD 标题栏 → Dock 模式面板不可见或直接崩溃。
+
+**正确做法**
+
+- 保持 `PaletteSet.TitleBarLocation = Top`（或 `Left`），AutoCAD 原框保留
+- 面板内容区 Blender 黑主题即可；视觉上接受"AutoCAD 原框 + Blender 内容"的组合
+- 不要追求"完全去 AutoCAD 框"，风险极高、收益很小
+
+---
+
+## Project Theme Application（新建面板骨架）
+
+Refactored 面板所在 UserControl 根部资源合并模板——**只这一行 Merge**：
+
+```xml
+<UserControl x:Class="HyCADTool.Refactored.Presentation.Views.YourPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource Brush_WindowBack}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <!-- 局部 Style / DataTemplate / Converter 写在这里 -->
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- 控件必须显式引用命名 Style -->
+        <TextBox Style="{StaticResource BlenderTextBox}"/>
+        <Button  Style="{StaticResource BlenderButtonFlat}"/>
+    </Grid>
+</UserControl>
+```
+
+**csproj 注册**：每个新增 `.xaml` / `.xaml.cs` 都要在 `HyCADTool.Refactored.csproj` 加 `<Page>` / `<Compile>` 项。
+
+**`DynamicResource` 类型**：颜色/画刷、FontSize（double）OK；`GridLength` / `Thickness` / `CornerRadius` 用字面量或 `StaticResource`（见 B4）。
+
+---
+
+## Verification
+
+**A 域验证**
+
+- 切换 DWG 后执行命令不再报 `eNotFromThisDocument`（A1）
+- 新 DWG 首次执行 `gj` / `gb` / `gb1` 不缺样式或图层（A2）
+- 重复执行命令不再每次卡顿（A3）
+- 样式/Scale/钢筋参数只从 `SettingsPanelViewModel.Current` 读（A4）
+- 新 `Table` 表头各列文字都可见，不会被 Title 行合并吞（A5）
+
+**B 域验证**
+
+- `C2 → C1 → HyB`（或 `Hy`）打开统一面板，AutoCAD 不闪退（B1/B2）
+- 所有 UserControl 打开不抛 `StaticResourceExtension` 异常（B3）
+- XAML 设计器打开 `Samples/DemoWindow.xaml` 无 `XDG0066`（B5/B6）
+- 编译无 `MC3015` / `MC4111`（B7/B8）
+- `ColumnDefinition.Width` / `Margin` 类属性加载不报异常（B4）
+- 面板 Dock 到 AutoCAD 侧边不消失（B9）
+
+**实测通过的 UserControl**（2026-04-18）
+
+- `Presentation/Views/HyBlenderPanel.xaml`
+- `Presentation/Views/HyPreferencesView.xaml`
+- `Presentation/Views/Preferences/{Style,Rein,BasePlate,Pile,Cluster,Road,Elevation,Dim,AnchorBolt,EquipFoundation}SettingsView.xaml`
+- `HyCAD.BlenderUI/Samples/DemoWindow.xaml`
+
+---
+
+## Related Skills
+
+- `wpf-webview2-pitfalls`：MarkdownEditor 子项目专属的 WebView2 陷阱（跟 AutoCAD/PaletteSet/资源字典无关，独立领域）
+- `hycad-refactored-migration-patterns`：Refactored 命令迁移与架构规范（不是坑，是"怎么写对"）
+
+## Replaces
+
+本 skill 合并并替代以下文件（执行时已删除）：
+
+- `.cursor/skills/wpf-paletteset-avoid-implicit-styles/SKILL.md` → B1/B2
+- `.cursor/skills/wpf-blender-panel-guideline/SKILL.md` → B1–B4、B9、模板节
+- `.cursor/skills/hycad-autocad-singleton-database-context/SKILL.md` → A1
+- `.cursor/skills/hycad-multidoc-panel-resource-init/SKILL.md` → A2/A3
+- `.cursor/rules/04-AutoCAD-Table陷阱.mdc` → A5

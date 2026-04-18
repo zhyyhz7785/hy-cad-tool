@@ -1,0 +1,128 @@
+<Window x:Class="HyCAD.BlenderUI.Samples.DemoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+        xmlns:prim="clr-namespace:HyCAD.BlenderUI.Controls.Primitives"
+        Title="HyCAD.BlenderUI — Demo"
+        Width="960" Height="640"
+        Background="{DynamicResource Brush_WindowBack}"
+        Foreground="{DynamicResource Brush_TextPrimary}"
+        FontFamily="{DynamicResource Font_Main}"
+        FontSize="{DynamicResource Metric_FontMain}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <bui:PropertyEditor Title="Demo Editor"
+                        ShowSearch="True" ShowPin="True" ShowIconBar="True"
+                        SelectedTabIndex="0">
+        <bui:PropertyEditor.Tabs>
+            <x:Array Type="{x:Type bui:IconTabItem}">
+                <bui:IconTabItem TooltipText="渲染">
+                    <bui:IconTabItem.Icon>
+                        <Path Stretch="Uniform" Width="16" Height="16"
+                              Fill="{DynamicResource Brush_TextPrimary}"
+                              Data="M 8,0 A 8,8 0 1 1 8,16 A 8,8 0 1 1 8,0 Z"/>
+                    </bui:IconTabItem.Icon>
+                </bui:IconTabItem>
+                <bui:IconTabItem TooltipText="输出">
+                    <bui:IconTabItem.Icon>
+                        <Path Stretch="Uniform" Width="16" Height="16"
+                              Fill="{DynamicResource Brush_TextPrimary}"
+                              Data="M 0,2 L 16,2 L 16,14 L 0,14 Z M 3,6 L 13,6 M 3,9 L 13,9 M 3,12 L 10,12"/>
+                    </bui:IconTabItem.Icon>
+                </bui:IconTabItem>
+                <bui:IconTabItem TooltipText="场景">
+                    <bui:IconTabItem.Icon>
+                        <Path Stretch="Uniform" Width="16" Height="16"
+                              Fill="{DynamicResource Brush_TextPrimary}"
+                              Data="M 2,12 L 8,2 L 14,12 Z"/>
+                    </bui:IconTabItem.Icon>
+                </bui:IconTabItem>
+            </x:Array>
+        </bui:PropertyEditor.Tabs>
+
+        <StackPanel>
+
+            <Expander Style="{StaticResource BlenderExpander}" Header="基础控件">
+                <StackPanel>
+                    <bui:PropertyRow Label="Button">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource BlenderButton}" Content="普通按钮" Margin="0,0,4,0"/>
+                            <Button Style="{StaticResource BlenderButtonFlat}" Content="扁平按钮"/>
+                        </StackPanel>
+                    </bui:PropertyRow>
+
+                    <bui:PropertyRow Label="TextBox">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="示例文本"/>
+                    </bui:PropertyRow>
+
+                    <bui:PropertyRow Label="CheckBox">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}" Content="启用阴影" IsChecked="True"/>
+                    </bui:PropertyRow>
+
+                    <bui:PropertyRow Label="ComboBox">
+                        <ComboBox Style="{StaticResource BlenderComboBox}" SelectedIndex="0">
+                            <ComboBoxItem Content="选项 A"/>
+                            <ComboBoxItem Content="选项 B"/>
+                            <ComboBoxItem Content="选项 C"/>
+                        </ComboBox>
+                    </bui:PropertyRow>
+
+                    <bui:PropertyRow Label="NumericSlider">
+                        <bui:NumericSlider Minimum="0" Maximum="100" Value="42" Step="1" Decimals="1"
+                                           Label="Samples" Unit=""/>
+                    </bui:PropertyRow>
+                </StackPanel>
+            </Expander>
+
+            <Expander Style="{StaticResource BlenderExpander}" Header="采样">
+                <StackPanel>
+                    <bui:PropertyRow Label="噪点阈值">
+                        <bui:NumericSlider Minimum="0" Maximum="1" Value="0.01" Step="0.01" Decimals="2"/>
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="最大采样数">
+                        <bui:NumericSlider Minimum="1" Maximum="4096" Value="1024" Step="1" Decimals="0"/>
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="最小采样数">
+                        <bui:NumericSlider Minimum="0" Maximum="4096" Value="0" Step="1" Decimals="0"/>
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="时间限制">
+                        <bui:NumericSlider Minimum="0" Maximum="3600" Value="0" Step="1" Decimals="0" Unit="s"/>
+                    </bui:PropertyRow>
+                </StackPanel>
+            </Expander>
+
+            <Expander Style="{StaticResource BlenderExpander}" Header="Tab / 列表">
+                <StackPanel>
+                    <TabControl Style="{StaticResource BlenderTabControl}" Height="140">
+                        <TabItem Header="通用">
+                            <TextBlock Text="通用 Tab 内容" Margin="8" Style="{StaticResource BlenderText}"/>
+                        </TabItem>
+                        <TabItem Header="高级">
+                            <TextBlock Text="高级 Tab 内容" Margin="8" Style="{StaticResource BlenderText}"/>
+                        </TabItem>
+                        <TabItem Header="调试">
+                            <TextBlock Text="调试 Tab 内容" Margin="8" Style="{StaticResource BlenderText}"/>
+                        </TabItem>
+                    </TabControl>
+
+                    <ListBox Style="{StaticResource BlenderListBox}"
+                             ItemContainerStyle="{StaticResource BlenderListBoxItem}"
+                             Height="100" Margin="0,6,0,0">
+                        <ListBoxItem Content="条目一"/>
+                        <ListBoxItem Content="条目二"/>
+                        <ListBoxItem Content="条目三"/>
+                        <ListBoxItem Content="条目四"/>
+                    </ListBox>
+                </StackPanel>
+            </Expander>
+
+        </StackPanel>
+    </bui:PropertyEditor>
+</Window>
