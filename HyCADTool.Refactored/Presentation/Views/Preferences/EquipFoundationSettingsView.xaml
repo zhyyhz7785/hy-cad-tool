@@ -1,0 +1,48 @@
+<UserControl x:Class="HyCADTool.Refactored.Presentation.Views.Preferences.EquipFoundationSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="420">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
+                <Setter Property="Margin" Value="0,2"/>
+            </Style>
+
+            <!-- 设备基础：参数（当前用 EquipmentDataFilePath 作为外部数据入口） -->
+            <DataTemplate x:Key="Section_EquipFoundationParams">
+                <StackPanel Margin="8,6">
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="设备数据文件 (.md)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.EquipmentDataFilePath, UpdateSourceTrigger=LostFocus}"/>
+                    </Grid>
+                    <TextBlock Text="（设备基础目前以 Markdown 表格外部数据驱动；未来将迁入更多几何默认值：轴线外扩、文本偏移、轴号样式等。）"
+                               Foreground="{DynamicResource Brush_TextDisabled}"
+                               FontSize="11" FontStyle="Italic" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="Host"/>
+</UserControl>

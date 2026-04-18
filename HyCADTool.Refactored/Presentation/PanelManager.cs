@@ -35,9 +35,10 @@ namespace HyCADTool.Refactored.Presentation
             _componentContext = componentContext ?? throw new ArgumentNullException(nameof(componentContext));
         }
 
-        // ===== Hy：原参数面板 =====
+        // ===== Hy：原参数面板（已退役：代码保留用于回退，但生产路径应走 HyB 设置 Tab） =====
 
-        /// <summary>显示/隐藏 HY 统一参数面板。</summary>
+        /// <summary>[Obsolete] 显示/隐藏 HY 统一参数面板。生产路径请使用 <see cref="OpenHyBlenderPanelAndSelectTab"/>。</summary>
+        [Obsolete("改用 OpenHyBlenderPanelAndSelectTab(PreferencesTabKey)：原 HyToolPanel 已退役，保留代码便于回退")]
         public void ToggleHyToolPanel()
         {
             if (_hyPaletteSet != null)
@@ -51,10 +52,13 @@ namespace HyCADTool.Refactored.Presentation
                 return;
             }
 
+            #pragma warning disable CS0618
             CreateHyToolPanel();
+            #pragma warning restore CS0618
         }
 
-        /// <summary>显示 HY 统一参数面板（不切换）。</summary>
+        /// <summary>[Obsolete] 显示 HY 统一参数面板（不切换）。</summary>
+        [Obsolete("改用 OpenHyBlenderPanelAndSelectTab(PreferencesTabKey)：原 HyToolPanel 已退役")]
         public void ShowHyToolPanel()
         {
             if (_hyPaletteSet != null)
@@ -65,7 +69,9 @@ namespace HyCADTool.Refactored.Presentation
                 return;
             }
 
+            #pragma warning disable CS0618
             CreateHyToolPanel();
+            #pragma warning restore CS0618
         }
 
         /// <summary>隐藏 HY 统一参数面板。</summary>
@@ -79,6 +85,25 @@ namespace HyCADTool.Refactored.Presentation
 
         /// <summary>HY 参数面板实例。</summary>
         public Views.HyToolPanel PanelInstance => _panelInstance;
+
+        /// <summary>
+        /// 打开 HyBlenderPanel 并跳到指定 Tab（Hy 命令的新入口：key = PreferencesTabKey 打开设置）。
+        /// </summary>
+        public void OpenHyBlenderPanelAndSelectTab(string tabKey)
+        {
+            if (_blenderPaletteSet == null)
+                CreateHyBlenderPanel();
+            else
+                _blenderPaletteSet.Visible = true;
+
+            if (_blenderPanel?.DataContext is ViewModels.HyBlenderPanelViewModel vm)
+            {
+                if (_blenderPanel.Dispatcher.CheckAccess())
+                    vm.SelectTab(tabKey);
+                else
+                    _blenderPanel.Dispatcher.Invoke(() => vm.SelectTab(tabKey));
+            }
+        }
 
         // ===== HyB：Blender 命令面板 =====
 
@@ -114,6 +139,8 @@ namespace HyCADTool.Refactored.Presentation
 
         // ===== 旧面板兼容方法（已弃用，转发到统一面板） =====
 
+        #pragma warning disable CS0618
+
         [Obsolete("使用 ShowHyToolPanel() 替代")]
         public void ShowSettingsPanel()  { ShowHyToolPanel(); SetActiveTab(0); }
 
@@ -132,9 +159,12 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>显示道路面板 → 打开 HY 面板并切到道路 Tab。</summary>
         public void ShowRoadPanel()      { ShowHyToolPanel(); SetActiveTab(6); }
 
+        #pragma warning restore CS0618
+
         // ===== 私有方法 =====
 
-        /// <summary>创建 HY 参数面板实例（原 HyToolPanel + 独立 PaletteSet）。</summary>
+        /// <summary>[Obsolete] 创建 HY 参数面板实例（原 HyToolPanel + 独立 PaletteSet）。</summary>
+        [Obsolete("HyToolPanel 已退役；生产路径改走 CreateHyBlenderPanel")]
         private void CreateHyToolPanel()
         {
             RegisterDocumentEvents();
@@ -163,17 +193,8 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>创建 Blender 命令面板实例（独立 PaletteSet）。</summary>
         private void CreateHyBlenderPanel()
         {
-            #region agent log
-            DebugLogger.Log("PanelManager.cs:CreateHyBlenderPanel:enter", "before new VM", null, "H1");
-            #endregion
             var blenderVm = new ViewModels.HyBlenderPanelViewModel();
-            #region agent log
-            DebugLogger.Log("PanelManager.cs:CreateHyBlenderPanel:vm_created", "vm ok, tabs=" + blenderVm.Tabs.Count, new { tabs = blenderVm.Tabs.Count }, "H1");
-            #endregion
             _blenderPanel = new Views.HyBlenderPanel(blenderVm);
-            #region agent log
-            DebugLogger.Log("PanelManager.cs:CreateHyBlenderPanel:view_created", "view ok", null, "H3");
-            #endregion
 
             _blenderPaletteSet = new PaletteSet("HyCAD 命令", HyBlenderPanelGuid)
             {
@@ -185,17 +206,8 @@ namespace HyCADTool.Refactored.Presentation
                         PaletteSetStyles.Snappable
             };
 
-            #region agent log
-            DebugLogger.Log("PanelManager.cs:CreateHyBlenderPanel:before_add_visual", "before AddVisual", null, "H3");
-            #endregion
             _blenderPaletteSet.AddVisual("HyCAD 命令", _blenderPanel);
-            #region agent log
-            DebugLogger.Log("PanelManager.cs:CreateHyBlenderPanel:after_add_visual", "AddVisual ok", null, "H3");
-            #endregion
             _blenderPaletteSet.Visible = true;
-            #region agent log
-            DebugLogger.Log("PanelManager.cs:CreateHyBlenderPanel:visible_set", "Visible=true ok", null, "H4");
-            #endregion
         }
 
         /// <summary>切换 HY 参数面板内嵌 TabControl 的激活 Tab。</summary>

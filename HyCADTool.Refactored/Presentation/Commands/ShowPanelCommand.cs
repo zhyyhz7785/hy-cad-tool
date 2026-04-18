@@ -13,7 +13,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
     public static class ShowPanelCommand
     {
         /// <summary>
-        /// 显示/隐藏 HY 统一工具面板（命令 <c>Hy</c>）。
+        /// 命令 <c>Hy</c> 入口：改为打开 HyBlenderPanel 并跳到「设置」伪分类。
+        /// 原 HyToolPanel 已退役（保留代码便于回退）。
         /// </summary>
         public static void ShowHyToolPanel()
         {
@@ -21,7 +22,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
             try
             {
                 var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
-                panelManager.ToggleHyToolPanel();
+                panelManager.OpenHyBlenderPanelAndSelectTab(
+                    ViewModels.HyBlenderPanelViewModel.PreferencesTabKey);
             }
             catch (System.Exception ex)
             {

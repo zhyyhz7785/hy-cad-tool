@@ -79,19 +79,24 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             LoadFromCommandTable();
         }
 
+        /// <summary>
+        /// 按 Key 选中 Tab（找不到时退为 FirstOrDefault，避免空视图）。
+        /// 常见 Key：<see cref="PreferencesTabKey"/>、g.Category（如「常用」「钢筋」…）。
+        /// </summary>
+        public void SelectTab(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            var t = Tabs.FirstOrDefault(x => x.Key == key);
+            SelectedTab = t ?? Tabs.FirstOrDefault();
+        }
+
         /// <summary>从 ReCall.CommandTable 重新拉分组（可供外部在 JSON 变化后触发刷新）。</summary>
         public void LoadFromCommandTable()
         {
             Tabs.Clear();
             try
             {
-                #region agent log
-                DebugLogger.Log("HyBlenderPanelViewModel.cs:LoadFromCommandTable:before_group", "before GroupByCategory", null, "H1");
-                #endregion
                 var groups = CommandTable.GroupByCategory();
-                #region agent log
-                DebugLogger.Log("HyBlenderPanelViewModel.cs:LoadFromCommandTable:after_group", "groups=" + (groups?.Count ?? -1), new { groupCount = groups?.Count ?? -1 }, "H1");
-                #endregion
                 Tabs.Add(new CategoryTabVm
                 {
                     Key  = PreferencesTabKey,

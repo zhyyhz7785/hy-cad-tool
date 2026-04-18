@@ -2,16 +2,60 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using HyCADTool.Refactored.Infrastructure.Configuration;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
     /// HyB 面板「设置」伪分类使用的总 ViewModel（对应 Blender Preferences）。
-    /// 框架阶段：仅搭建一级目录 + 二级分组骨架 + 底部按钮占位；
-    /// 后续阶段逐项接入真实 Binding（见 plan hyb_设置_tab_框架搭建）。
+    /// 
+    /// 阶段 C 改造：本类不再持有自己的参数存储，而是作为壳子持有真实 ViewModel：
+    ///   Settings / BaseReinVm / PileVm / ClusterVm
+    /// 子 View 通过 DataContext 继承沿逻辑树访问 {Binding Settings.XXX} / {Binding BaseReinVm.XXX}。
+    /// 持久化复用原各 VM 内部机制（SettingsPanelViewModel.SaveSettings 等）。
     /// </summary>
     public class HySettingsViewModel : INotifyPropertyChanged
     {
+        // ================================================================
+        //  1. 持有的真实 ViewModel（壳子模式）
+        // ================================================================
+
+        /// <summary>
+        /// 样式/钢筋/道路/标高/尺寸通用参数（核心持久化）
+        /// 取当前活动文档的 VM；空文档时退化为默认构造实例。
+        /// </summary>
+        public SettingsPanelViewModel Settings => SettingsPanelViewModel.Current
+                                                   ?? _settingsFallback
+                                                   ?? (_settingsFallback = new SettingsPanelViewModel());
+        private SettingsPanelViewModel _settingsFallback;
+
+        /// <summary>
+        /// 底板配筋 ViewModel（DI 注册 InstancePerDependency，此处单例缓存）
+        /// </summary>
+        public BaseReinPanelViewModel BaseReinVm => _baseReinVm
+                                                   ?? (_baseReinVm = ServiceLocator.TryResolve<BaseReinPanelViewModel>());
+        private BaseReinPanelViewModel _baseReinVm;
+
+        /// <summary>
+        /// 桩基 ViewModel（其自身有 Current 多文档机制）
+        /// </summary>
+        public PilePanelViewModel PileVm => PilePanelViewModel.Current
+                                            ?? _pileVmFallback
+                                            ?? (_pileVmFallback = new PilePanelViewModel());
+        private PilePanelViewModel _pileVmFallback;
+
+        /// <summary>
+        /// 聚类 ViewModel（DI 注册 InstancePerDependency，此处单例缓存）
+        /// </summary>
+        public ClusterPanelViewModel ClusterVm => _clusterVm
+                                                  ?? (_clusterVm = ServiceLocator.TryResolve<ClusterPanelViewModel>()
+                                                                   ?? new ClusterPanelViewModel());
+        private ClusterPanelViewModel _clusterVm;
+
+        // ================================================================
+        //  2. 一级目录 / 二级分组（不变）
+        // ================================================================
+
         public ObservableCollection<SettingsCategoryVm> Categories { get; } = new ObservableCollection<SettingsCategoryVm>();
 
         private SettingsCategoryVm _selectedCategory;
@@ -26,11 +70,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             }
         }
 
+        // ================================================================
+        //  3. 状态栏 & 自动保存（阶段 D 再双向绑定到 Settings.AutoSaveEnabled）
+        // ================================================================
+
         private bool _autoSaveEnabled = true;
         public bool AutoSaveEnabled
         {
-            get => _autoSaveEnabled;
-            set { if (_autoSaveEnabled == value) return; _autoSaveEnabled = value; OnPropertyChanged(); }
+            get => Settings?.AutoSaveEnabled ?? _autoSaveEnabled;
+            set
+            {
+                _autoSaveEnabled = value;
+                if (Settings != null) Settings.AutoSaveEnabled = value;
+                OnPropertyChanged();
+            }
         }
 
         private string _statusMessage;
@@ -39,6 +92,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             get => _statusMessage;
             set { _statusMessage = value; OnPropertyChanged(); }
         }
+
+        // ================================================================
+        //  4. 底栏命令（阶段 D 接真逻辑）
+        // ================================================================
 
         public ICommand ApplyCurrentCommand { get; }
         public ICommand SaveUserSettingsCommand { get; }
@@ -54,6 +111,21 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             BuildSkeleton();
             SelectedCategory = Categories.Count > 0 ? Categories[0] : null;
+
+            // 订阅 Settings 变更：StatusMessage 同步（首次访问会惰性创建）
+            var settings = Settings;
+            if (settings != null)
+            {
+                settings.PropertyChanged += OnSettingsPropertyChanged;
+            }
+        }
+
+        private void OnSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SettingsPanelViewModel.StatusMessage) && sender is SettingsPanelViewModel s)
+            {
+                StatusMessage = s.StatusMessage;
+            }
         }
 
         private void BuildSkeleton()
@@ -120,24 +192,41 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             }));
         }
 
+        // ================================================================
+        //  5. 底栏命令实现（阶段 D 接入）
+        // ================================================================
+
         private void OnApplyCurrent()
         {
-            StatusMessage = "TODO: 置为当前 (ApplyStyle)";
+            var s = Settings;
+            if (s == null) { StatusMessage = "无可用设置实例"; return; }
+            // ApplyStyleCommand 内部调用 SaveAsDefault → SaveSettings + EnsureStylesApplied
+            s.ApplyStyleCommand?.Execute(null);
+            StatusMessage = s.StatusMessage;
         }
 
         private void OnSaveUserSettings()
         {
-            StatusMessage = "TODO: 保存用户设置 (hy-settings.json)";
+            var s = Settings;
+            if (s == null) { StatusMessage = "无可用设置实例"; return; }
+            s.SavePublic();
+            StatusMessage = "用户设置已保存 → hy-settings.json";
         }
 
         private void OnRestoreAutoSaved()
         {
-            StatusMessage = "TODO: 恢复至自动保存的设置";
+            var s = Settings;
+            if (s == null) { StatusMessage = "无可用设置实例"; return; }
+            s.ReloadFromDisk();
+            StatusMessage = "已从磁盘重载设置";
         }
 
         private void OnLoadDefaults()
         {
-            StatusMessage = "TODO: 加载初始设置 (重置默认值)";
+            var s = Settings;
+            if (s == null) { StatusMessage = "无可用设置实例"; return; }
+            s.ResetCommand?.Execute(null);
+            StatusMessage = s.StatusMessage;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

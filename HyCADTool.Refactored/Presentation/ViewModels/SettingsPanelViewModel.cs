@@ -362,6 +362,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private string _statusMessage = "";
         public string StatusMessage { get => _statusMessage; set => SetProperty(ref _statusMessage, value); }
 
+        /// <summary>
+        /// 自动保存开关：关闭后 SetProperty 不再即时写入 hy-settings.json，
+        /// 改为由「保存用户设置」按钮显式保存。默认开启（向后兼容原行为）。
+        /// </summary>
+        private bool _autoSaveEnabled = true;
+        public bool AutoSaveEnabled
+        {
+            get => _autoSaveEnabled;
+            set { if (_autoSaveEnabled == value) return; _autoSaveEnabled = value; OnPropertyChanged(); }
+        }
+
         #endregion
 
         #region 命令
@@ -768,6 +779,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         /// <summary>
+        /// 显式保存当前参数到 hy-settings.json（用于「保存用户设置」按钮）。
+        /// 即便 AutoSaveEnabled=false 也会强制写入一次。
+        /// </summary>
+        public void SavePublic() => SaveSettings();
+
+        /// <summary>
+        /// 从磁盘重载 hy-settings.json（用于「恢复自动保存」按钮）。
+        /// </summary>
+        public void ReloadFromDisk() => LoadSettings();
+
+        /// <summary>
         /// 序列化 DTO — 纯数据容器，字段默认值与面板硬编码默认值一致
         /// 新增字段时此处同步加默认值，确保旧 JSON 文件向前兼容
         /// </summary>
@@ -870,7 +892,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             OnPropertyChanged(propertyName);
 
             // 非加载期间，参数变更即时写入文件（跨程序集共享状态）
-            if (!_isLoading && propertyName != nameof(StatusMessage))
+            // AutoSaveEnabled=false 时仅 UI 更新，实际文件写入延后到"保存用户设置"按钮
+            if (!_isLoading
+                && propertyName != nameof(StatusMessage)
+                && propertyName != nameof(AutoSaveEnabled)
+                && _autoSaveEnabled)
                 SaveSettings();
 
             return true;

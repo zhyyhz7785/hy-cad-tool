@@ -109,7 +109,7 @@
 
         "N1":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentByPiCommand",   "method": "Execute", "_alias": "hyRoadAlnByPi 占位" },
         "N2":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentEditPiCommand", "method": "Execute", "_alias": "hyRoadAlnEditPi 占位" },
-        "N3":  null, "N4":  null, "N5":  null,
+            "N3":  null, "N4":  null, "N5":  null,
         "N6":  null, "N7":  null, "N8":  null, "N9":  null, "N10": null,
         "N11": null, "N12": null, "N13": null, "N14": null, "N15": null,
         "N16": null, "N17": null, "N18": null, "N19": null, "N20": null,

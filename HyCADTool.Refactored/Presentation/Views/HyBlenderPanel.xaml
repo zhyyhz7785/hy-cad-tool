@@ -119,13 +119,10 @@
         <!-- ===== 左侧：图标 Tab ListBox ===== -->
         <Border Grid.Column="0" Background="{DynamicResource Brush_HeaderBack}">
             <ListBox x:Name="CategoryList"
+                     Style="{StaticResource BlenderListBox}"
                      ItemsSource="{Binding Tabs}"
                      SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
-                     ItemContainerStyle="{StaticResource IconTabItemStyle}"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                     ItemContainerStyle="{StaticResource IconTabItemStyle}"/>
         </Border>
 
         <!-- ===== 右侧内容区 ===== -->
@@ -218,7 +215,7 @@
                 <!-- 状态 A：搜索中 → 全局扁平结果 -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ScrollViewer.Style>
-                        <Style TargetType="{x:Type ScrollViewer}">
+                        <Style TargetType="{x:Type ScrollViewer}" BasedOn="{StaticResource BlenderScrollViewer}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsSearching}" Value="True">
@@ -255,7 +252,7 @@
                 <!-- 状态 B：正常浏览 → 当前 Tab 的命令列表 -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ScrollViewer.Style>
-                        <Style TargetType="{x:Type ScrollViewer}">
+                        <Style TargetType="{x:Type ScrollViewer}" BasedOn="{StaticResource BlenderScrollViewer}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsSearching}" Value="False">

@@ -70,6 +70,28 @@
             <DataTemplate x:Key="GroupKey_ReinParams">           <sub:ReinSettingsView    Section="Rein"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_ReinDimParams">        <sub:ReinSettingsView    Section="ReinDim"/></DataTemplate>
 
+            <DataTemplate x:Key="GroupKey_BasePlateRein">        <sub:BasePlateSettingsView     Section="BasePlateRein"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_BasePlateDraw">        <sub:BasePlateSettingsView     Section="BasePlateDraw"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_BasePlateAdvanced">    <sub:BasePlateSettingsView     Section="BasePlateAdvanced"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_PileParams">           <sub:PileSettingsView          Section="PileParams"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_PileMargin">           <sub:PileSettingsView          Section="PileMargin"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_ClusterParams">        <sub:ClusterSettingsView       Section="ClusterParams"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_ClusterDrawSwitch">    <sub:ClusterSettingsView       Section="ClusterDrawSwitch"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_RoadCrosswalk">        <sub:RoadSettingsView          Section="RoadCrosswalk"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_RoadMunicipal">        <sub:RoadSettingsView          Section="RoadMunicipal"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_ElevationSymbol">      <sub:ElevationSettingsView     Section="ElevationSymbol"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_ElevationText">        <sub:ElevationSettingsView     Section="ElevationText"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_DimParams">            <sub:DimSettingsView           Section="DimParams"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_AnchorBoltParams">     <sub:AnchorBoltSettingsView    Section="AnchorBoltParams"/></DataTemplate>
+
+            <DataTemplate x:Key="GroupKey_EquipFoundationParams"><sub:EquipFoundationSettingsView Section="EquipFoundationParams"/></DataTemplate>
+
             <DataTemplate x:Key="GroupKey_Placeholder">
                 <TextBlock Text="（待迁移：尚未接入真实参数绑定）"
                            Foreground="{DynamicResource Brush_TextDisabled}"
@@ -129,6 +151,7 @@
 
             <!-- 右侧二级分组内容 -->
             <ScrollViewer Grid.Column="1"
+                          Style="{StaticResource BlenderScrollViewer}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           Padding="6,4">
@@ -164,6 +187,48 @@
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GroupKey}" Value="ReinDimParams">
                                                     <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ReinDimParams}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="BasePlateRein">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_BasePlateRein}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="BasePlateDraw">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_BasePlateDraw}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="BasePlateAdvanced">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_BasePlateAdvanced}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="PileParams">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_PileParams}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="PileMargin">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_PileMargin}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="ClusterParams">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ClusterParams}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="ClusterDrawSwitch">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ClusterDrawSwitch}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="RoadCrosswalk">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_RoadCrosswalk}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="RoadMunicipal">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_RoadMunicipal}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="ElevationSymbol">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ElevationSymbol}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="ElevationText">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ElevationText}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="DimParams">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_DimParams}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="AnchorBoltParams">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_AnchorBoltParams}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="EquipFoundationParams">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_EquipFoundationParams}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

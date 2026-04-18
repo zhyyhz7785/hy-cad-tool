@@ -1,0 +1,93 @@
+<UserControl x:Class="HyCADTool.Refactored.Presentation.Views.Preferences.ElevationSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="420">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
+                <Setter Property="Margin" Value="0,2"/>
+            </Style>
+
+            <!-- 标高：符号样式（当前通用使用 Settings.Scale / Settings.TextSize 推导 → 只读展示） -->
+            <DataTemplate x:Key="Section_ElevationSymbol">
+                <StackPanel Margin="8,6">
+                    <TextBlock Text="（当前标高符号从设置→样式预览派生；此处预留将来符号高度/三角/线粗独立参数。）"
+                               Foreground="{DynamicResource Brush_TextDisabled}"
+                               FontSize="11" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="比例 Scale（只读）" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 IsReadOnly="True"
+                                 Text="{Binding Settings.Scale, Mode=OneWay, FallbackValue=40}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="字高 TextSize（只读）" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 IsReadOnly="True"
+                                 Text="{Binding Settings.TextSize, Mode=OneWay, FallbackValue=2.5}"/>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 标高：文字样式（引用 Settings 文字参数） -->
+            <DataTemplate x:Key="Section_ElevationText">
+                <StackPanel Margin="8,6">
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="文字样式名" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 IsReadOnly="True"
+                                 Text="{Binding Settings.TextStyleName, Mode=OneWay, FallbackValue=0-hy-说明-S}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Title 字体 (StyleT)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.StyleTFont, UpdateSourceTrigger=LostFocus, FallbackValue=微软雅黑}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Std 字体 (StyleS)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.StyleSFont, UpdateSourceTrigger=LostFocus, FallbackValue=tssdeng.shx}"/>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="Host"/>
+</UserControl>
