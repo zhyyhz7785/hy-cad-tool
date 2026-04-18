@@ -101,12 +101,10 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
-            // ===== 统一面板和 ViewModel 注册 =====
-
-            // HyToolPanel（统一工具面板）
-            builder.RegisterType<HyCADTool.Refactored.Presentation.Views.HyToolPanel>()
-                .AsSelf()
-                .InstancePerDependency();
+            // ===== 面板和 ViewModel 注册 =====
+            //
+            // 唯一 PaletteSet 宿主：HyBlenderPanel（自行 new，不必 DI）。
+            // 子面板 / ViewModel 通过 DI 供 HyBlenderPanel 或单元测试按需解析。
 
             // ViewModel 注册
             builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.SettingsPanelViewModel>()
@@ -125,7 +123,7 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .InstancePerDependency();
 
-            // 子面板注册（作为 HyToolPanel 内嵌内容）
+            // 子面板注册（独立使用或嵌入 HyBlenderPanel 的过滤 Tab 等）
             builder.RegisterType<HyCADTool.Refactored.Presentation.Views.BaseReinPanel>()
                 .AsSelf()
                 .InstancePerDependency();
@@ -322,7 +320,7 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
-            // 道路设计 ViewModel（P0 占位，P1 起接入 HyToolPanel.xaml 的道路 Tab）
+            // 道路设计 ViewModel（P0 占位，P1 起接入 HyBlenderPanel 的道路 Tab）
             builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.RoadDesignViewModel>()
                 .AsSelf()
                 .InstancePerDependency();

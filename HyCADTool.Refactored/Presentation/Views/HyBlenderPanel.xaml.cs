@@ -7,10 +7,7 @@ namespace HyCADTool.Refactored.Presentation.Views
     /// <summary>
     /// Blender 风格命令面板（独立面板，通过 <c>HyB</c> 命令打开）。
     /// 左侧垂直图标 Tab（按分类切换）+ 顶部搜索框 + 主区命令列表。
-    ///
-    /// 与 <see cref="HyToolPanel"/>（原参数面板，<c>Hy</c> 命令）完全分离：
-    /// - <c>Hy</c>  → HyToolPanel      → 参数/钢筋/底板/桩基/聚类/过滤/道路 等参数编辑
-    /// - <c>HyB</c> → HyBlenderPanel   → 数据驱动的命令检索面板，点击按钮直接执行命令
+    /// Hy/HyB 均打开此面板：Hy → 跳「设置」Tab，HyB → 停在默认 Tab；过滤走独立「过滤」Tab。
     /// </summary>
     public partial class HyBlenderPanel : UserControl
     {

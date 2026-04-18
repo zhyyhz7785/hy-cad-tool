@@ -142,14 +142,28 @@
                 </views:HyPreferencesView.Style>
             </views:HyPreferencesView>
 
-            <!-- ========== 模式 2：命令列表（IsPreferencesMode=False） ========== -->
+            <!-- ========== 模式 2：过滤面板（IsFilterMode=True） ========== -->
+            <views:FilterPanel DataContext="{Binding FilterVm}">
+                <views:FilterPanel.Style>
+                    <Style TargetType="{x:Type views:FilterPanel}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsFilterMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </views:FilterPanel.Style>
+            </views:FilterPanel>
+
+            <!-- ========== 模式 3：命令列表（IsCommandListMode=True） ========== -->
         <Grid>
             <Grid.Style>
                 <Style TargetType="{x:Type Grid}">
-                    <Setter Property="Visibility" Value="Visible"/>
+                    <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsPreferencesMode}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed"/>
+                        <DataTrigger Binding="{Binding IsCommandListMode}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

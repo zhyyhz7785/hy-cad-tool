@@ -4,28 +4,29 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
-             Background="#3b4453"
+             Background="{DynamicResource Brush_RegionBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}"
              mc:Ignorable="d">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ScrollViewer Style="{StaticResource SmallScrollViewer}" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="5,8,5,5" Background="#3b4453">
+    <ScrollViewer Style="{StaticResource BlenderScrollViewer}" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="5,8,5,5">
 
             <!-- ===== 当前比例 ===== -->
-            <TextBlock Margin="0,0,0,4" Foreground="#808080" FontSize="10">
-                <Run Text="当前比例: " /><Run Text="{Binding CurrentScale, Mode=OneWay}" Foreground="#88c0d0" />
+            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="10">
+                <Run Text="当前比例: " /><Run Text="{Binding CurrentScale, Mode=OneWay}" Foreground="{DynamicResource Brush_AccentBlueHover}" />
                 <Run Text="（在[设置]页修改）" />
             </TextBlock>
 
             <!-- ===== 高程参数 ===== -->
-            <Expander Header="高程参数" IsExpanded="True" Margin="0,2,0,3">
+            <Expander Style="{StaticResource BlenderExpander}" Header="高程参数" IsExpanded="True" Margin="0,2,0,3">
                 <StackPanel Margin="5,5,0,0">
                     <Grid Margin="0,2">
                         <Grid.ColumnDefinitions>
@@ -33,7 +34,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="孔点高程 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding BoreholeElevation, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -43,7 +44,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="结构±0.000 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding StructureZeroElevation, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -53,11 +54,11 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="基础埋深 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding FoundationDepth, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
-                    <TextBlock Margin="0,3,0,0" Foreground="#88c0d0" FontSize="10">
+                    <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource Brush_AccentBlueHover}" FontSize="10">
                         <Run Text="相对高程: " />
                         <Run Text="{Binding RelativeElevation, Mode=OneWay, StringFormat=F3}" />
                         <Run Text=" m" />
@@ -66,7 +67,7 @@
             </Expander>
 
             <!-- ===== 基础参数 ===== -->
-            <Expander Header="基础参数" IsExpanded="True" Margin="0,2,0,3">
+            <Expander Style="{StaticResource BlenderExpander}" Header="基础参数" IsExpanded="True" Margin="0,2,0,3">
                 <StackPanel Margin="5,5,0,0">
                     <Grid Margin="0,2">
                         <Grid.ColumnDefinitions>
@@ -74,7 +75,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="计算类型" VerticalAlignment="Center" />
-                        <ComboBox Grid.Column="1" SelectedIndex="{Binding FoundationTypeIndex}">
+                        <ComboBox Grid.Column="1" Style="{StaticResource BlenderComboBox}" SelectedIndex="{Binding FoundationTypeIndex}">
                             <ComboBoxItem Content="天然基础" />
                             <ComboBoxItem Content="复合地基" />
                             <ComboBoxItem Content="桩基础" />
@@ -86,7 +87,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="基础长度 l (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding FoundationLength, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -96,7 +97,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="基础宽度 b (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding FoundationWidth, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -106,7 +107,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="附加压力 p₀(kPa)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding AdditionalPressure, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -116,7 +117,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="承载力 fak(kPa)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding BearingCapacity, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -124,7 +125,7 @@
             </Expander>
 
             <!-- ===== 复合地基参数 ===== -->
-            <Expander Header="复合地基参数" IsExpanded="True" Margin="0,2,0,3"
+            <Expander Style="{StaticResource BlenderExpander}" Header="复合地基参数" IsExpanded="True" Margin="0,2,0,3"
                       Visibility="{Binding IsCompositeVisible, Converter={StaticResource BoolToVisConverter}}">
                 <StackPanel Margin="5,5,0,0">
                     <Grid Margin="0,2">
@@ -133,7 +134,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="fspk (kPa)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding CompositeBearingCapacity, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -143,7 +144,7 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="加固层深度 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding TreatedDepth, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -151,7 +152,7 @@
             </Expander>
 
             <!-- ===== 桩基参数 ===== -->
-            <Expander Header="桩基参数" IsExpanded="True" Margin="0,2,0,3"
+            <Expander Style="{StaticResource BlenderExpander}" Header="桩基参数" IsExpanded="True" Margin="0,2,0,3"
                       Visibility="{Binding IsPileVisible, Converter={StaticResource BoolToVisConverter}}">
                 <StackPanel Margin="5,5,0,0">
                     <Grid Margin="0,2">
@@ -162,11 +163,11 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="桩长 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding PileLength, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                         <TextBlock Grid.Column="2" Text="桩径 (m)" VerticalAlignment="Center" Margin="4,0,0,0" />
-                        <TextBox Grid.Column="3"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="3"
                                  Text="{Binding PileDiameter, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -178,11 +179,11 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="桩距 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding PileSpacing, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                         <TextBlock Grid.Column="2" Text="桩数" VerticalAlignment="Center" Margin="4,0,0,0" />
-                        <TextBox Grid.Column="3"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="3"
                                  Text="{Binding TotalPileCount, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
@@ -194,41 +195,41 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="承台长 (m)" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding CapLength, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                         <TextBlock Grid.Column="2" Text="台宽(m)" VerticalAlignment="Center" Margin="4,0,0,0" />
-                        <TextBox Grid.Column="3"
+                        <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="3"
                                  Text="{Binding CapWidth, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
                 </StackPanel>
             </Expander>
 
-            <Separator Margin="0,2,0,4" Background="#555" />
+            <Separator Style="{StaticResource BlenderSeparator}" Margin="0,2,0,4" />
 
             <!-- ===== 地层数据 ===== -->
-            <Expander Header="地层数据（粘贴 Markdown 表格）" IsExpanded="True" Margin="0,2,0,3">
+            <Expander Style="{StaticResource BlenderExpander}" Header="地层数据（粘贴 Markdown 表格）" IsExpanded="True" Margin="0,2,0,3">
                 <StackPanel Margin="5,5,0,0">
-                    <TextBlock Foreground="#808080" FontSize="9" Margin="0,0,0,2"
+                    <TextBlock Foreground="{DynamicResource Brush_TextSecondary}" FontSize="9" Margin="0,0,0,2"
                                Text="格式：| 编号 | 名称 | 平均厚度(m) | Es(MPa) | 描述 |" />
-                    <TextBox Text="{Binding SoilLayerMarkdown, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox Style="{StaticResource BlenderTextBox}"
+                             Text="{Binding SoilLayerMarkdown, UpdateSourceTrigger=PropertyChanged}"
                              AcceptsReturn="True" AcceptsTab="True"
                              TextWrapping="Wrap" MinLines="4" MaxLines="12"
                              VerticalScrollBarVisibility="Auto"
-                             FontFamily="Consolas" FontSize="11"
-                             Background="#2e3440" Foreground="#d8dee9" />
-                    <Button Content="解析表格" Command="{Binding ParseTableCommand}"
+                             FontFamily="Consolas" FontSize="11" />
+                    <Button Style="{StaticResource BlenderButtonFlat}" Content="解析表格" Command="{Binding ParseTableCommand}"
                             Margin="0,3,0,3" Padding="2,4" />
 
-                    <!-- 解析后的土层 DataGrid -->
+                    <!-- 解析后的土层 DataGrid (保留自定义色以避免宿主 DataGrid 样式冲突) -->
                     <DataGrid ItemsSource="{Binding ParsedSoilLayers}"
                               AutoGenerateColumns="False" CanUserAddRows="False"
                               HeadersVisibility="Column" IsReadOnly="False"
-                              Background="#2e3440" Foreground="#d8dee9"
-                              RowBackground="#2e3440" AlternatingRowBackground="#353d4a"
+                              Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
+                              RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
                               GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="#444"
+                              HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
                               BorderThickness="0" MaxHeight="200"
                               FontSize="11">
                         <DataGrid.Columns>
@@ -244,23 +245,23 @@
 
             <!-- ===== 命令按钮 ===== -->
             <UniformGrid Columns="2" Margin="0,4,0,4">
-                <Button Content="计算沉降" Command="{Binding CalculateCommand}" Margin="1" Padding="2,4" />
-                <Button Content="绘制结果表格" Command="{Binding DrawTableCommand}" Margin="1" Padding="2,4" />
+                <Button Style="{StaticResource BlenderButton}" Content="计算沉降" Command="{Binding CalculateCommand}" Margin="1" Padding="2,4" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="绘制结果表格" Command="{Binding DrawTableCommand}" Margin="1" Padding="2,4" />
             </UniformGrid>
 
             <!-- ===== 结果汇总 ===== -->
-            <TextBlock Text="{Binding ResultSummary}" Foreground="#88c0d0" FontSize="10"
+            <TextBlock Text="{Binding ResultSummary}" Foreground="{DynamicResource Brush_AccentBlueHover}" FontSize="10"
                        Margin="0,0,0,4" TextWrapping="Wrap" />
 
             <!-- ===== 计算结果 DataGrid ===== -->
-            <Expander Header="逐层计算结果" IsExpanded="False" Margin="0,2,0,3">
+            <Expander Style="{StaticResource BlenderExpander}" Header="逐层计算结果" IsExpanded="False" Margin="0,2,0,3">
                 <DataGrid ItemsSource="{Binding CalculationResults}"
                           AutoGenerateColumns="False" CanUserAddRows="False"
                           HeadersVisibility="Column" IsReadOnly="True"
-                          Background="#2e3440" Foreground="#d8dee9"
-                          RowBackground="#2e3440" AlternatingRowBackground="#353d4a"
+                          Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
+                          RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
                           GridLinesVisibility="Horizontal"
-                          HorizontalGridLinesBrush="#444"
+                          HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
                           BorderThickness="0" MaxHeight="250"
                           FontSize="10">
                     <DataGrid.Columns>
@@ -276,11 +277,11 @@
             </Expander>
 
             <!-- ===== 操作 ===== -->
-            <Button Content="恢复默认" Command="{Binding ResetCommand}" Margin="0,4,0,2" />
+            <Button Style="{StaticResource BlenderButtonFlat}" Content="恢复默认" Command="{Binding ResetCommand}" Margin="0,4,0,2" />
 
             <!-- 状态 -->
             <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="#a3be8c" FontSize="10"
+                       Foreground="{DynamicResource Brush_Success}" FontSize="10"
                        Margin="0,4,0,0" TextWrapping="Wrap" />
 
         </StackPanel>

@@ -9,7 +9,7 @@ using HyCADTool.ReCall;
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
     /// <summary>
-    /// Blender 面板的总 ViewModel（独立面板，不再嵌入 HyToolPanel）。
+    /// Blender 面板的总 ViewModel（唯一 PaletteSet，承载设置 / 过滤 / 命令分类 Tab）。
     /// 负责：
     /// - 从 <see cref="CommandTable.GroupByCategory"/> 拉分组数据，转成 <see cref="CategoryTabVm"/>。
     /// - 维护当前选中的分类（左侧 Tab）。
@@ -30,6 +30,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 _selectedTab = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsPreferencesMode));
+                OnPropertyChanged(nameof(IsFilterMode));
+                OnPropertyChanged(nameof(IsCommandListMode));
                 RefreshFilter();
             }
         }
@@ -53,13 +55,27 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// <summary>当前选中的是否为「设置」伪分类。</summary>
         public bool IsPreferencesMode => _selectedTab != null && _selectedTab.Key == PreferencesTabKey;
 
+        /// <summary>当前选中的是否为「过滤」伪分类。</summary>
+        public bool IsFilterMode => _selectedTab != null && _selectedTab.Key == FilterTabKey;
+
+        /// <summary>既非设置也非过滤 → 正常命令列表模式。</summary>
+        public bool IsCommandListMode => !IsPreferencesMode && !IsFilterMode;
+
         /// <summary>设置面板的 ViewModel，首次切入「设置」时才创建。</summary>
         private HySettingsViewModel _preferencesVm;
         public HySettingsViewModel PreferencesVm
             => _preferencesVm ?? (_preferencesVm = new HySettingsViewModel());
 
+        /// <summary>过滤面板的 ViewModel，首次切入「过滤」时才创建。</summary>
+        private FilterPanelViewModel _filterVm;
+        public FilterPanelViewModel FilterVm
+            => _filterVm ?? (_filterVm = new FilterPanelViewModel());
+
         /// <summary>「设置」伪分类的稳定 Key。</summary>
         public const string PreferencesTabKey = "__preferences__";
+
+        /// <summary>「过滤」伪分类的稳定 Key。</summary>
+        public const string FilterTabKey = "__filter__";
 
         /// <summary>过滤后的当前 Tab 命令（供 View 的 ListBox/ItemsControl 绑定）。</summary>
         public ObservableCollection<CommandItemVm> FilteredItems { get; } = new ObservableCollection<CommandItemVm>();
@@ -104,6 +120,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     Icon = "⚙",
                 });
 
+                Tabs.Add(new CategoryTabVm
+                {
+                    Key  = FilterTabKey,
+                    Name = "过滤",
+                    Icon = "⧉",
+                });
+
                 int totalCommands = 0;
                 foreach (var g in groups)
                 {
@@ -136,6 +159,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             if (_selectedTab == null) return;
             if (IsPreferencesMode) return; // 设置 Tab 不走命令过滤
+            if (IsFilterMode) return;      // 过滤 Tab 有独立内容，不走命令过滤
 
             if (!IsSearching)
             {

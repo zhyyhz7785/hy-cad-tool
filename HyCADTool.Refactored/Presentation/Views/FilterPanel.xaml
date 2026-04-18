@@ -4,41 +4,49 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              Padding="0"
-             Background="#3b4453"
+             Background="{DynamicResource Brush_RegionBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}"
              mc:Ignorable="d">
 
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ScrollViewer Style="{StaticResource SmallScrollViewer}" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Style="{StaticResource BlenderScrollViewer}" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="5,10,5,5">
-            
+
             <!-- 选择单个图形按钮 -->
-            <Button Command="{Binding SelectSingleEntityCommand}" Content="选择单个图形得到过滤器" Margin="0,0,0,5" />
-            
+            <Button Style="{StaticResource BlenderButtonFlat}"
+                    Command="{Binding SelectSingleEntityCommand}"
+                    Content="选择单个图形得到过滤器" Margin="0,0,0,5" />
+
             <!-- 选中类型显示 -->
             <Grid Margin="0,0,0,5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Margin="5,5,5,5" Text="选中类型" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="0" Margin="5,5,5,5" Text="选中类型"
+                           Foreground="{DynamicResource Brush_TextPrimary}"
+                           VerticalAlignment="Center" />
                 <TextBox Grid.Column="1"
+                         Style="{StaticResource BlenderTextBox}"
                          Margin="5,5,5,5"
                          IsReadOnly="True"
                          Text="{Binding SelectedType}" />
             </Grid>
 
             <!-- 自行选择按钮 -->
-            <Button Command="{Binding SelectCommand}" Content="自行选择" Margin="0,0,0,5" />
+            <Button Style="{StaticResource BlenderButtonFlat}"
+                    Command="{Binding SelectCommand}" Content="自行选择" Margin="0,0,0,5" />
 
             <!-- 公共属性过滤器 -->
-            <Expander Margin="0,2,0,5" Header="公共属性过滤器" IsExpanded="True">
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Margin="0,2,0,5" Header="公共属性过滤器" IsExpanded="True">
                 <StackPanel Margin="5,5,0,0">
                     <Grid Margin="0,2">
                         <Grid.ColumnDefinitions>
@@ -46,17 +54,17 @@
                             <ColumnDefinition />
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
-                        <CheckBox Grid.Column="0"
+                        <CheckBox Grid.Column="0" Style="{StaticResource BlenderCheckBox}"
                                   Margin="5,5,5,5"
                                   Content="类型"
                                   IsChecked="{Binding TypeChecked}" />
-                        <CheckBox Grid.Column="1" 
+                        <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}"
                                   Margin="5,5,5,5"
-                                  Content="图层" 
+                                  Content="图层"
                                   IsChecked="{Binding LayerChecked}" />
-                        <CheckBox Grid.Column="2" 
+                        <CheckBox Grid.Column="2" Style="{StaticResource BlenderCheckBox}"
                                   Margin="5,5,5,5"
-                                  Content="颜色" 
+                                  Content="颜色"
                                   IsChecked="{Binding ColorChecked}" />
                     </Grid>
                     <Grid Margin="0,2">
@@ -65,24 +73,25 @@
                             <ColumnDefinition />
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
-                        <CheckBox Grid.Column="0" 
+                        <CheckBox Grid.Column="0" Style="{StaticResource BlenderCheckBox}"
                                   Margin="5,5,5,5"
-                                  Content="线宽" 
+                                  Content="线宽"
                                   IsChecked="{Binding LineWeightChecked}" />
-                        <CheckBox Grid.Column="1" 
+                        <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}"
                                   Margin="5,5,5,5"
-                                  Content="线型" 
+                                  Content="线型"
                                   IsChecked="{Binding LineTypeChecked}" />
-                        <CheckBox Grid.Column="2" 
+                        <CheckBox Grid.Column="2" Style="{StaticResource BlenderCheckBox}"
                                   Margin="5,5,5,5"
-                                  Content="透明度" 
+                                  Content="透明度"
                                   IsChecked="{Binding TransparencyChecked}" />
                     </Grid>
                 </StackPanel>
             </Expander>
 
             <!-- 属性值过滤器 -->
-            <Expander Margin="0,2,0,5" Header="属性值过滤器" IsExpanded="True">
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Margin="0,2,0,5" Header="属性值过滤器" IsExpanded="True">
                 <StackPanel Margin="5,5,0,0">
                     <!-- 属性列表 -->
                     <Grid Margin="0,5,0,5">
@@ -90,24 +99,19 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <ListBox Grid.Column="0"
+                                 Style="{StaticResource BlenderListBox}"
+                                 ItemContainerStyle="{StaticResource BlenderListBoxItem}"
                                  Height="80"
                                  Margin="5"
-                                 Background="#2e3440"
-                                 BorderBrush="White"
-                                 BorderThickness="1"
-                                 Foreground="White"
                                  ItemsSource="{Binding PropertyFields}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  SelectedItem="{Binding SelectedPropertyField}" />
                     </Grid>
-                    
+
                     <!-- 属性值显示 -->
-                    <TextBox Height="28"
+                    <TextBox Style="{StaticResource BlenderTextBox}"
+                             Height="28"
                              Margin="5,0,5,5"
-                             Background="#3b4252"
-                             BorderBrush="Gray"
-                             BorderThickness="1"
-                             Foreground="White"
                              IsReadOnly="True"
                              Text="{Binding SelectedPropertyValue}" />
 
@@ -118,11 +122,12 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <ComboBox Grid.Column="0"
+                                  Style="{StaticResource BlenderComboBox}"
                                   Margin="5,0,2,0"
                                   ItemsSource="{Binding Operators}"
-                                  SelectedItem="{Binding SelectedOperator}"
-                                  Style="{StaticResource {x:Type ComboBox}}" />
-                        <TextBox Grid.Column="1" 
+                                  SelectedItem="{Binding SelectedOperator}" />
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource BlenderTextBox}"
                                  Margin="2,0,5,0"
                                  Text="{Binding InputValue}" />
                     </Grid>
@@ -133,31 +138,32 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" 
+                        <Button Grid.Column="0"
+                                Style="{StaticResource BlenderButtonFlat}"
                                 Margin="5,0,2,0"
-                                Command="{Binding AddExpressionFilterCommand}" 
+                                Command="{Binding AddExpressionFilterCommand}"
                                 Content="添加过滤器" />
-                        <Button Grid.Column="1" 
+                        <Button Grid.Column="1"
+                                Style="{StaticResource BlenderButtonFlat}"
                                 Margin="2,0,5,0"
-                                Command="{Binding RemoveExpressionFilterCommand}" 
+                                Command="{Binding RemoveExpressionFilterCommand}"
                                 Content="删除选中项" />
                     </Grid>
 
                     <!-- 表达式过滤器列表 -->
-                    <ListBox Height="100" 
+                    <ListBox Style="{StaticResource BlenderListBox}"
+                             ItemContainerStyle="{StaticResource BlenderListBoxItem}"
+                             Height="100"
                              Margin="5,0,5,5"
-                             Background="#2e3440"
-                             BorderBrush="White"
-                             BorderThickness="1"
-                             Foreground="White"
-                             ItemsSource="{Binding ExpressionFilters}" 
+                             ItemsSource="{Binding ExpressionFilters}"
                              SelectedItem="{Binding SelectedExpressionFilter}" />
                 </StackPanel>
             </Expander>
 
             <!-- 重置过滤器按钮 -->
-            <Button Margin="0,5,0,5" Command="{Binding ResetCommand}" Content="重置过滤器" />
-            
+            <Button Style="{StaticResource BlenderButtonFlat}"
+                    Margin="0,5,0,5" Command="{Binding ResetCommand}" Content="重置过滤器" />
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

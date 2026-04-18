@@ -6,88 +6,34 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Refactored.Presentation
 {
     /// <summary>
-    /// 面板管理器 —— 管理两个相互独立的 PaletteSet：
+    /// 面板管理器 —— 唯一的 PaletteSet（<see cref="Views.HyBlenderPanel"/>，命令 <c>Hy</c>/<c>HyB</c>）：
+    /// - <c>Hy</c>      → 打开面板并跳到「设置」伪 Tab
+    /// - <c>HyB</c>     → 打开/关闭面板（默认 Tab）
+    /// - 过滤/桩基/聚类… → 打开面板并跳到对应分类 Tab
     ///
-    /// 1) <see cref="Views.HyToolPanel"/>（命令 <c>Hy</c>）：原统一参数面板（设置/钢筋/底板/桩基/聚类/过滤/道路）。
-    /// 2) <see cref="Views.HyBlenderPanel"/>（命令 <c>HyB</c>）：Blender 风格命令检索面板，数据驱动自 commands.json。
-    ///
-    /// 两个面板各自有独立 GUID / PaletteSet，可以同时显示，也可以各自 Toggle。
-    /// 多文档环境下 HyToolPanel 仍按文档切换 ViewModel；HyBlenderPanel 是无状态纯命令列表，不跟随文档。
+    /// 原 HyToolPanel 已退役、文件删除；保留的 ShowXxxPanel() 只作为回退入口，全部转发到
+    /// <see cref="OpenHyBlenderPanelAndSelectTab"/>。多文档切换在 HyBlenderPanel 内部处理。
     /// </summary>
     public class PanelManager
     {
-        private static readonly Guid HyToolPanelGuid    = new Guid("F6A7B8C9-D0E1-2345-FA67-890ABCDEF123");
         private static readonly Guid HyBlenderPanelGuid = new Guid("A1B2C3D4-E5F6-7890-AB12-345678901234");
 
         private readonly IComponentContext _componentContext;
 
-        // 参数面板（Hy）
-        private PaletteSet _hyPaletteSet;
-        private Views.HyToolPanel _panelInstance;
-        private bool _documentEventsRegistered;
-
-        // Blender 命令面板（HyB）
         private PaletteSet _blenderPaletteSet;
         private Views.HyBlenderPanel _blenderPanel;
+        private bool _documentEventsRegistered;
 
         public PanelManager(IComponentContext componentContext)
         {
             _componentContext = componentContext ?? throw new ArgumentNullException(nameof(componentContext));
         }
 
-        // ===== Hy：原参数面板（已退役：代码保留用于回退，但生产路径应走 HyB 设置 Tab） =====
-
-        /// <summary>[Obsolete] 显示/隐藏 HY 统一参数面板。生产路径请使用 <see cref="OpenHyBlenderPanelAndSelectTab"/>。</summary>
-        [Obsolete("改用 OpenHyBlenderPanelAndSelectTab(PreferencesTabKey)：原 HyToolPanel 已退役，保留代码便于回退")]
-        public void ToggleHyToolPanel()
-        {
-            if (_hyPaletteSet != null)
-            {
-                _hyPaletteSet.Visible = !_hyPaletteSet.Visible;
-                if (_hyPaletteSet.Visible)
-                {
-                    var doc = AcApp.DocumentManager.MdiActiveDocument;
-                    if (doc != null) UpdateDataContexts(doc.Name);
-                }
-                return;
-            }
-
-            #pragma warning disable CS0618
-            CreateHyToolPanel();
-            #pragma warning restore CS0618
-        }
-
-        /// <summary>[Obsolete] 显示 HY 统一参数面板（不切换）。</summary>
-        [Obsolete("改用 OpenHyBlenderPanelAndSelectTab(PreferencesTabKey)：原 HyToolPanel 已退役")]
-        public void ShowHyToolPanel()
-        {
-            if (_hyPaletteSet != null)
-            {
-                _hyPaletteSet.Visible = true;
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc != null) UpdateDataContexts(doc.Name);
-                return;
-            }
-
-            #pragma warning disable CS0618
-            CreateHyToolPanel();
-            #pragma warning restore CS0618
-        }
-
-        /// <summary>隐藏 HY 统一参数面板。</summary>
-        public void HideHyToolPanel()
-        {
-            if (_hyPaletteSet != null) _hyPaletteSet.Visible = false;
-        }
-
-        /// <summary>HY 面板是否可见。</summary>
-        public bool IsVisible => _hyPaletteSet != null && _hyPaletteSet.Visible;
-
-        /// <summary>HY 参数面板实例。</summary>
-        public Views.HyToolPanel PanelInstance => _panelInstance;
+        // ===== 公共入口 =====
 
         /// <summary>
-        /// 打开 HyBlenderPanel 并跳到指定 Tab（Hy 命令的新入口：key = PreferencesTabKey 打开设置）。
+        /// 打开 HyBlenderPanel 并跳到指定 Tab（Hy 命令的新入口：key = PreferencesTabKey 打开设置；
+        /// FilterTabKey 打开过滤；其他为 commands.json 的 Category 名）。
         /// </summary>
         public void OpenHyBlenderPanelAndSelectTab(string tabKey)
         {
@@ -107,7 +53,7 @@ namespace HyCADTool.Refactored.Presentation
 
         // ===== HyB：Blender 命令面板 =====
 
-        /// <summary>显示/隐藏 HyBlenderPanel。</summary>
+        /// <summary>显示/隐藏 HyBlenderPanel（HyB 命令）。</summary>
         public void ToggleHyBlenderPanel()
         {
             if (_blenderPaletteSet != null)
@@ -137,62 +83,42 @@ namespace HyCADTool.Refactored.Presentation
             if (_blenderPaletteSet != null) _blenderPaletteSet.Visible = false;
         }
 
-        // ===== 旧面板兼容方法（已弃用，转发到统一面板） =====
+        /// <summary>HyBlenderPanel 是否可见。</summary>
+        public bool IsVisible => _blenderPaletteSet != null && _blenderPaletteSet.Visible;
 
-        #pragma warning disable CS0618
+        // ===== 旧面板入口（全部转发到 HyBlenderPanel 对应 Tab） =====
+        //
+        // commands.json 和旧代码仍可能通过 Hy/ShowXxxPanel 调用，保留 public 不抛异常。
 
-        [Obsolete("使用 ShowHyToolPanel() 替代")]
-        public void ShowSettingsPanel()  { ShowHyToolPanel(); SetActiveTab(0); }
+        /// <summary>Hy 命令 → 打开 HyBlenderPanel 的「设置」Tab。</summary>
+        public void ShowHyToolPanel()
+            => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.PreferencesTabKey);
 
-        [Obsolete("使用 ShowHyToolPanel() 替代")]
-        public void ShowPilePanel()      { ShowHyToolPanel(); SetActiveTab(3); }
+        /// <summary>显示设置 → 同 <see cref="ShowHyToolPanel"/>。</summary>
+        public void ShowSettingsPanel()
+            => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.PreferencesTabKey);
 
-        [Obsolete("使用 ShowHyToolPanel() 替代")]
-        public void ShowBaseReinPanel()  { ShowHyToolPanel(); SetActiveTab(2); }
+        /// <summary>显示桩基命令组。</summary>
+        public void ShowPilePanel()      => OpenHyBlenderPanelAndSelectTab("桩基");
 
-        [Obsolete("使用 ShowHyToolPanel() 替代")]
-        public void ShowClusterPanel()   { ShowHyToolPanel(); SetActiveTab(4); }
+        /// <summary>显示底板配筋命令组。</summary>
+        public void ShowBaseReinPanel()  => OpenHyBlenderPanelAndSelectTab("底板配筋");
 
-        [Obsolete("使用 ShowHyToolPanel() 替代")]
-        public void ShowFilterPanel()    { ShowHyToolPanel(); SetActiveTab(5); }
+        /// <summary>显示聚类命令组。</summary>
+        public void ShowClusterPanel()   => OpenHyBlenderPanelAndSelectTab("块引线");
 
-        /// <summary>显示道路面板 → 打开 HY 面板并切到道路 Tab。</summary>
-        public void ShowRoadPanel()      { ShowHyToolPanel(); SetActiveTab(6); }
+        /// <summary>显示过滤 Tab。</summary>
+        public void ShowFilterPanel()
+            => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.FilterTabKey);
 
-        #pragma warning restore CS0618
-
-        // ===== 私有方法 =====
-
-        /// <summary>[Obsolete] 创建 HY 参数面板实例（原 HyToolPanel + 独立 PaletteSet）。</summary>
-        [Obsolete("HyToolPanel 已退役；生产路径改走 CreateHyBlenderPanel")]
-        private void CreateHyToolPanel()
-        {
-            RegisterDocumentEvents();
-
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            var docName = doc?.Name ?? "default";
-            var styleService = _componentContext.Resolve<Domain.Interfaces.IStyleService>();
-            var settingsVm = ViewModels.SettingsPanelViewModel.GetOrCreate(docName, styleService);
-
-            _panelInstance = new Views.HyToolPanel(settingsVm);
-
-            _hyPaletteSet = new PaletteSet("HY 工具", HyToolPanelGuid)
-            {
-                Size = new System.Drawing.Size(320, 680),
-                MinimumSize = new System.Drawing.Size(260, 420),
-                DockEnabled = (DockSides)((int)DockSides.Left | (int)DockSides.Right),
-                Style = PaletteSetStyles.ShowCloseButton |
-                        PaletteSetStyles.ShowAutoHideButton |
-                        PaletteSetStyles.Snappable
-            };
-
-            _hyPaletteSet.AddVisual("HY 工具", _panelInstance);
-            _hyPaletteSet.Visible = true;
-        }
+        /// <summary>显示道路命令组。</summary>
+        public void ShowRoadPanel()      => OpenHyBlenderPanelAndSelectTab("道路");
 
         /// <summary>创建 Blender 命令面板实例（独立 PaletteSet）。</summary>
         private void CreateHyBlenderPanel()
         {
+            RegisterDocumentEvents();
+
             var blenderVm = new ViewModels.HyBlenderPanelViewModel();
             _blenderPanel = new Views.HyBlenderPanel(blenderVm);
 
@@ -207,52 +133,51 @@ namespace HyCADTool.Refactored.Presentation
             };
 
             _blenderPaletteSet.AddVisual("HyCAD 命令", _blenderPanel);
+            _blenderPaletteSet.StateChanged += OnBlenderPaletteStateChanged;
             _blenderPaletteSet.Visible = true;
+
+            TryStripBlenderCaptionIfDocked();
         }
 
-        /// <summary>切换 HY 参数面板内嵌 TabControl 的激活 Tab。</summary>
-        private void SetActiveTab(int index)
+        /// <summary>
+        /// 监听 Dock/Float/显示切换；Dock 时抹掉原生标题栏，Float 时什么都不做（保留原框以便拖拽）。
+        /// HWND 在 Dock/Float 切换后会重建，所以每次 StateChanged 都重抹一次。
+        /// </summary>
+        private void OnBlenderPaletteStateChanged(object sender, PaletteSetStateEventArgs e)
         {
-            if (_panelInstance == null) return;
-
-            void Apply() => _panelInstance.MainTabControl.SelectedIndex = index;
-
-            if (_panelInstance.Dispatcher.CheckAccess())
-                Apply();
-            else
-                _panelInstance.Dispatcher.Invoke(Apply);
+            TryStripBlenderCaptionIfDocked();
         }
 
-        /// <summary>更新 HY 面板所有 DataContext（文档切换时）。</summary>
-        private void UpdateDataContexts(string documentName)
+        /// <summary>
+        /// 仅当 <c>_blenderPaletteSet.Dock != DockSides.None</c> 时抹框。
+        /// 延迟 1 个 Dispatcher tick 再抹，等 AutoCAD 内部 HWND 创建完毕。
+        /// </summary>
+        private void TryStripBlenderCaptionIfDocked()
         {
-            if (_panelInstance == null) return;
+            if (_blenderPaletteSet == null || _blenderPanel == null) return;
+            if (_blenderPaletteSet.Dock == DockSides.None) return;
 
-            try
-            {
-                var styleService = _componentContext.Resolve<Domain.Interfaces.IStyleService>();
-                var settingsVm = ViewModels.SettingsPanelViewModel.GetOrCreate(documentName, styleService);
-
-                if (_panelInstance.Dispatcher.CheckAccess())
-                    _panelInstance.DataContext = settingsVm;
-                else
-                    _panelInstance.Dispatcher.Invoke(() => _panelInstance.DataContext = settingsVm);
-
-                _panelInstance.UpdatePilePanelDataContext(documentName);
-            }
-            catch
-            {
-                // 静默失败
-            }
+            _blenderPanel.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Loaded,
+                new Action(() =>
+                {
+                    try
+                    {
+                        Infrastructure.AutoCAD.UI.PaletteTitleBarStripper.TryStripCaption("HyCAD 命令");
+                    }
+                    catch
+                    {
+                    }
+                }));
         }
 
+        /// <summary>注册一次文档级事件：DocumentToBeDestroyed → 清理对应文档的 VM 缓存。</summary>
         private void RegisterDocumentEvents()
         {
             if (_documentEventsRegistered) return;
 
             try
             {
-                AcApp.DocumentManager.DocumentBecameCurrent += OnDocumentBecameCurrent;
                 AcApp.DocumentManager.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
                 _documentEventsRegistered = true;
             }
@@ -260,12 +185,6 @@ namespace HyCADTool.Refactored.Presentation
             {
                 // 静默失败
             }
-        }
-
-        private void OnDocumentBecameCurrent(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
-        {
-            if (e.Document == null) return;
-            UpdateDataContexts(e.Document.Name);
         }
 
         private void OnDocumentToBeDestroyed(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)

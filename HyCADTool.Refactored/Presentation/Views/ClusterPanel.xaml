@@ -6,176 +6,177 @@
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              mc:Ignorable="d"
              d:DesignHeight="1800" d:DesignWidth="250"
-             Background="#3b4453">
+             Background="{DynamicResource Brush_RegionBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <StackPanel Margin="5,10,5,5" Background="#3b4453">
-        <Button Margin="0,2" Command="{Binding ExecuteDrawCommand}" Content="生成标注" />
+    <StackPanel Margin="5,10,5,5">
+        <Button Style="{StaticResource BlenderButtonFlat}" Margin="0,2" Command="{Binding ExecuteDrawCommand}" Content="生成标注" />
 
-        <Expander Header="聚类参数" IsExpanded="True" Margin="0,0,0,10">
+        <Expander Style="{StaticResource BlenderExpander}" Header="聚类参数" IsExpanded="True" Margin="0,0,0,10">
             <StackPanel>
-                <TextBlock Margin="0,5,0,2" Text="X方向聚类参数" />
+                <TextBlock Margin="0,5,0,2" Text="X方向聚类参数" Foreground="{DynamicResource Brush_TextPrimary}" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="EpsilonX" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="EpsilonX" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="EpsilonY" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-
-                <TextBlock Margin="0,5,0,2" Text="Y方向聚类参数" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="EpsilonX" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="EpsilonY" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="过滤容差" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding DistanceThreshold, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="最小点数" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding MinPoints, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="EpsilonY" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigX.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
-                <TextBlock Margin="0,5,0,2" Text="扩展边距 (单位 mm)" />
+                <TextBlock Margin="0,5,0,2" Text="Y方向聚类参数" Foreground="{DynamicResource Brush_TextPrimary}" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="左边距" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginLeft, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="EpsilonX" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonX, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="上边距" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginTop, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="EpsilonY" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ClusterConfigY.EpsilonY, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="右边距" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginRight, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="过滤容差" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding DistanceThreshold, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="下边距" />
-                    <TextBox Grid.Column="1" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginBottom, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="最小点数" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding MinPoints, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
 
-                <TextBlock Margin="0,5,0,2" Text="方案选择" />
+                <TextBlock Margin="0,5,0,2" Text="扩展边距 (单位 mm)" Foreground="{DynamicResource Brush_TextPrimary}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="左边距" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginLeft, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="上边距" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginTop, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="右边距" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginRight, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="下边距" Foreground="{DynamicResource Brush_TextPrimary}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" helper:TextBoxHelper.EnableCustomHandlers="True" Text="{Binding ExpandMarginBottom, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+
+                <TextBlock Margin="0,5,0,2" Text="方案选择" Foreground="{DynamicResource Brush_TextPrimary}" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Command="{Binding LoadPreset1Command}" Content="方案1" />
-                    <Button Grid.Column="1" Command="{Binding LoadPreset2Command}" Content="方案2" />
-                    <Button Grid.Column="2" Command="{Binding LoadPreset3Command}" Content="方案3" />
+                    <Button Grid.Column="0" Style="{StaticResource BlenderButtonFlat}" Command="{Binding LoadPreset1Command}" Content="方案1" />
+                    <Button Grid.Column="1" Style="{StaticResource BlenderButtonFlat}" Command="{Binding LoadPreset2Command}" Content="方案2" />
+                    <Button Grid.Column="2" Style="{StaticResource BlenderButtonFlat}" Command="{Binding LoadPreset3Command}" Content="方案3" />
                 </Grid>
 
 
                 <!-- 点类 -->
-                <Separator Margin="0,5"/>
-                <TextBlock Text="参与聚类点开关" Foreground="LightGray" Margin="0,5,0,2"/>
+                <Separator Style="{StaticResource BlenderSeparator}" Margin="0,5"/>
+                <TextBlock Text="参与聚类点开关" Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,5,0,2"/>
                 <UniformGrid Columns="2">
-                    <CheckBox Content="基础轮廓点" IsChecked="{Binding IncludeBPs}" />
-                    <CheckBox Content="轴线交点" IsChecked="{Binding IncludeAAPs}" />
-                    <CheckBox Content="基础轴线交点" IsChecked="{Binding IncludeBAPs}" />
-                    <CheckBox Content="螺栓点" IsChecked="{Binding IncludeABs}" />
-                    <CheckBox Content="钢板点" IsChecked="{Binding IncludeSteelPlatePs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="基础轮廓点" IsChecked="{Binding IncludeBPs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="轴线交点" IsChecked="{Binding IncludeAAPs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="基础轴线交点" IsChecked="{Binding IncludeBAPs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="螺栓点" IsChecked="{Binding IncludeABs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="钢板点" IsChecked="{Binding IncludeSteelPlatePs}" />
                 </UniformGrid>
 
             </StackPanel>
         </Expander>
 
         <!-- 绘图开关 -->
-        <Expander Header="绘图开关" IsExpanded="True" Margin="0,0,0,10">
+        <Expander Style="{StaticResource BlenderExpander}" Header="绘图开关" IsExpanded="True" Margin="0,0,0,10">
             <StackPanel Margin="5">
 
                 <!-- 点类 -->
-                <TextBlock Text="点类" Foreground="LightGray" Margin="0,5,0,2"/>
+                <TextBlock Text="点类" Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,5,0,2"/>
                 <UniformGrid Columns="2">
-                    <CheckBox Content="基础轮廓点" IsChecked="{Binding DrawBPs}" />
-                    <CheckBox Content="轴线交点" IsChecked="{Binding DrawAAPs}" />
-                    <CheckBox Content="基础轴线交点" IsChecked="{Binding DrawBAPs}" />
-                    <CheckBox Content="螺栓点" IsChecked="{Binding DrawABs}" />
-                    <CheckBox Content="钢板点" IsChecked="{Binding DrawSteelPlatePs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="基础轮廓点" IsChecked="{Binding DrawBPs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="轴线交点" IsChecked="{Binding DrawAAPs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="基础轴线交点" IsChecked="{Binding DrawBAPs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="螺栓点" IsChecked="{Binding DrawABs}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="钢板点" IsChecked="{Binding DrawSteelPlatePs}" />
                 </UniformGrid>
-                <Separator Margin="0,5"/>
+                <Separator Style="{StaticResource BlenderSeparator}" Margin="0,5"/>
 
                 <!-- 聚类图形 -->
-                <TextBlock Text="聚类图形" Foreground="LightGray" Margin="0,5,0,2"/>
+                <TextBlock Text="聚类图形" Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,5,0,2"/>
                 <UniformGrid Columns="2">
-                    <CheckBox Content="X向绘制" IsChecked="{Binding DrawClusterX}" />
-                    <CheckBox Content="Y向绘制" IsChecked="{Binding DrawClusterY}" />                    
-                    <CheckBox Content="外包矩形" IsChecked="{Binding DrawClusterEnvelopePolyline}" />
-                    <CheckBox Content="扩展外包矩形" IsChecked="{Binding DrawClusterExpandedEnvelope}" />
-                    <CheckBox Content="凸包" IsChecked="{Binding DrawClusterHull}" />
-                    <CheckBox Content="交点" IsChecked="{Binding DrawClusterPts}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="X向绘制" IsChecked="{Binding DrawClusterX}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="Y向绘制" IsChecked="{Binding DrawClusterY}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="外包矩形" IsChecked="{Binding DrawClusterEnvelopePolyline}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="扩展外包矩形" IsChecked="{Binding DrawClusterExpandedEnvelope}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="凸包" IsChecked="{Binding DrawClusterHull}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="交点" IsChecked="{Binding DrawClusterPts}" />
                 </UniformGrid>
-                <Separator Margin="0,5"/>
+                <Separator Style="{StaticResource BlenderSeparator}" Margin="0,5"/>
 
                 <!-- 标注 -->
-                <TextBlock Text="标注" Foreground="LightGray" Margin="0,5,0,2"/>
+                <TextBlock Text="标注" Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,5,0,2"/>
                 <UniformGrid Columns="2">
-                    <CheckBox Content="标注X" IsChecked="{Binding DrawDimX}" />
-                    <CheckBox Content="标注Y" IsChecked="{Binding DrawDimY}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="标注X" IsChecked="{Binding DrawDimX}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="标注Y" IsChecked="{Binding DrawDimY}" />
                 </UniformGrid>
-                <Separator Margin="0,5"/>
+                <Separator Style="{StaticResource BlenderSeparator}" Margin="0,5"/>
 
                 <!-- 辅助图形 -->
-                <TextBlock Text="辅助构件" Foreground="LightGray" Margin="0,5,0,2"/>
+                <TextBlock Text="辅助构件" Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,5,0,2"/>
                 <UniformGrid Columns="2">
-                    <CheckBox Content="轴线圆" IsChecked="{Binding DrawAxisCircle}" />
-                    <CheckBox Content="轴线文字" IsChecked="{Binding DrawAxisText}" />
-                    <CheckBox Content="区域框" IsChecked="{Binding DrawRegionFrame}" />
-                    <CheckBox Content="区域文字" IsChecked="{Binding DrawRegionText}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="轴线圆" IsChecked="{Binding DrawAxisCircle}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="轴线文字" IsChecked="{Binding DrawAxisText}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="区域框" IsChecked="{Binding DrawRegionFrame}" />
+                    <CheckBox Style="{StaticResource BlenderCheckBox}" Content="区域文字" IsChecked="{Binding DrawRegionText}" />
                 </UniformGrid>
 
             </StackPanel>

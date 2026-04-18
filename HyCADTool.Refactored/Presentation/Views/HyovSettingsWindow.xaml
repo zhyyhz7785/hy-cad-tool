@@ -4,7 +4,18 @@
         Title="HYOV 参数设置" Height="600" Width="500"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        Background="{DynamicResource Brush_WindowBack}"
+        Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -12,84 +23,84 @@
         </Grid.RowDefinitions>
 
         <!-- 参数设置区域 -->
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="0" Style="{StaticResource BlenderScrollViewer}" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                
+
                 <!-- 绘图单位选择 -->
-                <GroupBox Header="绘图单位" Margin="0,0,0,10">
+                <GroupBox Style="{StaticResource BlenderGroupBox}" Header="绘图单位" Margin="0,0,0,10">
                     <StackPanel Margin="10">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="当前单位：" Width="150" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="cmbDrawingUnit" Width="200" SelectionChanged="CmbDrawingUnit_SelectionChanged">
+                            <TextBlock Text="当前单位：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="cmbDrawingUnit" Style="{StaticResource BlenderComboBox}" Width="200" SelectionChanged="CmbDrawingUnit_SelectionChanged">
                                 <ComboBoxItem Content="毫米 (mm)" Tag="Millimeter" IsSelected="True"/>
                                 <ComboBoxItem Content="米 (m)" Tag="Meter"/>
                             </ComboBox>
                         </StackPanel>
-                        <TextBlock Text="切换单位时，所有参数值将自动换算（1m = 1000mm）" Margin="150,0,0,5" Foreground="DarkOrange" FontSize="11" FontWeight="Bold"/>
+                        <TextBlock Text="切换单位时，所有参数值将自动换算（1m = 1000mm）" Margin="150,0,0,5" Foreground="{DynamicResource Brush_Warning}" FontSize="11" FontWeight="Bold"/>
                     </StackPanel>
                 </GroupBox>
-                
+
                 <!-- OVERKILL 基础清理 -->
-                <GroupBox Header="OVERKILL 基础清理" Margin="0,0,0,10">
+                <GroupBox Style="{StaticResource BlenderGroupBox}" Header="OVERKILL 基础清理" Margin="0,0,0,10">
                     <StackPanel Margin="10">
-                        <CheckBox x:Name="chkEnablePreClean" Content="启用预清理（合并重叠和平行线）" IsChecked="True" Margin="0,0,0,10"/>
-                        
+                        <CheckBox x:Name="chkEnablePreClean" Style="{StaticResource BlenderCheckBox}" Content="启用预清理（合并重叠和平行线）" IsChecked="True" Margin="0,0,0,10"/>
+
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="几何容差：" Width="150" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtGeometricTolerance" Width="100" Text="0.000001"/>
-                            <TextBlock Text=" (推荐 1e-6)" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="Gray"/>
+                            <TextBlock Text="几何容差：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtGeometricTolerance" Style="{StaticResource BlenderTextBox}" Width="100" Text="0.000001"/>
+                            <TextBlock Text=" (推荐 1e-6)" Foreground="{DynamicResource Brush_TextSecondary}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                        
+
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="平行线合并距离：" Width="150" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtParallelMergeDistance" Width="100" Text="1.0"/>
-                            <TextBlock Text=" (单位)" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="Gray"/>
+                            <TextBlock Text="平行线合并距离：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtParallelMergeDistance" Style="{StaticResource BlenderTextBox}" Width="100" Text="1.0"/>
+                            <TextBlock Text=" (单位)" Foreground="{DynamicResource Brush_TextSecondary}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
                     </StackPanel>
                 </GroupBox>
 
                 <!-- FILLET 自动连接 -->
-                <GroupBox Header="FILLET 自动连接" Margin="0,0,0,10">
+                <GroupBox Style="{StaticResource BlenderGroupBox}" Header="FILLET 自动连接" Margin="0,0,0,10">
                     <StackPanel Margin="10">
-                        <CheckBox x:Name="chkEnableBreakLines" Content="启用打断相交线段" IsChecked="True" Margin="0,0,0,5"/>
-                        <CheckBox x:Name="chkEnableExtendEndpoints" Content="启用端点延伸" IsChecked="True" Margin="0,0,0,5"/>
-                        <CheckBox x:Name="chkEnableExtendToLine" Content="启用端点到线延伸" IsChecked="True" Margin="0,0,0,10"/>
-                        
+                        <CheckBox x:Name="chkEnableBreakLines" Style="{StaticResource BlenderCheckBox}" Content="启用打断相交线段" IsChecked="True" Margin="0,0,0,5"/>
+                        <CheckBox x:Name="chkEnableExtendEndpoints" Style="{StaticResource BlenderCheckBox}" Content="启用端点延伸" IsChecked="True" Margin="0,0,0,5"/>
+                        <CheckBox x:Name="chkEnableExtendToLine" Style="{StaticResource BlenderCheckBox}" Content="启用端点到线延伸" IsChecked="True" Margin="0,0,0,10"/>
+
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="最小线段长度：" Width="150" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtMinLineLength" Width="100" Text="5.0"/>
-                            <TextBlock Text=" (单位)" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="Gray"/>
+                            <TextBlock Text="最小线段长度：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtMinLineLength" Style="{StaticResource BlenderTextBox}" Width="100" Text="5.0"/>
+                            <TextBlock Text=" (单位)" Foreground="{DynamicResource Brush_TextSecondary}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="长度 &lt; 此值的线段将被删除，≥ 此值的线段将被保留" Margin="150,0,0,5" Foreground="Gray" FontSize="11"/>
-                        <TextBlock Text="（推荐：mm单位 5.0，m单位 0.005）" Margin="150,0,0,5" Foreground="DarkOrange" FontSize="11" FontWeight="Bold"/>
-                        
+                        <TextBlock Text="长度 &lt; 此值的线段将被删除，≥ 此值的线段将被保留" Margin="150,0,0,5" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="11"/>
+                        <TextBlock Text="（推荐：mm单位 5.0，m单位 0.005）" Margin="150,0,0,5" Foreground="{DynamicResource Brush_Warning}" FontSize="11" FontWeight="Bold"/>
+
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                            <TextBlock Text="端点延伸最大距离：" Width="150" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtMaxExtendDistance" Width="100" Text="10.0"/>
-                            <TextBlock Text=" (单位)" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="Gray"/>
+                            <TextBlock Text="端点延伸最大距离：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtMaxExtendDistance" Style="{StaticResource BlenderTextBox}" Width="100" Text="10.0"/>
+                            <TextBlock Text=" (单位)" Foreground="{DynamicResource Brush_TextSecondary}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="端点距离小于此值时自动延伸连接" Margin="150,0,0,5" Foreground="Gray" FontSize="11"/>
+                        <TextBlock Text="端点距离小于此值时自动延伸连接" Margin="150,0,0,5" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="11"/>
                     </StackPanel>
                 </GroupBox>
 
                 <!-- 独立端点标记 -->
-                <GroupBox Header="独立端点标记" Margin="0,0,0,10">
+                <GroupBox Style="{StaticResource BlenderGroupBox}" Header="独立端点标记" Margin="0,0,0,10">
                     <StackPanel Margin="10">
-                        <CheckBox x:Name="chkShowIndependentEndpoints" Content="显示独立端点标记" IsChecked="True" Margin="0,0,0,10"/>
-                        
+                        <CheckBox x:Name="chkShowIndependentEndpoints" Style="{StaticResource BlenderCheckBox}" Content="显示独立端点标记" IsChecked="True" Margin="0,0,0,10"/>
+
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="端点检测容差：" Width="150" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtIndependentEndpointTolerance" Width="100" Text="1.0"/>
-                            <TextBlock Text=" (单位)" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="Gray"/>
+                            <TextBlock Text="端点检测容差：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtIndependentEndpointTolerance" Style="{StaticResource BlenderTextBox}" Width="100" Text="1.0"/>
+                            <TextBlock Text=" (单位)" Foreground="{DynamicResource Brush_TextSecondary}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="距离小于此值的端点视为连接" Margin="150,0,0,5" Foreground="Gray" FontSize="11"/>
-                        
+                        <TextBlock Text="距离小于此值的端点视为连接" Margin="150,0,0,5" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="11"/>
+
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                            <TextBlock Text="标记缩放倍数：" Width="150" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtMarkerScale" Width="100" Text="20.0"/>
-                            <TextBlock Text=" (倍)" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="Gray"/>
+                            <TextBlock Text="标记缩放倍数：" Width="150" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtMarkerScale" Style="{StaticResource BlenderTextBox}" Width="100" Text="20.0"/>
+                            <TextBlock Text=" (倍)" Foreground="{DynamicResource Brush_TextSecondary}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="标记显示大小（基准：长10，宽3）" Margin="150,0,0,5" Foreground="Gray" FontSize="11"/>
+                        <TextBlock Text="标记显示大小（基准：长10，宽3）" Margin="150,0,0,5" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="11"/>
                     </StackPanel>
                 </GroupBox>
 
@@ -98,10 +109,9 @@
 
         <!-- 按钮区域 -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button x:Name="btnReset" Content="重置默认" Width="80" Height="30" Margin="0,0,10,0" Click="BtnReset_Click"/>
-            <Button x:Name="btnOK" Content="确定" Width="80" Height="30" Margin="0,0,10,0" IsDefault="True" Click="BtnOK_Click"/>
-            <Button x:Name="btnCancel" Content="取消" Width="80" Height="30" IsCancel="True" Click="BtnCancel_Click"/>
+            <Button x:Name="btnReset" Style="{StaticResource BlenderButtonFlat}" Content="重置默认" Width="80" Height="30" Margin="0,0,10,0" Click="BtnReset_Click"/>
+            <Button x:Name="btnOK" Style="{StaticResource BlenderButton}" Content="确定" Width="80" Height="30" Margin="0,0,10,0" IsDefault="True" Click="BtnOK_Click"/>
+            <Button x:Name="btnCancel" Style="{StaticResource BlenderButtonFlat}" Content="取消" Width="80" Height="30" IsCancel="True" Click="BtnCancel_Click"/>
         </StackPanel>
     </Grid>
 </Window>
-
