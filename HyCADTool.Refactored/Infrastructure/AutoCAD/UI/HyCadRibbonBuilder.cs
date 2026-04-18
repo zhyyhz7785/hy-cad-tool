@@ -23,13 +23,45 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
         public const string TabTitle = "HyCAD";
 
         /// <summary>
+        /// 自愈订阅句柄。Ribbon 在以下场景会被 AutoCAD 重建（旧 Tab 全部失效）：
+        /// - 用户输 RIBBONCLOSE 后再开 RIBBON
+        /// - 切换工作区（WSCURRENT）
+        /// - 加载新的 cuix
+        /// 监听 ComponentManager.ItemInitialized，发现 Ribbon 重建时自动重挂选项卡。
+        /// </summary>
+        private static EventHandler<RibbonItemEventArgs> _itemInitializedHandler;
+
+        /// <summary>
         /// 构建并挂载 Ribbon 选项卡。可重复调用（重入时先清理旧标签），C2 热重载友好。
         /// </summary>
         public static void Build()
         {
+            EnsureSelfHealSubscribed();
+
             var ribbon = ComponentManager.Ribbon;
             if (ribbon == null) return;
 
+            BuildOnto(ribbon);
+        }
+
+        /// <summary>从 Ribbon 上移除 HyCAD 选项卡，并解绑自愈事件。PluginInitializer.Terminate / C2 重载前调用。</summary>
+        public static void Teardown()
+        {
+            UnsubscribeSelfHeal();
+
+            var ribbon = ComponentManager.Ribbon;
+            if (ribbon == null) return;
+            Teardown(ribbon);
+        }
+
+        private static void Teardown(RibbonControl ribbon)
+        {
+            var existing = ribbon.Tabs.FirstOrDefault(t => t.Id == TabId);
+            if (existing != null) ribbon.Tabs.Remove(existing);
+        }
+
+        private static void BuildOnto(RibbonControl ribbon)
+        {
             Teardown(ribbon);
 
             var tab = new RibbonTab
@@ -55,18 +87,37 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
             }
         }
 
-        /// <summary>从 Ribbon 上移除 HyCAD 选项卡。PluginInitializer.Terminate / C2 重载前调用。</summary>
-        public static void Teardown()
+        private static void EnsureSelfHealSubscribed()
         {
-            var ribbon = ComponentManager.Ribbon;
-            if (ribbon == null) return;
-            Teardown(ribbon);
+            if (_itemInitializedHandler != null) return;
+
+            // 事件只作触发器：Ribbon 任何子项初始化都尝试核对一次自家 Tab 是否还在。
+            // RibbonItemEventArgs.Item 是 RibbonItem 基类，无法与 RibbonControl 直接比较，
+            // 所以这里不依赖事件参数，统一由 Tabs.Any(...) 做幂等判断。
+            _itemInitializedHandler = (sender, e) =>
+            {
+                try
+                {
+                    var ribbon = ComponentManager.Ribbon;
+                    if (ribbon == null) return;
+                    if (ribbon.Tabs.Any(t => t.Id == TabId)) return;
+                    BuildOnto(ribbon);
+                }
+                catch
+                {
+                    // 自愈失败不应影响 AutoCAD 主循环。
+                }
+            };
+
+            try { ComponentManager.ItemInitialized += _itemInitializedHandler; }
+            catch { _itemInitializedHandler = null; }
         }
 
-        private static void Teardown(RibbonControl ribbon)
+        private static void UnsubscribeSelfHeal()
         {
-            var existing = ribbon.Tabs.FirstOrDefault(t => t.Id == TabId);
-            if (existing != null) ribbon.Tabs.Remove(existing);
+            if (_itemInitializedHandler == null) return;
+            try { ComponentManager.ItemInitialized -= _itemInitializedHandler; } catch { }
+            _itemInitializedHandler = null;
         }
 
         private static RibbonPanel BuildCategoryPanel(CategoryGroup group)

@@ -9,9 +9,74 @@ using System.Reflection;
 using System.Resources;
 
 [assembly: CommandClass(typeof(HyCADTool.ReCall.ReCallClass))]
+[assembly: ExtensionApplication(typeof(HyCADTool.ReCall.ReCallExtension))]
 
 namespace HyCADTool.ReCall
 {
+    /// <summary>
+    /// ReCall 启动钩子（v2.1）：让 AutoCAD NETLOAD ReCall.dll 后无需手动输 C2，
+    /// 自动触发一次 <see cref="ReCallClass.Reload"/>，使 PluginInitializer 跑完，
+    /// Ribbon / CUIX 菜单 / 命令表全部就位 —— 用户开 CAD 即见 HyCAD 入口。
+    ///
+    /// 为什么 ReCall 可以走 IExtensionApplication：
+    /// - Refactored.dll 不能走（注释见下方 Recall.cs 顶部 v2 说明：会与 C2 反射调用形成双初始化）。
+    /// - ReCall.dll 是单一入口、AutoCAD 唯一直接 NETLOAD 的程序集，
+    ///   IExtensionApplication.Initialize 在这里就是"启动唯一入口"，不会重复。
+    ///
+    /// 时序：
+    /// - AutoCAD 调 Initialize 时 MdiActiveDocument 可能还未就绪（启动套件加载阶段尤其如此）。
+    /// - 通过 Application.Idle 事件延迟到第一个空闲帧再调 Reload，此时文档/命令行/Ribbon 都已可用。
+    /// - Idle 处理完毕立即解绑，避免重复触发。
+    ///
+    /// Terminate 不做任何事：AutoCAD 关闭时 PluginInitializer.Terminate 会被现有清理路径调用。
+    /// </summary>
+    public sealed class ReCallExtension : Autodesk.AutoCAD.Runtime.IExtensionApplication
+    {
+        public void Initialize()
+        {
+            try
+            {
+                Application.Idle += OnIdleAutoReload;
+            }
+            catch
+            {
+                // Initialize 内任何异常都会被 AutoCAD 升级为致命错误，吞掉以保护启动。
+            }
+        }
+
+        public void Terminate()
+        {
+            // 不做任何事，避免 shutdown 流程被打断。
+        }
+
+        private static void OnIdleAutoReload(object sender, EventArgs e)
+        {
+            try { Application.Idle -= OnIdleAutoReload; } catch { }
+
+            try
+            {
+                var doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null)
+                {
+                    // 没文档（极少见，例如批处理模式）就放弃自动加载，让用户手动 C2。
+                    return;
+                }
+                doc.Editor.WriteMessage("\nReCall: 自动加载 HyCADTool.Refactored …");
+                new ReCallClass().Reload();
+            }
+            catch (System.Exception ex)
+            {
+                try
+                {
+                    Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
+                        "\nReCall: 自动加载失败（请手动输入 C2）：" + ex.Message);
+                }
+                catch { }
+            }
+        }
+    }
+
+
     /// <summary>
     /// ReCall 热重启底座（v2 架构：命令表 + 反射调度）。
     ///

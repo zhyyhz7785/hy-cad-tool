@@ -58,9 +58,37 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
                 {
                     return;
                 }
+                catch
+                {
+                    // 构建失败：防止留下 0 字节或半成品 cuix 触发后续 AutoCAD CUI 体系破坏
+                    // （会导致 Autodesk.Internal.Windows.Badge.xaml 加载时 native 崩）
+                    SafeDeleteCorruptCuix(target);
+                    return;
+                }
             }
 
-            LoadPartialMenu(target);
+            try
+            {
+                LoadPartialMenu(target);
+            }
+            catch
+            {
+                // LoadPartialMenu 失败 → 文件破损、删除避免下次启动再触发
+                SafeDeleteCorruptCuix(target);
+            }
+        }
+
+        /// <summary>
+        /// 删除"明显损坏"的 cuix（仅在我们识别到加载失败时调用）。
+        /// 不要无条件删除：用户可能装了同名手工 cuix。
+        /// </summary>
+        private static void SafeDeleteCorruptCuix(string path)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch { }
         }
 
         /// <summary>卸载 HyCAD 菜单组（幂等）。</summary>
@@ -87,6 +115,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
         private static bool NeedsRebuild(string target)
         {
             if (!File.Exists(target)) return true;
+
+            // 0 字节或异常小：必为损坏（cuix 是 zip，最小有效 ~ 数 KB）。
+            // 历史经验：一次 BuildCuix 中途失败留下 0 字节文件 → AutoCAD CUI 体系
+            // 加载该文件时 ZipArchive.Central Directory corrupt → Badge.xaml 二次崩溃 → 致命错误。
+            try
+            {
+                var fi = new FileInfo(target);
+                if (fi.Length < 512) return true;
+            }
+            catch { return true; }
 
             var jsonMtime = CommandTable.GetFileMtimeUtc();
             if (!jsonMtime.HasValue) return false;

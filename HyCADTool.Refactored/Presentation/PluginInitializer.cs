@@ -286,10 +286,19 @@ namespace HyCADTool.Refactored.Presentation
                     try
                     {
                         var ex = e.Exception;
-                        WriteMessage($"\n  ✗ [WPF UI] {ex.GetType().Name}: {ex.Message}");
-                        if (ex.InnerException != null)
-                            WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
-                        WriteMessage($"\n    堆栈：{ex.StackTrace}");
+                        // 关闭流程中 MdiActiveDocument 可能已为 null，包一层防御
+                        try
+                        {
+                            var doc = AcApp.DocumentManager?.MdiActiveDocument;
+                            if (doc != null)
+                            {
+                                doc.Editor?.WriteMessage($"\n  ✗ [WPF UI] {ex.GetType().Name}: {ex.Message}");
+                                if (ex.InnerException != null)
+                                    doc.Editor?.WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                                doc.Editor?.WriteMessage($"\n    堆栈：{ex.StackTrace}");
+                            }
+                        }
+                        catch { }
                         // 标记已处理，让 AutoCAD 不要把它升级成致命错误
                         e.Handled = true;
                     }
@@ -312,13 +321,43 @@ namespace HyCADTool.Refactored.Presentation
             }
         }
 
-        /// <summary>把 PresentationTraceSources 错误转发到 AutoCAD 命令行。</summary>
+        /// <summary>
+        /// 把 PresentationTraceSources 错误转发到 AutoCAD 命令行。
+        /// 过滤掉 AutoCAD 自家 Ribbon (Autodesk.Windows.ComboBoxControl 等) 的噪音，
+        /// 只保留来自 HyCAD 命名空间或 BlenderUI 的错误。
+        /// </summary>
         private sealed class BindingErrorListener : System.Diagnostics.TraceListener
         {
             private readonly Action<string> _write;
             public BindingErrorListener(Action<string> write) { _write = write; }
-            public override void Write(string message) { try { _write?.Invoke(message); } catch { } }
-            public override void WriteLine(string message) { try { _write?.Invoke("\n  [WPF Binding] " + message); } catch { } }
+            public override void Write(string message) { TryWrite(message, false); }
+            public override void WriteLine(string message) { TryWrite(message, true); }
+
+            private void TryWrite(string message, bool newline)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(message)) return;
+
+                    // 白名单：只保留本项目相关的 binding 错误
+                    // （AutoCAD 内部 Menu/Ribbon/Badge 的 mBorder 模板会刷几百条，
+                    //  逐条 forward 到命令栏会同步阻塞 UI 线程导致点击卡死）
+                    bool isProjectRelevant =
+                        message.IndexOf("HyCAD", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        message.IndexOf("BaseReinVm", StringComparison.Ordinal) >= 0 ||
+                        message.IndexOf("Settings.", StringComparison.Ordinal) >= 0 ||
+                        message.IndexOf("PreferencesVm", StringComparison.Ordinal) >= 0 ||
+                        message.IndexOf("FilterVm", StringComparison.Ordinal) >= 0 ||
+                        message.IndexOf("SettingsVm", StringComparison.Ordinal) >= 0;
+
+                    if (!isProjectRelevant) return;
+
+                    // 项目相关的 binding 错误也不再 forward 到命令栏（同步 IO 会阻塞 UI 线程）；
+                    // 仅把消息丢到 Debug 输出，需要诊断时再用 PresentationTraceSources 临时打开。
+                    System.Diagnostics.Debug.WriteLine("[HyCAD WPF Binding] " + message);
+                }
+                catch { }
+            }
         }
 
         /// <summary>预热 HyPreferencesView 下所有 SubView，把跨程序集 pack URI + StaticResource 解析问题前置到 Initialize 同步阶段。</summary>
@@ -345,7 +384,13 @@ namespace HyCADTool.Refactored.Presentation
             {
                 try
                 {
-                    var uri = new System.Uri("pack://application:,,," + v.Path, System.UriKind.Absolute);
+                    // Application.LoadComponent 第一参数必须是【相对 URI】（pack 里不能直接传绝对）
+                    // 真要绝对必须先 GetContentStream + XamlReader.Load，但这里相对就够：
+                    // ;component 后面那段就是 SourceAssembly 内的相对路径
+                    var rel = v.Path.StartsWith("/") ? v.Path.Substring(1) : v.Path;
+                    int compIdx = rel.IndexOf(";component/", StringComparison.Ordinal);
+                    var relPath = compIdx >= 0 ? rel.Substring(compIdx + ";component/".Length) : rel;
+                    var uri = new System.Uri(relPath, System.UriKind.Relative);
                     var obj = System.Windows.Application.LoadComponent(uri);
                     if (obj == null)
                     {
@@ -363,7 +408,6 @@ namespace HyCADTool.Refactored.Presentation
                     WriteMessage($"\n  ✗ {v.Name} 预热失败：{ex.GetType().Name}: {ex.Message}");
                     if (ex.InnerException != null)
                         WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
-                    WriteMessage($"\n    堆栈：{ex.StackTrace}");
                 }
             }
 

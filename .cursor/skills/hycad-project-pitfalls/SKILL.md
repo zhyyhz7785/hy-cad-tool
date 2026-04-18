@@ -5,13 +5,17 @@ description: |
   覆盖：AutoCAD API 多文档 / 单例 Database 缓存 / Table Title 自动合并 / 样式与图层初始化 / 配置分裂；
   WPF + PaletteSet 宿主：隐式 Style 原生崩溃 / StaticResource 跨字典 / DynamicResource 类型错配 /
   ControlTemplate.Triggers 位置 / Trigger.TargetName 可达性 / MarkupExtension 当 Converter 递归 /
-  子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆。
-  使用场景：写 AutoCAD 命令 / 新建 WPF 面板 / 改资源字典 / 迁移命令到 Refactored / 多文档联调 / 建 Table。
+  子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆；
+  Debug 方法论：调试类与调用点同步删除 / session ID 不入生产代码 /
+  Dispatcher.UnhandledException handler shutdown 流程 NRE 升级原生致命 /
+  PresentationTraceSources Binding 错误同步阻塞 UI 线程 / VS 错误清单按编译阻塞性分类。
+  使用场景：写 AutoCAD 命令 / 新建 WPF 面板 / 改资源字典 / 迁移命令到 Refactored / 多文档联调 / 建 Table /
+  Cursor Debug 模式收尾撤埋点 / 处理 AutoCAD 关闭崩溃 / 处理统一面板点击卡顿。
   本 skill 替代：wpf-paletteset-avoid-implicit-styles / wpf-blender-panel-guideline /
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.1.0
+version: 1.2.0
 date: 2026-04-18
 ---
 
@@ -19,10 +23,11 @@ date: 2026-04-18
 
 > 本 skill 收录本仓库**已踩过且已修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
 >
-> 两大域：
+> 三大域：
 >
 > - **A 域**：AutoCAD 运行时（多文档、事务、Table、配置、样式）
 > - **B 域**：WPF + PaletteSet 宿主 + XAML 资源字典
+> - **D 域**：Debug 与诊断方法论（埋点撤除、Binding 噪音过滤、关闭流程异常防御、编译错误分类）
 
 ---
 
@@ -310,7 +315,7 @@ private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
 
 **已修复**：2026-04-18 `BlenderTheme.xaml` 移除 9 条隐式 Style（Button / ToggleButton / TextBox / CheckBox / ComboBox / ScrollBar / Expander / ListBoxItem / Separator / GroupBox）。完整复盘见 `doc/Debug/045-Blender面板隐式样式致AutoCAD崩溃-2026-04-18-180000.md`。
 
-**调试定位法**（原生崩溃通用）：在关键路径打 NDJSON 日志（`HyCADTool.Refactored/Presentation/DebugLogger.cs`）——`CreateXxxPanel:enter` / `ViewModel:before_init` / `after_init` / `View:before_create` / `after_create` / `PaletteSet:before_add_visual` / `after_add_visual`。**最后一条成功日志之后的下一段代码 = 根因点**。
+**调试定位法**（原生崩溃通用）：在关键路径打 NDJSON 日志（参考 `HyCADTool.Refactored/Infrastructure/AutoCAD/Utilities/AgentDebugLogger.cs`，或 Cursor Debug 模式临时塞 `File.AppendAllText` NDJSON）——`CreateXxxPanel:enter` / `ViewModel:before_init` / `after_init` / `View:before_create` / `after_create` / `PaletteSet:before_add_visual` / `after_add_visual`。**最后一条成功日志之后的下一段代码 = 根因点**。
 
 **同类宿主**同样风险：Revit `DockablePaneProvider` / Office VSTO `CustomTaskPane` / Visual Studio `ToolWindowPane`。
 
@@ -552,6 +557,194 @@ private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
 
 ---
 
+## D 域：Debug 与诊断方法论
+
+> 本域记录 Cursor Debug 模式 / 临时埋点 / WPF 异常兜底 三类常踩坑。
+> 公共背景：AutoCAD .NET 插件没有 `app.config` 级别的统一日志，调试要么靠 `Editor.WriteMessage`（同步阻塞 UI 线程），要么靠 `File.AppendAllText` NDJSON。任一手段都需明确"会话期"与"长期保留"的边界。
+
+---
+
+### D1 删调试类**必须**先删全部调用点（否则全项目编译失败）
+
+**现象**
+
+- 上一轮 Debug 会话结束后清理：把临时调试类 `DebugSessionLog`（或 `DebugLogger`）的**类定义**删掉
+- 立刻 35+ 处 `CS0103: 当前上下文中不存在名称 "DebugSessionLog"` + `CS0234: 命名空间不存在类型 "DebugSessionLog"`，跨 4 个文件
+- 全项目编译挂死，下次 `C2` 热重载无 dll 可加载
+
+**触发条件**：调试类被广泛 `using` / 调用，但清理时只删类、不删调用方。本仓库典型受害文件：
+`Presentation/PluginInitializer.cs`、`Presentation/PanelManager.cs`、`Infrastructure/AutoCAD/UI/CuiMenuBuilder.cs`。
+
+**正确做法**：撤埋点的"反向顺序"是**强制**的：
+
+1. **先**全局 `Grep` 调试类名 → 列出所有调用点
+2. **再**逐文件删调用 + 配套 `// #region agent log` / `_xxxInstalled` 标志位字段
+3. **最后**才删类定义本身
+4. 收尾：再 `Grep` 一次类名，必须 0 命中才算清理完
+
+**反例**（本次会话踩坑路径）
+
+```text
+[误]
+  Step 1: 删 PluginInitializer.cs 顶部 internal static class DebugSessionLog { ... }
+  Step 2: （被用户中断，没继续删调用方）
+  → CS0103 × 35+ 全项目编译失败
+[正]
+  Step 1: Grep "DebugSessionLog" → 4 文件 35+ 处
+  Step 2: 逐文件删 .Write(...) 调用 + #region agent log 注释 + _shutdownTrapInstalled 等标志位
+  Step 3: Grep 再扫一次确认 0 命中
+  Step 4: 删类定义
+  Step 5: 删 debug-<sessionId>.log 文件
+```
+
+**配套**：所有 Cursor Debug 模式生成的埋点都用 `// #region agent log ... // #endregion` 包裹，便于一次性 Grep 定位。
+
+---
+
+### D2 调试类不要把会话 ID 硬编码进生产代码
+
+**现象**：Debug 模式生成的 `DebugLogger.cs` / `DebugSessionLog.cs` 把 `debug-eef710.log` 这种**会话专用路径**写到 `private const string LogPath = @"...\debug-eef710.log"`。会话结束后变成永远没人调的孤儿文件，且会话 ID 已失效。
+
+**根因**：会话 ID 仅在 Cursor Debug 模式当前轮有效，下次开 Debug 会换新 ID。把它写进 `internal static class` 即把"临时基础设施"**永久化**到代码库。
+
+**正确做法**
+
+- 短命方案：把 NDJSON 写入直接内联到调用点（`File.AppendAllText("...debug-XXX.log", ...)`），用 `// #region agent log` 包裹
+- 长命方案：用本仓库**早期已有**的 `Infrastructure/AutoCAD/Utilities/AgentDebugLogger.cs`（路径不带会话 ID，方法签名稳定）
+- **禁止**新建 `internal static class XxxLogger` 把 session ID 写成 const
+
+**已修复**：2026-04-18 删除孤儿 `Presentation/DebugLogger.cs`（无任何调用点）。
+
+---
+
+### D3 `Dispatcher.UnhandledException` handler 在 AutoCAD shutdown 时**自身会 NRE 升级原生致命**
+
+**现象**
+
+- 关 AutoCAD（点右上角 ×）时弹 `Fatal Error: Unhandled e0434352h Exception`
+- 平时正常使用不崩，只在关闭流程触发
+
+**根因**：`InstallWpfExceptionTraps` 装的 `Dispatcher.CurrentDispatcher.UnhandledException` handler 内部直接 `var doc = AcApp.DocumentManager.MdiActiveDocument; doc.Editor.WriteMessage(...)`。AutoCAD 关闭流程中 `MdiActiveDocument` 已被销毁（返回 null），handler 自己抛 NRE → CLR 视为"异常 handler 又抛异常" → 升级 native fatal。
+
+**正确做法**：handler 内**全部**接触 AutoCAD 上下文的调用都要 null 安全 + try/catch 兜底：
+
+```csharp
+System.Windows.Threading.Dispatcher.CurrentDispatcher.UnhandledException += (s, e) =>
+{
+    try
+    {
+        var ex = e.Exception;
+        try
+        {
+            var doc = AcApp.DocumentManager?.MdiActiveDocument;
+            if (doc != null)
+            {
+                doc.Editor?.WriteMessage($"\n  ✗ [WPF UI] {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+        catch { }
+        e.Handled = true;
+    }
+    catch { }
+};
+```
+
+**反例**（升级 native fatal）
+
+```csharp
+Dispatcher.CurrentDispatcher.UnhandledException += (s, e) =>
+{
+    var doc = AcApp.DocumentManager.MdiActiveDocument;
+    doc.Editor.WriteMessage(...);
+    e.Handled = true;
+};
+```
+
+**已修复**：2026-04-18 `PluginInitializer.InstallWpfExceptionTraps` 全部加 null 防御。
+
+---
+
+### D4 `PresentationTraceSources` Binding 错误**同步**转发到 `Editor.WriteMessage` → 点击卡死
+
+**现象**
+
+- 打开 Blender 二级菜单（统一面板内 TabControl 切换、Hover Ribbon 控件）→ AutoCAD UI **明显卡顿/假死**
+- 命令行涌出几百条 `System.Windows.Data Error: 40 : ... target element is 'Border' (Name='mBorder'); ...`
+- 进程不崩溃，关掉 AutoCAD 后又能工作
+
+**根因**：
+
+1. `InstallWpfExceptionTraps` 装了 `PresentationTraceSources.DataBindingSource` listener，把 WPF Binding 错误转发给 `Editor.WriteMessage`
+2. AutoCAD 自家 Ribbon / Menu 模板里就有大量错误 Binding（`mBorder` / `IsEnabled` / `ToolTipResolver` / `ShowToolTipOnDisabled` / `IsVisible` 等），**与 HyCAD 项目无关**
+3. `Editor.WriteMessage` 是**同步 IO** + 在 UI 线程执行，几百条排队 → UI 线程被串行阻塞 → 表现为"卡死"
+
+**正确做法**：**两层防御**
+
+```csharp
+private void TryWrite(string message, bool newline)
+{
+    if (string.IsNullOrEmpty(message)) return;
+
+    // 第 1 层：白名单——只保留本项目的 Binding 错误
+    bool isProjectRelevant =
+        message.IndexOf("HyCAD", StringComparison.OrdinalIgnoreCase) >= 0 ||
+        message.IndexOf("BaseReinVm", StringComparison.Ordinal) >= 0 ||
+        message.IndexOf("Settings.", StringComparison.Ordinal) >= 0 ||
+        message.IndexOf("PreferencesVm", StringComparison.Ordinal) >= 0 ||
+        message.IndexOf("FilterVm", StringComparison.Ordinal) >= 0 ||
+        message.IndexOf("SettingsVm", StringComparison.Ordinal) >= 0;
+
+    if (!isProjectRelevant) return;
+
+    // 第 2 层：项目相关也不进 Editor.WriteMessage（同步 IO 阻塞 UI）
+    System.Diagnostics.Debug.WriteLine("[HyCAD WPF Binding] " + message);
+}
+```
+
+**关键判据**
+
+- 黑名单不可行：AutoCAD Ribbon 错误消息**不**包含 `Autodesk.Windows` 字符串，关键字过滤会全部漏过
+- 白名单**必须**用项目独有标识（`HyCAD` / 自定义 ViewModel 类名）
+- 项目相关错误也**不要**写命令栏，丢 `Debug.WriteLine`（DebugView++ 看 / 仅 Debug build 输出）
+
+**已修复**：2026-04-18 `PluginInitializer.BindingErrorListener.TryWrite` 改白名单 + Debug.WriteLine。
+
+---
+
+### D5 VS 错误清单要按"会不会阻断编译"分类，不要被 XDG 设计时报错带偏
+
+**现象**：VS 错误窗口同时弹出 30+ 条错误，包括：
+
+```text
+[阻断编译]
+  CS0103/CS0234 → 真编译错误，必修
+[非阻断]
+  XDG0008 命名空间不存在 XxxConverter → 设计时分析器，索引滞后
+  XDG0010 必须使 Setter.Property 具有非 null 值 → XAML 设计时
+  XDG0023/XDG0024 长度为空字符串 → XAML 设计时
+  CS0006 未能找到元数据文件 ...\bin\Debug\XxxRefactored.dll
+        → Tests 项目找不到主项目 dll，主项目编译失败的级联错误
+```
+
+**正确做法**：先按错误码前缀分类、再决定行动
+
+| 错误码前缀 | 类别 | 处理 |
+|---|---|---|
+| `CS0xxx` / `CS1xxx` | C# 编译器（必阻塞） | 必修 |
+| `MC3xxx` / `MC4xxx` | XAML 编译器（阻塞 baml 生成） | 必修 |
+| `XDG0xxx` | VS 设计时分析器 + IDE 索引 | **大概率误报**，先 Build → Clean → Rebuild → 重启 VS；只有 Rebuild 后还在的才真要修 |
+| `CS0006` 找 `bin\Debug\xxx.dll` | 级联错误 | 不要直接看，先解决主项目 CS0xxx |
+
+**反例**：被 `XDG0008 BoolToVisibilityConverter` 带偏，去找/修 Converter 类，但实际**类一直在**（`Presentation/Views/Converters/BoolToVisibilityConverter.cs` 没动过），只是 Cursor / VS 索引没刷新。
+
+**判断三步法**
+
+1. 排序：CS / MC 在前，XDG / 级联在后
+2. 第一波只修 CS / MC
+3. Rebuild 一次，XDG 大概率自动消失；剩下的再处理
+
+---
+
 ## Project Theme Application（新建面板骨架）
 
 Refactored 面板所在 UserControl 根部资源合并模板——**只这一行 Merge**：
@@ -602,6 +795,13 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 - 编译无 `MC3015` / `MC4111`（B7/B8）
 - `ColumnDefinition.Width` / `Margin` 类属性加载不报异常（B4）
 - 面板 Dock 到 AutoCAD 侧边不消失（B9）
+
+**D 域验证**
+
+- 撤埋点后 `Grep "DebugSessionLog|DebugLogger"` 全工程 0 命中（D1/D2）
+- 关 AutoCAD 不再弹 `e0434352h` 致命错误对话框（D3）
+- 操作 Blender 二级菜单不再卡顿，命令栏不再涌出 `mBorder` Binding Error（D4）
+- VS 错误窗口剩下的全是 CS/MC 类，无 XDG（Rebuild 后；D5）
 
 **实测通过的 UserControl**（2026-04-18）
 
