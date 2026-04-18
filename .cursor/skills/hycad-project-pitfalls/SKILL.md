@@ -11,7 +11,7 @@ description: |
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.0.0
+version: 1.1.0
 date: 2026-04-18
 ---
 
@@ -201,6 +201,69 @@ for (int r = 0; r < totalRows; r++)
 | `PileDrawingService.cs` | 2026-04 |
 
 **规则**：今后任何新建 `new Table()` 并逐列写表头的代码，必须先解除默认自动合并。
+
+---
+
+### A6 C2/C1 后 AutoCAD 原生崩溃：byte[] 加载的 Refactored + 跨程序集 pack URI
+
+**现象**
+
+- `C2` 成功，`C1` 后 **AutoCAD 整个进程原生崩溃**（错误报告对话框），**无任何 .NET 异常**打到命令行
+- 打开任何 Refactored 的 WPF 面板就崩（不只是 `HyB`）
+- 本仓库时间线触发点：**2026-04-18 `HyCAD.BlenderUI` 从 Refactored 拆出独立 csproj 后开始**
+
+**触发条件**（本仓库 ReCall 热重载架构特有）
+
+1. `ReCall.Reload()` 用 `Assembly.Load(File.ReadAllBytes(path))` 把 `HyCADTool.Refactored.dll` 加载到 AppDomain
+2. Refactored.dll 依赖 `HyCAD.BlenderUI.dll`（`ProjectReference`），后者被复制到 `%TEMP%` 副本目录但**不预加载**
+3. Refactored 面板 XAML 含大量跨程序集 pack URI：
+   ```xml
+   pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml
+   ```
+4. C1 触发 `TestCommand.Run` → 构造面板 → 解析 XAML → 跨家 pack URI → 崩
+
+**根因**
+
+WPF 解析 `pack://application:,,,/<AsmShortName>;component/...` 时，**不会触发 `AppDomain.AssemblyResolve`** 事件——它只遍历 `AppDomain.CurrentDomain.GetAssemblies()` 按 short name 匹配。`HyCAD.BlenderUI` 此时还没加载，WPF 在 `PresentationFramework.dll` 的 native resource helper 里读到空 baml 流 → 原生崩溃。
+
+这是 **byte[] 加载 + 跨程序集 pack URI** 的组合坑。单独用 byte[] 加载、或 pack URI 指向同一程序集，都不会触发。
+
+**正确做法**：在 `ReCall.Reload()` 里 `Assembly.Load(Refactored)` **之前**，预加载所有 `HyCAD.*.dll` 伙伴程序集到 AppDomain。
+
+```csharp
+// 在 AssemblyResolve 注册之后、Load 主程序集之前
+PreloadCompanionAssemblies(loadDepsPath, ed);
+Assembly asm = Assembly.Load(File.ReadAllBytes(loadPath));
+
+// 实现（已幂等：Assembly 不可卸载，二次 C2 跳过）
+private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
+{
+    var candidates = Directory.GetFiles(loadDepsPath, "HyCAD*.dll");
+    var loaded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+    {
+        try { loaded.Add(a.GetName().Name); } catch { }
+    }
+    foreach (var path in candidates)
+    {
+        var shortName = Path.GetFileNameWithoutExtension(path);
+        if (string.Equals(Path.GetFileName(path), TARGET_DLL_NAME,
+                          StringComparison.OrdinalIgnoreCase)) continue;
+        if (loaded.Contains(shortName)) continue;
+        try { Assembly.Load(File.ReadAllBytes(path)); } catch { }
+    }
+}
+```
+
+**反例**（已实测崩）
+
+- 只 Load 主 Refactored，依赖靠 `AssemblyResolve` 按需解析——`AssemblyResolve` 确实能解析 Refactored 对 `HyCAD.BlenderUI` 的**类型引用**（触发于 JIT / 反射），但**解析不了 pack URI 的资源流**（pack URI 不触发 AssemblyResolve）
+
+**已修复**：`ReCall/Recall.cs`（2026-04-18）新增 `PreloadCompanionAssemblies`，`Reload()` 在 Load Refactored 前调用。改 ReCall.cs 自身需要关 AutoCAD 重 `NETLOAD`。
+
+**规则**：今后新增 `HyCAD.*.dll` 伙伴程序集并在 Refactored XAML 里跨程序集引用 pack URI 的，**不需要**修改 ReCall——命名以 `HyCAD` 前缀开头即自动被预加载。非 `HyCAD*` 前缀的新伙伴程序集需回来改 `PreloadCompanionAssemblies` 的 glob 模式。
+
+**同类宿主风险提示**：Revit `DockablePaneProvider` / Office VSTO 等 byte[] 加载的寄生式 WPF 宿主，跨程序集 pack URI 同样会触发本坑。
 
 ---
 

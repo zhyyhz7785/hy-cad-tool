@@ -5,6 +5,7 @@ using Autofac;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 // v2 架构：Refactored 不再被 AutoCAD 直接 NETLOAD，故不需要 [assembly: CommandClass]。
@@ -42,6 +43,19 @@ namespace HyCADTool.Refactored.Presentation
                 WriteMessage("\n========================================");
                 WriteMessage("\nHyCADTool.Refactored 插件初始化中...");
                 WriteMessage("\n========================================");
+
+                // 必装：WPF Dispatcher / Binding 异常兜底。PaletteSet 宿主默认会吞掉所有
+                // UI 线程异常，导致面板控件首次实例化失败时表现为 AutoCAD 原生崩溃，无任何线索。
+                InstallWpfExceptionTraps();
+
+                // 【关键】在任何 WPF XAML/控件被触发前，同步 warmup 跨程序集主题字典 + 所有 SubView。
+                // 原因：HyCAD.BlenderUI 标记了 [assembly: ThemeInfo(SourceAssembly)]，
+                // WPF 首次创建其自定义控件时会在 UI tick 异步查找 Themes/Generic.xaml，
+                // 此时若 pack URI 解析失败，异常会在 PresentationFramework native 层
+                // 以 0xE0434352 抛出，表现为 AutoCAD "致命错误" 弹窗（无托管堆栈可捕获）。
+                // 同步 warmup 把这条路径从"异步 native"变成"同步托管异常"，必崩时可见。
+                WarmupBlenderTheme();
+                WarmupSubViews();
 
                 // 构建 Autofac 容器
                 var builder = new ContainerBuilder();
@@ -247,6 +261,173 @@ namespace HyCADTool.Refactored.Presentation
             catch (System.Exception ex)
             {
                 WriteMessage($"\n  ⚠ 道路子系统启动警告：{ex.Message}");
+            }
+        }
+
+        private static bool _wpfTrapsInstalled;
+
+        /// <summary>
+        /// 装 WPF UI 线程异常兜底 + Binding 错误监听。
+        ///
+        /// PaletteSet 宿主会在 WPF 控件首次寄宿（OnApplyTemplate / OnInitialized 等）抛异常时
+        /// 吞掉异常并触发 native crash（0xE0434352 致命错误）。必须在 Dispatcher 上挂
+        /// UnhandledException 以转写到 AutoCAD 命令行。
+        /// </summary>
+        private void InstallWpfExceptionTraps()
+        {
+            if (_wpfTrapsInstalled) return;
+            _wpfTrapsInstalled = true;
+
+            try
+            {
+                // PaletteSet 内部 Dispatcher 通常就是 Application UI 线程，挂当前 Dispatcher 已足够覆盖。
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.UnhandledException += (s, e) =>
+                {
+                    try
+                    {
+                        var ex = e.Exception;
+                        WriteMessage($"\n  ✗ [WPF UI] {ex.GetType().Name}: {ex.Message}");
+                        if (ex.InnerException != null)
+                            WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                        WriteMessage($"\n    堆栈：{ex.StackTrace}");
+                        // 标记已处理，让 AutoCAD 不要把它升级成致命错误
+                        e.Handled = true;
+                    }
+                    catch { }
+                };
+
+                // Binding 错误（找不到资源 / DataContext 类型不匹配）默认只进 Debug Output，
+                // 这里强制写到命令行
+                System.Diagnostics.PresentationTraceSources.Refresh();
+                System.Diagnostics.PresentationTraceSources.DataBindingSource.Listeners.Add(
+                    new BindingErrorListener(WriteMessage));
+                System.Diagnostics.PresentationTraceSources.DataBindingSource.Switch.Level =
+                    System.Diagnostics.SourceLevels.Error;
+
+                WriteMessage("\n  ✓ WPF 异常兜底已装");
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ WPF 异常兜底安装失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>把 PresentationTraceSources 错误转发到 AutoCAD 命令行。</summary>
+        private sealed class BindingErrorListener : System.Diagnostics.TraceListener
+        {
+            private readonly Action<string> _write;
+            public BindingErrorListener(Action<string> write) { _write = write; }
+            public override void Write(string message) { try { _write?.Invoke(message); } catch { } }
+            public override void WriteLine(string message) { try { _write?.Invoke("\n  [WPF Binding] " + message); } catch { } }
+        }
+
+        /// <summary>预热 HyPreferencesView 下所有 SubView，把跨程序集 pack URI + StaticResource 解析问题前置到 Initialize 同步阶段。</summary>
+        private void WarmupSubViews()
+        {
+            // 顺序：HyPreferencesView 自身 → 各 sub:XxxSettingsView。任何一项失败立刻可见。
+            var views = new (string Path, string Name)[]
+            {
+                ("/HyCADTool.Refactored;component/Presentation/Views/HyPreferencesView.xaml",            "HyPreferencesView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/StyleSettingsView.xaml",        "StyleSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/ReinSettingsView.xaml",         "ReinSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/BasePlateSettingsView.xaml",    "BasePlateSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/PileSettingsView.xaml",         "PileSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/ClusterSettingsView.xaml",      "ClusterSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/RoadSettingsView.xaml",         "RoadSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/ElevationSettingsView.xaml",    "ElevationSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/DimSettingsView.xaml",          "DimSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/AnchorBoltSettingsView.xaml",   "AnchorBoltSettingsView"),
+                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/EquipFoundationSettingsView.xaml","EquipFoundationSettingsView"),
+            };
+
+            int ok = 0, fail = 0;
+            foreach (var v in views)
+            {
+                try
+                {
+                    var uri = new System.Uri("pack://application:,,," + v.Path, System.UriKind.Absolute);
+                    var obj = System.Windows.Application.LoadComponent(uri);
+                    if (obj == null)
+                    {
+                        WriteMessage($"\n  ⚠ {v.Name} 预热返回 null");
+                        fail++;
+                    }
+                    else
+                    {
+                        ok++;
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    fail++;
+                    WriteMessage($"\n  ✗ {v.Name} 预热失败：{ex.GetType().Name}: {ex.Message}");
+                    if (ex.InnerException != null)
+                        WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                    WriteMessage($"\n    堆栈：{ex.StackTrace}");
+                }
+            }
+
+            WriteMessage($"\n  ✓ SubView 预热完成（成功 {ok} / 失败 {fail}）");
+        }
+
+        /// <summary>
+        /// 同步 warmup 跨程序集 Blender 主题字典。必须在任何 WPF 控件创建、Ribbon 构建前调用。
+        ///
+        /// 触发条件 & 症状（2026-04-18 已修复）：
+        /// - HyCAD.BlenderUI 独立 csproj 后，Refactored shim BlenderTheme.xaml 跨程序集合并
+        ///   `pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml`。
+        /// - HyCAD.BlenderUI.AssemblyInfo 含 [assembly: ThemeInfo(SourceAssembly)]，
+        ///   WPF 首次构造其自定义控件时在 Dispatcher 异步 tick 查 Themes/Generic.xaml，
+        ///   该字典又合并 9 条跨程序集 pack URI。
+        /// - 若 BlenderUI 通过 Assembly.Load(byte[]) 加载（ReCall 热重载路径），.Location 为空，
+        ///   WPF native 解析 pack URI 路径失稳 → 0xE0434352 致命错误，无托管栈。
+        /// - 主动同步加载把该问题从"C2 返回后 native 崩"转为"Initialize 同步托管异常可见"。
+        /// </summary>
+        private void WarmupBlenderTheme()
+        {
+            try
+            {
+                // 先 log AppDomain 里 BlenderUI 的状态，便于判断 ReCall 预加载是否生效
+                var blenderAsm = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, "HyCAD.BlenderUI", StringComparison.OrdinalIgnoreCase));
+                if (blenderAsm == null)
+                {
+                    WriteMessage("\n  ⚠ BlenderUI 未在 AppDomain 中（ReCall 预加载未生效，将触发 AssemblyResolve）");
+                }
+                else
+                {
+                    var loc = string.IsNullOrEmpty(blenderAsm.Location) ? "(byte[] 加载，.Location 空)" : blenderAsm.Location;
+                    WriteMessage($"\n  BlenderUI 已在 AppDomain: {loc}");
+                }
+
+                var themeUri = new System.Uri(
+                    "pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml",
+                    System.UriKind.Absolute);
+
+                // LoadComponent 会同步驱动 pack URI 解析 + BAML 反序列化，
+                // 任何失败（找不到资源 / 子字典引用断链 / StaticResourceHolder 异常）
+                // 都会就地抛托管异常而不是后续 UI tick 上的 native crash。
+                var dict = System.Windows.Application.LoadComponent(themeUri) as System.Windows.ResourceDictionary;
+                if (dict != null)
+                {
+                    // 挂到 Application 资源（若存在），否则仅驻留引用即可让 WPF 缓存解析结果
+                    if (System.Windows.Application.Current != null)
+                    {
+                        System.Windows.Application.Current.Resources.MergedDictionaries.Add(dict);
+                    }
+                    WriteMessage($"\n  ✓ BlenderUI 主题预热完成（顶层资源 {dict.Count} 条、合并字典 {dict.MergedDictionaries.Count} 层）");
+                }
+                else
+                {
+                    WriteMessage("\n  ⚠ BlenderUI 主题预热返回 null（BAML 解析成功但类型不是 ResourceDictionary）");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ✗ BlenderUI 主题预热失败：{ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                    WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                WriteMessage($"\n    堆栈：{ex.StackTrace}");
             }
         }
 

@@ -147,6 +147,14 @@ namespace HyCADTool.ReCall
                     _assemblyResolveRegistered = true;
                 }
 
+                // 预加载 HyCAD.* / HyCADTool.* 伙伴程序集到 AppDomain。
+                // 原因：Refactored XAML 含大量跨程序集 pack URI（如
+                // pack://application:,,,/HyCAD.BlenderUI;component/...），
+                // WPF 解析时不会触发 AssemblyResolve，只会遍历 AppDomain.GetAssemblies()
+                // 按 short name 查找，找不到则读空 baml 流 → PresentationFramework native 崩溃
+                // → AutoCAD 原生崩溃（无托管异常）。必须在 Load Refactored 前就位。
+                PreloadCompanionAssemblies(loadDepsPath, ed);
+
                 var swLoad = System.Diagnostics.Stopwatch.StartNew();
                 Assembly asm = Assembly.Load(File.ReadAllBytes(loadPath));
                 _refactoredAssembly = asm;
@@ -210,6 +218,61 @@ namespace HyCADTool.ReCall
         private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
             return ResolveAssembly(args, _currentDependenciesPath, _currentNugetPackagesPath);
+        }
+
+        /// <summary>
+        /// 把副本目录下的 HyCAD.* 伙伴程序集（除主 Refactored.dll 外）预加载进 AppDomain。
+        /// 幂等：已在 AppDomain 中的 short name 会跳过（Assembly 不能卸载，二次 C2 无需重载伙伴）。
+        /// </summary>
+        private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
+        {
+            if (string.IsNullOrEmpty(loadDepsPath) || !Directory.Exists(loadDepsPath))
+                return;
+
+            string[] candidates;
+            try
+            {
+                candidates = Directory.GetFiles(loadDepsPath, "HyCAD*.dll");
+            }
+            catch (System.Exception ex)
+            {
+                ed?.WriteMessage("\n  ⚠ 预加载枚举伙伴程序集失败: " + ex.Message);
+                return;
+            }
+
+            var loaded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try { loaded.Add(a.GetName().Name); } catch { }
+            }
+
+            int newly = 0, skipped = 0;
+            foreach (var path in candidates)
+            {
+                var fileName = Path.GetFileName(path);
+                if (string.Equals(fileName, TARGET_DLL_NAME, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var shortName = Path.GetFileNameWithoutExtension(path);
+                if (loaded.Contains(shortName))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                try
+                {
+                    Assembly.Load(File.ReadAllBytes(path));
+                    newly++;
+                }
+                catch (System.Exception ex)
+                {
+                    ed?.WriteMessage("\n  ⚠ 预加载 " + shortName + " 失败: " + ex.Message);
+                }
+            }
+
+            if (newly > 0 || skipped > 0)
+                ed?.WriteMessage("\n  预加载伙伴: +" + newly + " / 已存在 " + skipped);
         }
 
         /// <summary>反射调用上次 PluginInitializer 实例的 Terminate，幂等性兜底（解绑文档事件、Reset 容器）。</summary>
