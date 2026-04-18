@@ -25,7 +25,7 @@ namespace HyCADTool.Refactored.Test
 
             SimpleLogger.LogElapsedTime("命令执行", () =>
             {
-                new DimensionAlignCommand().Execute();
+                ShowPanelCommand.ShowHyBlenderPanel();
             });
         }
     }

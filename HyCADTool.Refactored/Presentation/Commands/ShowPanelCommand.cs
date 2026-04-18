@@ -13,7 +13,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
     public static class ShowPanelCommand
     {
         /// <summary>
-        /// 显示/隐藏 HY 统一工具面板
+        /// 显示/隐藏 HY 统一工具面板（命令 <c>Hy</c>）。
         /// </summary>
         public static void ShowHyToolPanel()
         {
@@ -26,6 +26,24 @@ namespace HyCADTool.Refactored.Presentation.Commands
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n显示面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 显示/隐藏 HyCAD 命令检索面板（Blender 风格，命令 <c>HyB</c>）。
+        /// 与 HyToolPanel 完全独立的 PaletteSet，可同时显示。
+        /// </summary>
+        public static void ShowHyBlenderPanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            try
+            {
+                var panelManager = ServiceLocator.Container.Resolve<PanelManager>();
+                panelManager.ToggleHyBlenderPanel();
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n显示 HyBlender 面板失败: {ex.Message}");
             }
         }
 

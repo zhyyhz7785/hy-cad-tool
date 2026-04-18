@@ -16,6 +16,34 @@ namespace HyCADTool.ReCall
         public string Method { get; set; }
         public object[] Ctor { get; set; }
         public string[] CtorEnumTypes { get; set; }
+
+        // 元数据（v2 新增，全部可选）。
+        // 三个入口（Blender 面板 / AutoCAD Ribbon / CUIX 菜单）共享这份数据。
+        public string Category { get; set; }
+        public string DisplayName { get; set; }
+        public string Icon { get; set; }
+        public string Tooltip { get; set; }
+        public int Order { get; set; } = 100;
+    }
+
+    /// <summary>
+    /// 分组结果：Key 为分类名，Value 为该分类下的命令列表（已按 Order 升序）。
+    /// </summary>
+    public sealed class CategoryGroup
+    {
+        public string Category { get; set; }
+        public List<CommandListItem> Items { get; set; } = new List<CommandListItem>();
+    }
+
+    public sealed class CommandListItem
+    {
+        public string Key { get; set; }
+        public CommandEntry Entry { get; set; }
+        public string DisplayName => string.IsNullOrEmpty(Entry?.DisplayName) ? Key : Entry.DisplayName;
+        public string Category => string.IsNullOrEmpty(Entry?.Category) ? "杂项" : Entry.Category;
+        public string Tooltip => string.IsNullOrEmpty(Entry?.Tooltip) ? DisplayName : Entry.Tooltip;
+        public string Icon => Entry?.Icon;
+        public int Order => Entry?.Order ?? 100;
     }
 
     /// <summary>
@@ -132,6 +160,11 @@ namespace HyCADTool.ReCall
                         Method = (string)obj["method"] ?? "Execute",
                         Ctor = obj["ctor"]?.ToObject<object[]>(),
                         CtorEnumTypes = obj["ctorEnumTypes"]?.ToObject<string[]>(),
+                        Category = (string)obj["category"],
+                        DisplayName = (string)obj["displayName"],
+                        Icon = (string)obj["icon"],
+                        Tooltip = (string)obj["tooltip"],
+                        Order = obj["order"] != null ? (int)obj["order"] : 100,
                     };
                     dict[p.Name] = entry;
                 }
@@ -165,6 +198,81 @@ namespace HyCADTool.ReCall
             EnsureLoaded();
             return _entries;
         }
+
+        /// <summary>
+        /// 按 Category 分组全部命令，过滤掉占位符（N1~N50）和内部项（以 `_` 开头，如 _HyExec）。
+        /// 同分类按 Order 升序，相同 Order 按 DisplayName 字典序。
+        /// 分类之间按 PresetCategoryOrder 顺序排列，未登记的分类排在末尾按字母序。
+        /// </summary>
+        public static List<CategoryGroup> GroupByCategory()
+        {
+            EnsureLoaded();
+
+            var buckets = new Dictionary<string, List<CommandListItem>>(StringComparer.Ordinal);
+            foreach (var pair in _entries)
+            {
+                if (pair.Value == null) continue;                               // 占位符
+                if (!string.IsNullOrEmpty(pair.Key) && pair.Key.StartsWith("_")) continue;  // 内部项
+                if (string.Equals(pair.Key, "Hy", StringComparison.OrdinalIgnoreCase)) continue; // 面板入口，不进按钮列表
+
+                var item = new CommandListItem { Key = pair.Key, Entry = pair.Value };
+                var cat = item.Category;
+                if (!buckets.TryGetValue(cat, out var list))
+                {
+                    list = new List<CommandListItem>();
+                    buckets[cat] = list;
+                }
+                list.Add(item);
+            }
+
+            var result = new List<CategoryGroup>();
+            foreach (var cat in PresetCategoryOrder)
+            {
+                if (buckets.TryGetValue(cat, out var list))
+                {
+                    list.Sort(CompareListItem);
+                    result.Add(new CategoryGroup { Category = cat, Items = list });
+                    buckets.Remove(cat);
+                }
+            }
+            var remaining = new List<string>(buckets.Keys);
+            remaining.Sort(StringComparer.Ordinal);
+            foreach (var cat in remaining)
+            {
+                var list = buckets[cat];
+                list.Sort(CompareListItem);
+                result.Add(new CategoryGroup { Category = cat, Items = list });
+            }
+            return result;
+        }
+
+        private static int CompareListItem(CommandListItem a, CommandListItem b)
+        {
+            int c = a.Order.CompareTo(b.Order);
+            if (c != 0) return c;
+            return string.Compare(a.DisplayName, b.DisplayName, StringComparison.Ordinal);
+        }
+
+        /// <summary>预设分类顺序，与方案文档"二、数据源升级"一致。</summary>
+        public static readonly string[] PresetCategoryOrder = new[]
+        {
+            "常用",
+            "钢筋",
+            "底板配筋",
+            "桩基",
+            "沉降",
+            "标高",
+            "尺寸标注",
+            "地脚螺栓",
+            "设备基础",
+            "图框视口",
+            "道路",
+            "块引线",
+            "导出说明",
+            "多段线垫层",
+            "杂项",
+            "测试",
+        };
 
         public sealed class ValidationResult
         {

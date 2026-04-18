@@ -78,6 +78,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Presentation\Resources\BlenderTheme.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Presentation\Views\FilterPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -110,6 +114,22 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Presentation\Views\HyBlenderPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\HyPreferencesView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\Preferences\StyleSettingsView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\Preferences\ReinSettingsView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Presentation\Views\MarkdownEditorDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -129,6 +149,14 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj" />
+    <!--
+      三入口 UI（Blender 面板 / Ribbon / CUIX 菜单）共享 ReCall 的 CommandTable 作为元数据源。
+      Private=false：编译时用 ReCall.dll 做引用，但不复制到 HyCADTool.Refactored/bin/Debug。
+      运行时由 AutoCAD NETLOAD 的那一份 ReCall.dll 提供类型（同一 AppDomain，避免重复加载出现两份 CommandTable 类型）。
+    -->
+    <ProjectReference Include="..\ReCall\ReCall.csproj">
+      <Private>false</Private>
+    </ProjectReference>
   </ItemGroup>
 
   <!-- 已删除的废弃文件：ReinPanel.xaml/.cs、ReinPanelViewModel.cs、ShowMainPanelCommand.cs（2026-02-10 第三轮清理） -->

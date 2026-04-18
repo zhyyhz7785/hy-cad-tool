@@ -1,0 +1,240 @@
+<UserControl x:Class="HyCADTool.Refactored.Presentation.Views.Preferences.StyleSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="420">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- 标签 + 输入：左右两栏 Grid 模板（Blender Preferences 对齐风格） -->
+            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+
+            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
+                <Setter Property="Margin" Value="0,2"/>
+            </Style>
+
+            <!-- 预览：样式名称只读（对应 SettingsPanelViewModel 的 StyleTName 等） -->
+            <DataTemplate x:Key="Section_Preview">
+                <StackPanel Margin="8,6">
+                    <TextBlock Text="（只读）当前图纸样式名称预览"
+                               Foreground="{DynamicResource Brush_TextDisabled}"
+                               FontSize="11" Margin="0,0,0,6"/>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="文字样式 (Title)" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding StyleTName -->
+                        <TextBlock Grid.Column="1" Text="HY_TITLE"
+                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="文字样式 (Std)" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding StyleSName -->
+                        <TextBlock Grid.Column="1" Text="HY_STD"
+                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="标注样式" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding DimStyleName -->
+                        <TextBlock Grid.Column="1" Text="HY_DIM"
+                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="引线样式" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding MLeaderStyleName -->
+                        <TextBlock Grid.Column="1" Text="HY_MLEADER"
+                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="表格样式" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding TableStyleName -->
+                        <TextBlock Grid.Column="1" Text="HY_TABLE"
+                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 文字样式 -->
+            <DataTemplate x:Key="Section_Text">
+                <StackPanel Margin="8,6">
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Title 字体名" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding StyleTFont -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="msyh.ttc"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Std 字体名" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding StyleSFont -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="simplex.shx"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Std 大字体" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding StyleSBigFont -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="hztxt.shx"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="字高 (TextSize)" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding TextSize -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="2.5"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="字宽比 (TextXScale)" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding TextXScale -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="0.8"/>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 标注样式 -->
+            <DataTemplate x:Key="Section_Dim">
+                <StackPanel Margin="8,6">
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Dimtxt" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding Dimtxt -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="2.5"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Dimasz" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding Dimasz -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="1.0"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="箭头块名" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding DimArrowName -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text=""/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Dimdle / Dimexo / Dimexe / Dimgap" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: 四个并列 TextBox 绑定 Dimdle/Dimexo/Dimexe/Dimgap -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48" Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48" Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48" Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 引线样式 -->
+            <DataTemplate x:Key="Section_MLeader">
+                <StackPanel Margin="8,6">
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="箭头尺寸" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding MLeaderArrowSize -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="2.0"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="箭头块名" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding MLeaderArrowName -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text=""/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="着陆间隙" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding MLeaderLandingGap -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="0.5"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="文字颜色索引" Style="{StaticResource FieldLabel}"/>
+                        <!-- TODO: Binding MLeaderTextColorIndex -->
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="256"/>
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 表格样式 -->
+            <DataTemplate x:Key="Section_Table">
+                <StackPanel Margin="8,6">
+                    <TextBlock Text="（TODO：接入表格样式参数，对应 TableStyleName 及将来的列宽/行高默认值）"
+                               Foreground="{DynamicResource Brush_TextDisabled}"
+                               FontSize="11" FontStyle="Italic"/>
+                </StackPanel>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="Host"/>
+</UserControl>

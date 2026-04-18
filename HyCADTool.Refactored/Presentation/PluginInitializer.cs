@@ -67,6 +67,9 @@ namespace HyCADTool.Refactored.Presentation
                 // 道路子系统启动（P0 落地：事件总线 + JSON 持久化）
                 InitializeRoadSubsystem();
 
+                // 三入口 UI：AutoCAD Ribbon 选项卡（Ribbon 未启用时会静默跳过，不影响其他入口）
+                InitializeRibbonAndMenus();
+
                 WriteMessage("\n========================================");
                 WriteMessage("\n✓ HyCADTool.Refactored 插件初始化完成！");
                 WriteMessage("\n========================================\n");
@@ -94,6 +97,9 @@ namespace HyCADTool.Refactored.Presentation
                     ViewModels.SettingsPanelViewModel.Current?.SaveSettings();
                 }
                 catch { }
+
+                // 卸载三入口 UI：Ribbon 选项卡、CUIX 菜单（防 C2 热重载累积）
+                TerminateRibbonAndMenus();
 
                 // 道路子系统收尾：
                 // v1.1 起各命令在 tr.Commit() 后已同步写盘，卸载时不再需要 FlushAll；
@@ -242,6 +248,40 @@ namespace HyCADTool.Refactored.Presentation
             {
                 WriteMessage($"\n  ⚠ 道路子系统启动警告：{ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 构建 AutoCAD Ribbon 选项卡 + CUIX 菜单栏。数据源与 Blender 面板同一份 commands.json。
+        /// 对 Ribbon 未就绪场景（ComponentManager.Ribbon == null）做静默兜底，不影响其他入口。
+        /// </summary>
+        private void InitializeRibbonAndMenus()
+        {
+            try
+            {
+                Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Build();
+                WriteMessage("\n  ✓ Ribbon 选项卡 HyCAD 已挂载");
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ Ribbon 构建失败（跳过，不影响 Blender 面板）：{ex.Message}");
+            }
+
+            try
+            {
+                Infrastructure.AutoCAD.UI.CuiMenuBuilder.EnsureLoaded();
+                WriteMessage("\n  ✓ CUIX 菜单栏 HyCAD 已加载");
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ CUIX 菜单加载失败（跳过，不影响其他入口）：{ex.Message}");
+            }
+        }
+
+        /// <summary>卸载 Ribbon 选项卡 + CUIX 菜单（Terminate 时调用，防 C2 热重载累积）。</summary>
+        private void TerminateRibbonAndMenus()
+        {
+            try { Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Teardown(); } catch { }
+            try { Infrastructure.AutoCAD.UI.CuiMenuBuilder.Unload(); } catch { }
         }
 
         private void EnsureCurrentDocumentResourcesInitialized(bool force)

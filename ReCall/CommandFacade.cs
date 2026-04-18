@@ -24,6 +24,7 @@ namespace HyCADTool.ReCall
     {
         #region 面板 (Panel)
         [CommandMethod("hy")]      public void Cmd_hy()       => ReCallClass.Invoke("hy");
+        [CommandMethod("HyB")]     public void Cmd_HyB()      => ReCallClass.Invoke("HyB");
         [CommandMethod("_HyExec")] public void Cmd__HyExec()  => ReCallClass.Invoke("_HyExec");
         #endregion
 
@@ -169,6 +170,7 @@ namespace HyCADTool.ReCall
         #region 诊断 (Diagnostic)
         [CommandMethod("HYLOCATETIF")] public void Cmd_HYLOCATETIF() => ReCallClass.Invoke("HYLOCATETIF");
         [CommandMethod("CHECKWPF")]    public void Cmd_CHECKWPF()    => ReCallClass.Invoke("CHECKWPF");
+        [CommandMethod("hyCmdList")]   public void Cmd_hyCmdList()   => ReCallClass.Invoke("hyCmdList");
         #endregion
 
         #region 占位符 (Placeholders N1~N50)
