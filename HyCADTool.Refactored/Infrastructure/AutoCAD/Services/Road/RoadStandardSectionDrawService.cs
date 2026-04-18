@@ -88,14 +88,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             }
 
             // ---------------- 2. 基线 + 左右半宽面板(作为封闭 polyline) ----------------
+            // 路面/绿化/中分带等"路面板块"用"顶 + 底"闭合（构成立柱）；
+            // 路牙（Kerb）的 vertices 本身已构成完整的 L 型凸起多边形，直接自闭合（不加底边）。
             foreach (var panel in figure.Panels)
             {
                 int i0 = Math.Max(0, panel.StartVertexIndex);
                 int i1 = Math.Min(figure.Vertices.Count - 1, panel.EndVertexIndex);
                 if (i1 - i0 < 1) continue;
 
-                // panel 闭合 polyline：顶 + 底
-                int count = (i1 - i0 + 1) + 2;
+                bool isKerbPanel = panel.Kind == TemplateComponentKind.Kerb;
+                int count = isKerbPanel ? (i1 - i0 + 1) : (i1 - i0 + 1) + 2;
                 var pl = new Polyline(count);
                 int idx = 0;
                 for (int i = i0; i <= i1; i++)
@@ -103,9 +105,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     var v = figure.Vertices[i];
                     pl.AddVertexAt(idx++, new Point2d(origin.X + v.X * s, origin.Y + v.Y * s), 0, 0, 0);
                 }
-                // 底边两点
-                pl.AddVertexAt(idx++, new Point2d(origin.X + figure.Vertices[i1].X * s, origin.Y), 0, 0, 0);
-                pl.AddVertexAt(idx, new Point2d(origin.X + figure.Vertices[i0].X * s, origin.Y), 0, 0, 0);
+                if (!isKerbPanel)
+                {
+                    // 底边两点：从最右回到最左，与顶面构成"立柱"
+                    pl.AddVertexAt(idx++, new Point2d(origin.X + figure.Vertices[i1].X * s, origin.Y), 0, 0, 0);
+                    pl.AddVertexAt(idx, new Point2d(origin.X + figure.Vertices[i0].X * s, origin.Y), 0, 0, 0);
+                }
                 pl.Closed = true;
                 pl.Layer = PickPanelLayer(panel.Kind);
                 pl.ColorIndex = 256;
@@ -412,8 +417,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     return HyRoadLayers.CrossSectionPavementLayer;
                 case TemplateComponentKind.Sidewalk:
                 case TemplateComponentKind.Shoulder:
-                case TemplateComponentKind.Kerb:
                     return HyRoadLayers.CrossSectionSidewalkLayer;
+                case TemplateComponentKind.Kerb:
+                    // 路牙独立图层（v2 新增）：与人行道分离，便于按图层批量改色 / 冻结。
+                    return HyRoadLayers.CrossSectionKerbLayer;
                 case TemplateComponentKind.GreenStrip:
                 case TemplateComponentKind.MedianStrip:
                     return HyRoadLayers.CrossSectionGreenLayer;

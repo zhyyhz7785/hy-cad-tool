@@ -47,6 +47,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string CrossSectionSidewalkLayer = "05_hy_道路_横断面_人行道";
         public const short CrossSectionSidewalkColor = 52; // 橙黄
 
+        /// <summary>横断面-路牙（立缘石 / 平石的"L 型"凸起几何）。v2 新增，与人行道分离便于改色 / 冻结。</summary>
+        public const string CrossSectionKerbLayer = "05_hy_道路_横断面_路牙";
+        public const short CrossSectionKerbColor = 8; // 深灰：立缘石的素色混凝土质感
+
         /// <summary>横断面-绿化带填色 / 阴影（含中分带 / 分车绿带）。</summary>
         public const string CrossSectionGreenLayer = "05_hy_道路_横断面_绿化带";
         public const short CrossSectionGreenColor = 92; // 绿
@@ -83,6 +87,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
                 (CrossSectionPavementLayer, CrossSectionPavementColor),
                 (CrossSectionSidewalkLayer, CrossSectionSidewalkColor),
+                (CrossSectionKerbLayer, CrossSectionKerbColor),
                 (CrossSectionGreenLayer, CrossSectionGreenColor),
                 (CrossSectionDimensionLayer, CrossSectionDimensionColor),
                 (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),

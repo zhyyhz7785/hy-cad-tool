@@ -130,9 +130,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         private void BuildSkeleton()
         {
+            // 「界面」放在最顶：用户进设置面板第一眼即可看到主题切换
+            Categories.Add(new SettingsCategoryVm("界面",       "◐", new[]
+            {
+                new SettingsGroupVm("主题",         "Theme"),
+            }));
+
             Categories.Add(new SettingsCategoryVm("设置",       "⚙", new[]
             {
-                new SettingsGroupVm("样式名称预览", "StylePreview"),
                 new SettingsGroupVm("文字样式",     "TextStyle"),
                 new SettingsGroupVm("标注样式",     "DimStyle"),
                 new SettingsGroupVm("引线样式",     "MLeaderStyle"),

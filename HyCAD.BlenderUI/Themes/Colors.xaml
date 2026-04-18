@@ -1,66 +1,18 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary x:Class="HyCAD.BlenderUI.Themes.ColorsHost"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-     Blender 4.x 深色主题色板
-     所有画刷以 Brush_ 前缀命名；通过 DynamicResource 引用便于整体换皮
+     主题色板入口（v2 — host-replace 实现）
+     — XAML 编译期 Merge 默认主题 BlenderDark.xaml；
+     — Code-behind ColorsHost 构造时把自己登记到 BlenderThemeManager；
+     — BlenderThemeManager.Apply(...) 切换时直接 Clear 本字典 MergedDictionaries
+       并 Add 目标主题调色板 → 所有引用 Brush_* 的 DynamicResource 自动刷新。
+     — 设计器场景 BlenderThemeManager 未启动也无伤大雅：仍渲染 BlenderDark。
     -->
 
-    <!-- 窗口 / 编辑器 / 侧边栏 / 分组面板 -->
-    <SolidColorBrush x:Key="Brush_WindowBack"           Color="#303030"/>
-    <SolidColorBrush x:Key="Brush_HeaderBack"           Color="#292929"/>
-    <SolidColorBrush x:Key="Brush_RegionBack"           Color="#353535"/>
-    <SolidColorBrush x:Key="Brush_PanelBack"            Color="#393939"/>
-    <SolidColorBrush x:Key="Brush_PanelSubBack"         Color="#303030"/>
-    <SolidColorBrush x:Key="Brush_PanelHeaderBack"      Color="#424242"/>
-    <SolidColorBrush x:Key="Brush_BorderDark"           Color="#232323"/>
-    <SolidColorBrush x:Key="Brush_BorderMid"            Color="#2E2E2E"/>
-
-    <!-- 标签 / 选中高亮 -->
-    <SolidColorBrush x:Key="Brush_TabInactive"          Color="#1F1F1F"/>
-    <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#4772B3"/>
-    <SolidColorBrush x:Key="Brush_AccentBlueHover"      Color="#5680C2"/>
-
-    <!-- 按钮 -->
-    <SolidColorBrush x:Key="Brush_ButtonIdle"           Color="#545454"/>
-    <SolidColorBrush x:Key="Brush_ButtonHover"          Color="#5680C2"/>
-    <SolidColorBrush x:Key="Brush_ButtonPressed"        Color="#4772B3"/>
-    <SolidColorBrush x:Key="Brush_ButtonBorder"         Color="#1F1F1F"/>
-
-    <!-- 输入 / 复选 -->
-    <SolidColorBrush x:Key="Brush_InputBack"            Color="#585858"/>
-    <SolidColorBrush x:Key="Brush_InputBorder"          Color="#1F1F1F"/>
-    <SolidColorBrush x:Key="Brush_InputFocusBorder"     Color="#5680C2"/>
-    <SolidColorBrush x:Key="Brush_CheckboxBack"         Color="#3F3F3F"/>
-    <SolidColorBrush x:Key="Brush_CheckboxChecked"      Color="#4772B3"/>
-
-    <!-- 文字 -->
-    <SolidColorBrush x:Key="Brush_TextPrimary"          Color="#E6E6E6"/>
-    <SolidColorBrush x:Key="Brush_TextSecondary"        Color="#A0A0A0"/>
-    <SolidColorBrush x:Key="Brush_TextDisabled"         Color="#707070"/>
-    <SolidColorBrush x:Key="Brush_TextOnAccent"         Color="#FFFFFF"/>
-
-    <!-- 强调色 -->
-    <SolidColorBrush x:Key="Brush_Warning"              Color="#E5734E"/>
-    <SolidColorBrush x:Key="Brush_Success"              Color="#A3BE8C"/>
-
-    <!-- 滚动条 -->
-    <SolidColorBrush x:Key="Brush_ScrollThumb"          Color="#4A4A4A"/>
-    <SolidColorBrush x:Key="Brush_ScrollThumbHover"     Color="#5A5A5A"/>
-    <SolidColorBrush x:Key="Brush_ScrollTrack"          Color="#2A2A2A"/>
-
-    <!-- Expander 头条 -->
-    <SolidColorBrush x:Key="Brush_ExpanderHeader"       Color="#424242"/>
-    <SolidColorBrush x:Key="Brush_ExpanderHeaderHover"  Color="#4A4A4A"/>
-
-    <!-- ListBox / Selector 高亮 -->
-    <SolidColorBrush x:Key="Brush_ItemHover"            Color="#3E3E3E"/>
-    <SolidColorBrush x:Key="Brush_ItemSelected"         Color="#4772B3"/>
-    <SolidColorBrush x:Key="Brush_ItemSelectedText"     Color="#FFFFFF"/>
-
-    <!-- NumericSlider 专用 -->
-    <SolidColorBrush x:Key="Brush_SliderBack"           Color="#545454"/>
-    <SolidColorBrush x:Key="Brush_SliderFill"           Color="#4772B3"/>
-    <SolidColorBrush x:Key="Brush_SliderFillHover"      Color="#5680C2"/>
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
 
 </ResourceDictionary>

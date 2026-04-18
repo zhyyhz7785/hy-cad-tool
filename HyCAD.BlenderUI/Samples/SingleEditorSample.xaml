@@ -1,0 +1,165 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.SingleEditorSample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   x:Name="Root"
+                   Title="HyCAD.BlenderUI — Single Editor Sample"
+                   HeaderTitle="单编辑器样本（PiThreeUnit 形态）"
+                   Width="520"
+                   Height="640"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <!--
+      SingleEditorSample：BlenderWindow + 单 PropertyEditor 多 Tab 互斥切换。
+      对应生产形态：PiThreeUnitWindow（参数 / 校验 / 预览 三 Tab）。
+    -->
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterLeftContent>
+        <TextBlock VerticalAlignment="Center"
+                   Foreground="{DynamicResource Brush_TextSecondary}"
+                   Text="JD #03 / Total 5"/>
+    </bui:BlenderWindow.FooterLeftContent>
+
+    <bui:BlenderWindow.StatusContent>
+        <TextBlock VerticalAlignment="Center"
+                   Foreground="{DynamicResource Brush_Success}"
+                   Text="规范检查通过"/>
+    </bui:BlenderWindow.StatusContent>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <StackPanel Orientation="Horizontal">
+            <Button Width="80" Margin="0,0,4,0" Content="确定" Style="{StaticResource BlenderButton}"/>
+            <Button Width="80" Content="取消" Style="{StaticResource BlenderButton}"/>
+        </StackPanel>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <bui:PropertyEditor x:Name="Editor"
+                        Title="单元参数"
+                        SelectedTabIndex="0"
+                        ShowIconBar="True"
+                        ShowSearch="False">
+        <bui:PropertyEditor.Tabs>
+            <x:Array Type="{x:Type bui:IconTabItem}">
+                <bui:IconTabItem TooltipText="参数">
+                    <bui:IconTabItem.Icon>
+                        <Path Width="16" Height="16"
+                              Data="M 2,2 L 14,2 L 14,14 L 2,14 Z M 4,5 L 12,5 M 4,8 L 12,8 M 4,11 L 9,11"
+                              Fill="{DynamicResource Brush_TextPrimary}"
+                              Stretch="Uniform"/>
+                    </bui:IconTabItem.Icon>
+                </bui:IconTabItem>
+                <bui:IconTabItem TooltipText="规范检查">
+                    <bui:IconTabItem.Icon>
+                        <Path Width="16" Height="16"
+                              Data="M 2,8 L 6,12 L 14,4"
+                              Stroke="{DynamicResource Brush_TextPrimary}"
+                              StrokeThickness="2"
+                              Stretch="Uniform"/>
+                    </bui:IconTabItem.Icon>
+                </bui:IconTabItem>
+                <bui:IconTabItem TooltipText="示意图">
+                    <bui:IconTabItem.Icon>
+                        <Path Width="16" Height="16"
+                              Data="M 1,12 L 6,4 L 10,9 L 15,5 L 15,14 L 1,14 Z"
+                              Fill="{DynamicResource Brush_TextPrimary}"
+                              Stretch="Uniform"/>
+                    </bui:IconTabItem.Icon>
+                </bui:IconTabItem>
+            </x:Array>
+        </bui:PropertyEditor.Tabs>
+
+        <Grid>
+
+            <!-- Tab 0：参数 -->
+            <StackPanel Visibility="{Binding SelectedTabIndex, ElementName=Editor, Converter={StaticResource IndexToVisibility}, ConverterParameter=0}">
+                <Expander Header="平面参数" Style="{StaticResource BlenderExpander}">
+                    <StackPanel>
+                        <bui:PropertyRow Label="设计速度">
+                            <ComboBox SelectedIndex="2" Style="{StaticResource BlenderComboBox}">
+                                <ComboBoxItem Content="20"/>
+                                <ComboBoxItem Content="30"/>
+                                <ComboBoxItem Content="40"/>
+                                <ComboBoxItem Content="60"/>
+                                <ComboBoxItem Content="80"/>
+                            </ComboBox>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="半径 R">
+                            <bui:NumericSlider Decimals="2"
+                                               Maximum="100000" Minimum="0" Step="10"
+                                               Unit="m" Value="120"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="缓和段 1">
+                            <bui:NumericSlider Decimals="2"
+                                               Maximum="10000" Minimum="0" Step="5"
+                                               Unit="m" Value="40"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="缓和段 2">
+                            <bui:NumericSlider Decimals="2"
+                                               Maximum="10000" Minimum="0" Step="5"
+                                               Unit="m" Value="40"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="对称锁定">
+                            <CheckBox Content="缓和段 1 = 缓和段 2"
+                                      IsChecked="True"
+                                      Style="{StaticResource BlenderCheckBox}"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+
+            <!-- Tab 1：规范检查 -->
+            <StackPanel Margin="6"
+                        Visibility="{Binding SelectedTabIndex, ElementName=Editor, Converter={StaticResource IndexToVisibility}, ConverterParameter=1}">
+                <TextBlock Margin="0,0,0,6" Style="{StaticResource BlenderText}" Text="符合规范条目"/>
+
+                <StackPanel Margin="0,2" Orientation="Horizontal">
+                    <TextBlock Foreground="{DynamicResource Brush_Success}" Text="✓ "/>
+                    <TextBlock Style="{StaticResource BlenderText}" Text="最小圆曲线半径 ≥ 30m"/>
+                </StackPanel>
+                <StackPanel Margin="0,2" Orientation="Horizontal">
+                    <TextBlock Foreground="{DynamicResource Brush_Success}" Text="✓ "/>
+                    <TextBlock Style="{StaticResource BlenderText}" Text="超高过渡长度满足要求"/>
+                </StackPanel>
+                <StackPanel Margin="0,2" Orientation="Horizontal">
+                    <TextBlock Foreground="{DynamicResource Brush_Success}" Text="✓ "/>
+                    <TextBlock Style="{StaticResource BlenderText}" Text="缓和曲线长度 ≥ 0.6V"/>
+                </StackPanel>
+                <StackPanel Margin="0,2" Orientation="Horizontal">
+                    <TextBlock Foreground="{DynamicResource Brush_Warning}" Text="! "/>
+                    <TextBlock Style="{StaticResource BlenderText}" Text="建议：超高横坡可考虑提升到 4%"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Tab 2：示意图 -->
+            <Grid Visibility="{Binding SelectedTabIndex, ElementName=Editor, Converter={StaticResource IndexToVisibility}, ConverterParameter=2}">
+                <Border Background="{DynamicResource Brush_RegionBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="1"
+                        Margin="6"
+                        SnapsToDevicePixels="True">
+                    <Canvas>
+                        <Path Stroke="{DynamicResource Brush_AccentBlue}"
+                              StrokeThickness="2"
+                              Data="M 20,200 L 100,200 Q 240,200 240,80 L 240,20"
+                              Fill="Transparent"/>
+                        <TextBlock Canvas.Left="20" Canvas.Top="220"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="JD #03 平面示意"/>
+                    </Canvas>
+                </Border>
+            </Grid>
+
+        </Grid>
+    </bui:PropertyEditor>
+</bui:BlenderWindow>

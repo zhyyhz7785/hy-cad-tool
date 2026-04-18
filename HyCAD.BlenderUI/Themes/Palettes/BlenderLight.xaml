@@ -1,0 +1,68 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+     主题 2：Blender Light（参考 Blender 4.x 自带 Light 预设）
+     全部使用浅灰底 + 同色系蓝色高亮，确保对比度可读。
+     按 Brush_ key 与 BlenderDark 一一对应；BlenderThemeManager 通过同 key
+     在 Application.Current.Resources 顶层覆盖即可生效。
+    -->
+
+    <!-- 窗口 / 编辑器 / 侧边栏 / 分组面板 -->
+    <SolidColorBrush x:Key="Brush_WindowBack"           Color="#C5C5C5"/>
+    <SolidColorBrush x:Key="Brush_HeaderBack"           Color="#B0B0B0"/>
+    <SolidColorBrush x:Key="Brush_RegionBack"           Color="#CFCFCF"/>
+    <SolidColorBrush x:Key="Brush_PanelBack"            Color="#BABABA"/>
+    <SolidColorBrush x:Key="Brush_PanelSubBack"         Color="#C5C5C5"/>
+    <SolidColorBrush x:Key="Brush_PanelHeaderBack"      Color="#A8A8A8"/>
+    <SolidColorBrush x:Key="Brush_BorderDark"           Color="#7C7C7C"/>
+    <SolidColorBrush x:Key="Brush_BorderMid"            Color="#969696"/>
+
+    <!-- 标签 / 选中高亮 -->
+    <SolidColorBrush x:Key="Brush_TabInactive"          Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#4570B0"/>
+    <SolidColorBrush x:Key="Brush_AccentBlueHover"      Color="#5984C5"/>
+
+    <!-- 按钮 -->
+    <SolidColorBrush x:Key="Brush_ButtonIdle"           Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="Brush_ButtonHover"          Color="#5984C5"/>
+    <SolidColorBrush x:Key="Brush_ButtonPressed"        Color="#4570B0"/>
+    <SolidColorBrush x:Key="Brush_ButtonBorder"         Color="#7C7C7C"/>
+
+    <!-- 输入 / 复选 -->
+    <SolidColorBrush x:Key="Brush_InputBack"            Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="Brush_InputBorder"          Color="#7C7C7C"/>
+    <SolidColorBrush x:Key="Brush_InputFocusBorder"     Color="#4570B0"/>
+    <SolidColorBrush x:Key="Brush_CheckboxBack"         Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="Brush_CheckboxChecked"      Color="#4570B0"/>
+
+    <!-- 文字 -->
+    <SolidColorBrush x:Key="Brush_TextPrimary"          Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="Brush_TextSecondary"        Color="#4A4A4A"/>
+    <SolidColorBrush x:Key="Brush_TextDisabled"         Color="#8C8C8C"/>
+    <SolidColorBrush x:Key="Brush_TextOnAccent"         Color="#FFFFFF"/>
+
+    <!-- 强调色 -->
+    <SolidColorBrush x:Key="Brush_Warning"              Color="#C25533"/>
+    <SolidColorBrush x:Key="Brush_Success"              Color="#5C8E4F"/>
+
+    <!-- 滚动条 -->
+    <SolidColorBrush x:Key="Brush_ScrollThumb"          Color="#9A9A9A"/>
+    <SolidColorBrush x:Key="Brush_ScrollThumbHover"     Color="#7C7C7C"/>
+    <SolidColorBrush x:Key="Brush_ScrollTrack"          Color="#BFBFBF"/>
+
+    <!-- Expander 头条 -->
+    <SolidColorBrush x:Key="Brush_ExpanderHeader"       Color="#A8A8A8"/>
+    <SolidColorBrush x:Key="Brush_ExpanderHeaderHover"  Color="#9C9C9C"/>
+
+    <!-- ListBox / Selector 高亮 -->
+    <SolidColorBrush x:Key="Brush_ItemHover"            Color="#B5B5B5"/>
+    <SolidColorBrush x:Key="Brush_ItemSelected"         Color="#4570B0"/>
+    <SolidColorBrush x:Key="Brush_ItemSelectedText"     Color="#FFFFFF"/>
+
+    <!-- NumericSlider 专用 -->
+    <SolidColorBrush x:Key="Brush_SliderBack"           Color="#D8D8D8"/>
+    <SolidColorBrush x:Key="Brush_SliderFill"           Color="#4570B0"/>
+    <SolidColorBrush x:Key="Brush_SliderFillHover"      Color="#5984C5"/>
+
+</ResourceDictionary>

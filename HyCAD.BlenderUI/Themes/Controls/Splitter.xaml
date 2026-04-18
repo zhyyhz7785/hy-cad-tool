@@ -1,0 +1,41 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      自包含 Merge（pitfall B5）。
+    -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <!--
+      BlenderSplitter（命名样式 pitfall B1/B2 强制要 x:Key，因 TargetType 是原生 GridSplitter）：
+        idle = Brush_BorderDark；hover = Brush_AccentBlue；drag = Brush_AccentBlueHover。
+        Cursor 不在样式里绑死，调用方按 ResizeDirection 自行 Cursor="SizeWE" / "SizeNS"。
+        厚度由调用方 Width / Height 直接给 4（不用 GridLength 类型 DR，避免 pitfall B4）。
+    -->
+    <Style TargetType="{x:Type GridSplitter}" x:Key="BlenderSplitter">
+        <Setter Property="Background" Value="{DynamicResource Brush_BorderDark}"/>
+        <Setter Property="Focusable"  Value="False"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type GridSplitter}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_AccentBlue}"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_AccentBlueHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

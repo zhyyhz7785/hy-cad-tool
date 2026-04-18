@@ -5,6 +5,11 @@ namespace HyCADTool.Refactored.Domain.Models.Road
 {
     /// <summary>
     /// 纵断面（沿桩号的高程变化）。
+    ///
+    /// 设计约束：
+    /// - <see cref="Id"/> 稳定 GUID；v1 暂不写 DWG Xdata（Profile 没有对应 DWG 几何，仅在 JSON 中存在）；
+    /// - 领域层不引用 AutoCAD 类型；
+    /// - 与 <see cref="Alignment"/> 通过 父子关系（Alignment.Profiles）关联，无独立 ParentId 字段。
     /// </summary>
     public sealed class Profile
     {
@@ -21,6 +26,18 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// 按桩号升序排列。
         /// </summary>
         public List<ProfileVertex> Vertices { get; } = new List<ProfileVertex>();
+
+        /// <summary>
+        /// 设计速度（km/h）。用于规范校核（CJJ 37 表 6.2.2 最大纵坡 / CJJ 193 表 4.3.2 竖曲线最小半径）。
+        /// 默认 60 km/h（主干路常见值）；可在 <see cref="Presentation.ViewModels.Road"/> 编辑窗口内切换。
+        /// </summary>
+        public int DesignSpeed { get; set; } = 60;
+
+        /// <summary>
+        /// 最近一次变更时间（UTC）。由 <c>RoadProfileService</c> 在 ReplaceVertices 等写入操作中刷新；
+        /// 与聚合根的 <c>RoadDesign.LastModifiedUtc</c> 双层记录，便于 v2 增量同步时按对象级颗粒度刷新。
+        /// </summary>
+        public DateTime LastModifiedUtc { get; set; } = DateTime.UtcNow;
 
         public override string ToString() => $"Profile[{Name}, Id={Id:N}, PVI={Vertices.Count}]";
     }

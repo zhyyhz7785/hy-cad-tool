@@ -1,0 +1,322 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.FullDesignerSample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   Title="HyCAD.BlenderUI — Full Designer Sample"
+                   HeaderTitle="完整编辑器样本（Toolbar + Viewport + NPanel + StatusBar）"
+                   Width="1280"
+                   Height="800"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <!--
+      FullDesignerSample：完整 Editor 体系示范。
+        主体竖向：[全局 EditorHeader 24] [中部业务 *] [StatusBar 22]
+        中部业务横向：[Toolbar 40] [ViewportArea *] [V-splitter 4] [NPanelArea 280]
+        ViewportArea 竖向：[Editor mini header 24] [Viewport Canvas *] [H-splitter 4] [Inline Properties 100]
+        NPanelArea     竖向：[Editor mini header 24] [Tabs *] [H-splitter 4] [Detail 200]
+      共 3 个 BlenderSplitter。
+    -->
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <StackPanel Orientation="Horizontal">
+            <Button Width="80" Margin="0,0,4,0" Content="保存" Style="{StaticResource BlenderButton}"/>
+            <Button Width="80" Content="关闭" Style="{StaticResource BlenderButton}"/>
+        </StackPanel>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 全局 EditorHeader -->
+        <bui:EditorHeader Grid.Row="0">
+            <bui:EditorHeader.EditorTypeIcon>
+                <Path Width="14" Height="14"
+                      Data="M 0,2 L 14,2 L 14,12 L 0,12 Z"
+                      Fill="{DynamicResource Brush_AccentBlue}"
+                      Stretch="Uniform"/>
+            </bui:EditorHeader.EditorTypeIcon>
+            <bui:EditorHeader.LeftContent>
+                <StackPanel Orientation="Horizontal">
+                    <Button Margin="2,0" Padding="6,2" Content="文件" Style="{StaticResource BlenderButtonFlat}"/>
+                    <Button Margin="2,0" Padding="6,2" Content="编辑" Style="{StaticResource BlenderButtonFlat}"/>
+                    <Button Margin="2,0" Padding="6,2" Content="视图" Style="{StaticResource BlenderButtonFlat}"/>
+                    <Button Margin="2,0" Padding="6,2" Content="对象" Style="{StaticResource BlenderButtonFlat}"/>
+                    <Button Margin="2,0" Padding="6,2" Content="帮助" Style="{StaticResource BlenderButtonFlat}"/>
+                </StackPanel>
+            </bui:EditorHeader.LeftContent>
+            <bui:EditorHeader.RightContent>
+                <StackPanel Orientation="Horizontal">
+                    <ComboBox Width="120" Margin="0,0,4,0" SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
+                        <ComboBoxItem Content="Layout"/>
+                        <ComboBoxItem Content="Modeling"/>
+                        <ComboBoxItem Content="Sculpting"/>
+                    </ComboBox>
+                </StackPanel>
+            </bui:EditorHeader.RightContent>
+        </bui:EditorHeader>
+
+        <!-- 中部业务 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="280" MinWidth="220"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左 Toolbar -->
+            <bui:Toolbar Grid.Column="0">
+                <ToggleButton IsChecked="True" Style="{StaticResource BlenderToolbarIconButton}" ToolTip="选择">
+                    <Path Width="16" Height="16"
+                          Data="M 2,1 L 2,11 L 5,8 L 7,12 L 9,11 L 7,7 L 11,7 Z"
+                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                </ToggleButton>
+                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="移动">
+                    <Path Width="16" Height="16"
+                          Data="M 8,1 L 6,3 L 7,3 L 7,7 L 3,7 L 3,6 L 1,8 L 3,10 L 3,9 L 7,9 L 7,13 L 6,13 L 8,15 L 10,13 L 9,13 L 9,9 L 13,9 L 13,10 L 15,8 L 13,6 L 13,7 L 9,7 L 9,3 L 10,3 Z"
+                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                </ToggleButton>
+                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="旋转">
+                    <Path Width="16" Height="16"
+                          Data="M 8,2 A 6,6 0 1 1 2,8 L 0,8 L 3,11 L 6,8 L 4,8 A 4,4 0 1 0 8,4 Z"
+                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                </ToggleButton>
+                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="缩放">
+                    <Path Width="16" Height="16"
+                          Data="M 1,1 L 7,1 L 7,3 L 3,3 L 3,7 L 1,7 Z M 9,9 L 13,9 L 13,13 L 9,13 Z"
+                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                </ToggleButton>
+                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="标注">
+                    <Path Width="16" Height="16"
+                          Data="M 2,12 L 6,8 L 10,12 M 6,8 L 6,2"
+                          Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="2"
+                          Fill="Transparent" Stretch="Uniform"/>
+                </ToggleButton>
+            </bui:Toolbar>
+
+            <!-- ViewportArea -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="120" MinHeight="80"/>
+                </Grid.RowDefinitions>
+
+                <bui:EditorHeader Grid.Row="0">
+                    <bui:EditorHeader.EditorTypeIcon>
+                        <Path Width="14" Height="14"
+                              Data="M 0,8 L 7,1 L 14,8 L 7,15 Z"
+                              Fill="{DynamicResource Brush_AccentBlue}"
+                              Stretch="Uniform"/>
+                    </bui:EditorHeader.EditorTypeIcon>
+                    <bui:EditorHeader.LeftContent>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Margin="2,0" Padding="6,2" Content="View" Style="{StaticResource BlenderButtonFlat}"/>
+                            <Button Margin="2,0" Padding="6,2" Content="Add" Style="{StaticResource BlenderButtonFlat}"/>
+                            <Button Margin="2,0" Padding="6,2" Content="Object" Style="{StaticResource BlenderButtonFlat}"/>
+                        </StackPanel>
+                    </bui:EditorHeader.LeftContent>
+                    <bui:EditorHeader.RightContent>
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox Width="80" SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
+                                <ComboBoxItem Content="Solid"/>
+                                <ComboBoxItem Content="Wire"/>
+                                <ComboBoxItem Content="Render"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </bui:EditorHeader.RightContent>
+                </bui:EditorHeader>
+
+                <Border Grid.Row="1"
+                        Background="{DynamicResource Brush_RegionBack}"
+                        SnapsToDevicePixels="True">
+                    <Canvas>
+                        <Path Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"
+                              Data="M 100,200 L 300,200 L 300,400 L 100,400 Z M 100,200 L 200,100 L 400,100 L 300,200 M 300,400 L 400,300 L 400,100 M 300,200 L 400,100"
+                              Fill="Transparent"/>
+                        <TextBlock Canvas.Left="20" Canvas.Top="20"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="Viewport (3D 视区占位)"/>
+                    </Canvas>
+                </Border>
+
+                <GridSplitter Grid.Row="2"
+                              Height="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Cursor="SizeNS"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows"
+                              Style="{StaticResource BlenderSplitter}"/>
+
+                <Border Grid.Row="3"
+                        Background="{DynamicResource Brush_PanelBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="0,1,0,0"
+                        Padding="8">
+                    <StackPanel>
+                        <TextBlock Margin="0,0,0,4"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="Inline Properties (Cube)"/>
+                        <bui:PropertyRow Label="Location X">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="-100" Step="0.1"
+                                               Unit="m" Value="0"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Location Y">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="-100" Step="0.1"
+                                               Unit="m" Value="0"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <GridSplitter Grid.Column="2"
+                          Width="4"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Cursor="SizeWE"
+                          ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Columns"
+                          Style="{StaticResource BlenderSplitter}"/>
+
+            <!-- NPanelArea -->
+            <Grid Grid.Column="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="200" MinHeight="120"/>
+                </Grid.RowDefinitions>
+
+                <bui:EditorHeader Grid.Row="0">
+                    <bui:EditorHeader.EditorTypeIcon>
+                        <Path Width="14" Height="14"
+                              Data="M 0,2 L 6,2 L 6,12 L 0,12 Z M 8,2 L 14,2 L 14,12 L 8,12 Z"
+                              Fill="{DynamicResource Brush_AccentBlue}" Stretch="Uniform"/>
+                    </bui:EditorHeader.EditorTypeIcon>
+                    <bui:EditorHeader.LeftContent>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                   Text="Properties"/>
+                    </bui:EditorHeader.LeftContent>
+                </bui:EditorHeader>
+
+                <bui:PropertyEditor Grid.Row="1"
+                                    Title="Object Properties"
+                                    SelectedTabIndex="0"
+                                    ShowIconBar="True"
+                                    ShowSearch="False">
+                    <bui:PropertyEditor.Tabs>
+                        <x:Array Type="{x:Type bui:IconTabItem}">
+                            <bui:IconTabItem TooltipText="变换">
+                                <bui:IconTabItem.Icon>
+                                    <Path Width="14" Height="14"
+                                          Data="M 8,0 L 14,8 L 8,16 L 2,8 Z"
+                                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                                </bui:IconTabItem.Icon>
+                            </bui:IconTabItem>
+                            <bui:IconTabItem TooltipText="材质">
+                                <bui:IconTabItem.Icon>
+                                    <Path Width="14" Height="14"
+                                          Data="M 8,1 A 7,7 0 1 1 8,15 A 7,7 0 1 1 8,1 Z"
+                                          Fill="{DynamicResource Brush_AccentBlue}" Stretch="Uniform"/>
+                                </bui:IconTabItem.Icon>
+                            </bui:IconTabItem>
+                            <bui:IconTabItem TooltipText="物理">
+                                <bui:IconTabItem.Icon>
+                                    <Path Width="14" Height="14"
+                                          Data="M 8,2 A 6,6 0 1 1 2,8 L 4,8 A 4,4 0 1 0 8,4 Z M 8,4 L 11,7 L 8,10 L 5,7 Z"
+                                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                                </bui:IconTabItem.Icon>
+                            </bui:IconTabItem>
+                        </x:Array>
+                    </bui:PropertyEditor.Tabs>
+                    <StackPanel>
+                        <bui:PropertyRow Label="Scale X">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="0.001" Step="0.1"
+                                               Value="1.000"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Scale Y">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="0.001" Step="0.1"
+                                               Value="1.000"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Scale Z">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="0.001" Step="0.1"
+                                               Value="1.000"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Visible">
+                            <CheckBox Content="渲染时可见" IsChecked="True" Style="{StaticResource BlenderCheckBox}"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </bui:PropertyEditor>
+
+                <GridSplitter Grid.Row="2"
+                              Height="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Cursor="SizeNS"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows"
+                              Style="{StaticResource BlenderSplitter}"/>
+
+                <Border Grid.Row="3"
+                        Background="{DynamicResource Brush_PanelBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="0,1,0,0">
+                    <bui:PropertyEditor Title="Detail"
+                                        ShowIconBar="False"
+                                        ShowSearch="False">
+                        <StackPanel>
+                            <bui:PropertyRow Label="Name">
+                                <TextBox Style="{StaticResource BlenderTextBox}" Text="Cube.001"/>
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="Collection">
+                                <ComboBox SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
+                                    <ComboBoxItem Content="Scene Collection"/>
+                                    <ComboBoxItem Content="Linked"/>
+                                </ComboBox>
+                            </bui:PropertyRow>
+                        </StackPanel>
+                    </bui:PropertyEditor>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- 全局 StatusBar -->
+        <bui:StatusBar Grid.Row="2">
+            <bui:StatusBar.LeftContent>
+                <TextBlock Foreground="{DynamicResource Brush_TextSecondary}"
+                           Text="Verts 24 · Edges 36 · Faces 14"/>
+            </bui:StatusBar.LeftContent>
+            <bui:StatusBar.CenterContent>
+                <TextBlock Foreground="{DynamicResource Brush_TextSecondary}"
+                           Text="Mode: Object · Tool: Select"/>
+            </bui:StatusBar.CenterContent>
+            <bui:StatusBar.RightContent>
+                <TextBlock Foreground="{DynamicResource Brush_Success}"
+                           Text="60 fps"/>
+            </bui:StatusBar.RightContent>
+        </bui:StatusBar>
+    </Grid>
+</bui:BlenderWindow>

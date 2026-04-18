@@ -1,5 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
+using Autodesk.AutoCAD.GraphicsInterface;
 using HyCADTool.Refactored.Domain.Interfaces;
 using System;
 using System.IO;
@@ -277,13 +278,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string rawFont = (fontName ?? string.Empty).Trim();
             if (IsShxFont(rawFont))
             {
+                // SHX 路径：清掉 TT 的 FontDescriptor，避免之前的 typeface 残留导致 AutoCAD 又自动给 .shx 名加 TT 前缀
+                try { rec.Font = new FontDescriptor(string.Empty, false, false, 0, 0); } catch { }
                 rec.FileName = string.IsNullOrWhiteSpace(rawFont) ? "tssdeng.shx" : rawFont;
                 rec.BigFontFileName = (bigFontName ?? string.Empty).Trim();
                 return;
             }
 
+            // TrueType 路径：使用 FontDescriptor 设置 typeface（家族名），
+            // AutoCAD 会自动反推真实 .ttf/.ttc 文件，避免把"微软雅黑"误当 SHX 文件名。
+            // charSet=134 (GB2312)，pitchAndFamily=34 (VARIABLE_PITCH | FF_SWISS)，对中英文 TT 都通用。
             string typeface = ResolveTrueTypeTypeface(rawFont);
-            rec.FileName = typeface;
+            rec.Font = new FontDescriptor(typeface, false, false, 134, 34);
             rec.BigFontFileName = string.Empty;
         }
 
@@ -293,22 +299,41 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 && fontName.EndsWith(".shx", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// 将各种字体输入（显示名 / 文件名 / 英文名）统一规范成 FontDescriptor 用的 typeface（字体家族名）。
+        /// </summary>
         private static string ResolveTrueTypeTypeface(string fontName)
         {
             if (string.IsNullOrWhiteSpace(fontName))
                 return "微软雅黑";
 
             string value = fontName.Trim();
-            if (string.Equals(value, "msyh.ttc", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "msyh.ttf", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "微软雅黑", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "微软雅黑体", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "Microsoft YaHei", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase))
+            string lower = value.ToLowerInvariant();
+
+            switch (lower)
+            {
+                case "msyh.ttc":
+                case "msyh.ttf":
+                case "msyhbd.ttc":
+                case "microsoft yahei":
+                case "microsoft yahei ui":
+                    return "微软雅黑";
+                case "simsun.ttc":
+                case "simsun.ttf":
+                    return "宋体";
+                case "simhei.ttf":
+                    return "黑体";
+                case "simkai.ttf":
+                    return "楷体";
+                case "simfang.ttf":
+                    return "仿宋";
+            }
+
+            if (string.Equals(value, "微软雅黑", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "微软雅黑体", StringComparison.OrdinalIgnoreCase))
                 return "微软雅黑";
 
-            if (value.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)
-                || value.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
+            if (lower.EndsWith(".ttf") || lower.EndsWith(".ttc"))
                 return Path.GetFileNameWithoutExtension(value);
 
             return value;

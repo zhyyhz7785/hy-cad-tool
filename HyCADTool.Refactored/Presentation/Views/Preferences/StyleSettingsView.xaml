@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420">
 
@@ -25,113 +26,114 @@
                 <Setter Property="Margin" Value="0,2"/>
             </Style>
 
-            <!-- 预览：样式名称只读（对应 SettingsPanelViewModel 的 StyleTName 等） -->
-            <DataTemplate x:Key="Section_Preview">
-                <StackPanel Margin="8,6">
-                    <TextBlock Text="（只读）当前图纸样式名称预览"
-                               Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" Margin="0,0,0,6"/>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="文字样式 (Title)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding StyleTName -->
-                        <TextBlock Grid.Column="1" Text="HY_TITLE"
-                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="文字样式 (Std)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding StyleSName -->
-                        <TextBlock Grid.Column="1" Text="HY_STD"
-                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="标注样式" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DimStyleName -->
-                        <TextBlock Grid.Column="1" Text="HY_DIM"
-                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="引线样式" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding MLeaderStyleName -->
-                        <TextBlock Grid.Column="1" Text="HY_MLEADER"
-                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="表格样式" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding TableStyleName -->
-                        <TextBlock Grid.Column="1" Text="HY_TABLE"
-                                   Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-            </DataTemplate>
+            <!-- 子标题（分节标题）：放在每节最上方 -->
+            <Style x:Key="SubHeader" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Margin" Value="0,2,0,4"/>
+            </Style>
 
-            <!-- 文字样式 -->
+            <!-- 节内的小提示文字 -->
+            <Style x:Key="HintText" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+
+            <!-- 文字样式：双样式（T/S）字体 + 各自字宽 + 公共字高（出图比例已上移到 HyPreferencesView 顶部固定显示） -->
             <DataTemplate x:Key="Section_Text">
                 <StackPanel Margin="8,6">
+
+                    <!-- ===== 样式 1：TrueType（标题/说明）—— 默认字宽 1.0 ===== -->
+                    <TextBlock Text="样式 1：0-hy-说明-T（TrueType 标题/说明）" Style="{StaticResource SubHeader}"/>
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Title 字体名" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding StyleTFont -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="msyh.ttc"/>
+                        <TextBlock Grid.Column="0" Text="字体名称" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Grid.Column="1"
+                                  Style="{StaticResource BlenderComboBox}"
+                                  ItemsSource="{Binding Settings.StyleTFontOptionsWithCurrent}"
+                                  SelectedItem="{Binding Settings.StyleTFont, Mode=TwoWay}"
+                                  IsEditable="True"
+                                  HorizontalAlignment="Stretch"/>
                     </Grid>
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Std 字体名" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding StyleSFont -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="simplex.shx"/>
+                        <TextBlock Grid.Column="0" Text="字宽比" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource BlenderTextBox}"
+                                 Width="100" HorizontalAlignment="Left"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 helper:TextBoxHelper.ScrollStep="0.05"
+                                 Text="{Binding Settings.StyleTXScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </Grid>
+
+                    <!-- ===== 样式 2：SHX（标注/引线/表格）—— 默认字宽 0.7 ===== -->
+                    <TextBlock Text="样式 2：0-hy-说明-S（SHX 标注/引线/表格）"
+                               Style="{StaticResource SubHeader}"
+                               Margin="0,8,0,4"/>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="字体文件" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Grid.Column="1"
+                                  Style="{StaticResource BlenderComboBox}"
+                                  ItemsSource="{Binding Settings.StyleSFontOptionsWithCurrent}"
+                                  SelectedItem="{Binding Settings.StyleSFont, Mode=TwoWay}"
+                                  IsEditable="True"
+                                  HorizontalAlignment="Stretch"/>
                     </Grid>
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Std 大字体" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding StyleSBigFont -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="hztxt.shx"/>
+                        <TextBlock Grid.Column="0" Text="大字体" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Grid.Column="1"
+                                  Style="{StaticResource BlenderComboBox}"
+                                  ItemsSource="{Binding Settings.StyleSBigFontOptionsWithCurrent}"
+                                  SelectedItem="{Binding Settings.StyleSBigFont, Mode=TwoWay}"
+                                  IsEditable="True"
+                                  HorizontalAlignment="Stretch"/>
                     </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="字宽比" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource BlenderTextBox}"
+                                 Width="100" HorizontalAlignment="Left"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 helper:TextBoxHelper.ScrollStep="0.05"
+                                 Text="{Binding Settings.StyleSXScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </Grid>
+
+                    <!-- ===== 公共字高 ===== -->
+                    <TextBlock Text="公共" Style="{StaticResource SubHeader}" Margin="0,8,0,4"/>
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="字高 (TextSize)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding TextSize -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="2.5"/>
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource BlenderTextBox}"
+                                 Width="100" HorizontalAlignment="Left"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 helper:TextBoxHelper.ScrollStep="0.5"
+                                 Text="{Binding Settings.TextSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="字宽比 (TextXScale)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding TextXScale -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="0.8"/>
-                    </Grid>
+
                 </StackPanel>
             </DataTemplate>
 

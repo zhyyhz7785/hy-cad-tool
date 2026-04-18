@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:sub="clr-namespace:HyCADTool.Refactored.Presentation.Views.Preferences"
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels"
+             xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              mc:Ignorable="d"
              Background="{DynamicResource Brush_RegionBack}"
              d:DesignHeight="650" d:DesignWidth="560"
@@ -61,7 +62,7 @@
             </Style>
 
             <!-- ===== 二级 Expander 内容：根据 GroupKey 选择具体骨架；命中则显示示例 UserControl，否则显示 TODO 占位 ===== -->
-            <DataTemplate x:Key="GroupKey_StylePreview">         <sub:StyleSettingsView   Section="Preview"/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_Theme">                <sub:ThemeSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_TextStyle">            <sub:StyleSettingsView   Section="Text"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_DimStyle">             <sub:StyleSettingsView   Section="Dim"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_MLeaderStyle">         <sub:StyleSettingsView   Section="MLeader"/></DataTemplate>
@@ -149,12 +150,64 @@
                          ScrollViewer.VerticalScrollBarVisibility="Auto"/>
             </Border>
 
-            <!-- 右侧二级分组内容 -->
-            <ScrollViewer Grid.Column="1"
-                          Style="{StaticResource BlenderScrollViewer}"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled"
-                          Padding="6,4">
+            <!-- 右侧：上方固定的「出图比例」横条（最重要参数，全分类共享） + 下方二级分组内容 -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 出图比例（固定置顶，独立显示） -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource Brush_HeaderBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="0,0,0,1"
+                        Padding="10,8">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="★"
+                                       Foreground="{DynamicResource Brush_AccentBlue}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,4,0"/>
+                            <TextBlock Text="出图比例"
+                                       Foreground="{DynamicResource Brush_TextPrimary}"
+                                       FontWeight="SemiBold"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="（最重要：影响所有样式名与字号实算）"
+                                       Foreground="{DynamicResource Brush_TextDisabled}"
+                                       FontSize="10"
+                                       VerticalAlignment="Center"
+                                       Margin="6,0,0,0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="主图形比例"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,6,0"/>
+                            <TextBlock Text="1 :"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}"
+                                     Width="100"
+                                     VerticalAlignment="Center"
+                                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                                     helper:TextBoxHelper.ScrollStep="5"
+                                     Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 原二级分组列表 -->
+                <ScrollViewer Grid.Row="1"
+                              Style="{StaticResource BlenderScrollViewer}"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="6,4">
                 <ItemsControl ItemsSource="{Binding SelectedCategory.Groups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:SettingsGroupVm}">
@@ -167,8 +220,8 @@
                                         <Style TargetType="{x:Type ContentControl}">
                                             <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_Placeholder}"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding GroupKey}" Value="StylePreview">
-                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_StylePreview}"/>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="Theme">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_Theme}"/>
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GroupKey}" Value="TextStyle">
                                                     <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_TextStyle}"/>
@@ -239,6 +292,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+            </Grid>
         </Grid>
 
         <!-- ===== 底栏：5 项动作 ===== -->

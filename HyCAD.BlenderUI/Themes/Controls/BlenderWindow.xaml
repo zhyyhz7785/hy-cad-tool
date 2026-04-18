@@ -1,0 +1,173 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ctrl="clr-namespace:HyCAD.BlenderUI.Controls"
+                    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+                    xmlns:prim="clr-namespace:HyCAD.BlenderUI.Controls.Primitives">
+
+    <!--
+      自包含 Merge：避免依赖端只 Merge BlenderWindow.xaml 时拿不到颜色 / 字体 / 度量。
+      （pitfall B5：跨字典 StaticResource 必须自包含）
+    -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Fonts.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/Button.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <!--
+      BoolToVisibility 命名资源：模板内通过 StaticResource 引用
+      （pitfall B6：Converter 必须以命名资源形式注册，而非作为 MarkupExtension 直接挂在控件上）
+      必须放在使用它的 Style 之前 (StaticResource 解析顺序)
+    -->
+    <prim:BoolToVisibility x:Key="BlenderWindowBoolToVisibility"/>
+
+    <!--
+      标题栏 X 关闭按钮：命名样式（pitfall B1：禁止隐式 TargetType Style）
+      使用 hover -> Brush_Warning（橙红）做标识
+      WindowChrome.IsHitTestVisibleInChrome=True 让按钮能接收点击（不被 chrome 拖动接管）
+    -->
+    <Style x:Key="BlenderWindowCloseButton" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True">
+                        <Path x:Name="Ico"
+                              Data="M 0,0 L 10,10 M 10,0 L 0,10"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="1.3"
+                              Width="10" Height="10"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_Warning}"/>
+                            <Setter TargetName="Ico" Property="Stroke" Value="{DynamicResource Brush_TextOnAccent}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_AccentBlue}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      BlenderWindow 默认样式（无 x:Key）：通过 DefaultStyleKey 自动绑定到 ctrl:BlenderWindow
+      仅作用于 ctrl:BlenderWindow 类型（不会污染父类 Window，pitfall B2 安全）
+    -->
+    <Style TargetType="{x:Type ctrl:BlenderWindow}">
+        <Setter Property="Background" Value="{DynamicResource Brush_WindowBack}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize"   Value="{DynamicResource Metric_FontMain}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderDark}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:BlenderWindow}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            SnapsToDevicePixels="True">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- ==== Header ==== -->
+                            <Border Grid.Row="0"
+                                    Background="{DynamicResource Brush_HeaderBack}"
+                                    BorderBrush="{DynamicResource Brush_BorderDark}"
+                                    BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="{TemplateBinding HeaderTitle}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"
+                                               FontFamily="{DynamicResource Font_Main}"
+                                               FontSize="{DynamicResource Metric_FontHeader}"
+                                               VerticalAlignment="Center"
+                                               Margin="10,0,0,0"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                    <ContentPresenter Grid.Column="1"
+                                                      Content="{TemplateBinding HeaderRightContent}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,4,0"
+                                                      shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                                    <Button x:Name="PART_CloseButton"
+                                            Grid.Column="2"
+                                            Style="{StaticResource BlenderWindowCloseButton}"
+                                            Visibility="{TemplateBinding ShowCloseButton, Converter={StaticResource BlenderWindowBoolToVisibility}}"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- ==== Body ==== -->
+                            <ContentPresenter Grid.Row="1"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              ContentStringFormat="{TemplateBinding ContentStringFormat}"/>
+
+                            <!-- ==== Footer ==== -->
+                            <Border Grid.Row="2"
+                                    Background="{DynamicResource Brush_PanelHeaderBack}"
+                                    BorderBrush="{DynamicResource Brush_BorderDark}"
+                                    BorderThickness="0,1,0,0"
+                                    MinHeight="36">
+                                <Grid Margin="10,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Grid.Column="0"
+                                                      Content="{TemplateBinding FooterLeftContent}"
+                                                      VerticalAlignment="Center"
+                                                      shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                                    <ContentPresenter Grid.Column="1"
+                                                      Content="{TemplateBinding StatusContent}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center"
+                                                      shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                                    <ContentPresenter Grid.Column="2"
+                                                      Content="{TemplateBinding FooterRightContent}"
+                                                      VerticalAlignment="Center"
+                                                      shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

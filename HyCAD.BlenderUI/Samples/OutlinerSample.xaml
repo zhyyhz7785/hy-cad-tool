@@ -1,0 +1,61 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.OutlinerSample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   Title="HyCAD.BlenderUI — Outliner Sample"
+                   HeaderTitle="大纲面板样本（BlenderOutliner）"
+                   Width="380"
+                   Height="640"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <!--
+      OutlinerSample：单 BlenderOutliner TreeView 演示。
+      展示层级展开 / hover / selected 高亮 / 三角图标旋转。
+    -->
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <Button Width="80" Content="关闭" Style="{StaticResource BlenderButton}"/>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <bui:PropertyEditor Title="Scene Outliner"
+                        ShowIconBar="False"
+                        ShowSearch="True">
+        <TreeView Style="{StaticResource BlenderOutliner}">
+            <TreeViewItem Header="Scene Collection" IsExpanded="True">
+                <TreeViewItem Header="Collection" IsExpanded="True">
+                    <TreeViewItem Header="Camera"/>
+                    <TreeViewItem Header="Light - Sun"/>
+                    <TreeViewItem Header="Cube" IsExpanded="True">
+                        <TreeViewItem Header="Mesh: CubeMesh"/>
+                        <TreeViewItem Header="Material: Default" IsExpanded="True">
+                            <TreeViewItem Header="Surface: Principled BSDF"/>
+                            <TreeViewItem Header="Volume: -"/>
+                        </TreeViewItem>
+                    </TreeViewItem>
+                </TreeViewItem>
+                <TreeViewItem Header="Linked Library" IsExpanded="False">
+                    <TreeViewItem Header="Roads.blend"/>
+                    <TreeViewItem Header="Buildings.blend"/>
+                </TreeViewItem>
+            </TreeViewItem>
+
+            <TreeViewItem Header="规范检查 (CJJ37-2012)" IsExpanded="True">
+                <TreeViewItem Header="✓ 最小圆曲线半径 ≥ 30m"/>
+                <TreeViewItem Header="✓ 超高过渡长度满足要求"/>
+                <TreeViewItem Header="✓ 缓和曲线长度 ≥ 0.6V"/>
+                <TreeViewItem Header="! 建议：超高横坡可考虑提升到 4%"/>
+            </TreeViewItem>
+        </TreeView>
+    </bui:PropertyEditor>
+</bui:BlenderWindow>

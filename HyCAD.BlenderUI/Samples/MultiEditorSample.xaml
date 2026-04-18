@@ -1,0 +1,235 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.MultiEditorSample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   Title="HyCAD.BlenderUI — Multi Editor Sample"
+                   HeaderTitle="多 Editor 工作区样本（上下 + 左右 4 区）"
+                   Width="1280"
+                   Height="800"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <!--
+      MultiEditorSample：4 区域工作区。
+        上 Grid 3 col: [Viewport *] [V-splitter 4] [Properties 280]
+        下 Grid 3 col: [Timeline *] [V-splitter 4] [Outliner 240]
+        主 Grid 3 row: [上 *] [H-splitter 4] [下 *]
+      共 3 个 BlenderSplitter。每个 Editor 区域有自己的 EditorHeader。
+    -->
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <Button Width="80" Content="关闭" Style="{StaticResource BlenderButton}"/>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*" MinHeight="200"/>
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="*"  MinHeight="160"/>
+        </Grid.RowDefinitions>
+
+        <!-- 上半：Viewport | Properties -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"  MinWidth="320"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="280" MinWidth="220"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Viewport Editor -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <bui:EditorHeader Grid.Row="0">
+                    <bui:EditorHeader.EditorTypeIcon>
+                        <Path Width="14" Height="14"
+                              Data="M 0,8 L 7,1 L 14,8 L 7,15 Z"
+                              Fill="{DynamicResource Brush_AccentBlue}" Stretch="Uniform"/>
+                    </bui:EditorHeader.EditorTypeIcon>
+                    <bui:EditorHeader.LeftContent>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                   Text="3D Viewport"/>
+                    </bui:EditorHeader.LeftContent>
+                </bui:EditorHeader>
+                <Border Grid.Row="1"
+                        Background="{DynamicResource Brush_RegionBack}">
+                    <Canvas>
+                        <Path Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"
+                              Data="M 100,200 L 300,200 L 300,400 L 100,400 Z"
+                              Fill="Transparent"/>
+                        <TextBlock Canvas.Left="20" Canvas.Top="20"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="Viewport Editor"/>
+                    </Canvas>
+                </Border>
+            </Grid>
+
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          Cursor="SizeWE"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Style="{StaticResource BlenderSplitter}"/>
+
+            <!-- Properties Editor -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <bui:EditorHeader Grid.Row="0">
+                    <bui:EditorHeader.EditorTypeIcon>
+                        <Path Width="14" Height="14"
+                              Data="M 0,2 L 14,2 L 14,12 L 0,12 Z"
+                              Fill="{DynamicResource Brush_AccentBlue}" Stretch="Uniform"/>
+                    </bui:EditorHeader.EditorTypeIcon>
+                    <bui:EditorHeader.LeftContent>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                   Text="Properties"/>
+                    </bui:EditorHeader.LeftContent>
+                </bui:EditorHeader>
+                <bui:PropertyEditor Grid.Row="1"
+                                    Title="Object"
+                                    ShowIconBar="False"
+                                    ShowSearch="False">
+                    <StackPanel>
+                        <bui:PropertyRow Label="Location X">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="-100" Step="0.1"
+                                               Value="0"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Location Y">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="-100" Step="0.1"
+                                               Value="0"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Location Z">
+                            <bui:NumericSlider Decimals="3"
+                                               Maximum="100" Minimum="-100" Step="0.1"
+                                               Value="0"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Rotation Z">
+                            <bui:NumericSlider Decimals="2"
+                                               Maximum="360" Minimum="-360" Step="1"
+                                               Unit="°" Value="0"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </bui:PropertyEditor>
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Row="1"
+                      Height="4"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Cursor="SizeNS"
+                      ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+                      Style="{StaticResource BlenderSplitter}"/>
+
+        <!-- 下半：Timeline | Outliner -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"  MinWidth="320"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="240" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Timeline Editor -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <bui:EditorHeader Grid.Row="0">
+                    <bui:EditorHeader.EditorTypeIcon>
+                        <Path Width="14" Height="14"
+                              Data="M 0,7 L 14,7 M 1,5 L 1,9 M 4,5 L 4,9 M 7,5 L 7,9 M 10,5 L 10,9 M 13,5 L 13,9"
+                              Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="1.4"
+                              Fill="Transparent" Stretch="Uniform"/>
+                    </bui:EditorHeader.EditorTypeIcon>
+                    <bui:EditorHeader.LeftContent>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource Brush_TextPrimary}"
+                                       Text="Timeline"/>
+                            <Button Margin="2,0" Padding="6,2" Content="View" Style="{StaticResource BlenderButtonFlat}"/>
+                            <Button Margin="2,0" Padding="6,2" Content="Marker" Style="{StaticResource BlenderButtonFlat}"/>
+                        </StackPanel>
+                    </bui:EditorHeader.LeftContent>
+                    <bui:EditorHeader.RightContent>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Width="28" Margin="2,0" Content="◀◀" Style="{StaticResource BlenderButton}"/>
+                            <Button Width="28" Margin="2,0" Content="▶"  Style="{StaticResource BlenderButton}"/>
+                            <Button Width="28" Margin="2,0" Content="▶▶" Style="{StaticResource BlenderButton}"/>
+                        </StackPanel>
+                    </bui:EditorHeader.RightContent>
+                </bui:EditorHeader>
+                <Border Grid.Row="1"
+                        Background="{DynamicResource Brush_RegionBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="0,1,0,0">
+                    <Canvas>
+                        <Line X1="0" Y1="20" X2="2000" Y2="20"
+                              Stroke="{DynamicResource Brush_BorderDark}" StrokeThickness="1"/>
+                        <Line X1="100" Y1="0" X2="100" Y2="200"
+                              Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"/>
+                        <TextBlock Canvas.Left="105" Canvas.Top="4"
+                                   Foreground="{DynamicResource Brush_AccentBlue}"
+                                   Text="Frame 24"/>
+                    </Canvas>
+                </Border>
+            </Grid>
+
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          Cursor="SizeWE"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Style="{StaticResource BlenderSplitter}"/>
+
+            <!-- Outliner Editor -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <bui:EditorHeader Grid.Row="0">
+                    <bui:EditorHeader.EditorTypeIcon>
+                        <Path Width="14" Height="14"
+                              Data="M 0,2 L 14,2 M 0,7 L 14,7 M 0,12 L 14,12"
+                              Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="1.5"
+                              Fill="Transparent" Stretch="Uniform"/>
+                    </bui:EditorHeader.EditorTypeIcon>
+                    <bui:EditorHeader.LeftContent>
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                   Text="Outliner"/>
+                    </bui:EditorHeader.LeftContent>
+                </bui:EditorHeader>
+                <TreeView Grid.Row="1" Style="{StaticResource BlenderOutliner}">
+                    <TreeViewItem Header="Scene" IsExpanded="True">
+                        <TreeViewItem Header="Camera"/>
+                        <TreeViewItem Header="Light"/>
+                        <TreeViewItem Header="Cube" IsExpanded="True">
+                            <TreeViewItem Header="Mesh"/>
+                            <TreeViewItem Header="Material"/>
+                        </TreeViewItem>
+                    </TreeViewItem>
+                </TreeView>
+            </Grid>
+        </Grid>
+    </Grid>
+</bui:BlenderWindow>

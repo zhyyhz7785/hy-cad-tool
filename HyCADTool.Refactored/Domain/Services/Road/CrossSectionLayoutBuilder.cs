@@ -11,18 +11,17 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     ///
     /// 设计要点：
     /// <list type="bullet">
-    ///   <item><see cref="ToTemplate"/>：写入 <c>RoadDesign.Templates</c> 的 Domain 形态；v1 忽略缘石凸起，
-    ///       每条带 1 个外缘点，中央分隔带额外 2 个点（左/右边缘）。</item>
-    ///   <item><see cref="ToFigure"/>：直接从条带构造图纸指令，避免"条带→Template→图纸"的二次转换
-    ///       丢失 Band 名称 / 顶部标签等元数据。</item>
-    ///   <item><see cref="FromTemplate"/>：反向拼 Band。对非单调横偏移或零点缺失的旧 Template 返回 null，
-    ///       让窗口提示"此模板无法编辑，请新建"。</item>
+    ///   <item><see cref="ToTemplate"/>：写入 <c>RoadDesign.Templates</c> 的 Domain 形态；v1 仍按"每条带 1 个外缘点"
+    ///       的简化结构持久化，路牙等扩展信息保存在 Layout VO 中（Template 仅承载主轮廓拓扑）。</item>
+    ///   <item><see cref="ToFigure"/>：v2 委托给 <see cref="CrossSectionGeometryGenerator"/>，支持路牙凸起、
+    ///       抛物线/折线路拱、坡型等扩展几何。</item>
+    ///   <item><see cref="FromTemplate"/>：反向拼 Band。对非单调横偏移或零点缺失的旧 Template 返回 null。</item>
     /// </list>
     ///
     /// 横坡符号约定（内高外低）：
     /// <list type="bullet">
     ///   <item>机动车道 / 非机动车道 / 人行道：<c>CrossSlopePct &gt; 0</c> 表示"向外下降 CrossSlopePct %"。</item>
-    ///   <item>缘石 / 中央分隔带 / 绿化带：v1 视为水平段，<c>CrossSlopePct</c> 被忽略（即使传了也不推 y）。</item>
+    ///   <item>缘石 / 中央分隔带 / 绿化带：视为水平段，<c>CrossSlopePct</c> 被忽略（即使传了也不推 y）。</item>
     /// </list>
     /// </summary>
     public static class CrossSectionLayoutBuilder
@@ -30,22 +29,12 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <summary>
         /// 比较两条带"从中心向外扫描"时 y 偏移时的符号：
         /// 返回 -1 表示外侧 y 比内侧 y 低（路面类）；返回 0 表示水平。
+        ///
+        /// 直接转发给 <see cref="CrossSectionGeometryGenerator.SurfaceSlopeSign"/>，
+        /// 保持本类内部 (ToTemplate/FromTemplate) 与 Generator 行为一致。
         /// </summary>
         private static int SlopeSign(TemplateComponentKind kind)
-        {
-            switch (kind)
-            {
-                case TemplateComponentKind.Pavement:
-                case TemplateComponentKind.NonMotorized:
-                case TemplateComponentKind.Sidewalk:
-                case TemplateComponentKind.Shoulder:
-                    return -1;
-
-                // 缘石 / 中央分隔带 / 绿化带 / 边坡（v1 不算斜坡）/ 未知类型 → 水平
-                default:
-                    return 0;
-            }
-        }
+            => CrossSectionGeometryGenerator.SurfaceSlopeSign(kind);
 
         // ============================================================================
         //  Layout → Template（持久化）
@@ -59,6 +48,11 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         ///
         /// <paramref name="templateId"/>：沿用旧 Id 做"增量保存"；null 则由 <see cref="Template"/>
         /// 默认构造随机一个 Guid。
+        ///
+        /// <para>
+        /// v2 备注：路牙、抛物线路拱等扩展信息暂不写入 Template（Template 仅承载主轮廓拓扑），
+        /// 完整数据由上层 <see cref="CrossSectionLayout"/> 保存为独立 JSON。
+        /// </para>
         /// </summary>
         public static Template ToTemplate(CrossSectionLayout layout, Guid? templateId = null, string name = null)
         {
@@ -72,7 +66,6 @@ namespace HyCADTool.Refactored.Domain.Services.Road
 
             // 1) 收集"左→右"顺序的点，按公式 y' = y + w·(i/100)·slopeSign 逐段推进
             //    同时顺序发射 Components
-            var leftPoints = new List<TemplatePoint>();
             var components = new List<TemplateComponent>();
 
             double xLeftCenter = -layout.CenterMedianWidth / 2.0;
@@ -130,7 +123,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             else
             {
                 // 无中分带时，左中心和右中心重合 (0,0)；为避免重复点，仅保留一个（leftInnerAnchor 已在）
-                // 但后续 Components 仍需指向 rightInnerAnchor 的"身份"，这里把 rightInnerAnchor 
+                // 但后续 Components 仍需指向 rightInnerAnchor 的"身份"，这里把 rightInnerAnchor
                 // 的 Id 替换为 leftInnerAnchor 的 Id。
                 rightInnerAnchor.Id = leftInnerAnchor.Id;
                 rightInnerAnchor.HorizontalOffset = leftInnerAnchor.HorizontalOffset;
@@ -358,25 +351,41 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         // ============================================================================
-        //  Layout → Figure（WPF 预览 + AutoCAD 出图共用）
+        //  Layout → Figure（WPF 预览 + AutoCAD 出图共用，v2 委托给 Generator）
         // ============================================================================
+
+        /// <summary>
+        /// 单个板块在最终 <see cref="CrossSectionFigure.Vertices"/> 列表中的索引落点。
+        /// 用于派生 Panel / 横坡 label / 顶部 label 的位置。
+        /// </summary>
+        private struct StripPlacement
+        {
+            /// <summary>板块内端在 vertices 中的索引（即上一板块的 OuterVertexIndex 或中心）。</summary>
+            public int InnerVertexIndex;
+
+            /// <summary>路面外缘点在 vertices 中的索引（与板块本身 Panel 的边界）。</summary>
+            public int SurfaceOuterVertexIndex;
+
+            /// <summary>板块最外端（NextInner）在 vertices 中的索引。无路牙时 = SurfaceOuterVertexIndex。</summary>
+            public int OuterVertexIndex;
+
+            /// <summary>是否包含外侧路牙凸起。</summary>
+            public bool HasOuterKerb;
+        }
 
         /// <summary>
         /// 把 <see cref="CrossSectionLayout"/> 铺平为一组绘图指令。
         ///
+        /// v2 几何由 <see cref="CrossSectionGeometryGenerator"/> 生成，
+        /// 支持路牙凸起、抛物线/折线路拱等扩展形态。
+        ///
         /// 产出：
         /// <list type="bullet">
-        ///   <item>Vertices：从最左 → 最右 的外轮廓折线（含中分带两端点）。</item>
-        ///   <item>Panels：每条带 1 个（中分带 +1，如果存在）。</item>
-        ///   <item>DimensionSegments：
-        ///     <list type="bullet">
-        ///       <item>Tier=0 底部总长链：左半 / 中分带 / 右半 三段。</item>
-        ///       <item>Tier=1 底部分段链：每条带 + 中分带各一段。</item>
-        ///       <item>Tier=2 顶部总红线宽链：一段。</item>
-        ///     </list>
-        ///   </item>
-        ///   <item>SlopeLabels：仅当条带 CrossSlopePct ≠ 0 才输出。</item>
-        ///   <item>HeightLabels：左右最外点、中心、中分带两端（y = 0 时也输出"±0"）。</item>
+        ///   <item>Vertices：从最左 → 最右 的外轮廓折线（含中分带两端点 + 路牙顶 + 路拱插值点）。</item>
+        ///   <item>Panels：每条带 1 个（板块本身）+ 每路牙 1 个（如有）+ 中分带 1 个（如有）。</item>
+        ///   <item>DimensionSegments：底部 Tier=0 总长 / Tier=1 分段 + 顶部 Tier=2 总宽。</item>
+        ///   <item>SlopeLabels：仅当条带 CrossSlopePct ≠ 0 才输出，定位在路面段中点。</item>
+        ///   <item>HeightLabels：所有 vertices 处（去除几乎重复点）。</item>
         ///   <item>TopLabels：每条带中央一个（名称）+ 中分带 1 个（"中央分隔带"）。</item>
         ///   <item>Orientation / Title：固定左"北"右"南"、底部居中标题。</item>
         /// </list>
@@ -385,111 +394,220 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         {
             if (layout == null) throw new ArgumentNullException(nameof(layout));
 
-            var vertices = new List<FigureVertex>();
-            var panels = new List<FigurePanel>();
-            var dimSegs = new List<FigureDimensionSegment>();
-            var slopes = new List<FigureSlopeLabel>();
-            var heights = new List<FigureHeightLabel>();
-            var topLabels = new List<FigureTopLabel>();
-
-            // ---- 1) 顶点序列（从最左到最右）----
-            // 先正向算"左外→左内→右内→右外"，过程中同步记录各条带的"段"索引范围
             double xLeftInner = -layout.CenterMedianWidth / 2.0;
             double xRightInner = +layout.CenterMedianWidth / 2.0;
 
-            // 左半顶点（从内向外先算 outerPoints[0..leftCount-1]，最后反转）
-            var leftPointsInnerToOuter = new List<(double X, double Y, string Name)>
+            // 1) 调用 Generator 算每个板块的多顶点几何（含路牙、抛物线插值）
+            var leftStrips = GenerateStrips(layout.LeftBands, xLeftInner, 0, BandSide.Left);
+            var rightStrips = GenerateStrips(layout.RightBands, xRightInner, 0, BandSide.Right);
+
+            // 2) 拼接 vertices（最左 → 中心 → 最右）+ 同步建立 StripPlacement 索引映射
+            var vertices = new List<FigureVertex>();
+            var leftPlacements = new StripPlacement[leftStrips.Count];
+            var rightPlacements = new StripPlacement[rightStrips.Count];
+
+            // 左半反向：strip[N-1] (最外) 先放，strip[0] (最内) 最后放
+            for (int s = leftStrips.Count - 1; s >= 0; s--)
             {
-                (xLeftInner, 0, "中心左")
-            };
-            double xL = xLeftInner, yL = 0;
-            foreach (var band in layout.LeftBands)
-            {
-                double sign = SlopeSign(band.Kind);
-                double dx = -band.Width;
-                double dy = band.Width * (band.CrossSlopePct / 100.0) * sign;
-                xL += dx;
-                yL += dy;
-                leftPointsInnerToOuter.Add((xL, yL, band.Name + "外缘"));
+                var geo = leftStrips[s];
+                int placementOuterIdx = vertices.Count;             // 反向后第一个写入 = 该 strip 的"NextInner"端
+                int placementSurfaceIdx = placementOuterIdx + (geo.Vertices.Count - 1 - geo.SurfaceOuterIndex);
+
+                // 反向写入 strip vertices
+                for (int v = geo.Vertices.Count - 1; v >= 0; v--)
+                {
+                    var bv = geo.Vertices[v];
+                    vertices.Add(new FigureVertex(bv.X, bv.Y, bv.Name));
+                }
+
+                leftPlacements[s] = new StripPlacement
+                {
+                    OuterVertexIndex = placementOuterIdx,
+                    SurfaceOuterVertexIndex = placementSurfaceIdx,
+                    InnerVertexIndex = vertices.Count, // 暂占位，下一行写完中心后回填或下次循环覆写
+                    HasOuterKerb = geo.HasOuterKerb,
+                };
             }
 
-            // 右半顶点（从内向外）
-            var rightPointsInnerToOuter = new List<(double X, double Y, string Name)>
+            // 中心左
+            int centerLeftIndex = vertices.Count;
+            vertices.Add(new FigureVertex(xLeftInner, 0, "中心左"));
+            // 左半 strip[0] 的 InnerVertexIndex = 中心左
+            // 左半 strip[s] 的 InnerVertexIndex = strip[s-1] 的 OuterVertexIndex
+            if (leftStrips.Count > 0)
             {
-                (xRightInner, 0, "中心右")
-            };
-            double xR = xRightInner, yR = 0;
-            foreach (var band in layout.RightBands)
-            {
-                double sign = SlopeSign(band.Kind);
-                double dx = +band.Width;
-                double dy = band.Width * (band.CrossSlopePct / 100.0) * sign;
-                xR += dx;
-                yR += dy;
-                rightPointsInnerToOuter.Add((xR, yR, band.Name + "外缘"));
+                leftPlacements[0].InnerVertexIndex = centerLeftIndex;
+                for (int s = 1; s < leftStrips.Count; s++)
+                {
+                    leftPlacements[s].InnerVertexIndex = leftPlacements[s - 1].OuterVertexIndex;
+                }
             }
 
-            // 组合 vertices：左外 → 左内 → 右内 → 右外
-            // 左：反转后从"最外 → 中心左"
-            for (int i = leftPointsInnerToOuter.Count - 1; i >= 0; i--)
-            {
-                var p = leftPointsInnerToOuter[i];
-                vertices.Add(new FigureVertex(p.X, p.Y, p.Name));
-            }
+            int centerRightIndex = centerLeftIndex;
             if (layout.CenterMedianWidth > 0)
             {
-                // 中分带右端
+                centerRightIndex = vertices.Count;
                 vertices.Add(new FigureVertex(xRightInner, 0, "中心右"));
-                for (int i = 1; i < rightPointsInnerToOuter.Count; i++)
-                {
-                    var p = rightPointsInnerToOuter[i];
-                    vertices.Add(new FigureVertex(p.X, p.Y, p.Name));
-                }
             }
-            else
+
+            // 右半正向：strip[0] 先放
+            for (int s = 0; s < rightStrips.Count; s++)
             {
-                // 无中分带：中心左 == 中心右，跳过右的 [0]
-                for (int i = 1; i < rightPointsInnerToOuter.Count; i++)
+                var geo = rightStrips[s];
+                int placementInnerIdx = s == 0 ? centerRightIndex : rightPlacements[s - 1].OuterVertexIndex;
+                int firstWrittenIdx = vertices.Count;
+                int placementSurfaceIdx = firstWrittenIdx + geo.SurfaceOuterIndex;
+
+                foreach (var bv in geo.Vertices)
                 {
-                    var p = rightPointsInnerToOuter[i];
-                    vertices.Add(new FigureVertex(p.X, p.Y, p.Name));
+                    vertices.Add(new FigureVertex(bv.X, bv.Y, bv.Name));
+                }
+
+                int placementOuterIdx = vertices.Count - 1;
+                rightPlacements[s] = new StripPlacement
+                {
+                    InnerVertexIndex = placementInnerIdx,
+                    SurfaceOuterVertexIndex = placementSurfaceIdx,
+                    OuterVertexIndex = placementOuterIdx,
+                    HasOuterKerb = geo.HasOuterKerb,
+                };
+            }
+
+            // 3) Panels：板块本身 + 路牙（如有）+ 中分带
+            var panels = new List<FigurePanel>();
+
+            // 左半板块（按 vertices 从左到右顺序）：先输出"最外"板块，最后输出"最内"板块
+            for (int s = leftStrips.Count - 1; s >= 0; s--)
+            {
+                var band = layout.LeftBands[s];
+                var pl = leftPlacements[s];
+                int a = Math.Min(pl.InnerVertexIndex, pl.SurfaceOuterVertexIndex);
+                int b = Math.Max(pl.InnerVertexIndex, pl.SurfaceOuterVertexIndex);
+                panels.Add(new FigurePanel(band.Kind, a, b, band.Name));
+
+                if (pl.HasOuterKerb)
+                {
+                    int ka = Math.Min(pl.SurfaceOuterVertexIndex, pl.OuterVertexIndex);
+                    int kb = Math.Max(pl.SurfaceOuterVertexIndex, pl.OuterVertexIndex);
+                    panels.Add(new FigurePanel(TemplateComponentKind.Kerb, ka, kb, band.Name + "路牙"));
                 }
             }
 
-            // ---- 2) Panels（按 vertices 索引对）----
-            // 左半：vertices[0] … vertices[leftCount]（leftCount 段）
-            // 中分带（可选）：vertices[leftCount] 到 vertices[leftCount+1]
-            // 右半：vertices[centerRightIdx] … vertices[centerRightIdx + rightCount]
-            int leftCount = layout.LeftBands.Count;
-            int rightCount = layout.RightBands.Count;
-
-            // 左半 Panels：vertices[i] → vertices[i+1]，对应 layout.LeftBands[leftCount - 1 - i]
-            for (int i = 0; i < leftCount; i++)
-            {
-                var b = layout.LeftBands[leftCount - 1 - i];
-                panels.Add(new FigurePanel(b.Kind, i, i + 1, b.Name));
-            }
-            int centerLeftIdx = leftCount;
-            int centerRightIdx = layout.CenterMedianWidth > 0 ? centerLeftIdx + 1 : centerLeftIdx;
+            // 中分带
             if (layout.CenterMedianWidth > 0)
             {
                 panels.Add(new FigurePanel(TemplateComponentKind.MedianStrip,
-                    centerLeftIdx, centerRightIdx, "中央分隔带"));
-            }
-            for (int i = 0; i < rightCount; i++)
-            {
-                var b = layout.RightBands[i];
-                panels.Add(new FigurePanel(b.Kind, centerRightIdx + i, centerRightIdx + i + 1, b.Name));
+                    centerLeftIndex, centerRightIndex, "中央分隔带"));
             }
 
-            // ---- 3) Dimension Segments ----
-            double totalWidth = layout.TotalWidth;
+            // 右半板块
+            for (int s = 0; s < rightStrips.Count; s++)
+            {
+                var band = layout.RightBands[s];
+                var pl = rightPlacements[s];
+                int a = Math.Min(pl.InnerVertexIndex, pl.SurfaceOuterVertexIndex);
+                int b = Math.Max(pl.InnerVertexIndex, pl.SurfaceOuterVertexIndex);
+                panels.Add(new FigurePanel(band.Kind, a, b, band.Name));
+
+                if (pl.HasOuterKerb)
+                {
+                    int ka = Math.Min(pl.SurfaceOuterVertexIndex, pl.OuterVertexIndex);
+                    int kb = Math.Max(pl.SurfaceOuterVertexIndex, pl.OuterVertexIndex);
+                    panels.Add(new FigurePanel(TemplateComponentKind.Kerb, ka, kb, band.Name + "路牙"));
+                }
+            }
+
+            // 4) Dimension Segments
+            var dimSegs = BuildDimensionSegments(layout, leftStrips, rightStrips, xLeftInner, xRightInner);
+
+            // 5) 横坡 Labels
+            var slopes = new List<FigureSlopeLabel>();
+            AppendSlopeLabels(slopes, layout.LeftBands, leftStrips);
+            AppendSlopeLabels(slopes, layout.RightBands, rightStrips);
+
+            // 6) 高差 Labels（从 vertices 直接取，去重相邻）
+            var heights = new List<FigureHeightLabel>();
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                var v = vertices[i];
+                if (i > 0)
+                {
+                    var prev = vertices[i - 1];
+                    if (Math.Abs(v.X - prev.X) < 1e-9 && Math.Abs(v.Y - prev.Y) < 1e-9) continue;
+                }
+                heights.Add(new FigureHeightLabel(v.X, v.Y, FormatHeight(v.Y)));
+            }
+
+            // 7) 顶部 Labels：板块中点（X 取板块内端与路面外缘 X 的中点）+ 中分带
+            double topY = MaxY(vertices) + 1.5;
+            var topLabels = new List<FigureTopLabel>();
+            for (int s = 0; s < leftStrips.Count; s++)
+            {
+                var band = layout.LeftBands[s];
+                var geo = leftStrips[s];
+                double centerX = (geo.StartX + geo.SurfaceOuterX) * 0.5;
+                topLabels.Add(new FigureTopLabel(centerX, topY, band.Name));
+            }
+            if (layout.CenterMedianWidth > 0)
+            {
+                topLabels.Add(new FigureTopLabel(0, topY, "中央分隔带"));
+            }
+            for (int s = 0; s < rightStrips.Count; s++)
+            {
+                var band = layout.RightBands[s];
+                var geo = rightStrips[s];
+                double centerX = (geo.StartX + geo.SurfaceOuterX) * 0.5;
+                topLabels.Add(new FigureTopLabel(centerX, topY, band.Name));
+            }
+
+            // 8) Orientation + Title
+            double leftmostX = vertices.Count > 0 ? vertices[0].X : -layout.LeftHalfWidth;
+            double rightmostX = vertices.Count > 0 ? vertices[vertices.Count - 1].X : +layout.RightHalfWidth;
+            double orientationY = topY + 2.0;
+            var orientation = new FigureOrientation(leftmostX, rightmostX, orientationY, "北", "南");
+            double titleY = MinY(vertices) - 3.0;
+            var title = new FigureTitle(0, titleY,
+                string.IsNullOrWhiteSpace(layout.Title)
+                    ? $"标准横断面图  1:{layout.ScaleDenominator}"
+                    : $"{layout.Title}  1:{layout.ScaleDenominator}");
+
+            return new CrossSectionFigure(
+                vertices, panels, dimSegs, slopes, heights, topLabels,
+                orientation, title, layout.TotalWidth, layout.ScaleDenominator);
+        }
+
+        // =============== Helpers ===============
+
+        private static List<BandGeometry> GenerateStrips(IReadOnlyList<CrossSectionBand> bands, double startX, double startY, BandSide side)
+        {
+            var list = new List<BandGeometry>(bands.Count);
+            double sx = startX, sy = startY;
+            foreach (var band in bands)
+            {
+                var geo = CrossSectionGeometryGenerator.GenerateBand(sx, sy, band, side);
+                list.Add(geo);
+                sx = geo.NextInnerX;
+                sy = geo.NextInnerY;
+            }
+            return list;
+        }
+
+        private static List<FigureDimensionSegment> BuildDimensionSegments(
+            CrossSectionLayout layout,
+            IReadOnlyList<BandGeometry> leftStrips,
+            IReadOnlyList<BandGeometry> rightStrips,
+            double xLeftInner,
+            double xRightInner)
+        {
+            var dimSegs = new List<FigureDimensionSegment>();
+
             double leftmostX = -layout.LeftHalfWidth - layout.CenterMedianWidth / 2.0;
             double rightmostX = +layout.RightHalfWidth + layout.CenterMedianWidth / 2.0;
+            double totalWidth = layout.TotalWidth;
 
-            // Tier=1 分段链：每条带一格（左半从最外到中心；然后中分带；然后右半从中心到最外）
+            // Tier=1 分段链：每条带一格（左半从最外→中心；中分带；右半从中心→最外）
             double currX = leftmostX;
-            for (int i = leftCount - 1; i >= 0; i--)
+            for (int i = layout.LeftBands.Count - 1; i >= 0; i--)
             {
                 var b = layout.LeftBands[i];
                 double next = currX + b.Width;
@@ -525,95 +643,24 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 dimSegs.Add(new FigureDimensionSegment(leftmostX, rightmostX,
                     FormatWidthMeters(totalWidth), tier: 2));
 
-            // ---- 4) Slope labels ----
-            // 左半：每条带中点一个（位置 y 取该条带两端的中值再加 0.25m 抬升）
-            double leftRunX = xLeftInner;
-            double leftRunY = 0;
-            for (int i = 0; i < leftCount; i++)
-            {
-                var band = layout.LeftBands[i];
-                int sign = SlopeSign(band.Kind);
-                double outerX = leftRunX - band.Width;
-                double outerY = leftRunY + band.Width * (band.CrossSlopePct / 100.0) * sign;
-                if (band.CrossSlopePct != 0 && sign != 0)
-                {
-                    double midX = (leftRunX + outerX) * 0.5;
-                    double midY = (leftRunY + outerY) * 0.5 + 0.25;
-                    slopes.Add(new FigureSlopeLabel(midX, midY, $"{band.CrossSlopePct:F1}%"));
-                }
-                leftRunX = outerX;
-                leftRunY = outerY;
-            }
-            // 右半：同上但方向相反
-            double rightRunX = xRightInner;
-            double rightRunY = 0;
-            foreach (var band in layout.RightBands)
-            {
-                int sign = SlopeSign(band.Kind);
-                double outerX = rightRunX + band.Width;
-                double outerY = rightRunY + band.Width * (band.CrossSlopePct / 100.0) * sign;
-                if (band.CrossSlopePct != 0 && sign != 0)
-                {
-                    double midX = (rightRunX + outerX) * 0.5;
-                    double midY = (rightRunY + outerY) * 0.5 + 0.25;
-                    slopes.Add(new FigureSlopeLabel(midX, midY, $"{band.CrossSlopePct:F1}%"));
-                }
-                rightRunX = outerX;
-                rightRunY = outerY;
-            }
+            return dimSegs;
+        }
 
-            // ---- 5) Height labels（关键断点的 y 值）----
-            // 从 vertices 直接取（除去几乎重复的中心点）
-            for (int i = 0; i < vertices.Count; i++)
+        private static void AppendSlopeLabels(List<FigureSlopeLabel> slopes,
+            IReadOnlyList<CrossSectionBand> bands,
+            IReadOnlyList<BandGeometry> strips)
+        {
+            for (int s = 0; s < strips.Count; s++)
             {
-                var v = vertices[i];
-                if (i > 0)
-                {
-                    var prev = vertices[i - 1];
-                    if (Math.Abs(v.X - prev.X) < 1e-9 && Math.Abs(v.Y - prev.Y) < 1e-9) continue;
-                }
-                heights.Add(new FigureHeightLabel(v.X, v.Y, FormatHeight(v.Y)));
-            }
+                var band = bands[s];
+                var geo = strips[s];
+                int sign = CrossSectionGeometryGenerator.SurfaceSlopeSign(band.Kind);
+                if (band.CrossSlopePct == 0 || sign == 0) continue;
 
-            // ---- 6) Top labels：每条带中点 + 中分带（如果存在）----
-            double topY = GuessTopY(vertices) + 1.5; // 顶部文字的基准高度（图面"上方"）
-            // 左半条带 TopLabel
-            double runX = xLeftInner;
-            for (int i = 0; i < leftCount; i++)
-            {
-                var band = layout.LeftBands[i];
-                double outerX = runX - band.Width;
-                double centerX = (runX + outerX) * 0.5;
-                topLabels.Add(new FigureTopLabel(centerX, topY, band.Name));
-                runX = outerX;
+                double midX = (geo.StartX + geo.SurfaceOuterX) * 0.5;
+                double midY = (geo.StartY + geo.SurfaceOuterY) * 0.5 + 0.25;
+                slopes.Add(new FigureSlopeLabel(midX, midY, $"{band.CrossSlopePct:F1}%"));
             }
-            // 中分带（仅当宽度 > 0）
-            if (layout.CenterMedianWidth > 0)
-            {
-                topLabels.Add(new FigureTopLabel(0, topY, "中央分隔带"));
-            }
-            // 右半条带 TopLabel
-            runX = xRightInner;
-            foreach (var band in layout.RightBands)
-            {
-                double outerX = runX + band.Width;
-                double centerX = (runX + outerX) * 0.5;
-                topLabels.Add(new FigureTopLabel(centerX, topY, band.Name));
-                runX = outerX;
-            }
-
-            // ---- 7) Orientation + Title ----
-            double orientationY = topY + 2.0;
-            var orientation = new FigureOrientation(leftmostX, rightmostX, orientationY, "北", "南");
-            double titleY = MinY(vertices) - 3.0;
-            var title = new FigureTitle(0, titleY,
-                string.IsNullOrWhiteSpace(layout.Title)
-                    ? $"标准横断面图  1:{layout.ScaleDenominator}"
-                    : $"{layout.Title}  1:{layout.ScaleDenominator}");
-
-            return new CrossSectionFigure(
-                vertices, panels, dimSegs, slopes, heights, topLabels,
-                orientation, title, totalWidth, layout.ScaleDenominator);
         }
 
         // 宽度文本：v1 统一用 m，保留 2 位小数（0 自动省略末尾 0）
@@ -635,7 +682,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             return y > 0 ? $"+{y:F3}" : y.ToString("F3");
         }
 
-        private static double GuessTopY(IReadOnlyList<FigureVertex> vertices)
+        private static double MaxY(IReadOnlyList<FigureVertex> vertices)
         {
             double max = 0;
             foreach (var v in vertices) if (v.Y > max) max = v.Y;

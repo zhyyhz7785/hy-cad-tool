@@ -1,0 +1,189 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:cv="clr-namespace:HyCADTool.Refactored.Presentation.Views.Converters">
+
+    <!--
+      道路设计两窗口（PiThreeUnitWindow / CrossSectionDesignerWindow）共享的命名样式 + 转换器。
+
+      引用方：
+        在窗口 Window.Resources 中 Merge：
+          <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
+
+      原则：
+        - 仅命名样式（x:Key），不放隐式 Style，避免污染 BlenderUI 主题（pitfall B1 / B2）；
+        - 颜色直接走 BlenderUI 调色板（DynamicResource），不引入二套颜色；
+        - 所有 DynamicResource 的 Brush_* / Metric_* 都来自 BlenderTheme.xaml，已经被窗口 Merge 过；
+        - Converter 必须以命名 StaticResource 形式注册（pitfall B6）。
+    -->
+
+    <!-- ============= 共享 Converter ============= -->
+
+    <!--
+      InverseBool：bool 取反；用于把对称锁 IsSymmetric 取反后绑给 Ls2 NumericSlider.IsEnabled。
+      命名沿用 LibraryResources.xaml 中"InverseBoolConverter"，避免认知差异。
+    -->
+    <cv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+
+    <!--
+      IndexToVis：把 PropertyEditor.SelectedTabIndex 与 ConverterParameter 比较，
+      相等返回 Visible，否则 Collapsed；用于三 Tab 内容互斥可见。
+    -->
+    <cv:IndexToVisibilityConverter x:Key="IndexToVisibilityConverter"/>
+
+    <!--
+      NullToVis：null → Collapsed，非 null → Visible；
+      ConverterParameter="Inverse" 时反向。用于 CrossSectionDrawWindow 右侧 PropertyEditor
+      在 SelectedBand=null 时隐藏条带相关 Expander。
+    -->
+    <cv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+
+    <!--
+      规范检查项 6 行模板：
+        左侧色块（Pass=绿 / Fail=红）+ 名称 + Message/Suggestion 双行
+        Bind 路径：CodeCheckItem.{Passed,Name,Message,Suggestion,HasSuggestion}
+    -->
+    <DataTemplate x:Key="RoadCheckItemTemplate">
+        <Grid Margin="0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Ellipse Grid.Column="0"
+                     Width="8" Height="8"
+                     Margin="0,6,0,0"
+                     VerticalAlignment="Top"
+                     HorizontalAlignment="Center">
+                <Ellipse.Style>
+                    <Style TargetType="Ellipse">
+                        <Setter Property="Fill" Value="{DynamicResource Brush_Success}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Passed}" Value="False">
+                                <Setter Property="Fill" Value="{DynamicResource Brush_Warning}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Ellipse.Style>
+            </Ellipse>
+
+            <TextBlock Grid.Column="1"
+                       Text="{Binding Name}"
+                       VerticalAlignment="Top"
+                       FontSize="12"
+                       TextWrapping="Wrap">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Passed}" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush_Warning}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <StackPanel Grid.Column="2" VerticalAlignment="Top">
+                <TextBlock Text="{Binding Message}"
+                           FontSize="11"
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_Success}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Passed}" Value="False">
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush_Warning}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="{Binding Suggestion}"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Margin="0,2,0,0"
+                           Foreground="{DynamicResource Brush_Warning}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSuggestion}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+
+    <!--
+      派生量数字小字：等宽 / 右对齐 / 暗色文字。
+      搭配 bui:PropertyRow 用于显示 PiThreeUnitViewModel.{T1, T2, Ly, TurnAngleText, PrevTangent, NextTangent}。
+    -->
+    <Style x:Key="RoadDerivedTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontFamily" Value="Consolas"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Padding" Value="0,0,4,0"/>
+    </Style>
+
+    <!--
+      派生量"次要文字"（前/后直线段长，灰显）。
+    -->
+    <Style x:Key="RoadDerivedSecondaryTextStyle"
+           TargetType="TextBlock"
+           BasedOn="{StaticResource RoadDerivedTextStyle}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
+    </Style>
+
+    <!--
+      左侧 Label 文字（与 PropertyRow 平行使用，例如 PreviewCanvas 顶部小标签）。
+    -->
+    <Style x:Key="RoadParamLabelStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <!--
+      DataGrid 暗色主题（CrossSection 左半 / 右半 BandRow 表格）：
+        与 BlenderUI 配色对齐；不放隐式 Style 避免污染 PaletteSet 子树。
+    -->
+    <Style x:Key="RoadBandGridStyle" TargetType="DataGrid">
+        <Setter Property="Background" Value="{DynamicResource Brush_RegionBack}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderDark}"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource Brush_BorderDark}"/>
+        <Setter Property="RowBackground" Value="{DynamicResource Brush_RegionBack}"/>
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource Brush_HeaderBack}"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="CanUserAddRows" Value="False"/>
+        <Setter Property="CanUserDeleteRows" Value="False"/>
+        <Setter Property="SelectionUnit" Value="FullRow"/>
+        <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="AutoGenerateColumns" Value="False"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="RowHeight" Value="26"/>
+        <Setter Property="ColumnHeaderHeight" Value="24"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+    </Style>
+
+    <!--
+      PreviewCanvas 外框：CrossSectionDesignerWindow 用作画布容器。
+    -->
+    <Style x:Key="RoadCanvasBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush_WindowBack}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderDark}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+
+</ResourceDictionary>

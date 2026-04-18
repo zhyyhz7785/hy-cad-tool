@@ -4,9 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using System.Windows.Input;
+using HyCAD.BlenderUI.Theming;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.ValueObjects;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
@@ -151,7 +153,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set => SetProperty(ref _equipmentDataFilePath, value);
         }
 
-        private double _scale = 40.0;
+        private double _scale = 50.0;
         public double Scale
         {
             get => _scale;
@@ -190,17 +192,91 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public string StyleTName { get => _styleTName; set { if (SetProperty(ref _styleTName, value)) _stylesDirty = true; } }
 
         private string _styleTFont = "微软雅黑";
-        public string StyleTFont { get => _styleTFont; set { if (SetProperty(ref _styleTFont, value)) _stylesDirty = true; } }
+        public string StyleTFont
+        {
+            get => _styleTFont;
+            set
+            {
+                if (SetProperty(ref _styleTFont, value))
+                {
+                    _stylesDirty = true;
+                    OnPropertyChanged(nameof(StyleTFontOptionsWithCurrent));
+                }
+            }
+        }
 
         /// <summary>样式2：0-hy-说明-S，SHX 字体（标注/引线/表格用）</summary>
         private string _styleSName = "0-hy-说明-S";
         public string StyleSName { get => _styleSName; set { if (SetProperty(ref _styleSName, value)) _stylesDirty = true; } }
 
         private string _styleSFont = "tssdeng.shx";
-        public string StyleSFont { get => _styleSFont; set { if (SetProperty(ref _styleSFont, value)) _stylesDirty = true; } }
+        public string StyleSFont
+        {
+            get => _styleSFont;
+            set
+            {
+                if (SetProperty(ref _styleSFont, value))
+                {
+                    _stylesDirty = true;
+                    OnPropertyChanged(nameof(StyleSFontOptionsWithCurrent));
+                }
+            }
+        }
 
         private string _styleSBigFont = "tssdchn.shx";
-        public string StyleSBigFont { get => _styleSBigFont; set { if (SetProperty(ref _styleSBigFont, value)) _stylesDirty = true; } }
+        public string StyleSBigFont
+        {
+            get => _styleSBigFont;
+            set
+            {
+                if (SetProperty(ref _styleSBigFont, value))
+                {
+                    _stylesDirty = true;
+                    OnPropertyChanged(nameof(StyleSBigFontOptionsWithCurrent));
+                }
+            }
+        }
+
+        // ===== 字体下拉候选（参考 MarkdownEditor 设计：T=TrueType, S=SHX, BigFont=SHX 大字体） =====
+
+        /// <summary>常用 TrueType 字体（标题/说明用）— ComboBox 数据源</summary>
+        public static IReadOnlyList<string> TrueTypeFontOptions { get; } = new[]
+        {
+            "微软雅黑", "Microsoft YaHei", "宋体", "SimSun", "黑体", "SimHei",
+            "楷体", "KaiTi", "仿宋", "FangSong", "Arial", "Times New Roman",
+            "Calibri", "Consolas", "Cambria", "Tahoma", "Verdana"
+        };
+
+        /// <summary>常用 SHX 字体 — ComboBox 数据源</summary>
+        public static IReadOnlyList<string> ShxFontOptions { get; } = new[]
+        {
+            "tssdeng.shx", "tssdchn.shx", "simplex.shx", "romans.shx", "romand.shx",
+            "txt.shx", "hztxt.shx", "gbcbig.shx", "chineset.shx"
+        };
+
+        /// <summary>常用大字体（SHX 中文）— ComboBox 数据源</summary>
+        public static IReadOnlyList<string> BigFontOptions { get; } = new[]
+        {
+            "tssdchn.shx", "hztxt.shx", "gbcbig.shx", "chineset.shx"
+        };
+
+        /// <summary>TrueType 字体选项（含当前值，确保 ComboBox 能正确显示当前选择）</summary>
+        public IReadOnlyList<string> StyleTFontOptionsWithCurrent =>
+            string.IsNullOrEmpty(_styleTFont) || TrueTypeFontOptions.Contains(_styleTFont)
+                ? TrueTypeFontOptions
+                : new[] { _styleTFont }.Concat(TrueTypeFontOptions).ToArray();
+
+        /// <summary>SHX 字体选项（含当前值）</summary>
+        public IReadOnlyList<string> StyleSFontOptionsWithCurrent =>
+            string.IsNullOrEmpty(_styleSFont) || ShxFontOptions.Contains(_styleSFont)
+                ? ShxFontOptions
+                : new[] { _styleSFont }.Concat(ShxFontOptions).ToArray();
+
+        /// <summary>大字体选项（含当前值）</summary>
+        public IReadOnlyList<string> StyleSBigFontOptionsWithCurrent =>
+            string.IsNullOrEmpty(_styleSBigFont) || BigFontOptions.Contains(_styleSBigFont)
+                ? BigFontOptions
+                : new[] { _styleSBigFont }.Concat(BigFontOptions).ToArray();
 
         /// <summary>兼容旧字段，映射到 StyleS</summary>
         public string FontFileName { get => StyleSFont; set { StyleSFont = value; } }
@@ -214,8 +290,31 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set { if (SetProperty(ref _textSize, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualTextHeight)); } }
         }
 
-        private double _textXScale = 1.0;
-        public double TextXScale { get => _textXScale; set { if (SetProperty(ref _textXScale, value)) _stylesDirty = true; } }
+        private double _styleTXScale = 1.0;
+        /// <summary>样式 1（TrueType 标题/说明）字宽比，默认 1.0</summary>
+        public double StyleTXScale
+        {
+            get => _styleTXScale;
+            set { if (SetProperty(ref _styleTXScale, value)) _stylesDirty = true; }
+        }
+
+        private double _styleSXScale = 0.7;
+        /// <summary>样式 2（SHX 标注/引线/表格）字宽比，默认 0.7</summary>
+        public double StyleSXScale
+        {
+            get => _styleSXScale;
+            set
+            {
+                if (SetProperty(ref _styleSXScale, value))
+                {
+                    _stylesDirty = true;
+                    OnPropertyChanged(nameof(TextXScale));
+                }
+            }
+        }
+
+        /// <summary>兼容旧字段：默认对外暴露 SHX 样式字宽（与历史 0.7 行为一致）</summary>
+        public double TextXScale { get => StyleSXScale; set { StyleSXScale = value; } }
 
         public double ActualTextHeight => TextSize * Scale;
 
@@ -373,6 +472,65 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set { if (_autoSaveEnabled == value) return; _autoSaveEnabled = value; OnPropertyChanged(); }
         }
 
+        // ----------------------------------------------------------------
+        //  界面主题（HyCAD.BlenderUI 调色板）
+        //  字符串来源 / 取值：BlenderThemeManager.Parse(...) 容忍大小写与简写
+        //  setter 内调 BlenderThemeManager.Apply 实现实时切换；
+        //  受 _isLoading + AutoSaveEnabled 守门，避免加载期重复写盘。
+        // ----------------------------------------------------------------
+        private string _theme = "BlenderDark";
+        public string Theme
+        {
+            get => _theme;
+            set
+            {
+                var normalized = string.IsNullOrWhiteSpace(value) ? "BlenderDark" : value.Trim();
+
+                // #region agent log
+                try
+                {
+                    var asmTag = typeof(HyCAD.BlenderUI.Theming.BlenderThemeManager).Assembly.FullName +
+                                 "@" + typeof(HyCAD.BlenderUI.Theming.BlenderThemeManager).Assembly.GetHashCode();
+                    System.IO.File.AppendAllText(
+                        @"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-b2db6c.log",
+                        "{\"sessionId\":\"b2db6c\",\"hypothesisId\":\"D,B\",\"location\":\"SettingsPanelViewModel.Theme.set\"," +
+                        "\"message\":\"Theme setter entered\",\"data\":{" +
+                        "\"raw\":\"" + (value ?? "<null>").Replace("\"","'") + "\"," +
+                        "\"normalized\":\"" + normalized + "\"," +
+                        "\"prev\":\"" + _theme + "\"," +
+                        "\"isLoading\":" + (_isLoading ? "true" : "false") + "," +
+                        "\"autoSave\":" + (_autoSaveEnabled ? "true" : "false") + "}," +
+                        "\"asm\":\"" + asmTag.Replace("\"","'") + "\"," +
+                        "\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                }
+                catch { }
+                // #endregion
+
+                if (string.Equals(_theme, normalized, StringComparison.OrdinalIgnoreCase)) return;
+                _theme = normalized;
+                OnPropertyChanged();
+
+                try { BlenderThemeManager.Apply(_theme); }
+                catch (Exception ex)
+                {
+                    // #region agent log
+                    try
+                    {
+                        System.IO.File.AppendAllText(
+                            @"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-b2db6c.log",
+                            "{\"sessionId\":\"b2db6c\",\"hypothesisId\":\"D\",\"location\":\"SettingsPanelViewModel.Theme.set\"," +
+                            "\"message\":\"BlenderThemeManager.Apply threw\",\"data\":{\"err\":\"" +
+                            ex.GetType().Name + ": " + ex.Message.Replace("\"","'") + "\"}," +
+                            "\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                    }
+                    catch { }
+                    // #endregion
+                }
+
+                if (!_isLoading && _autoSaveEnabled) SaveSettings();
+            }
+        }
+
         #endregion
 
         #region 命令
@@ -492,10 +650,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 if (_styleService == null) { StatusMessage = "StyleService 未初始化"; return; }
 
-                // 样式1：0-hy-说明-T，TrueType 微软雅黑（标题/说明）
-                _styleService.CreateTextStyle(StyleTName, StyleTFont, "", TextSize * Scale, TextXScale);
-                // 样式2：0-hy-说明-S，SHX tssdeng+tssdchn（标注/引线/表格）
-                _styleService.CreateTextStyle(StyleSName, StyleSFont, StyleSBigFont, TextSize * Scale, TextXScale);
+                // 样式1：0-hy-说明-T，TrueType 微软雅黑（标题/说明）—— 字宽用 StyleTXScale（默认 1.0）
+                _styleService.CreateTextStyle(StyleTName, StyleTFont, "", TextSize * Scale, StyleTXScale);
+                // 样式2：0-hy-说明-S，SHX tssdeng+tssdchn（标注/引线/表格）—— 字宽用 StyleSXScale（默认 0.7）
+                _styleService.CreateTextStyle(StyleSName, StyleSFont, StyleSBigFont, TextSize * Scale, StyleSXScale);
                 _styleService.SetCurrentTextStyle(StyleSName);
 
                 _styleService.CreateDimensionStyle(DimStyleName, TextStyleName, Scale, Dimtxt, Dimexo, Dimexe, Dimdle, Dimgap, Dimasz);
@@ -552,14 +710,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private void ResetToDefaults()
         {
             // Tab A
-            Scale = 40.0;
+            Scale = 50.0;
             StyleTName = "0-hy-说明-T";
             StyleTFont = "微软雅黑";
             StyleSName = "0-hy-说明-S";
             StyleSFont = "tssdeng.shx";
             StyleSBigFont = "tssdchn.shx";
             TextSize = 2.5;
-            TextXScale = 1.0;
+            StyleTXScale = 1.0;
+            StyleSXScale = 0.7;
             Dimtxt = 2.5; Dimexo = 1.0; Dimexe = 1.0; Dimdle = 0.5; Dimgap = 1.0; Dimasz = 1.0;
             DimArrowName = "_ARCHTICK";
             MLeaderArrowSize = 2.0; MLeaderArrowName = "_DotSmall"; MLeaderLandingGap = 0.5; MLeaderTextColorIndex = 7;
@@ -652,7 +811,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     StyleSFont = StyleSFont,
                     StyleSBigFont = StyleSBigFont,
                     TextSize = TextSize,
-                    TextXScale = TextXScale,
+                    StyleTXScale = StyleTXScale,
+                    StyleSXScale = StyleSXScale,
+                    TextXScale = StyleSXScale, // 兼容旧字段：与 StyleSXScale 同步写盘
                     Dimtxt = Dimtxt,
                     Dimexo = Dimexo,
                     Dimexe = Dimexe,
@@ -686,6 +847,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     RoadCrosswalkWidth = RoadCrosswalkWidth,
                     RoadStopLineDistance = RoadStopLineDistance,
                     RoadStripeSpacing = RoadStripeSpacing,
+                    // 界面外观
+                    Theme = Theme,
                     // 其他
                     EquipmentDataFilePath = EquipmentDataFilePath
                 };
@@ -724,7 +887,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 StyleSFont = data.StyleSFont ?? data.FontFileName ?? _styleSFont;
                 StyleSBigFont = data.StyleSBigFont ?? data.BigFontFileName ?? _styleSBigFont;
                 TextSize = data.TextSize;
-                TextXScale = data.TextXScale;
+                // 字宽：优先读新字段，兜底读旧 TextXScale（旧文件里 SHX 字宽存在 TextXScale，T 字宽默认 1.0）
+                StyleTXScale = data.StyleTXScale > 0 ? data.StyleTXScale : 1.0;
+                StyleSXScale = data.StyleSXScale > 0 ? data.StyleSXScale
+                              : (data.TextXScale > 0 ? data.TextXScale : 0.7);
                 Dimtxt = data.Dimtxt;
                 Dimexo = data.Dimexo;
                 Dimexe = data.Dimexe;
@@ -758,6 +924,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 RoadCrosswalkWidth = data.RoadCrosswalkWidth;
                 RoadStopLineDistance = data.RoadStopLineDistance;
                 RoadStripeSpacing = data.RoadStripeSpacing;
+                // 界面外观（_isLoading 期间 setter 仍会调 BlenderThemeManager.Apply，刷新所有 DynamicResource）
+                if (!string.IsNullOrWhiteSpace(data.Theme))
+                    Theme = data.Theme;
                 // 其他
                 if (!string.IsNullOrEmpty(data.EquipmentDataFilePath))
                     EquipmentDataFilePath = data.EquipmentDataFilePath;
@@ -796,7 +965,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private class SettingsData
         {
             // Tab A: 样式
-            public double Scale { get; set; } = 40.0;
+            public double Scale { get; set; } = 50.0;
             public string StyleTName { get; set; } = "0-hy-说明-T";
             public string StyleTFont { get; set; } = "微软雅黑";
             public string StyleSName { get; set; } = "0-hy-说明-S";
@@ -807,7 +976,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             [Obsolete("Use StyleSBigFont")]
             public string BigFontFileName { get; set; } = "hztxt.shx";
             public double TextSize { get; set; } = 2.5;
-            public double TextXScale { get; set; } = 1.0;
+            /// <summary>样式 1（TrueType）字宽，默认 1.0</summary>
+            public double StyleTXScale { get; set; } = 1.0;
+            /// <summary>样式 2（SHX）字宽，默认 0.7</summary>
+            public double StyleSXScale { get; set; } = 0.7;
+            /// <summary>兼容旧字段：等同于 StyleSXScale，用于旧版本 JSON 兼容</summary>
+            public double TextXScale { get; set; } = 0.7;
             public double Dimtxt { get; set; } = 2.5;
             public double Dimexo { get; set; } = 1.0;
             public double Dimexe { get; set; } = 1.0;
@@ -841,6 +1015,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double RoadCrosswalkWidth { get; set; } = 5.0;
             public double RoadStopLineDistance { get; set; } = 2.0;
             public double RoadStripeSpacing { get; set; } = 1.0;
+            // 界面外观：HyCAD.BlenderUI.Theming.BlenderThemeManager 主题枚举名
+            // 取值：BlenderDark / BlenderLight / AcadLight / AcadDark
+            public string Theme { get; set; } = "BlenderDark";
             // 其他
             public string EquipmentDataFilePath { get; set; } = "";
         }
@@ -861,7 +1038,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 StyleSFont,
                 StyleSBigFont,
                 TextSize,
-                TextXScale,
+                StyleTXScale,
+                StyleSXScale,
                 Dimtxt,
                 Dimexo,
                 Dimexe,

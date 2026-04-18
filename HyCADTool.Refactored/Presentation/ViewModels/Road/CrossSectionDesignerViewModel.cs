@@ -29,7 +29,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// - WPF Window 用 <see cref="Func{T,TResult}"/> 注入 MessageBox 实现做二次确认；
     /// - VM 本身不引用 WPF.MessageBox，单测能直接构造。
     /// </summary>
-    public sealed class CrossSectionDesignerViewModel : INotifyPropertyChanged
+    public class CrossSectionDesignerViewModel : INotifyPropertyChanged
     {
         /// <summary>支持的比例尺分母（1:50 / 1:100 / 1:200）。</summary>
         public static readonly IReadOnlyList<int> AvailableScales = new[] { 50, 100, 200 };
@@ -47,6 +47,40 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             TemplateComponentKind.Kerb,
             TemplateComponentKind.Shoulder,
             TemplateComponentKind.MedianStrip,
+        };
+
+        /// <summary>供 UI 的路牙类型下拉。</summary>
+        public static readonly IReadOnlyList<RoadKerbType> AvailableKerbTypes = new[]
+        {
+            RoadKerbType.None,
+            RoadKerbType.Curb,
+            RoadKerbType.Plain,
+            RoadKerbType.Combined,
+        };
+
+        /// <summary>供 UI 的坡型下拉。</summary>
+        public static readonly IReadOnlyList<RoadSlopeType> AvailableSlopeTypes = new[]
+        {
+            RoadSlopeType.Single,
+            RoadSlopeType.Double,
+        };
+
+        /// <summary>供 UI 的路拱形式下拉。</summary>
+        public static readonly IReadOnlyList<RoadCrownProfile> AvailableCrownProfiles = new[]
+        {
+            RoadCrownProfile.Linear,
+            RoadCrownProfile.Parabolic,
+            RoadCrownProfile.Folded,
+        };
+
+        /// <summary>供 UI 的路面结构下拉。</summary>
+        public static readonly IReadOnlyList<RoadSurfaceLayer> AvailableSurfaceLayers = new[]
+        {
+            RoadSurfaceLayer.None,
+            RoadSurfaceLayer.PavementSurface,
+            RoadSurfaceLayer.SidewalkPaving,
+            RoadSurfaceLayer.NonMotorPaving,
+            RoadSurfaceLayer.GreenSoil,
         };
 
         /// <summary>可用预设。</summary>
@@ -136,6 +170,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 SetProperty(ref _scaleDenominator, layout.ScaleDenominator, nameof(ScaleDenominator));
                 SetProperty(ref _title, layout.Title, nameof(Title));
                 SetProperty(ref _isMirror, layout.IsSymmetric, nameof(IsMirror));
+
+                SetProperty(ref _centerlinePosition, layout.CenterlinePosition, nameof(CenterlinePosition));
+                SetProperty(ref _profileElevationOffset, layout.ProfileElevationOffset, nameof(ProfileElevationOffset));
+                SetProperty(ref _isEmptyAssembly, layout.IsEmptyAssembly, nameof(IsEmptyAssembly));
+                SetProperty(ref _stationStart, layout.StationStart, nameof(StationStart));
+                SetProperty(ref _stationEnd, layout.StationEnd, nameof(StationEnd));
             }
             finally
             {
@@ -216,6 +256,55 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             }
         }
 
+        // ============================== v2 全局字段（Layout 透传） ==============================
+
+        private double _centerlinePosition;
+        /// <summary>
+        /// 中心线相对图纸原点的横向偏移（m）。<see cref="double.NaN"/> 表示自动取断面几何中心。
+        /// 仅作为 Layout 持久化字段，不影响 ToFigure 渲染（v2 阶段）。
+        /// </summary>
+        public double CenterlinePosition
+        {
+            get => _centerlinePosition;
+            set { if (SetProperty(ref _centerlinePosition, value)) Recalculate(); }
+        }
+
+        private double _profileElevationOffset;
+        /// <summary>路面中线设计高程相对纵断面参考线的抬升量（m）。</summary>
+        public double ProfileElevationOffset
+        {
+            get => _profileElevationOffset;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                if (SetProperty(ref _profileElevationOffset, value)) Recalculate();
+            }
+        }
+
+        private bool _isEmptyAssembly;
+        /// <summary>是否标记为"空装配"（仅占位，不参与出图）。</summary>
+        public bool IsEmptyAssembly
+        {
+            get => _isEmptyAssembly;
+            set { if (SetProperty(ref _isEmptyAssembly, value)) Recalculate(); }
+        }
+
+        private double _stationStart;
+        /// <summary>断面适用的起始桩号（m）。<see cref="double.NaN"/> 表示不限制起始。</summary>
+        public double StationStart
+        {
+            get => _stationStart;
+            set { if (SetProperty(ref _stationStart, value)) Recalculate(); }
+        }
+
+        private double _stationEnd;
+        /// <summary>断面适用的终止桩号（m）。<see cref="double.NaN"/> 表示不限制终止。</summary>
+        public double StationEnd
+        {
+            get => _stationEnd;
+            set { if (SetProperty(ref _stationEnd, value)) Recalculate(); }
+        }
+
         // =========================================================================
         //  派生量（给 UI 读）
         // =========================================================================
@@ -289,7 +378,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             RaiseCommandsChanged();
         }
 
-        private CrossSectionLayout BuildLayout()
+        /// <summary>
+        /// 构建当前布局。子类可 override 以注入额外字段或在变换前后做装配修正。
+        /// </summary>
+        protected virtual CrossSectionLayout BuildLayout()
         {
             var left = LeftBands.Select(r => r.ToBand(BandSide.Left)).ToList();
             var right = RightBands.Select(r => r.ToBand(BandSide.Right)).ToList();
@@ -298,7 +390,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 centerMedianWidth: Math.Max(0, _centerMedianWidth),
                 designSpeed: _designSpeed <= 0 ? 60 : _designSpeed,
                 scaleDenominator: _scaleDenominator <= 0 ? 100 : _scaleDenominator,
-                title: _title);
+                title: _title,
+                centerlinePosition: _centerlinePosition,
+                profileElevationOffset: _profileElevationOffset,
+                isEmptyAssembly: _isEmptyAssembly,
+                stationStart: _stationStart,
+                stationEnd: _stationEnd);
         }
 
         // =========================================================================
@@ -469,7 +566,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             if (_isBulkUpdating) return;
 
-            // 镜像：行属性变化时把对应 index 的对侧 band 更新成"镜像"
+            // 镜像：行属性变化时把对应 index 的对侧 band 更新成"镜像"（含 v2 字段）
             if (_isMirror && sender is BandRowViewModel row)
             {
                 var side = FindSide(row, out var col, out var idx);
@@ -483,10 +580,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                         try
                         {
                             var mirror = target[idx];
-                            mirror.Name = row.Name;
-                            mirror.Kind = row.Kind;
-                            mirror.Width = row.Width;
-                            mirror.CrossSlopePct = row.CrossSlopePct;
+                            mirror.CopyFrom(row);
                             mirror.Side = mirroredSide;
                         }
                         finally { _isBulkUpdating = false; }
@@ -553,7 +647,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
@@ -561,7 +655,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             return true;
         }
 
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
@@ -570,6 +664,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     ///
     /// DataGrid / ListBox 把它作为 ItemsSource；字段改动触发 <see cref="INotifyPropertyChanged"/>，
     /// 上游 VM 订阅后调 Recalculate。
+    ///
+    /// <para>
+    /// v2 字段：
+    /// <list type="bullet">
+    ///   <item>路牙：拆分为 OuterKerbType / OuterKerbModel / OuterKerbHeight / OuterKerbWidth（内侧同名 Inner*），便于 PropertyEditor 一行一项绑定。</item>
+    ///   <item>坡型：<see cref="SlopeType"/>（Single/Double）。</item>
+    ///   <item>路拱：<see cref="CrownProfile"/>（Linear/Parabolic/Folded）。</item>
+    ///   <item>路面结构：<see cref="SurfaceLayer"/>。</item>
+    ///   <item>车道数：<see cref="LaneCount"/>（仅 Pavement / NonMotorized 类型有意义）。</item>
+    /// </list>
+    /// </para>
     /// </summary>
     public sealed class BandRowViewModel : INotifyPropertyChanged
     {
@@ -580,7 +685,24 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             _width = band.Width;
             _slope = band.CrossSlopePct;
             _side = band.Side;
+
+            _outerKerbType = band.OuterKerb.Type;
+            _outerKerbModel = band.OuterKerb.Model ?? string.Empty;
+            _outerKerbHeight = band.OuterKerb.Height;
+            _outerKerbWidth = band.OuterKerb.Width;
+
+            _innerKerbType = band.InnerKerb.Type;
+            _innerKerbModel = band.InnerKerb.Model ?? string.Empty;
+            _innerKerbHeight = band.InnerKerb.Height;
+            _innerKerbWidth = band.InnerKerb.Width;
+
+            _slopeType = band.SlopeType;
+            _crownProfile = band.CrownProfile;
+            _surfaceLayer = band.SurfaceLayer;
+            _laneCount = band.LaneCount;
         }
+
+        // ============================== 基础字段 ==============================
 
         private string _name;
         public string Name
@@ -622,16 +744,190 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             set => SetProperty(ref _side, value);
         }
 
+        // ============================== v2: 外侧路牙 ==============================
+
+        private RoadKerbType _outerKerbType;
+        /// <summary>外侧路牙类型；None 表示无路牙凸起。</summary>
+        public RoadKerbType OuterKerbType
+        {
+            get => _outerKerbType;
+            set
+            {
+                if (!SetProperty(ref _outerKerbType, value)) return;
+                // 切到非 None 且高度/宽度仍为 0 时，自动套用对应预设的尺寸。
+                if (value != RoadKerbType.None && _outerKerbHeight <= 1e-6)
+                {
+                    var preset = PickKerbPreset(value);
+                    SetProperty(ref _outerKerbModel, preset.Model, nameof(OuterKerbModel));
+                    SetProperty(ref _outerKerbHeight, preset.Height, nameof(OuterKerbHeight));
+                    SetProperty(ref _outerKerbWidth, preset.Width, nameof(OuterKerbWidth));
+                }
+                OnPropertyChanged(nameof(HasOuterKerb));
+            }
+        }
+
+        private string _outerKerbModel;
+        public string OuterKerbModel
+        {
+            get => _outerKerbModel;
+            set => SetProperty(ref _outerKerbModel, value ?? string.Empty);
+        }
+
+        private double _outerKerbHeight;
+        public double OuterKerbHeight
+        {
+            get => _outerKerbHeight;
+            set => SetProperty(ref _outerKerbHeight, value < 0 ? 0 : value);
+        }
+
+        private double _outerKerbWidth;
+        public double OuterKerbWidth
+        {
+            get => _outerKerbWidth;
+            set => SetProperty(ref _outerKerbWidth, value < 0 ? 0 : value);
+        }
+
+        /// <summary>UI 派生：外侧路牙是否生效（用于属性面板"路牙尺寸"分组的可见性）。</summary>
+        public bool HasOuterKerb => _outerKerbType != RoadKerbType.None && _outerKerbHeight > 1e-6;
+
+        // ============================== v2: 内侧路牙 ==============================
+
+        private RoadKerbType _innerKerbType;
+        public RoadKerbType InnerKerbType
+        {
+            get => _innerKerbType;
+            set
+            {
+                if (!SetProperty(ref _innerKerbType, value)) return;
+                if (value != RoadKerbType.None && _innerKerbHeight <= 1e-6)
+                {
+                    var preset = PickKerbPreset(value);
+                    SetProperty(ref _innerKerbModel, preset.Model, nameof(InnerKerbModel));
+                    SetProperty(ref _innerKerbHeight, preset.Height, nameof(InnerKerbHeight));
+                    SetProperty(ref _innerKerbWidth, preset.Width, nameof(InnerKerbWidth));
+                }
+                OnPropertyChanged(nameof(HasInnerKerb));
+            }
+        }
+
+        private string _innerKerbModel;
+        public string InnerKerbModel
+        {
+            get => _innerKerbModel;
+            set => SetProperty(ref _innerKerbModel, value ?? string.Empty);
+        }
+
+        private double _innerKerbHeight;
+        public double InnerKerbHeight
+        {
+            get => _innerKerbHeight;
+            set => SetProperty(ref _innerKerbHeight, value < 0 ? 0 : value);
+        }
+
+        private double _innerKerbWidth;
+        public double InnerKerbWidth
+        {
+            get => _innerKerbWidth;
+            set => SetProperty(ref _innerKerbWidth, value < 0 ? 0 : value);
+        }
+
+        public bool HasInnerKerb => _innerKerbType != RoadKerbType.None && _innerKerbHeight > 1e-6;
+
+        // ============================== v2: 坡型 / 路拱 / 铺装 / 车道数 ==============================
+
+        private RoadSlopeType _slopeType;
+        public RoadSlopeType SlopeType
+        {
+            get => _slopeType;
+            set => SetProperty(ref _slopeType, value);
+        }
+
+        private RoadCrownProfile _crownProfile;
+        public RoadCrownProfile CrownProfile
+        {
+            get => _crownProfile;
+            set => SetProperty(ref _crownProfile, value);
+        }
+
+        private RoadSurfaceLayer _surfaceLayer;
+        public RoadSurfaceLayer SurfaceLayer
+        {
+            get => _surfaceLayer;
+            set => SetProperty(ref _surfaceLayer, value);
+        }
+
+        private int _laneCount;
+        public int LaneCount
+        {
+            get => _laneCount;
+            set => SetProperty(ref _laneCount, value < 0 ? 0 : value);
+        }
+
+        // ============================== 转换 ==============================
+
         public CrossSectionBand ToBand(BandSide? overrideSide = null)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, overrideSide ?? Side);
+        {
+            var outerKerb = OuterKerbType == RoadKerbType.None
+                ? KerbSpec.None
+                : new KerbSpec(OuterKerbType, OuterKerbModel, OuterKerbHeight, OuterKerbWidth);
+            var innerKerb = InnerKerbType == RoadKerbType.None
+                ? KerbSpec.None
+                : new KerbSpec(InnerKerbType, InnerKerbModel, InnerKerbHeight, InnerKerbWidth);
+
+            return new CrossSectionBand(
+                Name, Kind, Width, CrossSlopePct, overrideSide ?? Side,
+                outerKerb, innerKerb,
+                SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+        }
+
+        /// <summary>
+        /// 从镜像源行复制全部 v2 字段（不含 Side，由调用方决定）。
+        /// </summary>
+        public void CopyFrom(BandRowViewModel source)
+        {
+            if (source == null) return;
+            Name = source.Name;
+            Kind = source.Kind;
+            Width = source.Width;
+            CrossSlopePct = source.CrossSlopePct;
+            OuterKerbType = source.OuterKerbType;
+            OuterKerbModel = source.OuterKerbModel;
+            OuterKerbHeight = source.OuterKerbHeight;
+            OuterKerbWidth = source.OuterKerbWidth;
+            InnerKerbType = source.InnerKerbType;
+            InnerKerbModel = source.InnerKerbModel;
+            InnerKerbHeight = source.InnerKerbHeight;
+            InnerKerbWidth = source.InnerKerbWidth;
+            SlopeType = source.SlopeType;
+            CrownProfile = source.CrownProfile;
+            SurfaceLayer = source.SurfaceLayer;
+            LaneCount = source.LaneCount;
+        }
+
+        private static KerbSpec PickKerbPreset(RoadKerbType type)
+        {
+            switch (type)
+            {
+                case RoadKerbType.Curb: return KerbSpec.DefaultCurb();
+                case RoadKerbType.Plain: return KerbSpec.DefaultPlain();
+                case RoadKerbType.Combined: return KerbSpec.DefaultCombined();
+                default: return KerbSpec.None;
+            }
+        }
+
+        // ============================== INPC ==============================
 
         public event PropertyChangedEventHandler PropertyChanged;
-        private void SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
         {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return;
+            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return true;
         }
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     /// <summary>

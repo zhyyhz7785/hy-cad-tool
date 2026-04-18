@@ -15,6 +15,11 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
     ///
     /// 顺序约定：<see cref="LeftBands"/>、<see cref="RightBands"/> 均 <b>从中心向外</b>排列，
     /// 这让"向左加一条最外围"和"向右加一条最外围"操作都是 <c>.Add</c>（符合直觉）。
+    ///
+    /// <para>
+    /// v2 扩展（中心线位置 / 高程偏移 / 空装配 / 起止桩号）：
+    /// 旧 <see cref="Create"/> 签名上以可选参数引入，旧调用方仅传必填字段即可，新字段使用安全默认值。
+    /// </para>
     /// </summary>
     public sealed class CrossSectionLayout
     {
@@ -36,13 +41,50 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>显示标题（用于标题栏文字，例如"标准横断面图  1:100"）。</summary>
         public string Title { get; }
 
+        // ==================================== v2 新增字段 ====================================
+
+        /// <summary>
+        /// 道路中心线在断面图上的水平位置（m），相对左红线（leftmost = 0）的距离。
+        /// 默认为 <c>LeftHalfWidth + CenterMedianWidth / 2</c>，即左半幅 + 中分带半宽。
+        /// 用户可显式覆盖（例如非对称设计时把中心线偏向一侧）。
+        /// </summary>
+        public double CenterlinePosition { get; }
+
+        /// <summary>
+        /// 路面纵断面高程偏移（m）。在断面图上把整体几何沿 y 方向上移此值，
+        /// 用于把"设计标高"对齐到地形断面（v1 仅作为字段保留，绘图未启用）。
+        /// </summary>
+        public double ProfileElevationOffset { get; }
+
+        /// <summary>
+        /// 是否为"空装配"占位（对应 Civil 3D 的 Empty Assembly）。
+        /// true 时 UI 仅显示一条中心线参考，不生成几何。供未来 Corridor 仅做参考线用。
+        /// </summary>
+        public bool IsEmptyAssembly { get; }
+
+        /// <summary>
+        /// 起始桩号（m）。例如 K0+000 → 0；K1+200 → 1200。
+        /// 用于在标题栏与图签上标注，几何不参与计算。
+        /// </summary>
+        public double StationStart { get; }
+
+        /// <summary>
+        /// 终止桩号（m）。<see cref="StationEnd"/> ≥ <see cref="StationStart"/>。
+        /// </summary>
+        public double StationEnd { get; }
+
         private CrossSectionLayout(
             IReadOnlyList<CrossSectionBand> leftBands,
             IReadOnlyList<CrossSectionBand> rightBands,
             double centerMedianWidth,
             int designSpeed,
             int scaleDenominator,
-            string title)
+            string title,
+            double centerlinePosition,
+            double profileElevationOffset,
+            bool isEmptyAssembly,
+            double stationStart,
+            double stationEnd)
         {
             LeftBands = leftBands;
             RightBands = rightBands;
@@ -50,18 +92,36 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             DesignSpeed = designSpeed;
             ScaleDenominator = scaleDenominator;
             Title = title ?? string.Empty;
+            CenterlinePosition = centerlinePosition;
+            ProfileElevationOffset = profileElevationOffset;
+            IsEmptyAssembly = isEmptyAssembly;
+            StationStart = stationStart;
+            StationEnd = stationEnd;
         }
 
         /// <summary>
         /// 常规构造：从可变列表拷贝为只读视图，同时做合法性检查。
+        ///
+        /// <para>
+        /// 旧调用方仅需传前 6 个参数；v2 新字段用可选参数追加，所有旧 JSON 与旧测试均兼容。
+        /// </para>
         /// </summary>
+        /// <param name="centerlinePosition">
+        /// 中心线水平位置（m）。传 <see cref="double.NaN"/>（默认）将自动解算为
+        /// <c>LeftHalfWidth + CenterMedianWidth / 2</c>。
+        /// </param>
         public static CrossSectionLayout Create(
             IReadOnlyList<CrossSectionBand> leftBands,
             IReadOnlyList<CrossSectionBand> rightBands,
             double centerMedianWidth,
             int designSpeed,
             int scaleDenominator = 100,
-            string title = "标准横断面图")
+            string title = "标准横断面图",
+            double centerlinePosition = double.NaN,
+            double profileElevationOffset = 0,
+            bool isEmptyAssembly = false,
+            double stationStart = 0,
+            double stationEnd = 0)
         {
             if (leftBands == null) throw new ArgumentNullException(nameof(leftBands));
             if (rightBands == null) throw new ArgumentNullException(nameof(rightBands));
@@ -71,6 +131,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 throw new ArgumentOutOfRangeException(nameof(designSpeed), $"设计速度必须 > 0，当前 {designSpeed}。");
             if (scaleDenominator <= 0)
                 throw new ArgumentOutOfRangeException(nameof(scaleDenominator), $"比例分母必须 > 0，当前 {scaleDenominator}。");
+            if (double.IsInfinity(profileElevationOffset))
+                throw new ArgumentOutOfRangeException(nameof(profileElevationOffset), $"高程偏移必须为有限值，当前 {profileElevationOffset}。");
+            if (double.IsInfinity(stationStart))
+                throw new ArgumentOutOfRangeException(nameof(stationStart), $"起始桩号必须为有限值，当前 {stationStart}。");
+            if (double.IsInfinity(stationEnd))
+                throw new ArgumentOutOfRangeException(nameof(stationEnd), $"终止桩号必须为有限值，当前 {stationEnd}。");
 
             var left = new List<CrossSectionBand>(leftBands.Count);
             foreach (var b in leftBands)
@@ -85,8 +151,17 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 right.Add(b.Side == BandSide.Right ? b : b.WithSide(BandSide.Right));
             }
 
-            return new CrossSectionLayout(left.AsReadOnly(), right.AsReadOnly(),
-                centerMedianWidth, designSpeed, scaleDenominator, title);
+            // 默认中心线位置 = 左半宽 + 中分带半宽（与对称布置等效）
+            double leftWidth = 0;
+            foreach (var b in left) leftWidth += b.Width;
+            double resolvedCenterline = double.IsNaN(centerlinePosition)
+                ? leftWidth + centerMedianWidth / 2.0
+                : centerlinePosition;
+
+            return new CrossSectionLayout(
+                left.AsReadOnly(), right.AsReadOnly(),
+                centerMedianWidth, designSpeed, scaleDenominator, title,
+                resolvedCenterline, profileElevationOffset, isEmptyAssembly, stationStart, stationEnd);
         }
 
         // ==================================== 计算属性 ====================================
@@ -119,25 +194,52 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>左右是否对称（以 0.01 m 为容差比较半幅宽）。</summary>
         public bool IsSymmetric => Math.Abs(LeftHalfWidth - RightHalfWidth) <= 0.01;
 
+        /// <summary>桩号长度（m），可能为 0（仅作为占位的横断面图，未指定起止桩号）。</summary>
+        public double StationLength => Math.Max(0, StationEnd - StationStart);
+
         // ==================================== 不变式改写 ====================================
 
         public CrossSectionLayout WithLeftBands(IReadOnlyList<CrossSectionBand> leftBands)
-            => Create(leftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title);
+            => Create(leftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      double.NaN /* 让中心线随新左半宽自动重算 */,
+                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
 
         public CrossSectionLayout WithRightBands(IReadOnlyList<CrossSectionBand> rightBands)
-            => Create(LeftBands, rightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title);
+            => Create(LeftBands, rightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
 
         public CrossSectionLayout WithCenterMedianWidth(double w)
-            => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title);
+            => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title,
+                      double.NaN /* 中分带宽变了，中心线重算 */,
+                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
 
         public CrossSectionLayout WithDesignSpeed(int speed)
-            => Create(LeftBands, RightBands, CenterMedianWidth, speed, ScaleDenominator, Title);
+            => Create(LeftBands, RightBands, CenterMedianWidth, speed, ScaleDenominator, Title,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
 
         public CrossSectionLayout WithScale(int denom)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, denom, Title);
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, denom, Title,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
 
         public CrossSectionLayout WithTitle(string title)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, title);
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, title,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+
+        public CrossSectionLayout WithCenterlinePosition(double centerlinePosition)
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      centerlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+
+        public CrossSectionLayout WithProfileElevationOffset(double offset)
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      CenterlinePosition, offset, IsEmptyAssembly, StationStart, StationEnd);
+
+        public CrossSectionLayout WithIsEmptyAssembly(bool isEmpty)
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      CenterlinePosition, ProfileElevationOffset, isEmpty, StationStart, StationEnd);
+
+        public CrossSectionLayout WithStations(double stationStart, double stationEnd)
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd);
 
         public override string ToString()
             => $"CrossSectionLayout[TotalWidth={TotalWidth:F3}m, Speed={DesignSpeed}km/h, Scale=1:{ScaleDenominator}]";

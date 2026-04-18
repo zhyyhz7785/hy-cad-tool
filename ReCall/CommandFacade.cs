@@ -146,7 +146,10 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadAlnEditPi")]    public void Cmd_hyRoadAlnEditPi()    => ReCallClass.Invoke("hyRoadAlnEditPi");
         [CommandMethod("hyRoadAlnStation")]   public void Cmd_hyRoadAlnStation()   => ReCallClass.Invoke("hyRoadAlnStation");
         [CommandMethod("hyRoadP")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
+        // hyRoadT（v1，已转发到 v2 hyRoadCs）+ hyRoadCs（v2 横断面绘制，BlenderUI workbench / 路牙 / 路拱 / 桩号）
+        // 关 CAD → NETLOAD ReCall.dll 后两条都可用；commands.json 里两条都指向 RoadCrossSectionDrawCommand。
         [CommandMethod("hyRoadT")]            public void Cmd_hyRoadT()            => ReCallClass.Invoke("hyRoadT");
+        [CommandMethod("hyRoadCs")]           public void Cmd_hyRoadCs()           => ReCallClass.Invoke("hyRoadCs");
         [CommandMethod("hyRoadC")]            public void Cmd_hyRoadC()            => ReCallClass.Invoke("hyRoadC");
         [CommandMethod("hyRoadSave")]         public void Cmd_hyRoadSave()         => ReCallClass.Invoke("hyRoadSave");
         [CommandMethod("hyRoadLoad")]         public void Cmd_hyRoadLoad()         => ReCallClass.Invoke("hyRoadLoad");

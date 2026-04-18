@@ -29,6 +29,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
     /// 两者通过 <see cref="Services.Road.CrossSectionLayoutBuilder"/> 互转。
     ///
     /// 本值对象不可变；任何"修改"都应构造新实例（<see cref="WithWidth"/> / <see cref="WithSlope"/> 等）。
+    ///
+    /// <para>
+    /// v2 扩展（路牙、坡型、路拱、路面结构、车道数）：
+    /// 旧的 5 参数构造函数转发到完整构造函数，新字段使用"无路牙 / 单坡 / 直线型 / 无铺装 / 无车道数"默认值，
+    /// 旧调用方与旧 JSON 模板均保持兼容。
+    /// </para>
     /// </summary>
     public readonly struct CrossSectionBand : IEquatable<CrossSectionBand>
     {
@@ -56,7 +62,70 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>条带所在的侧别，用于 Builder 推导 <c>HorizontalOffset</c> 的符号。</summary>
         public BandSide Side { get; }
 
+        // ==================================== v2 新增字段 ====================================
+
+        /// <summary>
+        /// 外侧路牙规格。生效时会在板块外缘叠加竖向凸起几何（参见 <see cref="KerbSpec"/>）。
+        /// 默认 <see cref="KerbSpec.None"/>。
+        /// </summary>
+        public KerbSpec OuterKerb { get; }
+
+        /// <summary>
+        /// 内侧路牙规格。绝大多数场景为 <see cref="KerbSpec.None"/>，
+        /// 仅当板块为机动车道与中分带相邻、需要在中分带侧加缘石时启用。
+        /// </summary>
+        public KerbSpec InnerKerb { get; }
+
+        /// <summary>
+        /// 坡型。<see cref="RoadSlopeType.Single"/> 单坡（外低）；
+        /// <see cref="RoadSlopeType.Double"/> 双坡（板块中央高、两侧低）。
+        /// </summary>
+        public RoadSlopeType SlopeType { get; }
+
+        /// <summary>
+        /// 路拱形式。<see cref="RoadCrownProfile.Linear"/> 直线型（默认，最常用）；
+        /// <see cref="RoadCrownProfile.Parabolic"/> 抛物线；<see cref="RoadCrownProfile.Folded"/> 折线。
+        /// </summary>
+        public RoadCrownProfile CrownProfile { get; }
+
+        /// <summary>
+        /// 路面结构（铺装类型）。决定填色与未来分层结构线绘制。默认 <see cref="RoadSurfaceLayer.None"/>。
+        /// </summary>
+        public RoadSurfaceLayer SurfaceLayer { get; }
+
+        /// <summary>
+        /// 车道数（仅 <see cref="TemplateComponentKind.Pavement"/> / <see cref="TemplateComponentKind.NonMotorized"/>
+        /// 类型有意义）。0 表示"未划分"，几何不画分车道线；&gt;0 时按等分绘制 N 条车道线。
+        /// </summary>
+        public int LaneCount { get; }
+
+        // ==================================== 构造函数 ====================================
+
+        /// <summary>
+        /// 旧 5 参数构造函数。新字段使用安全默认值（无路牙 / 单坡 / 直线型 / 无铺装 / 0 车道）。
+        /// </summary>
         public CrossSectionBand(string name, TemplateComponentKind kind, double width, double crossSlopePct, BandSide side)
+            : this(name, kind, width, crossSlopePct, side,
+                   KerbSpec.None, KerbSpec.None,
+                   RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.None, 0)
+        {
+        }
+
+        /// <summary>
+        /// 完整构造函数。所有字段一次性初始化。
+        /// </summary>
+        public CrossSectionBand(
+            string name,
+            TemplateComponentKind kind,
+            double width,
+            double crossSlopePct,
+            BandSide side,
+            KerbSpec outerKerb,
+            KerbSpec innerKerb,
+            RoadSlopeType slopeType,
+            RoadCrownProfile crownProfile,
+            RoadSurfaceLayer surfaceLayer,
+            int laneCount)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("条带名称不能为空。", nameof(name));
             if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0)
@@ -65,28 +134,68 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 throw new ArgumentOutOfRangeException(nameof(crossSlopePct), $"横坡必须为有限值，当前 {crossSlopePct}。");
             if (Math.Abs(crossSlopePct) > 20)
                 throw new ArgumentOutOfRangeException(nameof(crossSlopePct), $"横坡绝对值不得超过 20%，当前 {crossSlopePct}。");
+            if (laneCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(laneCount), $"车道数必须 ≥ 0，当前 {laneCount}。");
 
             Name = name.Trim();
             Kind = kind;
             Width = width;
             CrossSlopePct = crossSlopePct;
             Side = side;
+            OuterKerb = outerKerb;
+            InnerKerb = innerKerb;
+            SlopeType = slopeType;
+            CrownProfile = crownProfile;
+            SurfaceLayer = surfaceLayer;
+            LaneCount = laneCount;
         }
 
+        // ==================================== With* 方法 ====================================
+        // 注意：每个 With* 都把 v2 字段一并带过去，避免镜像/侧别变更等操作丢失路牙等信息。
+
         /// <summary>返回相同字段、只改变宽度的新条带。</summary>
-        public CrossSectionBand WithWidth(double width) => new CrossSectionBand(Name, Kind, width, CrossSlopePct, Side);
+        public CrossSectionBand WithWidth(double width)
+            => new CrossSectionBand(Name, Kind, width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
 
         /// <summary>返回相同字段、只改变横坡的新条带。</summary>
-        public CrossSectionBand WithSlope(double crossSlopePct) => new CrossSectionBand(Name, Kind, Width, crossSlopePct, Side);
+        public CrossSectionBand WithSlope(double crossSlopePct)
+            => new CrossSectionBand(Name, Kind, Width, crossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
 
         /// <summary>返回相同字段、只改变类型的新条带（横坡不变）。</summary>
-        public CrossSectionBand WithKind(TemplateComponentKind kind) => new CrossSectionBand(Name, kind, Width, CrossSlopePct, Side);
+        public CrossSectionBand WithKind(TemplateComponentKind kind)
+            => new CrossSectionBand(Name, kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
 
         /// <summary>返回相同字段、只改变侧别的新条带（镜像时用）。</summary>
-        public CrossSectionBand WithSide(BandSide side) => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, side);
+        public CrossSectionBand WithSide(BandSide side)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
 
         /// <summary>返回相同字段、只改变名称的新条带。</summary>
-        public CrossSectionBand WithName(string name) => new CrossSectionBand(name, Kind, Width, CrossSlopePct, Side);
+        public CrossSectionBand WithName(string name)
+            => new CrossSectionBand(name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+
+        /// <summary>返回相同字段、只改变外侧路牙规格的新条带。</summary>
+        public CrossSectionBand WithOuterKerb(KerbSpec kerb)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, kerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+
+        /// <summary>返回相同字段、只改变内侧路牙规格的新条带。</summary>
+        public CrossSectionBand WithInnerKerb(KerbSpec kerb)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, kerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+
+        /// <summary>返回相同字段、只改变坡型的新条带。</summary>
+        public CrossSectionBand WithSlopeType(RoadSlopeType slopeType)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, slopeType, CrownProfile, SurfaceLayer, LaneCount);
+
+        /// <summary>返回相同字段、只改变路拱形式的新条带。</summary>
+        public CrossSectionBand WithCrownProfile(RoadCrownProfile crownProfile)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, crownProfile, SurfaceLayer, LaneCount);
+
+        /// <summary>返回相同字段、只改变路面结构的新条带。</summary>
+        public CrossSectionBand WithSurfaceLayer(RoadSurfaceLayer surfaceLayer)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, surfaceLayer, LaneCount);
+
+        /// <summary>返回相同字段、只改变车道数的新条带。</summary>
+        public CrossSectionBand WithLaneCount(int laneCount)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, laneCount);
 
         // ==================================== 简化工厂 ====================================
         //
@@ -97,6 +206,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>机动车道（默认 1.5% 横坡）。</summary>
         public static CrossSectionBand Lane(double width, double slopePct = 1.5, BandSide side = BandSide.Left, string name = "机动车道")
             => new CrossSectionBand(name, TemplateComponentKind.Pavement, width, slopePct, side);
+
+        /// <summary>机动车道（带外侧立缘石）。常用于人行道相邻一侧的最外机动车道。</summary>
+        public static CrossSectionBand LaneWithCurb(double width, double slopePct = 1.5, BandSide side = BandSide.Left, string name = "机动车道")
+            => new CrossSectionBand(name, TemplateComponentKind.Pavement, width, slopePct, side,
+                                    KerbSpec.DefaultCurb(), KerbSpec.None,
+                                    RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.PavementSurface, 1);
 
         /// <summary>非机动车道（默认 1.5% 横坡）。</summary>
         public static CrossSectionBand NonMotor(double width, double slopePct = 1.5, BandSide side = BandSide.Left, string name = "非机动车道")
@@ -123,7 +238,13 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                && Kind == other.Kind
                && Width.Equals(other.Width)
                && CrossSlopePct.Equals(other.CrossSlopePct)
-               && Side == other.Side;
+               && Side == other.Side
+               && OuterKerb.Equals(other.OuterKerb)
+               && InnerKerb.Equals(other.InnerKerb)
+               && SlopeType == other.SlopeType
+               && CrownProfile == other.CrownProfile
+               && SurfaceLayer == other.SurfaceLayer
+               && LaneCount == other.LaneCount;
 
         public override bool Equals(object obj) => obj is CrossSectionBand b && Equals(b);
 
@@ -136,11 +257,18 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 h = (h * 397) ^ Width.GetHashCode();
                 h = (h * 397) ^ CrossSlopePct.GetHashCode();
                 h = (h * 397) ^ (int)Side;
+                h = (h * 397) ^ OuterKerb.GetHashCode();
+                h = (h * 397) ^ InnerKerb.GetHashCode();
+                h = (h * 397) ^ (int)SlopeType;
+                h = (h * 397) ^ (int)CrownProfile;
+                h = (h * 397) ^ (int)SurfaceLayer;
+                h = (h * 397) ^ LaneCount;
                 return h;
             }
         }
 
         public override string ToString()
-            => $"{Side} {Name}({Kind}) W={Width:F3}m i={CrossSlopePct:F2}%";
+            => $"{Side} {Name}({Kind}) W={Width:F3}m i={CrossSlopePct:F2}%"
+               + (OuterKerb.IsPresent ? $" +Kerb({OuterKerb.Type} h={OuterKerb.Height:F2})" : string.Empty);
     }
 }

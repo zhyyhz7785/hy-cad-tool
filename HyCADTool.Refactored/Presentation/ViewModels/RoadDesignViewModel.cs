@@ -27,7 +27,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             CmdAlignment = new RelayCommand(() => SendCommand(() => new Commands.Road.RoadAlignmentCommand().Execute()));
             CmdProfile = new RelayCommand(() => SendCommand(() => new Commands.Road.RoadProfileCommand().Execute()));
-            CmdTemplate = new RelayCommand(() => SendCommand(() => new Commands.Road.RoadTemplateCommand().Execute()));
+            // hyRoadCs（v2 横断面绘制）替换 hyRoadT；统一面板的 "横断面" 按钮直接走新命令，避免触发 [Obsolete] 转发壳。
+            CmdTemplate = new RelayCommand(() => SendCommand(() => new Commands.Road.RoadCrossSectionDrawCommand().Execute()));
             CmdCorridor = new RelayCommand(() => SendCommand(() => new Commands.Road.RoadCorridorCommand().Execute()));
             CmdExportGltf = new RelayCommand(() => SendCommand(() => new Commands.Road.Road3dExportGltfCommand().Execute()));
             CmdOpenJson = new RelayCommand(() => SendCommand(() => new Commands.Road.RoadOpenJsonCommand().Execute()));

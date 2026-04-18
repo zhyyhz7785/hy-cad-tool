@@ -5,6 +5,7 @@
 
     <prim:BoolToVisibility x:Key="BoolToVisibility"/>
     <prim:InverseBoolToVisibility x:Key="InverseBoolToVisibility"/>
+    <prim:IndexToVisibility x:Key="IndexToVisibility"/>
 
     <!-- SearchBox -->
     <Style TargetType="{x:Type prim:SearchBox}">

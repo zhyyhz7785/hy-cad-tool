@@ -174,6 +174,20 @@ namespace HyCADTool.Refactored.Presentation
                 EnsureCurrentDocumentResourcesInitialized(force: true);
                 WriteMessage("\n  ✓ 图层已创建");
                 WriteMessage($"\n  ✓ 设置文件: {ViewModels.SettingsPanelViewModel.GetSettingsFilePath()}");
+
+                // 主题兜底（v2 host-replace 模型）：
+                // - LoadSettings 中 Theme setter 已经 Apply 过一次，把 BlenderThemeManager.Current
+                //   设为目标值（此时 ColorsHost 还没创建，无 host 可改）；
+                // - 这里调 Refresh()，强制按 Current 再刷一遍 host —— 若用户已先开过面板再触发
+                //   插件重载，能立即生效；若 ColorsHost 尚未注册（典型首启），由 ColorsHost 构造时
+                //   自检 Current 完成补刷，无需在此重复调 Apply（同主题幂等会 early-return）。
+                try
+                {
+                    var themeName = ViewModels.SettingsPanelViewModel.Current?.Theme ?? "BlenderDark";
+                    HyCAD.BlenderUI.Theming.BlenderThemeManager.Apply(themeName);
+                    HyCAD.BlenderUI.Theming.BlenderThemeManager.Refresh();
+                }
+                catch { /* Application 未就绪等场景静默 */ }
             }
             catch (System.Exception ex)
             {
@@ -474,6 +488,33 @@ namespace HyCADTool.Refactored.Presentation
                 if (ex.InnerException != null)
                     WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                 WriteMessage($"\n    堆栈：{ex.StackTrace}");
+            }
+
+            // 单独把 BlenderWindow.xaml 模板提前一次解析。
+            // 原因：Generic.xaml 由 WPF 在 DefaultStyleKey 命中时按需异步加载，
+            //       Road 命令第一次 new XxxWindow 时才会触发；如果跨程序集 pack URI 解析这条路径
+            //       和 BlenderTheme 一样有 native 风险，必须前置到 Initialize 同步阶段。
+            try
+            {
+                var winUri = new System.Uri(
+                    "pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/BlenderWindow.xaml",
+                    System.UriKind.Absolute);
+
+                var winDict = System.Windows.Application.LoadComponent(winUri) as System.Windows.ResourceDictionary;
+                if (winDict != null)
+                {
+                    WriteMessage($"\n  ✓ BlenderWindow 模板预热完成（顶层资源 {winDict.Count} 条）");
+                }
+                else
+                {
+                    WriteMessage("\n  ⚠ BlenderWindow 模板预热返回 null");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ✗ BlenderWindow 模板预热失败：{ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                    WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
             }
         }
 

@@ -14,4 +14,18 @@
     <Thickness x:Key="Metric_ButtonPadding">8,3</Thickness>
     <Thickness x:Key="Metric_InputPadding">6,2</Thickness>
 
+    <!--
+      Workspace 体系度量（v1.2）
+      用 Double 统一暴露；Sample 中分隔列宽（GridLength 类型）直接用字面量「Width="4"」，
+      不引入 GridLength/Thickness 类型 DR（避免 pitfall B4 的类型错配）。
+    -->
+    <sys:Double x:Key="Metric_EditorHeaderHeight">24</sys:Double>
+    <sys:Double x:Key="Metric_ToolbarWidth">40</sys:Double>
+    <sys:Double x:Key="Metric_NPanelMinWidth">240</sys:Double>
+    <sys:Double x:Key="Metric_OutlinerMinWidth">220</sys:Double>
+    <sys:Double x:Key="Metric_TimelineHeight">28</sys:Double>
+    <sys:Double x:Key="Metric_StatusBarHeight">22</sys:Double>
+    <sys:Double x:Key="Metric_SplitterThickness">4</sys:Double>
+    <sys:Double x:Key="Metric_WorkspaceTabHeight">26</sys:Double>
+
 </ResourceDictionary>
