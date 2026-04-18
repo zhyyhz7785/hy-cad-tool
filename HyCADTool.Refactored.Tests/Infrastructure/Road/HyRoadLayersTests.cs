@@ -18,8 +18,39 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             var all = HyRoadLayers.GetAll();
             // P0: Alignment / Profile / Corridor / Marking（4）
             // P1.c 新增：Station
-            all.Should().HaveCount(5);
+            // M3 新增：9 个横断面图层
+            all.Should().HaveCount(14);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
+        }
+
+        [Fact]
+        public void GetAll_IncludesNineCrossSectionLayers()
+        {
+            var names = HyRoadLayers.GetAll().Select(t => t.layerName).ToArray();
+            names.Should().Contain(new[]
+            {
+                HyRoadLayers.CrossSectionOutlineLayer,
+                HyRoadLayers.CrossSectionCenterlineLayer,
+                HyRoadLayers.CrossSectionPavementLayer,
+                HyRoadLayers.CrossSectionSidewalkLayer,
+                HyRoadLayers.CrossSectionGreenLayer,
+                HyRoadLayers.CrossSectionDimensionLayer,
+                HyRoadLayers.CrossSectionAnnotationLayer,
+                HyRoadLayers.CrossSectionTitleLayer,
+                HyRoadLayers.CrossSectionOrientationLayer,
+            });
+        }
+
+        [Fact]
+        public void CrossSectionLayers_AllFollowHorizontalSectionNamingConvention()
+        {
+            var all = HyRoadLayers.GetAll();
+            var csLayers = all.Where(t => t.layerName.Contains("横断面")).ToArray();
+            csLayers.Should().HaveCount(9, "M3 共 9 个横断面图层");
+            foreach (var (name, _) in csLayers)
+            {
+                name.Should().StartWith("05_hy_道路_横断面_");
+            }
         }
 
         [Fact]

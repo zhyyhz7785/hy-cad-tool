@@ -64,7 +64,9 @@ namespace HyCADTool.Refactored.Domain.Models.Road
     }
 
     /// <summary>
-    /// 模板段功能类型。v1 只列出常见值。
+    /// 模板段功能类型。
+    ///
+    /// 数值兼容性：历史值 0-6 固定不动，新增值顺延，既有 JSON 文件按原数值解析。
     /// </summary>
     public enum TemplateComponentKind
     {
@@ -74,7 +76,13 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         Kerb = 3,
         MedianStrip = 4,
         Shoulder = 5,
-        Slope = 6
+        Slope = 6,
+
+        /// <summary>非机动车道（自行车 / 电动车）。CJJ 37 §6.5。</summary>
+        NonMotorized = 7,
+
+        /// <summary>绿化带（分车绿带 / 行道树带），与 <see cref="MedianStrip"/> 区分。</summary>
+        GreenStrip = 8
     }
 
     /// <summary>

@@ -87,6 +87,7 @@
         "hyRoad":             { "type": "HyCADTool.Refactored.Presentation.Commands.DrawCrosswalkCommand",                 "method": "Execute" },
         "hyRoadA":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentCommand",            "method": "Execute" },
         "hyRoadAlnByPi":      { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentByPiCommand",        "method": "Execute" },
+        "hyRoadAlnEditPi":    { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentEditPiCommand",      "method": "Execute" },
         "hyRoadAlnStation":   { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentStationCommand",     "method": "Execute" },
         "hyRoadP":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadProfileCommand",              "method": "Execute" },
         "hyRoadT":            { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadTemplateCommand",             "method": "Execute" },
@@ -114,7 +115,8 @@
             "CHECKWPF":    { "type": "HyCADTool.Refactored.Presentation.Commands.CheckWPFLoadedCommand", "method": "CheckWPF" },
 
             "N1":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentByPiCommand", "method": "Execute", "_alias": "hyRoadAlnByPi（正名在下次重启 CAD 重 NETLOAD ReCall 后生效；此处占位保证不关 CAD 即可测）" },
-            "N2":  null, "N3":  null, "N4":  null, "N5":  null,
+            "N2":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentEditPiCommand", "method": "Execute", "_alias": "hyRoadAlnEditPi（同上：正名需下次 NETLOAD；占位符保证即时可测）" },
+            "N3":  null, "N4":  null, "N5":  null,
         "N6":  null, "N7":  null, "N8":  null, "N9":  null, "N10": null,
         "N11": null, "N12": null, "N13": null, "N14": null, "N15": null,
         "N16": null, "N17": null, "N18": null, "N19": null, "N20": null,

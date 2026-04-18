@@ -25,9 +25,9 @@ v1 主攻 AutoCAD 出图功能落地（[01MASTER § 十一 P0-P5](./01MASTER.md#
 
 ---
 
-## 文档清单（17 篇）
+## 文档清单（18 篇）
 
-### 整合类（4 篇）
+### 整合类（5 篇）
 
 | 文档 | 定位 |
 |------|------|
@@ -35,6 +35,7 @@ v1 主攻 AutoCAD 出图功能落地（[01MASTER § 十一 P0-P5](./01MASTER.md#
 | [02Software_Overview_INDEX.md](./02Software_Overview_INDEX.md) | 软件总览索引 + 总对比表 + 收敛图 |
 | [03RoadSelect.md](./03RoadSelect.md) | 道路核心系统专项：Alignment/Profile/Assembly/Corridor 四级体系 + 五维选择 + 联动 |
 | [04Pipeline_CAD_Blender_Lumion.md](./04Pipeline_CAD_Blender_Lumion.md) | **AutoCAD → Blender → Lumion 工具链专项**：v1 预留点清单、三维格式选型、v2/v3/v∞ 演进 |
+| [05计划书.md](./05计划书.md) | **总体作战地图**：现状坐标、5 条主线、不可动原则、任务看板、节奏节点、风险清单 |
 
 ### 国外标杆（5 篇）
 

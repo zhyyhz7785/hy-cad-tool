@@ -382,6 +382,67 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         }
 
         /// <summary>
+        /// 就地重建指定 Alignment 的中心线几何：同步 Domain + DWG Polyline + JSON。
+        ///
+        /// 语义：
+        /// - 保持 <see cref="Alignment.Id"/>、Xdata、ObjectId、图层、用户标签不变；
+        /// - 替换 Domain <see cref="Alignment.Centerline"/>；
+        /// - 查找同 AlignmentId 的 HY_ROAD Polyline，就地 <see cref="RoadGeometryBridge.UpdateAutoCadPolyline"/>；
+        /// - 发布 <see cref="RoadChangeKind.Updated"/> 事件，触发写盘。
+        ///
+        /// 使用场景：
+        /// - hyRoadAlnEditPi 编辑一个 PI 的 R / Ls 参数后，调用 Designer 重建 Polyline3D，再调本方法落图。
+        /// - 未来批量参数编辑器（P1.c 面板）同样可以复用。
+        /// </summary>
+        /// <returns>true = 找到并重建；false = Domain / DWG 不匹配（未找到对应 Alignment 或 Polyline）。</returns>
+        public bool RebuildCenterline(
+            string documentName,
+            Transaction transaction,
+            Database database,
+            Guid alignmentId,
+            Polyline3D newCenterline)
+        {
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+            if (database == null) throw new ArgumentNullException(nameof(database));
+            if (newCenterline == null) throw new ArgumentNullException(nameof(newCenterline));
+            if (alignmentId == Guid.Empty) throw new ArgumentException("alignmentId cannot be empty", nameof(alignmentId));
+
+            if (!_registry.TryGet(documentName, out var design)) return false;
+            var alignment = design.Alignments.FirstOrDefault(a => a.Id == alignmentId);
+            if (alignment == null) return false;
+
+            // 在 ModelSpace 中定位同一 AlignmentId 的 Polyline
+            var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)transaction.GetObject(
+                bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+
+            Polyline target = null;
+            foreach (ObjectId id in ms)
+            {
+                var ent = transaction.GetObject(id, OpenMode.ForRead);
+                if (!(ent is Polyline poly)) continue;
+                var kind = HyRoadXdata.ReadKind(transaction, ent);
+                if (!string.Equals(kind, "Alignment", StringComparison.Ordinal)) continue;
+                var gid = HyRoadXdata.ReadId(transaction, ent);
+                if (gid != alignmentId) continue;
+                target = poly;
+                break;
+            }
+
+            if (target == null) return false;
+
+            // 先更新 Domain，再覆盖 DWG
+            alignment.Centerline = newCenterline;
+
+            if (!target.IsWriteEnabled) target.UpgradeOpen();
+            RoadGeometryBridge.UpdateAutoCadPolyline(target, newCenterline);
+
+            design.LastModifiedUtc = DateTime.UtcNow;
+            _eventBus.Publish(new AlignmentChangedEvent(design.Id, alignment.Id, RoadChangeKind.Updated));
+            return true;
+        }
+
+        /// <summary>
         /// 从 Domain 聚合根删除平面线位。真实 DWG 清理留给命令层（可选）。
         /// </summary>
         public bool Delete(string documentName, Guid alignmentId)

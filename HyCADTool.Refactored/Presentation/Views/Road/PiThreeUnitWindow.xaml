@@ -1,0 +1,486 @@
+<Window x:Class="HyCADTool.Refactored.Presentation.Views.Road.PiThreeUnitWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
+        Title="三单元（缓-圆-缓）设计"
+        Width="760" Height="520"
+        MinWidth="680" MinHeight="460"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="CanResizeWithGrip"
+        Background="#2e3440"
+        Foreground="#d8dee9"
+        ShowInTaskbar="False">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="30" ResizeBorderThickness="6"
+                      GlassFrameThickness="0" CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+            <!-- 分区标题（鸿业截图里「输入」「派生量」「规范检查」「操作」） -->
+            <Style x:Key="SectionHeader" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#88c0d0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="0,0,0,4" />
+            </Style>
+
+            <!-- 带边框的分区容器：鸿业窗口每个小栏都是一个带细线框的 Group -->
+            <Style x:Key="SectionBorder" TargetType="Border">
+                <Setter Property="BorderBrush" Value="#4c566a" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="3" />
+                <Setter Property="Background" Value="#353d4a" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+
+            <Style x:Key="ParamLabel" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#d8dee9" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="FontSize" Value="12" />
+            </Style>
+
+            <Style x:Key="DerivedText" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="#d8dee9" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontFamily" Value="Consolas" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="Padding" Value="0,0,4,0" />
+            </Style>
+
+            <!-- 输入 TextBox：数字专用，基于默认 TextBox 样式 -->
+            <Style x:Key="NumericTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True" />
+                <Setter Property="HorizontalContentAlignment" Value="Right" />
+                <Setter Property="FontFamily" Value="Consolas" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45" />
+                        <Setter Property="Background" Value="#2a2e38" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- 操作按钮 -->
+            <Style x:Key="ActionBtn" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Padding" Value="16,6" />
+                <Setter Property="Margin" Value="4,0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="MinWidth" Value="80" />
+            </Style>
+
+            <!-- 标题栏按钮 -->
+            <Style x:Key="TitleBarBtn" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="#d8dee9" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Width" Value="40" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#3b4453" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="CloseTitleBtn" TargetType="Button" BasedOn="{StaticResource TitleBarBtn}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#bf616a" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 规范检查项：6 行；Passed=false → 文本变红；再配一个小色块 -->
+            <DataTemplate x:Key="CheckItemTemplate">
+                <Grid Margin="0,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左侧色块：OK=绿，NG=红 -->
+                    <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Top"
+                             Margin="0,6,0,0"
+                             HorizontalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#a3be8c" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Passed}" Value="False">
+                                        <Setter Property="Fill" Value="#bf616a" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Top"
+                               FontSize="12">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#d8dee9" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Passed}" Value="False">
+                                        <Setter Property="Foreground" Value="#bf616a" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding Message}" FontSize="11" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#a3be8c" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Passed}" Value="False">
+                                            <Setter Property="Foreground" Value="#bf616a" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Suggestion}"
+                                   FontSize="11" TextWrapping="Wrap"
+                                   Foreground="#ebcb8b"
+                                   Margin="0,2,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasSuggestion}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border BorderBrush="#4c566a" BorderThickness="1">
+        <DockPanel>
+
+            <!-- ===== 自定义标题栏 ===== -->
+            <Border DockPanel.Dock="Top" Background="#1e222a" Height="30">
+                <Grid>
+                    <TextBlock Text="{Binding Title}" Foreground="#d8dee9" FontSize="13" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="10,0,0,0" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="✕" Style="{StaticResource CloseTitleBtn}" Click="BtnClose_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== 底部按钮行 ===== -->
+            <Border DockPanel.Dock="Bottom" Background="#3b4453" Padding="8,6"
+                    BorderBrush="#4c566a" BorderThickness="0,1,0,0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBlock VerticalAlignment="Center" FontSize="11"
+                                   Foreground="#808080" Margin="4,0,0,0">
+                            <Run Text="JD" />
+                            <Run Text="{Binding PiIndex, Mode=OneWay}" />
+                            <Run Text="/" />
+                            <Run Text="{Binding TotalPi, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock VerticalAlignment="Center" FontSize="11"
+                                   Margin="16,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#a3be8c" />
+                                    <Setter Property="Text" Value="全部规范项通过" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding AllChecksPassed}" Value="False">
+                                            <Setter Property="Foreground" Value="#bf616a" />
+                                            <Setter Property="Text" Value="有规范项未通过（可强制确定）" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="确定" Style="{StaticResource ActionBtn}"
+                                Command="{Binding ConfirmCommand}"
+                                IsDefault="True" />
+                        <Button Content="取消" Style="{StaticResource ActionBtn}"
+                                Command="{Binding CancelCommand}"
+                                IsCancel="True" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== 主体：左右两列 ===== -->
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
+
+                <!-- ========== 左列：输入 + 派生量 ========== -->
+                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+
+                    <!-- 输入栏 -->
+                    <Border Style="{StaticResource SectionBorder}">
+                        <StackPanel>
+                            <TextBlock Text="输入" Style="{StaticResource SectionHeader}" />
+
+                            <!-- 设计速度 -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="设计速度 V(km/h)" Style="{StaticResource ParamLabel}" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableSpeeds}"
+                                          SelectedItem="{Binding DesignSpeed, Mode=TwoWay}"
+                                          FontFamily="Consolas" FontSize="12" />
+                            </Grid>
+
+                            <!-- 圆曲线半径 -->
+                            <Grid Margin="0,6,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="圆曲线半径 R(m)" Style="{StaticResource ParamLabel}" />
+                                <TextBox Grid.Column="1" Style="{StaticResource NumericTextBox}"
+                                         Text="{Binding Radius, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}" />
+                            </Grid>
+
+                            <!-- 对称锁 -->
+                            <CheckBox Content="Ls1 = Ls2（对称）" IsChecked="{Binding IsSymmetric}"
+                                      Foreground="#d8dee9" FontSize="12" Margin="0,8,0,4" />
+
+                            <!-- Ls1 -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="入侧缓长 Ls1(m)" Style="{StaticResource ParamLabel}" />
+                                <TextBox Grid.Column="1" Style="{StaticResource NumericTextBox}"
+                                         Text="{Binding SpiralIn, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}" />
+                            </Grid>
+
+                            <!-- Ls2：对称锁开启时禁用 -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="出侧缓长 Ls2(m)" Style="{StaticResource ParamLabel}" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding SpiralOut, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource NumericTextBox}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSymmetric}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 派生量栏 -->
+                    <Border Style="{StaticResource SectionBorder}">
+                        <StackPanel>
+                            <TextBlock Text="派生量（实时）" Style="{StaticResource SectionHeader}" />
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="转角 α" Style="{StaticResource ParamLabel}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DerivedText}"
+                                           Text="{Binding TurnAngleText}" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="入切线 T1(m)" Style="{StaticResource ParamLabel}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DerivedText}"
+                                           Text="{Binding T1, StringFormat=F3}" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="出切线 T2(m)" Style="{StaticResource ParamLabel}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DerivedText}"
+                                           Text="{Binding T2, StringFormat=F3}" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="圆曲线长 Ly(m)" Style="{StaticResource ParamLabel}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DerivedText}"
+                                           Text="{Binding Ly, StringFormat=F3}" />
+                            </Grid>
+                            <Grid Margin="0,6,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="前直线段(m)" Style="{StaticResource ParamLabel}"
+                                           Foreground="#808080" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DerivedText}"
+                                           Foreground="#808080"
+                                           Text="{Binding PrevTangent, StringFormat=F3}" />
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="后直线段(m)" Style="{StaticResource ParamLabel}"
+                                           Foreground="#808080" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DerivedText}"
+                                           Foreground="#808080"
+                                           Text="{Binding NextTangent, StringFormat=F3}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ========== 右列：规范检查 + 示意图 ========== -->
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 规范检查栏：6 项 -->
+                    <Border Grid.Row="0" Style="{StaticResource SectionBorder}">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="规范检查（6 项）" Style="{StaticResource SectionHeader}" />
+                                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Margin="0,0,0,4">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#a3be8c" />
+                                            <Setter Property="Text" Value="✓ 全部通过" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AllChecksPassed}" Value="False">
+                                                    <Setter Property="Foreground" Value="#bf616a" />
+                                                    <Setter Property="Text" Value="✗ 有未通过项" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding CheckItems}"
+                                          ItemTemplate="{StaticResource CheckItemTemplate}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 示意图：简单的三单元缓-圆-缓示意（静态 SVG-like Canvas） -->
+                    <Border Grid.Row="1" Style="{StaticResource SectionBorder}">
+                        <StackPanel>
+                            <TextBlock Text="示意图" Style="{StaticResource SectionHeader}" />
+                            <Viewbox Stretch="Uniform" StretchDirection="Both" MaxHeight="180">
+                                <Canvas Width="320" Height="180" ClipToBounds="True">
+                                    <!-- 前切线 -->
+                                    <Line X1="10" Y1="120" X2="120" Y2="120" Stroke="#88c0d0" StrokeThickness="1.2" />
+                                    <TextBlock Canvas.Left="55" Canvas.Top="124" Text="前直线" Foreground="#808080" FontSize="10" />
+                                    <!-- 缓曲线 1 -->
+                                    <Path Stroke="#ebcb8b" StrokeThickness="1.4" Fill="Transparent"
+                                          Data="M 120,120 C 140,120 155,112 165,100" />
+                                    <TextBlock Canvas.Left="125" Canvas.Top="100" Text="Ls1" Foreground="#ebcb8b" FontSize="10" />
+                                    <!-- 圆弧 -->
+                                    <Path Stroke="#a3be8c" StrokeThickness="1.6" Fill="Transparent"
+                                          Data="M 165,100 A 50,50 0 0,1 195,100" />
+                                    <TextBlock Canvas.Left="170" Canvas.Top="72" Text="Ly(R)" Foreground="#a3be8c" FontSize="10" />
+                                    <!-- 缓曲线 2 -->
+                                    <Path Stroke="#ebcb8b" StrokeThickness="1.4" Fill="Transparent"
+                                          Data="M 195,100 C 205,112 220,120 240,120" />
+                                    <TextBlock Canvas.Left="213" Canvas.Top="100" Text="Ls2" Foreground="#ebcb8b" FontSize="10" />
+                                    <!-- 后切线 -->
+                                    <Line X1="240" Y1="120" X2="310" Y2="120" Stroke="#88c0d0" StrokeThickness="1.2" />
+                                    <TextBlock Canvas.Left="260" Canvas.Top="124" Text="后直线" Foreground="#808080" FontSize="10" />
+
+                                    <!-- JD 点 -->
+                                    <Ellipse Canvas.Left="176" Canvas.Top="48" Width="6" Height="6" Fill="#bf616a" />
+                                    <TextBlock Canvas.Left="185" Canvas.Top="40" Text="JD" Foreground="#bf616a" FontSize="10" />
+                                    <!-- 切线虚线 -->
+                                    <Line X1="120" Y1="120" X2="180" Y2="54" Stroke="#4c566a" StrokeThickness="0.6" StrokeDashArray="2,2" />
+                                    <Line X1="180" Y1="54" X2="240" Y2="120" Stroke="#4c566a" StrokeThickness="0.6" StrokeDashArray="2,2" />
+
+                                    <!-- 标注 -->
+                                    <TextBlock Canvas.Left="10" Canvas.Top="8" Foreground="#88c0d0" FontSize="11" FontFamily="Consolas">
+                                        <Run Text="R = " />
+                                        <Run Text="{Binding Radius, StringFormat=F2, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Canvas.Left="10" Canvas.Top="24" Foreground="#ebcb8b" FontSize="11" FontFamily="Consolas">
+                                        <Run Text="Ls = " />
+                                        <Run Text="{Binding SpiralIn, StringFormat=F2, Mode=OneWay}" />
+                                        <Run Text=" / " />
+                                        <Run Text="{Binding SpiralOut, StringFormat=F2, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Canvas.Left="10" Canvas.Top="40" Foreground="#a3be8c" FontSize="11" FontFamily="Consolas">
+                                        <Run Text="α = " />
+                                        <Run Text="{Binding TurnAngleText, Mode=OneWay}" />
+                                    </TextBlock>
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock Foreground="#808080" FontSize="9" Margin="0,6,0,0" TextWrapping="Wrap"
+                                       Text="说明：窗口内真实预览使用 AutoCAD 瞬态图形绘制，此处仅用于结构说明。" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </DockPanel>
+    </Border>
+</Window>

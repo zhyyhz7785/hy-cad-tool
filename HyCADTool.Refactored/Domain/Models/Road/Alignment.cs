@@ -49,7 +49,66 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// </summary>
         public List<Profile> Profiles { get; } = new List<Profile>();
 
+        /// <summary>
+        /// 输入来源快照；按 PI 创建 / 编辑链路写入，hyRoadA 拾取保持为 null。
+        /// </summary>
+        public AlignmentSource Source { get; set; }
+
         public override string ToString() => $"Alignment[{Name}, Id={Id:N}, Points={Centerline.VertexCount}]";
+
+        /// <summary>
+        /// 连续性自检（v1 轻量版）：
+        /// 1. 中心线顶点数 ≥ 2；
+        /// 2. 平面长度 &gt; 容差；
+        /// 3. 顶点不重合（相邻点距离 &gt; 容差）。
+        ///
+        /// 返回 (ok, errors)：errors 为空表示通过；非空时每条对应一处问题，命令层可逐条 WriteMessage。
+        /// </summary>
+        public AlignmentValidationResult Validate(double tolerance = 1e-6)
+        {
+            var errors = new List<string>();
+
+            if (Centerline == null || Centerline.VertexCount < 2)
+            {
+                errors.Add("中心线顶点不足 2 个，无法构成平面线位。");
+                return new AlignmentValidationResult(false, errors);
+            }
+
+            double planar = Centerline.GetPlanarLength();
+            if (planar <= tolerance)
+            {
+                errors.Add($"平面长度过短（{planar:E2} m ≤ 容差 {tolerance:E2} m），疑似 PI 全部重合。");
+            }
+
+            for (int i = 1; i < Centerline.VertexCount; i++)
+            {
+                var a = Centerline.GetPointAt(i - 1);
+                var b = Centerline.GetPointAt(i);
+                double dx = b.X - a.X;
+                double dy = b.Y - a.Y;
+                if (System.Math.Sqrt(dx * dx + dy * dy) < tolerance)
+                {
+                    errors.Add($"顶点[{i - 1}]→[{i}] 在 XY 平面内重合（距离 < {tolerance:E2} m）。");
+                }
+            }
+
+            return new AlignmentValidationResult(errors.Count == 0, errors);
+        }
+    }
+
+    /// <summary>
+    /// <see cref="Alignment.Validate"/> 的结果。
+    /// </summary>
+    public readonly struct AlignmentValidationResult
+    {
+        public bool Ok { get; }
+        public IReadOnlyList<string> Errors { get; }
+
+        public AlignmentValidationResult(bool ok, IReadOnlyList<string> errors)
+        {
+            Ok = ok;
+            Errors = errors ?? System.Array.Empty<string>();
+        }
     }
 
     /// <summary>

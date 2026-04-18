@@ -142,6 +142,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoad")]             public void Cmd_hyRoad()             => ReCallClass.Invoke("hyRoad");
         [CommandMethod("hyRoadA")]            public void Cmd_hyRoadA()            => ReCallClass.Invoke("hyRoadA");
         [CommandMethod("hyRoadAlnByPi")]      public void Cmd_hyRoadAlnByPi()      => ReCallClass.Invoke("hyRoadAlnByPi");
+        [CommandMethod("hyRoadAlnEditPi")]    public void Cmd_hyRoadAlnEditPi()    => ReCallClass.Invoke("hyRoadAlnEditPi");
         [CommandMethod("hyRoadAlnStation")]   public void Cmd_hyRoadAlnStation()   => ReCallClass.Invoke("hyRoadAlnStation");
         [CommandMethod("hyRoadP")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
         [CommandMethod("hyRoadT")]            public void Cmd_hyRoadT()            => ReCallClass.Invoke("hyRoadT");

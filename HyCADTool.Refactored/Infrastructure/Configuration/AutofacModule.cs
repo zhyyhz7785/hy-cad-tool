@@ -306,6 +306,9 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadTemplateService>()
                 .AsSelf()
                 .SingleInstance();
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadStandardSectionDrawService>()
+                .AsSelf()
+                .SingleInstance();
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadCorridorService>()
                 .AsSelf()
                 .SingleInstance();

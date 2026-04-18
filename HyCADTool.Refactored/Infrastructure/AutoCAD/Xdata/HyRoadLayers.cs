@@ -26,6 +26,47 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string StationLayer = "05_hy_道路_桩号";
         public const short StationColor = 7; // 白/黑：与图底线色反白，主桩文字清晰可读
 
+        // =========================================================================
+        //  M3 标准横断面图：9 个图层
+        // =========================================================================
+        // 命名：05_hy_道路_横断面_<语义>，允许用户按图层批量改色 / 冻结 / 出图样板匹配
+
+        /// <summary>横断面-轮廓（主轮廓线、顶面 polyline）。</summary>
+        public const string CrossSectionOutlineLayer = "05_hy_道路_横断面_轮廓";
+        public const short CrossSectionOutlineColor = 7; // 白
+
+        /// <summary>横断面-中心线（虚线，细）。</summary>
+        public const string CrossSectionCenterlineLayer = "05_hy_道路_横断面_中心线";
+        public const short CrossSectionCenterlineColor = 1; // 红
+
+        /// <summary>横断面-机动车道填色 / 阴影。</summary>
+        public const string CrossSectionPavementLayer = "05_hy_道路_横断面_车行道";
+        public const short CrossSectionPavementColor = 5; // 蓝
+
+        /// <summary>横断面-人行道填色 / 阴影。</summary>
+        public const string CrossSectionSidewalkLayer = "05_hy_道路_横断面_人行道";
+        public const short CrossSectionSidewalkColor = 52; // 橙黄
+
+        /// <summary>横断面-绿化带填色 / 阴影（含中分带 / 分车绿带）。</summary>
+        public const string CrossSectionGreenLayer = "05_hy_道路_横断面_绿化带";
+        public const short CrossSectionGreenColor = 92; // 绿
+
+        /// <summary>横断面-尺寸链（底部 / 顶部尺寸线）。</summary>
+        public const string CrossSectionDimensionLayer = "05_hy_道路_横断面_尺寸链";
+        public const short CrossSectionDimensionColor = 4; // 青
+
+        /// <summary>横断面-横坡 / 高差 / 条带名文字（MTEXT）。</summary>
+        public const string CrossSectionAnnotationLayer = "05_hy_道路_横断面_文字";
+        public const short CrossSectionAnnotationColor = 7; // 白
+
+        /// <summary>横断面-图题（底部居中大字）。</summary>
+        public const string CrossSectionTitleLayer = "05_hy_道路_横断面_图题";
+        public const short CrossSectionTitleColor = 3; // 绿
+
+        /// <summary>横断面-方位 / 箭头。</summary>
+        public const string CrossSectionOrientationLayer = "05_hy_道路_横断面_方位";
+        public const short CrossSectionOrientationColor = 6; // 品红
+
         /// <summary>
         /// 返回本模块需要注册的所有图层（(name, color) 对）。
         /// </summary>
@@ -38,6 +79,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (CorridorLayer, CorridorColor),
                 (MarkingLayer, MarkingColor),
                 (StationLayer, StationColor),
+                (CrossSectionOutlineLayer, CrossSectionOutlineColor),
+                (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
+                (CrossSectionPavementLayer, CrossSectionPavementColor),
+                (CrossSectionSidewalkLayer, CrossSectionSidewalkColor),
+                (CrossSectionGreenLayer, CrossSectionGreenColor),
+                (CrossSectionDimensionLayer, CrossSectionDimensionColor),
+                (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),
+                (CrossSectionTitleLayer, CrossSectionTitleColor),
+                (CrossSectionOrientationLayer, CrossSectionOrientationColor),
             };
         }
     }
