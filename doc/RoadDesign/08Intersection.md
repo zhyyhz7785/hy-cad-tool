@@ -440,9 +440,11 @@ RoadDesign (aggregate root)
    - Xdata：新 KIND = `IntersectionKerb`，共用 `05_hy_道路_交叉口` 图层，按 `Intersection.Id` 精确清理；
    - 测试：`KerbChainDesignerTests` 10 个（10/10 绿），覆盖段数 / 锚点 / 切点 / 方向 / 长度 / 边界；
      `RoadJsonExportServiceTests.SaveThenLoad_Roundtrip_PreservesHasKerbChain` 保证开关落盘；
-   - 附带发现：`IntersectionLeg.InwardDirection` 的字面 XMLdoc（"指向交叉口中心"）与
-     `IntersectionDesigner.BuildLegFromAlignment` 实现（"指向 Alignment 另一端"，即远离中心）相反；
-     本 v1.1 以实现为准，并在 `KerbChainDesigner` XMLdoc 中明确记录该约定（注释修正延到 v1.2）。
+   - 语义校准（v1.1 末）：重新推演 `IntersectionLeg.InwardDirection` 在非退化场景
+     （`ApproachPoint ≠ aroundPoint`）下的实际方向 —— 从 `ApproachPoint` 沿 `+tangent` 偏移会走向交叉口中心，
+     与字面 XMLdoc **一致**；之前 KerbChain 调试时留下的"与 XMLdoc 相反"判断是**退化测试场景误导**，
+     已修正 `KerbChainDesigner` / `Crosswalk` / `CrosswalkDesigner` 的注释与变量名（`projOutward` → `projInward`）。
+     详见任务 3 收尾。
 - [x] `hyRoadIntersectionCrosswalk`：把 `CrosswalkService` 迁到新 Intersection 聚合（§8-4）
    - Domain：新值对象 `Crosswalk`（`readonly struct`：`LegIndex + BaseLeft/Right + Outward + 5 个参数字段`）
      + `CrosswalkStripe`（`readonly struct`：`Index + From + To`，纯派生量不入 JSON）；

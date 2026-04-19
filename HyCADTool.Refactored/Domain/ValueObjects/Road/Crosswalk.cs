@@ -65,7 +65,10 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>Leg 右侧路缘外角点（= 右侧 CornerArc.EndPoint）。</summary>
         public Point2D BaseRight { get; }
 
-        /// <summary>Leg 外延方向（= Leg.InwardDirection，Designer 实现下指向 Alignment 另一端、远离交叉口中心）。</summary>
+        /// <summary>横道"前进"方向（沿此方向从路缘依次到 L2 / L3 / L4）。
+        /// 由 <see cref="Services.Road.CrosswalkDesigner.BuildCrosswalkForLeg"/> 传入 <see cref="IntersectionLeg.InwardDirection"/>
+        /// 本身；InwardDirection 定义为"从 ApproachPoint 指向交叉口中心"，本字段沿用该向量参与偏移运算。
+        /// <para>命名 "Outward" 仅为语义可读性（与 L2/L3/L4 相对于 base 点是"外延"），不代表它指向 Leg Alignment 的外侧。</para></summary>
         public Vector2D Outward { get; }
 
         public Crosswalk(

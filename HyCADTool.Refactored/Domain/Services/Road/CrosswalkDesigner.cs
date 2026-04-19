@@ -57,7 +57,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var leg = intersection.Legs[legIndex];
             var perp = leg.InwardDirection.Perpendicular();
 
-            // 默认锚点（退化值）：沿 +perp 和 -perp 偏 HalfWidth
+            // 退化锚点：沿 ±Perpendicular(InwardDirection) 偏 HalfWidth（InwardDirection = "ApproachPoint → 交叉口中心"）。
+            // 若相邻 CornerArc 存在，下方会用弧切点覆盖本默认值。
             Point2D baseLeft = leg.ApproachPoint.Add(perp * leg.HalfWidth);
             Point2D baseRight = leg.ApproachPoint.Add(perp * -leg.HalfWidth);
 

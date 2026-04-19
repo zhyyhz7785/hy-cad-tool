@@ -115,11 +115,11 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         }
 
         // ============================== 方向：与 +InwardDirection 同向 ==============================
-        // 注意：IntersectionDesigner 实现中 InwardDirection = "从 ApproachPoint 指向 Alignment 另一端"
-        // （即远离交叉口），与 IntersectionLeg 的字面 XMLdoc 相反。以实现为准。
+        // IntersectionLeg.InwardDirection 定义 = "从 ApproachPoint 指向交叉口中心"。KerbChainDesigner 要求
+        // 切点在锚点的 +InwardDirection 侧，即 (To − From) · InwardDir > 0。
 
         [Fact]
-        public void Segment_PointsAlongInwardDirection_PerDesignerImplementation()
+        public void Segment_PointsAlongInwardDirection()
         {
             var ix = MakeCross();
             var segs = KerbChainDesigner.ComputeKerbSegments(ix);

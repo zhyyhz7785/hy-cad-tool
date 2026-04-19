@@ -21,15 +21,15 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     /// <item>其中 Arc 的 LegIndexA == i 时 StartPoint 就在 Leg i 左外边线上；LegIndexB == i 时 EndPoint 在 Leg i 右外边线上。</item>
     /// </list>
     ///
-    /// <para><b>Inward 方向约定（与 <see cref="IntersectionDesigner.BuildLegFromAlignment"/> 对齐）</b></para>
-    /// <see cref="IntersectionLeg.InwardDirection"/> 在实现中是
-    /// <b>"从 ApproachPoint 指向 Alignment 另一端"</b>（即远离交叉口的方向，
-    /// 与 <c>IntersectionLeg</c> XML 注释的字面意思相反；以 Designer 实现为准）。
-    /// 因此合法切点应在 ApproachPoint 的 <b>+InwardDirection</b> 侧。
+    /// <para><b>Inward 方向约定（与 <see cref="IntersectionLeg.InwardDirection"/> XMLdoc 一致）</b></para>
+    /// <see cref="IntersectionLeg.InwardDirection"/> 定义为 <b>从 <see cref="IntersectionLeg.ApproachPoint"/>
+    /// 指向交叉口中心</b> 的单位向量，由 <see cref="IntersectionDesigner.BuildLegFromAlignment"/> 在
+    /// 非退化场景（<c>ApproachPoint ≠ aroundPoint</c>）下生成；在退化测试场景（<c>ApproachPoint = Center</c>）
+    /// 下该方向退化为"沿 Alignment 切线延伸"方向，任何带 InwardDirection 的断言都应按 <b>实际几何</b> 理解。
     ///
     /// <para><b>异常 / 剔除规则</b></para>
     /// <list type="bullet">
-    /// <item>当 (<c>To − From</c>) · <c>InwardDir</c> ≤ 0 → 切点不在 Leg 外延方向上（几何退化）→ 剔除；</item>
+    /// <item>当 (<c>To − From</c>) · <c>InwardDir</c> ≤ 0 → 切点在锚点的背面（几何退化）→ 剔除；</item>
     /// <item>对应 CornerArc 不存在（索引越界 / LegCount 为 0）→ 剔除；</item>
     /// <item>本 Designer <b>不</b> 抛异常，以容错保证整个交叉口至少能画出"能画的那几段"。</item>
     /// </list>
@@ -92,7 +92,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         /// <summary>
-        /// 仅当切点在锚点的 Leg 外延方向上（沿 +InwardDir，即 Designer 实现下的"朝外"方向）才生成段。
+        /// 仅当切点在锚点的 <b>+InwardDirection</b> 侧（即 Leg 朝交叉口中心一侧）才生成段。
         /// 等价于 <c>(To − From) · InwardDir &gt; 1e-6</c>。
         /// </summary>
         internal static bool TryBuildSegment(
@@ -101,8 +101,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             seg = default;
             var d = new Vector2D(to.X - from.X, to.Y - from.Y);
             if (d.IsZero(1e-9)) return false;
-            double projOutward = d.X * inward.X + d.Y * inward.Y;
-            if (projOutward <= 1e-6) return false;
+            double projInward = d.X * inward.X + d.Y * inward.Y;
+            if (projInward <= 1e-6) return false;
             seg = new KerbSegment(legIndex, side, from, to);
             return true;
         }
