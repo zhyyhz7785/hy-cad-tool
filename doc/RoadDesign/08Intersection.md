@@ -419,7 +419,7 @@ RoadDesign (aggregate root)
 | Presentation   | `hyRoadIntersection` / `hyRoadCurbRamp` / `hyRoadTactilePaving`      | 在 AutoCAD 内联调（无自动化） |
 | DI             | Autofac 单例注册                                                      |                              |
 | 命令注册       | `ReCall/commands.json` order=55/56/57                                |                              |
-| 单测总计       | Road 模块 509 / 511 绿（2 跳过 = AutoCAD 依赖）                       | 从 513 → 572（+59，v1.1 累计）|
+| 单测总计       | Road 模块 524 / 526 绿（2 跳过 = AutoCAD 依赖）                       | 从 513 → 587（+74，v1.1 累计）|
 
 ### 9.2 v1.1 进行中（根据 §8 局限）
 
@@ -443,7 +443,25 @@ RoadDesign (aggregate root)
    - 附带发现：`IntersectionLeg.InwardDirection` 的字面 XMLdoc（"指向交叉口中心"）与
      `IntersectionDesigner.BuildLegFromAlignment` 实现（"指向 Alignment 另一端"，即远离中心）相反；
      本 v1.1 以实现为准，并在 `KerbChainDesigner` XMLdoc 中明确记录该约定（注释修正延到 v1.2）。
-- [ ] `hyRoadIntersectionCrosswalk`：把 `CrosswalkService` 迁到新 Intersection 聚合（§8-4）
+- [x] `hyRoadIntersectionCrosswalk`：把 `CrosswalkService` 迁到新 Intersection 聚合（§8-4）
+   - Domain：新值对象 `Crosswalk`（`readonly struct`：`LegIndex + BaseLeft/Right + Outward + 5 个参数字段`）
+     + `CrosswalkStripe`（`readonly struct`：`Index + From + To`，纯派生量不入 JSON）；
+   - Domain 服务：`CrosswalkDesigner.BuildCrosswalkForLeg` / `LayoutForAllLegs` /
+     `ComputeStripes` / `ComputeStopLine` —— 全部纯函数，`Intersection.Crosswalks` 入 JSON；
+   - 几何规则：`BaseLeft = CornerArc(LegIndexA==i).StartPoint`，`BaseRight = CornerArc(LegIndexB==i).EndPoint`；
+     条纹沿 roadDir (`BaseLeft → BaseRight`) 按 `StripeSpacing` 均布，首条 i=0 在 BaseLeft 侧；
+   - 国标默认：`GapWidth=1.0` / `Width=5.0` / `StopLineDistance=2.0` / `StripeSpacing=0.60` /
+     `StripeWidth=0.40`（CJJ 37-2012 §11.3 + GB 5768-2009）；
+   - Infrastructure：新 `RoadCrosswalkService` 负责 Stripe Line + StopLine Line 绘制 + 幂等清理
+     （KIND ∈ {`Crosswalk`, `StopLine`}，共用 `Intersection.Id`）；
+   - 命令交互：拾取任一交叉口实体 → 4 个参数交互（默认读 `SettingsPanelViewModel`，回退 `Crosswalk.Default*`） →
+     `LayoutForAllLegs` 填充 `Intersection.Crosswalks` → `RebuildCrosswalks` → JSON 落盘；
+   - 图层：新 `05_hy_道路_人行横道`（色 7 白）+ `05_hy_道路_停止线`（色 7 白）；
+   - 旧 `hyRoad`（v0/v1 `CrosswalkService` 反推法）保留作兼容命令，`displayName` 改为「人行横道(经典)」避免菜单冲突；
+   - **v1.1 暂不做弧线裁切**（旧服务 `RayHitArc` 双端裁切逻辑延到 v1.2）—— 常见工程场景 `GapWidth ≥ 0.5 m`
+     时 L2/L3/L4 都已在 CornerArc 外侧，不影响输出；
+   - 测试：`CrosswalkDesignerTests` 17 个（17/17 绿）+ `PreservesCrosswalks` JSON 往返 1 个 +
+     `HyRoadLayersTests` 更新到 22 图层。
 - [ ] CurbRamp 分类几何：ThreeFace / Fan（§8-5）
 
 ### 9.3 v1.2+ 待补
@@ -463,6 +481,7 @@ RoadDesign (aggregate root)
 | `hyRoadIntersection`          | `RoadIntersectionCommand`                                | 从 Alignment 生成转角圆弧               |
 | `hyRoadIntersectionEdit`      | `RoadIntersectionEditCommand`                            | 局部改单弧 R / 单臂 HalfWidth / 设计速度 |
 | `hyRoadIntersectionKerbChain` | `RoadIntersectionKerbChainCommand`                       | 切换交叉口路缘外边线直段链（2N 段 Line） |
+| `hyRoadIntersectionCrosswalk` | `RoadIntersectionCrosswalkCommand`                       | 每条 Leg 布置人行横道 + 停止线           |
 | `hyRoadCurbRamp`              | `RoadCurbRampCommand`                                    | 布置缘石坡道（+ 重建盲道）              |
 | `hyRoadTactilePaving`         | `RoadTactilePavingCommand`                               | 布置盲道（若无坡道则自动先布置坡道）     |
 
@@ -470,18 +489,23 @@ RoadDesign (aggregate root)
 
 | 图层                            | 色号 | 实体                | 对应 Xdata KIND   |
 | ------------------------------- | :--: | ------------------- | ----------------- |
-| `05_hy_道路_交叉口`              | 1（红）   | `Arc`               | `Intersection`    |
-| `05_hy_道路_缘石坡道`            | 11（淡红） | 闭合 `Polyline`     | `CurbRamp`        |
-| `05_hy_道路_盲道`                | 42（土黄） | 带宽 `Polyline`     | `TactilePaving`   |
+| `05_hy_道路_交叉口`              | 1（红）     | `Arc` / `Line` (Kerb)   | `Intersection` / `IntersectionKerb` |
+| `05_hy_道路_缘石坡道`            | 11（淡红）   | 闭合 `Polyline`         | `CurbRamp`        |
+| `05_hy_道路_盲道`                | 42（土黄）   | 带宽 `Polyline`         | `TactilePaving`   |
+| `05_hy_道路_人行横道`            | 7（白）     | `Line` (条纹)           | `Crosswalk`       |
+| `05_hy_道路_停止线`              | 7（白）     | `Line`                  | `StopLine`        |
 
 ### 10.3 HY_ROAD Xdata KIND 规约
 
 | KIND              | 含义                 | ID 语义                 |
 | ----------------- | -------------------- | ----------------------- |
-| `Alignment`       | 平面线位中心线        | `Alignment.Id`          |
-| `Intersection`    | 交叉口转角圆弧        | `Intersection.Id`       |
-| `CurbRamp`        | 缘石坡道矩形          | `Intersection.Id` *     |
-| `TactilePaving`   | 盲道带宽多段线        | `Intersection.Id` *     |
+| `Alignment`         | 平面线位中心线              | `Alignment.Id`          |
+| `Intersection`      | 交叉口转角圆弧              | `Intersection.Id`       |
+| `IntersectionKerb`  | 交叉口路缘外边线直段（v1.1）          | `Intersection.Id` *     |
+| `CurbRamp`          | 缘石坡道矩形                          | `Intersection.Id` *     |
+| `TactilePaving`     | 盲道带宽多段线                        | `Intersection.Id` *     |
+| `Crosswalk`         | 人行横道条纹（v1.1）                   | `Intersection.Id` *     |
+| `StopLine`          | 停止线（v1.1）                         | `Intersection.Id` *     |
 
 > *：CurbRamp / TactilePaving 本身不独立有 Id，隶属的 Intersection 有；扫描按 Intersection.Id 过滤即可整体删除。
 

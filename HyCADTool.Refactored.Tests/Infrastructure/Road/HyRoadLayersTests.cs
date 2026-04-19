@@ -24,13 +24,16 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             // 07Alignment T9 新增：Offset
             // P3-I1-B 新增：Intersection（平面交叉口）
             // P3-I1-C 新增：CurbRamp（缘石坡道）+ TactilePaving（盲道）
-            all.Should().HaveCount(20);
+            // P3-v1.1 新增：Crosswalk（人行横道）+ StopLine（停止线）
+            all.Should().HaveCount(22);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.GeometryPointLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.OffsetLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.IntersectionLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.CurbRampLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.TactilePavingLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.CrosswalkLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StopLineLayer);
         }
 
         [Fact]

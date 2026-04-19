@@ -54,6 +54,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string TactilePavingLayer = "05_hy_道路_盲道";
         public const short TactilePavingColor = 42; // 土黄：实际盲道材质为黄色地砖
 
+        /// <summary>
+        /// 人行横道条纹（hyRoadIntersectionCrosswalk）。CJJ 37-2012 §11.3 人行横道，挂 HY_ROAD Xdata（KIND="Crosswalk"，ID=Intersection.Id）。
+        /// </summary>
+        public const string CrosswalkLayer = "05_hy_道路_人行横道";
+        public const short CrosswalkColor = 7; // 白：与国标路面标线白漆一致
+
+        /// <summary>
+        /// 停止线（hyRoadIntersectionCrosswalk 附带）。GB 5768-2009 停止线，挂 HY_ROAD Xdata（KIND="StopLine"，ID=Intersection.Id）。
+        /// </summary>
+        public const string StopLineLayer = "05_hy_道路_停止线";
+        public const short StopLineColor = 7; // 白
+
         // =========================================================================
         //  M3 标准横断面图：9 个图层
         // =========================================================================
@@ -116,6 +128,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (IntersectionLayer, IntersectionColor),
                 (CurbRampLayer, CurbRampColor),
                 (TactilePavingLayer, TactilePavingColor),
+                (CrosswalkLayer, CrosswalkColor),
+                (StopLineLayer, StopLineColor),
                 (CrossSectionOutlineLayer, CrossSectionOutlineColor),
                 (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
                 (CrossSectionPavementLayer, CrossSectionPavementColor),

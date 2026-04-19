@@ -52,6 +52,11 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// Stop 型（提示盲道）通常在 CurbRamp 前 / 斑马线前一段；Advance 型（行进盲道）沿人行道纵向延伸。</summary>
         public List<TactilePaving> TactilePavings { get; set; } = new List<TactilePaving>();
 
+        /// <summary>v1.1 —— 本交叉口的人行横道集合（每条 Leg 至多 1 个，CJJ 37 §11.3）。
+        /// 条纹 / 停止线本身为派生几何，不入 JSON；只持久化此列表里的 <see cref="Crosswalk"/> 值对象（Leg 索引 + 参数 + base 点）。
+        /// 几何绘制由 <c>RoadCrosswalkService</c> 把本列表展开为 <c>CrosswalkStripe</c> / 停止线 Line。</summary>
+        public List<Crosswalk> Crosswalks { get; set; } = new List<Crosswalk>();
+
         /// <summary>缺省转角半径（米），用于用户"全部臂一次性改 R"时；单个 Arc 的实际半径在 <see cref="CornerArc.Radius"/>。
         /// 默认 <see cref="DefaultCornerRadius"/> = 20 m（CJJ 37 附录 B 支路级别）。</summary>
         public double DefaultCornerRadius { get; set; } = DefaultCornerRadiusValue;
@@ -75,6 +80,6 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public DateTime LastModifiedUtc { get; set; } = DateTime.UtcNow;
 
         public override string ToString()
-            => $"Intersection[{Name ?? "-"}, Id={Id:N}, Legs={Legs.Count}, Arcs={CornerArcs.Count}, Ramps={CurbRamps.Count}, Tactile={TactilePavings.Count}, Center={Center}]";
+            => $"Intersection[{Name ?? "-"}, Id={Id:N}, Legs={Legs.Count}, Arcs={CornerArcs.Count}, Ramps={CurbRamps.Count}, Tactile={TactilePavings.Count}, Crosswalks={Crosswalks.Count}, Center={Center}]";
     }
 }

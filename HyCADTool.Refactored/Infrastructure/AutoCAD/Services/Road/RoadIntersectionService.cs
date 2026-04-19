@@ -114,6 +114,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         /// <summary>
         /// 按 HY_ROAD Xdata 扫模型空间，擦除所有 KIND ∈ <c>{IntersectionKind, IntersectionKerbKind}</c>
         /// 且 ID=<paramref name="intersectionId"/> 的图元。
+        ///
+        /// <para>v1.1 注意：Crosswalk / StopLine / CurbRamp / TactilePaving 不在本方法范围内 ——
+        /// 它们由各自的 Service（<c>RoadAccessibilityService</c> / <c>RoadCrosswalkService</c>）
+        /// 负责清理；<see cref="RebuildIntersection"/> 只负责 CornerArc + Kerb 链本身。</para>
         /// </summary>
         /// <returns>被删除的图元数量。</returns>
         public int ClearIntersectionEntities(Transaction tr, Database db, Guid intersectionId)

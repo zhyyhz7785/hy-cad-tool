@@ -475,6 +475,62 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
         }
 
         /// <summary>
+        /// v1.1 回归防护：<see cref="Intersection.Crosswalks"/>（readonly struct <see cref="Crosswalk"/>）
+        /// 的 JSON 往返 —— base 点 / Outward / 所有参数字段都必须复原。
+        /// </summary>
+        [Fact]
+        public void SaveThenLoad_Roundtrip_PreservesCrosswalks()
+        {
+            var svc = new RoadJsonExportService();
+            var path = Path.Combine(_tempDir, "v11-crosswalk-roundtrip.roaddesign.json");
+
+            var intersection = new Intersection { Name = "crosswalk-case" };
+            intersection.Crosswalks.Add(new Crosswalk(
+                legIndex: 0,
+                baseLeft: new Point2D(-7.5, 20.0),
+                baseRight: new Point2D(7.5, 20.0),
+                outward: new Vector2D(0, 1),
+                gapWidth: 1.0,
+                width: 5.0,
+                stopLineDistance: 2.0,
+                stripeSpacing: 0.6,
+                stripeWidth: 0.4));
+            intersection.Crosswalks.Add(new Crosswalk(
+                legIndex: 2,
+                baseLeft: new Point2D(-20.0, -7.5),
+                baseRight: new Point2D(-20.0, 7.5),
+                outward: new Vector2D(-1, 0),
+                gapWidth: 0.5,
+                width: 4.0,
+                stopLineDistance: 1.5,
+                stripeSpacing: 0.45,
+                stripeWidth: 0.4));
+
+            var design = new RoadDesign { ProjectName = "v11-crosswalk" };
+            design.Intersections.Add(intersection);
+
+            svc.Save(design, path);
+            var loaded = svc.Load(path);
+
+            var back = loaded.Intersections[0];
+            back.Crosswalks.Should().HaveCount(2);
+
+            back.Crosswalks[0].LegIndex.Should().Be(0);
+            back.Crosswalks[0].BaseLeft.X.Should().Be(-7.5);
+            back.Crosswalks[0].BaseRight.X.Should().Be(7.5);
+            back.Crosswalks[0].Outward.Y.Should().Be(1);
+            back.Crosswalks[0].GapWidth.Should().Be(1.0);
+            back.Crosswalks[0].Width.Should().Be(5.0);
+            back.Crosswalks[0].StopLineDistance.Should().Be(2.0);
+            back.Crosswalks[0].StripeSpacing.Should().Be(0.6);
+
+            back.Crosswalks[1].LegIndex.Should().Be(2);
+            back.Crosswalks[1].Outward.X.Should().Be(-1);
+            back.Crosswalks[1].Width.Should().Be(4.0);
+            back.Crosswalks[1].StripeSpacing.Should().Be(0.45);
+        }
+
+        /// <summary>
         /// IsEmpty 联动：仅含 Intersection（无 Alignment / Template / ...）的 design
         /// 必须被 <see cref="RoadJsonExportService.SaveForDocument"/> 当作非空而落盘，
         /// 否则用户只画交叉口时 JSON 不会生成，下次打开丢数据。
