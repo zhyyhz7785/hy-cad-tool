@@ -6,6 +6,7 @@
              xmlns:sub="clr-namespace:HyCADTool.Refactored.Presentation.Views.Preferences"
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
+             xmlns:drawing="clr-namespace:HyCADTool.Refactored.Domain.Models.Drawing"
              mc:Ignorable="d"
              Background="{DynamicResource Brush_RegionBack}"
              d:DesignHeight="650" d:DesignWidth="560"
@@ -157,7 +158,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- 出图比例（固定置顶，独立显示） -->
+                <!-- 出图比例（固定置顶，独立显示）：主比例 + 副比例 + 单位 + 小数位 -->
                 <Border Grid.Row="0"
                         Background="{DynamicResource Brush_HeaderBack}"
                         BorderBrush="{DynamicResource Brush_BorderDark}"
@@ -175,29 +176,88 @@
                                        FontWeight="SemiBold"
                                        FontSize="12"
                                        VerticalAlignment="Center"/>
-                            <TextBlock Text="（最重要：影响所有样式名与字号实算）"
+                            <TextBlock Text="（主比例决定纸面大小；副比例只改标注读数不改纸面）"
                                        Foreground="{DynamicResource Brush_TextDisabled}"
                                        FontSize="10"
                                        VerticalAlignment="Center"
                                        Margin="6,0,0,0"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="主图形比例"
+                        <!-- 第一行：主比例 + 单位 + 小数位 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="主比例 1 :"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
                                        FontSize="12"
                                        VerticalAlignment="Center"
-                                       Margin="0,0,6,0"/>
+                                       Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}"
+                                     Width="80"
+                                     VerticalAlignment="Center"
+                                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                                     helper:TextBoxHelper.ScrollStep="5"
+                                     Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+
+                            <TextBlock Text="单位"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,4,0"/>
+                            <ComboBox Style="{StaticResource BlenderComboBox}"
+                                      Width="96"
+                                      VerticalAlignment="Center"
+                                      SelectedValue="{Binding Settings.Unit, Mode=TwoWay}"
+                                      SelectedValuePath="Tag">
+                                <ComboBoxItem Content="毫米 mm">
+                                    <ComboBoxItem.Tag>
+                                        <drawing:DrawingUnit>Millimeter</drawing:DrawingUnit>
+                                    </ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="厘米 cm">
+                                    <ComboBoxItem.Tag>
+                                        <drawing:DrawingUnit>Centimeter</drawing:DrawingUnit>
+                                    </ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="米 m">
+                                    <ComboBoxItem.Tag>
+                                        <drawing:DrawingUnit>Meter</drawing:DrawingUnit>
+                                    </ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                            </ComboBox>
+
+                            <TextBlock Text="小数位"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,4,0"/>
+                            <ComboBox Style="{StaticResource BlenderComboBox}"
+                                      Width="64"
+                                      VerticalAlignment="Center"
+                                      ItemsSource="{Binding Settings.AllowedPrecisions}"
+                                      SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
+                        </StackPanel>
+                        <!-- 第二行：副比例 checkbox + 输入框（Disabled 时半灰） -->
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                      Content="启用副比例"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding Settings.UseSubScale, Mode=TwoWay}"
+                                      Margin="0,0,8,0"/>
                             <TextBlock Text="1 :"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
                                        FontSize="12"
                                        VerticalAlignment="Center"
                                        Margin="0,0,4,0"/>
                             <TextBox Style="{StaticResource BlenderTextBox}"
-                                     Width="100"
+                                     Width="80"
                                      VerticalAlignment="Center"
+                                     IsEnabled="{Binding Settings.UseSubScale}"
                                      helper:TextBoxHelper.EnableCustomHandlers="True"
                                      helper:TextBoxHelper.ScrollStep="5"
-                                     Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                     Text="{Binding Settings.SubScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                            <TextBlock Text="（开启后标注数字=真实尺寸；几何需按主/副放大）"
+                                       Foreground="{DynamicResource Brush_TextDisabled}"
+                                       FontSize="10"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -295,46 +355,87 @@
             </Grid>
         </Grid>
 
-        <!-- ===== 底栏：5 项动作 ===== -->
+        <!-- ===== 底部容器：顶部样式状态栏 + 下方动作栏 ===== -->
         <Border Grid.Row="2" Background="{DynamicResource Brush_HeaderBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="0,1,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                    <TextBlock Text="{Binding StatusMessage}"
+            <StackPanel>
+                <!-- 样式状态栏：当前文字 / 标注 / 引线样式（实时来自 Settings，反映"预览"名；置为当前后生效） -->
+                <Border Background="{DynamicResource Brush_PanelBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="0,0,0,1"
+                        Padding="8,2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="当前样式  ⯈  "
+                                   Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Text="字体:" Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <TextBlock Text="{Binding Settings.TextStyleName}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="标注:" Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <TextBlock Text="{Binding Settings.DimStyleName}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="引线:" Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <TextBlock Text="{Binding Settings.MLeaderStyleName}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="表格:" Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <TextBlock Text="{Binding Settings.TableStyleName}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="10" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                <!-- 动作栏：减小高度（Height=26 + Button MinHeight=22） -->
+                <Grid Height="26">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusMessage}"
                                Foreground="{DynamicResource Brush_TextSecondary}"
-                               FontSize="11"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
-                    <CheckBox Style="{StaticResource BlenderCheckBox}"
-                              Content="自动保存"
-                              VerticalAlignment="Center"
-                              Margin="0,0,8,0"
-                              IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"/>
-                    <Button Style="{StaticResource BlenderButton}"
-                            Content="置为当前"
-                            MinWidth="72" Margin="2,0"
-                            Command="{Binding ApplyCurrentCommand}"/>
-                    <Button Style="{StaticResource BlenderButton}"
-                            Content="保存用户设置"
-                            MinWidth="88" Margin="2,0"
-                            Command="{Binding SaveUserSettingsCommand}"/>
-                    <Button Style="{StaticResource BlenderButton}"
-                            Content="恢复自动保存"
-                            MinWidth="88" Margin="2,0"
-                            Command="{Binding RestoreAutoSavedCommand}"/>
-                    <Button Style="{StaticResource BlenderButton}"
-                            Content="加载初始设置"
-                            MinWidth="88" Margin="2,0"
-                            Command="{Binding LoadDefaultsCommand}"/>
-                </StackPanel>
-            </Grid>
+                               FontSize="10"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               Margin="8,0,8,0"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                  Content="自动保存"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"/>
+                        <Button Style="{StaticResource BlenderButton}"
+                                Content="置为当前"
+                                MinWidth="64" MinHeight="20"
+                                Padding="6,1"
+                                Margin="2,0"
+                                Command="{Binding ApplyCurrentCommand}"/>
+                        <Button Style="{StaticResource BlenderButton}"
+                                Content="保存用户设置"
+                                MinWidth="80" MinHeight="20"
+                                Padding="6,1"
+                                Margin="2,0"
+                                Command="{Binding SaveUserSettingsCommand}"/>
+                        <Button Style="{StaticResource BlenderButton}"
+                                Content="选择文件恢复"
+                                MinWidth="80" MinHeight="20"
+                                Padding="6,1"
+                                Margin="2,0"
+                                Command="{Binding RestoreAutoSavedCommand}"/>
+                        <Button Style="{StaticResource BlenderButton}"
+                                Content="加载初始设置"
+                                MinWidth="80" MinHeight="20"
+                                Padding="6,1"
+                                Margin="2,0"
+                                Command="{Binding LoadDefaultsCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

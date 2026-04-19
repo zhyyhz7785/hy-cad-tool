@@ -43,10 +43,10 @@
 | 概念       | Civil 3D                  | 鸿业                | HyCADTool                              |
 | ---------- | ------------------------- | ------------------- | -------------------------------------- |
 | 桩号格式   | `1+234.567` / `K1+234.567` | `K1+234.567`         | `K1+234.567`（`Station.Format()`）     |
-| 起始桩号   | Starting Station          | 起始桩号 K0+000     | `Alignment.StartStation`（默认 0）     |
-| 反向       | Reverse Direction         | 反向                | ❌                                     |
-| 参考点     | Reference Point + Reference Station | 起始桩号 + 偏移 | ❌（v1 强制以起点为 K0+xxx） |
-| 桩号方程   | Station Equation          | 桩号方程 / 断链     | ❌                                     |
+| 起始桩号   | Starting Station          | 起始桩号 K0+000     | `Alignment.StartStation`（默认 0；`hyRoadAlnDefaults` 可维护默认值）|
+| 反向       | Reverse Direction         | 反向                | ✅ `hyRoadAlnReverse`（PI 倒排 + Ls 互换 + StationEquation 几何镜像） |
+| 参考点     | Reference Point + Reference Station | 起始桩号 + 偏移 | ⚠ 近似（`StartStation` + `StationEquation` 组合可达等价效果）   |
+| 桩号方程   | Station Equation          | 桩号方程 / 断链     | ✅ `hyRoadAlnStaEq`（Ahead 方向，支持几何点接近度警告）              |
 | 主桩间隔   | Major Station（默认 100ft / 100m） | 主桩 20m         | 主桩 20m（`MainInterval=20`）           |
 | 副桩间隔   | Minor Station（默认 10ft / 20m）  | 副桩 5m / 10m       | 副桩 5m（`SubInterval=5`）              |
 
@@ -56,17 +56,17 @@
 
 | 缩写 | 全称                       | 含义                       | Civil 3D | 鸿业 | HyCAD |
 | ---- | -------------------------- | -------------------------- | -------- | ---- | ----- |
-| BC   | Begin of Curve             | 直线 → 圆曲线              | ✅       | ✅   | ❌    |
-| EC   | End of Curve               | 圆曲线 → 直线              | ✅       | ✅   | ❌    |
-| TS   | Tangent → Spiral           | 直线 → 缓和                | ✅       | ✅   | ❌    |
-| SC   | Spiral → Curve             | 缓和 → 圆曲线              | ✅       | ✅   | ❌    |
-| CS   | Curve → Spiral             | 圆曲线 → 缓和              | ✅       | ✅   | ❌    |
-| ST   | Spiral → Tangent           | 缓和 → 直线                | ✅       | ✅   | ❌    |
-| PI   | Point of Intersection      | 切线交点（设计点）         | ✅       | ✅   | ✅（PI 表）|
+| BC   | Begin of Curve             | 直线 → 圆曲线              | ✅       | ✅   | ✅ `hyRoadAlnGeomPt` |
+| EC   | End of Curve               | 圆曲线 → 直线              | ✅       | ✅   | ✅ 同上 |
+| TS   | Tangent → Spiral           | 直线 → 缓和                | ✅       | ✅   | ✅ 同上 |
+| SC   | Spiral → Curve             | 缓和 → 圆曲线              | ✅       | ✅   | ✅ 同上 |
+| CS   | Curve → Spiral             | 圆曲线 → 缓和              | ✅       | ✅   | ✅ 同上 |
+| ST   | Spiral → Tangent           | 缓和 → 直线                | ✅       | ✅   | ✅ 同上 |
+| PI   | Point of Intersection      | 切线交点（设计点）         | ✅       | ✅   | ✅ （PI 表 + `hyRoadAlnGeomPt`） |
 | BP   | Begin Point                | 起点                       | ✅       | ✅   | ✅    |
 | EP   | End Point                  | 终点                       | ✅       | ✅   | ✅    |
 
-> HyCADTool v1 在 `hyRoadAlnStation` 里只画了"等距桩号"，没标 BC/EC/TS/SC/CS/ST。**§8.4 第 2 项**已列入 v1.1 必补。
+> HyCADTool v1.1 已把"等距桩号"+ 几何点标注拆成两条命令：`hyRoadAlnStation`（等距 + 子刻度）与 `hyRoadAlnGeomPt`（BP/EP/BC/EC/TS/SC/CS/ST + PI 延伸投影）。
 
 ### 1.4 设计速度 (Design Speed)
 
@@ -242,7 +242,7 @@
 | 块法（复用标准弯道）         | Civil Cells（OpenRoads 才有）         | 平面 → 块法                | ❌                      |
 | Best Fit（测量点拟合）       | Create Best Fit Alignment             | 部分支持                   | ❌                      |
 | Reference（引用其他项目）    | Create Reference Alignment            | ❌                         | ❌                      |
-| Offset（偏移辅道）           | Create Offset Alignment               | 平行线                     | ❌                      |
+| Offset（偏移辅道）           | Create Offset Alignment               | 平行线                     | ✅ `hyRoadAlnOffset`（正左负右 + 最小曲率半径自检 + OffsetAuxiliary Xdata） |
 | 单段约束式（Free/Fixed/Float） | 14+ 工具栏命令                       | ❌                         | ❌                      |
 
 ---
@@ -309,9 +309,9 @@
 | 改单段长度 / 半径  | Sub-Entity Editor              | 双击曲线              | ⚠ 只能从 PI 进，不能直接改段   |
 | 拖 PI / 拖端点     | Grip Edit                      | 拖 PI                 | ❌                             |
 | 拖半径（动态改 R） | Grip Edit                      | 拖圆弧                | ❌                             |
-| 插入 PI            | Insert PI                      | 右键 → 插入 PI         | ❌                             |
-| 删除 PI            | Delete PI                      | 右键 → 删除 PI         | ❌                             |
-| 反向               | Reverse Direction              | 反向                  | ❌                             |
+| 插入 PI            | Insert PI                      | 右键 → 插入 PI         | ✅ `hyRoadAlnInsertPi`          |
+| 删除 PI            | Delete PI                      | 右键 → 删除 PI         | ✅ `hyRoadAlnDeletePi`          |
+| 反向               | Reverse Direction              | 反向                  | ✅ `hyRoadAlnReverse`（含桩号方程几何镜像） |
 | 多段批量改速度     | Design Speeds 选项卡           | 设计速度 → 多段        | ❌                             |
 | 实时几何预览       | 工具栏改完即变                 | 双击改完即变           | ✅ Transient 临时图层（窗口模式）|
 | 实时规范校核       | ⚠ 黄三角                       | 弹窗提示              | ✅ 6 项 ✓✗ 列表（窗口 Tab 2）   |
@@ -357,20 +357,23 @@
 - `Alignment.StartStation`（默认 0）—— 整条 Alignment 唯一参考点 = 起点。
 - `Station.Format()` —— 把任意 m 数转 `K{km}+{m:000.000}` 字符串。
 
-缺失（v1.1+ 待补，§8.4-3）：
+v1.1 / v1.2 已补：
 
-- ❌ Reference Point + Reference Station（参考点不一定是起点）
-- ❌ Station Equation（桩号方程 / 断链）
-- ❌ Reverse Direction（整条反向）
+- ✅ Station Equation（桩号方程 / 断链）—— `hyRoadAlnStaEq`；支持"几何点接近度警告"，并且所有下游标注 / 导出（`hyRoadAlnStation` / `hyRoadAlnGeomPt` / `hyRoadAlnExportFrame` / `hyRoadAlnExportXml`）都走 `StationConverter` 做 raw→display 映射。
+- ✅ Reverse Direction（整条反向）—— `hyRoadAlnReverse`；PI 倒排 + Ls_in/Ls_out 互换 + `AlignmentReverser.ReverseStationEquations` 几何镜像（而非清空）。
+
+仍缺失（v1.3+ 待补，§8.6）：
+
+- ❌ Reference Point + Reference Station（参考点不一定是起点；当前可用"StartStation + StaEq"组合绕过，但不是原生语义）
 
 ### 4.4 三方对照表
 
 | 项                 | Civil 3D                              | 鸿业                  | HyCADTool v1.0      |
 | ------------------ | ------------------------------------- | --------------------- | ------------------- |
-| 起始桩号           | Reference Point + Reference Station    | 起始桩号 K0+xxx       | ✅ `StartStation`    |
-| 起始点 ≠ 参考点    | ✅                                    | ✅                    | ❌（强制起点参考）   |
-| 桩号方程 / 断链    | ✅ Station Equations 表                | ✅ 加断链              | ❌                  |
-| 桩号反向           | ✅ Reverse Direction                   | ✅                    | ❌                  |
+| 起始桩号           | Reference Point + Reference Station    | 起始桩号 K0+xxx       | ✅ `StartStation`（默认可改 via `hyRoadAlnDefaults`） |
+| 起始点 ≠ 参考点    | ✅                                    | ✅                    | ⚠ 用"StartStation + StaEq"组合近似；v1.3 候选补原生 |
+| 桩号方程 / 断链    | ✅ Station Equations 表                | ✅ 加断链              | ✅ `hyRoadAlnStaEq`（Ahead 方向 + 几何点接近度警告）|
+| 桩号反向           | ✅ Reverse Direction                   | ✅                    | ✅ `hyRoadAlnReverse`（含 StaEq 几何镜像） |
 | 桩号格式           | `1+234.567` / `K1+234.567` 可切      | `K1+234.567` 固定     | `K1+234.567` 固定   |
 | 单位               | 公制 / 英制可切                       | 公制                  | 公制                |
 
@@ -427,29 +430,29 @@
 | 2    | 自动按 `RoadStationLabelOptions.Default` 出图 | 主桩 20m + 副桩 5m，主桩刻度 4m 长 + 桩号文字（沿切线旋转，左侧），副桩 1.5m 短刻度无文字                              |
 | 3    | 命令行汇总                                 | "[道路] Alignment-1：主桩 62（每 20m）、副桩 247（每 5m），平面长度 1235.421 m。"<br>"[道路] 桩号标注完成：共 1 条 Alignment，主桩 62、副桩 247；已写入图层 RD-STA。" |
 
-**关键限制**（§8.4 待补）：
+**关键限制**（v1.1 / v1.2 已补 3 条）：
 
-- ❌ 没有 UI 改 `MainInterval` / `SubInterval` / `TextHeight` / `TextSide`（v1 全部硬编码）
-- ❌ 没有 Geometry Point 标注（BC / EC / TS / SC / CS / ST）
-- ❌ 没有 Label Set / 出图模板
-- ❌ 没有桩号方程标注
+- ✅ 主副桩 UI 参数配置：`hyRoadAlnDefaults`（落 `hy-settings.json` 的 `Road.AlignmentDefaults` 段）+ `RoadStationLabelOptions.FromSettings` 运行时读；主桩按**显示桩号**对齐（`StationConverter.FromDisplayStation`）而非 raw 距离。
+- ✅ Geometry Point 标注：`hyRoadAlnGeomPt`（BP/EP/BC/EC/TS/SC/CS/ST + PI 延伸投影）。
+- ✅ 桩号方程相关标注：`hyRoadAlnStation` / `hyRoadAlnGeomPt` / `hyRoadAlnExportFrame` 都自动经 `StationConverter` 计算显示桩号；`hyRoadAlnStaEq` 也会在输入 raw 距离时给 PI/BC/EC 接近度提示。
+- ❌ Label Set / 出图模板（v1.3+ 候选）
 
 ### 5.4 三方标注类型对照表
 
 | 标注类型           | Civil 3D                  | 鸿业              | HyCADTool v1.0       |
 | ------------------ | ------------------------- | ----------------- | -------------------- |
-| 主桩号             | ✅ Major Chainage          | ✅                | ✅ `hyRoadAlnStation` |
-| 副桩号             | ✅ Minor Chainage          | ✅                | ✅（短刻度无文字）    |
-| 几何点 BC/EC       | ✅ Geometry Point          | ✅                | ❌                   |
-| 几何点 TS/SC/CS/ST | ✅ Geometry Point          | ✅                | ❌                   |
-| 几何点 PI          | ✅ Geometry Point          | ✅                | ❌                   |
-| 桩号方程位置       | ✅ Chainage Equation       | ✅                | ❌                   |
-| 设计速度变化点     | ✅ Design Speeds           | ✅                | ❌                   |
-| 超高临界点         | ✅ Superelevation Critical | ✅                | ❌                   |
-| Label Set 打包重用 | ✅                        | 出图模板          | ❌（硬编码 Default）  |
-| UI 配置参数        | ✅ Style 编辑器           | ✅ 标注对话框      | ❌（v1 全硬编码）     |
+| 主桩号             | ✅ Major Chainage          | ✅                | ✅ `hyRoadAlnStation`（按显示桩号对齐，兼容桩号方程）|
+| 副桩号             | ✅ Minor Chainage          | ✅                | ✅（短刻度，无文字）  |
+| 几何点 BC/EC       | ✅ Geometry Point          | ✅                | ✅ `hyRoadAlnGeomPt`  |
+| 几何点 TS/SC/CS/ST | ✅ Geometry Point          | ✅                | ✅ `hyRoadAlnGeomPt`  |
+| 几何点 PI          | ✅ Geometry Point          | ✅                | ✅ `hyRoadAlnGeomPt`（PI 延伸交点投影）|
+| 桩号方程位置       | ✅ Chainage Equation       | ✅                | ⚠ 方程影响所有标注数值，但"K0+523.4=K1+000.0" 跳变符号文本尚未出图（v1.3 候选）|
+| 设计速度变化点     | ✅ Design Speeds           | ✅                | ❌（v1 整条统一速度）|
+| 超高临界点         | ✅ Superelevation Critical | ✅                | ❌（v2 超高）         |
+| Label Set 打包重用 | ✅                        | 出图模板          | ❌（v1.3 候选）       |
+| UI 配置参数        | ✅ Style 编辑器           | ✅ 标注对话框      | ✅ `hyRoadAlnDefaults`（部分：主/副间隔/起桩号/默认 R/Ls）|
 | 文字沿切线旋转     | ✅                        | ✅                | ✅（默认开）          |
-| 文字左 / 右切换    | ✅                        | ✅                | ✅（`TextSide` 字段，但 UI 未暴露）|
+| 文字左 / 右切换    | ✅                        | ✅                | ✅（`TextSide` 字段，UI 暂未暴露）|
 
 ---
 
@@ -593,22 +596,28 @@ xml 文件结构：
 
 ## 8. HyCADTool 功能清单与差距
 
-### 8.1 v1.0 已实现 ✅
+### 8.1 v1.0–v1.2 已实现 ✅
 
 #### 8.1.1 创建
 
 - ✅ `hyRoadA` —— 从已有 LWPOLYLINE 导入（含 bulge 弧段诊断）
 - ✅ `hyRoadAlnByPi` —— PI 表法（点取 / CSV / 剪贴板 三通道 + 干跑预览 + 批量改 R）
+- ✅ `hyRoadAlnImportXml` —— 从 **LandXML 1.2** 导入（`CoordGeom` Line/Curve/Spiral + `StaEquation` + `Polyline3D` 重建）
 
 #### 8.1.2 编辑
 
 - ✅ `hyRoadAlnEditPi` —— 单 PI 参数编辑（窗口模式 = `PiThreeUnitWindow`，命令行模式 = 三 Prompt）
+- ✅ `hyRoadAlnInsertPi` / `hyRoadAlnDeletePi` —— 在 PI 表中插入 / 删除中间 PI（复用 `RebuildCenterline`）
+- ✅ `hyRoadAlnReverse` —— 整条反向（PI 倒排 + Ls_in/Ls_out 互换 + `AlignmentReverser.ReverseStationEquations` 几何镜像桩号方程）
+- ✅ `hyRoadAlnOffset` —— 平行偏移辅道（正左负右；`CenterlineOffsetService` 含最小曲率半径自检；生成 `Polyline` 挂 `OffsetAuxiliaryKind` 的 HyRoadXdata 便于批量清理 / 追溯）
 - ✅ Transient 临时图形预览（窗口模式下边改边看 DWG 红色虚线）
 - ✅ 改完整条 Alignment 几何重建 + JSON 同步落盘 + 自检
 
-#### 8.1.3 桩号标注
+#### 8.1.3 桩号标注 + 几何点
 
-- ✅ `hyRoadAlnStation` —— 主桩 20m + 副桩 5m + 沿切线旋转 + 左侧文字（默认）
+- ✅ `hyRoadAlnStation` —— 主桩 20m + 副桩 5m；主桩按**显示桩号**整数倍对齐（`StationConverter.FromDisplayStation`）而非 raw 距离，兼容桩号方程
+- ✅ `hyRoadAlnGeomPt` —— BP/EP/BC/EC/TS/SC/CS/ST + PI 延伸投影（短刻度 + 缩写 + 桩号文字，桩号走 StationConverter）
+- ✅ `hyRoadAlnTable` —— 分段表（段类型 / 起桩 / 长度 / R / Ls + 几何点子表）
 - ✅ 幂等（重复跑不累积图元）
 
 #### 8.1.4 规范校核
@@ -619,102 +628,107 @@ xml 文件结构：
 
 #### 8.1.5 桩号系统
 
-- ✅ 起始桩号字段（`StartStation`）
+- ✅ 起始桩号字段（`StartStation`，`hyRoadAlnDefaults` 可维护默认值）
 - ✅ `K{km}+{m:000.000}` 标准格式
+- ✅ `hyRoadAlnStaEq` —— 桩号方程（Ahead 方向；支持几何点接近度警告：BeforeRaw 接近 PI/BC/EC/TS/SC/CS/ST 时给提示）
+- ✅ 所有下游（Station/GeomPt/ExportFrame/ExportXml）经 `StationConverter` 正反双向映射
 
-### 8.2 与 Civil 3D 对标的缺口 ❌
+#### 8.1.6 导入 / 导出
 
-| # | 缺口                                | 优先级 | 备注                                |
-| - | ----------------------------------- | ------ | ----------------------------------- |
-| 1 | Curve & Spiral Settings 默认值面板  | 🟢 高  | 现在每次都从 R=30 / Ls=0 起步       |
-| 2 | 单段约束式（Free / Fixed / Floating） | 🟡 中  | 目前只能"按 PI 整体出"               |
-| 3 | Sub-Entity 全表（数据网格 + 选中即高亮） | 🟢 高  | 看不到一条 Alignment 内每段 R/Ls/T |
-| 4 | Insert PI / Delete PI               | 🟢 高  | 现在改 PI 数量必须从头重输          |
-| 5 | Reverse Direction（整条反向）       | 🟡 中  | —                                   |
-| 6 | Grip Edit（拖 PI / 拖半径实时刷）    | 🔴 低  | 工程量较大                          |
-| 7 | 几何点标注（TS/SC/CS/ST/PI）        | 🟢 高  | 复测表 / 出图必备                    |
-| 8 | Reference Point + Reference Station | 🟡 中  | 起点 ≠ K0+xxx 的场景                |
-| 9 | Station Equation（桩号方程 / 断链） | 🟡 中  | 路改造常见                          |
-| 10 | 多速度分段                         | 🟡 中  | 大型项目分段提速                    |
-| 11 | Compound Spiral / Reverse Spiral   | 🔴 低  | 高速 / 复杂枢纽                      |
-| 12 | Spiral 类型可切（Bloss/Sin/Cubic）  | 🔴 低  | 铁路项目才需                        |
-| 13 | Best Fit Alignment                 | 🔴 低  | 测量后期改造                        |
-| 14 | Offset Alignment                   | 🟡 中  | 辅道 / 自行车道                      |
-| 15 | Reference Alignment                | 🔴 低  | 多 DWG 引用                          |
-| 16 | Label Set 打包重用                 | 🟡 中  | 出图风格统一                        |
-| 17 | XML 规范文件可定制                 | 🔴 低  | v1 硬编码够用                       |
+- ✅ `hyRoadAlnExportPi` —— 交点表 CSV（UTF-8 BOM）
+- ✅ `hyRoadAlnExportFrame` —— 复测表 CSV（UTF-8 BOM；桩号走 StationConverter）
+- ✅ `hyRoadAlnExportXml` —— LandXML 1.2 导出（`CoordGeom` Line/Curve/Spiral + `StaEquation` + 坐标系 Bearing→Azimuth 转换）
+- ✅ `hyRoadAlnImportXml` —— LandXML 1.2 导入（同上，重建 `Polyline3D` + `AlignmentElement`；PI 源不从 LandXML 反推，Alignment.Source 为空，后续编辑可先 `hyRoadA` 再转）
 
-### 8.3 与鸿业对标的缺口 ❌
+#### 8.1.7 默认值与配置
 
-| # | 缺口                                                         | 优先级 | 备注                                  |
-| - | ------------------------------------------------------------ | ------ | ------------------------------------- |
-| 1 | 路线复测表（坐标 + 桩号 + 方位角 + 高程，按主桩输出 Excel）   | 🟢 高  | 国内施工放样必备                      |
-| 2 | 路线交点表（PI 表 + 转角 + R + Ls + T 出 Excel）              | 🟢 高  | 同上                                  |
-| 3 | 平面图自动出图（带方位、比例、桩号、表格图签）                | 🟢 高  | 出图章节                              |
-| 4 | 鸿业 / OpenRoads / Civil 3D LandXML 互通（导入导出 .xml）    | 🟡 中  | 项目交付                              |
-| 5 | 参数法创建（长度 + 方位角逐段输）                            | 🔴 低  | 老路设计                              |
-| 6 | 连接法创建                                                   | 🔴 低  | 改扩建                                |
-| 7 | 块法创建（标准弯道库）                                        | 🔴 低  | 复用                                  |
-| 8 | 桩号 UI 配置面板（主副桩间隔 / 字高 / 偏移 / 旋转）            | 🟢 高  | 当前 `RoadStationLabelOptions` 全硬编码 |
+- ✅ `hyRoadAlnDefaults` —— 维护 `Road.AlignmentDefaults`（默认 R / Ls_in / Ls_out / StartStation / 主桩间隔 / 副桩间隔），落 `hy-settings.json`；`RoadStationLabelOptions.FromSettings()` 运行时读
 
-### 8.4 v1.1 优先补的 4 个功能
+### 8.2 与 Civil 3D 对标的缺口
 
-> 选取标准：填补 §8.2 + §8.3 中"高优先级 + 1 周内能完成"的项。
+> ✅=v1.x 已实现，❌=仍缺，⚠=部分实现。
 
-#### 1. Sub-Entity 全表（数据网格 + 选中高亮）
+| # | 条目                                | 状态 | 实现 / 备注                                                                  |
+| - | ----------------------------------- | ---- | ---------------------------------------------------------------------------- |
+| 1 | Curve & Spiral Settings 默认值面板  | ✅   | `hyRoadAlnDefaults`（默认 R / Ls_in / Ls_out / StartStation / 主副桩间隔）   |
+| 2 | 单段约束式（Free / Fixed / Floating）| ❌   | 🟡 目前"按 PI 整体出"；v1.3+ 候选                                           |
+| 3 | Sub-Entity 全表（数据网格 + 选中高亮） | ✅   | `hyRoadAlnTable`                                                            |
+| 4 | Insert PI / Delete PI               | ✅   | `hyRoadAlnInsertPi` / `hyRoadAlnDeletePi`                                    |
+| 5 | Reverse Direction（整条反向）       | ✅   | `hyRoadAlnReverse`（含桩号方程几何镜像）                                     |
+| 6 | Grip Edit（拖 PI / 拖半径实时刷）    | ❌   | 🔴 工程量较大；v2 候选                                                      |
+| 7 | 几何点标注（TS/SC/CS/ST/PI + BC/EC）| ✅   | `hyRoadAlnGeomPt`                                                            |
+| 8 | Reference Point + Reference Station | ⚠   | 可用"StartStation + StaEq"组合近似；v1.3+ 候选加原生语义                     |
+| 9 | Station Equation（桩号方程 / 断链） | ✅   | `hyRoadAlnStaEq`（Ahead + 接近度警告）                                       |
+| 10 | 多速度分段                         | ❌   | 🟡 中；v1.3+ 候选                                                           |
+| 11 | Compound Spiral / Reverse Spiral   | ❌   | 🔴 低（高速 / 复杂枢纽）                                                    |
+| 12 | Spiral 类型可切（Bloss/Sin/Cubic） | ❌   | 🔴 低（铁路专用）                                                            |
+| 13 | Best Fit Alignment                 | ❌   | 🔴 低（v2 测量）                                                             |
+| 14 | Offset Alignment                   | ✅   | `hyRoadAlnOffset`（最小曲率自检 + OffsetAuxiliary Xdata）                    |
+| 15 | Reference Alignment                | ❌   | 🔴 低（多 DWG 引用）                                                         |
+| 16 | Label Set 打包重用                 | ❌   | 🟡 中；v1.3 候选                                                             |
+| 17 | XML 规范文件可定制                 | ❌   | 🔴 低（硬编码 CJJ 37+152 + GB 5768 够用）                                   |
+| 18 | LandXML 1.2 导入 / 导出            | ✅   | `hyRoadAlnImportXml` / `hyRoadAlnExportXml`                                  |
 
-- 命令名建议：`hyRoadAlnTable`
-- UI：`AlignmentEntityTableWindow`，4 列 = 段类型（直/缓/圆/缓）/ 起桩号 / 长度 / R 或 Ls
-- 操作：选中行 → DWG 中对应段红色高亮（Transient）
-- 价值：让 PI 法用户也能看到"每段 R / Ls / T 现在是多少"
+### 8.3 与鸿业对标的缺口
 
-#### 2. 几何点标注（TS / SC / CS / ST / PI）
+| # | 条目                                                           | 状态 | 实现 / 备注                                      |
+| - | -------------------------------------------------------------- | ---- | ------------------------------------------------ |
+| 1 | 路线复测表（坐标 + 桩号 + 方位角 + 高程，按主桩输出 Excel）     | ✅   | `hyRoadAlnExportFrame`（CSV，UTF-8 BOM）        |
+| 2 | 路线交点表（PI 表 + 转角 + R + Ls + T 出 Excel）                | ✅   | `hyRoadAlnExportPi`（CSV，UTF-8 BOM）           |
+| 3 | 平面图自动出图（带方位、比例、桩号、表格图签）                  | ❌   | 🟢 高；v1.3 候选（"出图"专题，与图框模块打通）  |
+| 4 | 鸿业 / OpenRoads / Civil 3D LandXML 互通（导入导出 .xml）      | ✅   | LandXML 1.2，`hyRoadAlnImport/ExportXml`        |
+| 5 | 参数法创建（长度 + 方位角逐段输）                              | ❌   | 🔴 低                                            |
+| 6 | 连接法创建                                                     | ❌   | 🔴 低                                            |
+| 7 | 块法创建（标准弯道库）                                         | ❌   | 🔴 低                                            |
+| 8 | 桩号 UI 配置面板（主副桩间隔 / 字高 / 偏移 / 旋转）             | ⚠   | `hyRoadAlnDefaults` 已覆盖间隔 + 默认值；字高 / 偏移 / 旋转 UI 仍硬编码 |
 
-- 命令名建议：`hyRoadAlnGeomPt`
-- 操作：无参数调用，自动遍历 Alignment 的每个 PI，按其"圆 / 缓-圆-缓"属性出 BC/EC 或 TS/SC/CS/ST 标记
-- UI：复用 `RoadStationLabelOptions`，新增 `GeometryPointStyle` 字段（短刻度 + 缩写 + 桩号）
-- 价值：补 §8.2-7（最高优先级）
+### 8.4 v1.1 已交付 ✅
 
-#### 3. 路线交点表 + 复测表导出
+> 选取标准：填补 §8.2 + §8.3 中"高优先级 + 1 周内能完成"的项。所有以下均已交付到 `commands.json`。
 
-- 命令名建议：`hyRoadAlnExportPi`（PI 表）+ `hyRoadAlnExportFrame`（复测表）
-- 输出：CSV → 鸿业格式 / 通用 Excel
-- 字段：
-  - PI 表：序号 / X / Y / 转角 / R / Ls_in / Ls_out / T1 / T2 / Ly
-  - 复测表：主桩号 / X / Y / 方位角 / Tag
-- 价值：补 §8.3-1 + §8.3-2
+- [x] **`hyRoadAlnTable`** —— Sub-Entity 全表（段类型 / 起桩 / 长度 / R / Ls + 几何点子表）。补 §8.2-3。
+- [x] **`hyRoadAlnGeomPt`** —— BP/EP/BC/EC/TS/SC/CS/ST + PI 延伸投影。补 §8.2-7。
+- [x] **`hyRoadAlnExportPi` + `hyRoadAlnExportFrame`** —— 交点表 + 复测表 CSV（UTF-8 BOM）。补 §8.3-1 + §8.3-2。
+- [x] **`hyRoadAlnDefaults`** —— Curve & Spiral Settings 默认值面板，写 `hy-settings.json`。补 §8.2-1 + §8.3-8 部分。
 
-#### 4. Curve & Spiral Settings 默认值面板
+### 8.5 v1.2 已交付 ✅
 
-- 命令名建议：`hyRoadAlnDefaults`
-- UI：BlenderUI 小窗口，3 字段 = Default Radius / Default Spiral In / Default Spiral Out
-- 持久化：写到 `hy-settings.json` 的 `Road.AlignmentDefaults` 段
-- 影响：`hyRoadAlnByPi` 的"中间 PI 追问 R / Ls"默认值不再是上次输入而是 Settings
-- 价值：补 §8.2-1，提速 PI 法
+- [x] **`hyRoadAlnInsertPi` / `hyRoadAlnDeletePi`** —— 插/删中间 PI，复用 `RebuildCenterline`。补 §8.2-4。
+- [x] **`hyRoadAlnReverse`** —— 整条反向 + `AlignmentReverser.ReverseStationEquations` 几何镜像桩号方程。补 §8.2-5。
+- [x] **`hyRoadAlnStaEq`** —— 桩号方程（Ahead 方向）+ 几何点接近度警告 + `StationConverter` 正反双向映射，**所有**下游命令经其计算显示桩号。补 §8.2-9。
+- [x] **`hyRoadAlnOffset`** —— 平行偏移辅道，`CenterlineOffsetService.ComputeMinCurvatureRadius` 自检 + OffsetAuxiliary Xdata。补 §8.2-14。
+- [x] **`hyRoadAlnExportXml` / `hyRoadAlnImportXml`** —— LandXML 1.2 双向互通（`CoordGeom` + `StaEquation` + 坐标系转换）。补 §8.2-18 + §8.3-4。
 
-### 8.5 v1.2 优先补的 3 个功能
+### 8.6 v1.3 候选（按优先级降序）
 
-#### 1. Insert PI / Delete PI
+> 选取标准：v1.0–v1.2 交付后，仍挡住"一张完整平面图出图"或"与 Civil 3D 双向协作"的最后几条。
 
-- 命令名建议：`hyRoadAlnInsertPi` / `hyRoadAlnDeletePi`
-- 操作：拾取 Alignment + 一个新点 → 在最近的段中插 PI（继承默认 R/Ls）；拾取 PI → 删除 + 合并相邻段
-- 写回：复用 `hyRoadAlnEditPi` 的"PI 表 → Build → RebuildCenterline"链路
-- 价值：补 §8.2-4（v1.0 用户最痛的痛点）
+#### 🟢 P0 高：桩号方程跳变符号 + 平面图自动出图
 
-#### 2. 桩号 UI 配置面板（主副桩间隔 / 字高 / 偏移 / 旋转）
+| # | 条目                                     | 动机                                                                     | 初步方案                                                                                                                |
+| - | ---------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| 1 | 桩号方程跳变符号文本（如 `K0+523.4=K1+000.0`）| §5.3 / §5.4 已记"标注在 StaEq 点位置的跳变文本尚未出图"                  | `RoadAlignmentService` 新增 `DrawStationEquationMarkers(...)`；复用 `StationEquation` 列表，在每条 StaEq 的 `BeforeRaw` 位置画对接文本 + 双箭头；幂等跑。 |
+| 2 | `hyRoadAlnPlot` 平面图自动出图          | §8.3-3（鸿业"出图"方向），把"Alignment + 桩号 + 几何点 + PI 表 + 图签"打包成布局| 依赖 `HYMBR*` 图框模块；新增 `PlanLayoutComposer`：自动扫 Alignment/Profile，出 Layout 视口 + 自动排版桩号带 / PI 要素表 / 方位指北。 |
 
-- 命令名建议：`hyRoadAlnStationCfg`（或合并到 `hyRoadAlnStation` 的可选关键字 `[配置(C)/默认(D)]`）
-- UI：BlenderUI 小窗口，全部 `RoadStationLabelOptions` 字段
-- 持久化：`hy-settings.json` 的 `Road.Station` 段
-- 价值：补 §8.3-8
+#### 🟡 P1 中：Reference Station + Label Set + 多速度
 
-#### 3. 桩号方程 / 断链（Station Equation）
+| # | 条目                            | 动机                                                                                    | 初步方案                                                                                        |
+| - | ------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 3 | Reference Point + Reference Station 原生语义 | §8.2-8，目前只能用"StartStation + StaEq"绕过                                            | Domain 新增 `Alignment.ReferencePoint`（可空 `Point2D`）+ `ReferenceStation`；等价于内置一条隐式 StaEq。 |
+| 4 | Label Set 打包重用              | §8.2-16，Civil 3D 风格的"主副几何点一键打包"                                            | 扩 `RoadStationLabelOptions` 为 `LabelSet`（含 name / major / minor / geom / equation / speed 5 个字段组），落 `hy-settings.json`。|
+| 5 | 多速度分段                      | §8.2-10，大型项目按段换速查最小 R / Ls                                                  | Domain 新增 `Alignment.DesignSpeedSegments: List<DesignSpeedSegment>`；`AlignmentCodeChecker` 改为按段查表。|
 
-- 命令名建议：`hyRoadAlnStaEq`
-- 操作：拾取 Alignment + 在线上点参考点 → 输 Station Back / Station Ahead / Increase or Decrease → 自动重算下游桩号
-- Domain 增字段：`Alignment.StationEquations: List<StationEquation>`
-- 桩号公式：`actualStation = baseStation + Σ equationOffsets`
-- 价值：补 §8.2-9
+#### 🔴 P2 低：专项 / 场景狭窄
+
+| # | 条目                               | 状态 / 说明                                                       |
+| - | ---------------------------------- | ----------------------------------------------------------------- |
+| 6 | Grip Edit（拖 PI / 拖半径实时刷）  | 工程量大；Dispatcher + Transient 实时预览需要专项验证             |
+| 7 | Compound / Reverse Spiral          | 高速 / 枢纽，目前走 PI 不足以覆盖                                 |
+| 8 | Spiral 类型（Bloss / Sin / Cubic） | 铁路项目才需；需先扩 `AlignmentCodeChecker`（红线 §10-7）         |
+| 9 | Best Fit Alignment                 | 测量点云拟合，v2 测量模块一起做                                   |
+| 10 | Reference Alignment（跨 DWG）      | 多 DWG 工程协同；需先解决 `.roaddesign.json` 项目级唯一 id 契约    |
+
+> 交付顺序建议：P0-1（1 天）→ P0-2（约 1 周，前置依赖图框模块） → P1 按需。
 
 ---
 
@@ -729,31 +743,35 @@ xml 文件结构：
 | PI 法（CSV）    | ❌                                    | 交点表粘贴      | `hyRoadAlnByPi` → F |
 | PI 法（剪贴板） | ❌                                    | Excel 粘贴      | `hyRoadAlnByPi` → C |
 | 单段约束式      | `_CreateAlignmentLayout` 工具栏       | ❌              | ❌                 |
-| Best Fit        | `_CreateAlignmentBestFit`             | 部分            | ❌                 |
-| Reference       | `_CreateAlignmentReference`           | ❌              | ❌                 |
-| Offset          | `_CreateOffsetAlignment`              | 平行线          | ❌                 |
+| Best Fit        | `_CreateAlignmentBestFit`             | 部分            | ❌ （v1.3 候选）    |
+| Reference       | `_CreateAlignmentReference`           | ❌              | ❌ （v1.3 候选）    |
+| Offset          | `_CreateOffsetAlignment`              | 平行线          | ✅ `hyRoadAlnOffset`（正左负右 + 最小曲率自检） |
+| LandXML 导入    | `_LandXMLIn`                          | 部分            | ✅ `hyRoadAlnImportXml` |
 
 ### 9.2 编辑
 
 | 操作               | Civil 3D                      | 鸿业           | HyCADTool                 |
 | ------------------ | ----------------------------- | -------------- | ------------------------- |
 | 改单 PI 参数       | Sub-Entity Editor             | 双击 PI         | `hyRoadAlnEditPi` (W / C)  |
-| 拖 PI              | Grip Edit                     | 拖 PI          | ❌                        |
-| 插 PI              | Insert PI                     | 右键 → 插       | ❌（v1.2 计划 `hyRoadAlnInsertPi`） |
-| 删 PI              | Delete PI                     | 右键 → 删       | ❌（v1.2 计划 `hyRoadAlnDeletePi`） |
-| 反向               | Reverse Direction             | 反向            | ❌                        |
-| Sub-Entity 全表查看 | Sub-Entity Editor + Entities Vista | 列表面板  | ❌（v1.1 计划 `hyRoadAlnTable`） |
+| 拖 PI              | Grip Edit                     | 拖 PI          | ❌（v1.3 候选 P2）          |
+| 插 PI              | Insert PI                     | 右键 → 插       | ✅ `hyRoadAlnInsertPi`      |
+| 删 PI              | Delete PI                     | 右键 → 删       | ✅ `hyRoadAlnDeletePi`      |
+| 反向               | Reverse Direction             | 反向            | ✅ `hyRoadAlnReverse`       |
+| 偏移辅道           | Create Offset Alignment       | 平行线          | ✅ `hyRoadAlnOffset`        |
+| Sub-Entity 全表查看 | Sub-Entity Editor + Entities Vista | 列表面板  | ✅ `hyRoadAlnTable`         |
 
 ### 9.3 桩号 + 标注
 
 | 操作               | Civil 3D                              | 鸿业           | HyCADTool                  |
 | ------------------ | ------------------------------------- | -------------- | -------------------------- |
-| 桩号设置           | Alignment Properties → Station Control | 设计参数       | ❌（v1.2 计划 `hyRoadAlnStaEq`） |
-| 桩号方程           | Add Station Equation                  | 加断链         | ❌（同上）                 |
-| 主副桩号标注       | Add Labels → Major / Minor            | 桩号 → 桩号标注 | ✅ `hyRoadAlnStation`       |
-| 几何点标注         | Add Labels → Geometry Point           | 桩号 → 几何点标注 | ❌（v1.1 计划 `hyRoadAlnGeomPt`） |
-| 标注配置 UI        | Style 编辑器                          | 标注对话框     | ❌（v1.2 计划 `hyRoadAlnStationCfg`） |
-| Label Set 打包     | Label Set                             | 出图模板       | ❌                          |
+| 桩号起点 / 默认值  | Alignment Properties → Station Control | 设计参数       | ✅ `hyRoadAlnDefaults`（默认 R/Ls/StartStation/桩号间隔） |
+| 桩号方程           | Add Station Equation                  | 加断链         | ✅ `hyRoadAlnStaEq`（Ahead 方向 + 接近度警告）            |
+| 主副桩号标注       | Add Labels → Major / Minor            | 桩号 → 桩号标注 | ✅ `hyRoadAlnStation`（按显示桩号对齐）                   |
+| 几何点标注         | Add Labels → Geometry Point           | 桩号 → 几何点标注 | ✅ `hyRoadAlnGeomPt`                                    |
+| Sub-Entity 全表    | Sub-Entity Editor                     | 列表面板       | ✅ `hyRoadAlnTable`                                      |
+| 桩号方程跳变符号   | Chainage Equation Label               | 断链符号       | ❌（v1.3 候选 P0-1）                                    |
+| 标注配置 UI        | Style 编辑器                          | 标注对话框     | ⚠ `hyRoadAlnDefaults` 覆盖间隔；字高/偏移 UI 待补        |
+| Label Set 打包     | Label Set                             | 出图模板       | ❌（v1.3 候选 P1-4）                                     |
 
 ### 9.4 规范校核
 
@@ -768,10 +786,10 @@ xml 文件结构：
 
 | 操作                     | Civil 3D            | 鸿业           | HyCADTool                 |
 | ------------------------ | ------------------- | -------------- | ------------------------- |
-| LandXML 导入             | `_LandXMLIn`        | 部分           | ❌                        |
-| LandXML 导出             | `_LandXMLOut`       | 部分           | ❌                        |
-| 路线复测表（坐标 + 桩号） | Reports Manager → Stations | 桩号坐标表 | ❌（v1.1 计划 `hyRoadAlnExportFrame`） |
-| 路线交点表（PI 表）       | Alignment Entity Report | 交点要素表  | ❌（v1.1 计划 `hyRoadAlnExportPi`） |
+| LandXML 导入             | `_LandXMLIn`        | 部分           | ✅ `hyRoadAlnImportXml`（1.2 schema；CoordGeom + StaEquation）|
+| LandXML 导出             | `_LandXMLOut`       | 部分           | ✅ `hyRoadAlnExportXml`（同上；Bearing→Azimuth 坐标系转换） |
+| 路线复测表（坐标 + 桩号） | Reports Manager → Stations | 桩号坐标表 | ✅ `hyRoadAlnExportFrame`（CSV, UTF-8 BOM） |
+| 路线交点表（PI 表）       | Alignment Entity Report | 交点要素表  | ✅ `hyRoadAlnExportPi`（CSV, UTF-8 BOM）   |
 | 项目级 JSON 持久化       | 内部 .dwg 嵌入       | .htf / .scs    | ✅ `.roaddesign.json`      |
 
 ---
@@ -792,6 +810,7 @@ xml 文件结构：
 ---
 
 **文档性质**：功能与流程对标文档（Civil 3D / 鸿业 / HyCADTool 三方）  
-**更新日期**：2026-04-19  
-**上游依赖**：`Civil3D.md` §1.1、`HongYeRoad.md` §2、`OpenRoads.md` §3、HyCADTool 源码（`Presentation/Commands/Road/RoadAlignment*.cs`、`Domain/Services/Road/AlignmentCodeChecker.cs`、`Infrastructure/AutoCAD/Services/Road/RoadAlignmentService.cs`、`Presentation/Views/Road/PiThreeUnitWindow.xaml`）  
-**下游依赖**：`05计划书.md` P1 收尾 / P2 启动、`01MASTER.md` P1/P2 阶段、未来的"v1.1 看板（§8.4）"与"v1.2 看板（§8.5）"
+**更新日期**：2026-04-19（v1.2 完整收尾：T0–T9 + A1/A2/A3/B1/B2 质量与互操作增强）  
+**版本状态**：v1.2 交付完整，共 **22** 条 `hyRoadAln*` 命令（详见 §8.1 与 §9）。v1.3 候选见 §8.6。  
+**上游依赖**：`Civil3D.md` §1.1、`HongYeRoad.md` §2、`OpenRoads.md` §3、HyCADTool 源码（`Presentation/Commands/Road/RoadAlignment*.cs`、`Domain/Services/Road/AlignmentCodeChecker.cs` / `AlignmentReverser.cs` / `CenterlineOffsetService.cs` / `StationConverter.cs` / `LandXml{Export,Import}Service.cs`、`Infrastructure/AutoCAD/Services/Road/RoadAlignmentService.cs`、`Presentation/Views/Road/PiThreeUnitWindow.xaml`）  
+**下游依赖**：`05计划书.md` P2 收尾 / P3 启动、`01MASTER.md` P2/P3 阶段、未来的"v1.3 看板（§8.6）"

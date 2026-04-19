@@ -4,12 +4,14 @@ using System;
 namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
-    /// 绘图单位枚举
+    /// 绘图单位枚举（HYOV 命令本地使用；通用业务请改用 <see cref="Domain.Models.Drawing.DrawingUnit"/>）。
+    /// Centimeter 放末尾，保留旧整数序号（Millimeter=0, Meter=1）防止既有 SelectedIndex 映射失配。
     /// </summary>
     public enum DrawingUnit
     {
         Millimeter,  // 毫米 (mm)
-        Meter        // 米 (m)
+        Meter,       // 米 (m)
+        Centimeter   // 厘米 (cm)
     }
 
     /// <summary>
@@ -126,10 +128,16 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
         /// <summary>
         /// 获取单位换算系数（相对于毫米）
+        /// mm=1 / cm=0.1 / m=0.001
         /// </summary>
         public double GetUnitScale()
         {
-            return Unit == DrawingUnit.Meter ? 0.001 : 1.0;
+            switch (Unit)
+            {
+                case DrawingUnit.Meter: return 0.001;
+                case DrawingUnit.Centimeter: return 0.1;
+                default: return 1.0;
+            }
         }
 
         /// <summary>

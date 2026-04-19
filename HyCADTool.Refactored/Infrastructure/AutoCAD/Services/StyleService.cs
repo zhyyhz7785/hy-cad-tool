@@ -112,7 +112,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         public string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0,
             double dimtxt = 2.5, double dimexo = 1.0, double dimexe = 1.0,
-            double dimdle = 0.5, double dimgap = 1.0, double dimasz = 1.0)
+            double dimdle = 0.5, double dimgap = 1.0, double dimasz = 1.0,
+            double dimlfac = 1.0, int dimdec = 0, double unitFactor = 1.0)
         {
             if (string.IsNullOrWhiteSpace(styleName))
                 throw new ArgumentException("Style name cannot be null or empty", nameof(styleName));
@@ -143,16 +144,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         isNew = true;
                     }
 
-                    // 使用传入的参数（面板可调）
-                    dimStyleRecord.Dimtdec = 0;
-                    dimStyleRecord.Dimexo = dimexo;
-                    dimStyleRecord.Dimexe = dimexe;
-                    dimStyleRecord.Dimdle = dimdle;
-                    dimStyleRecord.Dimtxt = dimtxt;
-                    dimStyleRecord.Dimgap = dimgap;
-                    dimStyleRecord.Dimasz = dimasz;
-                    dimStyleRecord.Dimdec = 0;
+                    // paper-mm 基值 → 存入前乘 unitFactor（mm=1 / cm=0.1 / m=0.001）
+                    // 最终 model-unit 尺寸 = 存入值 × DIMSCALE = paper_mm × unitFactor × scale
+                    dimStyleRecord.Dimtdec = dimdec;
+                    dimStyleRecord.Dimexo = dimexo * unitFactor;
+                    dimStyleRecord.Dimexe = dimexe * unitFactor;
+                    dimStyleRecord.Dimdle = dimdle * unitFactor;
+                    dimStyleRecord.Dimtxt = dimtxt * unitFactor;
+                    dimStyleRecord.Dimgap = dimgap * unitFactor;
+                    dimStyleRecord.Dimasz = dimasz * unitFactor;
+                    dimStyleRecord.Dimdec = dimdec;
                     dimStyleRecord.Dimscale = scale;
+                    dimStyleRecord.Dimlfac = dimlfac;
                     dimStyleRecord.Dimtofl = true;        // 尺寸线强制
                     dimStyleRecord.Dimtad = 1;            // 文字位置垂直（上方）
                     dimStyleRecord.Dimtix = true;         // 文字在内
@@ -343,7 +346,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
         public string CreateMLeaderStyle(string styleName, string textStyleName = null, double scale = 1.0,
             double arrowSize = 2.0, double landingGap = 0.5, double textHeight = 2.5,
-            int textColorIndex = 7)
+            int textColorIndex = 7, double unitFactor = 1.0)
         {
             if (string.IsNullOrWhiteSpace(styleName))
                 throw new ArgumentException("Style name cannot be null or empty", nameof(styleName));
@@ -391,8 +394,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         }
                     }
 
-                    // 使用传入参数（面板可调）
-                    mleaderStyle.TextHeight = textHeight * scale;
+                    // paper-mm 基值 → 乘 unitFactor × scale 得 model-unit 尺寸
+                    // model = paper_mm × unitFactor × scale
+                    mleaderStyle.TextHeight = textHeight * unitFactor * scale;
                     mleaderStyle.TextColor = Color.FromColorIndex(ColorMethod.ByColor, (short)textColorIndex);
                     mleaderStyle.TextAttachmentType = TextAttachmentType.AttachmentBottomLine;
 
@@ -402,10 +406,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     {
                         mleaderStyle.ArrowSymbolId = arrowId;
                     }
-                    mleaderStyle.ArrowSize = arrowSize * scale;
+                    mleaderStyle.ArrowSize = arrowSize * unitFactor * scale;
 
                     // 着陆间距与线宽（使用传入参数）
-                    mleaderStyle.LandingGap = landingGap * scale;
+                    mleaderStyle.LandingGap = landingGap * unitFactor * scale;
                     mleaderStyle.LeaderLineWeight = LineWeight.ByLayer;
 
                     // 设为当前引线样式

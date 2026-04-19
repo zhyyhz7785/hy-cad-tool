@@ -28,11 +28,24 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         // === 标注样式 ===
 
         /// <summary>
-        /// 创建标注样式
+        /// 创建标注样式。
         /// </summary>
+        /// <param name="styleName">样式名</param>
+        /// <param name="textStyleName">关联文字样式</param>
+        /// <param name="scale">DIMSCALE（= 主比例 M）</param>
+        /// <param name="dimtxt">文字高度 paper-mm 基值（默认 2.5）</param>
+        /// <param name="dimexo">尺寸界线偏移 paper-mm 基值</param>
+        /// <param name="dimexe">尺寸界线超出 paper-mm 基值</param>
+        /// <param name="dimdle">尺寸线超出 paper-mm 基值</param>
+        /// <param name="dimgap">文字间隙 paper-mm 基值</param>
+        /// <param name="dimasz">箭头大小 paper-mm 基值</param>
+        /// <param name="dimlfac">标注线性比例因子 DIMLFAC（副比例开启时 = SubScale/MainScale，否则 1.0）</param>
+        /// <param name="dimdec">标注小数位 DIMDEC（受单位约束：mm=0 / cm=1..2 / m=1..3）</param>
+        /// <param name="unitFactor">单位因子（paper-mm → model-unit：mm=1 / cm=0.1 / m=0.001）</param>
         string CreateDimensionStyle(string styleName, string textStyleName = null, double scale = 1.0,
             double dimtxt = 2.5, double dimexo = 1.0, double dimexe = 1.0,
-            double dimdle = 0.5, double dimgap = 1.0, double dimasz = 1.0);
+            double dimdle = 0.5, double dimgap = 1.0, double dimasz = 1.0,
+            double dimlfac = 1.0, int dimdec = 0, double unitFactor = 1.0);
 
         /// <summary>
         /// 设置当前标注样式
@@ -42,11 +55,19 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         // === 多重引线样式 ===
 
         /// <summary>
-        /// 创建多重引线样式
+        /// 创建多重引线样式。
         /// </summary>
+        /// <param name="styleName">样式名</param>
+        /// <param name="textStyleName">关联文字样式</param>
+        /// <param name="scale">放大倍数（= 主比例 M）</param>
+        /// <param name="arrowSize">箭头 paper-mm 基值</param>
+        /// <param name="landingGap">着陆间距 paper-mm 基值</param>
+        /// <param name="textHeight">文字高度 paper-mm 基值</param>
+        /// <param name="textColorIndex">文字颜色索引</param>
+        /// <param name="unitFactor">单位因子（paper-mm → model-unit：mm=1 / cm=0.1 / m=0.001）</param>
         string CreateMLeaderStyle(string styleName, string textStyleName = null, double scale = 1.0,
             double arrowSize = 2.0, double landingGap = 0.5, double textHeight = 2.5,
-            int textColorIndex = 7);
+            int textColorIndex = 7, double unitFactor = 1.0);
 
         /// <summary>
         /// 设置当前多重引线样式

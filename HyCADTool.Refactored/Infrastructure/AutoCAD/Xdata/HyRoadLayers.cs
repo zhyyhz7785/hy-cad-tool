@@ -26,6 +26,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string StationLayer = "05_hy_道路_桩号";
         public const short StationColor = 7; // 白/黑：与图底线色反白，主桩文字清晰可读
 
+        /// <summary>几何点标注（BP / EP / PI / BC / EC / TS / SC / CS / ST）。hyRoadAlnGeomPt 专用。</summary>
+        public const string GeometryPointLayer = "05_hy_道路_几何点";
+        public const short GeometryPointColor = 4; // 青：与桩号主文字（白）/ 中心线（品红）视觉分离
+
+        /// <summary>偏移辅助线（hyRoadAlnOffset 左右路幅 / 路缘石示意线）。</summary>
+        public const string OffsetLayer = "05_hy_道路_偏移线";
+        public const short OffsetColor = 30; // 橙：与中心线（品红）/ 桩号（白）区分
+
         // =========================================================================
         //  M3 标准横断面图：9 个图层
         // =========================================================================
@@ -83,6 +91,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (CorridorLayer, CorridorColor),
                 (MarkingLayer, MarkingColor),
                 (StationLayer, StationColor),
+                (GeometryPointLayer, GeometryPointColor),
+                (OffsetLayer, OffsetColor),
                 (CrossSectionOutlineLayer, CrossSectionOutlineColor),
                 (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
                 (CrossSectionPavementLayer, CrossSectionPavementColor),

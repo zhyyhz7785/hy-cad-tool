@@ -20,8 +20,12 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             // P1.c 新增：Station
             // M3 新增：9 个横断面图层
             // v2 新增：Kerb（路牙独立图层）
-            all.Should().HaveCount(15);
+            // 07Alignment T2 新增：GeometryPoint
+            // 07Alignment T9 新增：Offset
+            all.Should().HaveCount(17);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.GeometryPointLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.OffsetLayer);
         }
 
         [Fact]

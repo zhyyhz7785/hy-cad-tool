@@ -13,6 +13,7 @@ using HyCADTool.Refactored.Infrastructure.AutoCAD.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands.Road
@@ -101,6 +102,10 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
 
                 // 持久化 PI 表到 Domain，供 hyRoadAlnEditPi 反推参数
                 alignment.Source = BuildAlignmentSource(elements);
+
+                // 起桩号取 hy-settings.json 默认（hyRoadAlnDefaults 可调）
+                var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults();
+                if (defaults != null) alignment.StartStation = defaults.DefaultStartStation;
 
                 tr.Commit();
             }
@@ -218,10 +223,13 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
 
             // 中间 PI 追问参数；首尾默认 0。
             // 默认值复用上一次输入（radius/lsIn/lsOut），减少重复敲键。
+            // 首次默认值从 hy-settings.json 的 AlignmentDefaults 读取（hyRoadAlnDefaults 可调）。
             var elements = new List<PiElement>(pts.Count);
-            double lastR = 30.0;
-            double lastLsIn = 0;
-            double lastLsOut = 0;
+            var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults()
+                          ?? new Domain.ValueObjects.Road.AlignmentDefaults();
+            double lastR = defaults.DefaultRadius > 0 ? defaults.DefaultRadius : 30.0;
+            double lastLsIn = defaults.DefaultSpiralIn;
+            double lastLsOut = defaults.DefaultSpiralOut;
             for (int i = 0; i < pts.Count; i++)
             {
                 if (i == 0 || i == pts.Count - 1)

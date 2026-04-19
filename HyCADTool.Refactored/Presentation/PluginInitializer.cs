@@ -729,6 +729,10 @@ namespace HyCADTool.Refactored.Presentation
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingColor),
                 (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.StationLayer,
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.StationColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.GeometryPointLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.GeometryPointColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.OffsetLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.OffsetColor),
             };
         }
 

@@ -10,7 +10,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Theming;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Domain.Models.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.Views.Helpers;
@@ -154,6 +156,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         private double _scale = 50.0;
+        /// <summary>
+        /// 主比例（出图比例 M）：决定纸面标记的真实大小。
+        /// 作为 DIMSCALE 直接写入样式；文字样式字高 = TextSize × UnitFactor × Scale。
+        /// </summary>
         public double Scale
         {
             get => _scale;
@@ -162,26 +168,157 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 if (SetProperty(ref _scale, value))
                 {
                     _stylesDirty = true;
-                    OnPropertyChanged(nameof(TextStyleName));
-                    OnPropertyChanged(nameof(DimStyleName));
-                    OnPropertyChanged(nameof(MLeaderStyleName));
-                    OnPropertyChanged(nameof(TableStyleName));
-                    OnPropertyChanged(nameof(ActualTextHeight));
-                    OnPropertyChanged(nameof(ActualMLeaderArrowSize));
-                    OnPropertyChanged(nameof(ActualMLeaderLandingGap));
+                    // UseSubScale=false 时 SubScale 始终随 MainScale 退化
+                    if (!_useSubScale) _subScale = _scale;
+                    NotifyScaleContextChanged();
                 }
             }
+        }
+
+        private bool _useSubScale;
+        /// <summary>
+        /// 副比例开关（checkbox）。开启后 SubScale 生效：标注数字读数恒等于真实尺寸（DIMLFAC=SubScale/Scale），
+        /// 几何相关属性（LinetypeScale/HatchScale/块插入比例）× GeomMul=Scale/SubScale；
+        /// 文字/箭头/间距等纸面标记大小**不变**。
+        /// </summary>
+        public bool UseSubScale
+        {
+            get => _useSubScale;
+            set
+            {
+                if (SetProperty(ref _useSubScale, value))
+                {
+                    _stylesDirty = true;
+                    if (!_useSubScale) _subScale = _scale;   // 关闭时自动归一
+                    NotifyScaleContextChanged();
+                }
+            }
+        }
+
+        private double _subScale = 50.0;
+        /// <summary>
+        /// 副比例（局部出图比例 S）。UseSubScale=false 时忽略并自动归一为 Scale。
+        /// </summary>
+        public double SubScale
+        {
+            get => _subScale;
+            set
+            {
+                if (SetProperty(ref _subScale, value))
+                {
+                    _stylesDirty = true;
+                    NotifyScaleContextChanged();
+                }
+            }
+        }
+
+        private DrawingUnit _unit = DrawingUnit.Millimeter;
+        /// <summary>
+        /// 绘图单位（mm / cm / m）。变更时：
+        /// - 夹紧 Precision 到允许集合；
+        /// - 刷新所有派生样式名；
+        /// - 同步 AutoCAD INSUNITS（mm=4 / cm=5 / m=6）。
+        /// </summary>
+        public DrawingUnit Unit
+        {
+            get => _unit;
+            set
+            {
+                if (SetProperty(ref _unit, value))
+                {
+                    _stylesDirty = true;
+                    _precision = ScaleContext.ClampPrecision(_unit, _precision);
+                    OnPropertyChanged(nameof(Precision));
+                    OnPropertyChanged(nameof(AllowedPrecisions));
+                    NotifyScaleContextChanged();
+                    SyncInsUnits();
+                }
+            }
+        }
+
+        private int _precision;
+        /// <summary>
+        /// 标注小数位（DIMDEC）。允许集合受 Unit 约束：mm={0} / cm={1,2} / m={1,2,3}；
+        /// 赋值超出集合会自动夹紧到最近允许值。
+        /// </summary>
+        public int Precision
+        {
+            get => _precision;
+            set
+            {
+                int clamped = ScaleContext.ClampPrecision(_unit, value);
+                if (SetProperty(ref _precision, clamped))
+                {
+                    _stylesDirty = true;
+                    NotifyScaleContextChanged();
+                }
+            }
+        }
+
+        /// <summary>当前单位允许的小数位（UI ComboBox 数据源）。</summary>
+        public int[] AllowedPrecisions => ScaleContext.GetAllowedPrecisions(_unit);
+
+        /// <summary>单位下拉数据源。</summary>
+        public DrawingUnit[] UnitOptions { get; } = new[]
+        {
+            DrawingUnit.Millimeter,
+            DrawingUnit.Centimeter,
+            DrawingUnit.Meter
+        };
+
+        /// <summary>
+        /// 构建当前比例上下文快照。UseSubScale=false 时 SubScale 自动归一为 Scale。
+        /// </summary>
+        public ScaleContext BuildScaleContext()
+        {
+            double sub = _useSubScale ? _subScale : _scale;
+            if (sub <= 0) sub = _scale;
+            return new ScaleContext(_scale, sub, _useSubScale, _unit, _precision);
+        }
+
+        /// <summary>
+        /// 五大比例参数任一变更后：刷新派生样式名、推送全局 ActiveScaleContextProvider、
+        /// 同时广播 ActualText*/ActualMLeader* 等派生值变更。
+        /// </summary>
+        private void NotifyScaleContextChanged()
+        {
+            OnPropertyChanged(nameof(TextStyleName));
+            OnPropertyChanged(nameof(DimStyleName));
+            OnPropertyChanged(nameof(MLeaderStyleName));
+            OnPropertyChanged(nameof(TableStyleName));
+            OnPropertyChanged(nameof(ActualTextHeight));
+            OnPropertyChanged(nameof(ActualMLeaderArrowSize));
+            OnPropertyChanged(nameof(ActualMLeaderLandingGap));
+            try { ActiveScaleContextProvider.Set(BuildScaleContext()); }
+            catch { /* 非法比例（如 0）吞掉，UI 下一次合法赋值会恢复 */ }
+        }
+
+        /// <summary>
+        /// Unit 变更时联动 AutoCAD INSUNITS（mm=4 / cm=5 / m=6）。
+        /// 无活动文档或非命令线程时静默跳过，不阻断 UI。
+        /// </summary>
+        private void SyncInsUnits()
+        {
+            try
+            {
+                if (AcApp.DocumentManager.MdiActiveDocument == null) return;
+                AcApp.SetSystemVariable("INSUNITS", (int)BuildScaleContext().InsUnitsCode);
+            }
+            catch { /* 静默 */ }
         }
 
         #endregion
 
         #region 动态样式名称
 
-        /// <summary>主文字样式（标注/引线/表格引用），对应 0-hy-说明-S</summary>
+        /// <summary>主文字样式（标注/引线/表格引用），对应 0-hy-说明-S（与副比例/单位解耦）</summary>
         public string TextStyleName => StyleSName;
-        public string DimStyleName => $"0_Hy_{Scale}_Dim";
-        public string MLeaderStyleName => $"0_Hy_{Scale}_Mleader";
-        public string TableStyleName => $"0_Hy_{Scale}_Table";
+        /// <summary>0-Hy-{M}-{S}-Dim-{u}-{p}，S=Main 时表示主副一致</summary>
+        public string DimStyleName => BuildScaleContext().BuildDimStyleName();
+        /// <summary>0-Hy-{M}-{S}-Mleader-{u}-{p}</summary>
+        public string MLeaderStyleName => BuildScaleContext().BuildMLeaderStyleName();
+        /// <summary>0-Hy-{M}-{S}-Table-{u}（表格无小数位）</summary>
+        public string TableStyleName => BuildScaleContext().BuildTableStyleName();
 
         #endregion
 
@@ -316,7 +453,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// <summary>兼容旧字段：默认对外暴露 SHX 样式字宽（与历史 0.7 行为一致）</summary>
         public double TextXScale { get => StyleSXScale; set { StyleSXScale = value; } }
 
-        public double ActualTextHeight => TextSize * Scale;
+        /// <summary>
+        /// 模型空间文字实际高度 = TextSize(paper-mm) × UnitFactor × Scale。
+        /// 与 DIMSCALE/DIMLFAC 无关：副比例不改纸面大小。
+        /// </summary>
+        public double ActualTextHeight => TextSize * BuildScaleContext().UnitFactor * Scale;
 
         #endregion
 
@@ -367,8 +508,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private int _mleaderTextColorIndex = 7;
         public int MLeaderTextColorIndex { get => _mleaderTextColorIndex; set { if (SetProperty(ref _mleaderTextColorIndex, value)) _stylesDirty = true; } }
 
-        public double ActualMLeaderArrowSize => MLeaderArrowSize * Scale;
-        public double ActualMLeaderLandingGap => MLeaderLandingGap * Scale;
+        /// <summary>模型空间箭头实际大小 = MLeaderArrowSize(paper-mm) × UnitFactor × Scale</summary>
+        public double ActualMLeaderArrowSize => MLeaderArrowSize * BuildScaleContext().UnitFactor * Scale;
+        /// <summary>模型空间着陆间距实际大小 = MLeaderLandingGap(paper-mm) × UnitFactor × Scale</summary>
+        public double ActualMLeaderLandingGap => MLeaderLandingGap * BuildScaleContext().UnitFactor * Scale;
 
         #endregion
 
@@ -449,6 +592,110 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         private double _roadStripeSpacing = 1.0;
         public double RoadStripeSpacing { get => _roadStripeSpacing; set => SetProperty(ref _roadStripeSpacing, value); }
+
+        // ── 平面线位（Alignment）默认值 — 供 hyRoadAlnByPi 等命令读默认 ─────────────
+        private double _alignmentDefaultRadius = 30.0;
+        public double AlignmentDefaultRadius { get => _alignmentDefaultRadius; set => SetProperty(ref _alignmentDefaultRadius, value); }
+
+        private double _alignmentDefaultSpiralIn = 0.0;
+        public double AlignmentDefaultSpiralIn { get => _alignmentDefaultSpiralIn; set => SetProperty(ref _alignmentDefaultSpiralIn, value); }
+
+        private double _alignmentDefaultSpiralOut = 0.0;
+        public double AlignmentDefaultSpiralOut { get => _alignmentDefaultSpiralOut; set => SetProperty(ref _alignmentDefaultSpiralOut, value); }
+
+        private double _alignmentDefaultStartStation = 0.0;
+        public double AlignmentDefaultStartStation { get => _alignmentDefaultStartStation; set => SetProperty(ref _alignmentDefaultStartStation, value); }
+
+        // ── 桩号标注配置（RoadStationLabelOptions 的持久化镜像） ──────────────────
+        private double _stationMainInterval = 20.0;
+        public double StationMainInterval { get => _stationMainInterval; set => SetProperty(ref _stationMainInterval, value); }
+
+        private double _stationSubInterval = 5.0;
+        public double StationSubInterval { get => _stationSubInterval; set => SetProperty(ref _stationSubInterval, value); }
+
+        private double _stationTickLengthMain = 4.0;
+        public double StationTickLengthMain { get => _stationTickLengthMain; set => SetProperty(ref _stationTickLengthMain, value); }
+
+        private double _stationTickLengthSub = 1.5;
+        public double StationTickLengthSub { get => _stationTickLengthSub; set => SetProperty(ref _stationTickLengthSub, value); }
+
+        private double _stationTextHeight = 3.0;
+        public double StationTextHeight { get => _stationTextHeight; set => SetProperty(ref _stationTextHeight, value); }
+
+        private double _stationTextMargin = 0.5;
+        public double StationTextMargin { get => _stationTextMargin; set => SetProperty(ref _stationTextMargin, value); }
+
+        private bool _stationRotateTextAlongTangent = true;
+        public bool StationRotateTextAlongTangent { get => _stationRotateTextAlongTangent; set => SetProperty(ref _stationRotateTextAlongTangent, value); }
+
+        /// <summary>
+        /// 文字挂在中心线哪一侧："Left" 或 "Right"（不区分大小写；非法值会回退到 Left）。
+        /// 存字符串是为了 JSON 自解释。
+        /// </summary>
+        private string _stationTextSide = "Left";
+        public string StationTextSide { get => _stationTextSide; set => SetProperty(ref _stationTextSide, value ?? "Left"); }
+
+        /// <summary>
+        /// 把当前桩号标注配置快照为 <see cref="Infrastructure.AutoCAD.Services.Road.RoadStationLabelOptions"/>。
+        /// 非法字符串 TextSide 会退化为 Left。
+        /// </summary>
+        public Infrastructure.AutoCAD.Services.Road.RoadStationLabelOptions CreateStationLabelOptions()
+        {
+            var side = Infrastructure.AutoCAD.Services.Road.StationTextSide.Left;
+            if (string.Equals(StationTextSide, "Right", System.StringComparison.OrdinalIgnoreCase))
+                side = Infrastructure.AutoCAD.Services.Road.StationTextSide.Right;
+            return new Infrastructure.AutoCAD.Services.Road.RoadStationLabelOptions
+            {
+                MainInterval = StationMainInterval,
+                SubInterval = StationSubInterval,
+                TickLengthMain = StationTickLengthMain,
+                TickLengthSub = StationTickLengthSub,
+                TextHeight = StationTextHeight,
+                TextMargin = StationTextMargin,
+                RotateTextAlongTangent = StationRotateTextAlongTangent,
+                TextSide = side,
+            };
+        }
+
+        /// <summary>把桩号标注配置写回当前 ViewModel（触发自动保存）。</summary>
+        public void ApplyStationLabelOptions(Infrastructure.AutoCAD.Services.Road.RoadStationLabelOptions opt)
+        {
+            if (opt == null) return;
+            opt.Validate();
+            StationMainInterval = opt.MainInterval;
+            StationSubInterval = opt.SubInterval;
+            StationTickLengthMain = opt.TickLengthMain;
+            StationTickLengthSub = opt.TickLengthSub;
+            StationTextHeight = opt.TextHeight;
+            StationTextMargin = opt.TextMargin;
+            StationRotateTextAlongTangent = opt.RotateTextAlongTangent;
+            StationTextSide = opt.TextSide.ToString();
+        }
+
+        /// <summary>
+        /// 把当前 Alignment 默认值快照成 Domain 值对象（无指针引用，便于 Domain 直接消费）。
+        /// </summary>
+        public Domain.ValueObjects.Road.AlignmentDefaults CreateAlignmentDefaults()
+            => new Domain.ValueObjects.Road.AlignmentDefaults
+            {
+                DefaultRadius = AlignmentDefaultRadius,
+                DefaultSpiralIn = AlignmentDefaultSpiralIn,
+                DefaultSpiralOut = AlignmentDefaultSpiralOut,
+                DefaultStartStation = AlignmentDefaultStartStation,
+            };
+
+        /// <summary>
+        /// 反向：把外部传入的 Alignment 默认值写回 ViewModel（含持久化触发）。
+        /// </summary>
+        public void ApplyAlignmentDefaults(Domain.ValueObjects.Road.AlignmentDefaults d)
+        {
+            if (d == null) return;
+            d.Validate();
+            AlignmentDefaultRadius = d.DefaultRadius;
+            AlignmentDefaultSpiralIn = d.DefaultSpiralIn;
+            AlignmentDefaultSpiralOut = d.DefaultSpiralOut;
+            AlignmentDefaultStartStation = d.DefaultStartStation;
+        }
 
         #endregion
 
@@ -619,24 +866,40 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {
                 if (_styleService == null) { StatusMessage = "StyleService 未初始化"; return; }
 
-                // 样式1：0-hy-说明-T，TrueType 微软雅黑（标题/说明）—— 字宽用 StyleTXScale（默认 1.0）
-                _styleService.CreateTextStyle(StyleTName, StyleTFont, "", TextSize * Scale, StyleTXScale);
-                // 样式2：0-hy-说明-S，SHX tssdeng+tssdchn（标注/引线/表格）—— 字宽用 StyleSXScale（默认 0.7）
-                _styleService.CreateTextStyle(StyleSName, StyleSFont, StyleSBigFont, TextSize * Scale, StyleSXScale);
+                var ctx = BuildScaleContext();
+                double uf = ctx.UnitFactor;
+                double scale = ctx.MainScale;      // DIMSCALE = M
+                double dimlfac = ctx.DimLfac;      // = UseSub ? S/M : 1
+                int dimdec = ctx.Precision;
+
+                // 文字样式：model-unit 字高 = paper_mm × uf × scale（字宽不变）
+                _styleService.CreateTextStyle(StyleTName, StyleTFont, "", TextSize * uf * scale, StyleTXScale);
+                _styleService.CreateTextStyle(StyleSName, StyleSFont, StyleSBigFont, TextSize * uf * scale, StyleSXScale);
                 _styleService.SetCurrentTextStyle(StyleSName);
 
-                _styleService.CreateDimensionStyle(DimStyleName, TextStyleName, Scale, Dimtxt, Dimexo, Dimexe, Dimdle, Dimgap, Dimasz);
-                _styleService.SetCurrentDimensionStyle(DimStyleName);
+                // 标注样式：paper-mm 基值原样传入，内部 × uf 存盘，再由 DIMSCALE 放大
+                _styleService.CreateDimensionStyle(
+                    ctx.BuildDimStyleName(), TextStyleName, scale,
+                    Dimtxt, Dimexo, Dimexe, Dimdle, Dimgap, Dimasz,
+                    dimlfac, dimdec, uf);
+                _styleService.SetCurrentDimensionStyle(ctx.BuildDimStyleName());
 
-                _styleService.CreateMLeaderStyle(MLeaderStyleName, TextStyleName, Scale, MLeaderArrowSize, MLeaderLandingGap, TextSize, MLeaderTextColorIndex);
-                _styleService.SetCurrentMLeaderStyle(MLeaderStyleName);
+                // 引线样式：paper-mm 基值原样传入，内部 × uf × scale 写入
+                _styleService.CreateMLeaderStyle(
+                    ctx.BuildMLeaderStyleName(), TextStyleName, scale,
+                    MLeaderArrowSize, MLeaderLandingGap, TextSize, MLeaderTextColorIndex, uf);
+                _styleService.SetCurrentMLeaderStyle(ctx.BuildMLeaderStyleName());
 
-                _styleService.CreateTableStyle(TableStyleName, TextStyleName);
-                _styleService.SetCurrentTableStyle(TableStyleName);
+                _styleService.CreateTableStyle(ctx.BuildTableStyleName(), TextStyleName);
+                _styleService.SetCurrentTableStyle(ctx.BuildTableStyleName());
+
+                ActiveScaleContextProvider.Set(ctx);
 
                 _stylesDirty = false;
                 SaveSettings();
-                StatusMessage = $"样式应用成功 (Scale={Scale})";
+                StatusMessage = ctx.UseSubScale
+                    ? $"样式应用成功 (M=1:{scale} S=1:{ctx.SubScale} {ctx.UnitShortName} p={dimdec})"
+                    : $"样式应用成功 (1:{scale} {ctx.UnitShortName} p={dimdec})";
             }
             catch (System.Exception ex)
             {
@@ -680,6 +943,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             // Tab A
             Scale = 50.0;
+            UseSubScale = false;
+            SubScale = 50.0;
+            Unit = DrawingUnit.Millimeter;
+            Precision = 0;
             StyleTName = "0-hy-说明-T";
             StyleTFont = "微软雅黑";
             StyleSName = "0-hy-说明-S";
@@ -764,9 +1031,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         /// <summary>
-        /// 保存当前面板参数到 JSON 文件
+        /// 保存当前面板参数到 JSON 文件。
+        /// 当 <paramref name="explicitPath"/> 为 null 时写入默认路径 <see cref="GetSettingsFilePath"/>。
         /// </summary>
-        public void SaveSettings()
+        public void SaveSettings(string explicitPath = null)
         {
             try
             {
@@ -774,6 +1042,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     // Tab A: 样式
                     Scale = Scale,
+                    UseSubScale = UseSubScale,
+                    SubScale = SubScale,
+                    Unit = Unit.ToString(),
+                    Precision = Precision,
                     StyleTName = StyleTName,
                     StyleTFont = StyleTFont,
                     StyleSName = StyleSName,
@@ -816,6 +1088,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     RoadCrosswalkWidth = RoadCrosswalkWidth,
                     RoadStopLineDistance = RoadStopLineDistance,
                     RoadStripeSpacing = RoadStripeSpacing,
+                    // Tab C: Alignment 默认
+                    AlignmentDefaultRadius = AlignmentDefaultRadius,
+                    AlignmentDefaultSpiralIn = AlignmentDefaultSpiralIn,
+                    AlignmentDefaultSpiralOut = AlignmentDefaultSpiralOut,
+                    AlignmentDefaultStartStation = AlignmentDefaultStartStation,
+                    // Tab C: 桩号标注
+                    StationMainInterval = StationMainInterval,
+                    StationSubInterval = StationSubInterval,
+                    StationTickLengthMain = StationTickLengthMain,
+                    StationTickLengthSub = StationTickLengthSub,
+                    StationTextHeight = StationTextHeight,
+                    StationTextMargin = StationTextMargin,
+                    StationRotateTextAlongTangent = StationRotateTextAlongTangent,
+                    StationTextSide = StationTextSide,
                     // 界面外观
                     Theme = Theme,
                     // 其他
@@ -823,33 +1109,58 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 };
 
                 var json = JsonConvert.SerializeObject(data, Formatting.Indented);
-                File.WriteAllText(GetSettingsFilePath(), json);
+                File.WriteAllText(explicitPath ?? GetSettingsFilePath(), json);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"保存设置失败: {ex.Message}");
+                if (explicitPath != null) throw; // 显式路径失败向上抛，让 UI 提示
             }
         }
 
         /// <summary>
-        /// 从 JSON 文件加载设置到当前实例
-        /// 文件不存在或格式错误时静默使用默认值
+        /// 显式保存到指定路径（「保存用户设置」按钮在 AutoSave=false 时走此路径）。
         /// </summary>
-        public void LoadSettings()
+        public void SaveSettingsToFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("路径不能为空", nameof(path));
+            SaveSettings(path);
+        }
+
+        /// <summary>
+        /// 从 JSON 文件加载设置到当前实例。
+        /// 当 <paramref name="explicitPath"/> 为 null 时读取默认路径；
+        /// 文件不存在或格式错误时静默使用默认值（显式路径下会抛异常让 UI 提示）。
+        /// </summary>
+        public void LoadSettings(string explicitPath = null)
         {
             _isLoading = true;
             try
             {
                 string beforeStyleSignature = BuildStyleSignature();
-                var path = GetSettingsFilePath();
-                if (!File.Exists(path)) { _isLoading = false; return; }
+                var path = explicitPath ?? GetSettingsFilePath();
+                if (!File.Exists(path))
+                {
+                    _isLoading = false;
+                    if (explicitPath != null) throw new FileNotFoundException("设置文件不存在", path);
+                    return;
+                }
 
                 var json = File.ReadAllText(path);
                 var data = JsonConvert.DeserializeObject<SettingsData>(json);
                 if (data == null) { _isLoading = false; return; }
 
-                // Tab A: 样式
-                Scale = data.Scale;
+                // Tab A: 样式 —— 先读比例相关字段（新 JSON 可能缺失，走向后兼容）
+                Scale = data.Scale > 0 ? data.Scale : 50.0;
+                UseSubScale = data.UseSubScale;
+                SubScale = data.SubScale > 0 ? data.SubScale : Scale;
+                if (!string.IsNullOrWhiteSpace(data.Unit)
+                    && Enum.TryParse<DrawingUnit>(data.Unit, true, out var unitParsed))
+                    Unit = unitParsed;
+                else
+                    Unit = DrawingUnit.Millimeter;
+                Precision = data.Precision;  // setter 自带 ClampPrecision，旧 JSON 缺失=0 兼容 mm
                 StyleTName = data.StyleTName ?? _styleTName;
                 StyleTFont = data.StyleTFont ?? _styleTFont;
                 StyleSName = data.StyleSName ?? _styleSName;
@@ -893,6 +1204,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 RoadCrosswalkWidth = data.RoadCrosswalkWidth;
                 RoadStopLineDistance = data.RoadStopLineDistance;
                 RoadStripeSpacing = data.RoadStripeSpacing;
+                // Tab C: Alignment 默认
+                AlignmentDefaultRadius = data.AlignmentDefaultRadius;
+                AlignmentDefaultSpiralIn = data.AlignmentDefaultSpiralIn;
+                AlignmentDefaultSpiralOut = data.AlignmentDefaultSpiralOut;
+                AlignmentDefaultStartStation = data.AlignmentDefaultStartStation;
+                // Tab C: 桩号标注
+                if (data.StationMainInterval > 0) StationMainInterval = data.StationMainInterval;
+                StationSubInterval = data.StationSubInterval;
+                StationTickLengthMain = data.StationTickLengthMain;
+                StationTickLengthSub = data.StationTickLengthSub;
+                if (data.StationTextHeight > 0) StationTextHeight = data.StationTextHeight;
+                StationTextMargin = data.StationTextMargin;
+                StationRotateTextAlongTangent = data.StationRotateTextAlongTangent;
+                if (!string.IsNullOrWhiteSpace(data.StationTextSide)) StationTextSide = data.StationTextSide;
                 // 界面外观（_isLoading 期间 setter 仍会调 BlenderThemeManager.Apply，刷新所有 DynamicResource）
                 if (!string.IsNullOrWhiteSpace(data.Theme))
                     Theme = data.Theme;
@@ -922,6 +1247,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// </summary>
         public void SavePublic() => SaveSettings();
 
+        /// <summary>从指定路径加载（「选择文件恢复」按钮）。</summary>
+        public void LoadSettingsFromFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("路径不能为空", nameof(path));
+            LoadSettings(path);
+        }
+
         /// <summary>
         /// 从磁盘重载 hy-settings.json（用于「恢复自动保存」按钮）。
         /// </summary>
@@ -935,6 +1268,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             // Tab A: 样式
             public double Scale { get; set; } = 50.0;
+            /// <summary>副比例开关（新增）</summary>
+            public bool UseSubScale { get; set; } = false;
+            /// <summary>副比例数值（新增；UseSubScale=false 时等于 Scale）</summary>
+            public double SubScale { get; set; } = 50.0;
+            /// <summary>绘图单位（新增）：Millimeter / Centimeter / Meter</summary>
+            public string Unit { get; set; } = "Millimeter";
+            /// <summary>标注小数位（新增）：mm={0} / cm={1,2} / m={1,2,3}</summary>
+            public int Precision { get; set; } = 0;
             public string StyleTName { get; set; } = "0-hy-说明-T";
             public string StyleTFont { get; set; } = "微软雅黑";
             public string StyleSName { get; set; } = "0-hy-说明-S";
@@ -984,6 +1325,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double RoadCrosswalkWidth { get; set; } = 5.0;
             public double RoadStopLineDistance { get; set; } = 2.0;
             public double RoadStripeSpacing { get; set; } = 1.0;
+            // Alignment 默认值（hyRoadAlnByPi 等命令读默认）
+            public double AlignmentDefaultRadius { get; set; } = 30.0;
+            public double AlignmentDefaultSpiralIn { get; set; } = 0.0;
+            public double AlignmentDefaultSpiralOut { get; set; } = 0.0;
+            public double AlignmentDefaultStartStation { get; set; } = 0.0;
+            // 桩号标注（RoadStationLabelOptions 持久化）
+            public double StationMainInterval { get; set; } = 20.0;
+            public double StationSubInterval { get; set; } = 5.0;
+            public double StationTickLengthMain { get; set; } = 4.0;
+            public double StationTickLengthSub { get; set; } = 1.5;
+            public double StationTextHeight { get; set; } = 3.0;
+            public double StationTextMargin { get; set; } = 0.5;
+            public bool StationRotateTextAlongTangent { get; set; } = true;
+            public string StationTextSide { get; set; } = "Left";
             // 界面外观：HyCAD.BlenderUI.Theming.BlenderThemeManager 主题枚举名
             // 取值：BlenderDark / BlenderLight / AcadLight / AcadDark
             public string Theme { get; set; } = "BlenderDark";
@@ -1001,6 +1356,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             return string.Join("|",
                 Scale,
+                UseSubScale,
+                SubScale,
+                Unit,
+                Precision,
                 StyleTName,
                 StyleTFont,
                 StyleSName,

@@ -25,7 +25,7 @@ v1 主攻 AutoCAD 出图功能落地（[01MASTER § 十一 P0-P5](./01MASTER.md#
 
 ---
 
-## 文档清单（18 篇）
+## 文档清单（18 篇 + 编号专项 3 篇）
 
 ### 整合类（5 篇）
 
@@ -36,6 +36,8 @@ v1 主攻 AutoCAD 出图功能落地（[01MASTER § 十一 P0-P5](./01MASTER.md#
 | [03RoadSelect.md](./03RoadSelect.md) | 道路核心系统专项：Alignment/Profile/Assembly/Corridor 四级体系 + 五维选择 + 联动 |
 | [04Pipeline_CAD_Blender_Lumion.md](./04Pipeline_CAD_Blender_Lumion.md) | **AutoCAD → Blender → Lumion 工具链专项**：v1 预留点清单、三维格式选型、v2/v3/v∞ 演进 |
 | [05计划书.md](./05计划书.md) | **总体作战地图**：现状坐标、5 条主线、不可动原则、任务看板、节奏节点、风险清单 |
+| [07Alignment.md](./07Alignment.md) | **平面线位用户操作流程对标**：Civil 3D / 鸿业 / HyCADTool 三方创建 / 编辑 / 桩号 / 校核 |
+| [09Assembly.md](./09Assembly.md) | **横断面装配用户操作流程对标**：Civil 3D Assembly+Subassembly / 鸿业标准横断面 / HyCADTool `hyRoadCs` 三方对标 |
 
 ### 国外标杆（5 篇）
 
@@ -64,6 +66,14 @@ v1 主攻 AutoCAD 出图功能落地（[01MASTER § 十一 P0-P5](./01MASTER.md#
 | [AutoTurn.md](./AutoTurn.md) | Transoft AutoTurn：车辆转弯轨迹、视距三角形、行人导流 |
 | [RhinoGH_Parametric.md](./RhinoGH_Parametric.md) | Rhino + Grasshopper：DAG 参数化、夹点预览、批量断面生成 |
 | [QGIS_GIS.md](./QGIS_GIS.md) | QGIS / ArcGIS：CRS / EPSG、矢量分层、空间索引、LandXML/GeoJSON/Shapefile |
+
+### 编号专项（平纵横分项）
+
+| 文档 | 核心看点 |
+|------|----------|
+| [06.md](./06.md) | 横断面：鸿业字段 ↔ HyCADTool 字段对标 |
+| [07Alignment.md](./07Alignment.md) | 平面线位：Civil 3D / 鸿业 / HyCADTool 用户操作流程对标 |
+| [10Corridor.md](./10Corridor.md) | **走廊**：Civil 3D Corridor 功能与用户操作流程（网络资料整理，非架构） |
 
 ---
 

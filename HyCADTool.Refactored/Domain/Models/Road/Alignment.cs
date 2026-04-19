@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using Newtonsoft.Json;
 
 namespace HyCADTool.Refactored.Domain.Models.Road
@@ -53,6 +54,17 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// 输入来源快照；按 PI 创建 / 编辑链路写入，hyRoadA 拾取保持为 null。
         /// </summary>
         public AlignmentSource Source { get; set; }
+
+        /// <summary>
+        /// 桩号方程（Station Equations）列表，沿中心线从 BP 向 EP 按 <see cref="StationEquation.BeforeRaw"/>
+        /// <b>严格升序</b> 排列。无方程时为空列表，显示桩号 = <see cref="StartStation"/> + rawFromBp。
+        ///
+        /// 新增 / 删除 / 清空由 <c>hyRoadAlnStaEq</c> 命令负责；<see cref="Domain.Services.Road.StationConverter"/>
+        /// 负责 raw → display 的换算，所有下游（Sub-Entity 表 / 几何点标注 / 桩号标注 / PI 与 Frame 导出）
+        /// 统一走换算后的显示桩号。
+        /// </summary>
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<StationEquation> StationEquations { get; set; } = new List<StationEquation>();
 
         public override string ToString() => $"Alignment[{Name}, Id={Id:N}, Points={Centerline.VertexCount}]";
 

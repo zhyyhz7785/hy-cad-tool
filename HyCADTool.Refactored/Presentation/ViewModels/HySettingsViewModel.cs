@@ -214,23 +214,62 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             var s = Settings;
             if (s == null) { StatusMessage = "无可用设置实例"; return; }
-            s.SavePublic();
-            StatusMessage = "用户设置已保存 → hy-settings.json";
+
+            // 关闭自动保存：弹 SaveFileDialog 让用户选位置；
+            // 开启自动保存：仍走默认 %APPDATA%\HyCADTool\hy-settings.json（与按钮语义"显式保存一次"一致）。
+            if (!AutoSaveEnabled)
+            {
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    FileName = "hy-settings.json",
+                    Filter = "HyCAD 设置 (*.json)|*.json|所有文件 (*.*)|*.*",
+                    DefaultExt = ".json",
+                    AddExtension = true,
+                    Title = "保存用户设置"
+                };
+                if (dlg.ShowDialog() != true) { StatusMessage = "已取消保存"; return; }
+                try
+                {
+                    s.SaveSettingsToFile(dlg.FileName);
+                    StatusMessage = $"已保存到 {dlg.FileName}";
+                }
+                catch (System.Exception ex) { StatusMessage = $"保存失败: {ex.Message}"; }
+            }
+            else
+            {
+                s.SavePublic();
+                StatusMessage = "用户设置已保存 → hy-settings.json";
+            }
         }
 
         private void OnRestoreAutoSaved()
         {
             var s = Settings;
             if (s == null) { StatusMessage = "无可用设置实例"; return; }
-            s.ReloadFromDisk();
-            StatusMessage = "已从磁盘重载设置";
+
+            // 始终弹 OpenFileDialog：按钮已改名"选择文件恢复"。
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "HyCAD 设置 (*.json)|*.json|所有文件 (*.*)|*.*",
+                CheckFileExists = true,
+                Title = "选择设置文件恢复"
+            };
+            if (dlg.ShowDialog() != true) { StatusMessage = "已取消恢复"; return; }
+            try
+            {
+                s.LoadSettingsFromFile(dlg.FileName);
+                StatusMessage = $"已从 {dlg.FileName} 恢复";
+            }
+            catch (System.Exception ex) { StatusMessage = $"加载失败: {ex.Message}"; }
         }
 
         private void OnLoadDefaults()
         {
             var s = Settings;
             if (s == null) { StatusMessage = "无可用设置实例"; return; }
+            // 1) Reset 改 VM + 写 JSON；2) 立即 Apply 让 AutoCAD 样式回到默认
             s.ResetCommand?.Execute(null);
+            s.ApplyStyleCommand?.Execute(null);
             StatusMessage = s.StatusMessage;
         }
 

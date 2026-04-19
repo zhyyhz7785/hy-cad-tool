@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Events.Road;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
@@ -262,32 +263,95 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             var ms = (BlockTableRecord)transaction.GetObject(
                 bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
-            // 主桩：每 MainInterval 一个，首尾包含。
+            // 主/副桩：按"显示桩号整数倍"对齐（方程之间分段对齐），不是 raw 距离整数倍。
+            // 这样 K0+000 / K0+020 等整桩号永远是主桩，跨方程后也能重新从整 display 开始。
+            var mainTicks = PlanDisplayAlignedTicks(alignment, options.MainInterval);
             int mainCount = 0;
-            foreach (var s in alignment.Centerline.SamplePlanarStations(options.MainInterval, startOffset: 0, includeEnd: true))
+            var mainKeySet = new HashSet<long>(mainTicks.Count);
+            foreach (var t in mainTicks)
             {
-                AppendStationTick(transaction, ms, database, alignment, s, options, isMain: true, layerName: useLayer ? layerName : null);
+                AppendStationTick(transaction, ms, database, alignment, t.Sample, t.Display, options,
+                    isMain: true, layerName: useLayer ? layerName : null);
                 mainCount++;
+                mainKeySet.Add(DisplayKey(t.Display));
             }
 
-            // 副桩：只在非主桩位置补（避免和主桩重叠）。
             int subCount = 0;
             if (options.SubInterval > 0 && options.SubInterval < options.MainInterval)
             {
-                const double overlapTol = 1e-6;
-                foreach (var s in alignment.Centerline.SamplePlanarStations(options.SubInterval))
+                foreach (var t in PlanDisplayAlignedTicks(alignment, options.SubInterval))
                 {
-                    // 跳过与主桩重合的点
-                    double modMain = s.Station % options.MainInterval;
-                    if (modMain < overlapTol || options.MainInterval - modMain < overlapTol) continue;
+                    if (mainKeySet.Contains(DisplayKey(t.Display))) continue;
 
-                    AppendStationTick(transaction, ms, database, alignment, s, options, isMain: false, layerName: useLayer ? layerName : null);
+                    AppendStationTick(transaction, ms, database, alignment, t.Sample, t.Display, options,
+                        isMain: false, layerName: useLayer ? layerName : null);
                     subCount++;
                 }
             }
 
             return (mainCount, subCount);
         }
+
+        /// <summary>
+        /// 按"显示桩号整数倍"规划 tick：遍历 [0..totalRaw] 上的每段方程区间，
+        /// 在每段内找首个 ≥ displayLo 的 <paramref name="interval"/> 倍数，再按 interval 步进到 displayHi。
+        /// 对应的 raw = rawLo + (display − displayLo)，保证每个 tick 的 <b>显示桩号</b> 恰好整除 interval。
+        /// </summary>
+        private static List<(StationSample Sample, double Display)> PlanDisplayAlignedTicks(
+            Domain.Models.Road.Alignment alignment, double interval)
+        {
+            var result = new List<(StationSample, double)>();
+            var poly = alignment.Centerline;
+            if (poly == null || poly.VertexCount < 2 || interval <= 0) return result;
+
+            double totalRaw = poly.GetPlanarLength();
+            if (totalRaw <= 1e-9) return result;
+
+            double startStation = alignment.StartStation;
+            var eqs = alignment.StationEquations ?? new List<Domain.ValueObjects.Road.StationEquation>();
+
+            // 构造分段区间：(rawLo, rawHi, displayAtLo)
+            var ranges = new List<(double RawLo, double RawHi, double DispLo)>();
+            double prevRaw = 0;
+            double prevDisp = startStation;
+            foreach (var eq in Domain.Services.Road.StationConverter.CloneSorted(eqs))
+            {
+                if (eq.BeforeRaw > prevRaw + 1e-9 && eq.BeforeRaw <= totalRaw + 1e-9)
+                {
+                    ranges.Add((prevRaw, Math.Min(eq.BeforeRaw, totalRaw), prevDisp));
+                    prevRaw = eq.BeforeRaw;
+                    prevDisp = eq.AheadStation;
+                }
+            }
+            if (prevRaw < totalRaw - 1e-9) ranges.Add((prevRaw, totalRaw, prevDisp));
+
+            const double eps = 1e-9;
+            foreach (var r in ranges)
+            {
+                double segLen = r.RawHi - r.RawLo;
+                if (segLen <= eps) continue;
+                double dispLo = r.DispLo;
+                double dispHi = dispLo + segLen;
+
+                // 首个 ≥ dispLo 的 interval 倍数
+                double firstMul = Math.Ceiling(dispLo / interval - eps) * interval;
+
+                for (double d = firstMul; d <= dispHi + eps; d += interval)
+                {
+                    double raw = r.RawLo + (d - dispLo);
+                    if (raw < -eps || raw > totalRaw + eps) continue;
+                    raw = Math.Max(0, Math.Min(totalRaw, raw));
+                    var sample = new StationSample(raw,
+                        poly.PointAtPlanarStation(raw),
+                        poly.TangentAtPlanarStation(raw));
+                    result.Add((sample, d));
+                }
+            }
+            return result;
+        }
+
+        /// <summary>把 display 桩号化为"毫米级"整数键，用于主/副桩去重。</summary>
+        private static long DisplayKey(double display) => (long)Math.Round(display * 1000.0);
 
         /// <summary>
         /// 清除指定 Alignment 挂在 DWG 上的全部桩号标注实体（HY_ROAD KIND=StationLabel，ID=alignmentId）。
@@ -334,6 +398,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Database db,
             Alignment alignment,
             StationSample sample,
+            double displayStation,
             RoadStationLabelOptions options,
             bool isMain,
             string layerName)
@@ -364,9 +429,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             double textX = center.X + textSideNormal.X * textAnchorOffset;
             double textY = center.Y + textSideNormal.Y * textAnchorOffset;
 
+            // 桩号字符串：调用方已把 display 值算好（对齐到 display 整数倍），此处直接使用。
             var text = new DBText
             {
-                TextString = sample.FormatStation(),
+                TextString = HyCADTool.Refactored.Domain.Services.Road.AlignmentStationBreakdown.FormatStation(displayStation),
                 Height = options.TextHeight,
                 Position = new Point3d(textX, textY, center.Z)
             };
@@ -379,6 +445,238 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             ms.AppendEntity(text);
             tr.AddNewlyCreatedDBObject(text, true);
             HyRoadXdata.Write(tr, db, text, alignment.Id, StationLabelKind, SchemaVersion.Current);
+        }
+
+        /// <summary>
+        /// HY_ROAD 里几何点标注实体统一的 KIND 值（hyRoadAlnGeomPt 专用）。
+        /// </summary>
+        private const string GeometryPointLabelKind = "GeometryPointLabel";
+
+        /// <summary>
+        /// 沿指定 Alignment 在每个几何点（BP / EP / BC / EC / TS / SC / CS / ST，可选 PI）画一组"钉子 + 引线 + 两行文字"。
+        ///
+        /// 幂等策略：
+        /// - 本方法内部先调 <see cref="ClearGeometryPointLabels"/> 删除同一 AlignmentId 的历史几何点实体；
+        /// - 再按 <paramref name="options"/> 的样式批量生成。
+        /// 这样用户可以反复跑 <c>hyRoadAlnGeomPt</c> 更新标注，而不会累积重复图元。
+        ///
+        /// 落图规则：
+        /// - 标记圆：<see cref="Circle"/>，挂到 <see cref="HyRoadLayers.GeometryPointLayer"/>；
+        /// - 引线 + 文字：<see cref="Line"/> + <see cref="DBText"/>（两行：点名 / 桩号）；
+        /// - 所有实体挂 HY_ROAD XData：<c>KIND=<see cref="GeometryPointLabelKind"/></c>，<c>ID=alignmentId</c>。
+        ///
+        /// 几何点的桩号 / 坐标 / 切向由 <see cref="AlignmentStationBreakdown.Build"/> 提供；
+        /// 因此需要 <see cref="Alignment.Source"/>.PiElements 非空（按 PI 创建的 Alignment）。
+        /// </summary>
+        /// <returns>生成的几何点数量（未登记 / PI 表缺失 / 无效 Alignment 时返回 0）。</returns>
+        public int DrawGeometryPointLabels(
+            string documentName,
+            Transaction transaction,
+            Database database,
+            Guid alignmentId,
+            RoadGeometryPointLabelOptions options = null)
+        {
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+            if (database == null) throw new ArgumentNullException(nameof(database));
+            if (alignmentId == Guid.Empty) throw new ArgumentException("alignmentId cannot be empty", nameof(alignmentId));
+
+            options = options ?? RoadGeometryPointLabelOptions.Default;
+            options.Validate();
+
+            if (!_registry.TryGet(documentName, out var design)) return 0;
+            var alignment = design.Alignments.FirstOrDefault(a => a.Id == alignmentId);
+            if (alignment == null) return 0;
+            if (alignment.Source == null || alignment.Source.PiElements == null || alignment.Source.PiElements.Count < 2)
+                return 0;
+
+            var elements = alignment.Source.PiElements
+                .Select(e => new PiElement(e.P, e.Radius, e.SpiralIn, e.SpiralOut, e.Tag))
+                .ToList();
+
+            AlignmentBreakdown breakdown;
+            try
+            {
+                breakdown = AlignmentStationBreakdown.Build(elements, alignment.StartStation, null, alignment.StationEquations);
+            }
+            catch
+            {
+                return 0;
+            }
+
+            // 先清旧（幂等）
+            ClearGeometryPointLabels(transaction, database, alignmentId);
+
+            string layerName = HyRoadLayers.GeometryPointLayer;
+            bool useLayer = LayerExists(transaction, database, layerName);
+
+            var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)transaction.GetObject(
+                bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+
+            int count = 0;
+            foreach (var gp in breakdown.GeometryPoints)
+            {
+                // 根据选项决定是否跳过纯 PI 点
+                if (gp.Kind == GeometryPointKind.PI && !options.LabelPlainPi) continue;
+
+                // 求该点处的切向：优先"以该点为起点的段"的 startBearing；
+                // 没有就用"以该点为终点的段"的 endBearing（末点 EP 常见）。
+                if (!TryFindTangent(breakdown, gp, out double bearingRad))
+                {
+                    bearingRad = 0; // 退回水平
+                }
+
+                AppendGeometryPointLabel(
+                    transaction, ms, database, alignment, gp, bearingRad,
+                    options, useLayer ? layerName : null);
+                count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// 清除指定 Alignment 挂在 DWG 上的全部几何点标注实体（HY_ROAD KIND=<see cref="GeometryPointLabelKind"/>、ID=alignmentId）。
+        /// </summary>
+        /// <returns>被擦除的实体数量。</returns>
+        public int ClearGeometryPointLabels(Transaction transaction, Database database, Guid alignmentId)
+        {
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+            if (database == null) throw new ArgumentNullException(nameof(database));
+            if (alignmentId == Guid.Empty) return 0;
+
+            var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)transaction.GetObject(
+                bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+
+            var toErase = new List<ObjectId>();
+            foreach (ObjectId id in ms)
+            {
+                var ent = transaction.GetObject(id, OpenMode.ForRead);
+                if (ent == null) continue;
+                var kind = HyRoadXdata.ReadKind(transaction, ent);
+                if (!string.Equals(kind, GeometryPointLabelKind, StringComparison.Ordinal)) continue;
+                var gid = HyRoadXdata.ReadId(transaction, ent);
+                if (gid != alignmentId) continue;
+                toErase.Add(id);
+            }
+
+            foreach (var id in toErase)
+            {
+                var ent = transaction.GetObject(id, OpenMode.ForWrite);
+                if (ent != null && !ent.IsErased) ent.Erase();
+            }
+            return toErase.Count;
+        }
+
+        /// <summary>
+        /// 在 <paramref name="breakdown"/> 的 Segments 中查找与 <paramref name="gp"/> 桩号吻合的切向。
+        /// 规则：按"以 gp 为起点的段"优先，否则按"以 gp 为终点的段"兜底；都找不到返回 false。
+        /// </summary>
+        private static bool TryFindTangent(
+            AlignmentBreakdown breakdown,
+            GeometryPoint gp,
+            out double bearingRad)
+        {
+            const double sTol = 1e-6;
+            foreach (var seg in breakdown.Segments)
+            {
+                if (Math.Abs(seg.StationStartM - gp.StationM) < sTol)
+                {
+                    bearingRad = seg.StartBearingRad;
+                    return true;
+                }
+            }
+            foreach (var seg in breakdown.Segments)
+            {
+                if (Math.Abs(seg.StationEndM - gp.StationM) < sTol)
+                {
+                    bearingRad = seg.EndBearingRad;
+                    return true;
+                }
+            }
+            bearingRad = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// 单个几何点"钉子"：标记圆 + 引线 + 两行文字（点名 / 桩号）。
+        /// 文字保持水平（不跟切向旋转），方便出图阅读；位置沿切向法向偏出引线。
+        /// </summary>
+        private static void AppendGeometryPointLabel(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Alignment alignment,
+            GeometryPoint gp,
+            double bearingRad,
+            RoadGeometryPointLabelOptions options,
+            string layerName)
+        {
+            var tUnit = new Vector2D(Math.Cos(bearingRad), Math.Sin(bearingRad));
+            var leftNormal = tUnit.Perpendicular();
+            var sideNormal = options.TextSide == StationTextSide.Left ? leftNormal : -leftNormal;
+
+            var center = gp.Point;
+            var centerPt3 = new Point3d(center.X, center.Y, 0);
+
+            // 1) 标记圆
+            var circle = new Circle(centerPt3, Vector3d.ZAxis, options.MarkerRadius);
+            if (!string.IsNullOrEmpty(layerName)) circle.Layer = layerName;
+            ms.AppendEntity(circle);
+            tr.AddNewlyCreatedDBObject(circle, true);
+            HyRoadXdata.Write(tr, db, circle, alignment.Id, GeometryPointLabelKind, SchemaVersion.Current);
+
+            // 2) 引线：圆外缘 → 外侧文字锚点
+            double leaderStartOffset = options.MarkerRadius;
+            double leaderEndOffset = options.MarkerRadius + options.LeaderLength;
+            var leaderStart = new Point3d(
+                center.X + sideNormal.X * leaderStartOffset,
+                center.Y + sideNormal.Y * leaderStartOffset,
+                0);
+            var leaderEnd = new Point3d(
+                center.X + sideNormal.X * leaderEndOffset,
+                center.Y + sideNormal.Y * leaderEndOffset,
+                0);
+            var leader = new Line(leaderStart, leaderEnd);
+            if (!string.IsNullOrEmpty(layerName)) leader.Layer = layerName;
+            ms.AppendEntity(leader);
+            tr.AddNewlyCreatedDBObject(leader, true);
+            HyRoadXdata.Write(tr, db, leader, alignment.Id, GeometryPointLabelKind, SchemaVersion.Current);
+
+            // 3) 两行文字：点名（第 1 行，紧邻引线末端） / 桩号（第 2 行）
+            double textAnchorOffset = leaderEndOffset + options.TextMargin;
+            double nameTextX = center.X + sideNormal.X * textAnchorOffset;
+            double nameTextY = center.Y + sideNormal.Y * textAnchorOffset;
+
+            var nameText = new DBText
+            {
+                TextString = gp.Kind.ToString(),
+                Height = options.NameTextHeight,
+                Position = new Point3d(nameTextX, nameTextY, 0)
+            };
+            if (!string.IsNullOrEmpty(layerName)) nameText.Layer = layerName;
+            ms.AppendEntity(nameText);
+            tr.AddNewlyCreatedDBObject(nameText, true);
+            HyRoadXdata.Write(tr, db, nameText, alignment.Id, GeometryPointLabelKind, SchemaVersion.Current);
+
+            // 桩号文字挂在点名下方：延同一法向 + 一个文字高度向下偏移（沿中心线的"上游方向"= -tUnit）
+            // 为了在地图平面上"往下"看起来像换行，实际用 sideNormal 继续推得远一点更稳：但这样会被误读成另一点。
+            // 折中：沿 -sideNormal 的垂直方向"行距"往"更远外侧"偏一行（即 sideNormal * lineSpacing）。
+            double stationAnchorOffset = textAnchorOffset + options.NameTextHeight + options.TextLineSpacing;
+            double stationTextX = center.X + sideNormal.X * stationAnchorOffset;
+            double stationTextY = center.Y + sideNormal.Y * stationAnchorOffset;
+
+            var stationText = new DBText
+            {
+                TextString = AlignmentStationBreakdown.FormatStation(gp.StationM),
+                Height = options.StationTextHeight,
+                Position = new Point3d(stationTextX, stationTextY, 0)
+            };
+            if (!string.IsNullOrEmpty(layerName)) stationText.Layer = layerName;
+            ms.AppendEntity(stationText);
+            tr.AddNewlyCreatedDBObject(stationText, true);
+            HyRoadXdata.Write(tr, db, stationText, alignment.Id, GeometryPointLabelKind, SchemaVersion.Current);
         }
 
         /// <summary>
