@@ -24,6 +24,8 @@ namespace HyCADTool.ReCall
         public string Icon { get; set; }
         public string Tooltip { get; set; }
         public int Order { get; set; } = 100;
+        /// <summary>Hy 面板「道路」Tab 内五区折叠分组（工程/路线/纵断/道路/工具），可选。</summary>
+        public string RoadPanelGroup { get; set; }
     }
 
     /// <summary>
@@ -44,6 +46,7 @@ namespace HyCADTool.ReCall
         public string Tooltip => string.IsNullOrEmpty(Entry?.Tooltip) ? DisplayName : Entry.Tooltip;
         public string Icon => Entry?.Icon;
         public int Order => Entry?.Order ?? 100;
+        public string RoadPanelGroup => Entry?.RoadPanelGroup;
     }
 
     /// <summary>
@@ -165,6 +168,7 @@ namespace HyCADTool.ReCall
                         Icon = (string)obj["icon"],
                         Tooltip = (string)obj["tooltip"],
                         Order = obj["order"] != null ? (int)obj["order"] : 100,
+                        RoadPanelGroup = (string)obj["roadPanelGroup"],
                     };
                     dict[p.Name] = entry;
                 }

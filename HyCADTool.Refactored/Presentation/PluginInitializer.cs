@@ -62,6 +62,13 @@ namespace HyCADTool.Refactored.Presentation
                 // 但 LoadComponent 大概率会跟着挂；不在此处吞错的更深处再抛更利于诊断。
             }
 
+            // 【PaletteSet / PanelListView】预热 AdWindows 的 Badge 主题字典。
+            // 症状：首次打开 Hy 面板时 Autodesk.Internal.Windows.Badge ApplyTemplate 才去解析
+            // pack:///AdWindows;component/themes/badge.xaml，偶发 “不具有该 URI 识别的资源” XamlParseException，
+            // 堆栈落在 Autodesk.Private.Windows.PanelListView.MeasureOverride（PaletteSet 内部标签栏）。
+            // 在任意 WPF 面板创建前同步加载一次，让 PackUriHelper 缓存 BAML，与 H6 注释中 Ribbon Badge 同源根因。
+            WarmupAdWindowsBadgeTheme();
+
             try
             {
                 WriteMessage("\n========================================");
@@ -456,6 +463,28 @@ namespace HyCADTool.Refactored.Presentation
             }
 
             WriteMessage($"\n  ✓ SubView 预热完成（成功 {ok} / 失败 {fail}）");
+        }
+
+        /// <summary>
+        /// 预热 <c>AdWindows.dll</c> 内 PaletteSet/Ribbon 共用的 Badge 主题（<c>themes/badge.xaml</c>）。
+        /// 不合并到 <see cref="System.Windows.Application.Current"/>，仅触发 pack URI 解析与 BAML 缓存。
+        /// </summary>
+        private static void WarmupAdWindowsBadgeTheme()
+        {
+            try
+            {
+                var uri = new System.Uri(
+                    "pack://application:,,,/AdWindows;component/themes/badge.xaml",
+                    System.UriKind.Absolute);
+                var dict = new System.Windows.ResourceDictionary { Source = uri };
+                if (dict != null)
+                    System.Diagnostics.Debug.WriteLine($"[HyCAD] AdWindows badge.xaml 预热 OK，顶层键 {dict.Count}");
+            }
+            catch (System.Exception ex)
+            {
+                // 版本差异或精简安装可能缺文件；不阻断插件，仅 Debug（避免命令行刷屏）
+                System.Diagnostics.Debug.WriteLine("[HyCAD] AdWindows badge.xaml 预热跳过: " + ex.GetType().Name + ": " + ex.Message);
+            }
         }
 
         /// <summary>

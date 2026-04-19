@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -138,6 +139,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     };
                     foreach (var it in g.Items)
                         tab.Items.Add(new CommandItemVm(it));
+                    if (string.Equals(g.Category, "道路", StringComparison.Ordinal))
+                        FillRoadPanelGroups(tab);
                     Tabs.Add(tab);
                     totalCommands += g.Items.Count;
                 }
@@ -192,6 +195,52 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             return pinyin.IndexOf(kw, System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        /// <summary>Hy 面板「道路」Tab 内五区顺序（与 commands.json roadPanelGroup 一致）。</summary>
+        private static readonly string[] RoadPanelGroupOrder =
+        {
+            "工程", "路线", "纵断", "道路", "工具",
+        };
+
+        private static void FillRoadPanelGroups(CategoryTabVm tab)
+        {
+            tab.RoadPanelGroups.Clear();
+            var buckets = new Dictionary<string, List<CommandItemVm>>(StringComparer.Ordinal);
+            foreach (var vm in tab.Items)
+            {
+                var grp = vm.RoadPanelGroup;
+                if (string.IsNullOrWhiteSpace(grp)) continue;
+                if (!buckets.TryGetValue(grp, out var list))
+                {
+                    list = new List<CommandItemVm>();
+                    buckets[grp] = list;
+                }
+                list.Add(vm);
+            }
+
+            var first = true;
+            foreach (var name in RoadPanelGroupOrder)
+            {
+                if (!buckets.TryGetValue(name, out var list) || list.Count == 0) continue;
+                list.Sort(CompareCommandItems);
+                var section = new CommandSectionVm
+                {
+                    Header = name,
+                    IsExpanded = first,
+                };
+                first = false;
+                foreach (var vm in list)
+                    section.Items.Add(vm);
+                tab.RoadPanelGroups.Add(section);
+            }
+        }
+
+        private static int CompareCommandItems(CommandItemVm a, CommandItemVm b)
+        {
+            int c = a.Order.CompareTo(b.Order);
+            if (c != 0) return c;
+            return string.Compare(a.DisplayName, b.DisplayName, StringComparison.Ordinal);
+        }
+
         private static string PickCategoryIcon(string category)
         {
             switch (category)
@@ -229,6 +278,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public string Icon { get; set; }
         public ObservableCollection<CommandItemVm> Items { get; } = new ObservableCollection<CommandItemVm>();
 
+        /// <summary>仅 category=道路 且 JSON 含 roadPanelGroup 时非空，供多 Expander 绑定。</summary>
+        public ObservableCollection<CommandSectionVm> RoadPanelGroups { get; } = new ObservableCollection<CommandSectionVm>();
+
+        public bool HasRoadPanelGroups => RoadPanelGroups.Count > 0;
+
         public override string ToString() => Name ?? "(未命名)";
     }
 
@@ -246,7 +300,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             // 常用 / 钢筋 / 底板 / 桩 / 沉降 / 标高 / 尺寸 / 螺栓 / 设备 / 基础
             {'常','C'},{'用','Y'},{'钢','G'},{'筋','J'},{'底','D'},{'板','B'},{'配','P'},
             {'桩','Z'},{'基','J'},{'沉','C'},{'降','J'},{'标','B'},{'高','G'},
-            {'尺','C'},{'寸','C'},{'标','B'},{'注','Z'},{'地','D'},{'脚','J'},{'螺','L'},{'栓','S'},
+            {'尺','C'},{'寸','C'},{'注','Z'},{'地','D'},{'脚','J'},{'螺','L'},{'栓','S'},
             {'设','S'},{'备','B'},
             // 图框 / 视口 / 道路 / 块 / 引线 / 导出 / 说明 / 多段线 / 垫层 / 测试 / 杂项
             {'图','T'},{'框','K'},{'视','S'},{'口','K'},{'道','D'},{'路','L'},
@@ -264,6 +318,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {'人','R'},{'行','X'},{'横','H'},{'方','F'},{'位','W'},{'样','Y'},{'式','S'},
             {'保','B'},{'存','C'},{'载','Z'},{'加','J'},{'滤','L'},{'与','Y'},
             {'定','D'},{'查','C'},{'组','Z'},{'圆','Y'},{'心','X'},{'垫','D'},
+            // Hy 道路五区标题
+            {'工','G'},{'程','C'},{'纵','Z'},{'断','D'},{'具','J'},
             // 数字/英文不需要
         };
 

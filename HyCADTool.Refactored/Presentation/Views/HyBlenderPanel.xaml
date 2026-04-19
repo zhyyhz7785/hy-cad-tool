@@ -83,6 +83,18 @@
                 </Button>
             </DataTemplate>
 
+            <!-- 道路 Tab：五区折叠（工程/路线/纵断/道路/工具） -->
+            <DataTemplate x:Key="RoadPanelSectionTemplate" DataType="{x:Type vm:CommandSectionVm}">
+                <Expander Style="{StaticResource BlenderExpander}"
+                          IsExpanded="{Binding IsExpanded}">
+                    <Expander.Header>
+                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold"/>
+                    </Expander.Header>
+                    <ItemsControl ItemsSource="{Binding Items}"
+                                  ItemTemplate="{StaticResource CommandItemTemplate}"/>
+                </Expander>
+            </DataTemplate>
+
             <Style x:Key="SearchClearButton" TargetType="{x:Type Button}">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="BorderThickness" Value="0"/>
@@ -277,13 +289,48 @@
                         </Style>
                     </ScrollViewer.Style>
                     <StackPanel Margin="6,4">
-                        <Expander Style="{StaticResource BlenderExpander}" IsExpanded="True">
-                            <Expander.Header>
-                                <TextBlock Text="{Binding SelectedTab.Name}" FontWeight="SemiBold"/>
-                            </Expander.Header>
-                            <ItemsControl ItemsSource="{Binding FilteredItems}"
-                                          ItemTemplate="{StaticResource CommandItemTemplate}"/>
-                        </Expander>
+                        <!-- 道路：五区多 Expander -->
+                        <ItemsControl ItemTemplate="{StaticResource RoadPanelSectionTemplate}"
+                                      ItemsSource="{Binding SelectedTab.RoadPanelGroups}">
+                            <ItemsControl.Style>
+                                <Style TargetType="{x:Type ItemsControl}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsSearching}" Value="False"/>
+                                                <Condition Binding="{Binding SelectedTab.HasRoadPanelGroups}" Value="True"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ItemsControl.Style>
+                        </ItemsControl>
+                        <!-- 其他分类：单 Expander -->
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsSearching}" Value="False"/>
+                                                <Condition Binding="{Binding SelectedTab.HasRoadPanelGroups}" Value="True"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <Expander Style="{StaticResource BlenderExpander}" IsExpanded="True">
+                                <Expander.Header>
+                                    <TextBlock Text="{Binding SelectedTab.Name}" FontWeight="SemiBold"/>
+                                </Expander.Header>
+                                <ItemsControl ItemsSource="{Binding FilteredItems}"
+                                              ItemTemplate="{StaticResource CommandItemTemplate}"/>
+                            </Expander>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
