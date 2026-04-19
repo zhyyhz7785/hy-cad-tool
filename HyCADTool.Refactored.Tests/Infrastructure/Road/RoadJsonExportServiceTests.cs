@@ -453,6 +453,28 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
         }
 
         /// <summary>
+        /// v1.1 回归防护：<see cref="Intersection.HasKerbChain"/> 布尔开关的 JSON 往返。
+        /// 本字段是唯一需要持久化的 Kerb 状态（KerbSegment 本身为派生量，不落 JSON）。
+        /// </summary>
+        [Fact]
+        public void SaveThenLoad_Roundtrip_PreservesHasKerbChain()
+        {
+            var svc = new RoadJsonExportService();
+            var path = Path.Combine(_tempDir, "v11-kerbchain-roundtrip.roaddesign.json");
+
+            var design = new RoadDesign { ProjectName = "v11-kerb" };
+            design.Intersections.Add(new Intersection { Name = "kerb-on", HasKerbChain = true });
+            design.Intersections.Add(new Intersection { Name = "kerb-off" /* 默认 false */ });
+
+            svc.Save(design, path);
+            var loaded = svc.Load(path);
+
+            loaded.Intersections.Should().HaveCount(2);
+            loaded.Intersections[0].HasKerbChain.Should().BeTrue();
+            loaded.Intersections[1].HasKerbChain.Should().BeFalse();
+        }
+
+        /// <summary>
         /// IsEmpty 联动：仅含 Intersection（无 Alignment / Template / ...）的 design
         /// 必须被 <see cref="RoadJsonExportService.SaveForDocument"/> 当作非空而落盘，
         /// 否则用户只画交叉口时 JSON 不会生成，下次打开丢数据。

@@ -128,34 +128,36 @@ namespace HyCADTool.Refactored.Domain.Models.Drawing
         //  静态工具：小数位允许集合与夹紧
         // =========================================================================
 
-        /// <summary>各单位允许的标注小数位。mm={0}, cm={1,2}, m={1,2,3}</summary>
+        /// <summary>各单位允许的标注小数位（统一 0..3，三单位下拉一致）。</summary>
         public static int[] GetAllowedPrecisions(DrawingUnit unit)
+        {
+            // 历史上 mm 固定 0 / cm=1-2 / m=1-3，随后业务反馈要求三档统一到 0..3，
+            // 交由使用者在切换单位时用 GetDefaultPrecision 自动切到合理默认值。
+            return new[] { 0, 1, 2, 3 };
+        }
+
+        /// <summary>
+        /// 切换到指定单位时的推荐默认小数位：mm=0 / cm=2 / m=3（对应纸面 0.25 mm 量级读数粒度）。
+        /// </summary>
+        public static int GetDefaultPrecision(DrawingUnit unit)
         {
             switch (unit)
             {
-                case DrawingUnit.Millimeter: return new[] { 0 };
-                case DrawingUnit.Centimeter: return new[] { 1, 2 };
-                case DrawingUnit.Meter: return new[] { 1, 2, 3 };
-                default: return new[] { 0 };
+                case DrawingUnit.Millimeter: return 0;
+                case DrawingUnit.Centimeter: return 2;
+                case DrawingUnit.Meter: return 3;
+                default: return 0;
             }
         }
 
         /// <summary>
-        /// 把小数位夹紧到该单位允许集合内。
-        /// 超出上/下界取端点；集合内非允许值向下取最近允许值。
+        /// 把小数位夹紧到允许集合（当前统一 0..3）。保留方法名以兼容旧调用点。
         /// </summary>
         public static int ClampPrecision(DrawingUnit unit, int precision)
         {
-            var allowed = GetAllowedPrecisions(unit);
-            int min = allowed[0];
-            int max = allowed[allowed.Length - 1];
-            if (precision <= min) return min;
-            if (precision >= max) return max;
-            for (int i = allowed.Length - 1; i >= 0; i--)
-            {
-                if (allowed[i] <= precision) return allowed[i];
-            }
-            return min;
+            if (precision < 0) return 0;
+            if (precision > 3) return 3;
+            return precision;
         }
 
         /// <summary>

@@ -419,7 +419,7 @@ RoadDesign (aggregate root)
 | Presentation   | `hyRoadIntersection` / `hyRoadCurbRamp` / `hyRoadTactilePaving`      | 在 AutoCAD 内联调（无自动化） |
 | DI             | Autofac 单例注册                                                      |                              |
 | 命令注册       | `ReCall/commands.json` order=55/56/57                                |                              |
-| 单测总计       | 562 / 564 全绿（2 跳过 = AutoCAD 依赖预期）                           | 从 513 → 562（+49）          |
+| 单测总计       | Road 模块 509 / 511 绿（2 跳过 = AutoCAD 依赖）                       | 从 513 → 572（+59，v1.1 累计）|
 
 ### 9.2 v1.1 进行中（根据 §8 局限）
 
@@ -430,7 +430,19 @@ RoadDesign (aggregate root)
      若已存在 CurbRamp / TactilePaving 则联动 `RebuildAccessibility` → JSON 落盘 + 再校核；
    - 非破坏性：`Intersection.Legs` 排序不重排，未触及的 `CornerArc.Center/Radius` 严格不变；
    - 测试：`IntersectionDesignerLocalEditTests` 9 个（9/9 绿），单测覆盖参数校验 + 影响面隔离。
-- [ ] `hyRoadIntersectionKerbChain`：连接相邻 CornerArc 的路缘外边线直段（§8-2）
+- [x] `hyRoadIntersectionKerbChain`：连接相邻 CornerArc 的路缘外边线直段（§8-2）
+   - Domain：新值对象 `KerbSegment`（`LegIndex + Side + From + To`）+ `KerbChainDesigner.ComputeKerbSegments`，
+     N 条 Leg 产生至多 2N 段 Line；派生量不入 JSON，仅持久化 `Intersection.HasKerbChain` 布尔开关；
+   - 切点对齐：Leg 左侧 → 同 LegIndexA 的 `CornerArc.StartPoint`；Leg 右侧 → 同 LegIndexB 的
+     `CornerArc.EndPoint`（与 `IntersectionDesigner.TryBuildCornerArc` 锚点约定一致）；
+   - 命令交互：拾取任一交叉口实体 → 切换 `HasKerbChain` → `RebuildIntersection` 自动画 / 擦 Kerb 线 →
+     `RebuildAccessibility` 同步 → JSON 落盘；与 `hyRoadIntersectionEdit` 协作：改 R / 改 HalfWidth 后 Kerb 链自动重算；
+   - Xdata：新 KIND = `IntersectionKerb`，共用 `05_hy_道路_交叉口` 图层，按 `Intersection.Id` 精确清理；
+   - 测试：`KerbChainDesignerTests` 10 个（10/10 绿），覆盖段数 / 锚点 / 切点 / 方向 / 长度 / 边界；
+     `RoadJsonExportServiceTests.SaveThenLoad_Roundtrip_PreservesHasKerbChain` 保证开关落盘；
+   - 附带发现：`IntersectionLeg.InwardDirection` 的字面 XMLdoc（"指向交叉口中心"）与
+     `IntersectionDesigner.BuildLegFromAlignment` 实现（"指向 Alignment 另一端"，即远离中心）相反；
+     本 v1.1 以实现为准，并在 `KerbChainDesigner` XMLdoc 中明确记录该约定（注释修正延到 v1.2）。
 - [ ] `hyRoadIntersectionCrosswalk`：把 `CrosswalkService` 迁到新 Intersection 聚合（§8-4）
 - [ ] CurbRamp 分类几何：ThreeFace / Fan（§8-5）
 
@@ -448,10 +460,11 @@ RoadDesign (aggregate root)
 
 | 命令                    | 类                                                     | 说明                                    |
 | ----------------------- | ------------------------------------------------------ | --------------------------------------- |
-| `hyRoadIntersection`     | `RoadIntersectionCommand`                              | 从 Alignment 生成转角圆弧               |
-| `hyRoadIntersectionEdit` | `RoadIntersectionEditCommand`                          | 局部改单弧 R / 单臂 HalfWidth / 设计速度 |
-| `hyRoadCurbRamp`         | `RoadCurbRampCommand`                                  | 布置缘石坡道（+ 重建盲道）              |
-| `hyRoadTactilePaving`    | `RoadTactilePavingCommand`                             | 布置盲道（若无坡道则自动先布置坡道）     |
+| `hyRoadIntersection`          | `RoadIntersectionCommand`                                | 从 Alignment 生成转角圆弧               |
+| `hyRoadIntersectionEdit`      | `RoadIntersectionEditCommand`                            | 局部改单弧 R / 单臂 HalfWidth / 设计速度 |
+| `hyRoadIntersectionKerbChain` | `RoadIntersectionKerbChainCommand`                       | 切换交叉口路缘外边线直段链（2N 段 Line） |
+| `hyRoadCurbRamp`              | `RoadCurbRampCommand`                                    | 布置缘石坡道（+ 重建盲道）              |
+| `hyRoadTactilePaving`         | `RoadTactilePavingCommand`                               | 布置盲道（若无坡道则自动先布置坡道）     |
 
 ### 10.2 AutoCAD 图层
 

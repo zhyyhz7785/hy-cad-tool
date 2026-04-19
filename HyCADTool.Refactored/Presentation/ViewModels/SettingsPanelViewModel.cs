@@ -254,11 +254,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 if (SetProperty(ref _unit, value))
                 {
                     _stylesDirty = true;
-                    _precision = ScaleContext.ClampPrecision(_unit, _precision);
+                    // 切单位时把小数位切到该单位的推荐默认值（mm=0 / cm=2 / m=3）。
+                    // 允许集合现统一 0..3，用户仍可随后手动微调；初次切换自动给到合理粒度。
+                    _precision = ScaleContext.GetDefaultPrecision(_unit);
                     OnPropertyChanged(nameof(Precision));
                     OnPropertyChanged(nameof(AllowedPrecisions));
                     NotifyScaleContextChanged();
                     SyncInsUnits();
+                    // 单位切换属"模式切换"：样式名后缀 {u} 改变 → 必须重建新样式并置为当前，
+                    // 否则 AutoCAD 里激活的仍是旧单位样式，字高/箭头/间距不会按 UnitFactor 缩放，
+                    // 表现为"mm→m 没缩小 1000 倍 / mm→cm 没缩小 100 倍"。
+                    TryAutoApplyStyleForModeSwitch();
                 }
             }
         }
@@ -278,6 +284,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     _stylesDirty = true;
                     NotifyScaleContextChanged();
+                    // 小数位也写入样式名后缀 {p}，属模式切换 → 立即落盘并置为当前。
+                    TryAutoApplyStyleForModeSwitch();
                 }
             }
         }
@@ -346,6 +354,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public string MLeaderStyleName => BuildScaleContext().BuildMLeaderStyleName();
         /// <summary>0-Hy-{M}-{S}-Table-{u}（表格无小数位）</summary>
         public string TableStyleName => BuildScaleContext().BuildTableStyleName();
+
+        // ---- "已应用"样式名：只在 ApplyStyle() 成功落盘后才更新 ----
+        // 目的：面板状态栏显示的是 AutoCAD 里真正激活的标注样式名，
+        // 不随用户正在编辑的主/副比例输入框实时跳变，避免"显示已切但其实还没生效"的误导。
+        // UseSubScale / Unit / Precision 这些会 auto-apply 的模式切换会同步更新此字段；
+        // MainScale / SubScale 这类数值微调不 auto-apply，此字段会保持在上次"置为当前"的结果。
+        private ScaleContext _appliedContext;
+
+        /// <summary>上次 ApplyStyle 成功时落盘的标注样式名（供状态栏绑定）。</summary>
+        public string AppliedDimStyleName =>
+            (_appliedContext ?? BuildScaleContext()).BuildDimStyleName();
 
         #endregion
 
@@ -921,6 +940,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 _styleService.SetCurrentTableStyle(ctx.BuildTableStyleName());
 
                 ActiveScaleContextProvider.Set(ctx);
+
+                _appliedContext = ctx;
+                OnPropertyChanged(nameof(AppliedDimStyleName));
 
                 _stylesDirty = false;
                 SaveSettings();

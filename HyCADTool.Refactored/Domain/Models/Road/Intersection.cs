@@ -62,6 +62,12 @@ namespace HyCADTool.Refactored.Domain.Models.Road
 
         public const double DefaultCornerRadiusValue = 20.0;
 
+        /// <summary>是否已启用路缘外边线直段链（由 <c>hyRoadIntersectionKerbChain</c> 切换）。
+        /// 开启后 <c>RoadIntersectionService.RebuildIntersection</c> 会额外绘制
+        /// <see cref="Services.Road.KerbChainDesigner"/> 计算出的 2N 条 Line；关闭时清除。
+        /// 派生数据本身不入 JSON（由 Legs + CornerArcs 决定），仅持久化这个开关。</summary>
+        public bool HasKerbChain { get; set; } = false;
+
         /// <summary>创建时间（UTC）。</summary>
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

@@ -382,7 +382,7 @@
                         <TextBlock Text="当前标注样式  ⯈  "
                                    Foreground="{DynamicResource Brush_TextDisabled}"
                                    FontSize="10" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Settings.DimStyleName}"
+                        <TextBlock Text="{Binding Settings.AppliedDimStyleName}"
                                    Foreground="{DynamicResource Brush_TextSecondary}"
                                    FontSize="10" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis"/>

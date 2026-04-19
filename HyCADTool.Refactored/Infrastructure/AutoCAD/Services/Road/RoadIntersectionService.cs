@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 
@@ -32,6 +33,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
     {
         /// <summary>HY_ROAD Xdata KIND：交叉口转角圆弧。</summary>
         public const string IntersectionKind = "Intersection";
+
+        /// <summary>HY_ROAD Xdata KIND：交叉口路缘外边线直段（v1.1 <c>hyRoadIntersectionKerbChain</c>）。</summary>
+        public const string IntersectionKerbKind = "IntersectionKerb";
 
         /// <summary>
         /// 把 <paramref name="intersection"/> 的所有 <see cref="CornerArc"/> 画成 AutoCAD <see cref="Arc"/>。
@@ -72,10 +76,57 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         }
 
         /// <summary>
-        /// 按 HY_ROAD Xdata 扫模型空间，擦除所有 KIND="Intersection" 且 ID=<paramref name="intersectionId"/> 的图元。
+        /// 画 Kerb 链：把 <see cref="KerbChainDesigner.ComputeKerbSegments(Intersection)"/> 产出的直段
+        /// 逐条画为 AutoCAD <see cref="Line"/>，挂 HY_ROAD Xdata（KIND=<see cref="IntersectionKerbKind"/>，
+        /// ID=<see cref="Intersection.Id"/>），图层同 <paramref name="layerName"/>（与 CornerArc 共用图层）。
+        /// </summary>
+        public IReadOnlyList<ObjectId> DrawKerbChain(
+            Transaction tr, Database db, Intersection intersection, string layerName)
+        {
+            if (tr == null) throw new ArgumentNullException(nameof(tr));
+            if (db == null) throw new ArgumentNullException(nameof(db));
+            if (intersection == null) throw new ArgumentNullException(nameof(intersection));
+
+            var segments = KerbChainDesigner.ComputeKerbSegments(intersection);
+            var results = new List<ObjectId>(segments.Count);
+            if (segments.Count == 0) return results;
+
+            var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+            bool useLayer = !string.IsNullOrWhiteSpace(layerName) && LayerExists(tr, db, layerName);
+
+            foreach (var s in segments)
+            {
+                var line = new Line(
+                    new Point3d(s.From.X, s.From.Y, 0),
+                    new Point3d(s.To.X, s.To.Y, 0));
+                if (useLayer) line.Layer = layerName;
+
+                ms.AppendEntity(line);
+                tr.AddNewlyCreatedDBObject(line, true);
+
+                HyRoadXdata.Write(tr, db, line, intersection.Id, IntersectionKerbKind, SchemaVersion.Current);
+                results.Add(line.ObjectId);
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// 按 HY_ROAD Xdata 扫模型空间，擦除所有 KIND ∈ <c>{IntersectionKind, IntersectionKerbKind}</c>
+        /// 且 ID=<paramref name="intersectionId"/> 的图元。
         /// </summary>
         /// <returns>被删除的图元数量。</returns>
         public int ClearIntersectionEntities(Transaction tr, Database db, Guid intersectionId)
+            => ClearEntitiesByKinds(tr, db, intersectionId, new[] { IntersectionKind, IntersectionKerbKind });
+
+        /// <summary>
+        /// 仅擦除路缘链（保留 CornerArc）。用于 <c>HasKerbChain</c> 从 true 切换到 false 的场景。
+        /// </summary>
+        public int ClearKerbEntities(Transaction tr, Database db, Guid intersectionId)
+            => ClearEntitiesByKinds(tr, db, intersectionId, new[] { IntersectionKerbKind });
+
+        private static int ClearEntitiesByKinds(
+            Transaction tr, Database db, Guid intersectionId, IReadOnlyList<string> kinds)
         {
             if (tr == null) throw new ArgumentNullException(nameof(tr));
             if (db == null) throw new ArgumentNullException(nameof(db));
@@ -90,7 +141,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 if (ent == null) continue;
 
                 var kind = HyRoadXdata.ReadKind(tr, ent);
-                if (!string.Equals(kind, IntersectionKind, StringComparison.Ordinal)) continue;
+                bool matched = false;
+                for (int i = 0; i < kinds.Count; i++)
+                {
+                    if (string.Equals(kind, kinds[i], StringComparison.Ordinal)) { matched = true; break; }
+                }
+                if (!matched) continue;
 
                 var id = HyRoadXdata.ReadId(tr, ent);
                 if (id == Guid.Empty || id != intersectionId) continue;
@@ -103,14 +159,20 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         }
 
         /// <summary>
-        /// "擦旧 + 画新" 幂等重建：返回新的 ObjectId 列表。
+        /// "擦旧 + 画新" 幂等重建：同时负责 CornerArc 与 Kerb 链（当 <see cref="Intersection.HasKerbChain"/> = true）。
+        /// 返回新的 Arc ObjectId 列表。
         /// </summary>
         public IReadOnlyList<ObjectId> RebuildIntersection(
             Transaction tr, Database db, Intersection intersection, string layerName)
         {
             if (intersection == null) throw new ArgumentNullException(nameof(intersection));
             ClearIntersectionEntities(tr, db, intersection.Id);
-            return DrawIntersection(tr, db, intersection, layerName);
+            var arcIds = DrawIntersection(tr, db, intersection, layerName);
+            if (intersection.HasKerbChain)
+            {
+                DrawKerbChain(tr, db, intersection, layerName);
+            }
+            return arcIds;
         }
 
         /// <summary>
