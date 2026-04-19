@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using Newtonsoft.Json;
 using Xunit;
@@ -290,6 +292,184 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             svc.SaveForDocument(design, null).Should().BeNull();
             svc.SaveForDocument(design, "").Should().BeNull();
             svc.SaveForDocument(design, "   ").Should().BeNull("空白 path 对应 DWG 未保存场景，静默跳过");
+        }
+
+        // =============================================================
+        //  P3-I1-B：Intersection JSON 往返
+        // =============================================================
+
+        /// <summary>
+        /// P3-I1-B 回归防护：<see cref="RoadDesign.Intersections"/> 中的
+        /// <see cref="Intersection"/> 含 <see cref="IntersectionLeg"/>（readonly struct）+
+        /// <see cref="CornerArc"/>（readonly struct）嵌套。
+        ///
+        /// Save → Load 往返后：Id / Name / Center / Legs / CornerArcs 全部保留，
+        /// 不发生"struct 退化为 default"的 Point3D 同款坑。
+        /// </summary>
+        [Fact]
+        public void SaveThenLoad_Roundtrip_PreservesIntersection()
+        {
+            var svc = new RoadJsonExportService();
+            var path = Path.Combine(_tempDir, "intersection-roundtrip.roaddesign.json");
+
+            var alignmentId = Guid.NewGuid();
+            var legs = new[]
+            {
+                new IntersectionLeg(
+                    alignmentId,
+                    approachRawDistance: 0,
+                    approachPoint: new Point2D(-50, 0),
+                    inwardDirection: new Vector2D(1, 0),
+                    halfWidth: 7.5,
+                    tag: "W"),
+                new IntersectionLeg(
+                    alignmentId,
+                    approachRawDistance: 100,
+                    approachPoint: new Point2D(50, 0),
+                    inwardDirection: new Vector2D(-1, 0),
+                    halfWidth: 7.5,
+                    tag: "E"),
+            };
+            var arc = new CornerArc(
+                legIndexA: 0,
+                legIndexB: 1,
+                center: new Point2D(0, 7.5),
+                radius: 5.0,
+                startPoint: new Point2D(-5, 7.5),
+                endPoint: new Point2D(5, 7.5),
+                startAngle: Math.PI,
+                endAngle: 0,
+                sweepAngle: -Math.PI);
+
+            var intersection = new Intersection
+            {
+                Name = "K0+100 @ 东湖路",
+                Center = new Point2D(0, 0),
+                DefaultCornerRadius = 20.0,
+                DesignSpeed = 30.0,
+            };
+            intersection.Legs.AddRange(legs);
+            intersection.CornerArcs.Add(arc);
+
+            var design = new RoadDesign { ProjectName = "p3-i1-b" };
+            design.Intersections.Add(intersection);
+
+            svc.Save(design, path);
+            var loaded = svc.Load(path);
+
+            loaded.Should().NotBeNull();
+            loaded.Intersections.Should().HaveCount(1);
+            var back = loaded.Intersections[0];
+
+            back.Id.Should().Be(intersection.Id);
+            back.Name.Should().Be("K0+100 @ 东湖路");
+            back.Center.X.Should().Be(0);
+            back.Center.Y.Should().Be(0);
+            back.DefaultCornerRadius.Should().Be(20.0);
+            back.DesignSpeed.Should().Be(30.0);
+
+            back.Legs.Should().HaveCount(2);
+            back.Legs[0].AlignmentId.Should().Be(alignmentId);
+            back.Legs[0].ApproachPoint.X.Should().Be(-50);
+            back.Legs[0].InwardDirection.X.Should().Be(1);
+            back.Legs[0].HalfWidth.Should().Be(7.5);
+            back.Legs[0].Tag.Should().Be("W");
+            back.Legs[1].Tag.Should().Be("E");
+
+            back.CornerArcs.Should().HaveCount(1);
+            var ba = back.CornerArcs[0];
+            ba.LegIndexA.Should().Be(0);
+            ba.LegIndexB.Should().Be(1);
+            ba.Radius.Should().Be(5.0);
+            ba.Center.X.Should().Be(0);
+            ba.Center.Y.Should().Be(7.5);
+            ba.SweepAngle.Should().BeApproximately(-Math.PI, 1e-9);
+        }
+
+        /// <summary>
+        /// P3-I1-C 回归防护：<see cref="Intersection.CurbRamps"/>（readonly struct <see cref="CurbRamp"/>）+
+        /// <see cref="Intersection.TactilePavings"/>（class <see cref="TactilePaving"/>，含 <see cref="TactilePaving.Centerline"/>
+        /// <c>List&lt;Point2D&gt;</c>）的 JSON 往返。
+        /// </summary>
+        [Fact]
+        public void SaveThenLoad_Roundtrip_PreservesCurbRampsAndTactilePavings()
+        {
+            var svc = new RoadJsonExportService();
+            var path = Path.Combine(_tempDir, "i1c-roundtrip.roaddesign.json");
+
+            var intersection = new Intersection { Name = "accessibility-case" };
+            intersection.CurbRamps.Add(new CurbRamp(
+                cornerArcIndex: 0,
+                kind: CurbRampKind.Fan,
+                frontCenter: new Point2D(3.0, 4.0),
+                tangent: new Vector2D(1, 0),
+                outwardNormal: new Vector2D(0, 1),
+                width: 1.5,
+                depth: 2.0,
+                slope: 1.0 / 12.0));
+            intersection.TactilePavings.Add(new TactilePaving
+            {
+                Kind = TactilePavingKind.Advance,
+                Centerline = new List<Point2D>
+                {
+                    new Point2D(0, 0),
+                    new Point2D(10, 0),
+                },
+                Width = 0.30,
+                CornerArcIndex = -1,
+            });
+            intersection.TactilePavings.Add(new TactilePaving
+            {
+                Kind = TactilePavingKind.Stop,
+                Centerline = new List<Point2D>
+                {
+                    new Point2D(5, 7.5),
+                    new Point2D(6.5, 7.5),
+                },
+                Width = 0.60,
+                CornerArcIndex = 0,
+            });
+
+            var design = new RoadDesign { ProjectName = "p3-i1-c" };
+            design.Intersections.Add(intersection);
+
+            svc.Save(design, path);
+            var loaded = svc.Load(path);
+
+            var back = loaded.Intersections[0];
+            back.CurbRamps.Should().HaveCount(1);
+            back.CurbRamps[0].Kind.Should().Be(CurbRampKind.Fan);
+            back.CurbRamps[0].FrontCenter.X.Should().Be(3.0);
+            back.CurbRamps[0].FrontCenter.Y.Should().Be(4.0);
+            back.CurbRamps[0].Depth.Should().Be(2.0);
+
+            back.TactilePavings.Should().HaveCount(2);
+            back.TactilePavings[0].Kind.Should().Be(TactilePavingKind.Advance);
+            back.TactilePavings[0].Centerline.Should().HaveCount(2);
+            back.TactilePavings[0].Centerline[1].X.Should().Be(10);
+            back.TactilePavings[0].Width.Should().Be(0.30);
+            back.TactilePavings[1].Kind.Should().Be(TactilePavingKind.Stop);
+            back.TactilePavings[1].CornerArcIndex.Should().Be(0);
+        }
+
+        /// <summary>
+        /// IsEmpty 联动：仅含 Intersection（无 Alignment / Template / ...）的 design
+        /// 必须被 <see cref="RoadJsonExportService.SaveForDocument"/> 当作非空而落盘，
+        /// 否则用户只画交叉口时 JSON 不会生成，下次打开丢数据。
+        /// </summary>
+        [Fact]
+        public void SaveForDocument_WithOnlyIntersection_WritesFile()
+        {
+            var svc = new RoadJsonExportService();
+            var dwg = Path.Combine(_tempDir, "ix-only.dwg");
+            var design = new RoadDesign { ProjectName = "ix-only" };
+            design.Intersections.Add(new Intersection { Name = "solo" });
+
+            var written = svc.SaveForDocument(design, dwg);
+
+            written.Should().NotBeNull();
+            File.Exists(written).Should().BeTrue();
+            svc.Load(written).Intersections.Should().HaveCount(1);
         }
     }
 }

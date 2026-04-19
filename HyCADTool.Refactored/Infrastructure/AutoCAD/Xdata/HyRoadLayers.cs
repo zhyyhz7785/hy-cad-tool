@@ -34,6 +34,26 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string OffsetLayer = "05_hy_道路_偏移线";
         public const short OffsetColor = 30; // 橙：与中心线（品红）/ 桩号（白）区分
 
+        /// <summary>
+        /// 平面交叉口转角圆弧（hyRoadIntersection）。
+        /// <para>存放 <c>Intersection.CornerArcs</c> 转换得到的 AutoCAD <see cref="Autodesk.AutoCAD.DatabaseServices.Arc"/>；
+        /// 每条弧挂 HY_ROAD Xdata（KIND="Intersection"，ID=Intersection.Id），支持幂等重建。</para>
+        /// </summary>
+        public const string IntersectionLayer = "05_hy_道路_交叉口";
+        public const short IntersectionColor = 1; // 红：交叉口在平面图上应显眼，与中心线（品红）区分
+
+        /// <summary>
+        /// 缘石坡道（hyRoadCurbRamp）。GB 50763 §3.2 无障碍坡道，挂 HY_ROAD Xdata（KIND="CurbRamp"，ID=Intersection.Id）。
+        /// </summary>
+        public const string CurbRampLayer = "05_hy_道路_缘石坡道";
+        public const short CurbRampColor = 11; // 淡红：与交叉口（红）同色系但明度较低，区别于主体转角圆弧
+
+        /// <summary>
+        /// 盲道（hyRoadTactilePaving）。GB 50763 §3.3 行进盲道 / 提示盲道，挂 HY_ROAD Xdata（KIND="TactilePaving"，ID=Intersection.Id）。
+        /// </summary>
+        public const string TactilePavingLayer = "05_hy_道路_盲道";
+        public const short TactilePavingColor = 42; // 土黄：实际盲道材质为黄色地砖
+
         // =========================================================================
         //  M3 标准横断面图：9 个图层
         // =========================================================================
@@ -93,6 +113,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (StationLayer, StationColor),
                 (GeometryPointLayer, GeometryPointColor),
                 (OffsetLayer, OffsetColor),
+                (IntersectionLayer, IntersectionColor),
+                (CurbRampLayer, CurbRampColor),
+                (TactilePavingLayer, TactilePavingColor),
                 (CrossSectionOutlineLayer, CrossSectionOutlineColor),
                 (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
                 (CrossSectionPavementLayer, CrossSectionPavementColor),

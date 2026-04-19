@@ -3,6 +3,9 @@
                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                    xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
                    xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels.Road"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   mc:Ignorable="d"
                    Title="标准横断面图设计"
                    HeaderTitle="{Binding Title}"
                    Width="1180" Height="700"
@@ -18,6 +21,7 @@
                               RoadCanvasBorderStyle / InverseBoolConverter / IndexToVisibilityConverter
                 -->
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+                <d:ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

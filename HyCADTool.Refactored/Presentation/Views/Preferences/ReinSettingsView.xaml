@@ -10,6 +10,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+                <d:ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
                 <Setter Property="HorizontalAlignment" Value="Right"/>

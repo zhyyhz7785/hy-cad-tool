@@ -44,6 +44,14 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// <summary>相邻两臂间的转角圆弧；数量 = <see cref="Legs"/>.Count。</summary>
         public List<CornerArc> CornerArcs { get; set; } = new List<CornerArc>();
 
+        /// <summary>本交叉口所属的缘石坡道（CurbRamp）集合 —— GB 50763 §3.2 无障碍坡道。
+        /// 一般每个 <see cref="CornerArcs"/> 对应 1 个单面坡 / 扇形坡；JSON 往返保留。</summary>
+        public List<CurbRamp> CurbRamps { get; set; } = new List<CurbRamp>();
+
+        /// <summary>本交叉口所属的盲道（TactilePaving）集合 —— GB 50763 §3.3。
+        /// Stop 型（提示盲道）通常在 CurbRamp 前 / 斑马线前一段；Advance 型（行进盲道）沿人行道纵向延伸。</summary>
+        public List<TactilePaving> TactilePavings { get; set; } = new List<TactilePaving>();
+
         /// <summary>缺省转角半径（米），用于用户"全部臂一次性改 R"时；单个 Arc 的实际半径在 <see cref="CornerArc.Radius"/>。
         /// 默认 <see cref="DefaultCornerRadius"/> = 20 m（CJJ 37 附录 B 支路级别）。</summary>
         public double DefaultCornerRadius { get; set; } = DefaultCornerRadiusValue;
@@ -61,6 +69,6 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public DateTime LastModifiedUtc { get; set; } = DateTime.UtcNow;
 
         public override string ToString()
-            => $"Intersection[{Name ?? "-"}, Id={Id:N}, Legs={Legs.Count}, Arcs={CornerArcs.Count}, Center={Center}]";
+            => $"Intersection[{Name ?? "-"}, Id={Id:N}, Legs={Legs.Count}, Arcs={CornerArcs.Count}, Ramps={CurbRamps.Count}, Tactile={TactilePavings.Count}, Center={Center}]";
     }
 }

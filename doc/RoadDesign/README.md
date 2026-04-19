@@ -73,6 +73,7 @@ v1 主攻 AutoCAD 出图功能落地（[01MASTER § 十一 P0-P5](./01MASTER.md#
 |------|----------|
 | [06.md](./06.md) | 横断面：鸿业字段 ↔ HyCADTool 字段对标 |
 | [07Alignment.md](./07Alignment.md) | 平面线位：Civil 3D / 鸿业 / HyCADTool 用户操作流程对标 |
+| [08Intersection.md](./08Intersection.md) | **平面交叉口**：Civil 3D / 鸿业 / HyCAD 对标 + P3-I1 交付说明（`hyRoadIntersection` / `hyRoadCurbRamp` / `hyRoadTactilePaving`，CJJ 37/152 + GB 50763） |
 | [10Corridor.md](./10Corridor.md) | **走廊**：Civil 3D Corridor 功能与用户操作流程（网络资料整理，非架构） |
 
 ---

@@ -176,6 +176,67 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         /// <summary>
+        /// <b>v1.1 局部编辑</b>：仅重算 <paramref name="intersection"/> 的第 <paramref name="cornerArcIndex"/>
+        /// 条 <see cref="CornerArc"/>，半径改为 <paramref name="newRadius"/>。其他 CornerArc 不动。
+        /// </summary>
+        /// <returns>成功写回 true；几何不可解（共线 / 反向）返回 false 并保留旧弧。</returns>
+        public static bool TryRebuildCornerArc(Intersection intersection, int cornerArcIndex, double newRadius)
+        {
+            if (intersection == null) throw new ArgumentNullException(nameof(intersection));
+            if (newRadius <= 0) throw new ArgumentOutOfRangeException(nameof(newRadius), newRadius, "newRadius 必须 > 0");
+            if (cornerArcIndex < 0 || cornerArcIndex >= intersection.CornerArcs.Count)
+                throw new ArgumentOutOfRangeException(nameof(cornerArcIndex));
+
+            var old = intersection.CornerArcs[cornerArcIndex];
+            int idxA = old.LegIndexA;
+            int idxB = old.LegIndexB;
+            if (idxA < 0 || idxA >= intersection.Legs.Count || idxB < 0 || idxB >= intersection.Legs.Count) return false;
+
+            if (!TryBuildCornerArc(intersection.Legs[idxA], intersection.Legs[idxB], idxA, idxB, newRadius, out var fresh))
+                return false;
+
+            intersection.CornerArcs[cornerArcIndex] = fresh;
+            intersection.LastModifiedUtc = DateTime.UtcNow;
+            return true;
+        }
+
+        /// <summary>
+        /// <b>v1.1 局部编辑</b>：修改第 <paramref name="legIndex"/> 条 Leg 的半宽 <paramref name="newHalfWidth"/>，
+        /// 并重算该 Leg 相邻的 <b>两条 CornerArc</b>（LegIndexA == legIndex 或 LegIndexB == legIndex 的那两条）。
+        /// 其他 CornerArc 保持不变。
+        /// </summary>
+        /// <returns>返回受影响弧的索引（0~2 条）。</returns>
+        public static IReadOnlyList<int> UpdateLegHalfWidth(Intersection intersection, int legIndex, double newHalfWidth)
+        {
+            if (intersection == null) throw new ArgumentNullException(nameof(intersection));
+            if (newHalfWidth <= 0) throw new ArgumentOutOfRangeException(nameof(newHalfWidth));
+            if (legIndex < 0 || legIndex >= intersection.Legs.Count)
+                throw new ArgumentOutOfRangeException(nameof(legIndex));
+
+            intersection.Legs[legIndex] = intersection.Legs[legIndex].WithHalfWidth(newHalfWidth);
+
+            var touched = new List<int>(2);
+            for (int i = 0; i < intersection.CornerArcs.Count; i++)
+            {
+                var arc = intersection.CornerArcs[i];
+                if (arc.LegIndexA != legIndex && arc.LegIndexB != legIndex) continue;
+                if (TryBuildCornerArc(
+                        intersection.Legs[arc.LegIndexA],
+                        intersection.Legs[arc.LegIndexB],
+                        arc.LegIndexA,
+                        arc.LegIndexB,
+                        arc.Radius,
+                        out var fresh))
+                {
+                    intersection.CornerArcs[i] = fresh;
+                    touched.Add(i);
+                }
+            }
+            intersection.LastModifiedUtc = DateTime.UtcNow;
+            return touched;
+        }
+
+        /// <summary>
         /// 对相邻两 Leg 构造 CornerArc。失败返回 false（例如两臂方向几乎反向 / 共线）。
         /// </summary>
         internal static bool TryBuildCornerArc(
@@ -191,41 +252,39 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var uA = legA.InwardDirection;
             var uB = legB.InwardDirection;
 
-            // 两条"路缘外边线"（沿 Leg Inward 前进的外侧）：
-            // - Leg A 的 "右侧"（沿 uA 前进右手侧）= perpCCW(uA) 旋转 -90° = uA.Perpendicular() 的反方向；
-            //   若 Perpendicular() 为逆时针 90°（= (−Y, X)），右手侧 = −Perpendicular()。
-            // - Leg B 的 "左侧"（沿 uB 前进左手侧）= +Perpendicular()。
-            // 这样相邻 (A→B, CCW) 两条外边线之间的"外角口袋"就是我们要切圆的 corner 所在。
-            var PA = legA.ApproachPoint.Add(uA.Perpendicular() * (-legA.HalfWidth));
-            var PB = legB.ApproachPoint.Add(uB.Perpendicular() * legB.HalfWidth);
+            // 两条"路缘外边线" —— 对于 CCW 相邻两臂（A, B），CornerArc 位于两 Inward 方向之间的
+            // 内侧口袋里（= Leg A 的 <b>左侧</b>路缘 + Leg B 的 <b>右侧</b>路缘）：
+            // - Leg A 的 "左侧"（沿 uA 前进左手侧）= +uA.Perpendicular()（= (−Y, X)，逆时针 90°）。
+            // - Leg B 的 "右侧"（沿 uB 前进右手侧）= −uB.Perpendicular()。
+            // 两条路缘外边线延长相交于 X；X 位于"+uA / +uB 方向"的前方。
+            var PA = legA.ApproachPoint.Add(uA.Perpendicular() * legA.HalfWidth);
+            var PB = legB.ApproachPoint.Add(uB.Perpendicular() * (-legB.HalfWidth));
 
             if (!TryLineIntersection(PA, uA, PB, uB, out var X)) return false;
 
             double cross = uA.Cross(uB);
             if (Math.Abs(cross) < 1e-9) return false;
 
-            // theta = 两 Inward 方向的夹角（AngleTo 返回 (-π, π]）。
-            // CCW 相邻两臂 theta ∈ (0, π)；theta ≤ 0 表示排序反向或臂几乎共线 / 反向。
+            // theta = 两 Inward 的夹角（AngleTo 返回 (-π, π]）。
+            // CCW 相邻两臂 theta ∈ (0, π)；theta ≤ 0 表示排序反向 / 臂几乎共线 / 反向。
             double theta = uA.AngleTo(uB);
             if (theta <= 1e-6 || theta >= Math.PI - 1e-6) return false;
 
-            // 两条路缘外边线（同样方向 uA / uB）在 X 处相交。
-            // 对"外凸 corner 圆"，圆心位于 X 沿 −(uA + uB) 方向的外角平分线上；
-            // 两切点均位于 X 的 −uA / −uB 方向（朝路缘源端回退 T）。
+            // 圆心沿 (uA + uB).Normalize() 方向（内角平分线 = 朝两路缘相会的更前方），距 X = D。
+            // 两切点分别沿 +uA / +uB 方向偏离 X 距离 T。
             //
-            // 几何推导（内切于两直线 + 外凸 corner）：
-            //   设两条外边线内夹角 = theta（= uA 与 uB 的夹角），
-            //   外角 β = π − theta，
-            //   切线长 T = R / tan(β / 2) = R / tan((π − theta)/2) = R · tan(theta / 2),
-            //   圆心距 D = R / sin(β / 2) = R / sin((π − theta)/2) = R / cos(theta / 2).
-            double T = radius * Math.Tan(theta / 2.0);
-            double D = radius / Math.Cos(theta / 2.0);
+            // 几何推导（圆内切于两直线，位于内角口袋）：
+            //   内夹角 = theta，内角平分线与任一路缘的夹角 = theta / 2。
+            //   圆心到路缘距 = D · sin(theta / 2) = R  =>  D = R / sin(theta / 2).
+            //   切线长 T = R / tan(theta / 2).
+            double T = radius / Math.Tan(theta / 2.0);
+            double D = radius / Math.Sin(theta / 2.0);
 
-            var bis = -uA + -uB;
+            var bis = uA + uB;
             if (!bis.TryNormalize(out var bisUnit, 1e-12)) return false;
 
-            var start = X.Add(uA * (-T));
-            var end = X.Add(uB * (-T));
+            var start = X.Add(uA * T);
+            var end = X.Add(uB * T);
             var center = X.Add(bisUnit * D);
 
             if (Math.Abs(center.DistanceTo(start) - radius) > 1e-3 ||
@@ -271,13 +330,6 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         {
             while (a < 0) a += 2 * Math.PI;
             while (a >= 2 * Math.PI) a -= 2 * Math.PI;
-            return a;
-        }
-
-        private static double NormalizeToPositive(double a)
-        {
-            while (a < 0) a += 2 * Math.PI;
-            while (a > 2 * Math.PI) a -= 2 * Math.PI;
             return a;
         }
     }

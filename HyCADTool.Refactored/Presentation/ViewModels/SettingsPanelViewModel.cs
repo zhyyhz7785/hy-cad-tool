@@ -189,9 +189,36 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 if (SetProperty(ref _useSubScale, value))
                 {
                     _stylesDirty = true;
-                    if (!_useSubScale) _subScale = _scale;   // 关闭时自动归一
+                    if (!_useSubScale)
+                    {
+                        // 关闭时归一 SubScale 并刷新 UI 输入框显示
+                        _subScale = _scale;
+                        OnPropertyChanged(nameof(SubScale));
+                    }
                     NotifyScaleContextChanged();
+                    // UseSubScale 切换属"模式切换"而非数值微调：立即应用样式，
+                    // 让标注 / 引线 同步切回（或切到）对应样式；不等待"置为当前"按钮。
+                    TryAutoApplyStyleForModeSwitch();
                 }
+            }
+        }
+
+        /// <summary>
+        /// 模式切换（如 UseSubScale 开关）后立即应用样式；若无可用 AutoCAD 文档则静默跳过，
+        /// 保留现有 _stylesDirty 状态，用户下次点"置为当前"仍能正确落地。
+        /// </summary>
+        private void TryAutoApplyStyleForModeSwitch()
+        {
+            try
+            {
+                if (_styleService == null) return;
+                var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+                if (doc == null) return;
+                EnsureStylesApplied();
+            }
+            catch
+            {
+                // 静默：setter 里不抛，避免 UI 层未捕获异常。
             }
         }
 

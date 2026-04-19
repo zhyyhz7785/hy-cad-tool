@@ -22,10 +22,15 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             // v2 新增：Kerb（路牙独立图层）
             // 07Alignment T2 新增：GeometryPoint
             // 07Alignment T9 新增：Offset
-            all.Should().HaveCount(17);
+            // P3-I1-B 新增：Intersection（平面交叉口）
+            // P3-I1-C 新增：CurbRamp（缘石坡道）+ TactilePaving（盲道）
+            all.Should().HaveCount(20);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.GeometryPointLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.OffsetLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.IntersectionLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.CurbRampLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.TactilePavingLayer);
         }
 
         [Fact]

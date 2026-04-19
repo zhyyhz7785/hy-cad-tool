@@ -9,13 +9,18 @@
              xmlns:drawing="clr-namespace:HyCADTool.Refactored.Domain.Models.Drawing"
              mc:Ignorable="d"
              Background="{DynamicResource Brush_RegionBack}"
-             d:DesignHeight="650" d:DesignWidth="560"
+             d:DesignHeight="650" d:DesignWidth="450"
              d:DataContext="{d:DesignInstance Type=vm:HySettingsViewModel, IsDesignTimeCreatable=False}">
 
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
+                <!--
+                  设计时兜底：VS XAML 设计器不执行 ColorsHost code-behind，运行时注入的 Brush_* 全部缺失，
+                  导致 DynamicResource 回落默认（白色）；此处 d: 前缀字典仅设计器加载，运行时 parser 忽略。
+                -->
+                <d:ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- ===== 一级目录 ListBoxItem 模板（Blender Preferences 风格，宽项带图标+文字） ===== -->
@@ -108,7 +113,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="28"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="34"/>
+            <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
 
         <!-- ===== 顶栏：面包屑 ===== -->
@@ -134,7 +139,7 @@
         <!-- ===== 中部：左一级目录 + 右二级分组 ===== -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="130"/>
+                <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -182,83 +187,91 @@
                                        VerticalAlignment="Center"
                                        Margin="6,0,0,0"/>
                         </StackPanel>
-                        <!-- 第一行：主比例 + 单位 + 小数位 -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="主比例 1 :"
-                                       Foreground="{DynamicResource Brush_TextSecondary}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}"
-                                     Width="80"
-                                     VerticalAlignment="Center"
-                                     helper:TextBoxHelper.EnableCustomHandlers="True"
-                                     helper:TextBoxHelper.ScrollStep="5"
-                                     Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
-
-                            <TextBlock Text="单位"
-                                       Foreground="{DynamicResource Brush_TextSecondary}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"
-                                       Margin="12,0,4,0"/>
-                            <ComboBox Style="{StaticResource BlenderComboBox}"
-                                      Width="96"
-                                      VerticalAlignment="Center"
-                                      SelectedValue="{Binding Settings.Unit, Mode=TwoWay}"
-                                      SelectedValuePath="Tag">
-                                <ComboBoxItem Content="毫米 mm">
-                                    <ComboBoxItem.Tag>
-                                        <drawing:DrawingUnit>Millimeter</drawing:DrawingUnit>
-                                    </ComboBoxItem.Tag>
-                                </ComboBoxItem>
-                                <ComboBoxItem Content="厘米 cm">
-                                    <ComboBoxItem.Tag>
-                                        <drawing:DrawingUnit>Centimeter</drawing:DrawingUnit>
-                                    </ComboBoxItem.Tag>
-                                </ComboBoxItem>
-                                <ComboBoxItem Content="米 m">
-                                    <ComboBoxItem.Tag>
-                                        <drawing:DrawingUnit>Meter</drawing:DrawingUnit>
-                                    </ComboBoxItem.Tag>
-                                </ComboBoxItem>
-                            </ComboBox>
-
-                            <TextBlock Text="小数位"
-                                       Foreground="{DynamicResource Brush_TextSecondary}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"
-                                       Margin="12,0,4,0"/>
-                            <ComboBox Style="{StaticResource BlenderComboBox}"
-                                      Width="64"
-                                      VerticalAlignment="Center"
-                                      ItemsSource="{Binding Settings.AllowedPrecisions}"
-                                      SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
-                        </StackPanel>
-                        <!-- 第二行：副比例 checkbox + 输入框（Disabled 时半灰） -->
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox Style="{StaticResource BlenderCheckBox}"
-                                      Content="启用副比例"
-                                      VerticalAlignment="Center"
-                                      IsChecked="{Binding Settings.UseSubScale, Mode=TwoWay}"
-                                      Margin="0,0,8,0"/>
-                            <TextBlock Text="1 :"
-                                       Foreground="{DynamicResource Brush_TextSecondary}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}"
-                                     Width="80"
-                                     VerticalAlignment="Center"
-                                     IsEnabled="{Binding Settings.UseSubScale}"
-                                     helper:TextBoxHelper.EnableCustomHandlers="True"
-                                     helper:TextBoxHelper.ScrollStep="5"
-                                     Text="{Binding Settings.SubScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                        <!-- 第一行：主比例 + 单位 + 小数位 —— WrapPanel 允许窄宽度下自动换行 -->
+                        <WrapPanel Orientation="Horizontal" Margin="0,0,0,4" ItemHeight="24">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,2">
+                                <TextBlock Text="主比例 1 :"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,4,0"/>
+                                <TextBox Style="{StaticResource BlenderTextBox}"
+                                         Width="70"
+                                         VerticalAlignment="Center"
+                                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                                         helper:TextBoxHelper.ScrollStep="5"
+                                         Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,2">
+                                <TextBlock Text="单位"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,4,0"/>
+                                <ComboBox Style="{StaticResource BlenderComboBox}"
+                                          Width="90"
+                                          VerticalAlignment="Center"
+                                          SelectedValue="{Binding Settings.Unit, Mode=TwoWay}"
+                                          SelectedValuePath="Tag">
+                                    <ComboBoxItem Content="毫米 mm">
+                                        <ComboBoxItem.Tag>
+                                            <drawing:DrawingUnit>Millimeter</drawing:DrawingUnit>
+                                        </ComboBoxItem.Tag>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Content="厘米 cm">
+                                        <ComboBoxItem.Tag>
+                                            <drawing:DrawingUnit>Centimeter</drawing:DrawingUnit>
+                                        </ComboBoxItem.Tag>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Content="米 m">
+                                        <ComboBoxItem.Tag>
+                                            <drawing:DrawingUnit>Meter</drawing:DrawingUnit>
+                                        </ComboBoxItem.Tag>
+                                    </ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                <TextBlock Text="小数位"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,4,0"/>
+                                <ComboBox Style="{StaticResource BlenderComboBox}"
+                                          Width="56"
+                                          VerticalAlignment="Center"
+                                          ItemsSource="{Binding Settings.AllowedPrecisions}"
+                                          SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </WrapPanel>
+                        <!-- 第二行：副比例 checkbox + 输入框 —— 同样 WrapPanel 支持换行 -->
+                        <WrapPanel Orientation="Horizontal" ItemHeight="24">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,2">
+                                <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                          Content="启用副比例"
+                                          VerticalAlignment="Center"
+                                          IsChecked="{Binding Settings.UseSubScale, Mode=TwoWay}"
+                                          Margin="0,0,8,0"/>
+                                <TextBlock Text="1 :"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,4,0"/>
+                                <TextBox Style="{StaticResource BlenderTextBox}"
+                                         Width="70"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{Binding Settings.UseSubScale}"
+                                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                                         helper:TextBoxHelper.ScrollStep="5"
+                                         Text="{Binding Settings.SubScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                            </StackPanel>
                             <TextBlock Text="（开启后标注数字=真实尺寸；几何需按主/副放大）"
                                        Foreground="{DynamicResource Brush_TextDisabled}"
                                        FontSize="10"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="300"
                                        VerticalAlignment="Center"
-                                       Margin="8,0,0,0"/>
-                        </StackPanel>
+                                       Margin="0,0,0,2"/>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
@@ -355,43 +368,28 @@
             </Grid>
         </Grid>
 
-        <!-- ===== 底部容器：顶部样式状态栏 + 下方动作栏 ===== -->
+        <!-- ===== 底部容器：顶部样式状态栏 + 下方动作栏（底部留边避免贴 AutoCAD 标签条） ===== -->
         <Border Grid.Row="2" Background="{DynamicResource Brush_HeaderBack}"
-                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="0,1,0,0">
+                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="0,1,0,0"
+                Padding="0,0,0,4">
             <StackPanel>
-                <!-- 样式状态栏：当前文字 / 标注 / 引线样式（实时来自 Settings，反映"预览"名；置为当前后生效） -->
+                <!-- 样式状态栏：文字紧贴左侧，与 AutoCAD 风格对齐 -->
                 <Border Background="{DynamicResource Brush_PanelBack}"
                         BorderBrush="{DynamicResource Brush_BorderDark}"
                         BorderThickness="0,0,0,1"
-                        Padding="8,2">
+                        Padding="2,2">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="当前样式  ⯈  "
+                        <TextBlock Text="当前标注样式  ⯈  "
                                    Foreground="{DynamicResource Brush_TextDisabled}"
                                    FontSize="10" VerticalAlignment="Center"/>
-                        <TextBlock Text="字体:" Foreground="{DynamicResource Brush_TextDisabled}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                        <TextBlock Text="{Binding Settings.TextStyleName}"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="标注:" Foreground="{DynamicResource Brush_TextDisabled}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
                         <TextBlock Text="{Binding Settings.DimStyleName}"
                                    Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="引线:" Foreground="{DynamicResource Brush_TextDisabled}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                        <TextBlock Text="{Binding Settings.MLeaderStyleName}"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="表格:" Foreground="{DynamicResource Brush_TextDisabled}"
-                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                        <TextBlock Text="{Binding Settings.TableStyleName}"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="10" VerticalAlignment="Center"/>
+                                   FontSize="10" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
-                <!-- 动作栏：减小高度（Height=26 + Button MinHeight=22） -->
-                <Grid Height="26">
+                <!-- 动作栏：恢复原 Grid 两列布局（左状态消息 + 右按钮组） -->
+                <Grid Height="26" Margin="0,2,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -402,7 +400,7 @@
                                FontSize="10"
                                TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center"
-                               Margin="8,0,8,0"/>
+                               Margin="2,0,8,0"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
                         <CheckBox Style="{StaticResource BlenderCheckBox}"
                                   Content="自动保存"

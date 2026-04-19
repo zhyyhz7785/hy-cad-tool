@@ -42,6 +42,16 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public List<RoadNode> Nodes { get; } = new List<RoadNode>();
 
         /// <summary>
+        /// P3 引入的"<b>从 Alignment 驱动</b>的平面交叉口"集合（与旧 <see cref="Nodes"/> 并存）。
+        /// <para>每个 <see cref="Intersection"/> 由 <c>IntersectionDesigner.ComputeFromAlignments</c> 基于 2+ 条
+        /// <see cref="Alignment"/> 的端点生成四臂 / 三臂 / Y 臂 + 转角 CornerArc；通过 <see cref="Intersection.Id"/>
+        /// 与 DWG Xdata（KIND="Intersection"）挂钩。</para>
+        /// <para>本容器会被 <c>RoadJsonExportService</c> 序列化到 <c>.roaddesign.json</c> 里；JSON schema 向后兼容
+        /// （Newtonsoft 对缺失字段默认空列表）。</para>
+        /// </summary>
+        public List<Intersection> Intersections { get; } = new List<Intersection>();
+
+        /// <summary>
         /// 是否不含任何可持久化的子对象。
         ///
         /// 用途：<c>RoadJsonExportService.SaveForDocument</c> 在写盘前校验；
@@ -54,9 +64,10 @@ namespace HyCADTool.Refactored.Domain.Models.Road
             => Alignments.Count == 0
             && Templates.Count == 0
             && Corridors.Count == 0
-            && Nodes.Count == 0;
+            && Nodes.Count == 0
+            && Intersections.Count == 0;
 
         public override string ToString()
-            => $"RoadDesign[{ProjectName}, Id={Id:N}, Schema={Schema}, A={Alignments.Count}, T={Templates.Count}, C={Corridors.Count}]";
+            => $"RoadDesign[{ProjectName}, Id={Id:N}, Schema={Schema}, A={Alignments.Count}, T={Templates.Count}, C={Corridors.Count}, I={Intersections.Count}]";
     }
 }
