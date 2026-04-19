@@ -16,9 +16,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
     ///
     /// <para><b>与旧 CrosswalkService 的对照</b></para>
     /// <list type="bullet">
-    /// <item>旧：用户选若干 Line + Arc → 反推 RoadArm → 条纹绘制（含 RayHitArc 双端弧线裁切）；</item>
-    /// <item>新：<see cref="Intersection"/> 已持有 Legs + CornerArcs → <see cref="CrosswalkDesigner"/> 纯函数算几何
-    /// → 本服务画 Line；当前 v1.1 不做弧线裁切（<c>GapWidth</c> &gt;= 0.5 m 的常见工程场景下条纹不会跨越 <see cref="CornerArc"/>）。</item>
+    /// <item>旧：用户选若干 Line + Arc → 反推 RoadArm → 条纹绘制（含 <c>RayHitArc</c> 双端弧线裁切）；</item>
+    /// <item>新：<see cref="Intersection"/> 已持有 Legs + CornerArcs → <see cref="CrosswalkDesigner"/> 纯函数算几何，
+    /// 绘制通过 <see cref="CrosswalkDesigner.ComputeStripesClipped"/> 自动按 <see cref="CornerArc"/> 做两端弧裁切
+    /// （v1.2 迁移完成，算法等价旧 <c>RayHitArc</c>）。</item>
     /// </list>
     ///
     /// <para><b>Xdata 规约</b></para>
@@ -55,7 +56,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 
             foreach (var cw in intersection.Crosswalks)
             {
-                var stripes = CrosswalkDesigner.ComputeStripes(cw);
+                var stripes = CrosswalkDesigner.ComputeStripesClipped(cw, intersection.CornerArcs);
                 foreach (var s in stripes)
                 {
                     var line = new Line(

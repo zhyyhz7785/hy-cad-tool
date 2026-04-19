@@ -252,13 +252,18 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var uA = legA.InwardDirection;
             var uB = legB.InwardDirection;
 
-            // 两条"路缘外边线" —— 对于 CCW 相邻两臂（A, B），CornerArc 位于两 Inward 方向之间的
-            // 内侧口袋里（= Leg A 的 <b>左侧</b>路缘 + Leg B 的 <b>右侧</b>路缘）：
-            // - Leg A 的 "左侧"（沿 uA 前进左手侧）= +uA.Perpendicular()（= (−Y, X)，逆时针 90°）。
-            // - Leg B 的 "右侧"（沿 uB 前进右手侧）= −uB.Perpendicular()。
-            // 两条路缘外边线延长相交于 X；X 位于"+uA / +uB 方向"的前方。
-            var PA = legA.ApproachPoint.Add(uA.Perpendicular() * legA.HalfWidth);
-            var PB = legB.ApproachPoint.Add(uB.Perpendicular() * (-legB.HalfWidth));
+            // 两条"路缘外边线" —— 对 CCW 相邻两臂 (A, B)，物理相邻的 corner 位于
+            //   Leg A 的 <b>右侧</b>路缘（沿 uA 前进右手侧 = −uA.Perpendicular()，约定 Perpendicular=(−Y,X)=CCW90°）
+            // + Leg B 的 <b>左侧</b>路缘（沿 uB 前进左手侧 = +uB.Perpendicular()）
+            // 两者外延相交于 X。X 位于 PA / PB 的 <b>−uA / −uB</b> 方向（即 ApproachPoint 的"交叉口外"一端）；
+            // 切点 start / end 从 X 沿 <b>+uA / +uB</b> 方向（即 InwardDirection）偏 T 到达 —— 这是
+            // CornerArc 切入路缘进入交叉口内部的位置，圆心沿内角平分线 +(uA+uB)/|..| 朝交叉口中心偏 D。
+            //
+            // v1.2 修正（2026-04）：此前 PA/PB 的 ± 符号写反（Leg A 用 +perp = 左侧，Leg B 用 -perp = 右侧），
+            //   对 CCW 相邻对角度镜像到 Leg A-B <b>背对</b>一侧的对角象限，使 center / start / end 全数搬到
+            //   交叉口对侧（非对称场景肉眼可见错位）。见 IntersectionDesignerCornerPositionTests。
+            var PA = legA.ApproachPoint.Add(uA.Perpendicular() * (-legA.HalfWidth));
+            var PB = legB.ApproachPoint.Add(uB.Perpendicular() * legB.HalfWidth);
 
             if (!TryLineIntersection(PA, uA, PB, uB, out var X)) return false;
 

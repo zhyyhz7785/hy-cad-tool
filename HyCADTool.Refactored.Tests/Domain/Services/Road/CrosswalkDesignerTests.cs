@@ -55,14 +55,19 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         [Fact]
         public void BuildCrosswalkForLeg_UsesCornerArcTangentPoints()
         {
+            // v1.2 语义对齐：修复后的 IntersectionDesigner 里
+            //   StartPoint ∈ LegIndexA 的 <b>右</b>侧外边线  →  映射到 BaseRight
+            //   EndPoint   ∈ LegIndexB 的 <b>左</b>侧外边线  →  映射到 BaseLeft
             var ix = MakeCross();
             var cw = CrosswalkDesigner.BuildCrosswalkForLeg(ix, 0);
 
-            var leftArc = ix.CornerArcs.Single(ca => ca.LegIndexA == 0);
-            var rightArc = ix.CornerArcs.Single(ca => ca.LegIndexB == 0);
+            var leftArc = ix.CornerArcs.Single(ca => ca.LegIndexB == 0);
+            var rightArc = ix.CornerArcs.Single(ca => ca.LegIndexA == 0);
 
-            cw.BaseLeft.IsEqualTo(leftArc.StartPoint, 1e-9).Should().BeTrue();
-            cw.BaseRight.IsEqualTo(rightArc.EndPoint, 1e-9).Should().BeTrue();
+            cw.BaseLeft.IsEqualTo(leftArc.EndPoint, 1e-9).Should().BeTrue(
+                "BaseLeft 应取 Leg 作为 LegIndexB 的 CornerArc 的 EndPoint（物理左侧外边线切点）");
+            cw.BaseRight.IsEqualTo(rightArc.StartPoint, 1e-9).Should().BeTrue(
+                "BaseRight 应取 Leg 作为 LegIndexA 的 CornerArc 的 StartPoint（物理右侧外边线切点）");
             cw.LegIndex.Should().Be(0);
         }
 

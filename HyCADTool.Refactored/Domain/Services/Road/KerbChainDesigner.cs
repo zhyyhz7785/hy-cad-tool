@@ -14,12 +14,17 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     /// 本 Designer 为每条 Leg 的两侧 <b>各</b> 计算 1 段从 <see cref="IntersectionLeg.ApproachPoint"/> 的侧向锚点
     /// 延伸到相邻 CornerArc 切点的直线，把路缘外边线补全 → N 条 Leg 产生 2N 段（理论上限）。
     ///
-    /// <para><b>切点对照（与 <see cref="IntersectionDesigner.TryBuildCornerArc"/> 对齐）</b></para>
+    /// <para><b>切点对照（与 <see cref="IntersectionDesigner.TryBuildCornerArc"/> 修复后语义对齐）</b></para>
     /// <list type="bullet">
-    /// <item>Leg i 的 <b>左</b>侧（+Perpendicular(uA) · HalfWidth）→ <c>CornerArc[i].StartPoint</c>；</item>
-    /// <item>Leg i 的 <b>右</b>侧（−Perpendicular(uA) · HalfWidth）→ <c>CornerArc[(i−1+N)%N].EndPoint</c>；</item>
-    /// <item>其中 Arc 的 LegIndexA == i 时 StartPoint 就在 Leg i 左外边线上；LegIndexB == i 时 EndPoint 在 Leg i 右外边线上。</item>
+    /// <item><see cref="CornerArc.StartPoint"/> 位于 <see cref="CornerArc.LegIndexA"/> 的 <b>右</b>侧路缘外边线上
+    ///   （Designer v1.2 起 <c>PA = ApproachPoint + Perpendicular(uA) · −HalfWidth</c>）；</item>
+    /// <item><see cref="CornerArc.EndPoint"/> 位于 <see cref="CornerArc.LegIndexB"/> 的 <b>左</b>侧路缘外边线上
+    ///   （Designer v1.2 起 <c>PB = ApproachPoint + Perpendicular(uB) · +HalfWidth</c>）；</item>
+    /// <item>故 Leg i 的 <b>Left</b>（+perp · HW）kerb 段终点 = Arc 中 <c>LegIndexB == i</c> 的 <c>EndPoint</c>；</item>
+    /// <item>Leg i 的 <b>Right</b>（−perp · HW）kerb 段终点 = Arc 中 <c>LegIndexA == i</c> 的 <c>StartPoint</c>。</item>
     /// </list>
+    /// <para>v1.1 初版代码把 Left 和 StartPoint 绑定（与 Designer 修复前的镜像几何自洽），
+    /// v1.2 随 <see cref="IntersectionDesigner.TryBuildCornerArc"/> 的符号修复同步对换。</para>
     ///
     /// <para><b>Inward 方向约定（与 <see cref="IntersectionLeg.InwardDirection"/> XMLdoc 一致）</b></para>
     /// <see cref="IntersectionLeg.InwardDirection"/> 定义为 <b>从 <see cref="IntersectionLeg.ApproachPoint"/>
@@ -68,21 +73,21 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 var u = leg.InwardDirection;
                 var perp = u.Perpendicular();
 
-                // Left：+perp · HalfWidth，终点 = CornerArc[LegIndexA==i].StartPoint
-                if (asLegA[i] >= 0 && TryBuildSegment(
+                // Left：+perp · HalfWidth，终点 = CornerArc[LegIndexB==i].EndPoint（EndPoint 位于 LegIndexB 左侧外边线）
+                if (asLegB[i] >= 0 && TryBuildSegment(
                         i, KerbSide.Left,
                         leg.ApproachPoint.Add(perp * leg.HalfWidth),
-                        intersection.CornerArcs[asLegA[i]].StartPoint,
+                        intersection.CornerArcs[asLegB[i]].EndPoint,
                         u, out var left))
                 {
                     result.Add(left);
                 }
 
-                // Right：−perp · HalfWidth，终点 = CornerArc[LegIndexB==i].EndPoint
-                if (asLegB[i] >= 0 && TryBuildSegment(
+                // Right：−perp · HalfWidth，终点 = CornerArc[LegIndexA==i].StartPoint（StartPoint 位于 LegIndexA 右侧外边线）
+                if (asLegA[i] >= 0 && TryBuildSegment(
                         i, KerbSide.Right,
                         leg.ApproachPoint.Add(perp * -leg.HalfWidth),
-                        intersection.CornerArcs[asLegB[i]].EndPoint,
+                        intersection.CornerArcs[asLegA[i]].StartPoint,
                         u, out var right))
                 {
                     result.Add(right);

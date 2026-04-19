@@ -394,7 +394,7 @@ RoadDesign (aggregate root)
 | 2   | `CornerArc` 之间不画路缘外边线直段（视觉不连续）              | v1.1 `hyRoadIntersectionKerbChain` 配合 `hyRoadAlnOffset` |
 | 3   | 进口展宽 / 渐变段未做                                         | P2 Template 的 ApproachWiden 专项                     |
 | 4   | 人行横道未接入新 `Intersection` 模型                          | v1.2 从 `CrosswalkService` 迁移                       |
-| 5   | 缘石坡道：三面坡 / 扇形坡的几何只占位（实际画的仍是矩形占位）  | v1.2 分类几何（ThreeFace 加侧面坡 + Fan 扇形）          |
+| 5   | ~~缘石坡道：三面坡 / 扇形坡的几何只占位~~（v1.2 已补齐 ThreeFace 主坡+两侧三角坡 / Fan 扇环同心）| ✅ v1.2 `CurbRampDesigner.BuildFootprint`                |
 | 6   | 盲道：提示盲道只画前沿短段（实际工程中应覆盖整个人行道宽度）  | v1.2                                                   |
 | 7   | 无设计速度多段（整条 Alignment 一段）                          | 继承 Alignment 侧 v2 多速度分段                         |
 | 8   | 无交叉口导流岛 / 渠化                                          | v3                                                     |
@@ -464,7 +464,88 @@ RoadDesign (aggregate root)
      时 L2/L3/L4 都已在 CornerArc 外侧，不影响输出；
    - 测试：`CrosswalkDesignerTests` 17 个（17/17 绿）+ `PreservesCrosswalks` JSON 往返 1 个 +
      `HyRoadLayersTests` 更新到 22 图层。
-- [ ] CurbRamp 分类几何：ThreeFace / Fan（§8-5）
+- [x] **`IntersectionDesigner.TryBuildCornerArc` 几何镜像修复（v1.2 首个动作）**
+   - 问题：v1.1 的 `TryBuildCornerArc` 构造两条"路缘外边线"时使用 `PA = ApproachPoint + +perp·HW`（Leg A **左** 侧）+
+     `PB = ApproachPoint + -perp·HW`（Leg B **右** 侧） —— 对 CCW 相邻两臂恰好镜像到 Leg A-B **背离** 的对角象限，
+     导致 `CornerArc.Center` / `StartPoint` / `EndPoint` 全部跑到物理相邻 corner 的对角位置。
+     对称十字（W+E+N+S 等宽）因四 corner 旋转对称视觉上看不出；在**非对称**场景（如只做 W+S 两臂）
+     或**非等宽**（一臂 8m 一臂 5m）场景下肉眼可见错位；并进一步污染 `KerbChainDesigner.ComputeKerbSegments`、
+     `CrosswalkDesigner.BuildCrosswalkForLeg`、`RoadAccessibilityService` 的坡道定位等所有下游服务。
+   - 根因：旧代码注释写"Leg A 左 + Leg B 右 = 内侧口袋"，但 `CornerArc` 的 XMLdoc 写的语义是"Leg A **右** + Leg B **左**"
+     （即物理相邻侧）。两者互相矛盾，且代码和注释自洽但和 XMLdoc 对不上 —— 上游实际用户、测试视觉断言依赖 XMLdoc 语义。
+   - 修复（`IntersectionDesigner.cs`）：把 PA / PB 的 `perp` 符号对换 → `PA = ApproachPoint + perp·(-HW)`（右侧）+
+     `PB = ApproachPoint + perp·(+HW)`（左侧）。其余 `start = X + uA·T` / `end = X + uB·T` /
+     `center = X + bisUnit·D` 的符号与切点推导都不变。
+   - 联动：
+     - `KerbChainDesigner.ComputeKerbSegments`：`Left` 锚点（+perp·HW）从 `CornerArc[LegIndexA==i].StartPoint`
+       改匹配到 `CornerArc[LegIndexB==i].EndPoint`（因为修复后 `StartPoint` ∈ Leg A **右**侧而非左侧）；
+       `Right` 同理对换。
+     - `CrosswalkDesigner.BuildCrosswalkForLeg`：`BaseLeft` 从 `LegIndexA.StartPoint` 改到 `LegIndexB.EndPoint`，
+       `BaseRight` 对换。
+   - 锁死测试：新增 `IntersectionDesignerCornerPositionTests` 4 个（非对称 W+S 场景）：
+     `StartPoint_On_LegA_PhysicallyAdjacent_CurbLine`（y ≈ −7.5 而非 +7.5）、
+     `EndPoint_On_LegB_PhysicallyAdjacent_CurbLine`、
+     `Center_In_Intersection_Interior_Not_Mirrored_Far_Outside`（center ≈ (0.5, 0.5)，修复前为 (15.5, 15.5)）、
+     `Arc_MidPoint_Lies_In_Physical_SouthWest_Corner`（弧中点 x<0 且 y<0）。
+   - 跟进回归：
+     - `IntersectionDesignerTests.Cross_CornerArc_IsTangentToBothCurbLines_PerpendicularOffset`：圆心距 Alignment 轴
+       从期望 `HW + R` 改为 `|R − HW|`（物理"同侧"而非"异侧"距离）；
+     - `KerbChainDesignerTests.Segment_Length_ForSquareCross_...`：方形十字 kerb 段长从 `T + HW = 27.5`
+       改为 `T − HW = 12.5`，并重命名为 `..._IsTangentMinusHalfWidth`；
+     - `KerbChainDesignerTests.To_MapsTo_CornerArcStartOrEnd`：Left/Right 匹配 Start/End 的关系对换；
+     - `CrosswalkDesignerTests.BuildCrosswalkForLeg_UsesCornerArcTangentPoints`：BaseLeft/BaseRight 映射对换。
+   - 单测总计：Road 模块 528 / 530 绿（2 跳过 = AutoCAD 依赖）；`dev` HEAD 已知的 `ScaleContextTests` 6 条失败
+     与本修复无关（pre-existing）。
+   - 文档 / XMLdoc 同步：`IntersectionDesigner.TryBuildCornerArc` 源码注释增加"v1.2 修正"说明；
+     `KerbChainDesigner` XMLdoc 改写"切点对照"段落；`CrosswalkDesigner.BuildCrosswalkForLeg` 注释对齐。
+- [x] **CurbRamp 分类几何：ThreeFace / Fan（§8-5）**
+   - 动机：v1.1 初版 `CurbRampKind` 只是元数据，三种类型共用同一个矩形几何；真实工程里
+     ThreeFace（T 形端部主坡 + 两侧三角坡）和 Fan（沿整条 CornerArc 的扇环坡道）几何完全不同，
+     设计审图会直接退稿。
+   - Domain：`CurbRamp` <b>值对象不变</b>（FrontCenter / Tangent / OutwardNormal / Width / Depth / Kind 均保留）；
+     新增纯函数 `CurbRampDesigner.BuildFootprint(CurbRamp ramp, CornerArc? arc, double sideLength, int tesselationSegments)`
+     → `IReadOnlyList<Polyline2D>`：
+     <list type="bullet">
+     <item><see cref="CurbRampKind.SingleFace"/>：返回 1 条 4 顶点矩形；</item>
+     <item><see cref="CurbRampKind.ThreeFace"/>：返回 3 条闭合 Polyline —— 主坡矩形 + 左侧三角（FrontLeft / FrontLeft−Tangent·sideLength / BackLeft）+
+       右侧三角（对称），`sideLength` 默认 = `CurbRamp.DefaultDepth`（45° 侧坡）；</item>
+     <item><see cref="CurbRampKind.Fan"/>：需要传入 CornerArc，返回 1 条扇环闭合 Polyline —— 外弧（= CornerArc 本身）
+       + 内弧（同心，R_inner = R − Depth），弧部分用 `DefaultFanTesselationSegments = 16` 段直线镶嵌；
+       若 Depth ≥ R 或未传 arc，退化为 SingleFace 矩形。</item>
+     </list>
+   - Infrastructure：`RoadAccessibilityService.DrawCurbRamps` 改为调 `BuildFootprint` 循环画每条 `Polyline2D`
+     （新重载 `ToAutoCadPolyline(Polyline2D)`，等线宽 0）。ThreeFace 会为同一个 Ramp 画出 3 条 Polyline，
+     共享 `Intersection.Id` 的 Xdata → `ClearAccessibilityEntities` 一次性清理，不需要特别处理。
+   - 命令：`hyRoadCurbRamp` 用户交互<b>不变</b>（v1.1 即已支持 Kind 选择），仅输出几何质变。
+   - 测试：新增 `CurbRampFootprintTests` 16 个（顶点数 / 面积 / 在圆上 / 对称性 / 退化回退 / 边界）17/17 绿。
+- [x] **v1.2 附带：CurbRamp 方向 bug 修复**
+   - 问题：前一个 v1.2 `IntersectionDesigner` 镜像 bug 修复后，CornerArc 的圆心从"对角镜像远端"
+     搬到了"交叉口内部"，导致 `CurbRampDesigner.TryBuildRampOnArc` 里
+     `OutwardNormal = FrontCenter → Center` 错误地指向了<b>车道侧</b>（原来镜像下恰好指人行道，
+     是巧合的"假绿"）。坡道的上口变成走向车道 —— 画出来完全反。
+   - 锁死测试：`CurbRampDesignerDirectionTests` 2 个（物理断言）：
+     `BackCenter_Is_Further_From_IntersectionCenter_Than_FrontCenter`、
+     `OutwardNormal_Points_Away_From_IntersectionCenter`（对称十字 `(0,0)` 参考）。
+   - 修复：`OutwardNormal` 改为 `Center → FrontCenter`（远离圆心方向 = 人行道方向）。
+     旧的"实现等价"断言 `Ramp_OutwardNormal_PointsFromFrontCenterToArcCenter` 更名并反号为
+     `Ramp_OutwardNormal_PointsFrom_ArcCenter_To_FrontCenter`，恢复物理意义。
+
+- [x] **Crosswalk 弧线裁切：`RayHitArc` 迁 `CrosswalkDesigner`（§8-4）**
+   - 旧 `Infrastructure.AutoCAD.Services.CrosswalkService.DrawCrosswalkForArm` 的 `RayHitArc` + 双端裁切
+     在 v1.1 新几何下被暂缓；v1.2 迁移为纯 domain 函数 `CrosswalkDesigner.ClipStripeByCornerArcs` +
+     `ComputeStripesClipped`。
+   - Domain：
+     <list type="bullet">
+     <item>`TryRayArcIntersect(origin, dir, arc, out hit)` — 射线 vs `CornerArc` 2D 求最近有效命中（最小正 t 且角度落在弧扫描区间）；</item>
+     <item>`IsAngleOnArc(testAngle, CornerArc)` — 新实现按 `SweepAngle` 符号判断归属（正 CCW / 负 CW，自动归一 ±2π），旧 `IsAngleOnArc(start, end)` 对负 sweep 误判已修；</item>
+     <item>`ClipStripeByCornerArcs(stripe, arcs, minLength=0.05)` — 先从 `From` 沿 `+dir` 射线找最近弧交点把 `To` 推近，再从新 `To` 沿 `-dir` 找最近交点把 `From` 推近；剩余 &lt; minLength 返回 null（被弧吃掉）；</item>
+     <item>`ComputeStripesClipped(cw, arcs)` — 基础 `ComputeStripes` 结果 + 逐条裁切 + 过滤空条纹。</item>
+     </list>
+   - Infrastructure：`RoadCrosswalkService.DrawCrosswalkStripes` 改调 `ComputeStripesClipped(cw, intersection.CornerArcs)`，
+     旧命令 `DrawCrosswalkCommand`（hyRoad 经典）仍用旧 `CrosswalkService`，不影响。
+   - 测试：新增 `CrosswalkDesignerClippingTests` 10 个（ray×arc / 单条裁短 / 完全吃掉回 null / 集合包装 /
+     手工 L2→L3 过下半弧场景 / 无弧时回退 / 边界合约），10/10 绿。
+   - Road 全量：556 / 558（+10）。
 
 ### 9.3 v1.2+ 待补
 

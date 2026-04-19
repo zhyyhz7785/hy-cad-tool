@@ -96,6 +96,9 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         [Fact]
         public void To_MapsTo_CornerArcStartOrEnd()
         {
+            // v1.2 语义对齐：修复后的 IntersectionDesigner 里
+            //   StartPoint ∈ LegIndexA 的 <b>右</b>侧外边线  →  配 KerbSide.Right
+            //   EndPoint   ∈ LegIndexB 的 <b>左</b>侧外边线  →  配 KerbSide.Left
             var ix = MakeCross();
             var segs = KerbChainDesigner.ComputeKerbSegments(ix);
 
@@ -103,13 +106,15 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
             {
                 if (s.Side == KerbSide.Left)
                 {
-                    var arc = ix.CornerArcs.Single(ca => ca.LegIndexA == s.LegIndex);
-                    s.To.IsEqualTo(arc.StartPoint, 1e-9).Should().BeTrue();
+                    var arc = ix.CornerArcs.Single(ca => ca.LegIndexB == s.LegIndex);
+                    s.To.IsEqualTo(arc.EndPoint, 1e-9).Should().BeTrue(
+                        $"Leg#{s.LegIndex} Left：切点 = Arc(LegIndexB==i).EndPoint");
                 }
                 else
                 {
-                    var arc = ix.CornerArcs.Single(ca => ca.LegIndexB == s.LegIndex);
-                    s.To.IsEqualTo(arc.EndPoint, 1e-9).Should().BeTrue();
+                    var arc = ix.CornerArcs.Single(ca => ca.LegIndexA == s.LegIndex);
+                    s.To.IsEqualTo(arc.StartPoint, 1e-9).Should().BeTrue(
+                        $"Leg#{s.LegIndex} Right：切点 = Arc(LegIndexA==i).StartPoint");
                 }
             }
         }
@@ -136,18 +141,19 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         }
 
         [Fact]
-        public void Segment_Length_ForSquareCross_IsTangentPlusHalfWidth()
+        public void Segment_Length_ForSquareCross_IsTangentMinusHalfWidth()
         {
-            // 方形十字（θ = π/2, 等宽）+ R=20, HW=7.5：
-            //   两外边线延长交点 X 位于 (HW, HW)，Leg ApproachPoint=(0,0) 在外边线上的侧向锚点 = (0, ±HW)；
-            //   切点 = X + uA·T，其中 T = R/tan(π/4) = R = 20；
-            //   故段长 = 从锚点到切点沿外边线的投影 = T + HW = 27.5。
+            // 方形十字（θ = π/2, 等宽）+ R=20, HW=7.5。v1.2 修正后：
+            //   两 Leg 物理相邻一侧外边线延长交点 X 位于 (-HW, -HW)（修复前错置在 +HW, +HW 对角镜像）；
+            //   Leg ApproachPoint=(0,0) 的侧向锚点 = (0, ±HW) 与 X 同侧；
+            //   切点 = X + uA·T，其中 T = R/tan(π/4) = R = 20，位于 X 的 +uA 方向 T 米处；
+            //   故段长 = 锚点沿外边线（垂直 perp 方向）到切点的距离 = T − HW = 12.5。
             var ix = MakeCross(r: 20, hw: 7.5);
             var segs = KerbChainDesigner.ComputeKerbSegments(ix);
 
             foreach (var s in segs)
             {
-                s.Length.Should().BeApproximately(27.5, 1e-6);
+                s.Length.Should().BeApproximately(12.5, 1e-6);
             }
         }
 

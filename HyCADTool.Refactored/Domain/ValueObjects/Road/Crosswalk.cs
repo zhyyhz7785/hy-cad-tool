@@ -9,9 +9,10 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
     ///
     /// <para><b>几何定义（参照 CJJ 37-2012 §11.3 与旧 <c>CrosswalkService</c>）</b></para>
     /// <list type="bullet">
-    /// <item>Leg 两侧的"路缘外角点" = 相邻两 CornerArc 的切点（Left = 左侧 CornerArc.StartPoint，
-    /// Right = 右侧 CornerArc.EndPoint）；用 <see cref="BaseLeft"/> / <see cref="BaseRight"/> 缓存；</item>
-    /// <item>沿 Leg <b>外延方向</b>（= <see cref="IntersectionLeg.InwardDirection"/>，实现中指向 Alignment 另一端）前进：
+    /// <item>Leg 两侧的"路缘外角点" = 相邻两 CornerArc 的切点：
+    ///   <see cref="BaseLeft"/> = 左侧相邻 CornerArc 的 <see cref="CornerArc.EndPoint"/>（该 Arc 以本 Leg 作为 <c>LegIndexB</c>），
+    ///   <see cref="BaseRight"/> = 右侧相邻 CornerArc 的 <see cref="CornerArc.StartPoint"/>（该 Arc 以本 Leg 作为 <c>LegIndexA</c>）；</item>
+    /// <item>沿 Leg <b>内前进</b>方向（= <see cref="IntersectionLeg.InwardDirection"/>，从 <c>ApproachPoint</c> 指向交叉口中心）前进：
     /// <list type="bullet">
     /// <item>距路缘 <see cref="GapWidth"/> → L2（横道内边），</item>
     /// <item>再前进 <see cref="Width"/> → L3（横道外边），</item>
@@ -59,10 +60,13 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>条纹实际宽度（米，沿 roadDir 方向的线宽；v1.1 绘图不使用此值，预留 v1.2 改为闭合填充）。</summary>
         public double StripeWidth { get; }
 
-        /// <summary>Leg 左侧路缘外角点（= 左侧 CornerArc.StartPoint）。</summary>
+        /// <summary>Leg 左侧路缘外角点 —— 沿 <see cref="IntersectionLeg.InwardDirection"/> 前进时左手侧的起点。
+        /// v1.2 起取自 <c>CornerArc(LegIndexB == i).EndPoint</c>（与修复后 <see cref="Services.Road.IntersectionDesigner.TryBuildCornerArc"/>
+        /// 语义一致：EndPoint 位于 LegIndexB 左侧外边线）。</summary>
         public Point2D BaseLeft { get; }
 
-        /// <summary>Leg 右侧路缘外角点（= 右侧 CornerArc.EndPoint）。</summary>
+        /// <summary>Leg 右侧路缘外角点 —— 沿 <see cref="IntersectionLeg.InwardDirection"/> 前进时右手侧的起点。
+        /// v1.2 起取自 <c>CornerArc(LegIndexA == i).StartPoint</c>（StartPoint 位于 LegIndexA 右侧外边线）。</summary>
         public Point2D BaseRight { get; }
 
         /// <summary>横道"前进"方向（沿此方向从路缘依次到 L2 / L3 / L4）。

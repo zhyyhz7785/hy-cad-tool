@@ -26,12 +26,15 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     /// <item>每条条纹的外端 = 对应内端 + Outward · Width。</item>
     /// </list>
     ///
-    /// <para><b>弧线裁切（v1.2 计划）</b></para>
-    /// 旧服务的条纹双端弧线裁切（<c>RayHitArc</c>）在 v1.1 中暂缓：
+    /// <para><b>弧线裁切（v1.2）</b></para>
+    /// 当 Crosswalk 的 L2/L3（条纹两端）落入 <see cref="CornerArc"/> 凸出的范围内时，条纹会与弧相交。
+    /// 旧 <c>CrosswalkService.DrawCrosswalkForArm</c> 的 <c>RayHitArc</c> 逻辑已迁移到本类的
+    /// <see cref="ClipStripeByCornerArcs"/> 与 <see cref="ComputeStripesClipped"/>：
     /// <list type="bullet">
-    /// <item>当 <see cref="Crosswalk.GapWidth"/> ≥ <see cref="CornerArc.Radius"/> 时天然无需裁切（L2/L3 都在弧外）；</item>
-    /// <item>GB 50763 / CJJ 37 的"缘石坡道 + 盲道"要求坡道前有净空，工程上 GapWidth 通常 ≥ 1.0 m 即避开弧；</item>
-    /// <item>极端小 R 交叉口（城市支路 R=5m）需要裁切 → v1.2 引入。</item>
+    /// <item>对每条条纹 <c>From → To</c> 方向做射线测试；最近的弧交点把条纹的对应端点替换（裁短）；</item>
+    /// <item>裁短后如果剩余长度 &lt; <see cref="DefaultMinStripeLength"/>（默认 0.05 m）视为被完全吃掉，丢弃；</item>
+    /// <item>算法兼容 v1.2 后的"凸向外侧"几何与 v1.1 的"镜像"几何 —— 只依赖 <see cref="CornerArc"/> 的
+    /// <see cref="CornerArc.Center"/> / <see cref="CornerArc.Radius"/> / <see cref="CornerArc.StartAngle"/> / <see cref="CornerArc.EndAngle"/>。</item>
     /// </list>
     /// </summary>
     public static class CrosswalkDesigner
@@ -62,13 +65,13 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             Point2D baseLeft = leg.ApproachPoint.Add(perp * leg.HalfWidth);
             Point2D baseRight = leg.ApproachPoint.Add(perp * -leg.HalfWidth);
 
-            // 尝试取 CornerArc 切点替换：
-            //   Left  = CornerArc(LegIndexA == legIndex).StartPoint
-            //   Right = CornerArc(LegIndexB == legIndex).EndPoint
+            // 尝试取 CornerArc 切点替换（v1.2 起与修复后的 IntersectionDesigner 语义对齐）：
+            //   Left  = CornerArc(LegIndexB == legIndex).EndPoint   （EndPoint 位于 LegIndexB 的 +perp 左侧外边线）
+            //   Right = CornerArc(LegIndexA == legIndex).StartPoint （StartPoint 位于 LegIndexA 的 −perp 右侧外边线）
             foreach (var ca in intersection.CornerArcs)
             {
-                if (ca.LegIndexA == legIndex) baseLeft = ca.StartPoint;
-                if (ca.LegIndexB == legIndex) baseRight = ca.EndPoint;
+                if (ca.LegIndexB == legIndex) baseLeft = ca.EndPoint;
+                if (ca.LegIndexA == legIndex) baseRight = ca.StartPoint;
             }
 
             return new Crosswalk(
@@ -135,5 +138,164 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <summary>停止线两端点（L4 左 / 右）。</summary>
         public static (Point2D Left, Point2D Right) ComputeStopLine(Crosswalk cw)
             => (cw.StopLineLeft, cw.StopLineRight);
+
+        // =====================================================================
+        //  v1.2 弧线裁切（迁自旧 CrosswalkService.RayHitArc）
+        // =====================================================================
+
+        /// <summary>条纹裁短后若剩余长度小于此值，则视为被弧线完全遮挡（米）。</summary>
+        public const double DefaultMinStripeLength = 0.05;
+
+        /// <summary>
+        /// 对单条 <see cref="CrosswalkStripe"/> 做两端弧线裁切：
+        /// <list type="number">
+        /// <item>从 <see cref="CrosswalkStripe.From"/> 沿 <c>From→To</c> 方向射线测试，若有 <see cref="CornerArc"/>
+        /// 的命中点落在当前段内，则把 <c>To</c> 推到最近交点；</item>
+        /// <item>从（裁切后的）<c>To</c> 沿反向射线测试，若命中弧交点，则把 <c>From</c> 推到最近交点。</item>
+        /// </list>
+        /// 任何一端裁切后如果剩余长度 &lt; <paramref name="minLength"/> 返回 <c>null</c>（条纹被完全吃掉）。
+        /// </summary>
+        /// <param name="stripe">原条纹。</param>
+        /// <param name="arcs">用于裁切的弧列表（典型 = <see cref="Models.Road.Intersection.CornerArcs"/>）。</param>
+        /// <param name="minLength">最小保留长度（米）。</param>
+        /// <returns>裁切后的 <see cref="CrosswalkStripe"/>，或 <c>null</c>。</returns>
+        public static CrosswalkStripe? ClipStripeByCornerArcs(
+            CrosswalkStripe stripe,
+            IEnumerable<CornerArc> arcs,
+            double minLength = DefaultMinStripeLength)
+        {
+            if (arcs == null) throw new ArgumentNullException(nameof(arcs));
+
+            var from = stripe.From;
+            var to = stripe.To;
+            var dirVec = new Vector2D(to.X - from.X, to.Y - from.Y);
+            double fullLen = dirVec.Length;
+            if (fullLen < minLength) return null;
+            if (!dirVec.TryNormalize(out var dir, 1e-9)) return null;
+
+            // 1) 裁切 To 端：从 From 沿 +dir 发射，找最近命中 < fullLen
+            double bestTo = fullLen;
+            foreach (var arc in arcs)
+            {
+                if (TryRayArcIntersect(from, dir, arc, out var hit))
+                {
+                    double t = from.DistanceTo(hit);
+                    if (t > 1e-4 && t < bestTo) bestTo = t;
+                }
+            }
+            var newTo = from.Add(dir * bestTo);
+            double afterToLen = from.DistanceTo(newTo);
+            if (afterToLen < minLength) return null;
+
+            // 2) 裁切 From 端：从 newTo 沿 −dir 发射，找最近命中 < afterToLen
+            var negDir = new Vector2D(-dir.X, -dir.Y);
+            double bestFrom = afterToLen;
+            foreach (var arc in arcs)
+            {
+                if (TryRayArcIntersect(newTo, negDir, arc, out var hit))
+                {
+                    double t = newTo.DistanceTo(hit);
+                    if (t > 1e-4 && t < bestFrom) bestFrom = t;
+                }
+            }
+            var newFrom = newTo.Add(negDir * bestFrom);
+            if (newFrom.DistanceTo(newTo) < minLength) return null;
+
+            return new CrosswalkStripe(stripe.Index, newFrom, newTo);
+        }
+
+        /// <summary>
+        /// 先 <see cref="ComputeStripes"/> 生成基础条纹，再对每条调 <see cref="ClipStripeByCornerArcs"/> 裁短，
+        /// 返回裁切后仍有效的条纹。
+        /// </summary>
+        public static IReadOnlyList<CrosswalkStripe> ComputeStripesClipped(
+            Crosswalk cw,
+            IEnumerable<CornerArc> arcs,
+            double minLength = DefaultMinStripeLength)
+        {
+            if (arcs == null) throw new ArgumentNullException(nameof(arcs));
+            var basic = ComputeStripes(cw);
+            var arcList = arcs as IReadOnlyList<CornerArc> ?? new List<CornerArc>(arcs);
+            if (arcList.Count == 0) return basic;
+
+            var clipped = new List<CrosswalkStripe>(basic.Count);
+            foreach (var s in basic)
+            {
+                var r = ClipStripeByCornerArcs(s, arcList, minLength);
+                if (r.HasValue) clipped.Add(r.Value);
+            }
+            return clipped;
+        }
+
+        /// <summary>
+        /// 射线 P0 + t·dir（t ≥ 0）与弧线 <paramref name="arc"/> 求最近交点（最小正 t 且角度在弧上）。
+        /// 迁自旧 <c>CrosswalkService.RayHitArc</c>，改用 <see cref="Point2D"/> / <see cref="Vector2D"/>。
+        /// </summary>
+        internal static bool TryRayArcIntersect(Point2D origin, Vector2D dir, CornerArc arc, out Point2D hit)
+        {
+            hit = default;
+
+            double ox = origin.X - arc.Center.X;
+            double oy = origin.Y - arc.Center.Y;
+            double dx = dir.X;
+            double dy = dir.Y;
+            double r = arc.Radius;
+
+            double a = dx * dx + dy * dy;
+            if (a < 1e-20) return false;
+            double b = 2.0 * (ox * dx + oy * dy);
+            double c = ox * ox + oy * oy - r * r;
+            double disc = b * b - 4.0 * a * c;
+            if (disc < 0) return false;
+
+            double sqrtDisc = Math.Sqrt(disc);
+            double t1 = (-b - sqrtDisc) / (2.0 * a);
+            double t2 = (-b + sqrtDisc) / (2.0 * a);
+
+            bool found = false;
+            double bestT = double.MaxValue;
+
+            foreach (double t in new[] { t1, t2 })
+            {
+                if (t < -1e-6) continue;
+                double px = origin.X + dx * t;
+                double py = origin.Y + dy * t;
+                double angle = Math.Atan2(py - arc.Center.Y, px - arc.Center.X);
+                if (IsAngleOnArc(angle, arc) && t < bestT)
+                {
+                    bestT = t;
+                    hit = new Point2D(px, py);
+                    found = true;
+                }
+            }
+            return found;
+        }
+
+        /// <summary>
+        /// 判断角度 <paramref name="testAngle"/>（弧度）是否落在弧
+        /// <paramref name="arc"/> 的扫描区间 [<c>StartAngle</c>, <c>StartAngle + SweepAngle</c>] 内，
+        /// 方向由 <see cref="CornerArc.SweepAngle"/> 符号决定（正 = CCW，负 = CW），跨越 ±2π 自动归一。
+        /// </summary>
+        private static bool IsAngleOnArc(double testAngle, CornerArc arc)
+        {
+            const double twoPi = Math.PI * 2.0;
+            const double eps = 0.002;
+
+            double delta = testAngle - arc.StartAngle;
+            while (delta > twoPi) delta -= twoPi;
+            while (delta < -twoPi) delta += twoPi;
+
+            double sweep = arc.SweepAngle;
+            if (sweep >= 0)
+            {
+                if (delta < -eps) delta += twoPi;
+                return delta >= -eps && delta <= sweep + eps;
+            }
+            else
+            {
+                if (delta > eps) delta -= twoPi;
+                return delta <= eps && delta >= sweep - eps;
+            }
+        }
     }
 }

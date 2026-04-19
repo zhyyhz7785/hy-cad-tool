@@ -105,6 +105,12 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         [Fact]
         public void Cross_CornerArc_IsTangentToBothCurbLines_PerpendicularOffset()
         {
+            // v1.2 几何语义修正：
+            //   CornerArc 位于两 Leg 的 <b>物理相邻</b> 一侧（Leg A 右 + Leg B 左）的外边线之间。
+            //   外边线距 Alignment 轴 = HalfWidth；圆心距外边线 = R（切距不变）。
+            //   圆心位于 "ApproachPoint 的 Alignment 同侧 + 外边线反侧" 方向，故
+            //   <b>圆心距 Alignment 轴 = |R - HalfWidth|</b>（修复前错置在 R + HalfWidth 对角镜像）。
+            //   圆心到两切点距 = R（永恒成立，见 TryBuildCornerArc 内部自校验）。
             var als = new List<Alignment>
             {
                 MakeStraight(new Point2D(-100, 0), new Point2D(0, 0), "W"),
@@ -122,11 +128,11 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
                 var legB = ix.Legs[arc.LegIndexB];
 
                 DistanceFromPointToInfiniteLine(legA.ApproachPoint, legA.InwardDirection, arc.Center)
-                    .Should().BeApproximately(half + R, 1e-3,
-                        "Leg A 路缘外边线与 Alignment 轴距 = halfWidth，圆心距路缘外边 = R，故距 Alignment 轴 = halfWidth + R");
+                    .Should().BeApproximately(System.Math.Abs(R - half), 1e-3,
+                        "圆心距 Leg A Alignment 轴 = |R - halfWidth|（= R 到外边线，外边线到 Alignment 轴 = halfWidth，同侧差）");
 
                 DistanceFromPointToInfiniteLine(legB.ApproachPoint, legB.InwardDirection, arc.Center)
-                    .Should().BeApproximately(half + R, 1e-3);
+                    .Should().BeApproximately(System.Math.Abs(R - half), 1e-3);
 
                 arc.Center.DistanceTo(arc.StartPoint).Should().BeApproximately(R, 1e-3);
                 arc.Center.DistanceTo(arc.EndPoint).Should().BeApproximately(R, 1e-3);

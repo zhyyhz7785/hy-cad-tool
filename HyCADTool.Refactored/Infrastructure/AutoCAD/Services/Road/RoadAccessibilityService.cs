@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.Services.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 
@@ -44,7 +46,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         // =========================================================================
 
         /// <summary>
-        /// 把 <paramref name="intersection"/> 的所有 <see cref="CurbRamp"/> 画成闭合 LWPolyline（矩形）。
+        /// 把 <paramref name="intersection"/> 的所有 <see cref="CurbRamp"/> 画成闭合 LWPolyline。
+        ///
+        /// <para>v1.1 分类几何（<see cref="CurbRampDesigner.BuildFootprint"/>）：
+        /// <list type="bullet">
+        /// <item><see cref="CurbRampKind.SingleFace"/>：1 条矩形 Polyline；</item>
+        /// <item><see cref="CurbRampKind.ThreeFace"/>：3 条 Polyline（主坡矩形 + 左/右侧三角坡），
+        /// 每条都挂 <see cref="CurbRampKind"/> Xdata + Intersection.Id → <see cref="ClearAccessibilityEntities"/> 一次清理；</item>
+        /// <item><see cref="CurbRampKind.Fan"/>：1 条扇环 Polyline（弧用 <see cref="CurbRampDesigner.DefaultFanTesselationSegments"/> 段直线镶嵌）；
+        /// 需要 <see cref="Intersection.CornerArcs"/> 中匹配 <see cref="CurbRamp.CornerArcIndex"/> 的弧。</item>
+        /// </list></para>
         /// </summary>
         public IReadOnlyList<ObjectId> DrawCurbRamps(
             Transaction tr, Database db, Intersection intersection, string layerName)
@@ -63,14 +74,24 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 
             foreach (var ramp in intersection.CurbRamps)
             {
-                var pl = ToAutoCadRectangle(ramp);
-                if (useLayer) pl.Layer = layerName;
+                CornerArc? arc = null;
+                if (ramp.CornerArcIndex >= 0 && ramp.CornerArcIndex < intersection.CornerArcs.Count)
+                {
+                    arc = intersection.CornerArcs[ramp.CornerArcIndex];
+                }
 
-                ms.AppendEntity(pl);
-                tr.AddNewlyCreatedDBObject(pl, true);
+                var footprints = CurbRampDesigner.BuildFootprint(ramp, arc);
+                foreach (var pl2d in footprints)
+                {
+                    var pl = ToAutoCadPolyline(pl2d);
+                    if (useLayer) pl.Layer = layerName;
 
-                HyRoadXdata.Write(tr, db, pl, intersection.Id, CurbRampKind, SchemaVersion.Current);
-                results.Add(pl.ObjectId);
+                    ms.AppendEntity(pl);
+                    tr.AddNewlyCreatedDBObject(pl, true);
+
+                    HyRoadXdata.Write(tr, db, pl, intersection.Id, CurbRampKind, SchemaVersion.Current);
+                    results.Add(pl.ObjectId);
+                }
             }
 
             return results;
@@ -175,19 +196,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         // =========================================================================
 
         /// <summary>
-        /// 把 <see cref="CurbRamp"/> 转成 4 顶点闭合 <see cref="Polyline"/>（矩形）：
-        /// FrontLeft → FrontRight → BackRight → BackLeft → 闭合。
+        /// 把 Domain 层 <see cref="Polyline2D"/> 转成 AutoCAD <see cref="Polyline"/>（等线宽 0，闭合性透传）。
+        /// 用于 <see cref="CurbRamp"/> 分类几何（Single / ThreeFace / Fan）的各闭合轮廓。
         /// </summary>
-        internal static Polyline ToAutoCadRectangle(CurbRamp ramp)
+        internal static Polyline ToAutoCadPolyline(Polyline2D pl2d)
         {
-            var pl = new Polyline(4)
+            if (pl2d == null) throw new ArgumentNullException(nameof(pl2d));
+            var pl = new Polyline(pl2d.VertexCount)
             {
-                Closed = true,
+                Closed = pl2d.IsClosed,
             };
-            pl.AddVertexAt(0, new Point2d(ramp.FrontLeft.X, ramp.FrontLeft.Y), 0, 0, 0);
-            pl.AddVertexAt(1, new Point2d(ramp.FrontRight.X, ramp.FrontRight.Y), 0, 0, 0);
-            pl.AddVertexAt(2, new Point2d(ramp.BackRight.X, ramp.BackRight.Y), 0, 0, 0);
-            pl.AddVertexAt(3, new Point2d(ramp.BackLeft.X, ramp.BackLeft.Y), 0, 0, 0);
+            for (int i = 0; i < pl2d.VertexCount; i++)
+            {
+                var v = pl2d.GetPointAt(i);
+                pl.AddVertexAt(i, new Point2d(v.X, v.Y), 0, 0, 0);
+            }
             return pl;
         }
 

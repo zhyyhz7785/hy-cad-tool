@@ -319,6 +319,12 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadCrosswalkService>()
                 .AsSelf()
                 .SingleInstance();
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadStopLineService>()
+                .AsSelf()
+                .SingleInstance();
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadLaneMarkingService>()
+                .AsSelf()
+                .SingleInstance();
 
             // v1.1 起取消防抖持久化服务：命令收尾处由 RoadJsonExportService.SaveForDocument 同步落盘，
             // 彻底消除 SAVEAS / 多文档切换导致的 key 漂移与"空 JSON"时序 bug（详见 Doc/MASTER 决策 3 的 v1.1 更新）。

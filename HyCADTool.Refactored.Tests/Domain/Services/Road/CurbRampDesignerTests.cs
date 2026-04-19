@@ -14,8 +14,9 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
     ///
     /// <para><b>验收要点</b></para>
     /// <list type="bullet">
-    /// <item>每个 <see cref="CornerArc"/> 落在交叉口内侧口袋上；Ramp.FrontCenter 必位于 CornerArc 上（距 Center = Radius）；</item>
-    /// <item>Ramp.OutwardNormal 指向人行道（= 从 FrontCenter 指向 CornerArc.Center）；</item>
+    /// <item>每个 <see cref="CornerArc"/> 布置 1 个 Ramp；Ramp.FrontCenter 必位于 CornerArc 上（距 Center = Radius）；</item>
+    /// <item>Ramp.OutwardNormal 指向人行道（v1.2 起 = <see cref="CornerArc.Center"/> → <c>FrontCenter</c>，
+    /// 与 <see cref="CurbRampDesignerDirectionTests"/> 的物理方向断言相符）；</item>
     /// <item>Tangent ⟂ OutwardNormal（两者点积 ≈ 0）；</item>
     /// <item>BackCenter / FrontLeft / FrontRight 几何一致。</item>
     /// </list>
@@ -100,15 +101,18 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         }
 
         [Fact]
-        public void Ramp_OutwardNormal_PointsFromFrontCenterToArcCenter()
+        public void Ramp_OutwardNormal_PointsFrom_ArcCenter_To_FrontCenter()
         {
+            // v1.2：修复 IntersectionDesigner 镜像 bug 后，CornerArc 的圆心在交叉口内部、
+            // 人行道在弧外侧 —— OutwardNormal 必须从圆心 <b>向外</b> 指向 FrontCenter。
+            // 旧断言（反号）是 v1.1 镜像几何下的"假绿"。
             var ix = MakeCrossIntersection();
             CurbRampDesigner.LayoutRampsOnCornerArcs(ix);
 
             foreach (var ramp in ix.CurbRamps)
             {
                 var arc = ix.CornerArcs[ramp.CornerArcIndex];
-                var expected = ramp.FrontCenter.VectorTo(arc.Center).TryNormalize(out var exp, 1e-9) ? exp : Vector2D.Zero;
+                var expected = arc.Center.VectorTo(ramp.FrontCenter).TryNormalize(out var exp, 1e-9) ? exp : Vector2D.Zero;
                 ramp.OutwardNormal.X.Should().BeApproximately(expected.X, 1e-6);
                 ramp.OutwardNormal.Y.Should().BeApproximately(expected.Y, 1e-6);
             }
