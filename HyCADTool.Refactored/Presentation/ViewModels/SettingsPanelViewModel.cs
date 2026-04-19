@@ -485,46 +485,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             set
             {
                 var normalized = string.IsNullOrWhiteSpace(value) ? "BlenderDark" : value.Trim();
-
-                // #region agent log
-                try
-                {
-                    var asmTag = typeof(HyCAD.BlenderUI.Theming.BlenderThemeManager).Assembly.FullName +
-                                 "@" + typeof(HyCAD.BlenderUI.Theming.BlenderThemeManager).Assembly.GetHashCode();
-                    System.IO.File.AppendAllText(
-                        @"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-b2db6c.log",
-                        "{\"sessionId\":\"b2db6c\",\"hypothesisId\":\"D,B\",\"location\":\"SettingsPanelViewModel.Theme.set\"," +
-                        "\"message\":\"Theme setter entered\",\"data\":{" +
-                        "\"raw\":\"" + (value ?? "<null>").Replace("\"","'") + "\"," +
-                        "\"normalized\":\"" + normalized + "\"," +
-                        "\"prev\":\"" + _theme + "\"," +
-                        "\"isLoading\":" + (_isLoading ? "true" : "false") + "," +
-                        "\"autoSave\":" + (_autoSaveEnabled ? "true" : "false") + "}," +
-                        "\"asm\":\"" + asmTag.Replace("\"","'") + "\"," +
-                        "\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
-                }
-                catch { }
-                // #endregion
-
                 if (string.Equals(_theme, normalized, StringComparison.OrdinalIgnoreCase)) return;
                 _theme = normalized;
                 OnPropertyChanged();
 
                 try { BlenderThemeManager.Apply(_theme); }
-                catch (Exception ex)
+                catch
                 {
-                    // #region agent log
-                    try
-                    {
-                        System.IO.File.AppendAllText(
-                            @"e:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-b2db6c.log",
-                            "{\"sessionId\":\"b2db6c\",\"hypothesisId\":\"D\",\"location\":\"SettingsPanelViewModel.Theme.set\"," +
-                            "\"message\":\"BlenderThemeManager.Apply threw\",\"data\":{\"err\":\"" +
-                            ex.GetType().Name + ": " + ex.Message.Replace("\"","'") + "\"}," +
-                            "\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
-                    }
-                    catch { }
-                    // #endregion
+                    // 主题切换失败（极少：Application 未就绪 / palette XAML 解析异常）不能阻塞 setter，
+                    // 否则配置写盘也会跟着失败。失败时颜色保持当前值，下次面板重建会再次 Apply。
                 }
 
                 if (!_isLoading && _autoSaveEnabled) SaveSettings();

@@ -3,16 +3,21 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-     主题色板入口（v2 — host-replace 实现）
-     — XAML 编译期 Merge 默认主题 BlenderDark.xaml；
-     — Code-behind ColorsHost 构造时把自己登记到 BlenderThemeManager；
-     — BlenderThemeManager.Apply(...) 切换时直接 Clear 本字典 MergedDictionaries
-       并 Add 目标主题调色板 → 所有引用 Brush_* 的 DynamicResource 自动刷新。
-     — 设计器场景 BlenderThemeManager 未启动也无伤大雅：仍渲染 BlenderDark。
-    -->
+     主题色板入口（v3 — Mutable Brush Facade，参考 Blender preferences.themes[0] 全局可变思想）
 
-    <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
-    </ResourceDictionary.MergedDictionaries>
+     核心机制：
+     — XAML 不再嵌入任何 BlenderDark/Light 调色板；本字典启动时为空。
+     — Code-behind ColorsHost 构造时调用 BlenderThemeManager.PopulateAndRegister(this)，
+       由管理器为每个 Brush_* key 创建一个 *unfrozen* SolidColorBrush 实例，写入本字典自身。
+     — 主题切换时管理器遍历所有已注册 host 中的 brush 实例，仅修改其 .Color 属性。
+       SolidColorBrush.Color 是 DependencyProperty —— DP 变化通知会沿绑定 / DynamicResource
+       引用链自动传播，所有 UI 元素必然刷新。
+
+     为什么不再用 <ResourceDictionary Source=".../BlenderDark.xaml"/>？
+     WPF 通过 Source 加载的 ResourceDictionary 在内部被视为不可变；其后对自身 entry 或
+     MergedDictionaries 的修改不会向 grand-parent 字典的 DynamicResource 引用者广播
+     ResourcesChanged 事件（已通过 host-replace + key overlay 双重失败验证）。
+     方案 H 改为用 unfrozen DP 实例承载颜色，避开此限制。
+    -->
 
 </ResourceDictionary>

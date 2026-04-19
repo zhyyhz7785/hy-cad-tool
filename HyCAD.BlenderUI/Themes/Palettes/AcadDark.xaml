@@ -2,40 +2,52 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-     主题 4：AutoCAD Dark（参考 AutoCAD 2024+ Dark 主题）
-     特征：深灰 Ribbon (#2F2F2F) + 黑色绘图区背景感 + Autodesk 蓝高亮
+     主题 4：AutoCAD Dark
+     ───────────────────────────────────────────────────────────────
+     色值来源：
+       1. AutoCAD 2024+ Dark Ribbon 实测抓色（COLORTHEME=0）
+       2. AutoCAD 工具栏背景官方文章（toolbar background RGB colors in AutoCAD）
+       3. AutoCAD focus / selected highlight 蓝（实测 #3070C0，区别于 Autodesk 品牌的 Twilight）
+     映射依据：
+       Status bar / Title bar       = #303030
+       Quick Access Toolbar / 顶 header = #3F3F3F
+       Drawing area background      = #1E1E1E   →  Brush_RegionBack
+       Ribbon panel                 = #373737
+       Ribbon panel header (灰带)   = #2A2A2A
+       AutoCAD focus blue           = #3070C0   →  AccentBlue
+       AutoCAD focus blue hover     = #4585D9
     -->
 
     <!-- 窗口 / 编辑器 / 侧边栏 / 分组面板 -->
-    <SolidColorBrush x:Key="Brush_WindowBack"           Color="#2F2F2F"/>
-    <SolidColorBrush x:Key="Brush_HeaderBack"           Color="#3D3D3D"/>
+    <SolidColorBrush x:Key="Brush_WindowBack"           Color="#303030"/>
+    <SolidColorBrush x:Key="Brush_HeaderBack"           Color="#3F3F3F"/>
     <SolidColorBrush x:Key="Brush_RegionBack"           Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="Brush_PanelBack"            Color="#383838"/>
+    <SolidColorBrush x:Key="Brush_PanelBack"            Color="#373737"/>
     <SolidColorBrush x:Key="Brush_PanelSubBack"         Color="#303030"/>
-    <SolidColorBrush x:Key="Brush_PanelHeaderBack"      Color="#4A4A4A"/>
+    <SolidColorBrush x:Key="Brush_PanelHeaderBack"      Color="#2A2A2A"/>
     <SolidColorBrush x:Key="Brush_BorderDark"           Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="Brush_BorderMid"            Color="#2A2A2A"/>
+    <SolidColorBrush x:Key="Brush_BorderMid"            Color="#3F3F3F"/>
 
-    <!-- 标签 / 选中高亮（Autodesk 蓝） -->
+    <!-- 标签 / 选中高亮（AutoCAD focus 蓝 #3070C0） -->
     <SolidColorBrush x:Key="Brush_TabInactive"          Color="#3D3D3D"/>
-    <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#2A6BBC"/>
-    <SolidColorBrush x:Key="Brush_AccentBlueHover"      Color="#3D7DCE"/>
+    <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_AccentBlueHover"      Color="#4585D9"/>
 
     <!-- 按钮 -->
-    <SolidColorBrush x:Key="Brush_ButtonIdle"           Color="#4A4A4A"/>
-    <SolidColorBrush x:Key="Brush_ButtonHover"          Color="#3D7DCE"/>
-    <SolidColorBrush x:Key="Brush_ButtonPressed"        Color="#1F5598"/>
+    <SolidColorBrush x:Key="Brush_ButtonIdle"           Color="#3F3F3F"/>
+    <SolidColorBrush x:Key="Brush_ButtonHover"          Color="#505050"/>
+    <SolidColorBrush x:Key="Brush_ButtonPressed"        Color="#3070C0"/>
     <SolidColorBrush x:Key="Brush_ButtonBorder"         Color="#1A1A1A"/>
 
     <!-- 输入 / 复选 -->
-    <SolidColorBrush x:Key="Brush_InputBack"            Color="#3F3F3F"/>
-    <SolidColorBrush x:Key="Brush_InputBorder"          Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="Brush_InputFocusBorder"     Color="#3D7DCE"/>
-    <SolidColorBrush x:Key="Brush_CheckboxBack"         Color="#383838"/>
-    <SolidColorBrush x:Key="Brush_CheckboxChecked"      Color="#2A6BBC"/>
+    <SolidColorBrush x:Key="Brush_InputBack"            Color="#252526"/>
+    <SolidColorBrush x:Key="Brush_InputBorder"          Color="#3F3F3F"/>
+    <SolidColorBrush x:Key="Brush_InputFocusBorder"     Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_CheckboxBack"         Color="#373737"/>
+    <SolidColorBrush x:Key="Brush_CheckboxChecked"      Color="#3070C0"/>
 
     <!-- 文字 -->
-    <SolidColorBrush x:Key="Brush_TextPrimary"          Color="#DCDCDC"/>
+    <SolidColorBrush x:Key="Brush_TextPrimary"          Color="#F1F1F1"/>
     <SolidColorBrush x:Key="Brush_TextSecondary"        Color="#A0A0A0"/>
     <SolidColorBrush x:Key="Brush_TextDisabled"         Color="#6A6A6A"/>
     <SolidColorBrush x:Key="Brush_TextOnAccent"         Color="#FFFFFF"/>
@@ -45,22 +57,22 @@
     <SolidColorBrush x:Key="Brush_Success"              Color="#A3BE8C"/>
 
     <!-- 滚动条 -->
-    <SolidColorBrush x:Key="Brush_ScrollThumb"          Color="#4A4A4A"/>
-    <SolidColorBrush x:Key="Brush_ScrollThumbHover"     Color="#5A5A5A"/>
-    <SolidColorBrush x:Key="Brush_ScrollTrack"          Color="#252525"/>
+    <SolidColorBrush x:Key="Brush_ScrollThumb"          Color="#4E4E52"/>
+    <SolidColorBrush x:Key="Brush_ScrollThumbHover"     Color="#646469"/>
+    <SolidColorBrush x:Key="Brush_ScrollTrack"          Color="#252526"/>
 
     <!-- Expander 头条 -->
-    <SolidColorBrush x:Key="Brush_ExpanderHeader"       Color="#4A4A4A"/>
-    <SolidColorBrush x:Key="Brush_ExpanderHeaderHover"  Color="#555555"/>
+    <SolidColorBrush x:Key="Brush_ExpanderHeader"       Color="#2A2A2A"/>
+    <SolidColorBrush x:Key="Brush_ExpanderHeaderHover"  Color="#363636"/>
 
     <!-- ListBox / Selector 高亮 -->
-    <SolidColorBrush x:Key="Brush_ItemHover"            Color="#3E3E3E"/>
-    <SolidColorBrush x:Key="Brush_ItemSelected"         Color="#2A6BBC"/>
+    <SolidColorBrush x:Key="Brush_ItemHover"            Color="#2D2D2D"/>
+    <SolidColorBrush x:Key="Brush_ItemSelected"         Color="#3070C0"/>
     <SolidColorBrush x:Key="Brush_ItemSelectedText"     Color="#FFFFFF"/>
 
     <!-- NumericSlider 专用 -->
-    <SolidColorBrush x:Key="Brush_SliderBack"           Color="#4A4A4A"/>
-    <SolidColorBrush x:Key="Brush_SliderFill"           Color="#2A6BBC"/>
-    <SolidColorBrush x:Key="Brush_SliderFillHover"      Color="#3D7DCE"/>
+    <SolidColorBrush x:Key="Brush_SliderBack"           Color="#3F3F3F"/>
+    <SolidColorBrush x:Key="Brush_SliderFill"           Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_SliderFillHover"      Color="#4585D9"/>
 
 </ResourceDictionary>

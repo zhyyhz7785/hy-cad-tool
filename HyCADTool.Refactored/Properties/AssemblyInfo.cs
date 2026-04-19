@@ -19,6 +19,9 @@ using System.Runtime.InteropServices;
 // COM, set the ComVisible attribute to true on that type.
 [assembly: ComVisible(false)]
 
+// 为单元测试项目暴露 internal 类型 / 方法（仅限测试，不暴露给生产 / ReCall 代码）
+[assembly: InternalsVisibleTo("HyCADTool.Refactored.Tests")]
+
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("8a9f5c3e-2b4d-4f6e-9c8a-1d7e3f5b6c9a")]
 

@@ -146,6 +146,10 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadAlnEditPi")]    public void Cmd_hyRoadAlnEditPi()    => ReCallClass.Invoke("hyRoadAlnEditPi");
         [CommandMethod("hyRoadAlnStation")]   public void Cmd_hyRoadAlnStation()   => ReCallClass.Invoke("hyRoadAlnStation");
         [CommandMethod("hyRoadP")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
+        // 鸿业风格的纵断面 3 件套：FG 设计线（与 hyRoadP 等价）/ EG 地面线（v1.1）/ Label 标注到 DWG（v1.1）
+        [CommandMethod("hyRoadProfFG")]       public void Cmd_hyRoadProfFG()       => ReCallClass.Invoke("hyRoadProfFG");
+        [CommandMethod("hyRoadProfEG")]       public void Cmd_hyRoadProfEG()       => ReCallClass.Invoke("hyRoadProfEG");
+        [CommandMethod("hyRoadProfLabel")]    public void Cmd_hyRoadProfLabel()    => ReCallClass.Invoke("hyRoadProfLabel");
         // hyRoadT（v1，已转发到 v2 hyRoadCs）+ hyRoadCs（v2 横断面绘制，BlenderUI workbench / 路牙 / 路拱 / 桩号）
         // 关 CAD → NETLOAD ReCall.dll 后两条都可用；commands.json 里两条都指向 RoadCrossSectionDrawCommand。
         [CommandMethod("hyRoadT")]            public void Cmd_hyRoadT()            => ReCallClass.Invoke("hyRoadT");

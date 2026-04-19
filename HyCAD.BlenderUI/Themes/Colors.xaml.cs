@@ -4,29 +4,24 @@ using HyCAD.BlenderUI.Theming;
 namespace HyCAD.BlenderUI.Themes
 {
     /// <summary>
-    /// Themes/Colors.xaml 的代码后置类型。
+    /// Themes/Colors.xaml 的代码后置类型（v3 — Mutable Brush Facade）。
     ///
-    /// 唯一职责：构造时把自己登记给 <see cref="BlenderThemeManager"/>，让主题切换时能
-    /// 反向找到所有"实际承载调色板"的 ResourceDictionary 实例并替换其 MergedDictionaries。
+    /// 唯一职责：构造时调用 <see cref="BlenderThemeManager.PopulateAndRegister"/>，
+    /// 让管理器在本字典上为每个 Brush_* key 创建 *unfrozen* SolidColorBrush 实例。
     ///
-    /// 选择 ColorsHost 而不是 ThemeAwareDictionary 子类的原因：
-    /// 通过 &lt;ResourceDictionary Source="…/Colors.xaml"/&gt; 加载 Source 时 WPF 不要求根节点
-    /// 是子类型，但若是 ResourceDictionary 自身则可保留与 BlenderTheme.xaml 既有 Merge 写法
-    /// 100% 兼容（无需调用方改 xmlns 前缀），迁移成本最低。
+    /// 切换主题时，管理器遍历所有 host 中已写入的 brush 实例，仅修改其 .Color 属性 ——
+    /// 由于 SolidColorBrush.Color 是 DependencyProperty，DP 变化通知会自动传播给所有
+    /// DynamicResource 引用方，无需依赖 ResourceDictionary 自身的 ResourcesChanged。
+    ///
+    /// 这是参考 Blender 主题切换思想的 WPF 等价：所有 UI 引用同一组可变颜色对象，
+    /// 改对象属性即驱动重绘。
     /// </summary>
     public partial class ColorsHost : ResourceDictionary
     {
         public ColorsHost()
         {
             InitializeComponent();
-            // #region agent log
-            HyCAD.BlenderUI.Theming._DbgLog.W(
-                "A", "Colors.xaml.cs:ColorsHost.ctor",
-                "ColorsHost ctor entered",
-                "{\"hash\":" + this.GetHashCode() +
-                ",\"mergedCount\":" + MergedDictionaries.Count + "}");
-            // #endregion
-            BlenderThemeManager.RegisterPaletteHost(this);
+            BlenderThemeManager.PopulateAndRegister(this);
         }
     }
 }

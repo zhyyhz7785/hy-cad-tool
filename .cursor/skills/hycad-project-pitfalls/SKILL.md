@@ -5,7 +5,8 @@ description: |
   覆盖：AutoCAD API 多文档 / 单例 Database 缓存 / Table Title 自动合并 / 样式与图层初始化 / 配置分裂；
   WPF + PaletteSet 宿主：隐式 Style 原生崩溃 / StaticResource 跨字典 / DynamicResource 类型错配 /
   ControlTemplate.Triggers 位置 / Trigger.TargetName 可达性 / MarkupExtension 当 Converter 递归 /
-  子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆；
+  子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆 /
+  ResourceDictionary 自动 Seal 强冻 SolidColorBrush 致主题切换抛 InvalidOperationException 升级 e0434352；
   Debug 方法论：调试类与调用点同步删除 / session ID 不入生产代码 /
   Dispatcher.UnhandledException handler shutdown 流程 NRE 升级原生致命 /
   PresentationTraceSources Binding 错误同步阻塞 UI 线程 / VS 错误清单按编译阻塞性分类。
@@ -15,8 +16,8 @@ description: |
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.2.0
-date: 2026-04-18
+version: 1.3.0
+date: 2026-04-19
 ---
 
 # HyCAD 项目级闭坑清单
@@ -554,6 +555,57 @@ private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
 - 保持 `PaletteSet.TitleBarLocation = Top`（或 `Left`），AutoCAD 原框保留
 - 面板内容区 Blender 黑主题即可；视觉上接受"AutoCAD 原框 + Blender 内容"的组合
 - 不要追求"完全去 AutoCAD 框"，风险极高、收益很小
+
+---
+
+### B10【新 2026-04-19】`ResourceDictionary` 加载即 `Seal` → `SolidColorBrush.Color = ...` 抛 `InvalidOperationException` → 升级 `e0434352`
+
+**症状链（已验证）**
+
+1. 用户在统一面板切换主题（4 选 1：BlenderDark / BlenderLight / AcadLight / AcadDark）后，AutoCAD 命令栏开始狂刷
+   `System.InvalidOperationException: 无法在对象"#FF4772B3"上设置属性，因为它处于只读状态`，每个 brush 一条；
+2. 紧接着 AutoCAD 自家 Ribbon 抛 `XamlParseException`：`组件 Badge 不具有由 URI '/AdWindows;component/themes/badge.xaml' 识别的资源`；
+3. 数秒后弹原生 `Unhandled e0434352h Exception` 致命错误框，AutoCAD 进程整体倒下。
+
+**根因（WPF 内部行为）**
+
+`BlenderThemeManager` v3 设计核心是 "brush facade" — `ColorsHost.ctor` 创建一组未冻结的 `SolidColorBrush` 实例放进字典，主题切换时只改 `brush.Color`（DP 通知自动传播给所有 `{DynamicResource Brush_xxx}` 引用方）。
+
+但 WPF `ResourceDictionary` 在 `Add(key, value)` 内部会调 `StyleHelper.SealIfSealable(value)`，命中以下任一条件就强行 `Seal()`/`Freeze()` 入参：
+
+- 字典通过 `<ResourceDictionary Source="..."/>` 加载；
+- 字典被 mark 为 `IsThemeDictionary` / `_ownerApps != null` / `IsReadOnly`；
+- 字典的 owner 是已 sealed 的 `ResourceDictionary` / `Application.Resources` / `FrameworkElement.Resources` 链上的任一节点。
+
+`Themes/Colors.xaml` 在 BlenderTheme 树里通过 `Source` 加载 → host 自动满足条件 → 添加进去的 brush 立刻被 `Freeze()`。后续 `Apply()` 改 `brush.Color` 必抛 `InvalidOperationException`，几十个异常累积到某 idle tick 污染 AutoCAD 自家 Ribbon Badge 的资源解析路径，升级为 native `e0434352`。
+
+**根因修复（self-binding 防 freeze）**
+
+`Freezable.CanFreeze` 在对象持有任何 binding / animation / dynamic resource expression 时返回 `false`，`SealIfSealable` 的 `if (sealable.CanSeal)` 条件 short-circuit，brush 不被 `Seal`。所以创建 brush 后立刻给一个**与业务无关的 DP**（这里选 `OpacityProperty`，默认值 1.0、binding 不改值）挂个 dummy `Binding(".") { Source = 1.0 }` 即可：
+
+```csharp
+foreach (var kv in palette)
+{
+    var brush = new SolidColorBrush(kv.Value);
+    BindingOperations.SetBinding(brush, SolidColorBrush.OpacityProperty,
+        new Binding(".") { Source = 1.0, Mode = BindingMode.OneWay });
+    host[kv.Key] = brush;
+}
+```
+
+后续 `Apply()` 改 `brush.Color` 完全独立于 `OpacityProperty` 的 binding，互不冲突。
+
+**何时复用此模式**
+
+任何"想做 mutable shared object 放进 `ResourceDictionary`，运行时改其 DP 触发全局更新"的场景，都要在 add 之前做这步 self-binding。例如：mutable `Thickness` token、mutable `FontFamily` token、mutable `CornerRadius` token 等若改用 `Freezable` 包装，同样需要这一步。
+
+**为什么不能简单用 `Freezable.IsFrozen` / `Freeze()` 检查反着想（"已经冻就再造一个"）**
+
+WPF 的 `DynamicResource` 解析后会把 brush 实例缓存到所有引用它的控件 DP 上，重新 `Add` 同名 key 不会让已解析的引用方重新查表。必须保证**初次注入的实例 永远不被 freeze**。
+
+**修复文件**
+
+- `HyCAD.BlenderUI/Theming/BlenderThemeManager.cs` `PopulateAndRegister`（2026-04-19）
 
 ---
 

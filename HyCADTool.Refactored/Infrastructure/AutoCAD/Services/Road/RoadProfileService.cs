@@ -126,6 +126,76 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         }
 
         /// <summary>
+        /// 创建或整批替换 Alignment 上的 EG 地面线 Profile（<see cref="Profile.IsDesignProfile"/> = <c>false</c>）。
+        ///
+        /// 行为：
+        /// <list type="number">
+        ///   <item>查找 alignment 上第一个 <c>IsDesignProfile == false</c> 的 Profile：
+        ///     <list type="bullet">
+        ///       <item>存在 → 清空 <c>Vertices</c> 并写入 <paramref name="sampled"/>，发 <see cref="RoadChangeKind.Updated"/>；</item>
+        ///       <item>不存在 → 新建命名 "{AlignmentName} - 现状地面线"，写入 <paramref name="sampled"/>，发 <see cref="RoadChangeKind.Created"/>。</item>
+        ///     </list>
+        ///   </item>
+        ///   <item>不修改 <see cref="Profile.DesignSpeed"/>（EG 与设计速度无关，新建时取 0 占位）；</item>
+        ///   <item>不做几何校核（<see cref="Domain.Services.Road.EgProfileSampler"/> 已保证 Station 升序）；</item>
+        ///   <item>刷新 <see cref="Profile.LastModifiedUtc"/> / <see cref="RoadDesign.LastModifiedUtc"/>，
+        ///         发 <see cref="ProfileChangedEvent"/>；命令层负责 JSON 落盘。</item>
+        /// </list>
+        ///
+        /// v1 不支持"一条 Alignment 多 EG"。后续若需要"同一 alignment 的多版本地面线"
+        /// （例如设计前 / 设计后两期），需引入显式 Profile 标签字段，再升级本方法的查找策略。
+        /// </summary>
+        public Profile CreateOrReplaceEgProfile(string documentName, Guid alignmentId, IList<ProfileVertex> sampled)
+        {
+            if (sampled == null) throw new ArgumentNullException(nameof(sampled));
+
+            var (design, alignment) = ResolveAlignment(documentName, alignmentId);
+
+            Profile eg = null;
+            for (int i = 0; i < alignment.Profiles.Count; i++)
+            {
+                if (!alignment.Profiles[i].IsDesignProfile)
+                {
+                    eg = alignment.Profiles[i];
+                    break;
+                }
+            }
+
+            bool created = false;
+            if (eg == null)
+            {
+                eg = new Profile
+                {
+                    Name = $"{alignment.Name} - 现状地面线",
+                    IsDesignProfile = false,
+                    DesignSpeed = 0,
+                };
+                alignment.Profiles.Add(eg);
+                created = true;
+            }
+
+            eg.Vertices.Clear();
+            for (int i = 0; i < sampled.Count; i++)
+            {
+                var src = sampled[i];
+                if (src == null) continue;
+                eg.Vertices.Add(new ProfileVertex
+                {
+                    Id = src.Id == Guid.Empty ? Guid.NewGuid() : src.Id,
+                    Station = src.Station,
+                    Elevation = src.Elevation,
+                    CurveRadius = src.CurveRadius,
+                });
+            }
+            eg.LastModifiedUtc = DateTime.UtcNow;
+            design.LastModifiedUtc = DateTime.UtcNow;
+
+            var kind = created ? RoadChangeKind.Created : RoadChangeKind.Updated;
+            _eventBus.Publish(new ProfileChangedEvent(design.Id, alignmentId, eg.Id, kind));
+            return eg;
+        }
+
+        /// <summary>
         /// 删除 Alignment 下指定 Profile（v1 UI 不暴露入口，留作脚本 / 测试调用）。
         /// 找不到对象返回 false。
         /// </summary>

@@ -25,20 +25,20 @@
             <x:Array x:Key="ThemeOptions" Type="{x:Type local:ThemePresetVm}">
                 <local:ThemePresetVm Key="BlenderDark"
                                      Name="Blender Dark"
-                                     Subtitle="项目原始默认 — 深灰背景 + 蓝色高亮"
-                                     C1="#303030" C2="#393939" C3="#4772B3" C4="#E6E6E6"/>
+                                     Subtitle="Blender 4.5 官方默认 — 深灰 + Blender Blue (#4772B3)"
+                                     C1="#303030" C2="#303030" C3="#4772B3" C4="#E6E6E6"/>
                 <local:ThemePresetVm Key="BlenderLight"
                                      Name="Blender Light"
-                                     Subtitle="参考 Blender 自带 Light 预设 — 浅灰底 + 蓝色高亮"
-                                     C1="#C5C5C5" C2="#BABABA" C3="#4570B0" C4="#1A1A1A"/>
+                                     Subtitle="Blender Light 官方同款 — 中灰底 + Blender Blue"
+                                     C1="#A8A8A8" C2="#A8A8A8" C3="#4772B3" C4="#1A1A1A"/>
                 <local:ThemePresetVm Key="AcadLight"
                                      Name="AutoCAD Light"
-                                     Subtitle="参考 AutoCAD 经典白色界面 — 白底 + Autodesk 蓝"
-                                     C1="#F0F0F0" C2="#F5F5F5" C3="#2A6BBC" C4="#000000"/>
+                                     Subtitle="AutoCAD 2024+ Light Ribbon — 白底 + AutoCAD focus 蓝"
+                                     C1="#E5E5E5" C2="#F5F5F5" C3="#3070C0" C4="#1E1E1E"/>
                 <local:ThemePresetVm Key="AcadDark"
                                      Name="AutoCAD Dark"
-                                     Subtitle="参考 AutoCAD 2024+ Dark 主题 — 深灰 + Autodesk 蓝"
-                                     C1="#2F2F2F" C2="#383838" C3="#2A6BBC" C4="#DCDCDC"/>
+                                     Subtitle="AutoCAD 2024+ Dark Ribbon — 深灰 + AutoCAD focus 蓝"
+                                     C1="#303030" C2="#373737" C3="#3070C0" C4="#F1F1F1"/>
             </x:Array>
 
             <!-- ListBoxItem 模板：自带选中蓝色边框 + 4 色块预览 + 名称/副标题 -->

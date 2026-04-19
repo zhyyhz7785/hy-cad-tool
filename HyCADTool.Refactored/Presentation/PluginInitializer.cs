@@ -38,6 +38,30 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         public void Initialize()
         {
+            // 【根因修复 H6】Application.Current 在 AutoCAD 进程内为 null（AutoCAD 是 WinForms+WPF
+            // 混合宿主，从未实例化 WPF Application 单例）。这直接导致：
+            //   1. Application.LoadComponent(relativeUri) → IOException("Assembly.GetEntryAssembly() 返回 null")
+            //   2. AutoCAD 自身 Ribbon Badge 控件 LoadComponent("/AdWindows;component/themes/badge.xaml") 同样失败
+            //      → 在某个 idle tick 内升级为 0xE0434352 native fatal（AutoCAD "致命错误"弹窗）
+            // 修复：在最早阶段 ensure Application 单例存在（仅创建对象，不调 .Run() 不启动消息循环），
+            // 这样后续所有 WPF LoadComponent / ResourceAssembly / Dispatcher 引用都有 host 对象可用。
+            try
+            {
+                if (System.Windows.Application.Current == null)
+                {
+                    new System.Windows.Application();
+                }
+                if (System.Windows.Application.Current != null && System.Windows.Application.ResourceAssembly == null)
+                {
+                    System.Windows.Application.ResourceAssembly = typeof(PluginInitializer).Assembly;
+                }
+            }
+            catch
+            {
+                // 创建 Application stub 失败时降级运行：后续 WPF 相关路径自有兜底，
+                // 但 LoadComponent 大概率会跟着挂；不在此处吞错的更深处再抛更利于诊断。
+            }
+
             try
             {
                 WriteMessage("\n========================================");
@@ -55,6 +79,7 @@ namespace HyCADTool.Refactored.Presentation
                 // 以 0xE0434352 抛出，表现为 AutoCAD "致命错误" 弹窗（无托管堆栈可捕获）。
                 // 同步 warmup 把这条路径从"异步 native"变成"同步托管异常"，必崩时可见。
                 WarmupBlenderTheme();
+
                 WarmupSubViews();
 
                 // 构建 Autofac 容器
@@ -187,7 +212,10 @@ namespace HyCADTool.Refactored.Presentation
                     HyCAD.BlenderUI.Theming.BlenderThemeManager.Apply(themeName);
                     HyCAD.BlenderUI.Theming.BlenderThemeManager.Refresh();
                 }
-                catch { /* Application 未就绪等场景静默 */ }
+                catch
+                {
+                    /* Application 未就绪等场景静默：ColorsHost ctor 时会按 Current 自动补刷 */
+                }
             }
             catch (System.Exception ex)
             {
@@ -464,18 +492,33 @@ namespace HyCADTool.Refactored.Presentation
                     "pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml",
                     System.UriKind.Absolute);
 
-                // LoadComponent 会同步驱动 pack URI 解析 + BAML 反序列化，
-                // 任何失败（找不到资源 / 子字典引用断链 / StaticResourceHolder 异常）
-                // 都会就地抛托管异常而不是后续 UI tick 上的 native crash。
-                var dict = System.Windows.Application.LoadComponent(themeUri) as System.Windows.ResourceDictionary;
+                // 【根因修复 H6】Application.LoadComponent(absoluteUri) 在 IsAbsoluteUri==true 时
+                // 抛 ArgumentException("无法使用绝对 URI")。WPF 跨程序集 ResourceDictionary 加载的
+                // 标准 API 是 `new ResourceDictionary { Source = absoluteUri }`，
+                // XAML 中的 <ResourceDictionary Source="pack://..."/> 走的就是这条路径，接受绝对 pack URI，
+                // 内部同样会同步驱动 BAML 反序列化 + PackUriHelper 缓存填充。
+                var dict = new System.Windows.ResourceDictionary { Source = themeUri };
                 if (dict != null)
                 {
-                    // 挂到 Application 资源（若存在），否则仅驻留引用即可让 WPF 缓存解析结果
-                    if (System.Windows.Application.Current != null)
-                    {
-                        System.Windows.Application.Current.Resources.MergedDictionaries.Add(dict);
-                    }
-                    WriteMessage($"\n  ✓ BlenderUI 主题预热完成（顶层资源 {dict.Count} 条、合并字典 {dict.MergedDictionaries.Count} 层）");
+                    // ⚠ 严禁 merge 到 Application.Current.Resources！
+                    //
+                    // 历史教训（hycad-project-pitfalls B1/B2 + 2026-04-19 Badge 崩溃）：
+                    // Application.Current.Resources 是整个 WPF 进程的全局资源根，
+                    // AutoCAD 自己的 Ribbon / PanelListView / Badge 等内部控件在 measure /
+                    // ApplyTemplate 阶段会沿可视/逻辑树向上冒泡到 Application 顶层查资源。
+                    // 一旦把 BlenderTheme（含 32+ 子字典 / 32 个 Brush_* + 自定义控件 Style）merge 进去：
+                    //   1. AutoCAD 内部控件资源查找路径被外部字典拦截；
+                    //   2. v3 ColorsHost ctor 自我修改字典会触发 ResourcesChanged 全局广播；
+                    //   3. 已观察到的最致命表现：Autodesk.Internal.Windows.Badge ApplyTemplate
+                    //      时报 "组件 Badge 不具有由 URI '/AdWindows;component/themes/badge.xaml'
+                    //      识别的资源" XamlParseException，连锁污染整个 PanelListView 渲染。
+                    //
+                    // 正确做法：LoadComponent 已经把 BAML 解析结果缓存到 PackUriHelper（AppDomain 级
+                    // 静态缓存）；后续任何 UserControl 通过 <ResourceDictionary Source="..."/> 引用
+                    // 同一 pack URI 都命中此缓存，无需 Application merge 也能秒级初始化。
+                    // 主题资源全部走 UserControl.Resources 局部 merge（HyBlenderPanel.xaml 等），
+                    // 严格隔离在我们自己的视觉子树内，绝不冒泡污染 AutoCAD 宿主。
+                    WriteMessage($"\n  ✓ BlenderUI 主题预热完成（顶层 {dict.Count} 条、子字典 {dict.MergedDictionaries.Count} 层；BAML 已驻留 PackUriHelper 缓存，未污染 Application 资源）");
                 }
                 else
                 {
@@ -500,7 +543,8 @@ namespace HyCADTool.Refactored.Presentation
                     "pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/BlenderWindow.xaml",
                     System.UriKind.Absolute);
 
-                var winDict = System.Windows.Application.LoadComponent(winUri) as System.Windows.ResourceDictionary;
+                // 同 H6：避免 LoadComponent(absoluteUri) → ArgumentException
+                var winDict = new System.Windows.ResourceDictionary { Source = winUri };
                 if (winDict != null)
                 {
                     WriteMessage($"\n  ✓ BlenderWindow 模板预热完成（顶层资源 {winDict.Count} 条）");
