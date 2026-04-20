@@ -9,9 +9,9 @@
                    Title="路线工作台"
                    UseCustomChrome="False"
                    ShowInTaskbar="True"
-                   Width="1100" Height="640"
-                   MinWidth="820" MinHeight="480"
-                   WindowStartupLocation="CenterScreen">
+                   Width="1000" Height="360"
+                   MinWidth="720" MinHeight="260"
+                   WindowStartupLocation="Manual">
 
     <!-- 内容区：UserControl 内已 Merge BlenderTheme + RoadDesignerStyles（与旧 PaletteSet 宿主脱钩）。 -->
     <road:RoadAlignmentWorkbenchPanel x:Name="WorkbenchHost"/>
