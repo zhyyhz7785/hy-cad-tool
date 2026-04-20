@@ -19,14 +19,18 @@ namespace HyCADTool.Refactored.Presentation
     {
         private static readonly Guid HyBlenderPanelGuid = new Guid("A1B2C3D4-E5F6-7890-AB12-345678901234");
 
+        /// <summary>路线工作台 PaletteSet GUID（2026-04-21 切到 PaletteSet 宿主后新增）。</summary>
+        private static readonly Guid AlignmentWorkbenchPaletteGuid = new Guid("B2C3D4E5-F607-8901-BC23-456789012345");
+
         private readonly IComponentContext _componentContext;
 
         private PaletteSet _blenderPaletteSet;
         private Views.HyBlenderPanel _blenderPanel;
         private bool _documentEventsRegistered;
 
-        // ===== 路线工作台（独立 WPF 非模态窗口，非 PaletteSet） =====
-        private Views.Road.RoadAlignmentWorkbenchWindow _alignmentWindow;
+        // ===== 路线工作台（PaletteSet 宿主，默认停靠在 AutoCAD 底部 = editor 上方 / 命令行上方） =====
+        private PaletteSet _alignmentPaletteSet;
+        private Views.Road.RoadAlignmentWorkbenchPanel _alignmentPanel;
         private ViewModels.Road.RoadAlignmentWorkbenchViewModel _alignmentVm;
 
         public PanelManager(IComponentContext componentContext)
@@ -119,69 +123,97 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>显示道路命令组。</summary>
         public void ShowRoadPanel()      => OpenHyBlenderPanelAndSelectTab("道路");
 
-        // ===== 路线工作台入口（独立 WPF 窗口：HyRoadAlnEditPi / HyRoadA / HyRoadAlnByPi 共用） =====
+        // ===== 路线工作台入口（PaletteSet 宿主：HyRoadAlnEditPi / HyRoadA / HyRoadAlnByPi 共用） =====
 
         /// <summary>
-        /// 显示"路线工作台"独立 WPF 非模态窗口（<c>ShowModelessWindow</c>）。若传入 <paramref name="alignmentId"/>，
-        /// 则打开后自动选中该线位，并尝试把左侧 PI 列表定位到 <paramref name="piIndex"/>（null 表示不指定，默认选第一个内部 PI）。
+        /// 显示"路线工作台" <see cref="PaletteSet"/>（2026-04-21 由独立 WPF 窗口改造）。默认停靠在
+        /// AutoCAD 底部（绘图 editor 正下方 / 命令行上方），高度约 400 DIP。若传入 <paramref name="alignmentId"/>，
+        /// 则打开后自动选中该线位，并把左侧 PI 列表定位到 <paramref name="piIndex"/>
+        /// （null 表示不指定，默认选第一个内部 PI）。
         /// 典型调用：<c>hyRoadAlnEditPi</c> 拾取线位成功后 → <see cref="ShowAlignmentWorkbench"/>(id, pi)。
         /// </summary>
         public void ShowAlignmentWorkbench(Guid? alignmentId = null, int? piIndex = null)
         {
             RegisterDocumentEvents();
 
-            if (_alignmentWindow == null)
-                CreateAlignmentWorkbenchWindow();
+            if (_alignmentPaletteSet == null)
+                CreateAlignmentWorkbenchPalette();
             else
-            {
-                try
-                {
-                    if (_alignmentWindow.WindowState == WindowState.Minimized)
-                        _alignmentWindow.WindowState = WindowState.Normal;
-                    _alignmentWindow.Show();
-                    _alignmentWindow.Activate();
-                }
-                catch
-                {
-                    CreateAlignmentWorkbenchWindow();
-                }
-            }
+                _alignmentPaletteSet.Visible = true;
 
-            if (_alignmentWindow == null || _alignmentVm == null) return;
+            if (_alignmentPanel == null || _alignmentVm == null) return;
 
             void Apply()
             {
-                // 每次显示都刷新一次，兼容用户在关闭窗口期间的图面变更
                 _alignmentVm.RefreshAlignments();
                 if (alignmentId.HasValue)
                     _alignmentVm.SelectAlignment(alignmentId.Value, piIndex);
             }
 
-            var disp = _alignmentWindow.Dispatcher;
+            var disp = _alignmentPanel.Dispatcher;
             if (disp.CheckAccess()) Apply();
             else disp.Invoke(Apply);
         }
 
-        /// <summary>路线工作台窗口是否仍打开且可见。</summary>
+        /// <summary>路线工作台 PaletteSet 是否仍可见。</summary>
         public bool IsAlignmentWorkbenchVisible
-            => _alignmentWindow != null && _alignmentWindow.IsVisible;
+            => _alignmentPaletteSet != null && _alignmentPaletteSet.Visible;
 
-        /// <summary>创建并显示独立"路线工作台"WPF 窗口。</summary>
-        private void CreateAlignmentWorkbenchWindow()
+        /// <summary>
+        /// 创建路线工作台 PaletteSet（一次性创建、全会话复用，对齐 <see cref="CreateHyBlenderPanel"/> 模式）。
+        /// 初始停靠在 AutoCAD 底部（Editor 正下方 / 命令行上方），高度约 400 DIP。
+        /// </summary>
+        private void CreateAlignmentWorkbenchPalette()
         {
             _alignmentVm = new ViewModels.Road.RoadAlignmentWorkbenchViewModel();
-            var win = new Views.Road.RoadAlignmentWorkbenchWindow(_alignmentVm);
-            _alignmentWindow = win;
-            win.Closed += OnAlignmentWorkbenchWindowClosed;
-            AcApp.ShowModelessWindow(win);
+            _alignmentPanel = new Views.Road.RoadAlignmentWorkbenchPanel { ViewModel = _alignmentVm };
+
+            _alignmentPaletteSet = new PaletteSet("路线工作台", AlignmentWorkbenchPaletteGuid)
+            {
+                Size = new System.Drawing.Size(1200, 400),
+                MinimumSize = new System.Drawing.Size(720, 240),
+                DockEnabled = (DockSides)((int)DockSides.Bottom | (int)DockSides.Top),
+                Style = PaletteSetStyles.ShowCloseButton |
+                        PaletteSetStyles.ShowAutoHideButton |
+                        PaletteSetStyles.Snappable
+            };
+
+            _alignmentPaletteSet.AddVisual("路线工作台", _alignmentPanel);
+            _alignmentPaletteSet.StateChanged += OnAlignmentPaletteStateChanged;
+            // 初始停靠在底部（editor 上方、命令行之上）；用户可拖出浮动或改停靠位。
+            _alignmentPaletteSet.Dock = DockSides.Bottom;
+            _alignmentPaletteSet.Visible = true;
+
+            TryStripAlignmentCaptionIfDocked();
         }
 
-        private void OnAlignmentWorkbenchWindowClosed(object sender, EventArgs e)
+        /// <summary>监听 Dock/Float/显示切换；Dock 时抹掉原生标题栏（对齐 <see cref="CreateHyBlenderPanel"/>）。</summary>
+        private void OnAlignmentPaletteStateChanged(object sender, PaletteSetStateEventArgs e)
         {
-            if (sender is Views.Road.RoadAlignmentWorkbenchWindow w)
-                w.Closed -= OnAlignmentWorkbenchWindowClosed;
-            _alignmentWindow = null;
-            _alignmentVm = null;
+            TryStripAlignmentCaptionIfDocked();
+        }
+
+        /// <summary>
+        /// 仅当 <c>_alignmentPaletteSet.Dock != DockSides.None</c> 时抹框。
+        /// 延迟 1 个 Dispatcher tick 再抹，等 AutoCAD 内部 HWND 创建完毕。
+        /// </summary>
+        private void TryStripAlignmentCaptionIfDocked()
+        {
+            if (_alignmentPaletteSet == null || _alignmentPanel == null) return;
+            if (_alignmentPaletteSet.Dock == DockSides.None) return;
+
+            _alignmentPanel.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Loaded,
+                new Action(() =>
+                {
+                    try
+                    {
+                        Infrastructure.AutoCAD.UI.PaletteTitleBarStripper.TryStripCaption("路线工作台");
+                    }
+                    catch
+                    {
+                    }
+                }));
         }
 
         /// <summary>创建 Blender 命令面板实例（独立 PaletteSet）。</summary>
@@ -271,12 +303,12 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         private void OnDocumentActivated(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
-            if (_alignmentVm == null || _alignmentWindow == null) return;
-            if (!_alignmentWindow.IsVisible) return;
+            if (_alignmentVm == null || _alignmentPaletteSet == null || _alignmentPanel == null) return;
+            if (!_alignmentPaletteSet.Visible) return;
 
             try
             {
-                var disp = _alignmentWindow.Dispatcher;
+                var disp = _alignmentPanel.Dispatcher;
                 if (disp.CheckAccess())
                     _alignmentVm.RefreshAlignments();
                 else

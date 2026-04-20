@@ -7,7 +7,9 @@
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              xmlns:drawing="clr-namespace:HyCADTool.Refactored.Domain.Models.Drawing"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True"
              Background="{DynamicResource Brush_RegionBack}"
              d:DesignHeight="650" d:DesignWidth="450"
              d:DataContext="{d:DesignInstance Type=vm:HySettingsViewModel, IsDesignTimeCreatable=False}">
@@ -33,20 +35,20 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                            <Grid x:Name="Root" Height="26" Background="{TemplateBinding Background}">
+                            <Grid x:Name="Root" Height="{DynamicResource Metric_RowHeight}" Background="{TemplateBinding Background}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="24"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding Icon}"
-                                           FontSize="13"
+                                           FontSize="{DynamicResource Metric_FontHeader}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="{TemplateBinding Foreground}"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding Name}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource Metric_FontMain}"
                                            VerticalAlignment="Center"
                                            Margin="0,0,8,0"
                                            Foreground="{TemplateBinding Foreground}"/>
@@ -68,6 +70,7 @@
 
             <!-- ===== 二级 Expander 内容：根据 GroupKey 选择具体骨架；命中则显示示例 UserControl，否则显示 TODO 占位 ===== -->
             <DataTemplate x:Key="GroupKey_Theme">                <sub:ThemeSettingsView/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_UiScale">              <sub:UiScaleSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_TextStyle">            <sub:StyleSettingsView   Section="Text"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_DimStyle">             <sub:StyleSettingsView   Section="Dim"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_MLeaderStyle">         <sub:StyleSettingsView   Section="MLeader"/></DataTemplate>
@@ -101,7 +104,7 @@
             <DataTemplate x:Key="GroupKey_Placeholder">
                 <TextBlock Text="（待迁移：尚未接入真实参数绑定）"
                            Foreground="{DynamicResource Brush_TextDisabled}"
-                           Margin="8,6"
+                           Margin="{DynamicResource Metric_SectionInset}"
                            FontStyle="Italic"/>
             </DataTemplate>
 
@@ -119,17 +122,17 @@
         <Border Grid.Row="0" Background="{DynamicResource Brush_HeaderBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                <TextBlock Text="⚙" FontSize="12"
+                <TextBlock Text="⚙" FontSize="{DynamicResource Metric_FontMain}"
                            Foreground="{DynamicResource Brush_TextSecondary}"
                            VerticalAlignment="Center"/>
                 <TextBlock Text="  HyCAD 首选项"
-                           FontSize="12"
+                           FontSize="{DynamicResource Metric_FontMain}"
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource Brush_TextPrimary}"
                            VerticalAlignment="Center"/>
                 <TextBlock Text="  ›  " Foreground="{DynamicResource Brush_TextDisabled}" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding SelectedCategory.Name}"
-                           FontSize="12"
+                           FontSize="{DynamicResource Metric_FontMain}"
                            Foreground="{DynamicResource Brush_TextSecondary}"
                            VerticalAlignment="Center"/>
             </StackPanel>
@@ -167,35 +170,35 @@
                         Background="{DynamicResource Brush_HeaderBack}"
                         BorderBrush="{DynamicResource Brush_BorderDark}"
                         BorderThickness="0,0,0,1"
-                        Padding="10,8">
+                        Padding="{DynamicResource Metric_GroupInset}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <TextBlock Text="★"
                                        Foreground="{DynamicResource Brush_AccentBlue}"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource Metric_FontMain}"
                                        VerticalAlignment="Center"
                                        Margin="0,0,4,0"/>
                             <TextBlock Text="出图比例"
                                        Foreground="{DynamicResource Brush_TextPrimary}"
                                        FontWeight="SemiBold"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource Metric_FontMain}"
                                        VerticalAlignment="Center"/>
                             <TextBlock Text="（主比例决定纸面大小；副比例只改标注读数不改纸面）"
                                        Foreground="{DynamicResource Brush_TextDisabled}"
-                                       FontSize="10"
+                                       FontSize="{DynamicResource Metric_FontCaption}"
                                        VerticalAlignment="Center"
                                        Margin="6,0,0,0"/>
                         </StackPanel>
                         <!-- 第一行：主比例 + 单位 + 小数位 —— WrapPanel 允许窄宽度下自动换行 -->
-                        <WrapPanel Orientation="Horizontal" Margin="0,0,0,4" ItemHeight="24">
+                        <WrapPanel Orientation="Horizontal" Margin="0,0,0,4" ItemHeight="{DynamicResource Metric_InputLineHeight}">
                             <StackPanel Orientation="Horizontal" Margin="0,0,12,2">
                                 <TextBlock Text="主比例 1 :"
                                            Foreground="{DynamicResource Brush_TextSecondary}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource Metric_FontMain}"
                                            VerticalAlignment="Center"
                                            Margin="0,0,4,0"/>
                                 <TextBox Style="{StaticResource BlenderTextBox}"
-                                         Width="70"
+                                         Width="{DynamicResource Metric_InputWidth_MS}"
                                          VerticalAlignment="Center"
                                          helper:TextBoxHelper.EnableCustomHandlers="True"
                                          helper:TextBoxHelper.ScrollStep="5"
@@ -204,11 +207,11 @@
                             <StackPanel Orientation="Horizontal" Margin="0,0,12,2">
                                 <TextBlock Text="单位"
                                            Foreground="{DynamicResource Brush_TextSecondary}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource Metric_FontMain}"
                                            VerticalAlignment="Center"
                                            Margin="0,0,4,0"/>
                                 <ComboBox Style="{StaticResource BlenderComboBox}"
-                                          Width="90"
+                                          Width="{DynamicResource Metric_InputWidth_M}"
                                           VerticalAlignment="Center"
                                           SelectedValue="{Binding Settings.Unit, Mode=TwoWay}"
                                           SelectedValuePath="Tag">
@@ -232,18 +235,18 @@
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                 <TextBlock Text="小数位"
                                            Foreground="{DynamicResource Brush_TextSecondary}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource Metric_FontMain}"
                                            VerticalAlignment="Center"
                                            Margin="0,0,4,0"/>
                                 <ComboBox Style="{StaticResource BlenderComboBox}"
-                                          Width="56"
+                                          Width="{DynamicResource Metric_InputWidth_S}"
                                           VerticalAlignment="Center"
                                           ItemsSource="{Binding Settings.AllowedPrecisions}"
                                           SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
                             </StackPanel>
                         </WrapPanel>
                         <!-- 第二行：副比例 checkbox + 输入框 —— 同样 WrapPanel 支持换行 -->
-                        <WrapPanel Orientation="Horizontal" ItemHeight="24">
+                        <WrapPanel Orientation="Horizontal" ItemHeight="{DynamicResource Metric_InputLineHeight}">
                             <StackPanel Orientation="Horizontal" Margin="0,0,12,2">
                                 <CheckBox Style="{StaticResource BlenderCheckBox}"
                                           Content="启用副比例"
@@ -252,11 +255,11 @@
                                           Margin="0,0,8,0"/>
                                 <TextBlock Text="1 :"
                                            Foreground="{DynamicResource Brush_TextSecondary}"
-                                           FontSize="12"
+                                           FontSize="{DynamicResource Metric_FontMain}"
                                            VerticalAlignment="Center"
                                            Margin="0,0,4,0"/>
                                 <TextBox Style="{StaticResource BlenderTextBox}"
-                                         Width="70"
+                                         Width="{DynamicResource Metric_InputWidth_MS}"
                                          VerticalAlignment="Center"
                                          IsEnabled="{Binding Settings.UseSubScale}"
                                          helper:TextBoxHelper.EnableCustomHandlers="True"
@@ -265,9 +268,9 @@
                             </StackPanel>
                             <TextBlock Text="（开启后标注数字=真实尺寸；几何需按主/副放大）"
                                        Foreground="{DynamicResource Brush_TextDisabled}"
-                                       FontSize="10"
+                                       FontSize="{DynamicResource Metric_FontCaption}"
                                        TextWrapping="Wrap"
-                                       MaxWidth="300"
+                                       MaxWidth="{DynamicResource Metric_HelpTextMaxWidth}"
                                        VerticalAlignment="Center"
                                        Margin="0,0,0,2"/>
                         </WrapPanel>
@@ -279,7 +282,7 @@
                               Style="{StaticResource BlenderScrollViewer}"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Padding="6,4">
+                              Padding="{DynamicResource Metric_ButtonPaddingSmall}">
                 <ItemsControl ItemsSource="{Binding SelectedCategory.Groups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:SettingsGroupVm}">
@@ -294,6 +297,9 @@
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding GroupKey}" Value="Theme">
                                                     <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_Theme}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="UiScale">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_UiScale}"/>
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GroupKey}" Value="TextStyle">
                                                     <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_TextStyle}"/>
@@ -370,25 +376,25 @@
         <!-- ===== 底部容器：顶部样式状态栏 + 下方动作栏（底部留边避免贴 AutoCAD 标签条） ===== -->
         <Border Grid.Row="2" Background="{DynamicResource Brush_HeaderBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="0,1,0,0"
-                Padding="0,0,0,4">
+                Padding="{DynamicResource Metric_FooterBottomInset}">
             <StackPanel>
                 <!-- 样式状态栏：文字紧贴左侧，与 AutoCAD 风格对齐 -->
                 <Border Background="{DynamicResource Brush_PanelBack}"
                         BorderBrush="{DynamicResource Brush_BorderDark}"
                         BorderThickness="0,0,0,1"
-                        Padding="2,2">
+                        Padding="{DynamicResource Metric_CellPaddingTight}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="当前标注样式  ⯈  "
                                    Foreground="{DynamicResource Brush_TextDisabled}"
-                                   FontSize="10" VerticalAlignment="Center"/>
+                                   FontSize="{DynamicResource Metric_FontCaption}" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding Settings.AppliedDimStyleName}"
                                    Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="10" VerticalAlignment="Center"
+                                   FontSize="{DynamicResource Metric_FontCaption}" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
                 <!-- 动作栏：恢复原 Grid 两列布局（左状态消息 + 右按钮组） -->
-                <Grid Height="26" Margin="0,2,0,0">
+                <Grid Height="{DynamicResource Metric_RowHeight}" Margin="0,2,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -396,7 +402,7 @@
                     <TextBlock Grid.Column="0"
                                Text="{Binding StatusMessage}"
                                Foreground="{DynamicResource Brush_TextSecondary}"
-                               FontSize="10"
+                               FontSize="{DynamicResource Metric_FontCaption}"
                                TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center"
                                Margin="2,0,8,0"/>
@@ -408,26 +414,26 @@
                                   IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"/>
                         <Button Style="{StaticResource BlenderButton}"
                                 Content="置为当前"
-                                MinWidth="64" MinHeight="20"
-                                Padding="6,1"
+                                MinWidth="{DynamicResource Metric_ButtonMinWidth_Small}" MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                                Padding="{DynamicResource Metric_ButtonPaddingTiny}"
                                 Margin="2,0"
                                 Command="{Binding ApplyCurrentCommand}"/>
                         <Button Style="{StaticResource BlenderButton}"
                                 Content="保存用户设置"
-                                MinWidth="80" MinHeight="20"
-                                Padding="6,1"
+                                MinWidth="{DynamicResource Metric_DialogButtonWidth}" MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                                Padding="{DynamicResource Metric_ButtonPaddingTiny}"
                                 Margin="2,0"
                                 Command="{Binding SaveUserSettingsCommand}"/>
                         <Button Style="{StaticResource BlenderButton}"
                                 Content="选择文件恢复"
-                                MinWidth="80" MinHeight="20"
-                                Padding="6,1"
+                                MinWidth="{DynamicResource Metric_DialogButtonWidth}" MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                                Padding="{DynamicResource Metric_ButtonPaddingTiny}"
                                 Margin="2,0"
                                 Command="{Binding RestoreAutoSavedCommand}"/>
                         <Button Style="{StaticResource BlenderButton}"
                                 Content="加载初始设置"
-                                MinWidth="80" MinHeight="20"
-                                Padding="6,1"
+                                MinWidth="{DynamicResource Metric_DialogButtonWidth}" MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                                Padding="{DynamicResource Metric_ButtonPaddingTiny}"
                                 Margin="2,0"
                                 Command="{Binding LoadDefaultsCommand}"/>
                     </StackPanel>

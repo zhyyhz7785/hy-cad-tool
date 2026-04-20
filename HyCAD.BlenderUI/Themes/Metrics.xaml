@@ -2,29 +2,126 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <sys:Double x:Key="Metric_FontMain">12</sys:Double>
+    <!--
+      Hy 面板 / BlenderUI 统一度量（权威规格表）
+
+      使用：XAML 中一律 {DynamicResource Metric_*}（禁止 StaticResource，避免 B4 类型错配崩溃）。
+      类型仅限：sys:Double、Thickness、CornerRadius；不引入 GridLength DR。
+
+      字体档：Caption(10) < Small(11) < Main(12) < Header(13) < Icon(14) < IconLarge(16)
+      行高档：RowCompact(22) < InputLine(24) < RowHeight(26) < RowTall(28) < IconBarItem(32) < Button(30)
+      状态条、Workspace 等见下方 Workspace 区。
+    -->
+
+    <!-- 字体梯度 -->
+    <sys:Double x:Key="Metric_FontMicro">9</sys:Double>
+    <sys:Double x:Key="Metric_FontSettlementHint">10.5</sys:Double>
+    <sys:Double x:Key="Metric_FontCaption">10</sys:Double>
     <sys:Double x:Key="Metric_FontSmall">11</sys:Double>
-    <sys:Double x:Key="Metric_FontHeader">12</sys:Double>
-    <sys:Double x:Key="Metric_RowHeight">22</sys:Double>
+    <sys:Double x:Key="Metric_FontMain">12</sys:Double>
+    <sys:Double x:Key="Metric_FontHeader">13</sys:Double>
+    <sys:Double x:Key="Metric_FontIcon">14</sys:Double>
+    <sys:Double x:Key="Metric_FontIconLarge">16</sys:Double>
+
+    <!-- 行高 / 控件高度梯度 -->
+    <sys:Double x:Key="Metric_RowCompact">22</sys:Double>
+    <sys:Double x:Key="Metric_InputLineHeight">24</sys:Double>
+    <sys:Double x:Key="Metric_RowHeight">26</sys:Double>
+    <sys:Double x:Key="Metric_RowTall">28</sys:Double>
+    <sys:Double x:Key="Metric_IconBarItemHeight">32</sys:Double>
+    <sys:Double x:Key="Metric_ButtonHeight">30</sys:Double>
+    <sys:Double x:Key="Metric_ButtonBarHeight">50</sys:Double>
     <sys:Double x:Key="Metric_ExpanderHeight">24</sys:Double>
+
+    <!-- 图标条 / 装饰 -->
     <sys:Double x:Key="Metric_IconBarWidth">32</sys:Double>
     <sys:Double x:Key="Metric_IconSize">20</sys:Double>
+    <sys:Double x:Key="Metric_TabAccentBarWidth">3</sys:Double>
+    <sys:Double x:Key="Metric_PrefsSideIconColumn">24</sys:Double>
+    <sys:Double x:Key="Metric_ClearButtonSize">18</sys:Double>
+
     <CornerRadius x:Key="Metric_CornerRadius">3</CornerRadius>
     <CornerRadius x:Key="Metric_CornerRadiusSmall">2</CornerRadius>
+
     <Thickness x:Key="Metric_ButtonPadding">8,3</Thickness>
+    <Thickness x:Key="Metric_ButtonPaddingSmall">6,2</Thickness>
+    <Thickness x:Key="Metric_ButtonPaddingTiny">6,1</Thickness>
+    <Thickness x:Key="Metric_ButtonPaddingFlat">8,4</Thickness>
     <Thickness x:Key="Metric_InputPadding">6,2</Thickness>
+    <Thickness x:Key="Metric_SectionInset">8,6</Thickness>
+    <Thickness x:Key="Metric_PropertyListMargin">6,4,6,6</Thickness>
+    <Thickness x:Key="Metric_PropertyListMarginTight">6,0,6,6</Thickness>
+    <Thickness x:Key="Metric_GroupInset">10,8</Thickness>
+    <Thickness x:Key="Metric_CellPaddingTight">2,2</Thickness>
+    <Thickness x:Key="Metric_FooterBottomInset">0,0,0,4</Thickness>
+    <Thickness x:Key="Metric_FormHintIndent">150,0,0,5</Thickness>
+    <Thickness x:Key="Metric_Padding_6">6</Thickness>
+    <Thickness x:Key="Metric_Padding_10_4">10,4</Thickness>
+    <Thickness x:Key="Metric_Padding_10">10</Thickness>
+    <Thickness x:Key="Metric_Padding_4">4</Thickness>
+    <Thickness x:Key="Metric_Padding_6_6">6,6</Thickness>
+    <Thickness x:Key="Metric_SearchBoxGlyphPadding">22,0,22,0</Thickness>
+    <Thickness x:Key="Metric_CommandGridButtonPadding">2,4</Thickness>
+    <Thickness x:Key="Metric_Padding_6_3">6,3</Thickness>
+    <Thickness x:Key="Metric_Padding_6_4">6,4</Thickness>
+    <Thickness x:Key="Metric_Padding_8_2">8,2</Thickness>
+    <Thickness x:Key="Metric_Padding_8_4">8,4</Thickness>
+    <Thickness x:Key="Metric_Padding_8_6">8,6</Thickness>
+
+    <!-- 输入框宽度梯度（仅用于控件 Width / MinWidth，不用于 ColumnDefinition） -->
+    <sys:Double x:Key="Metric_InputWidth_XS">48</sys:Double>
+    <sys:Double x:Key="Metric_InputWidth_S">60</sys:Double>
+    <sys:Double x:Key="Metric_InputWidth_M">90</sys:Double>
+    <sys:Double x:Key="Metric_InputWidth_MS">70</sys:Double>
+    <sys:Double x:Key="Metric_InputWidth_ML">100</sys:Double>
+    <sys:Double x:Key="Metric_HeaderComboMinWidth">180</sys:Double>
+    <sys:Double x:Key="Metric_StructurePreviewRowHeight">60</sys:Double>
+    <sys:Double x:Key="Metric_FilterCanvasHeight">80</sys:Double>
+    <sys:Double x:Key="Metric_FilterRowHeaderHeight">28</sys:Double>
+    <sys:Double x:Key="Metric_FilterResultCanvasHeight">100</sys:Double>
+    <sys:Double x:Key="Metric_InputWidth_L">120</sys:Double>
+    <sys:Double x:Key="Metric_InputWidth_XL">200</sys:Double>
+    <sys:Double x:Key="Metric_DialogButtonWidth">80</sys:Double>
+    <sys:Double x:Key="Metric_ButtonMinWidth_Small">64</sys:Double>
+    <sys:Double x:Key="Metric_ActionButtonMinHeight">20</sys:Double>
+    <sys:Double x:Key="Metric_FilterLabelColumnWidth">60</sys:Double>
+    <sys:Double x:Key="Metric_ToolbarPathIconSize">16</sys:Double>
+    <sys:Double x:Key="Metric_ToolButtonMinWidth_L">60</sys:Double>
+    <sys:Double x:Key="Metric_ToolButtonMinWidth_M">52</sys:Double>
+    <sys:Double x:Key="Metric_ToolButtonMinWidth_S">48</sys:Double>
+    <sys:Double x:Key="Metric_ToolButtonMinWidth_XS">40</sys:Double>
+    <sys:Double x:Key="Metric_ToolButtonMinWidth_XXS">28</sys:Double>
+
+    <!-- Markdown / 数字微调框等小宽控件 -->
+    <sys:Double x:Key="Metric_NumInputWidth_XS">24</sys:Double>
+    <sys:Double x:Key="Metric_NumInputWidth_S">26</sys:Double>
+    <sys:Double x:Key="Metric_NumInputWidth_M">28</sys:Double>
+    <sys:Double x:Key="Metric_MarkdownToolbarSepHeight">14</sys:Double>
+
+    <!-- 标签列 TextBlock.Width -->
+    <sys:Double x:Key="Metric_LabelWidth_S">80</sys:Double>
+    <sys:Double x:Key="Metric_LabelWidth_M">120</sys:Double>
+    <sys:Double x:Key="Metric_LabelWidth_L">150</sys:Double>
+    <sys:Double x:Key="Metric_LabelWidth_PrefsNarrow">140</sys:Double>
+
+    <!-- 列表 / 检查项 -->
+    <sys:Double x:Key="Metric_CheckDotSize">8</sys:Double>
+    <sys:Double x:Key="Metric_RoadCheckNameColumn">170</sys:Double>
+    <sys:Double x:Key="Metric_HelpTextMaxWidth">300</sys:Double>
+    <sys:Double x:Key="Metric_ThemeSwatchSize">22</sys:Double>
+    <sys:Double x:Key="Metric_SelectionIndicatorSize">14</sys:Double>
+    <Thickness x:Key="Metric_ThemeCardPadding">8,8</Thickness>
 
     <!--
       Workspace 体系度量（v1.2）
-      用 Double 统一暴露；Sample 中分隔列宽（GridLength 类型）直接用字面量「Width="4"」，
-      不引入 GridLength/Thickness 类型 DR（避免 pitfall B4 的类型错配）。
+      分隔列宽（GridLength）在 Sample 中仍用字面量 Width="4"，不引入 GridLength DR（B4）。
     -->
     <sys:Double x:Key="Metric_EditorHeaderHeight">24</sys:Double>
     <sys:Double x:Key="Metric_ToolbarWidth">40</sys:Double>
     <sys:Double x:Key="Metric_NPanelMinWidth">240</sys:Double>
     <sys:Double x:Key="Metric_OutlinerMinWidth">220</sys:Double>
     <sys:Double x:Key="Metric_TimelineHeight">28</sys:Double>
-    <sys:Double x:Key="Metric_StatusBarHeight">22</sys:Double>
+    <sys:Double x:Key="Metric_StatusBarHeight">20</sys:Double>
     <sys:Double x:Key="Metric_SplitterThickness">4</sys:Double>
     <sys:Double x:Key="Metric_WorkspaceTabHeight">26</sys:Double>
 

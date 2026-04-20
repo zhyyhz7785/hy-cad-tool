@@ -134,6 +134,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             Categories.Add(new SettingsCategoryVm("界面",       "◐", new[]
             {
                 new SettingsGroupVm("主题",         "Theme"),
+                new SettingsGroupVm("尺寸",         "UiScale"),
             }));
 
             Categories.Add(new SettingsCategoryVm("设置",       "⚙", new[]

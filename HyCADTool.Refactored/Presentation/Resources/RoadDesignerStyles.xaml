@@ -51,7 +51,7 @@
             </Grid.ColumnDefinitions>
 
             <Ellipse Grid.Column="0"
-                     Width="8" Height="8"
+                     Width="{DynamicResource Metric_CheckDotSize}" Height="{DynamicResource Metric_CheckDotSize}"
                      Margin="0,6,0,0"
                      VerticalAlignment="Top"
                      HorizontalAlignment="Center">
@@ -70,7 +70,7 @@
             <TextBlock Grid.Column="1"
                        Text="{Binding Name}"
                        VerticalAlignment="Top"
-                       FontSize="12"
+                       FontSize="{DynamicResource Metric_FontMain}"
                        TextWrapping="Wrap">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
@@ -87,7 +87,7 @@
 
             <StackPanel Grid.Column="2" VerticalAlignment="Top">
                 <TextBlock Text="{Binding Message}"
-                           FontSize="11"
+                           FontSize="{DynamicResource Metric_FontSmall}"
                            TextWrapping="Wrap">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
@@ -101,7 +101,7 @@
                     </TextBlock.Style>
                 </TextBlock>
                 <TextBlock Text="{Binding Suggestion}"
-                           FontSize="11"
+                           FontSize="{DynamicResource Metric_FontSmall}"
                            TextWrapping="Wrap"
                            Margin="0,2,0,0"
                            Foreground="{DynamicResource Brush_Warning}">
@@ -127,7 +127,7 @@
     <Style x:Key="RoadDerivedTextStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
         <Setter Property="FontFamily" Value="Consolas"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
         <Setter Property="Padding" Value="0,0,4,0"/>
@@ -148,7 +148,7 @@
     <Style x:Key="RoadParamLabelStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
     </Style>
 
     <!--
@@ -169,9 +169,9 @@
         <Setter Property="SelectionUnit" Value="FullRow"/>
         <Setter Property="SelectionMode" Value="Single"/>
         <Setter Property="AutoGenerateColumns" Value="False"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="RowHeight" Value="26"/>
-        <Setter Property="ColumnHeaderHeight" Value="24"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontSmall}"/>
+        <Setter Property="RowHeight" Value="{DynamicResource Metric_RowHeight}"/>
+        <Setter Property="ColumnHeaderHeight" Value="{DynamicResource Metric_InputLineHeight}"/>
         <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
         <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
     </Style>

@@ -404,6 +404,19 @@ private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
 
 ---
 
+### B4a【新 2026-04-21】hy 面板尺寸 `Metric_*`（仅用 `DynamicResource`）
+
+**权威表**：[`HyCAD.BlenderUI/Themes/Metrics.xaml`](../../../HyCAD.BlenderUI/Themes/Metrics.xaml) — 字体档、行高、输入宽、标签宽、工具栏按钮最小宽、`Thickness` 类间距等。
+
+**规则**
+
+- 业务 XAML（`HyCADTool.Refactored` 面板、Preferences、Road 工作区等）中，凡 `FontSize` / `Height` / `Width` / `MinWidth` / `MinHeight` / 典型 `Padding` / `Margin`（复用厚度），**一律** `{DynamicResource Metric_xxx}`；**禁止** `{StaticResource Metric_*}`（B4：`Thickness` / `Double` 跨字典 `StaticResource` 类型错配可致原生崩溃）。
+- **禁止**在 `Metrics.xaml` 引入 `GridLength` 资源键；`ColumnDefinition` / `RowDefinition` 的 `Width` / `Height` 继续用字面量（或本字典内 `StaticResource` 且类型为 `GridLength` 的资源）。
+- 顶层 `Window` 的 `Width`/`Height` 是否字面量由产品决定；控件与排版度量仍走 `Metric_*`。
+- **运行时比例（2026-04-21）**：用户在「界面 → 尺寸」调整三类比例并写入 `hy-settings.json`；`BlenderMetricsScaleManager` 按命名规则从 `Metrics.xaml` **基值**派生。**禁止**为应用 Metric 而把整份 `BlenderTheme` merge 到 `Application.Current.Resources`（B1/B2 宿主污染）。正确做法：在合并了 `BlenderTheme` 的每个根 `Window` / `UserControl` 上设 `btmetrics:BlenderMetricsOverlay.Attach="True"`（`HyCAD.BlenderUI.Theming`），在本地 `MergedDictionaries` **首位**插入仅含缩放后 `Metric_*` 的 overlay，覆盖下层同名键。`Metrics.xaml` 仍是权威基值表；调密度优先走设置页比例，避免手改 XAML 与落盘值漂移。
+
+---
+
 ### B5【新 2026-04-18】`ResourceDictionary` 之间 `StaticResource` 跨字典查找在设计器失效
 
 **现象**

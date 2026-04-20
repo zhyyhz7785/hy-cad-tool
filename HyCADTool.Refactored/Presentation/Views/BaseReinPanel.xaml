@@ -5,10 +5,12 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              xmlns:converters="clr-namespace:HyCADTool.Refactored.Presentation.Views.Converters"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              d:DesignWidth="230"
              Background="{DynamicResource Brush_RegionBack}"
              Foreground="{DynamicResource Brush_TextPrimary}"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -63,8 +65,8 @@
                                Text="钢筋方向" />
                     <ComboBox Grid.Column="1"
                               Style="{StaticResource BlenderComboBox}"
-                              Width="90"
-                              Height="20"
+                              Width="{DynamicResource Metric_InputWidth_M}"
+                              Height="{DynamicResource Metric_StatusBarHeight}"
                               SelectedIndex="{Binding SelectedDirection, Converter={StaticResource EnumToIndexConverter}}">
                         <ComboBoxItem Content="x向顶筋" Tag="TopX" />
                         <ComboBoxItem Content="y向顶筋" Tag="TopY" />
@@ -135,14 +137,14 @@
                                Foreground="{DynamicResource Brush_TextPrimary}"
                                Text="板厚" />
                     <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
-                             Height="20"
+                             Height="{DynamicResource Metric_StatusBarHeight}"
                              helper:TextBoxHelper.EnableCustomHandlers="True"
                              Text="{Binding PlateThickness, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Grid.Column="2"
                                Foreground="{DynamicResource Brush_TextPrimary}"
                                Text="放大" />
                     <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
-                             Height="20"
+                             Height="{DynamicResource Metric_StatusBarHeight}"
                              helper:TextBoxHelper.EnableCustomHandlers="True"
                              Text="{Binding ReinforceSafety, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
@@ -163,7 +165,7 @@
                                Foreground="{DynamicResource Brush_TextPrimary}"
                                Text="x平移" />
                     <TextBox Grid.Column="2" Style="{StaticResource BlenderTextBox}"
-                             Height="20"
+                             Height="{DynamicResource Metric_StatusBarHeight}"
                              helper:TextBoxHelper.EnableCustomHandlers="True"
                              Text="{Binding ReinforceTextDistanceX, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Grid.Column="3"
@@ -183,19 +185,19 @@
                     </Grid.ColumnDefinitions>
                     <CheckBox Grid.Column="0"
                               Style="{StaticResource BlenderCheckBox}"
-                              Height="20"
+                              Height="{DynamicResource Metric_StatusBarHeight}"
                               HorizontalContentAlignment="Center"
                               Content="锚固"
                               IsChecked="{Binding AddAnchorLength}" />
                     <CheckBox Grid.Column="1"
                               Style="{StaticResource BlenderCheckBox}"
-                              Height="20"
+                              Height="{DynamicResource Metric_StatusBarHeight}"
                               HorizontalContentAlignment="Center"
                               Content="全向"
                               IsChecked="{Binding DimAll}" />
                     <CheckBox Grid.Column="2"
                               Style="{StaticResource BlenderCheckBox}"
-                              Height="20"
+                              Height="{DynamicResource Metric_StatusBarHeight}"
                               HorizontalContentAlignment="Center"
                               Content="通筋"
                               IsChecked="{Binding ExistingRebar}" />
@@ -244,8 +246,8 @@
                                Text="标注方向" />
                     <ComboBox Grid.Column="1"
                               Style="{StaticResource BlenderComboBox}"
-                              Width="90"
-                              Height="20"
+                              Width="{DynamicResource Metric_InputWidth_M}"
+                              Height="{DynamicResource Metric_StatusBarHeight}"
                               SelectedIndex="{Binding SelectedDimDirection, Converter={StaticResource EnumToIndexConverter}}">
                         <ComboBoxItem Content="Y向标注" Tag="LeftRight" />
                         <ComboBoxItem Content="X向标注" Tag="UpDown" />

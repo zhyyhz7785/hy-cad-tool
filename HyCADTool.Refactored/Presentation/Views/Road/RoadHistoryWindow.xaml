@@ -2,9 +2,11 @@
                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                    xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+                   xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                    mc:Ignorable="d"
+                   btmetrics:BlenderMetricsOverlay.Attach="True"
                    Title="数据还原"
                    HeaderTitle="{Binding HeaderTitle}"
                    Width="760" Height="460"
@@ -24,7 +26,7 @@
     <!-- 状态栏（左）：条数 / 目录 / 最新 -->
     <bui:BlenderWindow.FooterLeftContent>
         <TextBlock Foreground="{DynamicResource Brush_TextSecondary}"
-                   FontSize="11"
+                   FontSize="{DynamicResource Metric_FontSmall}"
                    FontFamily="Consolas"
                    VerticalAlignment="Center"
                    Text="{Binding StatusText}"/>
@@ -38,19 +40,19 @@
                     Command="{Binding RestoreCommand}"
                     IsEnabled="{Binding CanRestore}"
                     IsDefault="True"
-                    MinWidth="80"
+                    MinWidth="{DynamicResource Metric_DialogButtonWidth}"
                     Margin="4,0"/>
             <Button Content="删除"
                     Style="{StaticResource BlenderButton}"
                     Command="{Binding DeleteCommand}"
                     IsEnabled="{Binding CanRestore}"
-                    MinWidth="80"
+                    MinWidth="{DynamicResource Metric_DialogButtonWidth}"
                     Margin="4,0"/>
             <Button Content="取消"
                     Style="{StaticResource BlenderButton}"
                     Command="{Binding CancelCommand}"
                     IsCancel="True"
-                    MinWidth="80"
+                    MinWidth="{DynamicResource Metric_DialogButtonWidth}"
                     Margin="4,0"/>
         </StackPanel>
     </bui:BlenderWindow.FooterRightContent>
@@ -60,7 +62,7 @@
         <TextBlock DockPanel.Dock="Top"
                    Text="还原点："
                    Margin="12,10,12,4"
-                   FontSize="12"
+                   FontSize="{DynamicResource Metric_FontMain}"
                    Foreground="{DynamicResource Brush_TextSecondary}"/>
 
         <DataGrid ItemsSource="{Binding Rows}"

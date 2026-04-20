@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
         xmlns:conv="clr-namespace:HyCADTool.Refactored.Presentation.Views.Converters"
+        xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
         Title="基础沉降计算"
         Width="1060" Height="740"
         MinWidth="860" MinHeight="580"
@@ -10,10 +11,11 @@
         WindowStyle="None"
         ResizeMode="CanResizeWithGrip"
         Background="#2e3440"
-        Foreground="#d8dee9">
+        Foreground="#d8dee9"
+        btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="30" ResizeBorderThickness="6"
+        <WindowChrome CaptionHeight="{DynamicResource Metric_ButtonHeight}" ResizeBorderThickness="6"
                       GlassFrameThickness="0" CornerRadius="0" />
     </WindowChrome.WindowChrome>
 
@@ -21,6 +23,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/LibraryResources.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -163,9 +166,9 @@
         <DockPanel>
 
             <!-- ===== 自定义标题栏 ===== -->
-            <Border DockPanel.Dock="Top" Background="#1e222a" Height="30">
+            <Border DockPanel.Dock="Top" Background="#1e222a" Height="{DynamicResource Metric_ButtonHeight}">
                 <Grid>
-                    <TextBlock Text="基础沉降计算" Foreground="#d8dee9" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Text="基础沉降计算" Foreground="#d8dee9" FontSize="{DynamicResource Metric_FontHeader}" FontWeight="SemiBold"
                                VerticalAlignment="Center" Margin="10,0,0,0" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="—" Style="{StaticResource TitleBarBtn}" Click="BtnMinimize_Click" />
@@ -176,13 +179,13 @@
             </Border>
 
             <!-- ===== 底部按钮行 ===== -->
-            <Border DockPanel.Dock="Bottom" Background="#3b4453" Padding="8,6"
+            <Border DockPanel.Dock="Bottom" Background="#3b4453" Padding="{DynamicResource Metric_Padding_8_6}"
                     BorderBrush="#4c566a" BorderThickness="0,1,0,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <Button Content="恢复默认" Style="{StaticResource ActionBtn}"
                                 Command="{Binding ResetCommand}" />
-                        <TextBlock Text="{Binding StatusMessage}" Foreground="#a3be8c" FontSize="11"
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="#a3be8c" FontSize="{DynamicResource Metric_FontSmall}"
                                    VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="350"
                                    TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -219,15 +222,15 @@
                     </Grid.RowDefinitions>
 
                     <!-- 基础截面示意图 -->
-                    <Border Grid.Row="0" Background="#353d4a" CornerRadius="4" Padding="6" Margin="0,0,0,4">
+                    <Border Grid.Row="0" Background="#353d4a" CornerRadius="4" Padding="{DynamicResource Metric_Padding_6}" Margin="0,0,0,4">
                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" MaxHeight="220">
                             <Canvas Width="170" Height="260" ClipToBounds="True">
                                 <TextBlock Canvas.Left="60" Canvas.Top="8" Text="F + G"
-                                           Foreground="#bf616a" FontSize="12" FontWeight="SemiBold" />
+                                           Foreground="#bf616a" FontSize="{DynamicResource Metric_FontMain}" FontWeight="SemiBold" />
                                 <Line X1="85" Y1="25" X2="85" Y2="82" Stroke="#bf616a" StrokeThickness="1.5" />
                                 <Polygon Points="80,82 90,82 85,90" Fill="#bf616a" />
                                 <Line X1="0" Y1="90" X2="170" Y2="90" Stroke="#a3be8c" StrokeThickness="2" />
-                                <TextBlock Canvas.Left="125" Canvas.Top="74" Text="±0.000" Foreground="#a3be8c" FontSize="9" />
+                                <TextBlock Canvas.Left="125" Canvas.Top="74" Text="±0.000" Foreground="#a3be8c" FontSize="{DynamicResource Metric_FontMicro}" />
                                 <Line X1="5" Y1="95" X2="15" Y2="88" Stroke="#4c566a" StrokeThickness="0.7" />
                                 <Line X1="20" Y1="95" X2="30" Y2="88" Stroke="#4c566a" StrokeThickness="0.7" />
                                 <Line X1="35" Y1="95" X2="42" Y2="90" Stroke="#4c566a" StrokeThickness="0.7" />
@@ -238,13 +241,13 @@
                                 <Line X1="52" Y1="160" X2="118" Y2="160" Stroke="#808080" StrokeThickness="0.8" />
                                 <Line X1="52" Y1="155" X2="52" Y2="165" Stroke="#808080" StrokeThickness="0.5" />
                                 <Line X1="118" Y1="155" X2="118" Y2="165" Stroke="#808080" StrokeThickness="0.5" />
-                                <TextBlock Canvas.Left="79" Canvas.Top="160" Text="b" Foreground="#d8dee9" FontSize="10" FontStyle="Italic" />
+                                <TextBlock Canvas.Left="79" Canvas.Top="160" Text="b" Foreground="#d8dee9" FontSize="{DynamicResource Metric_FontCaption}" FontStyle="Italic" />
                                 <Line X1="135" Y1="90" X2="135" Y2="155" Stroke="#d08770" StrokeThickness="0.8" />
                                 <Line X1="130" Y1="90" X2="140" Y2="90" Stroke="#d08770" StrokeThickness="0.5" />
                                 <Line X1="130" Y1="155" X2="140" Y2="155" Stroke="#d08770" StrokeThickness="0.5" />
-                                <TextBlock Canvas.Left="140" Canvas.Top="115" Text="dh" Foreground="#d08770" FontSize="10" FontStyle="Italic" />
+                                <TextBlock Canvas.Left="140" Canvas.Top="115" Text="dh" Foreground="#d08770" FontSize="{DynamicResource Metric_FontCaption}" FontStyle="Italic" />
                                 <Line X1="0" Y1="200" X2="170" Y2="200" Stroke="#5e81ac" StrokeThickness="1" StrokeDashArray="6,3" />
-                                <TextBlock Canvas.Left="5" Canvas.Top="203" Text="地下水位" Foreground="#5e81ac" FontSize="9" />
+                                <TextBlock Canvas.Left="5" Canvas.Top="203" Text="地下水位" Foreground="#5e81ac" FontSize="{DynamicResource Metric_FontMicro}" />
                                 <Rectangle Canvas.Left="0" Canvas.Top="91" Width="170" Height="170" Opacity="0.15">
                                     <Rectangle.Fill>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -264,7 +267,7 @@
 
                             <!-- 基础子类型 -->
                             <TextBlock Text="基础子类型" Style="{StaticResource SectionHeader}" />
-                            <Border Background="#353d4a" CornerRadius="3" Padding="6,4" Margin="0,0,0,4">
+                            <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_6_4}" Margin="0,0,0,4">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -273,10 +276,10 @@
                                         </Grid.ColumnDefinitions>
                                         <RadioButton Content="独立基础" GroupName="FoundSubtype"
                                                      IsChecked="{Binding IsIsolatedFoundation}"
-                                                     Foreground="#d8dee9" FontSize="11" VerticalContentAlignment="Center" />
+                                                     Foreground="#d8dee9" FontSize="{DynamicResource Metric_FontSmall}" VerticalContentAlignment="Center" />
                                         <RadioButton Grid.Column="1" Content="箱型基础" GroupName="FoundSubtype"
                                                      IsChecked="{Binding IsBoxFoundation}"
-                                                     Foreground="#d8dee9" FontSize="11" VerticalContentAlignment="Center" />
+                                                     Foreground="#d8dee9" FontSize="{DynamicResource Metric_FontSmall}" VerticalContentAlignment="Center" />
                                     </Grid>
                                     <Grid Margin="0,4,0,0"
                                           Visibility="{Binding IsBoxFoundation, Converter={StaticResource BoolToVis}}">
@@ -284,12 +287,12 @@
                                             <ColumnDefinition Width="80" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="折算厚(m)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="折算厚(m)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding BoxConcreteThickness, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
-                                    <TextBlock Foreground="#808080" FontSize="9" Margin="0,3,0,0"
+                                    <TextBlock Foreground="#808080" FontSize="{DynamicResource Metric_FontMicro}" Margin="0,3,0,0"
                                                TextWrapping="Wrap">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
@@ -308,7 +311,7 @@
                             <!-- 复合地基 -->
                             <CheckBox Style="{StaticResource ToggleSection}"
                                       Content="复合地基" IsChecked="{Binding IsCompositeEnabled}" />
-                            <Border Background="#353d4a" CornerRadius="3" Padding="6,4" Margin="0,0,0,4"
+                            <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_6_4}" Margin="0,0,0,4"
                                     Visibility="{Binding IsCompositeEnabled, Converter={StaticResource BoolToVis}}">
                                 <StackPanel>
                                     <Grid Margin="0,2">
@@ -316,7 +319,7 @@
                                             <ColumnDefinition Width="70" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="fspk(kPa)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="fspk(kPa)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding CompositeBearingCapacity, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -326,17 +329,17 @@
                                             <ColumnDefinition Width="70" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="加固深(m)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="加固深(m)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding TreatedDepth, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
-                                    <TextBlock Foreground="#88c0d0" FontSize="10" Margin="0,3,0,0">
+                                    <TextBlock Foreground="#88c0d0" FontSize="{DynamicResource Metric_FontCaption}" Margin="0,3,0,0">
                                         <Run Text="ξ = fspk/fak = " />
                                         <Run Text="{Binding CompositeXi, Mode=OneWay, StringFormat=F3}" />
                                     </TextBlock>
                                     <!-- 承载力验算参数 -->
-                                    <TextBlock Text="─ 承载力验算(§7.1.5) ─" Foreground="#5e81ac" FontSize="10"
+                                    <TextBlock Text="─ 承载力验算(§7.1.5) ─" Foreground="#5e81ac" FontSize="{DynamicResource Metric_FontCaption}"
                                                HorizontalAlignment="Center" Margin="0,6,0,2" />
                                     <Grid Margin="0,2">
                                         <Grid.ColumnDefinitions>
@@ -345,10 +348,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="λ" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="λ" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding CompLambda, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="β" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="β" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding CompBeta, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -359,10 +362,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="fsk" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="fsk" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding CompFsk, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="fcu" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="fcu" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding CompFcu, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -373,10 +376,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="αp" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="αp" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding CompAlphaP, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="qp" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="qp" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding CompQp, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -387,17 +390,17 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="桩径m" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="桩径m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding CompPileDiameter, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="桩距m" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="桩距m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding CompPileSpacing, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
-                                    <TextBlock Text="侧阻力(每行:名称,厚度,qsi)" Foreground="#888" FontSize="9" Margin="0,3,0,1" />
+                                    <TextBlock Text="侧阻力(每行:名称,厚度,qsi)" Foreground="#888" FontSize="{DynamicResource Metric_FontMicro}" Margin="0,3,0,1" />
                                     <TextBox Text="{Binding CompSideResistanceText, UpdateSourceTrigger=PropertyChanged}"
                                              MinHeight="36" MaxHeight="80" AcceptsReturn="True"
-                                             VerticalScrollBarVisibility="Auto" FontSize="10"
+                                             VerticalScrollBarVisibility="Auto" FontSize="{DynamicResource Metric_FontCaption}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </StackPanel>
                             </Border>
@@ -405,7 +408,7 @@
                             <!-- 桩基础 -->
                             <CheckBox Style="{StaticResource ToggleSection}"
                                       Content="桩基础" IsChecked="{Binding IsPileEnabled}" />
-                            <Border Background="#353d4a" CornerRadius="3" Padding="6,4"
+                            <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_6_4}"
                                     Visibility="{Binding IsPileEnabled, Converter={StaticResource BoolToVis}}">
                                 <StackPanel>
                                     <Grid Margin="0,2">
@@ -415,10 +418,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="桩长m" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="桩长m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding PileLength, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="桩径m" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="桩径m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding PileDiameter, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -429,10 +432,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="桩距m" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="桩距m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding PileSpacing, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="桩数" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="桩数" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding TotalPileCount, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -443,15 +446,15 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="台长m" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="台长m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding CapLength, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="台宽m" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="台宽m" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding CapWidth, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
                                     <!-- 承载力验算参数 -->
-                                    <TextBlock Text="─ 承载力验算(§5.2~5.4) ─" Foreground="#5e81ac" FontSize="10"
+                                    <TextBlock Text="─ 承载力验算(§5.2~5.4) ─" Foreground="#5e81ac" FontSize="{DynamicResource Metric_FontCaption}"
                                                HorizontalAlignment="Center" Margin="0,6,0,2" />
                                     <Grid Margin="0,2">
                                         <Grid.ColumnDefinitions>
@@ -460,20 +463,20 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="qp(kPa)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="qp(kPa)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding PileQp, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="Nk(kN)" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="Nk(kN)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding PileNk, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
-                                    <TextBlock Text="侧阻力(每行:名称,厚度,qsi,土类)" Foreground="#888" FontSize="9" Margin="0,3,0,1" />
+                                    <TextBlock Text="侧阻力(每行:名称,厚度,qsi,土类)" Foreground="#888" FontSize="{DynamicResource Metric_FontMicro}" Margin="0,3,0,1" />
                                     <TextBox Text="{Binding PileSideResistanceText, UpdateSourceTrigger=PropertyChanged}"
                                              MinHeight="36" MaxHeight="80" AcceptsReturn="True"
-                                             VerticalScrollBarVisibility="Auto" FontSize="10"
+                                             VerticalScrollBarVisibility="Auto" FontSize="{DynamicResource Metric_FontCaption}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     <!-- 桩身结构验算参数 -->
-                                    <TextBlock Text="─ 桩身结构(§5.8~5.9) ─" Foreground="#5e81ac" FontSize="10"
+                                    <TextBlock Text="─ 桩身结构(§5.8~5.9) ─" Foreground="#5e81ac" FontSize="{DynamicResource Metric_FontCaption}"
                                                HorizontalAlignment="Center" Margin="0,6,0,2" />
                                     <Grid Margin="0,2">
                                         <Grid.ColumnDefinitions>
@@ -482,10 +485,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="N(kN)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="N(kN)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding PileAxialForceDesign, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="ψc" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="ψc" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding PilePsiC, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -496,10 +499,10 @@
                                             <ColumnDefinition Width="50" />
                                             <ColumnDefinition />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="fc(kPa)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                        <TextBlock Text="fc(kPa)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                         <TextBox Grid.Column="1" Text="{Binding PileFc, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
-                                        <TextBlock Grid.Column="2" Text="As(mm²)" Style="{StaticResource ParamLabel}" FontSize="11" Margin="4,0,0,0" />
+                                        <TextBlock Grid.Column="2" Text="As(mm²)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" Margin="4,0,0,0" />
                                         <TextBox Grid.Column="3" Text="{Binding PileSteelArea, UpdateSourceTrigger=PropertyChanged}"
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     </Grid>
@@ -539,14 +542,14 @@
                                  AcceptsReturn="True" AcceptsTab="True"
                                  TextWrapping="Wrap" MinLines="2" MaxLines="4"
                                  VerticalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas" FontSize="11"
+                                 FontFamily="Consolas" FontSize="{DynamicResource Metric_FontSmall}"
                                  Background="#2e3440" Foreground="#d8dee9"
-                                 BorderBrush="#4c566a" BorderThickness="1" Padding="4" />
+                                 BorderBrush="#4c566a" BorderThickness="1" Padding="{DynamicResource Metric_Padding_4}" />
 
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,3">
                             <Button Content="解析表格" Style="{StaticResource SmallBtn}"
                                     Command="{Binding ParseTableCommand}" />
-                            <TextBlock Foreground="#808080" FontSize="9" VerticalAlignment="Center"
+                            <TextBlock Foreground="#808080" FontSize="{DynamicResource Metric_FontMicro}" VerticalAlignment="Center"
                                        Margin="6,0,0,0"
                                        Text="格式：| 编号 | 名称 | 厚度(m) | Es(MPa) | 描述 |" />
                         </StackPanel>
@@ -599,7 +602,7 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- 一、压缩沉降（只读 TextBox，可选中复制） -->
-                            <Border Grid.Column="0" Background="#353d4a" CornerRadius="3" Padding="6,6" Margin="0,0,2,0"
+                            <Border Grid.Column="0" Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_6_6}" Margin="0,0,2,0"
                                     MinHeight="150"
                                     Visibility="{Binding CompressSummary, Converter={StaticResource StringToVis}}">
                                 <TextBox Style="{StaticResource SummaryCopyTextBox}" MinHeight="130" MaxHeight="340"
@@ -608,7 +611,7 @@
                             </Border>
 
                             <!-- 二、回弹量 -->
-                            <Border Grid.Column="1" Background="#353d4a" CornerRadius="3" Padding="6,6" Margin="0,0,2,0"
+                            <Border Grid.Column="1" Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_6_6}" Margin="0,0,2,0"
                                     MinHeight="150"
                                     Visibility="{Binding ReboundSummary, Converter={StaticResource StringToVis}}">
                                 <TextBox Style="{StaticResource SummaryCopyTextBox}" MinHeight="130" MaxHeight="340"
@@ -617,7 +620,7 @@
                             </Border>
 
                             <!-- 三、最终沉降 -->
-                            <Border Grid.Column="2" Background="#353d4a" CornerRadius="3" Padding="6,6"
+                            <Border Grid.Column="2" Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_6_6}"
                                     MinHeight="150"
                                     Visibility="{Binding RecompSummary, Converter={StaticResource StringToVis}}">
                                 <TextBox Style="{StaticResource SummaryCopyTextBox}" MinHeight="130" MaxHeight="340"
@@ -634,7 +637,7 @@
                         <Grid Grid.Row="2">
                             <!-- 无结果提示 -->
                             <TextBlock Text="请先点击【计算】"
-                                       Foreground="#808080" FontSize="13" FontStyle="Italic"
+                                       Foreground="#808080" FontSize="{DynamicResource Metric_FontHeader}" FontStyle="Italic"
                                        HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
@@ -650,7 +653,7 @@
 
                             <DataGrid Style="{StaticResource DarkDataGrid}"
                                       ItemsSource="{Binding CalculationResults}" IsReadOnly="True"
-                                      FontSize="10.5">
+                                      FontSize="{DynamicResource Metric_FontSettlementHint}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="26" />
                                     <DataGridTextColumn Header="地层" Binding="{Binding LayerId}" Width="38" />
@@ -682,18 +685,18 @@
 
                         <!-- 高程参数 -->
                         <TextBlock Text="高程参数" Style="{StaticResource SectionHeader}" />
-                        <Border Background="#353d4a" CornerRadius="3" Padding="8,6" Margin="0,0,0,4">
+                        <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_8_6}" Margin="0,0,0,4">
                             <StackPanel>
                                 <CheckBox Content="使用绝对高程" IsChecked="{Binding UseAbsoluteElevation}"
-                                          Foreground="#d8dee9" FontSize="11" Margin="0,0,0,6" />
+                                          Foreground="#d8dee9" FontSize="{DynamicResource Metric_FontSmall}" Margin="0,0,0,6" />
 
-                                <TextBlock Text="绝对高程" Foreground="#808080" FontSize="10" Margin="0,0,0,2" />
+                                <TextBlock Text="绝对高程" Foreground="#808080" FontSize="{DynamicResource Metric_FontCaption}" Margin="0,0,0,2" />
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="82" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="孔点 (m)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="孔点 (m)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1" Style="{StaticResource ElevationTextBox}"
                                              Text="{Binding AbsBoreholeElevation, UpdateSourceTrigger=PropertyChanged}"
                                              IsReadOnly="{Binding IsRelativeMode}" />
@@ -703,7 +706,7 @@
                                         <ColumnDefinition Width="82" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="±0.000 (m)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="±0.000 (m)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1" Style="{StaticResource ElevationTextBox}"
                                              Text="{Binding AbsStructureZero, UpdateSourceTrigger=PropertyChanged}"
                                              IsReadOnly="{Binding IsRelativeMode}" />
@@ -713,7 +716,7 @@
                                         <ColumnDefinition Width="82" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="室内外高差" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="室内外高差" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding IndoorOutdoorDiff, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -723,20 +726,20 @@
                                         <ColumnDefinition Width="82" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="埋深高程" Style="{StaticResource ParamLabel}" FontSize="11"
+                                    <TextBlock Text="埋深高程" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}"
                                                Foreground="#808080" />
                                     <TextBox Grid.Column="1" Style="{StaticResource ElevationTextBox}"
                                              Text="{Binding AbsFoundationDepthElevation, Mode=OneWay, StringFormat=F3}"
                                              IsReadOnly="True" />
                                 </Grid>
 
-                                <TextBlock Text="相对高程" Foreground="#808080" FontSize="10" Margin="0,6,0,2" />
+                                <TextBlock Text="相对高程" Foreground="#808080" FontSize="{DynamicResource Metric_FontCaption}" Margin="0,6,0,2" />
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="82" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="埋深 (m)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="埋深 (m)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding FoundationDepth, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -746,7 +749,7 @@
 
                         <!-- 基础尺寸 -->
                         <TextBlock Text="基础尺寸 (m)" Style="{StaticResource SectionHeader}" />
-                        <Border Background="#353d4a" CornerRadius="3" Padding="8,6" Margin="0,0,0,4">
+                        <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_8_6}" Margin="0,0,0,4">
                             <StackPanel>
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
@@ -769,7 +772,7 @@
 
                         <!-- 土层参数 -->
                         <TextBlock Text="土层参数" Style="{StaticResource SectionHeader}" />
-                        <Border Background="#353d4a" CornerRadius="3" Padding="8,6" Margin="0,0,0,4">
+                        <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_8_6}" Margin="0,0,0,4">
                             <StackPanel>
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
@@ -786,7 +789,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="γm (kN/m³)" Style="{StaticResource ParamLabel}" FontSize="11"
+                                    <TextBlock Text="γm (kN/m³)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}"
                                                ToolTip="基底以上土的加权平均重度，由土层γ加权计算（地下水位以下取有效重度）" />
                                     <TextBox Grid.Column="1" Style="{StaticResource ElevationTextBox}"
                                              Text="{Binding GammaM, Mode=OneWay, StringFormat=F2}"
@@ -798,7 +801,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="地下水深 dw" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="地下水深 dw" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <Grid Grid.Column="1">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition />
@@ -808,7 +811,7 @@
                                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                                         <CheckBox Grid.Column="1" Content="有" Margin="4,0,0,0"
                                                   IsChecked="{Binding HasGroundwater}"
-                                                  VerticalAlignment="Center" FontSize="11" />
+                                                  VerticalAlignment="Center" FontSize="{DynamicResource Metric_FontSmall}" />
                                     </Grid>
                                 </Grid>
                             </StackPanel>
@@ -816,7 +819,7 @@
 
                         <!-- 荷载参数 -->
                         <TextBlock Text="荷载参数" Style="{StaticResource SectionHeader}" />
-                        <Border Background="#353d4a" CornerRadius="3" Padding="8,6" Margin="0,0,0,4">
+                        <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_8_6}" Margin="0,0,0,4">
                             <StackPanel>
                                 <Grid Margin="0,2"
                                       Visibility="{Binding IsP0Auto, Converter={StaticResource BoolToVis}}">
@@ -824,7 +827,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="柱轴力 F(kN)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="柱轴力 F(kN)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding AxialForce, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -835,7 +838,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="覆土自重G(kN)" Style="{StaticResource ParamLabel}" FontSize="11"
+                                    <TextBlock Text="覆土自重G(kN)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}"
                                                ToolTip="G = γm × A × (d − Δh/2)" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding SelfWeightLoad, Mode=OneWay, StringFormat=F1}"
@@ -854,7 +857,7 @@
                                              IsReadOnly="{Binding IsP0Auto}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     <CheckBox Grid.Column="2" Content="自动" Margin="4,0,0,0"
-                                              IsChecked="{Binding IsP0Auto}" VerticalAlignment="Center" FontSize="11" />
+                                              IsChecked="{Binding IsP0Auto}" VerticalAlignment="Center" FontSize="{DynamicResource Metric_FontSmall}" />
                                 </Grid>
                                 <Grid Margin="0,3">
                                     <Grid.ColumnDefinitions>
@@ -868,7 +871,7 @@
                                              IsReadOnly="{Binding IsPsiSAuto}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                     <CheckBox Grid.Column="2" Content="自动" Margin="4,0,0,0"
-                                              IsChecked="{Binding IsPsiSAuto}" VerticalAlignment="Center" FontSize="11" />
+                                              IsChecked="{Binding IsPsiSAuto}" VerticalAlignment="Center" FontSize="{DynamicResource Metric_FontSmall}" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -876,7 +879,7 @@
                         <!-- 回弹再压缩参数 -->
                         <CheckBox Style="{StaticResource ToggleSection}"
                                   Content="回弹再压缩 (§5.3.10)" IsChecked="{Binding EnableRebound}" />
-                        <Border Background="#353d4a" CornerRadius="3" Padding="8,6" Margin="0,0,0,4"
+                        <Border Background="#353d4a" CornerRadius="3" Padding="{DynamicResource Metric_Padding_8_6}" Margin="0,0,0,4"
                                 Visibility="{Binding EnableRebound, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <Grid Margin="0,2">
@@ -884,7 +887,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Eci/Esi 倍率" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="Eci/Esi 倍率" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding EciEsiRatio, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -894,7 +897,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="ψc" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="ψc" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding PsiC, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -904,7 +907,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="κ (增大系数)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="κ (增大系数)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding Kappa, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -914,7 +917,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="η₁ (完成比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="η₁ (完成比)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding Eta1, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -924,7 +927,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="η₂ (清除比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="η₂ (清除比)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding Eta2, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -934,7 +937,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="R'₀ (临界荷比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="R'₀ (临界荷比)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding R0PrimeRatio, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -944,7 +947,7 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="r'₀ (临界压比)" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="r'₀ (临界压比)" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding R0PrimeR, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
@@ -954,12 +957,12 @@
                                         <ColumnDefinition Width="95" />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="深度比值" Style="{StaticResource ParamLabel}" FontSize="11" />
+                                    <TextBlock Text="深度比值" Style="{StaticResource ParamLabel}" FontSize="{DynamicResource Metric_FontSmall}" />
                                     <TextBox Grid.Column="1"
                                              Text="{Binding ReboundDepthRatio, UpdateSourceTrigger=PropertyChanged}"
                                              helper:TextBoxHelper.EnableCustomHandlers="True" />
                                 </Grid>
-                                <TextBlock Foreground="#808080" FontSize="9" Margin="0,3,0,0" TextWrapping="Wrap"
+                                <TextBlock Foreground="#808080" FontSize="{DynamicResource Metric_FontMicro}" Margin="0,3,0,0" TextWrapping="Wrap"
                                            Text="η₁: 回弹完成比(0~1)  η₂: 清除比(0~1)&#x0a;R'₀: 临界再加荷比(§5.3.11)&#x0a;r'₀: 临界再压缩比率(§5.3.11)&#x0a;κ: 黏性土1.19, 砂土1.10" />
                             </StackPanel>
                         </Border>

@@ -4,8 +4,10 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
-             d:DesignHeight="220" d:DesignWidth="420">
+             d:DesignHeight="220" d:DesignWidth="420"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <UserControl.Resources>
         <ResourceDictionary>
@@ -20,7 +22,7 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
             </Style>
 
             <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
@@ -31,20 +33,20 @@
             <Style x:Key="SubHeader" TargetType="{x:Type TextBlock}">
                 <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
                 <Setter Property="Margin" Value="0,2,0,4"/>
             </Style>
 
             <!-- 节内的小提示文字 -->
             <Style x:Key="HintText" TargetType="{x:Type TextBlock}">
                 <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
-                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontSize" Value="{DynamicResource Metric_FontCaption}"/>
                 <Setter Property="Margin" Value="0,0,0,4"/>
             </Style>
 
             <!-- 文字样式：双样式（T/S）字体 + 各自字宽 + 公共字高（出图比例已上移到 HyPreferencesView 顶部固定显示） -->
             <DataTemplate x:Key="Section_Text">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
 
                     <!-- ===== 样式 1：TrueType（标题/说明）—— 默认字宽 1.0 ===== -->
                     <TextBlock Text="样式 1：0-hy-说明-T（TrueType 标题/说明）" Style="{StaticResource SubHeader}"/>
@@ -69,7 +71,7 @@
                         <TextBlock Grid.Column="0" Text="字宽比" Style="{StaticResource FieldLabel}"/>
                         <TextBox Grid.Column="1"
                                  Style="{StaticResource BlenderTextBox}"
-                                 Width="100" HorizontalAlignment="Left"
+                                 Width="{DynamicResource Metric_InputWidth_ML}" HorizontalAlignment="Left"
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
                                  helper:TextBoxHelper.ScrollStep="0.05"
                                  Text="{Binding Settings.StyleTXScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
@@ -113,7 +115,7 @@
                         <TextBlock Grid.Column="0" Text="字宽比" Style="{StaticResource FieldLabel}"/>
                         <TextBox Grid.Column="1"
                                  Style="{StaticResource BlenderTextBox}"
-                                 Width="100" HorizontalAlignment="Left"
+                                 Width="{DynamicResource Metric_InputWidth_ML}" HorizontalAlignment="Left"
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
                                  helper:TextBoxHelper.ScrollStep="0.05"
                                  Text="{Binding Settings.StyleSXScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
@@ -129,7 +131,7 @@
                         <TextBlock Grid.Column="0" Text="字高 (TextSize)" Style="{StaticResource FieldLabel}"/>
                         <TextBox Grid.Column="1"
                                  Style="{StaticResource BlenderTextBox}"
-                                 Width="100" HorizontalAlignment="Left"
+                                 Width="{DynamicResource Metric_InputWidth_ML}" HorizontalAlignment="Left"
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
                                  helper:TextBoxHelper.ScrollStep="0.5"
                                  Text="{Binding Settings.TextSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
@@ -140,7 +142,7 @@
 
             <!-- 标注样式 -->
             <DataTemplate x:Key="Section_Dim">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -176,10 +178,10 @@
                         <TextBlock Grid.Column="0" Text="Dimdle / Dimexo / Dimexe / Dimgap" Style="{StaticResource FieldLabel}"/>
                         <!-- TODO: 四个并列 TextBox 绑定 Dimdle/Dimexo/Dimexe/Dimgap -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48" Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48" Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48" Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="48"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}" Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}" Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}" Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -187,7 +189,7 @@
 
             <!-- 引线样式 -->
             <DataTemplate x:Key="Section_MLeader">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -229,10 +231,10 @@
 
             <!-- 表格样式 -->
             <DataTemplate x:Key="Section_Table">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <TextBlock Text="（TODO：接入表格样式参数，对应 TableStyleName 及将来的列宽/行高默认值）"
                                Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" FontStyle="Italic"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic"/>
                 </StackPanel>
             </DataTemplate>
 

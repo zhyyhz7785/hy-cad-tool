@@ -2,9 +2,11 @@
                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                    xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+                   xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                    mc:Ignorable="d"
+                   btmetrics:BlenderMetricsOverlay.Attach="True"
                    Title="人行横道"
                    HeaderTitle="{Binding Title}"
                    Width="520" Height="400"
@@ -24,7 +26,7 @@
     <bui:BlenderWindow.FooterLeftContent>
         <TextBlock Text="{Binding StatusMessage}"
                    Foreground="{DynamicResource Brush_TextSecondary}"
-                   VerticalAlignment="Center" FontSize="11"/>
+                   VerticalAlignment="Center" FontSize="{DynamicResource Metric_FontSmall}"/>
     </bui:BlenderWindow.FooterLeftContent>
 
     <bui:BlenderWindow.FooterRightContent>
@@ -32,17 +34,17 @@
             <Button Content="恢复默认"
                     Style="{StaticResource BlenderButton}"
                     Command="{Binding ResetCommand}"
-                    MinWidth="80" Margin="4,0"/>
+                    MinWidth="{DynamicResource Metric_DialogButtonWidth}" Margin="4,0"/>
             <Button Content="确定"
                     Style="{StaticResource BlenderButton}"
                     Command="{Binding ConfirmCommand}"
                     IsDefault="True"
-                    MinWidth="80" Margin="4,0"/>
+                    MinWidth="{DynamicResource Metric_DialogButtonWidth}" Margin="4,0"/>
             <Button Content="取消"
                     Style="{StaticResource BlenderButton}"
                     Command="{Binding CancelCommand}"
                     IsCancel="True"
-                    MinWidth="80" Margin="4,0"/>
+                    MinWidth="{DynamicResource Metric_DialogButtonWidth}" Margin="4,0"/>
         </StackPanel>
     </bui:BlenderWindow.FooterRightContent>
 
@@ -80,7 +82,7 @@
                 </Expander>
                 <TextBlock Margin="8,8,8,0"
                            TextWrapping="Wrap"
-                           Foreground="{DynamicResource Brush_TextSecondary}" FontSize="10"
+                           Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}"
                            Text="确定后写入 hy-settings 中对应项，并进入下一步（选线或拾取交叉口）。"/>
             </StackPanel>
         </Grid>

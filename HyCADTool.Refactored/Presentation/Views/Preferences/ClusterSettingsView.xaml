@@ -3,8 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
-             d:DesignHeight="220" d:DesignWidth="420">
+             d:DesignHeight="220" d:DesignWidth="420"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <UserControl.Resources>
         <ResourceDictionary>
@@ -18,7 +20,7 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
             </Style>
             <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
                 <Setter Property="Margin" Value="0,2"/>
@@ -26,7 +28,7 @@
 
             <!-- 聚类：聚类参数（Epsilon/MinPoints/阈值/边距） -->
             <DataTemplate x:Key="Section_ClusterParams">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140"/>
@@ -61,13 +63,13 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="外扩 左 / 上 / 右 / 下" Style="{StaticResource FieldLabel}"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="60" Margin="0,0,4,0"
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}" Margin="0,0,4,0"
                                      Text="{Binding ClusterVm.ExpandMarginLeft, UpdateSourceTrigger=LostFocus, FallbackValue=300}"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="60" Margin="0,0,4,0"
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}" Margin="0,0,4,0"
                                      Text="{Binding ClusterVm.ExpandMarginTop, UpdateSourceTrigger=LostFocus, FallbackValue=300}"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="60" Margin="0,0,4,0"
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}" Margin="0,0,4,0"
                                      Text="{Binding ClusterVm.ExpandMarginRight, UpdateSourceTrigger=LostFocus, FallbackValue=300}"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="60"
+                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}"
                                      Text="{Binding ClusterVm.ExpandMarginBottom, UpdateSourceTrigger=LostFocus, FallbackValue=300}"/>
                         </StackPanel>
                     </Grid>
@@ -76,9 +78,9 @@
 
             <!-- 聚类：绘图开关 -->
             <DataTemplate x:Key="Section_ClusterDrawSwitch">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <TextBlock Text="X / Y 聚类" Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" Margin="0,0,0,4"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" Margin="0,0,0,4"/>
                     <WrapPanel>
                         <CheckBox Style="{StaticResource BlenderCheckBox}" Content="绘 X 聚类" Margin="0,0,12,4"
                                   IsChecked="{Binding ClusterVm.DrawClusterX}"/>
@@ -87,7 +89,7 @@
                     </WrapPanel>
 
                     <TextBlock Text="包括点类别" Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" Margin="0,6,0,4"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" Margin="0,6,0,4"/>
                     <WrapPanel>
                         <CheckBox Style="{StaticResource BlenderCheckBox}" Content="BP" Margin="0,0,10,4"
                                   IsChecked="{Binding ClusterVm.IncludeBPs}"/>
@@ -102,7 +104,7 @@
                     </WrapPanel>
 
                     <TextBlock Text="绘制点类别" Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" Margin="0,6,0,4"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" Margin="0,6,0,4"/>
                     <WrapPanel>
                         <CheckBox Style="{StaticResource BlenderCheckBox}" Content="绘 BP" Margin="0,0,10,4"
                                   IsChecked="{Binding ClusterVm.DrawBPs}"/>
@@ -117,7 +119,7 @@
                     </WrapPanel>
 
                     <TextBlock Text="聚类辅助图元" Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" Margin="0,6,0,4"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" Margin="0,6,0,4"/>
                     <WrapPanel>
                         <CheckBox Style="{StaticResource BlenderCheckBox}" Content="包络线" Margin="0,0,12,4"
                                   IsChecked="{Binding ClusterVm.DrawClusterEnvelopePolyline}"/>
@@ -130,7 +132,7 @@
                     </WrapPanel>
 
                     <TextBlock Text="轴线 / 区域" Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" Margin="0,6,0,4"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" Margin="0,6,0,4"/>
                     <WrapPanel>
                         <CheckBox Style="{StaticResource BlenderCheckBox}" Content="X 向尺寸" Margin="0,0,12,4"
                                   IsChecked="{Binding ClusterVm.DrawDimX}"/>

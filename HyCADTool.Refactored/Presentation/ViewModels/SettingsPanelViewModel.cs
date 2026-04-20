@@ -793,6 +793,73 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             }
         }
 
+        // ----------------------------------------------------------------
+        //  界面尺寸比例（Metric_* 三类缩放，见 BlenderMetricsScaleManager）
+        // ----------------------------------------------------------------
+        private double _uiFontScale = 1.0;
+        public double UiFontScale
+        {
+            get => _uiFontScale;
+            set
+            {
+                var v = NormalizeUiMetricScale(value);
+                if (Math.Abs(_uiFontScale - v) < 1e-9) return;
+                _uiFontScale = v;
+                OnPropertyChanged();
+                if (!_isLoading)
+                {
+                    try { BlenderMetricsScaleManager.Apply(_uiFontScale, _uiDensityScale, _uiInputWidthScale); }
+                    catch { /* 忽略 */ }
+                    if (_autoSaveEnabled) SaveSettings();
+                }
+            }
+        }
+
+        private double _uiDensityScale = 1.0;
+        public double UiDensityScale
+        {
+            get => _uiDensityScale;
+            set
+            {
+                var v = NormalizeUiMetricScale(value);
+                if (Math.Abs(_uiDensityScale - v) < 1e-9) return;
+                _uiDensityScale = v;
+                OnPropertyChanged();
+                if (!_isLoading)
+                {
+                    try { BlenderMetricsScaleManager.Apply(_uiFontScale, _uiDensityScale, _uiInputWidthScale); }
+                    catch { /* 忽略 */ }
+                    if (_autoSaveEnabled) SaveSettings();
+                }
+            }
+        }
+
+        private double _uiInputWidthScale = 1.0;
+        public double UiInputWidthScale
+        {
+            get => _uiInputWidthScale;
+            set
+            {
+                var v = NormalizeUiMetricScale(value);
+                if (Math.Abs(_uiInputWidthScale - v) < 1e-9) return;
+                _uiInputWidthScale = v;
+                OnPropertyChanged();
+                if (!_isLoading)
+                {
+                    try { BlenderMetricsScaleManager.Apply(_uiFontScale, _uiDensityScale, _uiInputWidthScale); }
+                    catch { /* 忽略 */ }
+                    if (_autoSaveEnabled) SaveSettings();
+                }
+            }
+        }
+
+        /// <summary>从 JSON 读取或滑块写入时的统一裁剪。</summary>
+        private static double NormalizeUiMetricScale(double value)
+        {
+            if (double.IsNaN(value) || value <= 0) return 1.0;
+            return Math.Max(0.5, Math.Min(2.0, value));
+        }
+
         #endregion
 
         #region 命令
@@ -1015,7 +1082,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             AnchorageJoinLength = 1500.0; HookLength = 1.0; ProtectionThickness = 1.0;
             ReinforcementDiameter = 0.35; DotReinOffset = 1.35; PolylineWidth = 0.4;
             DimensionDistanceInside = 6.0; DimensionDistanceOutside = 14.0;
-            DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0; DimDistanceTolerance = 30.0;
+            DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0;             DimDistanceTolerance = 30.0;
+
+            _uiFontScale = _uiDensityScale = _uiInputWidthScale = 1.0;
+            OnPropertyChanged(nameof(UiFontScale));
+            OnPropertyChanged(nameof(UiDensityScale));
+            OnPropertyChanged(nameof(UiInputWidthScale));
+            try { BlenderMetricsScaleManager.Apply(1.0, 1.0, 1.0); } catch { /* 忽略 */ }
 
             SaveSettings();
             StatusMessage = "已恢复默认值";
@@ -1154,6 +1227,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     StationTextSide = StationTextSide,
                     // 界面外观
                     Theme = Theme,
+                    UiFontScale = UiFontScale,
+                    UiDensityScale = UiDensityScale,
+                    UiInputWidthScale = UiInputWidthScale,
                     // 其他
                     EquipmentDataFilePath = EquipmentDataFilePath
                 };
@@ -1273,6 +1349,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 // 界面外观（_isLoading 期间 setter 仍会调 BlenderThemeManager.Apply，刷新所有 DynamicResource）
                 if (!string.IsNullOrWhiteSpace(data.Theme))
                     Theme = data.Theme;
+                _uiFontScale = data.UiFontScale > 0 ? NormalizeUiMetricScale(data.UiFontScale) : 1.0;
+                _uiDensityScale = data.UiDensityScale > 0 ? NormalizeUiMetricScale(data.UiDensityScale) : 1.0;
+                _uiInputWidthScale = data.UiInputWidthScale > 0 ? NormalizeUiMetricScale(data.UiInputWidthScale) : 1.0;
+                OnPropertyChanged(nameof(UiFontScale));
+                OnPropertyChanged(nameof(UiDensityScale));
+                OnPropertyChanged(nameof(UiInputWidthScale));
                 // 其他
                 if (!string.IsNullOrEmpty(data.EquipmentDataFilePath))
                     EquipmentDataFilePath = data.EquipmentDataFilePath;
@@ -1290,6 +1372,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             finally
             {
                 _isLoading = false;
+                try
+                {
+                    BlenderMetricsScaleManager.CaptureBaselineIfNeeded();
+                    BlenderMetricsScaleManager.Apply(_uiFontScale, _uiDensityScale, _uiInputWidthScale);
+                }
+                catch
+                {
+                    /* 设计器 / 过早：忽略 */
+                }
             }
         }
 
@@ -1394,6 +1485,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             // 界面外观：HyCAD.BlenderUI.Theming.BlenderThemeManager 主题枚举名
             // 取值：BlenderDark / BlenderLight / AcadLight / AcadDark
             public string Theme { get; set; } = "BlenderDark";
+            /// <summary>界面字号 Metric_Font* 缩放，默认 1.0。</summary>
+            public double UiFontScale { get; set; } = 1.0;
+            /// <summary>行高、间距、Thickness 等密度缩放，默认 1.0。</summary>
+            public double UiDensityScale { get; set; } = 1.0;
+            /// <summary>输入框宽、标签列宽等缩放，默认 1.0。</summary>
+            public double UiInputWidthScale { get; set; } = 1.0;
             // 其他
             public string EquipmentDataFilePath { get; set; } = "";
         }

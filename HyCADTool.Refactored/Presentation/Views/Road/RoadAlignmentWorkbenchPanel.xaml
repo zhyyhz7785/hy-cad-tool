@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels.Road"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d"
@@ -12,7 +13,8 @@
              Background="{DynamicResource Brush_WindowBack}"
              Foreground="{DynamicResource Brush_TextPrimary}"
              FontFamily="{DynamicResource Font_Main}"
-             FontSize="{DynamicResource Metric_FontMain}">
+             FontSize="{DynamicResource Metric_FontMain}"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <!--
         路线工作台 UserControl：
@@ -42,7 +44,7 @@
                 Background="{DynamicResource Brush_HeaderBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}"
                 BorderThickness="0,0,0,1"
-                Padding="6,2">
+                Padding="{DynamicResource Metric_ButtonPaddingSmall}">
             <DockPanel LastChildFill="True">
                 <TextBlock DockPanel.Dock="Left"
                            VerticalAlignment="Center"
@@ -51,11 +53,11 @@
                            TextTrimming="CharacterEllipsis"
                            Text="{Binding HeaderInfo}"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="拾取" MinWidth="52" Margin="1,0"
+                    <Button Content="拾取" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding PickAlignmentCmd}"
                             ToolTip="拾取登记：在图上拾取任意图层的 Polyline / 2DPolyline / 3DPolyline；若已有 HY_ROAD 标记则直接选中，否则登记为「草稿线位」（UserPicked），不动原实体的图层 / Xdata"/>
-                    <Button Content="预览" MinWidth="52" Margin="1,0"
+                    <Button Content="预览" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawUserPickPreviewCmd}"
                             ToolTip="绘出预览：把当前选中线位按直/缓/圆分段画到图层「用户拾取」；勾「按线位单色」时则整条用 AlignmentId 哈希分配的同色"/>
@@ -65,29 +67,29 @@
                               VerticalAlignment="Center"
                               Margin="4,0,2,0"
                               ToolTip="按线位单色：预览用 AlignmentId 哈希出 12 色调色板里的一种颜色，便于在多线场景中区分线位"/>
-                    <Button Content="提交" MinWidth="52" Margin="1,0"
+                    <Button Content="提交" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding CommitAlignmentCmd}"
                             ToolTip="提交为平面线位：把当前「草稿线位（UserPicked）」正式写入图层「05_hy_道路_平面线位」并挂 HY_ROAD Xdata；同时擦除该线位的预览实体"/>
-                    <Button Content="反转" MinWidth="48" Margin="1,0"
+                    <Button Content="反转" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ReverseCmd}"
                             ToolTip="反转当前线位前进方向（会镜像桩号方程）"/>
-                    <Button Content="偏移" MinWidth="48" Margin="1,0"
+                    <Button Content="偏移" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding OffsetCmd}"
                             ToolTip="偏移副本：沿中心线生成平行偏移 Polyline（距离在命令行中输入）"/>
                     <Rectangle Width="1" Margin="4,2" Fill="{DynamicResource Brush_BorderDark}"/>
-                    <Button Content="PI 表" MinWidth="52" Margin="1,0"
+                    <Button Content="PI 表" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ExportPiCsvCmd}"
                             ToolTip="导出 PI CSV"/>
-                    <Button Content="段表" MinWidth="52" Margin="1,0"
+                    <Button Content="段表" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ExportFrameCsvCmd}"
                             ToolTip="导出段表 CSV"/>
                     <Rectangle Width="1" Margin="4,2" Fill="{DynamicResource Brush_BorderDark}"/>
-                    <Button Content="刷新" MinWidth="40" Margin="1,0"
+                    <Button Content="刷新" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_XS}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding RefreshCmd}"/>
                 </StackPanel>
@@ -121,7 +123,7 @@
                                     Title="平面线位列表"
                                     ShowIconBar="False"
                                     ShowSearch="False">
-                    <ListBox Margin="6,4,6,6"
+                    <ListBox Margin="{DynamicResource Metric_PropertyListMargin}"
                              ItemsSource="{Binding Alignments}"
                              SelectedItem="{Binding SelectedAlignment, Mode=TwoWay}"
                              Style="{StaticResource BlenderListBox}"
@@ -154,18 +156,18 @@
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right"
                                     Margin="6,4,6,2">
-                            <Button Content="+PI" MinWidth="40" Margin="2,0"
+                            <Button Content="+PI" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_XS}" Margin="2,0"
                                     Style="{StaticResource BlenderButton}"
                                     Command="{Binding InsertPiCmd}"
                                     ToolTip="插入 PI（在命令行继续点取坐标与参数）"/>
-                            <Button Content="-PI" MinWidth="40" Margin="2,0"
+                            <Button Content="-PI" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_XS}" Margin="2,0"
                                     Style="{StaticResource BlenderButton}"
                                     Command="{Binding DeletePiCmd}"
                                     ToolTip="删除当前选中的内部 PI"/>
                         </StackPanel>
 
                         <ListBox Grid.Row="1"
-                                 Margin="6,0,6,6"
+                                 Margin="{DynamicResource Metric_PropertyListMarginTight}"
                                  ItemsSource="{Binding PiItems}"
                                  SelectedItem="{Binding SelectedPi, Mode=TwoWay}"
                                  Style="{StaticResource BlenderListBox}"
@@ -198,21 +200,33 @@
                                Text="请在左列选中一个内部 PI（带 * 的为端点，不可编辑）。"
                                Visibility="{Binding PiEditorVm, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
 
-                    <!-- 有选中时 -->
+                    <!-- 有选中时：标题 → 左「输入」右「派生量」→ 通栏「规范检查」→ 预览提示 -->
                     <Grid Visibility="{Binding PiEditorVm, Converter={StaticResource NullToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0"
-                                   Margin="8,6"
+                                   Margin="{DynamicResource Metric_SectionInset}"
                                    Foreground="{DynamicResource Brush_AccentBlue}"
                                    Text="{Binding PiEditorVm.Title}"/>
 
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" DataContext="{Binding PiEditorVm}">
-                            <StackPanel>
+                        <!-- 左：输入 | 竖分割 | 右：派生量（实时） -->
+                        <Grid Grid.Row="1"
+                              MinHeight="120"
+                              DataContext="{Binding PiEditorVm}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" MinWidth="160"/>
+                                <ColumnDefinition Width="4"/>
+                                <ColumnDefinition Width="*" MinWidth="140"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ScrollViewer Grid.Column="0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
                                 <Expander Header="输入" IsExpanded="True" Style="{StaticResource BlenderExpander}">
                                     <StackPanel>
                                         <bui:PropertyRow Label="设计速度 V (km/h)">
@@ -241,7 +255,20 @@
                                         </bui:PropertyRow>
                                     </StackPanel>
                                 </Expander>
+                            </ScrollViewer>
 
+                            <GridSplitter Grid.Column="1"
+                                          Width="4"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Cursor="SizeWE"
+                                          ResizeBehavior="PreviousAndNext"
+                                          ResizeDirection="Columns"
+                                          Style="{StaticResource BlenderSplitter}"/>
+
+                            <ScrollViewer Grid.Column="2"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
                                 <Expander Header="派生量（实时）" IsExpanded="True" Style="{StaticResource BlenderExpander}">
                                     <StackPanel>
                                         <bui:PropertyRow Label="转角 α">
@@ -264,28 +291,31 @@
                                         </bui:PropertyRow>
                                     </StackPanel>
                                 </Expander>
+                            </ScrollViewer>
+                        </Grid>
 
-                                <Expander Header="规范检查" IsExpanded="True" Style="{StaticResource BlenderExpander}">
-                                    <ItemsControl ItemsSource="{Binding CheckItems}"
-                                                  ItemTemplate="{StaticResource RoadCheckItemTemplate}"/>
-                                </Expander>
-                            </StackPanel>
+                        <ScrollViewer Grid.Row="2"
+                                      VerticalScrollBarVisibility="Auto"
+                                      MaxHeight="180"
+                                      DataContext="{Binding PiEditorVm}">
+                            <Expander Header="规范检查" IsExpanded="True" Style="{StaticResource BlenderExpander}">
+                                <ItemsControl ItemsSource="{Binding CheckItems}"
+                                              ItemTemplate="{StaticResource RoadCheckItemTemplate}"/>
+                            </Expander>
                         </ScrollViewer>
 
                         <!--
-                            PI 编辑器底部提示区：原位置的「应用到 DWG / 撤销」两个重要按钮
-                            已下移至整窗口底栏（最后一行），避免窗口高度变小时被挤出可视区，
-                            见《RoadAlignmentWorkbenchPanel.xaml#全窗口底栏》；此处仅保留
-                            "实时预览"文字提示，供用户识别顶部 PI 参数改动会走 AutoCAD 瞬态黄线。
+                            PI 编辑器底部提示区：「应用到 DWG / 撤销」在整窗口底栏；
+                            此处保留实时预览说明。
                         -->
-                        <Border Grid.Row="2"
+                        <Border Grid.Row="3"
                                 Background="{DynamicResource Brush_RegionBack}"
                                 BorderBrush="{DynamicResource Brush_BorderDark}"
                                 BorderThickness="0,1,0,0"
-                                Padding="8,6">
+                                Padding="{DynamicResource Metric_Padding_8_6}">
                             <TextBlock VerticalAlignment="Center"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
-                                       Text="实时预览：AutoCAD 瞬态黄线（「应用到 DWG / 撤销」已移至窗口底栏）"/>
+                                       Text="实时预览：AutoCAD 瞬态黄线（「应用 / 撤销」在窗口底栏）"/>
                         </Border>
                     </Grid>
                 </Grid>
@@ -327,11 +357,11 @@
                                          Style="{StaticResource BlenderListBox}"
                                          DisplayMemberPath="Header"/>
                                 <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,2,0,0">
-                                    <Button Content="+" MinWidth="28" Margin="1,0"
+                                    <Button Content="+" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_XXS}" Margin="1,0"
                                             Style="{StaticResource BlenderButton}"
                                             Command="{Binding AddStationEquationCmd}"
                                             ToolTip="新增桩号方程（走 hyRoadAlnStaEq 命令行）"/>
-                                    <Button Content="-" MinWidth="28" Margin="1,0"
+                                    <Button Content="-" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_XXS}" Margin="1,0"
                                             Style="{StaticResource BlenderButton}"
                                             Command="{Binding DeleteStationEquationCmd}"
                                             ToolTip="删除选中的桩号方程"/>
@@ -355,28 +385,28 @@
                 Background="{DynamicResource Brush_HeaderBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}"
                 BorderThickness="0,1,0,0"
-                Padding="6,2">
+                Padding="{DynamicResource Metric_ButtonPaddingSmall}">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <!--
                         PI 编辑「应用到 DWG / 撤销」放在窗口底栏首位，保证窗口高度再小也能看到。
                         CanExecute 已在 VM 里校验 PiEditorVm != null && 非端点 PI，未选中时按钮自动灰化。
                     -->
-                    <Button Content="应用" MinWidth="52" Margin="1,0"
+                    <Button Content="应用" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ApplyPiEditCmd}"
                             ToolTip="应用到 DWG：按当前 PI 的 R/Ls 重建中心线并落盘 JSON（需在左列选中非端点 PI）"/>
-                    <Button Content="撤销" MinWidth="48" Margin="1,0"
+                    <Button Content="撤销" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding RevertPiEditCmd}"
                             ToolTip="放弃当前 PI 未提交的参数改动"/>
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
                                Margin="4,2"/>
-                    <Button Content="桩号" MinWidth="52" Margin="1,0"
+                    <Button Content="桩号" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawStationLabelsCmd}"
                             ToolTip="桩号标注：按当前配置一键桩号标注（等效 hyRoadAlnStation A）"/>
-                    <Button Content="配置…" MinWidth="48" Margin="1,0"
+                    <Button Content="配置…" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawStationLabelsCmd}"
                             ToolTip="打开桩号标注配置窗口（等效 hyRoadAlnStation C）">
@@ -384,7 +414,7 @@
                             <sys:Boolean>True</sys:Boolean>
                         </Button.CommandParameter>
                     </Button>
-                    <Button Content="几何点" MinWidth="60" Margin="1,0"
+                    <Button Content="几何点" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_L}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawGeometryPointsCmd}"
                             ToolTip="几何点标注：为当前 DWG 所有 Alignment 生成 BP/BC/EC/TS/SC/CS/ST/EP 标注"/>

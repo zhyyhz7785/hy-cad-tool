@@ -3,10 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              Padding="0"
              Background="{DynamicResource Brush_RegionBack}"
              Foreground="{DynamicResource Brush_TextPrimary}"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <UserControl.Resources>
         <ResourceDictionary>
@@ -102,7 +104,7 @@
                         <ListBox Grid.Column="0"
                                  Style="{StaticResource BlenderListBox}"
                                  ItemContainerStyle="{StaticResource BlenderListBoxItem}"
-                                 Height="80"
+                                 Height="{DynamicResource Metric_FilterCanvasHeight}"
                                  Margin="5"
                                  ItemsSource="{Binding PropertyFields}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -111,7 +113,7 @@
 
                     <!-- 属性值显示 -->
                     <TextBox Style="{StaticResource BlenderTextBox}"
-                             Height="28"
+                             Height="{DynamicResource Metric_FilterRowHeaderHeight}"
                              Margin="5,0,5,5"
                              IsReadOnly="True"
                              Text="{Binding SelectedPropertyValue}" />
@@ -154,7 +156,7 @@
                     <!-- 表达式过滤器列表 -->
                     <ListBox Style="{StaticResource BlenderListBox}"
                              ItemContainerStyle="{StaticResource BlenderListBoxItem}"
-                             Height="100"
+                             Height="{DynamicResource Metric_FilterResultCanvasHeight}"
                              Margin="5,0,5,5"
                              ItemsSource="{Binding ExpressionFilters}"
                              SelectedItem="{Binding SelectedExpressionFilter}" />

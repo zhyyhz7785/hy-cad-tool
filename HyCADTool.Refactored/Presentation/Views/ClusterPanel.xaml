@@ -4,10 +4,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="1800" d:DesignWidth="250"
              Background="{DynamicResource Brush_RegionBack}"
-             Foreground="{DynamicResource Brush_TextPrimary}">
+             Foreground="{DynamicResource Brush_TextPrimary}"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

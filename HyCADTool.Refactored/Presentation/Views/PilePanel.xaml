@@ -4,9 +4,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              Background="{DynamicResource Brush_RegionBack}"
              Foreground="{DynamicResource Brush_TextPrimary}"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -21,18 +23,18 @@
         <StackPanel Margin="5,8,5,5">
 
             <!-- ===== 当前比例（从设置面板读取） ===== -->
-            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="10">
+            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}">
                 <Run Text="当前比例: " /><Run Text="{Binding CurrentScale, Mode=OneWay}" Foreground="{DynamicResource Brush_AccentBlueHover}" />
                 <Run Text="（在[设置]页修改）" />
             </TextBlock>
 
             <!-- ===== 命令按钮组 ===== -->
-            <TextBlock Text="命令" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="10" Margin="0,0,0,2" />
+            <TextBlock Text="命令" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}" Margin="0,0,0,2" />
             <UniformGrid Columns="2" Margin="0,0,0,4">
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="绘制桩" Command="{Binding DrawPilesCommand}" Margin="1" Padding="2,4" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="封闭图形分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="2,4" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="Voronoi优化" Command="{Binding PileVoronoiOptimizationCommand}" Margin="1" Padding="2,4" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="优化(已有圆)" Command="{Binding PileVoronoiFromCirclesCommand}" Margin="1" Padding="2,4" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="绘制桩" Command="{Binding DrawPilesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="封闭图形分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="Voronoi优化" Command="{Binding PileVoronoiOptimizationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="优化(已有圆)" Command="{Binding PileVoronoiFromCirclesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
             </UniformGrid>
 
             <Grid Margin="0,0,0,4">
@@ -51,7 +53,7 @@
                          Text="{Binding MarkerTextHeightScale, UpdateSourceTrigger=PropertyChanged}"
                          helper:TextBoxHelper.EnableCustomHandlers="True" />
             </Grid>
-            <Button Style="{StaticResource BlenderButtonFlat}" Content="写入标高到圆心/形心" Command="{Binding MarkElevationAtCentroidsCommand}" Margin="1,0,1,4" Padding="2,4" />
+            <Button Style="{StaticResource BlenderButtonFlat}" Content="写入标高到圆心/形心" Command="{Binding MarkElevationAtCentroidsCommand}" Margin="1,0,1,4" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
 
             <Separator Style="{StaticResource BlenderSeparator}" Margin="0,2,0,4" />
 
@@ -169,7 +171,7 @@
                                  Text="{Binding InputDistanceFromContour, UpdateSourceTrigger=PropertyChanged}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True" />
                     </Grid>
-                    <TextBlock Foreground="{DynamicResource Brush_TextSecondary}" FontSize="9" Margin="0,1,0,3" Text="修改整体轮廓距离将同步上下左右边距" />
+                    <TextBlock Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontMicro}" Margin="0,1,0,3" Text="修改整体轮廓距离将同步上下左右边距" />
                     <!-- 上下左右边距 -->
                     <Grid Margin="0,2">
                         <Grid.ColumnDefinitions>
@@ -211,7 +213,7 @@
 
             <!-- 状态信息 -->
             <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="{DynamicResource Brush_Success}" FontSize="10"
+                       Foreground="{DynamicResource Brush_Success}" FontSize="{DynamicResource Metric_FontCaption}"
                        Margin="0,4,0,0" TextWrapping="Wrap" />
 
         </StackPanel>

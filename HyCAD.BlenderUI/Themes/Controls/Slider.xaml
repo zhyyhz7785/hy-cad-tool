@@ -1,0 +1,84 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      轨道区 RepeatButton：必须定义在本字典内，禁止 StaticResource 指向 ScrollBar.xaml 的兄弟合并字典
+      （否则解析 BlenderTheme 时可能抛 XamlParseException → AutoCAD e0434352h）。
+    -->
+    <Style x:Key="BlenderSliderTrackRepeatButton" TargetType="{x:Type RepeatButton}">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}">
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 标准 WPF Slider 水平主题化（色板与 NumericSlider 一致） -->
+    <Style x:Key="BlenderSlider" TargetType="{x:Type Slider}">
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Focusable" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Height" Value="{DynamicResource Metric_InputLineHeight}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_SliderFill}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Slider}">
+                    <Grid x:Name="Root" SnapsToDevicePixels="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TickBar x:Name="TopTick" Grid.Row="0" Visibility="Collapsed" Placement="Top"
+                                 Fill="{TemplateBinding Foreground}" Height="4"/>
+                        <Border x:Name="TrackBackground" Grid.Row="1" Height="4" VerticalAlignment="Center"
+                                Background="{DynamicResource Brush_SliderBack}"
+                                CornerRadius="2"
+                                SnapsToDevicePixels="True"/>
+                        <Track x:Name="PART_Track" Grid.Row="1">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                              Style="{StaticResource BlenderSliderTrackRepeatButton}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                              Style="{StaticResource BlenderSliderTrackRepeatButton}"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb SnapsToDevicePixels="True">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="{x:Type Thumb}">
+                                            <Border x:Name="Bd"
+                                                    Width="12" Height="18"
+                                                    Background="{DynamicResource Brush_SliderFill}"
+                                                    BorderBrush="{DynamicResource Brush_ButtonBorder}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="2"
+                                                    SnapsToDevicePixels="True"/>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_SliderFillHover}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonPressed}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

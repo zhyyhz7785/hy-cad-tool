@@ -3,8 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
-             d:DesignHeight="220" d:DesignWidth="420">
+             d:DesignHeight="220" d:DesignWidth="420"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <UserControl.Resources>
         <ResourceDictionary>
@@ -18,7 +20,7 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
                 <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
             </Style>
             <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
                 <Setter Property="Margin" Value="0,2"/>
@@ -26,10 +28,10 @@
 
             <!-- 标高：符号样式（当前通用使用 Settings.Scale / Settings.TextSize 推导 → 只读展示） -->
             <DataTemplate x:Key="Section_ElevationSymbol">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <TextBlock Text="（当前标高符号从设置→样式预览派生；此处预留将来符号高度/三角/线粗独立参数。）"
                                Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="11" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                               FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,6"/>
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140"/>
@@ -55,7 +57,7 @@
 
             <!-- 标高：文字样式（引用 Settings 文字参数） -->
             <DataTemplate x:Key="Section_ElevationText">
-                <StackPanel Margin="8,6">
+                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140"/>

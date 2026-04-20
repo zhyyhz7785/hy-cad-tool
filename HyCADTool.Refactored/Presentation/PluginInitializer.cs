@@ -233,6 +233,21 @@ namespace HyCADTool.Refactored.Presentation
                 {
                     /* Application 未就绪等场景静默：ColorsHost ctor 时会按 Current 自动补刷 */
                 }
+
+                try
+                {
+                    var vm = ViewModels.SettingsPanelViewModel.Current;
+                    if (vm != null)
+                    {
+                        HyCAD.BlenderUI.Theming.BlenderMetricsScaleManager.CaptureBaselineIfNeeded();
+                        HyCAD.BlenderUI.Theming.BlenderMetricsScaleManager.Apply(
+                            vm.UiFontScale, vm.UiDensityScale, vm.UiInputWidthScale);
+                    }
+                }
+                catch
+                {
+                    /* 无活动文档 / VM 未建：静默；首次打开文档后 LoadSettings 的 finally 会再 Apply */
+                }
             }
             catch (System.Exception ex)
             {

@@ -102,6 +102,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             {
                 if (!SetProperty(ref _selectedAlignment, value)) return;
                 OnSelectedAlignmentChanged();
+                RefreshCommandStates();
             }
         }
 
@@ -124,6 +125,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 _selectedPi = value;
                 OnPropertyChanged(nameof(SelectedPi));
                 OnSelectedPiChanged();
+                RefreshCommandStates();
             }
         }
 
@@ -133,7 +135,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public PiThreeUnitViewModel PiEditorVm
         {
             get => _piEditorVm;
-            private set => SetProperty(ref _piEditorVm, value);
+            private set
+            {
+                if (!SetProperty(ref _piEditorVm, value)) return;
+                RefreshCommandStates();
+            }
         }
 
         // =============================== 只读表 ===============================
@@ -146,7 +152,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public StationEquationRowVm SelectedStationEquation
         {
             get => _selectedStationEquation;
-            set => SetProperty(ref _selectedStationEquation, value);
+            set
+            {
+                if (!SetProperty(ref _selectedStationEquation, value)) return;
+                RefreshCommandStates();
+            }
         }
 
         // =============================== 状态文本 ===============================
@@ -791,6 +801,33 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 int idx = preservePiIndex.Value;
                 if (idx >= 0 && idx < PiItems.Count) SelectedPi = PiItems[idx];
             }
+        }
+
+        // =============================== Command CanExecute 刷新 ===============================
+
+        /// <summary>
+        /// 统一把所有「条件依赖 VM 状态」的命令重新查一遍 <see cref="ICommand.CanExecute"/>，
+        /// 让绑定它的 <see cref="System.Windows.Controls.Button"/> 刷新 <c>IsEnabled</c>。
+        ///
+        /// <para>背景：本项目 <see cref="RelayCommand"/> 刻意不挂 <c>CommandManager.RequerySuggested</c>，
+        /// 所以 <c>SelectedAlignment / SelectedPi / PiEditorVm / SelectedStationEquation</c> 变化时
+        /// 需要显式调用本方法，否则底栏「应用 / 撤销」等按钮会一直停留在构造时评估的灰态。
+        /// 纯静态命令（<c>PickAlignmentCmd</c> / <c>RefreshCmd</c>）无 canExecute，也安全调用。</para>
+        /// </summary>
+        private void RefreshCommandStates()
+        {
+            (DrawUserPickPreviewCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (CommitAlignmentCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (ReverseCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (OffsetCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (ExportPiCsvCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (ExportFrameCsvCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (InsertPiCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (DeletePiCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (ApplyPiEditCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (RevertPiEditCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (AddStationEquationCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (DeleteStationEquationCmd as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         // =============================== INotifyPropertyChanged ===============================

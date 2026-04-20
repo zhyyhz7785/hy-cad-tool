@@ -5,7 +5,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="clr-namespace:HyCADTool.Refactored.Presentation.Views"
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True"
              Background="{DynamicResource Brush_WindowBack}"
              d:DesignHeight="650" d:DesignWidth="320"
              d:DataContext="{d:DesignInstance Type=vm:HyBlenderPanelViewModel, IsDesignTimeCreatable=False}">
@@ -27,13 +29,13 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                            <Grid x:Name="Root" Height="32" Background="{TemplateBinding Background}">
-                                <Border x:Name="ActiveBar" Width="3" HorizontalAlignment="Left"
+                            <Grid x:Name="Root" Height="{DynamicResource Metric_IconBarItemHeight}" Background="{TemplateBinding Background}">
+                                <Border x:Name="ActiveBar" Width="{DynamicResource Metric_TabAccentBarWidth}" HorizontalAlignment="Left"
                                         Background="{DynamicResource Brush_AccentBlue}"
                                         Visibility="Collapsed"/>
                                 <TextBlock x:Name="IconText"
                                            Text="{Binding Icon}"
-                                           FontSize="16"
+                                           FontSize="{DynamicResource Metric_FontIconLarge}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="{TemplateBinding Foreground}"
@@ -76,7 +78,7 @@
                                    TextTrimming="CharacterEllipsis"/>
                         <TextBlock Grid.Column="1" Text="{Binding KeyCaption}"
                                    Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="11"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
                                    Margin="6,0,0,0"
                                    VerticalAlignment="Center"/>
                     </Grid>
@@ -100,13 +102,13 @@
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
                 <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Width" Value="18"/>
-                <Setter Property="Height" Value="18"/>
+                <Setter Property="Width" Value="{DynamicResource Metric_ClearButtonSize}"/>
+                <Setter Property="Height" Value="{DynamicResource Metric_ClearButtonSize}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type Button}">
                             <Grid Background="Transparent">
-                                <TextBlock Text="×" FontSize="14"
+                                <TextBlock Text="×" FontSize="{DynamicResource Metric_FontIcon}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Foreground="{TemplateBinding Foreground}"/>
                             </Grid>
@@ -188,27 +190,27 @@
             </Grid.RowDefinitions>
 
             <!-- 顶部搜索框 -->
-            <Border Grid.Row="0" Padding="6,4" Background="{DynamicResource Brush_HeaderBack}">
+            <Border Grid.Row="0" Padding="{DynamicResource Metric_ButtonPaddingSmall}" Background="{DynamicResource Brush_HeaderBack}">
                 <Grid>
                     <TextBox x:Name="SearchBox"
                              Style="{StaticResource BlenderTextBox}"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                             Height="24"
+                             Height="{DynamicResource Metric_InputLineHeight}"
                              VerticalContentAlignment="Center"
-                             Padding="22,0,22,0"/>
+                             Padding="{DynamicResource Metric_SearchBoxGlyphPadding}"/>
                     <TextBlock Text="🔍"
                                IsHitTestVisible="False"
                                Foreground="{DynamicResource Brush_TextSecondary}"
                                HorizontalAlignment="Left"
                                VerticalAlignment="Center"
                                Margin="6,0,0,0"
-                               FontSize="11"/>
+                               FontSize="{DynamicResource Metric_FontSmall}"/>
                     <TextBlock Text="搜索命令…"
                                IsHitTestVisible="False"
                                Foreground="{DynamicResource Brush_TextDisabled}"
                                VerticalAlignment="Center"
                                Margin="24,0,0,0"
-                               FontSize="11">
+                               FontSize="{DynamicResource Metric_FontSmall}">
                         <TextBlock.Style>
                             <Style TargetType="{x:Type TextBlock}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -251,10 +253,10 @@
                             </Style.Triggers>
                         </Style>
                     </ScrollViewer.Style>
-                    <StackPanel Margin="6,4">
+                    <StackPanel Margin="{DynamicResource Metric_ButtonPaddingSmall}">
                         <TextBlock Text="搜索结果（全部分类）"
                                    Foreground="{DynamicResource Brush_TextSecondary}"
-                                   FontSize="11"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
                                    Margin="0,0,0,4"/>
                         <ItemsControl ItemsSource="{Binding GlobalSearchResults}"
                                       ItemTemplate="{StaticResource CommandItemTemplate}"/>
@@ -288,7 +290,7 @@
                             </Style.Triggers>
                         </Style>
                     </ScrollViewer.Style>
-                    <StackPanel Margin="6,4">
+                    <StackPanel Margin="{DynamicResource Metric_ButtonPaddingSmall}">
                         <!-- 道路：五区多 Expander -->
                         <ItemsControl ItemTemplate="{StaticResource RoadPanelSectionTemplate}"
                                       ItemsSource="{Binding SelectedTab.RoadPanelGroups}">
@@ -336,10 +338,10 @@
             </Grid>
 
             <!-- 底部状态条 -->
-            <Border Grid.Row="2" Background="{DynamicResource Brush_HeaderBack}" Height="20">
+            <Border Grid.Row="2" Background="{DynamicResource Brush_HeaderBack}" Height="{DynamicResource Metric_StatusBarHeight}">
                 <TextBlock Text="{Binding StatusMessage}"
                            Foreground="{DynamicResource Brush_TextSecondary}"
-                           FontSize="11"
+                           FontSize="{DynamicResource Metric_FontSmall}"
                            Margin="8,0,8,0"
                            VerticalAlignment="Center"/>
             </Border>
