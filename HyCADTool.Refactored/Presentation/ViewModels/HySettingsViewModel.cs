@@ -137,6 +137,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 new SettingsGroupVm("尺寸",         "UiScale"),
             }));
 
+            // 「快捷键」分类：UI 键位（hy-keymap.json 持久化）+ 未来扩展命令级 hy.cmd.* 录键
+            Categories.Add(new SettingsCategoryVm("快捷键",     "⌨", new[]
+            {
+                new SettingsGroupVm("UI 键位",      "KeyMap"),
+            }));
+
             Categories.Add(new SettingsCategoryVm("设置",       "⚙", new[]
             {
                 new SettingsGroupVm("文字样式",     "TextStyle"),

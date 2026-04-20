@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420"
@@ -15,153 +16,76 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
-            </Style>
-            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
-                <Setter Property="Margin" Value="0,2"/>
+            <Style x:Key="PilePropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="150"/>
             </Style>
 
             <!-- 桩基：桩参数 -->
             <DataTemplate x:Key="Section_PileParams">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="直径/边长 (mm)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="直径/边长 (mm)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.DiameterOrEdge, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="最小中距 (mm)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="最小中距 (mm)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MinPileCenterDistance, UpdateSourceTrigger=LostFocus, FallbackValue=1200}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="输入位移率" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="输入位移率" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.InputDisplacementRate, UpdateSourceTrigger=LostFocus, FallbackValue=0.02}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="布桩率" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="布桩率" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.PileArrangeRate, UpdateSourceTrigger=LostFocus, FallbackValue=0.5}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="列数 NX" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="列数 NX" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.NX, UpdateSourceTrigger=LostFocus, FallbackValue=2}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="行数 NY" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="行数 NY" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.NY, UpdateSourceTrigger=LostFocus, FallbackValue=2}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="手动控制" Style="{StaticResource FieldLabel}"/>
-                        <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="手动控制" Style="{StaticResource PilePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
                                   VerticalAlignment="Center"
                                   IsChecked="{Binding PileVm.ManualControl}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 
             <!-- 桩基：边距参数 -->
             <DataTemplate x:Key="Section_PileMargin">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="到轮廓距离" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="到轮廓距离" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.InputDistanceFromContour, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="上边距 (MarginUp)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="上边距 (MarginUp)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginUp, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="下边距 (MarginDown)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="下边距 (MarginDown)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginDown, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="左边距 (MarginLeft)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="左边距 (MarginLeft)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginLeft, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="右边距 (MarginRight)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="右边距 (MarginRight)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginRight, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="标注高程" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="标注高程" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarkerElevation, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="标注字高系数" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="标注字高系数" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarkerTextHeightScale, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 

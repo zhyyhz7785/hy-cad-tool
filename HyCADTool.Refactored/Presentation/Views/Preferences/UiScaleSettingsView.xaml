@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:views="clr-namespace:HyCADTool.Refactored.Presentation.Views"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="360" d:DesignWidth="480"
@@ -12,8 +13,8 @@
 
     <!--
       本控件插在 ItemsControl/DataTemplate 内时，子元素 DataContext 会下探成 SettingsGroupVm。
-      因此滑块与读数显式绑定到当前 UserControl（Root）的 DataContext.Settings.*，
-      避免子元素继承链把绑定路径冲掉。滑块范围 0.7~1.3，使 1.0 位于行程正中。
+      因此 NumericSlider 显式绑定到当前 UserControl（Root）的 DataContext.Settings.*，
+      避免子元素继承链把绑定路径冲掉。范围 0.7~1.3，使 1.0 位于行程正中。
     -->
     <UserControl.Resources>
         <ResourceDictionary>
@@ -21,6 +22,10 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="UiScalePropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="140"/>
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -36,59 +41,21 @@
                     Padding="{DynamicResource Metric_ButtonPaddingSmall}" Click="OnPresetComfortClick"/>
         </StackPanel>
 
-        <TextBlock Text="字号比例（Metric_Font*）" FontSize="{DynamicResource Metric_FontSmall}"
-                   Foreground="{DynamicResource Brush_TextSecondary}"/>
-        <Grid Margin="0,2,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="56"/>
-            </Grid.ColumnDefinitions>
-            <Slider Grid.Column="0" Style="{StaticResource BlenderSlider}"
-                    Minimum="0.7" Maximum="1.3" TickFrequency="0.05"
-                    IsSnapToTickEnabled="True" VerticalAlignment="Center"
-                    Value="{Binding DataContext.Settings.UiFontScale, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right"
-                       FontSize="{DynamicResource Metric_FontSmall}"
-                       Foreground="{DynamicResource Brush_TextPrimary}"
-                       Text="{Binding DataContext.Settings.UiFontScale, ElementName=Root, StringFormat={}{0:0.00}x, FallbackValue=-}"/>
-        </Grid>
-
-        <TextBlock Text="行高与间距（行高、Padding、Inset 等）" FontSize="{DynamicResource Metric_FontSmall}"
-                   Foreground="{DynamicResource Brush_TextSecondary}"/>
-        <Grid Margin="0,2,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="56"/>
-            </Grid.ColumnDefinitions>
-            <Slider Grid.Column="0" Style="{StaticResource BlenderSlider}"
-                    Minimum="0.7" Maximum="1.3" TickFrequency="0.05"
-                    IsSnapToTickEnabled="True" VerticalAlignment="Center"
-                    Value="{Binding DataContext.Settings.UiDensityScale, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right"
-                       FontSize="{DynamicResource Metric_FontSmall}"
-                       Foreground="{DynamicResource Brush_TextPrimary}"
-                       Text="{Binding DataContext.Settings.UiDensityScale, ElementName=Root, StringFormat={}{0:0.00}x, FallbackValue=-}"/>
-        </Grid>
-
-        <TextBlock Text="输入框与列宽（Metric_InputWidth*、标签列等）" FontSize="{DynamicResource Metric_FontSmall}"
-                   Foreground="{DynamicResource Brush_TextSecondary}"/>
-        <Grid Margin="0,2,0,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="56"/>
-            </Grid.ColumnDefinitions>
-            <Slider Grid.Column="0" Style="{StaticResource BlenderSlider}"
-                    Minimum="0.7" Maximum="1.3" TickFrequency="0.05"
-                    IsSnapToTickEnabled="True" VerticalAlignment="Center"
-                    Value="{Binding DataContext.Settings.UiInputWidthScale, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right"
-                       FontSize="{DynamicResource Metric_FontSmall}"
-                       Foreground="{DynamicResource Brush_TextPrimary}"
-                       Text="{Binding DataContext.Settings.UiInputWidthScale, ElementName=Root, StringFormat={}{0:0.00}x, FallbackValue=-}"/>
-        </Grid>
+        <bc:PropertyRow Label="字号比例" Style="{StaticResource UiScalePropertyRow}">
+            <bc:NumericSlider Minimum="0.7" Maximum="1.3" Step="0.05" Decimals="2" Unit="x"
+                              Value="{Binding DataContext.Settings.UiFontScale, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </bc:PropertyRow>
+        <bc:PropertyRow Label="行高/间距比" Style="{StaticResource UiScalePropertyRow}">
+            <bc:NumericSlider Minimum="0.7" Maximum="1.3" Step="0.05" Decimals="2" Unit="x"
+                              Value="{Binding DataContext.Settings.UiDensityScale, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </bc:PropertyRow>
+        <bc:PropertyRow Label="输入框/列宽比" Style="{StaticResource UiScalePropertyRow}">
+            <bc:NumericSlider Minimum="0.7" Maximum="1.3" Step="0.05" Decimals="2" Unit="x"
+                              Value="{Binding DataContext.Settings.UiInputWidthScale, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </bc:PropertyRow>
 
         <TextBlock TextWrapping="Wrap" FontSize="{DynamicResource Metric_FontCaption}"
-                   Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,0,0,10">
+                   Foreground="{DynamicResource Brush_TextSecondary}" Margin="0,6,0,10">
             提示：滑块会即时尝试刷新已打开面板的 Metric；若个别布局未更新，请关闭并重新打开 Hy 面板或相关窗口。点「应用并写入」将当前比例保存到 hy-settings.json。
         </TextBlock>
 

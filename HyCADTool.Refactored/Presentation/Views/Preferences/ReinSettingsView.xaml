@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420"
@@ -14,152 +15,62 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
-            </Style>
-            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
-                <Setter Property="Margin" Value="0,2"/>
+
+            <Style x:Key="ReinPropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="140"/>
             </Style>
 
             <!-- 钢筋参数 -->
             <DataTemplate x:Key="Section_Rein">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="锚固长度 (AnchorageLength)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding AnchorageLength -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="500"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="点钢筋间距 (DotSeparation)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DotSeparation -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="200"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="最小弯折长度" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding BendingLineMinLength -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="150"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="锚固连接长度" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding AnchorageJoinLength -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="1500"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="弯钩长度 (HookLength)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding HookLength -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="1.0"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="保护层厚度" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding ProtectionThickness -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="1.0"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="点钢筋绘制直径" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding ReinforcementDiameter -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="0.35"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="点钢筋偏移" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DotReinOffset -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="1.35"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="多段线宽 (PolylineWidth)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding PolylineWidth -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="0"/>
-                    </Grid>
+                    <bc:PropertyRow Label="锚固长度 (AnchorageLength)" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="500"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="点钢筋间距 (DotSeparation)" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="200"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="最小弯折长度" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="150"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="锚固连接长度" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="1500"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="弯钩长度 (HookLength)" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="1.0"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="保护层厚度" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="1.0"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="点钢筋绘制直径" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="0.35"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="点钢筋偏移" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="1.35"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="多段线宽 (PolylineWidth)" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="0"/>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 
             <!-- 尺寸参数（钢筋相关） -->
             <DataTemplate x:Key="Section_ReinDim">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="内部尺寸距离" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DimensionDistanceInside -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="7"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="外部尺寸距离" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DimensionDistanceOutside -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="10"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="带尺寸距离" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DimensionDistanceWithDim -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="14"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="引线距离 (Mleader)" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding MleaderDistance -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="5"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="距离容差" Style="{StaticResource FieldLabel}"/>
-                        <!-- TODO: Binding DimDistanceTolerance -->
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}" Text="1"/>
-                    </Grid>
+                    <bc:PropertyRow Label="内部尺寸距离" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="7"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="外部尺寸距离" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="10"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="带尺寸距离" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="14"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="引线距离 (Mleader)" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="5"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="距离容差" Style="{StaticResource ReinPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}" Text="1"/>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420"
@@ -15,83 +16,41 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
-            </Style>
-            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
-                <Setter Property="Margin" Value="0,2"/>
+            <Style x:Key="DimPropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="140"/>
             </Style>
 
             <!-- 尺寸参数：从 Settings 读取通用 Dim* 参数（与钢筋尺寸独立，后者见 ReinSettingsView） -->
             <DataTemplate x:Key="Section_DimParams">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Dimtxt（字高）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="Dimtxt（字高）" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimtxt, UpdateSourceTrigger=LostFocus, FallbackValue=2.5}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Dimasz（箭头）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimasz（箭头）" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimasz, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Dimexo（起点偏移）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimexo（起点偏移）" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimexo, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Dimexe（延伸超出）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimexe（延伸超出）" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimexe, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Dimdle（尺寸线延伸）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimdle（尺寸线延伸）" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimdle, UpdateSourceTrigger=LostFocus, FallbackValue=0.5}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Dimgap（文字边距）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimgap（文字边距）" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimgap, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="箭头块名" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="箭头块名" Style="{StaticResource DimPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.DimArrowName, UpdateSourceTrigger=LostFocus, FallbackValue=_ARCHTICK}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 

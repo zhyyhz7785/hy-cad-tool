@@ -1,6 +1,10 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <Style x:Key="BlenderScrollRepeatButton" TargetType="{x:Type RepeatButton}">
         <Setter Property="OverridesDefaultStyle" Value="True"/>
         <Setter Property="IsTabStop" Value="False"/>
@@ -27,8 +31,8 @@
                             SnapsToDevicePixels="True">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                                <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Idle}}"/>
-                                <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_ScrollThumb}}"/>
+                                <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Idle}}"/>
+                                <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_ScrollThumb}}"/>
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
@@ -38,8 +42,8 @@
                             <Setter TargetName="Bd" Property="Background">
                                 <Setter.Value>
                                     <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                                        <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Hover}}"/>
-                                        <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_ScrollThumbHover}}"/>
+                                        <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Hover}}"/>
+                                        <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_ScrollThumbHover}}"/>
                                     </LinearGradientBrush>
                                 </Setter.Value>
                             </Setter>

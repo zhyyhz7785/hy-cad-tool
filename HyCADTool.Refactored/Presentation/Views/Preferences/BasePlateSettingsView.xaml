@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420"
@@ -15,215 +16,108 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
-            </Style>
-            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
-                <Setter Property="Margin" Value="0,2"/>
+            <Style x:Key="BasePlatePropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="140"/>
             </Style>
 
-            <!-- 底板：配筋参数（钢筋直径、间距、保护层、锚固等） -->
+            <!-- 底板：配筋参数 -->
             <DataTemplate x:Key="Section_BasePlateRein">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="钢筋板厚 (PlateThickness)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="钢筋板厚 (PlateThickness)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.PlateThickness, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="钢筋直径 (RebarDiameter)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="钢筋直径 (RebarDiameter)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.RebarDiameter, UpdateSourceTrigger=LostFocus, FallbackValue=14}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="钢筋间距 (RebarSpacing)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="钢筋间距 (RebarSpacing)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.RebarSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="附加钢筋最小直径" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="附加钢筋最小直径" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.MinAdditionalDiameter, UpdateSourceTrigger=LostFocus, FallbackValue=10}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="附加钢筋间距" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="附加钢筋间距" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.AdditionalSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="配筋安全系数" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋安全系数" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.ReinforceSafety, UpdateSourceTrigger=LostFocus, FallbackValue=1.1}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="锚固系数 (AnchorFactor)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="锚固系数 (AnchorFactor)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.AnchorFactor, UpdateSourceTrigger=LostFocus, FallbackValue=35}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="邻近阈值" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="邻近阈值" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.ProximityThreshold, UpdateSourceTrigger=LostFocus, FallbackValue=100}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="追加锚固长度" Style="{StaticResource FieldLabel}"/>
-                        <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="追加锚固长度" Style="{StaticResource BasePlatePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
                                   VerticalAlignment="Center"
                                   IsChecked="{Binding BaseReinVm.AddAnchorLength}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="已存在钢筋" Style="{StaticResource FieldLabel}"/>
-                        <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="已存在钢筋" Style="{StaticResource BasePlatePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
                                   VerticalAlignment="Center"
                                   IsChecked="{Binding BaseReinVm.ExistingRebar}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 
-            <!-- 底板：绘制参数（钩长、线宽、文字距离等） -->
+            <!-- 底板：绘制参数 -->
             <DataTemplate x:Key="Section_BasePlateDraw">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="钩长 (HookLength)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="钩长 (HookLength)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.HookLength, UpdateSourceTrigger=LostFocus, FallbackValue=12.5}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="多段线宽 (PolylineWidth)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="多段线宽 (PolylineWidth)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.PolylineWidth, UpdateSourceTrigger=LostFocus, FallbackValue=0.4}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="配筋距离 (Reinforce)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋距离 (Reinforce)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.ReinforceDistance, UpdateSourceTrigger=LostFocus, FallbackValue=100}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="文字距线" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="文字距线" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.TextToLineDistance, UpdateSourceTrigger=LostFocus, FallbackValue=3}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="配筋文字 X 距离" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋文字 X 距离" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.ReinforceTextDistanceX, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="配筋文字 Y 距离" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋文字 Y 距离" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.ReinforceTextDistanceY, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="标注距离(带Dim)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="标注距离(带Dim)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.DimensionDistanceWithDim, UpdateSourceTrigger=LostFocus, FallbackValue=6}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 
-            <!-- 底板：高级设置（轴线外扩、间隔、全标等） -->
+            <!-- 底板：高级设置 -->
             <DataTemplate x:Key="Section_BasePlateAdvanced">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="轴线外扩" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="轴线外扩" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.AxisExtend, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="间隔 (Interval)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="间隔 (Interval)" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding BaseReinVm.Interval, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="全方向标注" Style="{StaticResource FieldLabel}"/>
-                        <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="全方向标注" Style="{StaticResource BasePlatePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
                                   VerticalAlignment="Center"
                                   IsChecked="{Binding BaseReinVm.DimAll}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 

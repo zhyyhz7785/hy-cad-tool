@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420"
@@ -15,56 +16,29 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
-            </Style>
-            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
-                <Setter Property="Margin" Value="0,2"/>
+            <Style x:Key="RoadPropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="140"/>
             </Style>
 
             <!-- 道路：人行横道 -->
             <DataTemplate x:Key="Section_RoadCrosswalk">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="间隙宽度 (Gap)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="间隙宽度 (Gap)" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadGapWidth, UpdateSourceTrigger=LostFocus, FallbackValue=5}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="人行横道宽" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="人行横道宽" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadCrosswalkWidth, UpdateSourceTrigger=LostFocus, FallbackValue=5}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="停车线距离" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="停车线距离" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadStopLineDistance, UpdateSourceTrigger=LostFocus, FallbackValue=2}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="条纹间距" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="条纹间距" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadStripeSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=1}"/>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 

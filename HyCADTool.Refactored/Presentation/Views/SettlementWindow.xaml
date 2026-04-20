@@ -10,8 +10,8 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResizeWithGrip"
-        Background="#2e3440"
-        Foreground="#d8dee9"
+        Background="{DynamicResource Brush_WindowBack}"
+        Foreground="{DynamicResource Brush_TextPrimary}"
         btmetrics:BlenderMetricsOverlay.Attach="True">
 
     <WindowChrome.WindowChrome>

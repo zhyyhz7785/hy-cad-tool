@@ -1,6 +1,11 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <!--
       widget_draw_backdrop 命名样式（阶段 0）
       渐变端点走 DynamicResource Brush_Shadetop_* / Brush_Shadedown_*（Brush Facade 可热切换）
@@ -14,8 +19,8 @@
         <Setter Property="Background">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Idle}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_Shadedown_Idle}}"/>
+                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Idle}}"/>
+                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Idle}}"/>
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
@@ -25,8 +30,8 @@
         <Setter Property="Background">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Hover}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_Shadedown_Hover}}"/>
+                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Hover}}"/>
+                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Hover}}"/>
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
@@ -36,8 +41,8 @@
         <Setter Property="Background">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Pressed}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_Shadedown_Pressed}}"/>
+                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Pressed}}"/>
+                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Pressed}}"/>
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
@@ -47,8 +52,8 @@
         <Setter Property="Background">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Selected}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_Shadedown_Selected}}"/>
+                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Selected}}"/>
+                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Selected}}"/>
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>

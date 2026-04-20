@@ -126,6 +126,18 @@ namespace HyCADTool.Refactored.Presentation
                 // 三入口 UI：AutoCAD Ribbon 选项卡（Ribbon 未启用时会静默跳过，不影响其他入口）
                 InitializeRibbonAndMenus();
 
+                // 把 CommandTable 里的命令批量注册为 BlenderUI Operator（Id = hy.cmd.{key}），
+                // 为后续 KeyMap / SearchMenu 统一走 WM/Operators 链路做准备。幂等，commands.json 异常静默失败。
+                try
+                {
+                    Input.OperatorBootstrapper.RegisterAllCommands();
+                    WriteMessage($"\n✓ 命令 Operator 已注册：{Input.OperatorBootstrapper.RegisteredCommandCount} 条");
+                }
+                catch (System.Exception ex)
+                {
+                    WriteMessage($"\n  ⚠ 命令 Operator 注册警告：{ex.Message}");
+                }
+
                 WriteMessage("\n========================================");
                 WriteMessage("\n✓ HyCADTool.Refactored 插件初始化完成！");
                 WriteMessage("\n========================================\n");

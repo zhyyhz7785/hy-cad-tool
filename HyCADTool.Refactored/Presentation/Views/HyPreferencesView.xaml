@@ -7,6 +7,7 @@
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels"
              xmlns:helper="clr-namespace:HyCADTool.Refactored.Presentation.Views.Helpers"
              xmlns:drawing="clr-namespace:HyCADTool.Refactored.Domain.Models.Drawing"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              btmetrics:BlenderMetricsOverlay.Attach="True"
@@ -71,6 +72,7 @@
             <!-- ===== 二级 Expander 内容：根据 GroupKey 选择具体骨架；命中则显示示例 UserControl，否则显示 TODO 占位 ===== -->
             <DataTemplate x:Key="GroupKey_Theme">                <sub:ThemeSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_UiScale">              <sub:UiScaleSettingsView/></DataTemplate>
+            <DataTemplate x:Key="GroupKey_KeyMap">               <sub:KeyMapSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_TextStyle">            <sub:StyleSettingsView   Section="Text"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_DimStyle">             <sub:StyleSettingsView   Section="Dim"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_MLeaderStyle">         <sub:StyleSettingsView   Section="MLeader"/></DataTemplate>
@@ -113,30 +115,16 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="28"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
 
-        <!-- ===== 顶栏：面包屑 ===== -->
-        <Border Grid.Row="0" Background="{DynamicResource Brush_HeaderBack}"
-                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                <TextBlock Text="⚙" FontSize="{DynamicResource Metric_FontMain}"
-                           Foreground="{DynamicResource Brush_TextSecondary}"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="  HyCAD 首选项"
-                           FontSize="{DynamicResource Metric_FontMain}"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource Brush_TextPrimary}"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="  ›  " Foreground="{DynamicResource Brush_TextDisabled}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding SelectedCategory.Name}"
-                           FontSize="{DynamicResource Metric_FontMain}"
-                           Foreground="{DynamicResource Brush_TextSecondary}"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
-        </Border>
+        <!-- ===== 顶栏：BlenderUI 原生 PanelHeader（替换原手写面包屑），标题随一级分类切换 ===== -->
+        <bc:PanelHeader Grid.Row="0"
+                        Title="{Binding SelectedCategory.Name, FallbackValue='HyCAD 首选项', TargetNullValue='HyCAD 首选项', StringFormat='⚙ HyCAD 首选项  ›  {0}'}"
+                        ShowSearch="False"
+                        ShowPin="False"/>
 
         <!-- ===== 中部：左一级目录 + 右二级分组 ===== -->
         <Grid Grid.Row="1">

@@ -5,6 +5,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="clr-namespace:HyCADTool.Refactored.Presentation.Views"
              xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:bp="clr-namespace:HyCAD.BlenderUI.Controls.Primitives;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              btmetrics:BlenderMetricsOverlay.Attach="True"
@@ -19,42 +21,11 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- 左侧图标 Tab 项模板 -->
-            <Style x:Key="IconTabItemStyle" TargetType="{x:Type ListBoxItem}">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="SnapsToDevicePixels" Value="True"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                            <Grid x:Name="Root" Height="{DynamicResource Metric_IconBarItemHeight}" Background="{TemplateBinding Background}">
-                                <Border x:Name="ActiveBar" Width="{DynamicResource Metric_TabAccentBarWidth}" HorizontalAlignment="Left"
-                                        Background="{DynamicResource Brush_AccentBlue}"
-                                        Visibility="Collapsed"/>
-                                <TextBlock x:Name="IconText"
-                                           Text="{Binding Icon}"
-                                           FontSize="{DynamicResource Metric_FontIconLarge}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="{TemplateBinding Foreground}"
-                                           ToolTip="{Binding Name}"/>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
-                                    <Setter TargetName="IconText" Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
-                                </Trigger>
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush_RegionBack}"/>
-                                    <Setter TargetName="ActiveBar" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="IconText" Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
+            <!-- 左侧图标 Tab 容器样式：把 CategoryTabVm 的 Icon/Name 映射到 IconTabItem -->
+            <Style x:Key="HyIconTabItemStyle" TargetType="{x:Type bc:IconTabItem}">
+                <Setter Property="Icon" Value="{Binding Icon}"/>
+                <Setter Property="TooltipText" Value="{Binding Name}"/>
+                <Setter Property="FontSize" Value="{DynamicResource Metric_FontIconLarge}"/>
             </Style>
 
             <Style x:Key="CommandRowButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButtonFlat}">
@@ -85,6 +56,14 @@
                 </Button>
             </DataTemplate>
 
+            <!-- 全局搜索结果：按 Category 分组视图源 -->
+            <CollectionViewSource x:Key="GlobalSearchResultsView"
+                                  Source="{Binding GlobalSearchResults}">
+                <CollectionViewSource.GroupDescriptions>
+                    <PropertyGroupDescription PropertyName="Category"/>
+                </CollectionViewSource.GroupDescriptions>
+            </CollectionViewSource>
+
             <!-- 道路 Tab：五区折叠（工程/路线/纵断/道路/工具） -->
             <DataTemplate x:Key="RoadPanelSectionTemplate" DataType="{x:Type vm:CommandSectionVm}">
                 <Expander Style="{StaticResource BlenderExpander}"
@@ -97,48 +76,20 @@
                 </Expander>
             </DataTemplate>
 
-            <Style x:Key="SearchClearButton" TargetType="{x:Type Button}">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Width" Value="{DynamicResource Metric_ClearButtonSize}"/>
-                <Setter Property="Height" Value="{DynamicResource Metric_ClearButtonSize}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="{x:Type Button}">
-                            <Grid Background="Transparent">
-                                <TextBlock Text="×" FontSize="{DynamicResource Metric_FontIcon}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Foreground="{TemplateBinding Foreground}"/>
-                            </Grid>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="32"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- ===== 左侧：图标 Tab ListBox ===== -->
-        <Border Grid.Column="0" Background="{DynamicResource Brush_HeaderBack}">
-            <ListBox x:Name="CategoryList"
-                     Style="{StaticResource BlenderListBox}"
-                     ItemsSource="{Binding Tabs}"
-                     SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
-                     ItemContainerStyle="{StaticResource IconTabItemStyle}"/>
-        </Border>
+        <!-- ===== 左侧：BlenderUI 原生 IconTabBar ===== -->
+        <bc:IconTabBar Grid.Column="0"
+                       ItemsSource="{Binding Tabs}"
+                       SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                       ItemContainerStyle="{StaticResource HyIconTabItemStyle}"/>
 
         <!-- ===== 右侧内容区 ===== -->
         <Grid Grid.Column="1" Background="{DynamicResource Brush_RegionBack}">
@@ -189,57 +140,14 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- 顶部搜索框 -->
+            <!-- 顶部搜索框：BlenderUI 原生 SearchBox -->
             <Border Grid.Row="0" Padding="{DynamicResource Metric_ButtonPaddingSmall}" Background="{DynamicResource Brush_HeaderBack}">
-                <Grid>
-                    <TextBox x:Name="SearchBox"
-                             Style="{StaticResource BlenderTextBox}"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                             Height="{DynamicResource Metric_InputLineHeight}"
-                             VerticalContentAlignment="Center"
-                             Padding="{DynamicResource Metric_SearchBoxGlyphPadding}"/>
-                    <TextBlock Text="🔍"
-                               IsHitTestVisible="False"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Center"
-                               Margin="6,0,0,0"
-                               FontSize="{DynamicResource Metric_FontSmall}"/>
-                    <TextBlock Text="搜索命令…"
-                               IsHitTestVisible="False"
-                               Foreground="{DynamicResource Brush_TextDisabled}"
-                               VerticalAlignment="Center"
-                               Margin="24,0,0,0"
-                               FontSize="{DynamicResource Metric_FontSmall}">
-                        <TextBlock.Style>
-                            <Style TargetType="{x:Type TextBlock}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <Button HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Margin="0,0,4,0"
-                            Click="OnClearSearchClick">
-                        <Button.Style>
-                            <Style TargetType="{x:Type Button}" BasedOn="{StaticResource SearchClearButton}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsSearching}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </Grid>
+                <bp:SearchBox x:Name="SearchBox"
+                              Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Placeholder="搜索命令…"/>
             </Border>
 
-            <!-- 中部内容：搜索中显示全局扁平列表，否则显示当前分类列表 -->
+            <!-- 中部内容：搜索中显示全局扁平结果，否则显示当前分类列表 -->
             <Grid Grid.Row="1">
                 <!-- 状态 A：搜索中 → 全局扁平结果 -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -258,8 +166,27 @@
                                    Foreground="{DynamicResource Brush_TextSecondary}"
                                    FontSize="{DynamicResource Metric_FontSmall}"
                                    Margin="0,0,0,4"/>
-                        <ItemsControl ItemsSource="{Binding GlobalSearchResults}"
-                                      ItemTemplate="{StaticResource CommandItemTemplate}"/>
+                        <!-- 按 Category 分组，每组一个 SemiBold Header -->
+                        <ItemsControl ItemsSource="{Binding Source={StaticResource GlobalSearchResultsView}}"
+                                      ItemTemplate="{StaticResource CommandItemTemplate}">
+                            <ItemsControl.GroupStyle>
+                                <GroupStyle>
+                                    <GroupStyle.HeaderTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,6,0,2"
+                                                    Padding="2,2,2,2"
+                                                    BorderBrush="{DynamicResource Brush_BorderDark}"
+                                                    BorderThickness="0,0,0,1">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                                           FontSize="{DynamicResource Metric_FontSmall}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </GroupStyle.HeaderTemplate>
+                                </GroupStyle>
+                            </ItemsControl.GroupStyle>
+                        </ItemsControl>
                         <TextBlock Text="（无匹配命令）"
                                    Foreground="{DynamicResource Brush_TextDisabled}"
                                    HorizontalAlignment="Center"
@@ -337,14 +264,8 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- 底部状态条 -->
-            <Border Grid.Row="2" Background="{DynamicResource Brush_HeaderBack}" Height="{DynamicResource Metric_StatusBarHeight}">
-                <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="{DynamicResource Brush_TextSecondary}"
-                           FontSize="{DynamicResource Metric_FontSmall}"
-                           Margin="8,0,8,0"
-                           VerticalAlignment="Center"/>
-            </Border>
+            <!-- 底部：BlenderUI 原生 StatusBar -->
+            <bc:StatusBar Grid.Row="2" CenterContent="{Binding StatusMessage}"/>
         </Grid>
         </Grid>
     </Grid>

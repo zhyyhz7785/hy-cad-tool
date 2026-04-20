@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using HyCADTool.ReCall;
+using HyCADTool.Refactored.Presentation.Services;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
 {
@@ -30,10 +31,28 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 if (_selectedTab == value) return;
                 _selectedTab = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedTabIndex));
                 OnPropertyChanged(nameof(IsPreferencesMode));
                 OnPropertyChanged(nameof(IsFilterMode));
                 OnPropertyChanged(nameof(IsCommandListMode));
                 RefreshFilter();
+            }
+        }
+
+        /// <summary>
+        /// 与 <see cref="SelectedTab"/> 双向同步的索引；供 <c>IconTabBar.SelectedIndex</c> 绑定。
+        /// </summary>
+        public int SelectedTabIndex
+        {
+            get => _selectedTab == null ? -1 : Tabs.IndexOf(_selectedTab);
+            set
+            {
+                if (value < 0 || value >= Tabs.Count)
+                {
+                    SelectedTab = null;
+                    return;
+                }
+                SelectedTab = Tabs[value];
             }
         }
 
@@ -90,6 +109,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             get => _statusMessage;
             set { _statusMessage = value; OnPropertyChanged(); }
         }
+
+        /// <summary>命令搜索扁平索引服务（启动时构建一次，后续 RefreshFilter 线性扫描）。</summary>
+        private readonly CommandSearchService _searchService = new CommandSearchService();
 
         public HyBlenderPanelViewModel()
         {
@@ -152,6 +174,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 StatusMessage = "读取 commands.json 失败：" + ex.Message;
             }
 
+            // 每次 Tabs 重建后刷新扁平索引；SelectedTab 赋值会触发 RefreshFilter
+            _searchService.Rebuild(Tabs);
+
             SelectedTab = Tabs.FirstOrDefault();
         }
 
@@ -171,28 +196,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 return;
             }
 
-            var kw = _searchText.Trim().ToLowerInvariant();
+            // 委托给扁平索引服务：当前 Tab 内过滤 + 全局搜索
+            foreach (var it in _searchService.SearchInTab(_selectedTab, _searchText))
+                FilteredItems.Add(it);
 
-            foreach (var it in _selectedTab.Items)
-                if (MatchFuzzy(it, kw)) FilteredItems.Add(it);
-
-            foreach (var tab in Tabs)
-                foreach (var it in tab.Items)
-                    if (MatchFuzzy(it, kw)) GlobalSearchResults.Add(it);
-        }
-
-        /// <summary>
-        /// 模糊匹配：
-        /// 1) 命令 key 包含 kw
-        /// 2) DisplayName 包含 kw
-        /// 3) DisplayName 拼音首字母拼接字符串包含 kw
-        /// </summary>
-        private static bool MatchFuzzy(CommandItemVm item, string kw)
-        {
-            if (string.IsNullOrEmpty(kw)) return true;
-            if (item.MatchText.IndexOf(kw, System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
-            var pinyin = PinyinHelper.GetFirstLetters(item.DisplayName);
-            return pinyin.IndexOf(kw, System.StringComparison.OrdinalIgnoreCase) >= 0;
+            foreach (var it in _searchService.SearchAll(_searchText))
+                GlobalSearchResults.Add(it);
         }
 
         /// <summary>Hy 面板「道路」Tab 内五区顺序（与 commands.json roadPanelGroup 一致）。</summary>
@@ -288,10 +297,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
     /// <summary>
     /// 极简拼音首字母映射：只覆盖当前 commands.json 里用到的中文字（常用工程术语）。
-    /// 未命中的字用 '?' 占位，不会破坏匹配（命中 key 或 DisplayName 直接匹配的仍然生效）。
+    /// 未命中的字直接 <b>跳过</b>（不占位）：这样即便字典未收录个别字，
+    /// 仍能用已收录字母的压缩形式命中（例："地脚螺栓"若"脚"未收 → "dls" 仍可匹配）。
     /// 避免引入 NPinyin 第三方包。
     /// </summary>
-    internal static class PinyinHelper
+    public static class PinyinHelper
     {
         // 按需扩充：覆盖目录/按钮中文词。
         // 规则：一个汉字 → 一个大写拼音首字母。
@@ -316,10 +326,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             {'最','Z'},{'小','X'},{'包','B'},{'围','W'},{'排','P'},{'列','L'},{'颜','Y'},{'色','S'},
             {'替','T'},{'直','Z'},{'生','S'},{'成','C'},{'编','B'},{'辑','J'},
             {'人','R'},{'行','X'},{'横','H'},{'方','F'},{'位','W'},{'样','Y'},{'式','S'},
-            {'保','B'},{'存','C'},{'载','Z'},{'加','J'},{'滤','L'},{'与','Y'},
-            {'定','D'},{'查','C'},{'组','Z'},{'圆','Y'},{'心','X'},{'垫','D'},
-            // Hy 道路五区标题
-            {'工','G'},{'程','C'},{'纵','Z'},{'断','D'},{'具','J'},
+            // 保存/加载/过滤/与（'加' 已在上方动词行收录，此处不重复）
+            {'保','B'},{'存','C'},{'载','Z'},{'滤','L'},{'与','Y'},
+            // 定查组圆心（'垫' 已在图框/多段线垫层行收录，此处不重复）
+            {'定','D'},{'查','C'},{'组','Z'},{'圆','Y'},{'心','X'},
+            // Hy 道路五区标题（'断' 已在动词行收录，此处不重复）
+            {'工','G'},{'程','C'},{'纵','Z'},{'具','J'},
             // 数字/英文不需要
         };
 
@@ -337,10 +349,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     sb.Append(char.ToLowerInvariant(py));
                 }
-                else
-                {
-                    sb.Append('?');
-                }
+                // 未命中的字跳过，不阻断 FirstLetters 匹配
             }
             return sb.ToString();
         }

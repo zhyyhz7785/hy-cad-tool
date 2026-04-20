@@ -252,7 +252,6 @@ namespace HyCADTool.Refactored.Presentation
         private void CreateHyBlenderPanel()
         {
             RegisterDocumentEvents();
-
             var blenderVm = new ViewModels.HyBlenderPanelViewModel();
             _blenderPanel = new Views.HyBlenderPanel(blenderVm);
 

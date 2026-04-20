@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              d:DesignHeight="220" d:DesignWidth="420"
@@ -15,54 +16,27 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
-                <Setter Property="HorizontalAlignment" Value="Right"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,0,8,0"/>
-                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontMain}"/>
-            </Style>
-            <Style x:Key="FieldRow" TargetType="{x:Type Grid}">
-                <Setter Property="Margin" Value="0,2"/>
+            <Style x:Key="ClusterPropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="140"/>
             </Style>
 
             <!-- 聚类：聚类参数（Epsilon/MinPoints/阈值/边距） -->
             <DataTemplate x:Key="Section_ClusterParams">
                 <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="预设方案 (1/2/3)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    <bc:PropertyRow Label="预设方案 (1/2/3)" Style="{StaticResource ClusterPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding ClusterVm.SelectedPreset, UpdateSourceTrigger=LostFocus, FallbackValue=1}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="最小点数 MinPoints" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="最小点数 MinPoints" Style="{StaticResource ClusterPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding ClusterVm.MinPoints, UpdateSourceTrigger=LostFocus, FallbackValue=1}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="距离阈值" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="距离阈值" Style="{StaticResource ClusterPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding ClusterVm.DistanceThreshold, UpdateSourceTrigger=LostFocus, FallbackValue=6000}"/>
-                    </Grid>
-                    <Grid Style="{StaticResource FieldRow}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="外扩 左 / 上 / 右 / 下" Style="{StaticResource FieldLabel}"/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="外扩 左/上/右/下" Style="{StaticResource ClusterPropertyRow}">
+                        <StackPanel Orientation="Horizontal">
                             <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}" Margin="0,0,4,0"
                                      Text="{Binding ClusterVm.ExpandMarginLeft, UpdateSourceTrigger=LostFocus, FallbackValue=300}"/>
                             <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}" Margin="0,0,4,0"
@@ -72,7 +46,7 @@
                             <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_S}"
                                      Text="{Binding ClusterVm.ExpandMarginBottom, UpdateSourceTrigger=LostFocus, FallbackValue=300}"/>
                         </StackPanel>
-                    </Grid>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 
