@@ -2,10 +2,8 @@ using Autofac;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
-
 using HyCADTool.Refactored.Domain.Services.MathAlgorithms;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
-using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Repositories;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Selection;
@@ -291,6 +289,21 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
 
             // JSON I/O 服务
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadJsonExportService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // M6：历史还原服务（纯 Domain I/O，单例即可，无状态）。
+            builder.RegisterType<HyCADTool.Refactored.Domain.Services.Road.HistoryService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // M7：横断面预设服务（内置 + 用户预设，写 %AppData%/HyCAD/presets/crosssection/）。
+            builder.RegisterType<HyCADTool.Refactored.Domain.Services.Road.CrossSectionPresetService>()
+                .AsSelf()
+                .SingleInstance();
+
+            // M10：平面分段扫掠落图服务。
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadPlanDrawService>()
                 .AsSelf()
                 .SingleInstance();
 

@@ -31,6 +31,60 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         /// <summary>Schema 版本 Key（对应 <c>SchemaVersion.Current</c>）。</summary>
         public const string KeySchema = "SCHEMA";
 
+        // =============================================================================
+        // KIND 常量（M6 扩展到 14 种）。命令层必须通过本组常量写入 / 读取，避免字符串散落。
+        // =============================================================================
+
+        /// <summary>平面线位。</summary>
+        public const string KindAlignment = "Alignment";
+        /// <summary>交叉口。</summary>
+        public const string KindIntersection = "Intersection";
+        /// <summary>交叉口转角圆弧。</summary>
+        public const string KindCornerArc = "CornerArc";
+        /// <summary>缘石坡道（GB 50763）。</summary>
+        public const string KindCurbRamp = "CurbRamp";
+        /// <summary>盲道（GB 50763）。</summary>
+        public const string KindTactilePaving = "TactilePaving";
+        /// <summary>人行横道（GB 5768）。</summary>
+        public const string KindCrosswalk = "Crosswalk";
+        /// <summary>停止线。</summary>
+        public const string KindStopLine = "StopLine";
+        /// <summary>标准横断面图（单张出图实例）。</summary>
+        public const string KindCrossSection = "CrossSection";
+        /// <summary>几何点标注（BP/EP/PI/BC/EC/TS/SC/CS/ST）。</summary>
+        public const string KindGeometryPointLabel = "GeometryPointLabel";
+
+        // --------- M6 / M7 / M8 / M10 新增 KIND ---------
+
+        /// <summary>结构层（M7）。</summary>
+        public const string KindStructureLayer = "StructureLayer";
+        /// <summary>绿化带实例（M8 提取命令使用）。</summary>
+        public const string KindGreenStripInstance = "GreenStripInstance";
+        /// <summary>人行道实例（M8 提取命令使用）。</summary>
+        public const string KindSidewalkInstance = "SidewalkInstance";
+        /// <summary>车道分界线标线（M10）。</summary>
+        public const string KindLaneStripe = "LaneStripe";
+        /// <summary>平面分段模型绘图要素（M10）。</summary>
+        public const string KindCorridorPlan = "CorridorPlan";
+
+        // --------- 控制体 KIND（M6） ---------
+
+        /// <summary>控制体 · 参考点。</summary>
+        public const string KindControlReferencePoint = "Control.ReferencePoint";
+        /// <summary>控制体 · 参考线。</summary>
+        public const string KindControlReferenceLine = "Control.ReferenceLine";
+        /// <summary>控制体 · 参考面。</summary>
+        public const string KindControlReferencePlane = "Control.ReferencePlane";
+        /// <summary>控制体 · 选中集合。</summary>
+        public const string KindControlSelectionSet = "Control.SelectionSet";
+
+        /// <summary>
+        /// 判断 KIND 是否属于「控制体」（以 <c>"Control."</c> 开头）。
+        /// 用于 DWG 扫描时把控制体与实体分流，选中集 / 导出过滤等场景。
+        /// </summary>
+        public static bool IsControlKind(string kind)
+            => !string.IsNullOrEmpty(kind) && kind.StartsWith("Control.", System.StringComparison.Ordinal);
+
         /// <summary>
         /// 确保 <see cref="RegAppName"/> 已注册到数据库的 RegAppTable。
         /// 首次写入 Xdata 之前必须调用一次（幂等）。

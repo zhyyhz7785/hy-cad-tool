@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Shell;
 
@@ -7,7 +8,8 @@ namespace HyCAD.BlenderUI.Controls
 {
     /// <summary>
     /// Blender 风格的可复用 Window 壳：
-    ///  - 顶部自定义标题栏（HeaderTitle + HeaderRightContent + 关闭按钮）
+    ///  - 顶部可选自定义标题栏（<see cref="UseCustomChrome"/>=true）：HeaderLeft / HeaderCenter / HeaderRight + 最小化·最大化·关闭；可选 HeaderSubRow
+    ///  - <see cref="UseCustomChrome"/>=false 时使用系统标题栏与原生最小化/最大化/关闭（适合独立工具窗口）
     ///  - 底部命令栏（FooterLeftContent / StatusContent / FooterRightContent）
     ///  - 中部 Window.Content 作为业务区域
     ///
@@ -32,6 +34,11 @@ namespace HyCAD.BlenderUI.Controls
     public class BlenderWindow : Window
     {
         public const string PartCloseButton = "PART_CloseButton";
+        public const string PartMinimizeButton = "PART_MinimizeButton";
+        public const string PartMaximizeButton = "PART_MaximizeButton";
+
+        private Button _minimizeButton;
+        private Button _maximizeButton;
 
         static BlenderWindow()
         {
@@ -42,20 +49,73 @@ namespace HyCAD.BlenderUI.Controls
 
         public BlenderWindow()
         {
-            // 必备：自定义标题栏需要去掉原生 Chrome；CornerRadius=0 与 Blender 风格一致
-            WindowStyle = WindowStyle.None;
             AllowsTransparency = false;
-            ResizeMode = ResizeMode.CanResizeWithGrip;
+            ResizeMode = ResizeMode.CanResize;
             ShowInTaskbar = false;
 
-            var chrome = new WindowChrome
+            StateChanged += (_, __) => SyncMaximizeToolTip();
+            Loaded += (_, __) => SyncWindowChromeCaptionHeight();
+
+            ApplyCustomChromePresentation();
+        }
+
+        public static readonly DependencyProperty UseCustomChromeProperty = DependencyProperty.Register(
+            nameof(UseCustomChrome), typeof(bool), typeof(BlenderWindow),
+            new PropertyMetadata(true, OnUseCustomChromeChanged));
+
+        /// <summary>
+        /// true：无边框 + <see cref="WindowChrome"/> + 模板内自绘标题栏与窗口按钮（默认，适合宿主内嵌）。
+        /// false：系统 <see cref="Window.WindowStyle"/> 标题栏与原生控件（独立窗口推荐）。
+        /// </summary>
+        public bool UseCustomChrome
+        {
+            get => (bool)GetValue(UseCustomChromeProperty);
+            set => SetValue(UseCustomChromeProperty, value);
+        }
+
+        private static void OnUseCustomChromeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is BlenderWindow w)
+                w.ApplyCustomChromePresentation();
+        }
+
+        private void ApplyCustomChromePresentation()
+        {
+            if (UseCustomChrome)
             {
-                CaptionHeight = 30,
-                ResizeBorderThickness = new Thickness(6),
-                GlassFrameThickness = new Thickness(0),
-                CornerRadius = new CornerRadius(0),
-            };
-            WindowChrome.SetWindowChrome(this, chrome);
+                WindowStyle = WindowStyle.None;
+                var chrome = new WindowChrome
+                {
+                    CaptionHeight = 32,
+                    ResizeBorderThickness = new Thickness(6),
+                    GlassFrameThickness = new Thickness(0),
+                    CornerRadius = new CornerRadius(0),
+                };
+                WindowChrome.SetWindowChrome(this, chrome);
+                SyncWindowChromeCaptionHeight();
+            }
+            else
+            {
+                WindowStyle = WindowStyle.SingleBorderWindow;
+                WindowChrome.SetWindowChrome(this, null);
+            }
+        }
+
+        /// <summary>含可选第二行（<see cref="HeaderSubRowContent"/>）时扩大可拖动标题区高度。</summary>
+        private void SyncWindowChromeCaptionHeight()
+        {
+            var chrome = WindowChrome.GetWindowChrome(this);
+            if (chrome == null) return;
+            double h = 32;
+            if (HeaderSubRowContent != null)
+                h += 28;
+            chrome.CaptionHeight = h;
+        }
+
+        private static void OnHeaderSubRowChromeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is BlenderWindow w)
+                w.SyncWindowChromeCaptionHeight();
         }
 
         // =========================================================================
@@ -76,6 +136,17 @@ namespace HyCAD.BlenderUI.Controls
             set => SetValue(HeaderTitleProperty, value);
         }
 
+        public static readonly DependencyProperty HeaderLeftContentProperty = DependencyProperty.Register(
+            nameof(HeaderLeftContent), typeof(object), typeof(BlenderWindow),
+            new PropertyMetadata(null));
+
+        /// <summary>标题栏最左侧槽位（最小化按钮之前），典型放主菜单 / Logo，贴近 IDE 一体化顶栏。</summary>
+        public object HeaderLeftContent
+        {
+            get => GetValue(HeaderLeftContentProperty);
+            set => SetValue(HeaderLeftContentProperty, value);
+        }
+
         public static readonly DependencyProperty HeaderRightContentProperty = DependencyProperty.Register(
             nameof(HeaderRightContent), typeof(object), typeof(BlenderWindow),
             new PropertyMetadata(null));
@@ -85,6 +156,28 @@ namespace HyCAD.BlenderUI.Controls
         {
             get => GetValue(HeaderRightContentProperty);
             set => SetValue(HeaderRightContentProperty, value);
+        }
+
+        public static readonly DependencyProperty HeaderCenterContentProperty = DependencyProperty.Register(
+            nameof(HeaderCenterContent), typeof(object), typeof(BlenderWindow),
+            new PropertyMetadata(null));
+
+        /// <summary>标题栏中间区域（如 Cursor 式居中搜索框）。未设置时显示 <see cref="HeaderTitle"/> 文本。</summary>
+        public object HeaderCenterContent
+        {
+            get => GetValue(HeaderCenterContentProperty);
+            set => SetValue(HeaderCenterContentProperty, value);
+        }
+
+        public static readonly DependencyProperty HeaderSubRowContentProperty = DependencyProperty.Register(
+            nameof(HeaderSubRowContent), typeof(object), typeof(BlenderWindow),
+            new PropertyMetadata(null, OnHeaderSubRowChromeChanged));
+
+        /// <summary>标题栏下方第二行（如标签页/面包屑）。为空则不占高度。</summary>
+        public object HeaderSubRowContent
+        {
+            get => GetValue(HeaderSubRowContentProperty);
+            set => SetValue(HeaderSubRowContentProperty, value);
         }
 
         public static readonly DependencyProperty FooterLeftContentProperty = DependencyProperty.Register(
@@ -152,11 +245,78 @@ namespace HyCAD.BlenderUI.Controls
         {
             base.OnApplyTemplate();
 
-            if (GetTemplateChild(PartCloseButton) is System.Windows.Controls.Button btn)
+            if (GetTemplateChild(PartCloseButton) is Button closeBtn)
             {
-                btn.Click -= OnCloseButtonClick;
-                btn.Click += OnCloseButtonClick;
+                closeBtn.Click -= OnCloseButtonClick;
+                closeBtn.Click += OnCloseButtonClick;
             }
+
+            if (GetTemplateChild(PartMinimizeButton) is Button minBtn)
+            {
+                _minimizeButton = minBtn;
+                minBtn.Click -= OnMinimizeClick;
+                minBtn.Click += OnMinimizeClick;
+            }
+            else
+            {
+                _minimizeButton = null;
+            }
+
+            if (GetTemplateChild(PartMaximizeButton) is Button maxBtn)
+            {
+                _maximizeButton = maxBtn;
+                maxBtn.Click -= OnMaximizeClick;
+                maxBtn.Click += OnMaximizeClick;
+            }
+            else
+            {
+                _maximizeButton = null;
+            }
+
+            SyncCaptionButtons();
+            SyncMaximizeToolTip();
+            SyncWindowChromeCaptionHeight();
+        }
+
+        /// <summary>随 <see cref="Window.ResizeMode"/> 显示/隐藏最小化与最大化（关闭始终由 <see cref="ShowCloseButton"/> 控制）。</summary>
+        protected virtual void SyncCaptionButtons()
+        {
+            if (_minimizeButton == null || _maximizeButton == null) return;
+
+            switch (ResizeMode)
+            {
+                case ResizeMode.NoResize:
+                    _minimizeButton.Visibility = Visibility.Collapsed;
+                    _maximizeButton.Visibility = Visibility.Collapsed;
+                    break;
+                case ResizeMode.CanMinimize:
+                    _minimizeButton.Visibility = Visibility.Visible;
+                    _maximizeButton.Visibility = Visibility.Collapsed;
+                    break;
+                default:
+                    _minimizeButton.Visibility = Visibility.Visible;
+                    _maximizeButton.Visibility = Visibility.Visible;
+                    break;
+            }
+        }
+
+        private void SyncMaximizeToolTip()
+        {
+            if (_maximizeButton == null) return;
+            _maximizeButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
+        }
+
+        private void OnMinimizeClick(object sender, RoutedEventArgs e)
+            => WindowState = WindowState.Minimized;
+
+        private void OnMaximizeClick(object sender, RoutedEventArgs e)
+            => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+        protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+        {
+            base.OnPropertyChanged(e);
+            if (e.Property == ResizeModeProperty)
+                SyncCaptionButtons();
         }
 
         private void OnCloseButtonClick(object sender, RoutedEventArgs e)

@@ -206,22 +206,82 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Presentation\Views\Road\CrosswalkDrawParamsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Presentation\Views\Road\StationLabelConfigWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\Road\RoadAlignmentWorkbenchPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\Road\RoadAlignmentWorkbenchWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\Road\RoadHistoryWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Presentation\Views\Road\StructureLayerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj" />
-    <!--
-      三入口 UI（Blender 面板 / Ribbon / CUIX 菜单）共享 ReCall 的 CommandTable 作为元数据源。
-      Private=false：编译时用 ReCall.dll 做引用，但不复制到 HyCADTool.Refactored/bin/Debug。
-      运行时由 AutoCAD NETLOAD 的那一份 ReCall.dll 提供类型（同一 AppDomain，避免重复加载出现两份 CommandTable 类型）。
-    -->
-    <ProjectReference Include="..\ReCall\ReCall.csproj">
-      <Private>false</Private>
-    </ProjectReference>
   </ItemGroup>
+
+  <!-- ====================================================================
+       ReCall 二进制引用（2026-04-21 改造，原 ProjectReference 已退役）
+       ====================================================================
+       为什么不再用 <ProjectReference Include="..\ReCall\ReCall.csproj">：
+         1) AutoCAD NETLOAD 后会一直锁定 bin\Debug\ReCall.dll；
+         2) ProjectReference 让 MSBuild 在每次 Build Refactored 时**先 Build ReCall**，
+            一旦 ReCall 触发 obj→bin 复制就被锁文件 → 重试 10 次失败 →
+            整个解决方案中断 → Refactored.dll 不更新 → C2 热重载机制失效；
+         3) Refactored 对 ReCall 是**单向只读、纯类型可见性**依赖
+            （CommandTable / CommandEntry / CommandListItem / CategoryGroup /
+             RoadCommandShortAliases），ReCall 反过来不引用 Refactored
+            （走反射），不构成循环依赖。
+
+       新做法：用 <Reference HintPath> 指向 ReCall 自己的 bin\$(Configuration) 输出。
+         - Refactored 编译期间用 ReCall.dll 做类型引用，与原来 ProjectReference 等价。
+         - MSBuild 不再把 ReCall 当成上游项目去构建 → 不再触发 obj→bin 复制 →
+           AutoCAD 开着也能反复 Rebuild Refactored。
+         - Private=false：不把 ReCall.dll 复制到 Refactored 的 bin（运行时由
+           AutoCAD NETLOAD 的那一份提供类型，类型身份在同一 AppDomain 内对齐）。
+
+       什么时候 ReCall 自身需要重建？
+         - 改 ReCall/*.cs 源码（如 CommandTable / CommandFacade / Recall.cs）时。
+         - 必须**关闭 AutoCAD** 后单独 Build ReCall 项目（VS 解决方案资源管理器右键
+           → 生成 ReCall），下次启动 AutoCAD NETLOAD 自动加载新版。
+         - 日常业务代码改动只在 Refactored，永远走 C2 热重载，不需要 Build ReCall。
+
+       Cold-start 兜底：见下方 EnsureReCallDllExists Target。 -->
+  <ItemGroup>
+    <Reference Include="ReCall">
+      <HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath>
+      <Private>false</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 全新 checkout / 删过 bin 目录后，ReCall.dll 可能不存在 → Refactored 编译失败。
+       这个 Target 在 ResolveAssemblyReferences 之前探测，缺失时一次性构建 ReCall。
+       已有 ReCall.dll（无论是否最新）则跳过，避免在 AutoCAD 开着时触发锁文件错误。 -->
+  <Target Name="EnsureReCallDllExists"
+          BeforeTargets="ResolveAssemblyReferences"
+          Condition="!Exists('..\ReCall\bin\$(Configuration)\ReCall.dll')">
+    <Message Importance="high"
+             Text="==&gt; [Refactored] 未发现 ..\ReCall\bin\$(Configuration)\ReCall.dll，先一次性构建 ReCall（首次 cold-start 才会执行）。" />
+    <MSBuild Projects="..\ReCall\ReCall.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=$(Platform)" />
+  </Target>
 
   <!-- 已删除的废弃文件：ReinPanel.xaml/.cs、ReinPanelViewModel.cs、ShowMainPanelCommand.cs（2026-02-10 第三轮清理） -->
 

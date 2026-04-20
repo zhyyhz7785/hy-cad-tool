@@ -1,3 +1,4 @@
+using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands
@@ -12,6 +13,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// 与 SettingsPanelViewModel.SendCommand 的区别：
     /// - SettingsPanelViewModel.SendCommand 是旧参数面板按钮用的，依赖 PendingCommand + C1 路由（保留不动）。
     /// - CommandDispatcher.Send 是新命令面板/Ribbon/菜单按钮用的，直接按 key 走 AutoCAD 命令行。
+    ///
+    /// 特例：<c>hyRoadAlnStation</c> / 短别名 <c>rSt</c> 首步为关键字子提示，需在命令名后多发送一次回车才能接受默认「应用」，
+    /// 否则 SendStringToExecute 只排队 <c>key</c>+空格时子提示无输入、命令挂起。
     /// </summary>
     public static class CommandDispatcher
     {
@@ -32,7 +36,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
             // false（第 4 个 enforceQueue）：排队执行
             try
             {
-                doc.SendStringToExecute(key + " ", true, false, false);
+                // 多数命令首步即拾取/输入；但 hyRoadAlnStation / rSt 首步是关键字 [应用/配置/默认]，
+                // 仅发 "key " 不会向该 Prompt 注入回车，命令会停在子提示处，面板按钮表现为「点了没反应」。
+                bool stationCmd = string.Equals(key, "hyRoadAlnStation", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(key, "rSt", StringComparison.OrdinalIgnoreCase);
+                string tail = stationCmd ? " \n" : " ";
+                doc.SendStringToExecute(key + tail, true, false, false);
             }
             catch (System.Exception ex)
             {

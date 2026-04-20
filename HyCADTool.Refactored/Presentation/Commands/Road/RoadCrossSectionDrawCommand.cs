@@ -24,11 +24,11 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     /// 并以 <see cref="CrossSectionDrawViewModel"/> 暴露 v2 新增的路牙 / 坡型 / 路拱 / 路面结构 / 桩号字段。
     /// </para>
     ///
-    /// 三个入口分支（命令行）：
+    /// 主入口 <c>hyRoadCs</c>：一点击即打开横断面 WPF（默认主干路预设），不再先询问 N/L/C。
+    /// 其余入口：
     /// <list type="bullet">
-    ///   <item><b>新建(N)</b>：启动绘制窗口 + 默认加载主干路预设；确认后在当前文档生成 Template + 绘制断面图。</item>
-    ///   <item><b>加载(L)</b>：从当前 DWG 的 Design.Templates 列表选择一条，反序列化 → 绘制窗口编辑 → 覆盖保存 + 重绘。</item>
-    ///   <item><b>命令行(C)</b>：纯命令行快速分支（不开窗口），仅用三条预设直出，常用于批量脚本 / 回归。</item>
+    ///   <item><c>hyRoadCsLoad</c>（<see cref="ExecuteLoadFromDwg"/>）：从当前 DWG 已保存模板加载 → 绘制窗口。</item>
+    ///   <item><c>hyRoadCsQuick</c>（<see cref="ExecuteQuickPreset"/>）：纯命令行预设直出（不开 WPF），便于脚本 / 回归。</item>
     /// </list>
     ///
     /// 交付链路：
@@ -45,57 +45,28 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     /// </summary>
     public sealed class RoadCrossSectionDrawCommand
     {
+        /// <summary>菜单 / 面板 / 键盘入口：直接打开横断面 WPF（新建 + 默认预设）。</summary>
         public void Execute()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
-
-            var ed = doc.Editor;
-            var branch = PromptBranch(ed);
-            if (branch == Branch.Cancel) return;
-
-            switch (branch)
-            {
-                case Branch.New:
-                    ExecuteNew(doc);
-                    break;
-                case Branch.Load:
-                    ExecuteLoad(doc);
-                    break;
-                case Branch.CommandLine:
-                    ExecuteCommandLine(doc);
-                    break;
-            }
+            ExecuteNew(doc);
         }
 
-        // =========================================================================
-        //  分支选择
-        // =========================================================================
-
-        private enum Branch { New, Load, CommandLine, Cancel }
-
-        private static Branch PromptBranch(Editor ed)
+        /// <summary>从当前 DWG 已保存的横断面模板加载并打开 WPF（原「L」分支）。</summary>
+        public void ExecuteLoadFromDwg()
         {
-            var opts = new PromptKeywordOptions(
-                "\n[道路] 选择横断面绘制模式 [新建(N)/加载(L)/命令行(C)] <N>：")
-            {
-                AllowNone = true,
-            };
-            opts.Keywords.Add("N");
-            opts.Keywords.Add("L");
-            opts.Keywords.Add("C");
-            opts.Keywords.Default = "N";
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            ExecuteLoad(doc);
+        }
 
-            var res = ed.GetKeywords(opts);
-            if (res.Status == PromptStatus.None) return Branch.New;
-            if (res.Status != PromptStatus.OK) return Branch.Cancel;
-            switch (res.StringResult)
-            {
-                case "N": return Branch.New;
-                case "L": return Branch.Load;
-                case "C": return Branch.CommandLine;
-                default: return Branch.Cancel;
-            }
+        /// <summary>命令行预设直出，不开 WPF（原「C」分支）。</summary>
+        public void ExecuteQuickPreset()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            ExecuteCommandLine(doc);
         }
 
         // =========================================================================
@@ -112,7 +83,10 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             var origin = PromptInsertionPoint(doc.Editor);
             if (origin == null) return;
 
-            DrawAndSave(doc, result, origin.Value);
+            var mode = vm.UseSingleLineMode
+                ? CrossSectionDrawMode.SingleLine
+                : CrossSectionDrawMode.WithStructureThickness;
+            DrawAndSave(doc, result, origin.Value, drawMode: mode);
         }
 
         // =========================================================================
@@ -148,7 +122,10 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             var origin = PromptInsertionPoint(doc.Editor);
             if (origin == null) return;
 
-            DrawAndSave(doc, result, origin.Value, replaceTemplateId: pick.Id);
+            var mode = vm.UseSingleLineMode
+                ? CrossSectionDrawMode.SingleLine
+                : CrossSectionDrawMode.WithStructureThickness;
+            DrawAndSave(doc, result, origin.Value, replaceTemplateId: pick.Id, drawMode: mode);
         }
 
         // =========================================================================
@@ -283,7 +260,8 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             Document doc,
             CrossSectionDesignerResult result,
             Point2d origin,
-            Guid? replaceTemplateId = null)
+            Guid? replaceTemplateId = null,
+            CrossSectionDrawMode drawMode = CrossSectionDrawMode.WithStructureThickness)
         {
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
             var exporter = ServiceLocator.Resolve<RoadJsonExportService>();
@@ -318,7 +296,8 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
                 erased = drawService.Clear(tr, doc.Database, template.Id);
-                created = drawService.Draw(tr, doc.Database, result.Figure, template, origin);
+                created = drawService.Draw(tr, doc.Database, result.Figure, template, origin,
+                    modelUnitPerMeter: 1.0, mode: drawMode);
                 tr.Commit();
             }
 

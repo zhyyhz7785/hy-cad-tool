@@ -51,7 +51,8 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public List<Profile> Profiles { get; } = new List<Profile>();
 
         /// <summary>
-        /// 输入来源快照；按 PI 创建 / 编辑链路写入，hyRoadA 拾取保持为 null。
+        /// 输入来源快照；<c>hyRoadAlnByPi</c> 写入完整 PI 表。
+        /// <c>hyRoadA</c> 对纯直线多段线（无 bulge）会按顶点自动生成折线 PI 表；含弧段且无表时为 null。
         /// </summary>
         public AlignmentSource Source { get; set; }
 

@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands.Road
@@ -21,6 +23,13 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     /// - 命令本身保持"薄壳"：只负责交互与 Transaction 生命周期；
     /// - 几何转换 + Xdata 由 <see cref="RoadAlignmentService.ImportFromPolyline"/> 完成；
     /// - JSON 持久化 v1.1 起改为命令收尾同步调用 <see cref="RoadJsonExportService.SaveForDocument"/>，无异步 Timer。
+    ///
+    /// v1.2 收尾策略变更：
+    /// - 不再无条件打开「路线工作台」；
+    /// - 命令末尾运行 <see cref="Alignment.Validate"/> + bulge 诊断，**仅当检测到"违规"时**，
+    ///   追问用户是否打开路线工作台修复（Y/N）；
+    /// - 违规：顶点不足 / 平面长度为 0 / Elements 桩号链断续 / 所有 bulge = 0 且无 Arc 段（疑似样条拟合）。
+    /// - 无违规则命令行仅回显成功信息，不再弹面板。需要直接进面板请用 <c>hyRoadAw</c>（<c>rlaw</c>）。
     /// </summary>
     public sealed class RoadAlignmentCommand
     {
@@ -83,7 +92,15 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 // 最终这条 polyline 会被当作"新 Alignment"加进空壳 design，老 key 下的那条就变成 JSON 孤儿。
                 svc.RebindForDocument(doc.Name, tr, db);
 
-                alignment = svc.ImportFromPolyline(doc.Name, tr, db, poly);
+                alignment = svc.ImportFromPolyline(doc.Name, tr, db, poly, out var addedNewAlignment);
+                // 与 hyRoadAlnByPi 一致：首次登记的线位起桩号取 hy-settings 默认
+                if (addedNewAlignment)
+                {
+                    var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults();
+                    if (defaults != null)
+                        alignment.StartStation = defaults.DefaultStartStation;
+                }
+
                 tr.Commit();
             }
 
@@ -101,22 +118,83 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 + $"含弧段 {rawBulgeNonZeroCount} 段，"
                 + $"平面长度 {alignment.Centerline.GetPlanarLength():F3} m。");
 
-            // 诊断：视觉疑似弧但 bulge 全 0 时主动提示常见原因。
-            if (rawBulgeNonZeroCount == 0 && !rawHasSegmentArcs)
-            {
-                ed.WriteMessage(
-                    "\n[道路] ⚠ 未检测到任何弧段（所有 bulge=0）。"
-                    + "\n       若 AutoCAD 里看到的是曲线，常见两种原因："
-                    + "\n       1. PEDIT → S（Spline）样条拟合：顶点 bulge=0，曲线靠样条控制点计算。"
-                    + "\n          修复：PEDIT → D（Decurve）还原折线 → PEDIT → F（Fit）圆弧拟合 → 重跑 hyRoadA。"
-                    + "\n       2. PLINE 时未按 A 切入 Arc 子模式，只是用直线近似弧。"
-                    + "\n          修复：重画时按 A 切圆弧模式，或 ARC + PEDIT → J 合并成 LWPOLYLINE。");
-            }
-
             if (savedTo != null)
                 ed.WriteMessage($"\n[道路] JSON 已同步落盘：{savedTo}");
             else
                 ed.WriteMessage("\n[道路] 未落盘（DWG 尚未保存或 RoadDesign 为空）。先保存 DWG 后再次运行 hyRoadSave 即可。");
+
+            // ── 违规 / 警告收集 ──────────────────────────────────────────
+            // violations：会阻止后续 PI/ 桩号功能正常工作的问题，触发"是否打开工作台修复"追问。
+            // advisories：仅提示，不触发追问。
+            var violations = new List<string>();
+            var advisories = new List<string>();
+
+            // (V1) Alignment 连续性自检：顶点数 / 平面长度 / Elements 桩号链
+            var validation = alignment.Validate();
+            if (!validation.Ok)
+            {
+                foreach (var e in validation.Errors) violations.Add(e);
+            }
+
+            // (V2) 视觉疑似弧但 bulge 全 0：大概率是 PEDIT → S 样条拟合，Centerline 与屏幕不一致
+            if (rawBulgeNonZeroCount == 0 && !rawHasSegmentArcs
+                && alignment.Centerline.VertexCount >= 2)
+            {
+                violations.Add(
+                    "未检测到任何弧段（所有 bulge=0）。若屏幕上是曲线，可能是 PEDIT → S 样条拟合或直线近似弧。"
+                    + " 修复：PEDIT → D 还原折线 → PEDIT → F 圆弧拟合 → 重跑 hyRoadA；或用 hyRoadAlnByPi 走 PI 法。");
+            }
+
+            // (A1) 含弧段但没有 PI 源：本次登记成功，但后续 hyRoadAlnEditPi / InsertPi / DeletePi 不可用
+            if (alignment.Centerline.HasArcs
+                && (alignment.Source == null
+                    || alignment.Source.PiElements == null
+                    || alignment.Source.PiElements.Count < 2))
+            {
+                advisories.Add(
+                    "当前多段线含弧段（bulge≠0），无法自动反推 PI 表。"
+                    + " 若要使用 PI 编辑系列命令，请改用 hyRoadAlnByPi；当前线位的桩号 / 导出 / 反转 / 偏移仍可用。");
+            }
+
+            foreach (var a in advisories) ed.WriteMessage("\n[道路] 提示：" + a);
+
+            if (violations.Count == 0)
+            {
+                // 无违规：静默收尾，不再弹面板。需要进面板请用 hyRoadAw（rlaw）。
+                return;
+            }
+
+            ed.WriteMessage($"\n[道路] ⚠ 检测到 {violations.Count} 处问题：");
+            foreach (var v in violations) ed.WriteMessage("\n  · " + v);
+
+            // 追问：是否打开工作台修复
+            var kw = new PromptKeywordOptions("\n[道路] 是否打开路线工作台修复？[是(Y)/否(N)] <是>：")
+            {
+                AllowNone = true,
+            };
+            kw.Keywords.Add("Y");
+            kw.Keywords.Add("N");
+            kw.Keywords.Default = "Y";
+            var kwRes = ed.GetKeywords(kw);
+            bool openWb =
+                kwRes.Status == PromptStatus.None
+                || (kwRes.Status == PromptStatus.OK && kwRes.StringResult == "Y");
+
+            if (!openWb)
+            {
+                ed.WriteMessage("\n[道路] 已跳过修复。可稍后运行 hyRoadAw（rlaw）手动打开工作台。");
+                return;
+            }
+
+            try
+            {
+                var panels = ServiceLocator.Resolve<PanelManager>();
+                panels?.ShowAlignmentWorkbench(alignment.Id, piIndex: null);
+            }
+            catch
+            {
+                // 静默：面板未注册 / WPF 未初始化等场景不应让命令失败
+            }
         }
     }
 }

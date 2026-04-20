@@ -10,6 +10,19 @@ using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 {
     /// <summary>
+    /// 横断面绘图模式（M7.4）。
+    /// <list type="bullet">
+    ///   <item><see cref="WithStructureThickness"/>：原 v1 行为——完整绘制轮廓 + 条带 + 尺寸 + 填充 + 标注（"出带结构厚度轮廓"）。</item>
+    ///   <item><see cref="SingleLine"/>：仅绘制上表面竖直投影轮廓（顶面 polyline + 中心线），用于"平面图单线"用途。</item>
+    /// </list>
+    /// </summary>
+    public enum CrossSectionDrawMode
+    {
+        WithStructureThickness = 0,
+        SingleLine = 1,
+    }
+
+    /// <summary>
     /// M3 标准横断面图出图服务。
     ///
     /// 职责：把 <see cref="CrossSectionFigure"/> 绘制到 AutoCAD ModelSpace：
@@ -51,6 +64,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Template template,
             Point2d origin,
             double modelUnitPerMeter = 1.0)
+            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness);
+
+        /// <summary>
+        /// M7.4 重载：指定绘图模式。
+        /// <para><see cref="CrossSectionDrawMode.SingleLine"/> 时跳过板块闭合填充 / 尺寸链 / 标注 / 标题，只保留：
+        /// 顶面轮廓 Polyline + 中心虚线 + 方位箭头，专供平面图单线投影使用。</para>
+        /// </summary>
+        public int Draw(
+            Transaction transaction,
+            Database database,
+            CrossSectionFigure figure,
+            Template template,
+            Point2d origin,
+            double modelUnitPerMeter,
+            CrossSectionDrawMode mode)
         {
             if (transaction == null) throw new ArgumentNullException(nameof(transaction));
             if (database == null) throw new ArgumentNullException(nameof(database));
@@ -88,6 +116,34 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             }
 
             // ---------------- 2. 基线 + 左右半宽面板(作为封闭 polyline) ----------------
+            // SingleLine 模式下仅画顶面投影，不画板块闭合 → 跳过 steps 2 / 4 / 5 / 6 / 7 / 8 / 10。
+            if (mode == CrossSectionDrawMode.SingleLine)
+            {
+                // 先画中心线（step 3），再画方位箭头（step 9），直接 return。
+                double ymaxS = 0;
+                foreach (var v in figure.Vertices) if (v.Y > ymaxS) ymaxS = v.Y;
+                var centerS = new Line(
+                    new Point3d(origin.X, origin.Y - 0.5 * s, 0),
+                    new Point3d(origin.X, origin.Y + (ymaxS + 0.6) * s, 0))
+                {
+                    Layer = HyRoadLayers.CrossSectionCenterlineLayer,
+                    ColorIndex = 256,
+                };
+                TrySetLinetype(transaction, database, centerS, "HIDDEN");
+                ms.AppendEntity(centerS);
+                transaction.AddNewlyCreatedDBObject(centerS, true);
+                TagEntity(transaction, database, centerS, template.Id);
+                added++;
+
+                if (!string.IsNullOrWhiteSpace(figure.Orientation.LeftLabel) ||
+                    !string.IsNullOrWhiteSpace(figure.Orientation.RightLabel))
+                {
+                    added += DrawOrientation(transaction, ms, database, template.Id,
+                        origin, figure.Orientation, s);
+                }
+                return added;
+            }
+
             // 路面/绿化/中分带等"路面板块"用"顶 + 底"闭合（构成立柱）；
             // 路牙（Kerb）的 vertices 本身已构成完整的 L 型凸起多边形，直接自闭合（不加底边）。
             foreach (var panel in figure.Panels)

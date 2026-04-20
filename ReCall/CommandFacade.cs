@@ -18,6 +18,8 @@ namespace HyCADTool.ReCall
     /// 仅当要把 N? 升级为正式命令名（如 hyRoadXxx）时，才需要在本文件加新的 [CommandMethod]
     /// 并关 CAD 重 NETLOAD ReCall.dll —— 这是唯一需要重启 AutoCAD 的时刻。
     ///
+    /// 道路类命令另注册一组 <c>r*</c> 短别名（与 <c>hyRoad*</c> 共用同一 <c>Invoke</c> 键），仅多一条属性即可。
+    ///
     /// ReCall.dll 本身不热重载；本文件的 80+ 业务命令 + 50 占位符是稳定基座。
     /// </summary>
     public class CommandFacade
@@ -139,25 +141,49 @@ namespace HyCADTool.ReCall
         [CommandMethod("hySC")] public void Cmd_hySC() => ReCallClass.Invoke("hySC");
         #endregion
 
-        #region 道路 (Road)
-        [CommandMethod("hyRoad")]             public void Cmd_hyRoad()             => ReCallClass.Invoke("hyRoad");
-        [CommandMethod("hyRoadA")]            public void Cmd_hyRoadA()            => ReCallClass.Invoke("hyRoadA");
-        [CommandMethod("hyRoadAlnByPi")]      public void Cmd_hyRoadAlnByPi()      => ReCallClass.Invoke("hyRoadAlnByPi");
-        [CommandMethod("hyRoadAlnEditPi")]    public void Cmd_hyRoadAlnEditPi()    => ReCallClass.Invoke("hyRoadAlnEditPi");
-        [CommandMethod("hyRoadAlnStation")]   public void Cmd_hyRoadAlnStation()   => ReCallClass.Invoke("hyRoadAlnStation");
-        [CommandMethod("hyRoadP")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
+        #region 道路 (Road) — hyRoad* + r* 短别名
+        [CommandMethod("hyRoad")][CommandMethod("rCx")]             public void Cmd_hyRoad()             => ReCallClass.Invoke("hyRoad");
+        [CommandMethod("hyRoadA")][CommandMethod("rLa")]            public void Cmd_hyRoadA()            => ReCallClass.Invoke("hyRoadA");
+        [CommandMethod("hyRoadAw")][CommandMethod("rLaw")]          public void Cmd_hyRoadAw()           => ReCallClass.Invoke("hyRoadAw");
+        [CommandMethod("hyRoadAlnByPi")][CommandMethod("rPi")]      public void Cmd_hyRoadAlnByPi()      => ReCallClass.Invoke("hyRoadAlnByPi");
+        [CommandMethod("hyRoadAlnEditPi")][CommandMethod("rWk")]    public void Cmd_hyRoadAlnEditPi()    => ReCallClass.Invoke("hyRoadAlnEditPi");
+        [CommandMethod("hyRoadAlnStation")][CommandMethod("rSt")]   public void Cmd_hyRoadAlnStation()   => ReCallClass.Invoke("hyRoadAlnStation");
+        [CommandMethod("hyRoadAlnTable")][CommandMethod("rSe")]     public void Cmd_hyRoadAlnTable()     => ReCallClass.Invoke("hyRoadAlnTable");
+        [CommandMethod("hyRoadAlnGeomPt")][CommandMethod("rGp")]    public void Cmd_hyRoadAlnGeomPt()    => ReCallClass.Invoke("hyRoadAlnGeomPt");
+        [CommandMethod("hyRoadAlnExportPi")][CommandMethod("rEp")]  public void Cmd_hyRoadAlnExportPi()  => ReCallClass.Invoke("hyRoadAlnExportPi");
+        [CommandMethod("hyRoadAlnExportFrame")][CommandMethod("rEf")] public void Cmd_hyRoadAlnExportFrame() => ReCallClass.Invoke("hyRoadAlnExportFrame");
+        [CommandMethod("hyRoadAlnDefaults")][CommandMethod("rDd")]  public void Cmd_hyRoadAlnDefaults()  => ReCallClass.Invoke("hyRoadAlnDefaults");
+        [CommandMethod("hyRoadAlnInsertPi")][CommandMethod("rIns")]  public void Cmd_hyRoadAlnInsertPi()  => ReCallClass.Invoke("hyRoadAlnInsertPi");
+        [CommandMethod("hyRoadAlnDeletePi")][CommandMethod("rDp")]  public void Cmd_hyRoadAlnDeletePi()  => ReCallClass.Invoke("hyRoadAlnDeletePi");
+        [CommandMethod("hyRoadAlnStaEq")][CommandMethod("rEq")]     public void Cmd_hyRoadAlnStaEq()     => ReCallClass.Invoke("hyRoadAlnStaEq");
+        [CommandMethod("hyRoadAlnReverse")][CommandMethod("rRv")]   public void Cmd_hyRoadAlnReverse()   => ReCallClass.Invoke("hyRoadAlnReverse");
+        [CommandMethod("hyRoadAlnOffset")][CommandMethod("rOf")]    public void Cmd_hyRoadAlnOffset()    => ReCallClass.Invoke("hyRoadAlnOffset");
+        [CommandMethod("hyRoadAlnExportXml")][CommandMethod("rXo")] public void Cmd_hyRoadAlnExportXml() => ReCallClass.Invoke("hyRoadAlnExportXml");
+        [CommandMethod("hyRoadAlnImportXml")][CommandMethod("rXi")] public void Cmd_hyRoadAlnImportXml() => ReCallClass.Invoke("hyRoadAlnImportXml");
+        [CommandMethod("hyRoadIntersection")][CommandMethod("rIs")]            public void Cmd_hyRoadIntersection()            => ReCallClass.Invoke("hyRoadIntersection");
+        [CommandMethod("hyRoadIntersectionEdit")][CommandMethod("rIe")]        public void Cmd_hyRoadIntersectionEdit()        => ReCallClass.Invoke("hyRoadIntersectionEdit");
+        [CommandMethod("hyRoadIntersectionKerbChain")][CommandMethod("rIk")]   public void Cmd_hyRoadIntersectionKerbChain()   => ReCallClass.Invoke("hyRoadIntersectionKerbChain");
+        [CommandMethod("hyRoadIntersectionCrosswalk")][CommandMethod("rIw")] public void Cmd_hyRoadIntersectionCrosswalk() => ReCallClass.Invoke("hyRoadIntersectionCrosswalk");
+        [CommandMethod("hyRoadCurbRamp")][CommandMethod("rCr")]      public void Cmd_hyRoadCurbRamp()      => ReCallClass.Invoke("hyRoadCurbRamp");
+        [CommandMethod("hyRoadTactilePaving")][CommandMethod("rTp")] public void Cmd_hyRoadTactilePaving() => ReCallClass.Invoke("hyRoadTactilePaving");
+        [CommandMethod("hyRoadStopLine")][CommandMethod("rSl")]      public void Cmd_hyRoadStopLine()      => ReCallClass.Invoke("hyRoadStopLine");
+        [CommandMethod("hyRoadLaneMarking")][CommandMethod("rLm")]   public void Cmd_hyRoadLaneMarking()   => ReCallClass.Invoke("hyRoadLaneMarking");
+        [CommandMethod("hyRoadArrow")][CommandMethod("rAr")]         public void Cmd_hyRoadArrow()         => ReCallClass.Invoke("hyRoadArrow");
+        [CommandMethod("hyRoadP")][CommandMethod("rPr")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
         // 鸿业风格的纵断面 3 件套：FG 设计线（与 hyRoadP 等价）/ EG 地面线（v1.1）/ Label 标注到 DWG（v1.1）
-        [CommandMethod("hyRoadProfFG")]       public void Cmd_hyRoadProfFG()       => ReCallClass.Invoke("hyRoadProfFG");
-        [CommandMethod("hyRoadProfEG")]       public void Cmd_hyRoadProfEG()       => ReCallClass.Invoke("hyRoadProfEG");
-        [CommandMethod("hyRoadProfLabel")]    public void Cmd_hyRoadProfLabel()    => ReCallClass.Invoke("hyRoadProfLabel");
-        // hyRoadT（v1，已转发到 v2 hyRoadCs）+ hyRoadCs（v2 横断面绘制，BlenderUI workbench / 路牙 / 路拱 / 桩号）
-        // 关 CAD → NETLOAD ReCall.dll 后两条都可用；commands.json 里两条都指向 RoadCrossSectionDrawCommand。
-        [CommandMethod("hyRoadT")]            public void Cmd_hyRoadT()            => ReCallClass.Invoke("hyRoadT");
-        [CommandMethod("hyRoadCs")]           public void Cmd_hyRoadCs()           => ReCallClass.Invoke("hyRoadCs");
-        [CommandMethod("hyRoadC")]            public void Cmd_hyRoadC()            => ReCallClass.Invoke("hyRoadC");
-        [CommandMethod("hyRoadSave")]         public void Cmd_hyRoadSave()         => ReCallClass.Invoke("hyRoadSave");
-        [CommandMethod("hyRoadLoad")]         public void Cmd_hyRoadLoad()         => ReCallClass.Invoke("hyRoadLoad");
-        [CommandMethod("hyRoad3dExportGltf")] public void Cmd_hyRoad3dExportGltf() => ReCallClass.Invoke("hyRoad3dExportGltf");
+        [CommandMethod("hyRoadProfFG")][CommandMethod("rFg")]       public void Cmd_hyRoadProfFG()       => ReCallClass.Invoke("hyRoadProfFG");
+        [CommandMethod("hyRoadProfEG")][CommandMethod("rEg")]       public void Cmd_hyRoadProfEG()       => ReCallClass.Invoke("hyRoadProfEG");
+        [CommandMethod("hyRoadProfLabel")][CommandMethod("rPl")]    public void Cmd_hyRoadProfLabel()    => ReCallClass.Invoke("hyRoadProfLabel");
+        // hyRoadT（v1，已转发到 v2 hyRoadCs）+ hyRoadCs（直接开 WPF）+ hyRoadCsLoad / hyRoadCsQuick（原 L/C 分支）
+        // 关 CAD → NETLOAD ReCall.dll 后均可用；commands.json 对应 RoadCrossSectionDrawCommand 各方法。
+        [CommandMethod("hyRoadT")][CommandMethod("rT1")]            public void Cmd_hyRoadT()            => ReCallClass.Invoke("hyRoadT");
+        [CommandMethod("hyRoadCs")][CommandMethod("rCs")]           public void Cmd_hyRoadCs()           => ReCallClass.Invoke("hyRoadCs");
+        [CommandMethod("hyRoadCsLoad")][CommandMethod("rCsL")]      public void Cmd_hyRoadCsLoad()       => ReCallClass.Invoke("hyRoadCsLoad");
+        [CommandMethod("hyRoadCsQuick")][CommandMethod("rCsQ")]     public void Cmd_hyRoadCsQuick()      => ReCallClass.Invoke("hyRoadCsQuick");
+        [CommandMethod("hyRoadC")][CommandMethod("rCo")]            public void Cmd_hyRoadC()            => ReCallClass.Invoke("hyRoadC");
+        [CommandMethod("hyRoadSave")][CommandMethod("rSv")]         public void Cmd_hyRoadSave()         => ReCallClass.Invoke("hyRoadSave");
+        [CommandMethod("hyRoadLoad")][CommandMethod("rLd")]         public void Cmd_hyRoadLoad()         => ReCallClass.Invoke("hyRoadLoad");
+        [CommandMethod("hyRoad3dExportGltf")][CommandMethod("rGf")] public void Cmd_hyRoad3dExportGltf() => ReCallClass.Invoke("hyRoad3dExportGltf");
         #endregion
 
         #region 几何工具 (Geometry Tools)

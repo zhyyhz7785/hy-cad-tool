@@ -13,8 +13,8 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
-                <d:ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- 左侧图标 Tab 项模板 -->
@@ -74,7 +74,7 @@
                                    Foreground="{DynamicResource Brush_TextPrimary}"
                                    VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Key}"
+                        <TextBlock Grid.Column="1" Text="{Binding KeyCaption}"
                                    Foreground="{DynamicResource Brush_TextSecondary}"
                                    FontSize="11"
                                    Margin="6,0,0,0"

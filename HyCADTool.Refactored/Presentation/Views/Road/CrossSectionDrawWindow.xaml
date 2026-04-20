@@ -28,8 +28,8 @@
     <bui:BlenderWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
-                <d:ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
@@ -40,6 +40,20 @@
     <!-- ============================================================ -->
     <bui:BlenderWindow.HeaderRightContent>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+            <!-- M7.4 绘图模式切换 -->
+            <RadioButton Content="厚度轮廓"
+                         GroupName="DrawMode"
+                         IsChecked="{Binding UseStructureThicknessMode, Mode=TwoWay}"
+                         ToolTip="带结构厚度轮廓出图（含面层/基层/垫层/填充）"
+                         VerticalAlignment="Center"
+                         Margin="0,0,6,0"/>
+            <RadioButton Content="单线"
+                         GroupName="DrawMode"
+                         IsChecked="{Binding UseSingleLineMode, Mode=TwoWay}"
+                         ToolTip="仅顶面投影 + 中心线（M7.4，平面图用）"
+                         VerticalAlignment="Center"
+                         Margin="0,0,12,0"/>
+
             <ToggleButton Content="大纲"
                           ToolTip="显示 / 隐藏 左侧大纲面板（条带列表）"
                           IsChecked="{Binding IsOutlinerVisible}"

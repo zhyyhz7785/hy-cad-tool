@@ -485,8 +485,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 ? "00_hy_筏板附加配筋x_下" : "00_hy_筏板附加配筋x_上";
             string rebarLayerY = config.Direction == RebarDirection.BottomX || config.Direction == RebarDirection.BottomY
                 ? "00_hy_筏板附加配筋y_下" : "00_hy_筏板附加配筋y_上";
-            string textLayerX = "00_hy_筏板附加配筋文字_x";
-            string textLayerY = "00_hy_筏板附加配筋文字_y";
 
             // 图层已在 PluginInitializer 统一创建
 

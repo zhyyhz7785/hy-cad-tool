@@ -49,7 +49,6 @@ namespace HyCADTool.MarkdownEditor.Services
         private int _dirtyBlockEnd = -1;
         private string _lastRenderedConfigJson;
         private bool _hasInitialRender;
-        private bool _incrementalFallbackFuse;
         private DateTime _lastFullRenderUtc = DateTime.MinValue;
         private string _pendingCaretBookmarkJson = string.Empty;
         private double? _pendingScrollTop;
@@ -281,7 +280,6 @@ namespace HyCADTool.MarkdownEditor.Services
             await CaptureCaretAndScrollAsync(previewWebView);
             FullNavigatePreview(previewWebView, markdown, viewModel, config);
             _lastRenderedConfigJson = configJson;
-            _incrementalFallbackFuse = false;
 
             _renderedPreviewScale = Math.Max(0.1, viewModel.PreviewScale);
             _previewVersion = _markdownVersion;

@@ -51,23 +51,29 @@ namespace HyCADTool.Refactored.Presentation
                 {
                     new System.Windows.Application();
                 }
-                if (System.Windows.Application.Current != null && System.Windows.Application.ResourceAssembly == null)
-                {
-                    System.Windows.Application.ResourceAssembly = typeof(PluginInitializer).Assembly;
-                }
+
+                // 宿主默认 ShutdownMode=OnLastWindowClose：任意模式对话框 / 面板子窗体关掉若成为
+                // 「最后一个 WPF 窗口」，WPF 会开始关闭 Application，随后 hyRoadCs 等再 new
+                // BlenderWindow 会在 InitializeComponent → GetResourcePackage 抛出
+                // 「应用程序对象正在关闭」。插件进程内必须显式关闭才退出 WPF。
+                var wpf = System.Windows.Application.Current;
+                if (wpf?.Dispatcher != null && !wpf.Dispatcher.HasShutdownStarted)
+                    wpf.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+
+                // 【真根因修复 · 2026-04-21】见 doc/RoadDesign/00.md：
+                //   AutoCAD Ribbon Badge XamlParseException 的真正诱因是 ReCall 的
+                //   AssemblyResolve handler 把项目引用的旧版 AdWindows.dll（5.0.1.2，
+                //   AutoCAD.NET 24.3.0 NuGet 传递引用）byte[] 加载进 AppDomain，
+                //   与 AutoCAD 进程实际加载的 5.1.1.1 形成"双 AdWindows"，
+                //   类型身份割裂导致 BAML 资源解析失败。
+                //   修复见 ReCall/Recall.cs ResolveAssembly 宿主程序集黑名单。
+                //   本初始化器不需要任何 ResourceAssembly / Assembly.Load("AdWindows") 干预。
             }
             catch
             {
                 // 创建 Application stub 失败时降级运行：后续 WPF 相关路径自有兜底，
                 // 但 LoadComponent 大概率会跟着挂；不在此处吞错的更深处再抛更利于诊断。
             }
-
-            // 【PaletteSet / PanelListView】预热 AdWindows 的 Badge 主题字典。
-            // 症状：首次打开 Hy 面板时 Autodesk.Internal.Windows.Badge ApplyTemplate 才去解析
-            // pack:///AdWindows;component/themes/badge.xaml，偶发 “不具有该 URI 识别的资源” XamlParseException，
-            // 堆栈落在 Autodesk.Private.Windows.PanelListView.MeasureOverride（PaletteSet 内部标签栏）。
-            // 在任意 WPF 面板创建前同步加载一次，让 PackUriHelper 缓存 BAML，与 H6 注释中 Ribbon Badge 同源根因。
-            WarmupAdWindowsBadgeTheme();
 
             try
             {
@@ -79,7 +85,7 @@ namespace HyCADTool.Refactored.Presentation
                 // UI 线程异常，导致面板控件首次实例化失败时表现为 AutoCAD 原生崩溃，无任何线索。
                 InstallWpfExceptionTraps();
 
-                // 【关键】在任何 WPF XAML/控件被触发前，同步 warmup 跨程序集主题字典 + 所有 SubView。
+                // 【关键】在任何 WPF XAML/控件被触发前，同步 warmup 跨程序集 BlenderTheme.xaml。
                 // 原因：HyCAD.BlenderUI 标记了 [assembly: ThemeInfo(SourceAssembly)]，
                 // WPF 首次创建其自定义控件时会在 UI tick 异步查找 Themes/Generic.xaml，
                 // 此时若 pack URI 解析失败，异常会在 PresentationFramework native 层
@@ -87,7 +93,11 @@ namespace HyCADTool.Refactored.Presentation
                 // 同步 warmup 把这条路径从"异步 native"变成"同步托管异常"，必崩时可见。
                 WarmupBlenderTheme();
 
-                WarmupSubViews();
+                // 注意：不再 WarmupSubViews()。SubView 都是 UserControl，首次 new 时
+                // InitializeComponent 自动 LoadComponent；BlenderTheme 已驻留缓存即可命中。
+                // 历史 WarmupSubViews 用 XamlReader.Load(stream) 读 BAML 二进制流是 API 误用，
+                // 11 个 SubView 全部预热失败，命令行刷 11 条假阳性 XamlParseException。
+                // 见 doc/RoadDesign/00.md。
 
                 // 构建 Autofac 容器
                 var builder = new ContainerBuilder();
@@ -350,6 +360,7 @@ namespace HyCADTool.Refactored.Presentation
                             }
                         }
                         catch { }
+
                         // 标记已处理，让 AutoCAD 不要把它升级成致命错误
                         e.Handled = true;
                     }
@@ -408,82 +419,6 @@ namespace HyCADTool.Refactored.Presentation
                     System.Diagnostics.Debug.WriteLine("[HyCAD WPF Binding] " + message);
                 }
                 catch { }
-            }
-        }
-
-        /// <summary>预热 HyPreferencesView 下所有 SubView，把跨程序集 pack URI + StaticResource 解析问题前置到 Initialize 同步阶段。</summary>
-        private void WarmupSubViews()
-        {
-            // 顺序：HyPreferencesView 自身 → 各 sub:XxxSettingsView。任何一项失败立刻可见。
-            var views = new (string Path, string Name)[]
-            {
-                ("/HyCADTool.Refactored;component/Presentation/Views/HyPreferencesView.xaml",            "HyPreferencesView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/StyleSettingsView.xaml",        "StyleSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/ReinSettingsView.xaml",         "ReinSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/BasePlateSettingsView.xaml",    "BasePlateSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/PileSettingsView.xaml",         "PileSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/ClusterSettingsView.xaml",      "ClusterSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/RoadSettingsView.xaml",         "RoadSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/ElevationSettingsView.xaml",    "ElevationSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/DimSettingsView.xaml",          "DimSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/AnchorBoltSettingsView.xaml",   "AnchorBoltSettingsView"),
-                ("/HyCADTool.Refactored;component/Presentation/Views/Preferences/EquipFoundationSettingsView.xaml","EquipFoundationSettingsView"),
-            };
-
-            int ok = 0, fail = 0;
-            foreach (var v in views)
-            {
-                try
-                {
-                    // Application.LoadComponent 第一参数必须是【相对 URI】（pack 里不能直接传绝对）
-                    // 真要绝对必须先 GetContentStream + XamlReader.Load，但这里相对就够：
-                    // ;component 后面那段就是 SourceAssembly 内的相对路径
-                    var rel = v.Path.StartsWith("/") ? v.Path.Substring(1) : v.Path;
-                    int compIdx = rel.IndexOf(";component/", StringComparison.Ordinal);
-                    var relPath = compIdx >= 0 ? rel.Substring(compIdx + ";component/".Length) : rel;
-                    var uri = new System.Uri(relPath, System.UriKind.Relative);
-                    var obj = System.Windows.Application.LoadComponent(uri);
-                    if (obj == null)
-                    {
-                        WriteMessage($"\n  ⚠ {v.Name} 预热返回 null");
-                        fail++;
-                    }
-                    else
-                    {
-                        ok++;
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    fail++;
-                    WriteMessage($"\n  ✗ {v.Name} 预热失败：{ex.GetType().Name}: {ex.Message}");
-                    if (ex.InnerException != null)
-                        WriteMessage($"\n    内层：{ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
-                }
-            }
-
-            WriteMessage($"\n  ✓ SubView 预热完成（成功 {ok} / 失败 {fail}）");
-        }
-
-        /// <summary>
-        /// 预热 <c>AdWindows.dll</c> 内 PaletteSet/Ribbon 共用的 Badge 主题（<c>themes/badge.xaml</c>）。
-        /// 不合并到 <see cref="System.Windows.Application.Current"/>，仅触发 pack URI 解析与 BAML 缓存。
-        /// </summary>
-        private static void WarmupAdWindowsBadgeTheme()
-        {
-            try
-            {
-                var uri = new System.Uri(
-                    "pack://application:,,,/AdWindows;component/themes/badge.xaml",
-                    System.UriKind.Absolute);
-                var dict = new System.Windows.ResourceDictionary { Source = uri };
-                if (dict != null)
-                    System.Diagnostics.Debug.WriteLine($"[HyCAD] AdWindows badge.xaml 预热 OK，顶层键 {dict.Count}");
-            }
-            catch (System.Exception ex)
-            {
-                // 版本差异或精简安装可能缺文件；不阻断插件，仅 Debug（避免命令行刷屏）
-                System.Diagnostics.Debug.WriteLine("[HyCAD] AdWindows badge.xaml 预热跳过: " + ex.GetType().Name + ": " + ex.Message);
             }
         }
 

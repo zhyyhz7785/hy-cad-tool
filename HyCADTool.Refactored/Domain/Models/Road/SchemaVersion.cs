@@ -13,7 +13,16 @@ namespace HyCADTool.Refactored.Domain.Models.Road
     /// </summary>
     public static class SchemaVersion
     {
-        public const string Current = "1.0";
+        /// <summary>
+        /// 当前写入 JSON 的 schema 版本（M6 起升级到 1.2）。
+        /// <para>1.0：v1 初版（Alignment / Profile / Template / Corridor 基础字段）。</para>
+        /// <para>1.1（内部过渡）：CrossSectionBand 扩展 <c>KerbSpec/SlopeType/CrownProfile/SurfaceLayer/LaneCount</c>；
+        /// 未递增 Current 字段（仅新增可选字段，向后兼容）。</para>
+        /// <para>1.2（M6 本轮）：新增 <c>RoadDesign.Controls</c>（参考点 / 参考线 / 参考面 / 选中集合） +
+        /// <c>StructureLayerSchemes</c>（M7 使用） + <c>IntersectionBandMergeRules</c>（M9 使用）；
+        /// 所有字段均可选，读取 1.0 / 1.1 文件无破坏。</para>
+        /// </summary>
+        public const string Current = "1.2";
 
         /// <summary>v1 最低兼容版本（读取时支持）。</summary>
         public const string MinimumSupported = "1.0";

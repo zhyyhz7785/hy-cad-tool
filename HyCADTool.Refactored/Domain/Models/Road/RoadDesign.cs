@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using HyCADTool.Refactored.Domain.Models.Road.ControlElements;
+using HyCADTool.Refactored.Domain.Models.Road.Serialization;
 using Newtonsoft.Json;
 
 namespace HyCADTool.Refactored.Domain.Models.Road
@@ -52,6 +54,26 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public List<Intersection> Intersections { get; } = new List<Intersection>();
 
         /// <summary>
+        /// M6 引入的「控制体」集合：参考点 / 参考线 / 参考面 / 选中集合。
+        /// <para>与 <see cref="Alignments"/> / <see cref="Intersections"/> 等实体容器并存；不参与 3D 导出。</para>
+        /// <para>JSON 多态读写通过 <see cref="HyControlJsonConverter"/> 按 <c>Kind</c> 字段派发。</para>
+        /// </summary>
+        [JsonProperty(ItemConverterType = typeof(HyControlJsonConverter),
+                      ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<IHyControl> Controls { get; set; } = new List<IHyControl>();
+
+        /// <summary>
+        /// M7 引入的「结构层方案库」：每个方案 = 一组具名结构层（面层 / 基层 / 垫层 / 自定义），
+        /// 由 <c>hyRoadStructureLayer</c> 命令维护，供横断面板块的 <c>路面结构</c> 引用。
+        /// </summary>
+        public List<StructureLayerScheme> StructureLayerSchemes { get; } = new List<StructureLayerScheme>();
+
+        /// <summary>
+        /// M9 引入的「交叉口条带合并规则」覆盖条目。为空时 <c>IntersectionDesigner</c> 使用内置默认规则。
+        /// </summary>
+        public List<IntersectionBandMergeRule> IntersectionBandMergeRules { get; } = new List<IntersectionBandMergeRule>();
+
+        /// <summary>
         /// 是否不含任何可持久化的子对象。
         ///
         /// 用途：<c>RoadJsonExportService.SaveForDocument</c> 在写盘前校验；
@@ -65,7 +87,10 @@ namespace HyCADTool.Refactored.Domain.Models.Road
             && Templates.Count == 0
             && Corridors.Count == 0
             && Nodes.Count == 0
-            && Intersections.Count == 0;
+            && Intersections.Count == 0
+            && (Controls == null || Controls.Count == 0)
+            && StructureLayerSchemes.Count == 0
+            && IntersectionBandMergeRules.Count == 0;
 
         public override string ToString()
             => $"RoadDesign[{ProjectName}, Id={Id:N}, Schema={Schema}, A={Alignments.Count}, T={Templates.Count}, C={Corridors.Count}, I={Intersections.Count}]";

@@ -964,7 +964,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         {
             if (!_stylesDirty) return;
             ApplyStyle();
-            _stylesDirty = false;
+            // 成功路径由 ApplyStyle() 置 _stylesDirty=false；失败或 StyleService 未就绪时保持 dirty，
+            // 否则「单位/副比例」等模式切换的 auto-apply 失败后用户再点「置为当前」会被误判为无需同步。
         }
 
         private void SaveAsDefault()
@@ -1213,8 +1214,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 StyleTName = data.StyleTName ?? _styleTName;
                 StyleTFont = data.StyleTFont ?? _styleTFont;
                 StyleSName = data.StyleSName ?? _styleSName;
+#pragma warning disable CS0618 // 旧 JSON 仍可能只写 FontFileName / BigFontFileName
                 StyleSFont = data.StyleSFont ?? data.FontFileName ?? _styleSFont;
                 StyleSBigFont = data.StyleSBigFont ?? data.BigFontFileName ?? _styleSBigFont;
+#pragma warning restore CS0618
                 TextSize = data.TextSize;
                 // 字宽：优先读新字段，兜底读旧 TextXScale（旧文件里 SHX 字宽存在 TextXScale，T 字宽默认 1.0）
                 StyleTXScale = data.StyleTXScale > 0 ? data.StyleTXScale : 1.0;

@@ -47,7 +47,7 @@ namespace HyCADTool.MarkdownEditor.TestHost
             // ★ 构建测试输入（改这里切换测试场景）
             var input = BuildTestInput();
 
-            Console.WriteLine($"[启动] 栏数={input.Config.ColumnCount}, 比例=1:{input.Config.Scale}");
+            Console.WriteLine($"[启动] 栏数={input.Config.ColumnCount}, 比例=1:{input.Config.DrawScale}");
             Console.WriteLine($"[启动] Markdown 长度={input.Markdown?.Length ?? 0} 字符");
             Console.WriteLine();
 
@@ -219,7 +219,7 @@ namespace HyCADTool.MarkdownEditor.TestHost
             }
 
             Console.WriteLine($"[确认] Markdown 长度 = {result.Markdown?.Length ?? 0}");
-            Console.WriteLine($"[配置] 栏数={result.Config?.ColumnCount}, 比例=1:{result.Config?.Scale}");
+            Console.WriteLine($"[配置] 栏数={result.Config?.ColumnCount}, 比例=1:{result.Config?.DrawScale}");
             Console.WriteLine($"[配置] 字高={result.Config?.TextSize}, X比例={result.Config?.TextXScale}");
 
             if (result.CharsPerColumn != null)

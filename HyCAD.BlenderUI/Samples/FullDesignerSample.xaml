@@ -1,11 +1,16 @@
 <bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.FullDesignerSample"
                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                    xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   mc:Ignorable="d"
                    Title="HyCAD.BlenderUI — Full Designer Sample"
-                   HeaderTitle="完整编辑器样本（Toolbar + Viewport + NPanel + StatusBar）"
+                   UseCustomChrome="False"
                    Width="1280"
                    Height="800"
+                   ResizeMode="CanResize"
+                   ShowInTaskbar="True"
                    Background="{DynamicResource Brush_WindowBack}"
                    FontFamily="{DynamicResource Font_Main}"
                    FontSize="{DynamicResource Metric_FontMain}"
@@ -13,7 +18,8 @@
 
     <!--
       FullDesignerSample：完整 Editor 体系示范。
-        主体竖向：[全局 EditorHeader 24] [中部业务 *] [StatusBar 22]
+        UseCustomChrome=False → 系统标题栏（原生最小化/最大化/关闭）；菜单在内容区 EditorHeader。
+        主体竖向：[EditorHeader] [中部业务 *] [StatusBar]
         中部业务横向：[Toolbar 40] [ViewportArea *] [V-splitter 4] [NPanelArea 280]
         ViewportArea 竖向：[Editor mini header 24] [Viewport Canvas *] [H-splitter 4] [Inline Properties 100]
         NPanelArea     竖向：[Editor mini header 24] [Tabs *] [H-splitter 4] [Detail 200]
@@ -23,6 +29,7 @@
     <bui:BlenderWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
@@ -42,7 +49,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 全局 EditorHeader -->
+        <!-- 系统标题栏下的应用顶栏（菜单 + 工作区） -->
         <bui:EditorHeader Grid.Row="0">
             <bui:EditorHeader.EditorTypeIcon>
                 <Path Width="14" Height="14"

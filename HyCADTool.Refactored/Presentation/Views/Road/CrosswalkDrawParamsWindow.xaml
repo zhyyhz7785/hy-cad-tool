@@ -1,0 +1,89 @@
+<bui:BlenderWindow x:Class="HyCADTool.Refactored.Presentation.Views.Road.CrosswalkDrawParamsWindow"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   mc:Ignorable="d"
+                   Title="人行横道"
+                   HeaderTitle="{Binding Title}"
+                   Width="520" Height="400"
+                   MinWidth="480" MinHeight="340"
+                   WindowStartupLocation="CenterOwner">
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterLeftContent>
+        <TextBlock Text="{Binding StatusMessage}"
+                   Foreground="{DynamicResource Brush_TextSecondary}"
+                   VerticalAlignment="Center" FontSize="11"/>
+    </bui:BlenderWindow.FooterLeftContent>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <StackPanel Orientation="Horizontal">
+            <Button Content="恢复默认"
+                    Style="{StaticResource BlenderButton}"
+                    Command="{Binding ResetCommand}"
+                    MinWidth="80" Margin="4,0"/>
+            <Button Content="确定"
+                    Style="{StaticResource BlenderButton}"
+                    Command="{Binding ConfirmCommand}"
+                    IsDefault="True"
+                    MinWidth="80" Margin="4,0"/>
+            <Button Content="取消"
+                    Style="{StaticResource BlenderButton}"
+                    Command="{Binding CancelCommand}"
+                    IsCancel="True"
+                    MinWidth="80" Margin="4,0"/>
+        </StackPanel>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <bui:PropertyEditor Title="参数（m）"
+                        SelectedTabIndex="0"
+                        ShowSearch="False"
+                        ShowPin="False"
+                        ShowIconBar="False">
+        <Grid>
+            <StackPanel>
+                <Expander Header="尺寸" IsExpanded="True"
+                          Style="{StaticResource BlenderExpander}">
+                    <StackPanel>
+                        <bui:PropertyRow Label="路缘到横道空挡">
+                            <bui:NumericSlider Value="{Binding GapWidth, Mode=TwoWay}"
+                                               Minimum="0" Maximum="50" Step="0.1"
+                                               Decimals="3" Unit="m"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="横道宽度 (L2→L3)">
+                            <bui:NumericSlider Value="{Binding CrosswalkWidth, Mode=TwoWay}"
+                                               Minimum="0" Maximum="30" Step="0.1"
+                                               Decimals="3" Unit="m"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="横道到停止线">
+                            <bui:NumericSlider Value="{Binding StopLineDistance, Mode=TwoWay}"
+                                               Minimum="0" Maximum="30" Step="0.1"
+                                               Decimals="3" Unit="m"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="条纹中心距">
+                            <bui:NumericSlider Value="{Binding StripeSpacing, Mode=TwoWay}"
+                                               Minimum="0.1" Maximum="5" Step="0.05"
+                                               Decimals="3" Unit="m"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+                <TextBlock Margin="8,8,8,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush_TextSecondary}" FontSize="10"
+                           Text="确定后写入 hy-settings 中对应项，并进入下一步（选线或拾取交叉口）。"/>
+            </StackPanel>
+        </Grid>
+    </bui:PropertyEditor>
+
+</bui:BlenderWindow>

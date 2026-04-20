@@ -62,6 +62,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         /// <param name="transaction">调用方开启的 Transaction（本方法不自主提交，由调用方负责 <c>Commit</c>）。</param>
         /// <param name="database">活动 Database（用于注册 RegApp）。</param>
         /// <param name="polyline">已在 <paramref name="transaction"/> 作用域内打开的多段线（需 ForRead 或更高）。</param>
+        /// <param name="addedNewAlignment">
+        /// 本次调用是否新向 <see cref="RoadDesign.Alignments"/> 追加了一条线位（不含「更新已有」）。
+        /// 供 <c>hyRoadA</c> 仅在首次登记时套用 hy-settings 默认起桩号。
+        /// </param>
         /// <param name="displayName">可选显示名；为空时自动生成 <c>"Alignment N"</c>。</param>
         /// <returns>创建或更新后的 <see cref="Alignment"/>。</returns>
         public Alignment ImportFromPolyline(
@@ -69,6 +73,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Transaction transaction,
             Database database,
             Polyline polyline,
+            out bool addedNewAlignment,
             string displayName = null)
         {
             if (transaction == null) throw new ArgumentNullException(nameof(transaction));
@@ -89,6 +94,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 {
                     alignment.Centerline = centerline;
                     kind = RoadChangeKind.Updated;
+                    addedNewAlignment = false;
                 }
                 else
                 {
@@ -103,6 +109,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     };
                     design.Alignments.Add(alignment);
                     kind = RoadChangeKind.Created;
+                    addedNewAlignment = true;
                 }
             }
             else
@@ -116,13 +123,56 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 };
                 design.Alignments.Add(alignment);
                 kind = RoadChangeKind.Created;
+                addedNewAlignment = true;
             }
+
+            ApplyPiSourceSnapshot(alignment, centerline);
+            AssignAlignmentLayerIfExists(transaction, database, polyline);
 
             HyRoadXdata.Write(transaction, database, polyline, alignment.Id, "Alignment", SchemaVersion.Current);
 
             design.LastModifiedUtc = DateTime.UtcNow;
             _eventBus.Publish(new AlignmentChangedEvent(design.Id, alignment.Id, kind));
             return alignment;
+        }
+
+        /// <summary>
+        /// 与 <c>hyRoadAlnByPi</c> 一致：把已登记中心线放到标准平面线位图层（若该图层存在）。
+        /// </summary>
+        private static void AssignAlignmentLayerIfExists(Transaction transaction, Database database, Polyline polyline)
+        {
+            var lt = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
+            if (lt.Has(HyRoadLayers.AlignmentLayer))
+                polyline.Layer = HyRoadLayers.AlignmentLayer;
+        }
+
+        /// <summary>
+        /// 纯直线多段线：按顶点生成 PI 表快照；含 bulge 弧段时对开放线位反求切线交点 PI（见 <see cref="AlignmentSource.TryCreatePiTableFromBulgeCenterline"/>）。
+        /// 反解失败时仅在尚无有效 PI 表时保持 <c>Source=null</c>。
+        /// </summary>
+        private static void ApplyPiSourceSnapshot(Alignment alignment, Polyline3D centerline)
+        {
+            if (!centerline.HasArcs)
+            {
+                var src = AlignmentSource.TryCreatePiTableFromStraightCenterline(centerline);
+                if (src != null)
+                    alignment.Source = src;
+                return;
+            }
+
+            var fromBulge = AlignmentSource.TryCreatePiTableFromBulgeCenterline(centerline);
+            if (fromBulge != null)
+            {
+                alignment.Source = fromBulge;
+                return;
+            }
+
+            if (alignment.Source == null
+                || alignment.Source.PiElements == null
+                || alignment.Source.PiElements.Count < 2)
+            {
+                alignment.Source = null;
+            }
         }
 
         /// <summary>
@@ -729,11 +779,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 
             if (target == null) return false;
 
-            // 先更新 Domain，再覆盖 DWG
-            alignment.Centerline = newCenterline;
-
             if (!target.IsWriteEnabled) target.UpgradeOpen();
             RoadGeometryBridge.UpdateAutoCadPolyline(target, newCenterline);
+            alignment.Centerline = newCenterline;
 
             design.LastModifiedUtc = DateTime.UtcNow;
             _eventBus.Publish(new AlignmentChangedEvent(design.Id, alignment.Id, RoadChangeKind.Updated));

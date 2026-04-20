@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
-using HyCADTool.Refactored.Presentation.ViewModels;
+using HyCADTool.Refactored.Presentation.Commands.Road;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -9,7 +9,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 {
     /// <summary>
     /// 人行横道绘制命令 (hyRoad)
-    /// 参数从 HY 面板读取（SettingsPanelViewModel），绘图单位 = m。
+    /// 先弹出 WPF 参数窗，确定后从选中的 Line/Arc 分析交叉口并绘制；绘图单位 = m。
     /// </summary>
     public class DrawCrosswalkCommand
     {
@@ -31,11 +31,11 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                var vm = SettingsPanelViewModel.Current;
-                double d1 = vm?.RoadGapWidth ?? 5.0;
-                double d2 = vm?.RoadCrosswalkWidth ?? 5.0;
-                double d3 = vm?.RoadStopLineDistance ?? 2.0;
-                double spacing = vm?.RoadStripeSpacing ?? 1.0;
+                if (!CrosswalkDrawParamsDialog.TryShow(out double d1, out double d2, out double d3, out double spacing))
+                {
+                    ed.WriteMessage("\n人行横道: 已取消。");
+                    return;
+                }
 
                 ed.WriteMessage($"\n人行横道: 空隙={d1} 宽度={d2} 停止线={d3} 间距={spacing} (m)");
                 ed.WriteMessage("\n选择交叉口道路边线（直线 + 圆弧，多选少选均可自动过滤）");

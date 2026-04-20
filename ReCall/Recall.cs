@@ -980,14 +980,53 @@ namespace HyCADTool.ReCall
             return () => method.Invoke(null, null);
         }
 
+        // 【AutoCAD 宿主程序集黑名单 · 2026-04-21】
+        //   AutoCAD 进程已加载的宿主程序集（AdWindows / AcMr / AcCoreMgd / AcDbMgd / AcMgd / AcCui ...）
+        //   绝对禁止 ReCall 从临时目录 byte[] 加载——
+        //   原因：AutoCAD.NET 24.3.0 NuGet 包传递引用的 AdWindows 是 5.0.1.2（旧版本），
+        //   而 AutoCAD 2025 进程实际加载 5.1.1.1。Refactored 程序集 manifest 严格要 5.0.1.2
+        //   → CLR 触发 AssemblyResolve → 若 ReCall 从 deps 目录返回 5.0.1.2 byte[]，
+        //   AppDomain 立刻多出一份 AdWindows，类型身份割裂（5.0.1.2 的 Badge ≠ 5.1.1.1 的 Badge），
+        //   AutoCAD UI 渲染 PanelListView/Ribbon 时 Badge.InitializeComponent 抛
+        //   "组件 Badge 不具有由 URI/AdWindows;component/themes/badge.xaml 识别的资源"。
+        //   修复：宿主程序集请求一律走 AppDomain 已加载查表（短名匹配，忽略版本），返回 AutoCAD 那份"真"5.1.1.1。
+        //   详见 doc/RoadDesign/00.md。
+        private static readonly string[] AutoCadHostAssemblyNames =
+        {
+            "AdWindows",
+            "AcMr",
+            "AcCoreMgd",
+            "AcDbMgd",
+            "AcMgd",
+            "AcCui",
+            "AcWindows",
+            "Autodesk.AutoCAD.Interop",
+            "Autodesk.AutoCAD.Interop.Common",
+            "PresentationCore",
+            "PresentationFramework",
+            "WindowsBase",
+            "System.Xaml",
+        };
+
         private static Assembly ResolveAssembly(ResolveEventArgs args, string dependenciesPath, string nugetPackagesPath)
         {
             if (args.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                 return null;
+
+            string shortName = new AssemblyName(args.Name).Name;
+
+            // 宿主程序集：用 AppDomain 已加载的版本（短名匹配），杜绝双载入。
+            if (AutoCadHostAssemblyNames.Contains(shortName, StringComparer.OrdinalIgnoreCase))
+            {
+                Assembly hostExisting = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, shortName, StringComparison.OrdinalIgnoreCase));
+                return hostExisting; // 返回 null 让 CLR fallback；返回非 null 则 CLR 接受为版本替代
+            }
+
             if (string.IsNullOrWhiteSpace(dependenciesPath))
                 return null;
 
-            string name = new AssemblyName(args.Name).Name + ".dll";
+            string name = shortName + ".dll";
             string path = Path.Combine(dependenciesPath, name);
             if (File.Exists(path))
             {

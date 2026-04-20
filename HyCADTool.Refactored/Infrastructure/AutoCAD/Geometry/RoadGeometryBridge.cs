@@ -80,21 +80,40 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Geometry
             if (target == null) throw new ArgumentNullException(nameof(target));
             if (src == null) throw new ArgumentNullException(nameof(src));
 
-            // 清空现有顶点。AutoCAD 反复删第 0 个是安全惯例（NumberOfVertices 实时重算）。
-            while (target.NumberOfVertices > 0)
+            int newN = src.VertexCount;
+            if (newN == 0)
             {
-                target.RemoveVertexAt(0);
+                throw new ArgumentException(
+                    "Cannot update an AutoCAD Polyline from an empty Polyline3D (at least one vertex is required).",
+                    nameof(src));
             }
 
-            double elevation = src.VertexCount > 0 ? src.GetPointAt(0).Z : 0;
+            double elevation = src.GetPointAt(0).Z;
             target.Elevation = elevation;
 
-            for (int i = 0; i < src.VertexCount; i++)
+            int oldN = target.NumberOfVertices;
+            while (oldN > newN)
+            {
+                target.RemoveVertexAt(oldN - 1);
+                oldN--;
+            }
+
+            while (oldN < newN)
+            {
+                var p = src.GetPointAt(oldN);
+                double bulge = src.GetBulgeAt(oldN);
+                target.AddVertexAt(oldN, new AcadGeom.Point2d(p.X, p.Y), bulge, 0, 0);
+                oldN++;
+            }
+
+            for (int i = 0; i < newN; i++)
             {
                 var p = src.GetPointAt(i);
                 double bulge = src.GetBulgeAt(i);
-                target.AddVertexAt(i, new AcadGeom.Point2d(p.X, p.Y), bulge, 0, 0);
+                target.SetPointAt(i, new AcadGeom.Point2d(p.X, p.Y));
+                target.SetBulgeAt(i, bulge);
             }
+
             target.Closed = src.IsClosed;
         }
 

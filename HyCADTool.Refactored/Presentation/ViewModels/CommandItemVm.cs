@@ -19,6 +19,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         public string Key => _source.Key;
+
+        /// <summary>命令行右侧：正式命令名 + 道路类短别名（如 <c>hyRoadAlnStation  rSt</c>）。</summary>
+        public string KeyCaption => RoadCommandShortAliases.FormatKeyWithShort(_source.Key);
+
         public string Category => _source.Category;
         public string DisplayName => _source.DisplayName;
         public string Tooltip => _source.Tooltip;
@@ -39,6 +43,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public ICommand ExecuteCommand { get; }
 
         /// <summary>搜索匹配用：命令 key（忽略大小写）拼接 DisplayName（支持按原文/拼音首字母过滤）。</summary>
-        internal string MatchText => ((_source.Key ?? string.Empty) + "|" + (_source.DisplayName ?? string.Empty)).ToLowerInvariant();
+        internal string MatchText
+        {
+            get
+            {
+                var k = _source.Key ?? string.Empty;
+                var d = _source.DisplayName ?? string.Empty;
+                var tail = RoadCommandShortAliases.TryGetShort(k, out var sh) ? "|" + sh : string.Empty;
+                return (k + "|" + d + tail).ToLowerInvariant();
+            }
+        }
     }
 }

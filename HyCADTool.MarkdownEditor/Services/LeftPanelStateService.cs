@@ -41,8 +41,8 @@ namespace HyCADTool.MarkdownEditor.Services
         {
             try
             {
-                string? dir = Path.GetDirectoryName(_stateFilePath);
-                if (!string.IsNullOrWhiteSpace(dir))
+                var dir = Path.GetDirectoryName(_stateFilePath);
+                if (!string.IsNullOrEmpty(dir))
                     Directory.CreateDirectory(dir);
 
                 var state = new LeftPanelState

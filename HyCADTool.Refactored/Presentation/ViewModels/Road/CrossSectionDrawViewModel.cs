@@ -46,6 +46,27 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             UpdateStatus(LastFigure);
         }
 
+        // ============================== M7.4 绘图模式 ==============================
+
+        private bool _useSingleLineMode;
+        /// <summary>
+        /// M7.4：是否使用"单线出图"模式（仅顶面投影 + 中心线，不画结构厚度）。
+        /// false = 带结构厚度轮廓（默认，与 v1 行为一致）。
+        /// 命令层收尾阶段读取本属性决定 <c>RoadStandardSectionDrawService.Draw</c> 的 mode 参数。
+        /// </summary>
+        public bool UseSingleLineMode
+        {
+            get => _useSingleLineMode;
+            set { if (SetProperty(ref _useSingleLineMode, value)) OnPropertyChanged(nameof(UseStructureThicknessMode)); }
+        }
+
+        /// <summary>与 <see cref="UseSingleLineMode"/> 互补，用于 RadioButton 的 IsChecked 绑定。</summary>
+        public bool UseStructureThicknessMode
+        {
+            get => !_useSingleLineMode;
+            set { if (value) UseSingleLineMode = false; }
+        }
+
         // ============================== UI 折叠状态 ==============================
 
         private bool _isOutlinerVisible = true;

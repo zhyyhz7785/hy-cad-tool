@@ -1,0 +1,192 @@
+<bui:BlenderWindow x:Class="HyCADTool.Refactored.Presentation.Views.Road.StructureLayerWindow"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+                   xmlns:vm="clr-namespace:HyCADTool.Refactored.Presentation.ViewModels.Road"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   mc:Ignorable="d"
+                   Title="Structure Layer"
+                   HeaderTitle="{Binding HeaderTitle}"
+                   Width="880" Height="580"
+                   MinWidth="740" MinHeight="460"
+                   WindowStartupLocation="CenterOwner">
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <StackPanel Orientation="Horizontal">
+            <Button Content="OK"
+                    Style="{StaticResource BlenderButton}"
+                    Command="{Binding ConfirmCommand}"
+                    IsDefault="True"
+                    MinWidth="80"
+                    Margin="4,0"/>
+            <Button Content="Cancel"
+                    Style="{StaticResource BlenderButton}"
+                    Command="{Binding CancelCommand}"
+                    IsCancel="True"
+                    MinWidth="80"
+                    Margin="4,0"/>
+        </StackPanel>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Column="0">
+            <TextBlock DockPanel.Dock="Top"
+                       Text="Schemes"
+                       Margin="10,10,10,4"
+                       FontSize="12"
+                       Foreground="{DynamicResource Brush_TextSecondary}"/>
+
+            <StackPanel DockPanel.Dock="Top"
+                        Orientation="Horizontal"
+                        Margin="10,0,10,6">
+                <Button Content="+ Scheme"
+                        Command="{Binding AddSchemeCommand}"
+                        Style="{StaticResource BlenderButtonFlat}"
+                        Padding="6,3" Margin="0,0,4,0"/>
+                <Button Content="+ Layer"
+                        Command="{Binding AddLayerCommand}"
+                        Style="{StaticResource BlenderButtonFlat}"
+                        Padding="6,3" Margin="0,0,4,0"/>
+                <Button Content="Del"
+                        Command="{Binding DeleteLayerCommand}"
+                        Style="{StaticResource BlenderButtonFlat}"
+                        Padding="6,3" Margin="0,0,4,0"/>
+                <Button Content="Up"
+                        Command="{Binding MoveLayerUpCommand}"
+                        Style="{StaticResource BlenderButtonFlat}"
+                        Padding="6,3" Margin="0,0,4,0"/>
+                <Button Content="Down"
+                        Command="{Binding MoveLayerDownCommand}"
+                        Style="{StaticResource BlenderButtonFlat}"
+                        Padding="6,3" Margin="0,0,4,0"/>
+                <Button Content="DelScheme"
+                        Command="{Binding DeleteSchemeCommand}"
+                        Style="{StaticResource BlenderButtonFlat}"
+                        Padding="6,3"/>
+            </StackPanel>
+
+            <TreeView x:Name="SchemeTree"
+                      ItemsSource="{Binding Schemes}"
+                      Margin="10,0,10,10"
+                      Background="Transparent"
+                      SelectedItemChanged="SchemeTree_SelectedItemChanged">
+                <TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type vm:StructureLayerSchemeNode}"
+                                              ItemsSource="{Binding Layers}">
+                        <TextBlock Text="{Binding Name}"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"/>
+                    </HierarchicalDataTemplate>
+                    <DataTemplate DataType="{x:Type vm:StructureLayerNode}">
+                        <TextBlock Text="{Binding}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"/>
+                    </DataTemplate>
+                </TreeView.Resources>
+            </TreeView>
+        </DockPanel>
+
+        <bui:PropertyEditor Grid.Column="1"
+                            Title="Properties"
+                            ShowSearch="False"
+                            ShowPin="False"
+                            ShowIconBar="False">
+            <StackPanel>
+                <Expander Header="Scheme"
+                          IsExpanded="True"
+                          Style="{StaticResource BlenderExpander}"
+                          Visibility="{Binding HasSelectedScheme, Converter={StaticResource BoolToVisConverter}}">
+                    <StackPanel DataContext="{Binding SelectedScheme}">
+                        <bui:PropertyRow Label="Name">
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource BlenderTextBox}"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Description">
+                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource BlenderTextBox}"
+                                     AcceptsReturn="True"
+                                     Height="60"
+                                     VerticalScrollBarVisibility="Auto"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Layer"
+                          IsExpanded="True"
+                          Style="{StaticResource BlenderExpander}"
+                          Visibility="{Binding HasSelectedLayer, Converter={StaticResource BoolToVisConverter}}">
+                    <StackPanel DataContext="{Binding SelectedLayer}">
+                        <bui:PropertyRow Label="Name">
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource BlenderTextBox}"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Kind">
+                            <ComboBox ItemsSource="{x:Static vm:StructureLayerViewModel.AvailableKinds}"
+                                      SelectedItem="{Binding LayerKind, UpdateSourceTrigger=PropertyChanged}"
+                                      Style="{StaticResource BlenderComboBox}"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Thickness cm">
+                            <bui:NumericSlider Value="{Binding ThicknessCm, Mode=TwoWay}"
+                                               Minimum="0" Maximum="100"
+                                               Step="0.5" Decimals="1"
+                                               Unit="cm"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Left widen cm">
+                            <bui:NumericSlider Value="{Binding LeftWidenCm, Mode=TwoWay}"
+                                               Minimum="0" Maximum="200"
+                                               Step="0.5" Decimals="1"
+                                               Unit="cm"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Right widen cm">
+                            <bui:NumericSlider Value="{Binding RightWidenCm, Mode=TwoWay}"
+                                               Minimum="0" Maximum="200"
+                                               Step="0.5" Decimals="1"
+                                               Unit="cm"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Left slope 1:n">
+                            <bui:NumericSlider Value="{Binding LeftSlope, Mode=TwoWay}"
+                                               Minimum="0" Maximum="10"
+                                               Step="0.1" Decimals="2"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Right slope 1:n">
+                            <bui:NumericSlider Value="{Binding RightSlope, Mode=TwoWay}"
+                                               Minimum="0" Maximum="10"
+                                               Step="0.1" Decimals="2"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Material">
+                            <TextBox Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource BlenderTextBox}"/>
+                        </bui:PropertyRow>
+
+                        <bui:PropertyRow Label="Pattern">
+                            <TextBox Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource BlenderTextBox}"/>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+        </bui:PropertyEditor>
+    </Grid>
+</bui:BlenderWindow>

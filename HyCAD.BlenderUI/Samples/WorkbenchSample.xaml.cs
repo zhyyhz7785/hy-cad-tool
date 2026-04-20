@@ -1,4 +1,5 @@
 using HyCAD.BlenderUI.Controls;
+using HyCAD.BlenderUI.Theming;
 
 namespace HyCAD.BlenderUI.Samples
 {
@@ -10,6 +11,7 @@ namespace HyCAD.BlenderUI.Samples
         public WorkbenchSample()
         {
             InitializeComponent();
+            BlenderThemeManager.Apply(BlenderThemeManager.BlenderThemeName.BlenderDark);
         }
     }
 }

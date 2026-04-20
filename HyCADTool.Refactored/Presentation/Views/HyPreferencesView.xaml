@@ -15,12 +15,11 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/BlenderTheme.xaml"/>
                 <!--
-                  设计时兜底：VS XAML 设计器不执行 ColorsHost code-behind，运行时注入的 Brush_* 全部缺失，
-                  导致 DynamicResource 回落默认（白色）；此处 d: 前缀字典仅设计器加载，运行时 parser 忽略。
+                  BlenderDark 在前：设计器可解析 Brush_*。BlenderTheme（ColorsHost）在后，查找优先 → 运行时仍用可变画刷主题切换。
                 -->
-                <d:ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- ===== 一级目录 ListBoxItem 模板（Blender Preferences 风格，宽项带图标+文字） ===== -->

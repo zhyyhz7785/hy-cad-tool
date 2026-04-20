@@ -10,9 +10,11 @@ using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -23,7 +25,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     /// 坐标表 → 逐点输入 PI → 指定每 PI 半径 / 缓和曲线 → 预览 → 一键出 Alignment。
     ///
     /// 三通道输入（数据驱动优先）：
-    /// 1. 点取（P）：图上连续点取；每个内部 PI 单独追问 R / Ls_in / Ls_out（默认值沿用上一次）；
+    /// 1. 点取（P）：起点用普通点取，后续 PI 用 <see cref="HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive.AlignmentPiPickJig"/> 连续点取（实时折线预览，支持撤销 Z）；每个内部 PI 再追问 R / Ls_in / Ls_out；
     /// 2. 导入 CSV（F）：读取 <c>.csv</c>；列顺序 <c>x,y[,R,Ls_in,Ls_out,tag]</c>；
     /// 3. 剪贴板（C）：Excel 复制 → <c>System.Windows.Clipboard</c>；解析同 CSV。
     ///
@@ -98,7 +100,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 ms.AppendEntity(acadPoly);
                 tr.AddNewlyCreatedDBObject(acadPoly, true);
 
-                alignment = svc.ImportFromPolyline(doc.Name, tr, db, acadPoly);
+                alignment = svc.ImportFromPolyline(doc.Name, tr, db, acadPoly, out _);
 
                 // 持久化 PI 表到 Domain，供 hyRoadAlnEditPi 反推参数
                 alignment.Source = BuildAlignmentSource(elements);
@@ -141,6 +143,23 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             else
                 ed.WriteMessage(
                     "\n[道路] 未落盘（DWG 尚未保存）。先 QSAVE / SAVEAS，再跑 hyRoadSave 即可。");
+
+            // ── Step 5. 自动打开路线工作台并预选新线位（若任何异常不可向外抛）
+            TryOpenWorkbench(alignment.Id);
+        }
+
+        /// <summary>尽力而为地打开"路线工作台"并预选新生成的 Alignment。任何异常都吞掉，不影响命令主流程。</summary>
+        private static void TryOpenWorkbench(Guid alignmentId)
+        {
+            try
+            {
+                var panels = ServiceLocator.Resolve<PanelManager>();
+                panels?.ShowAlignmentWorkbench(alignmentId, piIndex: null);
+            }
+            catch
+            {
+                // 静默：面板未注册 / WPF 未初始化等场景都不该让命令失败
+            }
         }
 
         // =============================================================================
@@ -178,7 +197,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
         // =============================================================================
 
         /// <summary>
-        /// 交互点取：首尾 PI 仅需坐标，中间 PI 点取完坐标后立即在命令行追问 R / Ls_in / Ls_out。
+        /// 交互点取：首尾 PI 仅需坐标；第二点至以后用 Jig 预览折线；中间 PI 在坐标确定后于命令行追问 R / Ls_in / Ls_out。
         /// 设计意图：把"一边画一边想参数"固化到每个点的节奏内，省去事后补表。
         /// </summary>
         private static List<PiElement> CollectByPicking(Editor ed, out string sourceTag)
@@ -195,24 +214,18 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             }
             pts.Add(new Point2D(firstRes.Value.X, firstRes.Value.Y));
 
-            while (true)
+            var jig = new AlignmentPiPickJig(firstRes.Value);
+            var jigRes = jig.Run(ed);
+            if (jigRes == PromptStatus.Cancel)
             {
-                var nextOpts = new PromptPointOptions(
-                    $"\n[道路] 指定下一 PI 点（已输 {pts.Count} 个，回车结束）：")
-                {
-                    AllowNone = true,
-                    UseBasePoint = true,
-                    BasePoint = new Point3d(pts[pts.Count - 1].X, pts[pts.Count - 1].Y, 0),
-                    UseDashedLine = true,
-                };
-                var r = ed.GetPoint(nextOpts);
-                if (r.Status == PromptStatus.None) break;
-                if (r.Status != PromptStatus.OK)
-                {
-                    ed.WriteMessage("\n[道路] 已取消。");
-                    return null;
-                }
-                pts.Add(new Point2D(r.Value.X, r.Value.Y));
+                ed.WriteMessage("\n[道路] 已取消。");
+                return null;
+            }
+
+            for (int i = 1; i < jig.Points.Count; i++)
+            {
+                var p = jig.Points[i];
+                pts.Add(new Point2D(p.X, p.Y));
             }
 
             if (pts.Count < 2)

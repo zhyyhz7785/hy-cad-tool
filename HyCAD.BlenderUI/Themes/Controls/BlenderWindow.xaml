@@ -27,6 +27,67 @@
       使用 hover -> Brush_Warning（橙红）做标识
       WindowChrome.IsHitTestVisibleInChrome=True 让按钮能接收点击（不被 chrome 拖动接管）
     -->
+    <!-- 标题栏最小化 / 最大化：与关闭区分，悬停用中性灰高亮（关闭仍用 Warning 强调） -->
+    <Style x:Key="BlenderWindowCaptionButton" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonPressed}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="BlenderWindowMinimizeButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderWindowCaptionButton}">
+        <Setter Property="ToolTip" Value="Minimize"/>
+        <Setter Property="Content">
+            <Setter.Value>
+                <Path Data="M 1,8 L 9,8"
+                      Stroke="{DynamicResource Brush_TextPrimary}"
+                      StrokeThickness="1.2"
+                      Width="10" Height="10"
+                      Stretch="None"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="BlenderWindowMaximizeButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderWindowCaptionButton}">
+        <Setter Property="Content">
+            <Setter.Value>
+                <Path Data="M 1,1 L 9,1 L 9,9 L 1,9 Z"
+                      Stroke="{DynamicResource Brush_TextPrimary}"
+                      StrokeThickness="1.1"
+                      Fill="Transparent"
+                      Width="10" Height="10"
+                      Stretch="Uniform"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="BlenderWindowCloseButton" TargetType="{x:Type Button}">
         <Setter Property="Width" Value="40"/>
         <Setter Property="Height" Value="30"/>
@@ -35,6 +96,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Focusable" Value="False"/>
+        <Setter Property="ToolTip" Value="Close"/>
         <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -88,44 +150,86 @@
                             SnapsToDevicePixels="True">
                         <Grid>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- ==== Header ==== -->
-                            <Border Grid.Row="0"
-                                    Background="{DynamicResource Brush_HeaderBack}"
-                                    BorderBrush="{DynamicResource Brush_BorderDark}"
-                                    BorderThickness="0,0,0,1">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
+                            <!--
+                              Chrome 两行可选：
+                              行1 — 左菜单 | 中标题或 HeaderCenterContent | 右：HeaderRightContent + 最小化/最大化/关闭（同一 StackPanel，保证始终贴右上角）
+                              行2 — HeaderSubRowContent（标签带等），空则折叠
+                            -->
+                            <Grid x:Name="PART_CustomChromeHost" Grid.Row="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="32"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="{TemplateBinding HeaderTitle}"
-                                               Foreground="{DynamicResource Brush_TextPrimary}"
-                                               FontFamily="{DynamicResource Font_Main}"
-                                               FontSize="{DynamicResource Metric_FontHeader}"
-                                               VerticalAlignment="Center"
-                                               Margin="10,0,0,0"
-                                               TextTrimming="CharacterEllipsis"/>
+                                <Border Grid.Row="0"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*" MinWidth="48"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                    <ContentPresenter Grid.Column="1"
-                                                      Content="{TemplateBinding HeaderRightContent}"
+                                        <ContentPresenter Grid.Column="0"
+                                                          Content="{TemplateBinding HeaderLeftContent}"
+                                                          VerticalAlignment="Center"
+                                                          Margin="6,0,8,0"
+                                                          shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                                        <Grid Grid.Column="1" MinWidth="48">
+                                            <TextBlock x:Name="PART_HeaderTitleText"
+                                                       Text="{TemplateBinding HeaderTitle}"
+                                                       Foreground="{DynamicResource Brush_TextPrimary}"
+                                                       FontFamily="{DynamicResource Font_Main}"
+                                                       FontSize="{DynamicResource Metric_FontHeader}"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       Margin="8,0"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="Collapsed"/>
+                                            <ContentPresenter Content="{TemplateBinding HeaderCenterContent}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                        </Grid>
+
+                                        <StackPanel Grid.Column="2"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center"
+                                                    shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                                            <ContentPresenter Content="{TemplateBinding HeaderRightContent}"
+                                                              VerticalAlignment="Center"
+                                                              Margin="0,0,2,0"/>
+                                            <Button x:Name="PART_MinimizeButton"
+                                                    Style="{StaticResource BlenderWindowMinimizeButton}"/>
+                                            <Button x:Name="PART_MaximizeButton"
+                                                    Style="{StaticResource BlenderWindowMaximizeButton}"/>
+                                            <Button x:Name="PART_CloseButton"
+                                                    Style="{StaticResource BlenderWindowCloseButton}"
+                                                    Visibility="{TemplateBinding ShowCloseButton, Converter={StaticResource BlenderWindowBoolToVisibility}}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border x:Name="ChromeSubHeader"
+                                        Grid.Row="1"
+                                        Height="28"
+                                        Background="{DynamicResource Brush_PanelHeaderBack}"
+                                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="4,0,4,0">
+                                    <ContentPresenter Content="{TemplateBinding HeaderSubRowContent}"
                                                       VerticalAlignment="Center"
-                                                      Margin="0,0,4,0"
                                                       shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-
-                                    <Button x:Name="PART_CloseButton"
-                                            Grid.Column="2"
-                                            Style="{StaticResource BlenderWindowCloseButton}"
-                                            Visibility="{TemplateBinding ShowCloseButton, Converter={StaticResource BlenderWindowBoolToVisibility}}"/>
-                                </Grid>
-                            </Border>
+                                </Border>
+                            </Grid>
 
                             <!-- ==== Body ==== -->
                             <ContentPresenter Grid.Row="1"
@@ -133,8 +237,9 @@
                                               ContentTemplate="{TemplateBinding ContentTemplate}"
                                               ContentStringFormat="{TemplateBinding ContentStringFormat}"/>
 
-                            <!-- ==== Footer ==== -->
-                            <Border Grid.Row="2"
+                            <!-- ==== Footer：无左/中/右内容时不占位，去掉空底栏「黑边」 ==== -->
+                            <Border x:Name="FooterBar"
+                                    Grid.Row="2"
                                     Background="{DynamicResource Brush_PanelHeaderBack}"
                                     BorderBrush="{DynamicResource Brush_BorderDark}"
                                     BorderThickness="0,1,0,0"
@@ -165,6 +270,30 @@
                             </Border>
                         </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="UseCustomChrome" Value="False">
+                            <Setter TargetName="PART_CustomChromeHost" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <DataTrigger Binding="{Binding HeaderCenterContent, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}">
+                            <Setter TargetName="PART_HeaderTitleText" Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding HeaderSubRowContent, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}">
+                            <Setter TargetName="ChromeSubHeader" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="ChromeSubHeader" Property="Height" Value="0"/>
+                            <Setter TargetName="ChromeSubHeader" Property="MinHeight" Value="0"/>
+                            <Setter TargetName="ChromeSubHeader" Property="Padding" Value="0"/>
+                            <Setter TargetName="ChromeSubHeader" Property="BorderThickness" Value="0"/>
+                        </DataTrigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding FooterLeftContent, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}"/>
+                                <Condition Binding="{Binding StatusContent, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}"/>
+                                <Condition Binding="{Binding FooterRightContent, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="FooterBar" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="FooterBar" Property="MinHeight" Value="0"/>
+                        </MultiDataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

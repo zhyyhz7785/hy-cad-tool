@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.Windows;
 using Autofac;
 using System;
+using System.Windows;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation
@@ -23,6 +24,10 @@ namespace HyCADTool.Refactored.Presentation
         private PaletteSet _blenderPaletteSet;
         private Views.HyBlenderPanel _blenderPanel;
         private bool _documentEventsRegistered;
+
+        // ===== 路线工作台（独立 WPF 非模态窗口，非 PaletteSet） =====
+        private Views.Road.RoadAlignmentWorkbenchWindow _alignmentWindow;
+        private ViewModels.Road.RoadAlignmentWorkbenchViewModel _alignmentVm;
 
         public PanelManager(IComponentContext componentContext)
         {
@@ -114,6 +119,71 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>显示道路命令组。</summary>
         public void ShowRoadPanel()      => OpenHyBlenderPanelAndSelectTab("道路");
 
+        // ===== 路线工作台入口（独立 WPF 窗口：HyRoadAlnEditPi / HyRoadA / HyRoadAlnByPi 共用） =====
+
+        /// <summary>
+        /// 显示"路线工作台"独立 WPF 非模态窗口（<c>ShowModelessWindow</c>）。若传入 <paramref name="alignmentId"/>，
+        /// 则打开后自动选中该线位，并尝试把左侧 PI 列表定位到 <paramref name="piIndex"/>（null 表示不指定，默认选第一个内部 PI）。
+        /// 典型调用：<c>hyRoadAlnEditPi</c> 拾取线位成功后 → <see cref="ShowAlignmentWorkbench"/>(id, pi)。
+        /// </summary>
+        public void ShowAlignmentWorkbench(Guid? alignmentId = null, int? piIndex = null)
+        {
+            RegisterDocumentEvents();
+
+            if (_alignmentWindow == null)
+                CreateAlignmentWorkbenchWindow();
+            else
+            {
+                try
+                {
+                    if (_alignmentWindow.WindowState == WindowState.Minimized)
+                        _alignmentWindow.WindowState = WindowState.Normal;
+                    _alignmentWindow.Show();
+                    _alignmentWindow.Activate();
+                }
+                catch
+                {
+                    CreateAlignmentWorkbenchWindow();
+                }
+            }
+
+            if (_alignmentWindow == null || _alignmentVm == null) return;
+
+            void Apply()
+            {
+                // 每次显示都刷新一次，兼容用户在关闭窗口期间的图面变更
+                _alignmentVm.RefreshAlignments();
+                if (alignmentId.HasValue)
+                    _alignmentVm.SelectAlignment(alignmentId.Value, piIndex);
+            }
+
+            var disp = _alignmentWindow.Dispatcher;
+            if (disp.CheckAccess()) Apply();
+            else disp.Invoke(Apply);
+        }
+
+        /// <summary>路线工作台窗口是否仍打开且可见。</summary>
+        public bool IsAlignmentWorkbenchVisible
+            => _alignmentWindow != null && _alignmentWindow.IsVisible;
+
+        /// <summary>创建并显示独立"路线工作台"WPF 窗口。</summary>
+        private void CreateAlignmentWorkbenchWindow()
+        {
+            _alignmentVm = new ViewModels.Road.RoadAlignmentWorkbenchViewModel();
+            var win = new Views.Road.RoadAlignmentWorkbenchWindow(_alignmentVm);
+            _alignmentWindow = win;
+            win.Closed += OnAlignmentWorkbenchWindowClosed;
+            AcApp.ShowModelessWindow(win);
+        }
+
+        private void OnAlignmentWorkbenchWindowClosed(object sender, EventArgs e)
+        {
+            if (sender is Views.Road.RoadAlignmentWorkbenchWindow w)
+                w.Closed -= OnAlignmentWorkbenchWindowClosed;
+            _alignmentWindow = null;
+            _alignmentVm = null;
+        }
+
         /// <summary>创建 Blender 命令面板实例（独立 PaletteSet）。</summary>
         private void CreateHyBlenderPanel()
         {
@@ -171,7 +241,7 @@ namespace HyCADTool.Refactored.Presentation
                 }));
         }
 
-        /// <summary>注册一次文档级事件：DocumentToBeDestroyed → 清理对应文档的 VM 缓存。</summary>
+        /// <summary>注册一次文档级事件：DocumentToBeDestroyed → 清理对应文档的 VM 缓存；DocumentActivated → 刷新路线工作台。</summary>
         private void RegisterDocumentEvents()
         {
             if (_documentEventsRegistered) return;
@@ -179,6 +249,7 @@ namespace HyCADTool.Refactored.Presentation
             try
             {
                 AcApp.DocumentManager.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
+                AcApp.DocumentManager.DocumentActivated += OnDocumentActivated;
                 _documentEventsRegistered = true;
             }
             catch
@@ -192,6 +263,29 @@ namespace HyCADTool.Refactored.Presentation
             if (e.Document == null) return;
             ViewModels.SettingsPanelViewModel.RemoveDocument(e.Document.Name);
             ViewModels.PilePanelViewModel.RemoveDocument(e.Document.Name);
+        }
+
+        /// <summary>
+        /// 文档切换时刷新路线工作台的 Alignment / PI / 表数据；其他面板由自身的文档缓存管理。
+        /// 仅当工作台可见时才刷新，避免无谓的 JSON 读取。
+        /// </summary>
+        private void OnDocumentActivated(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
+        {
+            if (_alignmentVm == null || _alignmentWindow == null) return;
+            if (!_alignmentWindow.IsVisible) return;
+
+            try
+            {
+                var disp = _alignmentWindow.Dispatcher;
+                if (disp.CheckAccess())
+                    _alignmentVm.RefreshAlignments();
+                else
+                    disp.BeginInvoke(new Action(_alignmentVm.RefreshAlignments));
+            }
+            catch
+            {
+                // DocumentActivated 回调不可向外抛，否则会升级为 AutoCAD 原生致命错误
+            }
         }
     }
 }

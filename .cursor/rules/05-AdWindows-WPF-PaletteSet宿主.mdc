@@ -1,0 +1,111 @@
+---
+alwaysApply: true
+description: AutoCAD 内嵌 WPF：AdWindows Badge/badge.xaml 真根因（ReCall AssemblyResolve 双载入 5.0.1.2 与进程 5.1.1.1 冲突），修复在 ReCall 宿主程序集黑名单；禁主动 ResourceAssembly / Assembly.Load("AdWindows")，SubView 不再预热。详见 doc/RoadDesign/00.md。
+---
+
+# AdWindows + WPF + PaletteSet 宿主（强制备忘 v4）
+
+本仓库 **HyCADTool.Refactored** 跑在 AutoCAD 进程里，WPF 不是常规 `App.xaml` 启动；任何改 **初始化顺序 / 主题 / 资源字典 / 跨程序集 pack URI / ReCall AssemblyResolve** 的 PR **必须先对照本节**，避免重复踩 **Badge XamlParseException**、**0xE0434352 原生致命错误**。
+
+> 详细推理与时序图：`doc/RoadDesign/00.md`。
+> 完整陷阱条目：`.cursor/skills/hycad-project-pitfalls/SKILL.md` B10 / B11。
+
+---
+
+## 1. 典型症状
+
+- **`XamlParseException`**：对类型 `Autodesk.Internal.Windows.Badge` 的构造函数执行调用时引发了异常。
+- **内层**：`Badge` 不具有由 URI **`/AdWindows;component/themes/badge.xaml`** 识别的资源。
+- **堆栈**：`PanelListView` / `PanelSetListView` / `Badge.InitializeComponent` / `FrameworkTemplate.LoadContent` / `MeasureOverride`。
+- **触发时机**：`Initialize` 返回**之后**，AutoCAD Ribbon 在 idle tick `new Badge()`；与我们是否挂自家 Tab 无关。
+
+---
+
+## 2. 真根因（运行时证据 2026-04-21 取证）
+
+**核心事实**：Badge 异常发生时刻，AppDomain 里 `AdWindows` 程序集 **count=3**：
+- 1× **5.1.1.1**（`C:\Program Files\Autodesk\AutoCAD 2025\AdWindows.dll`，进程加载）
+- 2× **5.0.1.2**（`location=""` → `Assembly.Load(byte[])` 加载特征）
+
+**机理链路**：
+
+1. `HyCADTool.Refactored.csproj` 引用 `AutoCAD.NET 24.3.0` NuGet 包，**传递引用** `AdWindows 5.0.1.2`。
+2. `<CopyLocalLockFileAssemblyies>true</CopyLocalLockFileAssemblies>` → `AdWindows.dll` 5.0.1.2 复制进 `bin/Debug`。
+3. ReCall C2 把整个 `bin/Debug` 复制到临时目录 → `_currentDependenciesPath` 里有 `AdWindows.dll` 5.0.1.2。
+4. AutoCAD 2025 进程实际加载 5.1.1.1（位置 Program Files），版本不同。
+5. UI 渲染 `PanelListView` 触发 `Badge.InitializeComponent()`，CLR 沿 type ref 链严格按 manifest 找 **5.0.1.2** → AppDomain 没有 → 触发 `AppDomain.AssemblyResolve`。
+6. ReCall 旧版 `ResolveAssembly` 从临时目录 `Assembly.Load(byte[])` 加载 5.0.1.2 → AppDomain 多出第二份 AdWindows。
+7. 不同 requesting assembly 触发**两次** AssemblyResolve → 加载两份 5.0.1.2。
+8. **类型身份割裂**：5.0.1.2 的 `Badge` 类型 ≠ 5.1.1.1 的 `Badge` 类型（CLR 类型身份按 [Assembly+TypeName] 算），BAML 资源解析按程序集身份找 themes/badge.xaml → 找不到匹配 → 抛"组件 Badge 不具有由 URI 识别的资源"。
+
+---
+
+## 3. 修复（已落地）
+
+**位置**：`ReCall/Recall.cs::ResolveAssembly`
+
+**做法**：宿主程序集黑名单——AutoCAD 进程已加载的程序集（`AdWindows` / `AcMr` / `AcCoreMgd` / `AcDbMgd` / `AcMgd` / `AcCui` / `AcWindows` / `Autodesk.AutoCAD.Interop` / `PresentationCore` / `PresentationFramework` / `WindowsBase` / `System.Xaml`）请求一律走 `AppDomain.GetAssemblies()` 短名匹配，**绝不**从 ReCall 临时 deps 目录 byte[] 加载。返回的 5.1.1.1 即使与 manifest 要的 5.0.1.2 版本不同，CLR `AssemblyResolve` handler 返回值是被信任的"版本替代"。
+
+```csharp
+// ReCall/Recall.cs::ResolveAssembly
+private static readonly string[] AutoCadHostAssemblyNames = { "AdWindows", "AcMr", ... };
+
+if (AutoCadHostAssemblyNames.Contains(shortName, StringComparer.OrdinalIgnoreCase))
+{
+    return AppDomain.CurrentDomain.GetAssemblies()
+        .FirstOrDefault(a => string.Equals(a.GetName().Name, shortName, StringComparison.OrdinalIgnoreCase));
+}
+```
+
+---
+
+## 4. 历史错误猜测（已被运行时证据证伪，禁止再走老路）
+
+| 错误猜测 | 来源 | 证伪证据 |
+|------|------|------|
+| ❌ "根因 A：钉 `Application.ResourceAssembly` 让 Badge 用相对 URI 解析时被牵走" | doc 旧版 / 档位 2 推测 | 删了 ResourceAssembly 之后 Badge 错误**仍然出现**——根本不是 ResourceAssembly 的问题。Badge 用的是带程序集名的 pack URI `/AdWindows;component/...`，不依赖 ResourceAssembly。|
+| ❌ "WarmupAdWindowsBadgeTheme 双段预热可解决" | doc 旧版 | 双段 `XamlReader.Load(stream)` + `new ResourceDictionary { Source = packBadge }` **两段都失败**：前者 API 误用（不能读 BAML 二进制流，抛 XmlException 0x0C）；后者 badge.xaml 不是顶级 ResourceDictionary。两段被 try/catch 吞掉，对运行时 Badge 0 效果。|
+| ❌ "主动 `Assembly.Load("AdWindows")` 防止运行时双载入" | doc 旧版 | 即使不主动 Load，CLR 自身的 AssemblyResolve 也会被 ReCall handler 接走 → 加载到 5.0.1.2。问题不是"是否主动 Load"，而是"ReCall 不该返回 byte[] 5.0.1.2"。|
+| ❌ "WarmupSubViews 用绝对 pack URI + XamlReader.Load(stream)" | 档位 2 推测 | 同样 API 误用 — `XamlReader.Load(stream)` 不能读 BAML，11 个 SubView 全部预热失败，命令行刷 11 条假阳性。SubView 不需要预热。|
+
+---
+
+## 5. 修改代码时的强制清单
+
+1. **改 `ReCall/Recall.cs::ResolveAssembly`**：
+   - ✅ 宿主程序集黑名单是否完整（至少包含 `AdWindows / AcMr / AcCoreMgd / AcDbMgd / AcMgd / AcCui / AcWindows / Autodesk.AutoCAD.Interop / PresentationCore / PresentationFramework / WindowsBase / System.Xaml`）？
+   - ✅ 黑名单分支是否**优先于** `_currentDependenciesPath` 的 byte[] 加载？
+2. **改 `PluginInitializer.Initialize` 里 Application 段**：
+   - ❌ 没有出现 `Application.ResourceAssembly = ...`？
+   - ❌ 没有 `Assembly.Load("AdWindows")` / `Assembly.LoadFrom(...AdWindows.dll)`？
+   - ❌ 没有 `WarmupAdWindowsBadgeTheme()` / `WarmupSubViews()` 调用？
+   - ✅ 仅 `new Application()`（如 `Application.Current == null`）+ `WarmupBlenderTheme()`？
+3. **改 `HyCADTool.Refactored.csproj`**：
+   - 加新的 `PackageReference` 时检查它是否传递引用 AutoCAD 宿主程序集（如旧版 AcMr / AdWindows）。如果是，加 `<ExcludeAssets>runtime</ExcludeAssets>` 防复制。
+4. **改主题合并**：仍 **只** 在 `UserControl.Resources.MergedDictionaries` 局部 merge，没有任何 `Application.Current.Resources.MergedDictionaries.Add(...)`？
+5. **堆栈含 Badge / PanelListView**：先看 ReCall 黑名单是否完整、`bin/Debug` 是否多出本不该有的旧版 AutoCAD 宿主 dll。
+
+---
+
+## 6. 权威实现（改前只读）
+
+| 内容 | 位置 |
+|------|------|
+| ReCall 宿主程序集黑名单（真修复） | `ReCall/Recall.cs::ResolveAssembly` + `AutoCadHostAssemblyNames` |
+| Application stub、BlenderTheme 预热 | `HyCADTool.Refactored/Presentation/PluginInitializer.cs::Initialize / WarmupBlenderTheme` |
+| Brush 防 Freeze | `HyCAD.BlenderUI/Theming/BlenderThemeManager.cs` |
+| 深度根因 + 取证日志 + 反例 | `doc/RoadDesign/00.md` |
+| 完整条目与症状链 | `.cursor/skills/hycad-project-pitfalls/SKILL.md` **B10、B11** |
+
+---
+
+## 7. AI 默认行为
+
+- 用户贴 **Badge / badge.xaml** 报错：第一句话先答 **「检查 ReCall AssemblyResolve 黑名单是否完整 + bin/Debug 里是否多出 AutoCAD 宿主 dll」**，再谈别的。**绝不**建议加 `Application.ResourceAssembly`、`Assembly.Load("AdWindows")` 或 Badge 预热代码（这些都是经历史证伪的反向操作）。
+- 审查 **WPF 初始化 / PaletteSet / 主题**：打开 `PluginInitializer.Initialize`，核对 §5 强制清单；**不**建议把主题挂到 `Application.Current.Resources`。
+- 看到 NuGet 包加新引用：检查传递引用是否包含 AutoCAD 宿主程序集；包含则加 `<ExcludeAssets>runtime</ExcludeAssets>`，防止旧版宿主 dll 复制进 bin/Debug 重蹈覆辙。
+- 看到要"预热 AdWindows / Badge / 任何 AutoCAD 自带控件主题"的请求：**直接拒绝**，引用本节 §4「历史错误猜测」。
+
+---
+
+**版本**: 4.0 | **更新**: 2026-04-21（真根因落定：ReCall AssemblyResolve 双载入 5.0.1.2 vs 5.1.1.1；修复见 `ReCall/Recall.cs` 宿主程序集黑名单；档位 2 旧猜测已证伪）

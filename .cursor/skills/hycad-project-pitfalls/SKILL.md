@@ -7,27 +7,38 @@ description: |
   ControlTemplate.Triggers 位置 / Trigger.TargetName 可达性 / MarkupExtension 当 Converter 递归 /
   子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆 /
   ResourceDictionary 自动 Seal 强冻 SolidColorBrush 致主题切换抛 InvalidOperationException 升级 e0434352；
+  AdWindows Badge/badge.xaml：真根因为 ReCall AssemblyResolve 把项目传递引用的旧 AdWindows 5.0.1.2
+  byte[] 加载，与 AutoCAD 进程 5.1.1.1 双载入 → 类型身份割裂。修复在 ReCall/Recall.cs
+  ResolveAssembly 增加 AutoCAD 宿主程序集黑名单（B11 真根因落地 / doc/RoadDesign/00.md）；
+  构建系统：Refactored→ReCall 用 ProjectReference 链式触发 ReCall obj→bin 复制，
+  AutoCAD 锁着 ReCall.dll 时致 MSB3027/MSB3021 整个方案构建中断、Refactored.dll 无产出，
+  C2 热重载机制失效。修复改为 Reference+HintPath 单向二进制引用断开 MSBuild 项目依赖链
+  + EnsureReCallDllExists cold-start 兜底（C1 落地）；
   Debug 方法论：调试类与调用点同步删除 / session ID 不入生产代码 /
   Dispatcher.UnhandledException handler shutdown 流程 NRE 升级原生致命 /
   PresentationTraceSources Binding 错误同步阻塞 UI 线程 / VS 错误清单按编译阻塞性分类。
   使用场景：写 AutoCAD 命令 / 新建 WPF 面板 / 改资源字典 / 迁移命令到 Refactored / 多文档联调 / 建 Table /
-  Cursor Debug 模式收尾撤埋点 / 处理 AutoCAD 关闭崩溃 / 处理统一面板点击卡顿。
+  Cursor Debug 模式收尾撤埋点 / 处理 AutoCAD 关闭崩溃 / 处理统一面板点击卡顿 /
+  增删跨项目引用 / 处理 AutoCAD 锁文件致 Build 失败。
   本 skill 替代：wpf-paletteset-avoid-implicit-styles / wpf-blender-panel-guideline /
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.3.0
-date: 2026-04-19
+version: 1.8.0
+date: 2026-04-21
 ---
 
 # HyCAD 项目级闭坑清单
 
-> 本 skill 收录本仓库**已踩过且已修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
+> 本 skill 收录本仓库**已踩过且已在关键路径落实缓解或修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
 >
-> 三大域：
+> **§ 验证状态与残留风险**（2026-04-20 对照 `HyCADTool.Refactored` / `ReCall` / `HyCAD.BlenderUI` 代码核对）见文末 **§ 验证状态与残留风险** 一节；**不要**把本 skill 当成「永不再现」的数学保证——宿主为 AutoCAD + 多程序集 WPF，仍有版本差与环境差。
+>
+> 四大域：
 >
 > - **A 域**：AutoCAD 运行时（多文档、事务、Table、配置、样式）
 > - **B 域**：WPF + PaletteSet 宿主 + XAML 资源字典
+> - **C 域**：构建系统（MSBuild 项目依赖、AutoCAD 锁文件、热重载与编译期引用解耦）
 > - **D 域**：Debug 与诊断方法论（埋点撤除、Binding 噪音过滤、关闭流程异常防御、编译错误分类）
 
 ---
@@ -98,22 +109,24 @@ public class LayerManager : ILayerManager
 - `PluginInitializer.OnDocumentActivated / OnDocumentCreated` 为空实现
 - `PanelManager` 已按文档切 `DataContext`，但资源未同步
 
-**正确做法**
+**正确做法**（与当前 `PluginInitializer` 实现一致）
 
 1. 分层：`PanelManager` 只管 UI / `DataContext` 切换；`PluginInitializer` 管文档级资源
-2. `Initialize()` 时先对当前文档执行一次初始化
-3. 订阅 `DocumentActivated` + `DocumentCreated`，每事件调用 `EnsureCurrentDocumentResourcesInitialized(force: false)`
-4. 用 `HashSet<string> _initializedDocs` 按文档名幂等
-5. 资源初始化固定流程：
+2. `Initialize()` → `InitializeStylesAndLayers()` 里对**当前活动文档** `EnsureCurrentDocumentResourcesInitialized(force: true)` 一次
+3. 订阅 `DocumentActivated`：每次激活文档调用 `EnsureCurrentDocumentResourcesInitialized(force: false)`（内部用 `MdiActiveDocument` + `_initializedDocuments` 幂等）
+4. 订阅 `DocumentCreated`：**仅** `SettingsPanelViewModel.GetOrCreate(e.Document.Name, …)` 预热 VM，**不**在此处跑完整 Ensure —— 因 `EnsureCurrentDocumentResourcesInitialized` 实现绑定 `MdiActiveDocument`，新建图当下活动文档可能仍是旧图，强行 Ensure 会写到错误库；完整图层/样式以**首次切换到该图**（`DocumentActivated`）为准
+5. 资源初始化固定流程（Ensure 内部）：
 
    ```csharp
-   var vm = SettingsPanelViewModel.GetOrCreate(docName, styleService);
+   var vm = SettingsPanelViewModel.GetOrCreate(documentName, styleService);
    vm.LoadSettings();
    vm.EnsureStylesApplied();
    layerService.CreateMultipleLayers(...);
    ```
 
 不要把资源初始化逻辑写进 WPF 面板事件。
+
+> **曾写入旧版 skill 的表述**「DocumentCreated 也每次 Ensure」与**当前代码**不一致；若产品要求「新图一创建、尚未切换就要图层齐全」，需重构 `Ensure…` 为接受显式 `Document` 参数后再从 Created 调用。
 
 ---
 
@@ -609,6 +622,206 @@ WPF 的 `DynamicResource` 解析后会把 brush 实例缓存到所有引用它�
 
 ---
 
+### B11【真根因落地 · 2026-04-21 取证】AdWindows `Badge` / `badge.xaml`：ReCall AssemblyResolve 双载入 5.0.1.2 vs 5.1.1.1
+
+> 详细分析与运行时取证：`doc/RoadDesign/00.md`。
+
+**现象**
+
+- 命令行或 `InstallWpfExceptionTraps` 打出：`XamlParseException`，对类型 `Autodesk.Internal.Windows.Badge`…
+- **内层**：组件 `Badge` 不具有由 URI **`/AdWindows;component/themes/badge.xaml`** 识别的资源。
+- 堆栈常见：`Autodesk.Private.Windows.PanelListView` / `PanelSetListView` → `Badge.InitializeComponent` → `Application.LoadComponent(this, uri)` → `FrameworkTemplate.LoadContent` → `MeasureOverride`。
+- 触发时机：**Initialize 返回之后**，AutoCAD Ribbon 在 idle tick `new Badge()`（即使我们没挂 HyCAD Tab，AutoCAD 自带 Tab 一样会触发）。
+
+**真根因（运行时证据 2026-04-21 取证 debug session 276061）**
+
+Badge 异常发生时，AppDomain 里 `AdWindows` count = **3**：
+- 1× **5.1.1.1**（`C:\Program Files\Autodesk\AutoCAD 2025\AdWindows.dll`，进程加载）
+- 2× **5.0.1.2**（`location=""` → `Assembly.Load(byte[])` 加载特征）
+
+**机理链路**：
+1. `HyCADTool.Refactored.csproj` → `AutoCAD.NET 24.3.0` NuGet 包 → 传递引用 `AdWindows 5.0.1.2`（旧版）。
+2. `<CopyLocalLockFileAssemblyies>true</CopyLocalLockFileAssemblies>` → `AdWindows.dll` 5.0.1.2 复制进 bin/Debug → ReCall C2 复制到临时目录。
+3. AutoCAD 2025 进程实际加载 5.1.1.1。
+4. UI 渲染 `PanelListView` 触发 `Badge.InitializeComponent()`，CLR 沿 type ref 链严格按 manifest 找 5.0.1.2 → AppDomain 没有 → `AssemblyResolve`。
+5. ReCall `ResolveAssembly` 从临时目录 `Assembly.Load(byte[])` 加载 5.0.1.2，不同 requesting assembly 触发**两次** → 多出 2 份 5.0.1.2。
+6. **类型身份割裂**：5.0.1.2 的 `Badge` ≠ 5.1.1.1 的 `Badge`（CLR 类型身份按 [Assembly+TypeName] 算），BAML 资源解析按程序集身份找 themes/badge.xaml → 找不到匹配。
+
+**正确做法（仓库定局）**
+
+1. ✅ ReCall `ResolveAssembly` 实现 **AutoCAD 宿主程序集黑名单**：`AdWindows` / `AcMr` / `AcCoreMgd` / `AcDbMgd` / `AcMgd` / `AcCui` / `AcWindows` / `Autodesk.AutoCAD.Interop` / `PresentationCore` / `PresentationFramework` / `WindowsBase` / `System.Xaml` 一律走 `AppDomain.GetAssemblies()` 短名匹配，**绝不**从 ReCall 临时 deps 目录 byte[] 加载。
+2. ❌ **绝不**给 `Application.ResourceAssembly` 赋值（无效，但是个稳定噪音源）。
+3. ❌ **绝不**主动 `Assembly.Load("AdWindows")` / `Assembly.LoadFrom("...AdWindows.dll")`。
+4. ❌ **绝不**预热 AdWindows / Badge / SubView：`WarmupAdWindowsBadgeTheme` / `WarmupSubViews` 都已删除。原因：`XamlReader.Load(stream)` 不能读 BAML 二进制流（API 误用，抛 XmlException 0x0C 被 catch 吞掉），UserControl/Style 不是顶级 ResourceDictionary 也用不了 `new ResourceDictionary { Source = }`。
+5. ✅ 仅 `WarmupBlenderTheme()` 保留——这是真正有效的（顶级 ResourceDictionary，正确 API）。
+6. ✅ 仍禁止把 HyCAD 主题 merge 进 `Application.Current.Resources`（B10）。
+
+**历史错误猜测（已被运行时证据证伪，禁止再走老路）**
+
+| 错误猜测 | 证伪证据 |
+|---|---|
+| ❌ "根因 A：`Application.ResourceAssembly` 钉插件程序集让 Badge 解析被牵走" | 删了 ResourceAssembly 后 Badge 错误**仍然出现**（取证日志 line 7 `count=3`）。Badge 用的 `/AdWindows;component/...` 自带程序集名前缀，跟 ResourceAssembly 无关。|
+| ❌ "WarmupAdWindowsBadgeTheme 双段预热可解决" | 双段预热**两段都失败**被 try/catch 吞掉，对运行时 0 效果（取证日志行 4/5/14/15 全部 catch 分支）。|
+| ❌ "WarmupSubViews 用绝对 pack URI + XamlReader.Load(stream)" | API 误用，11 个 SubView 全部预热失败，命令行刷 11 条假阳性。|
+| ❌ "主动 Assembly.Load("AdWindows") 防止运行时双载入" | 双载入是 ReCall AssemblyResolve handler 引发的，不是"是否主动 Load"问题。|
+
+**反例（已撤销）**
+
+```csharp
+// 错误 1：ReCall ResolveAssembly 不分宿主程序集，把 5.0.1.2 byte[] 加载进 AppDomain
+return Assembly.Load(File.ReadAllBytes(Path.Combine(dependenciesPath, "AdWindows.dll")));
+
+// 错误 2：把全局 base 钉到自己 dll —— 完全无效噪音
+System.Windows.Application.ResourceAssembly = typeof(PluginInitializer).Assembly;
+
+// 错误 3：主动加载——按需解析时同样会被 ReCall handler 接走，无意义
+try { Assembly.Load("AdWindows"); } catch { Assembly.LoadFrom(...); }
+
+// 错误 4：SubView/Badge 预热，用 XamlReader.Load 读 BAML —— API 误用，全部失败
+var info = Application.GetResourceStream(uri);
+XamlReader.Load(info.Stream);  // 抛 XmlException 0x0C
+```
+
+**已修复文件**
+
+- `ReCall/Recall.cs`（2026-04-21）：
+  - `ResolveAssembly`：增加 `AutoCadHostAssemblyNames` 黑名单，宿主程序集请求一律走 `AppDomain` 已加载查表，绝不从 deps 目录 byte[] 加载。
+- `HyCADTool.Refactored/Presentation/PluginInitializer.cs`（2026-04-21）：
+  - `Initialize`：移除 `WarmupAdWindowsBadgeTheme()` 与 `WarmupSubViews()` 调用（无效死代码）。
+  - 移除 `WarmupSubViews` / `WarmupAdWindowsBadgeTheme` / `EnsureAdWindowsAssemblyInAppDomain` 函数定义。
+  - 移除 `using System.Windows.Markup;`。
+  - 仅保留 `WarmupBlenderTheme()`（真正有效的预热）。
+
+**回归提示**
+
+- 改 `ReCall.ResolveAssembly` 黑名单的 PR，必须保证黑名单覆盖到所有 AutoCAD 进程已加载的程序集（用 `Process.GetCurrentProcess().Modules` 枚举对照）。
+- 改 `HyCADTool.Refactored.csproj` 加新 PackageReference 时，检查传递引用是否包含 AutoCAD 宿主程序集；包含则加 `<ExcludeAssets>runtime</ExcludeAssets>`。
+- 看到 Badge / badge.xaml 报错：第一句话先答 **「检查 ReCall AssemblyResolve 黑名单是否完整 + bin/Debug 里是否多出 AutoCAD 宿主 dll」**。**绝不**重新引入 `Application.ResourceAssembly` 赋值、`Assembly.Load("AdWindows")` 或 Badge 预热代码（这些都是已证伪的反向操作）。
+
+---
+
+## C 域：构建系统 / MSBuild 项目依赖
+
+> 公共背景：本仓库 ReCall 设计为"AutoCAD 唯一直接 NETLOAD 的入口程序集"——`bin\Debug\ReCall.dll` 只要 AutoCAD 进程在跑就被锁，**这是常态、不是异常**。日常业务代码改动只在 Refactored，由 C2 命令 byte[] 热重载，永远不需要更新 ReCall.dll。任何把 ReCall 列入"每次构建都被检查/复制"链路的依赖关系，都会在 AutoCAD 开着时直接打断 Refactored 的构建。
+
+---
+
+### C1【新 2026-04-21】Refactored→ReCall 用 `<ProjectReference>` 致 AutoCAD 锁定 ReCall.dll 时整个解决方案构建中断
+
+**现象**
+
+- AutoCAD 开着调试 Refactored，VS 重新生成 HyCADToolGpt 解决方案（或单独 Build/Rebuild HyCADTool.Refactored）
+- MSBuild 报错 `MSB3027: 无法将 obj\Debug\ReCall.dll 复制到 bin\Debug\ReCall.dll。超出了重试计数 10。失败。文件被"AutoCAD Application (PID)"锁定`
+- 紧跟 `MSB3021: 无法将文件 obj\Debug\ReCall.dll 复制到 bin\Debug\ReCall.dll`
+- 整个解决方案构建中断 → `HyCADTool.Refactored.dll` 没有重新产出 → 切回 AutoCAD 输 `C2` 加载的还是旧 Refactored → 看似"ReCall 热重载机制完全失效"
+- 用户感受："那我 ReCall 代码没有任何意义了"
+
+**触发条件**
+
+1. `HyCADTool.Refactored.csproj` 含 `<ProjectReference Include="..\ReCall\ReCall.csproj">`（即使 `<Private>false</Private>`）
+2. AutoCAD 进程已 NETLOAD `bin\Debug\ReCall.dll` → 文件被独占锁定
+3. 任意触发 ReCall 重建的条件成立：用户 `Rebuild Solution`（强制全建）/ `commands.json` 改动 / `obj\Debug\ReCall.dll` 时间戳被外部刷新（git checkout 等）/ MSBuild 增量判定误判
+
+**根因（双层叠加）**
+
+第一层 — **ProjectReference 是构建依赖关系**：MSBuild 处理 `ProjectReference` 时**总是**调用上游项目的 `Build` Target，不仅仅是取一个引用路径。即便 ReCall 源码没改、CSC 跳过 CoreCompile，MSBuild 仍会执行 `CopyFilesToOutputDirectory` 的增量检查；任何让该 Target 判定"需要复制"的边界条件（obj 比 bin 新一秒、`@(IntermediateAssembly)` 元数据失效等）都会触发对锁定 dll 的覆写尝试。
+
+第二层 — **SDK Target 末段重新导入**：`Microsoft.NET.Sdk` 在项目内容**之后**导入 `Microsoft.Common.CurrentVersion.targets`，所以即使在 ReCall.csproj 用同名 `<Target Name="CopyFilesToOutputDirectory" Condition="...">` 试图覆写跳过复制，**也会被 SDK 末段的同名 Target 覆盖**（"最后一个定义胜出"规则）。本次会话已实测验证：`dotnet build` 仍报 MSB3027/MSB3021。要让覆写生效必须放进 `Directory.Build.targets`，但那对单项目修复来说是过度工程。
+
+**真正修复**：从根本上**断开 MSBuild 项目依赖链**——把 `<ProjectReference>` 换成 `<Reference HintPath>`。
+
+```xml
+<!-- HyCADTool.Refactored.csproj：旧（已删除） -->
+<ProjectReference Include="..\ReCall\ReCall.csproj">
+    <Private>false</Private>
+</ProjectReference>
+
+<!-- HyCADTool.Refactored.csproj：新 -->
+<Reference Include="ReCall">
+    <HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath>
+    <Private>false</Private>
+    <SpecificVersion>false</SpecificVersion>
+</Reference>
+
+<!-- 全新 checkout / 删过 bin 目录后 cold-start 兜底：
+     仅在 ReCall.dll 真的不存在时一次性建一次（AutoCAD 必须未开），
+     已存在则跳过、永不触发锁文件错误。 -->
+<Target Name="EnsureReCallDllExists"
+        BeforeTargets="ResolveAssemblyReferences"
+        Condition="!Exists('..\ReCall\bin\$(Configuration)\ReCall.dll')">
+    <Message Importance="high"
+             Text="==&gt; [Refactored] 未发现 ..\ReCall\bin\$(Configuration)\ReCall.dll，先一次性构建 ReCall。" />
+    <MSBuild Projects="..\ReCall\ReCall.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=$(Platform)" />
+</Target>
+```
+
+**为什么这个改动安全**
+
+1. Refactored 对 ReCall 是**单向、纯类型可见性**依赖：用到的全部是 `CommandTable` / `CommandEntry` / `CommandListItem` / `CategoryGroup` / `RoadCommandShortAliases` 这些只读元数据类型。ReCall 反过来用反射访问 Refactored，**不构成循环依赖**。
+2. `<Reference HintPath>` 只是给 csc 提供一个编译期类型来源，MSBuild 不再把 ReCall 当成"上游项目"去 Build → 不再触发 `CopyFilesToOutputDirectory` → 不再碰锁定的 dll。
+3. 运行时类型由 AutoCAD NETLOAD 的那一份 ReCall.dll 提供（同一 AppDomain 内只一份），编译期与运行期类型身份天然对齐。
+4. cold-start 兜底 Target 用 `Condition="!Exists(...)"` 严格守门——只在 dll 真的不存在时才触发一次性构建（此时 AutoCAD 不可能开着锁它），日常增量构建永远跳过。
+
+**实测验证**（2026-04-21 本次会话）
+
+| 场景 | 修复前 | 修复后 |
+|---|---|---|
+| AutoCAD 开着，dotnet build Refactored | MSB3027/MSB3021 错误，2 个 error，构建中断 | Exit 0，0 个 error，5.16s 完成，Refactored.dll 时间戳更新 |
+| ReCall.dll 时间戳 | （未变化，因为 build 失败前就已被锁） | 仍是旧时间（AutoCAD 锁着的版本，**故意不动**） |
+
+**反例（已撤销，绝不复活）**
+
+```xml
+<!-- 反例 1：保留 ProjectReference，妄图在 ReCall.csproj 用同名 Target 覆写跳过复制
+     失败原因：SDK 末段重新导入会覆盖你的同名 Target，dotnet build 实测仍报 MSB3027 -->
+<UsingTask TaskName="HyCADProbeFileLock" TaskFactory="RoslynCodeTaskFactory" .../>
+<Target Name="CopyFilesToOutputDirectory" Condition="'$(_HyCADReCallDllLocked)' == 'true'">
+    <!-- 永远不会执行——被 Microsoft.Common.CurrentVersion.targets 覆盖 -->
+</Target>
+
+<!-- 反例 2：把 ReCall 的 .cs 文件用 <Compile Include="..\ReCall\*.cs" Link="..."/>
+     直接拉进 Refactored 项目编译
+     失败原因：ReCall 类型会在 Refactored.dll 内重新定义一份，
+     与 AutoCAD NETLOAD 那份 ReCall.dll 的同名类型构成 **类型身份割裂**
+     → CommandFacade 反射调用时找不到正确的 CommandTable 实例 → 命令全部失效 -->
+<Compile Include="..\ReCall\CommandTable.cs" Link="External\CommandTable.cs"/>
+
+<!-- 反例 3：从 Solution Configuration Manager 把 ReCall 的 Debug.Build.0 取消勾选
+     貌似能让 Build Solution 跳过 ReCall，但右键 Refactored→Build 时
+     ProjectReference 仍会强制 Build 上游 ReCall（MSBuild 行为，与 .sln 配置无关）
+     → 锁文件错误依旧 -->
+```
+
+**改 csproj 跨项目引用的强制清单**
+
+1. ✅ Refactored 引用 ReCall 的方式：**仅** `<Reference HintPath>`，**禁止** `<ProjectReference>`。审 PR 时 `grep` 一下 `HyCADTool.Refactored.csproj`，出现 `Include="..\ReCall\ReCall.csproj"` 直接打回。
+2. ✅ 任何新加入解决方案的项目，若想引用 ReCall 的类型 — 同样用 `<Reference HintPath="..\ReCall\bin\$(Configuration)\ReCall.dll">`，不开 ProjectReference。
+3. ✅ 反向：ReCall **不**引用 Refactored（反射访问），保持单向依赖。任何 PR 想让 ReCall 加 `<Reference>` 或 `<ProjectReference>` 指向 Refactored — 直接打回（ReCall 是引导器，必须保持薄、稳定、无业务依赖）。
+4. ✅ 删过 bin 目录或全新 checkout 后第一次 Build Refactored — 由 `EnsureReCallDllExists` Target 自动触发一次 ReCall 构建（前提：AutoCAD 没开），无需手工预热。
+5. ❌ **绝不**尝试在 ReCall.csproj 里覆写 `CopyFilesToOutputDirectory`（被 SDK 末段覆盖，无效）。如果未来真的需要让 ReCall 自身在锁文件时跳过复制，改用 `Directory.Build.targets`（在 SDK targets 之后导入），或改用 `<Copy ContinueOnError="true">` 重定义私有 Target。
+
+**新工作流变化（用户必须知道）**
+
+| 改了什么 | 该怎么做 | AutoCAD 要不要关 |
+|---|---|---|
+| `HyCADTool.Refactored/**/*.cs` / XAML | VS 直接 Build → AutoCAD 输 `C2` 热重载 | **不用关** |
+| `HyCAD.BlenderUI/**/*` | VS 直接 Build → `C2` | **不用关** |
+| `commands.json` 配置 | VS 直接 Build → 下次命令调度自动重读（CommandTable mtime 失效缓存） | **不用关** |
+| `ReCall/*.cs`（CommandTable / CommandFacade / Recall.cs） | **关闭 AutoCAD** → 解决方案资源管理器右键 ReCall → 生成 → 重启 AutoCAD | **必须关** |
+
+**已修复文件**
+
+- `HyCADTool.Refactored/HyCADTool.Refactored.csproj`（2026-04-21）：移除 `<ProjectReference Include="..\ReCall\ReCall.csproj">`，新增 `<Reference Include="ReCall"><HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath></Reference>` 与 `EnsureReCallDllExists` cold-start 兜底 Target。
+- `ReCall/ReCall.csproj`（2026-04-21）：保持原状（曾尝试在此加 `RoslynCodeTaskFactory` + `CopyFilesToOutputDirectory` 覆写已被 SDK 末段覆盖证伪，本次会话已回滚）。
+
+**同类宿主风险提示**
+
+任何"长期持有 dll 的宿主进程"（Excel/Word VSTO / Revit / Office Add-in / VS Extension / IIS w3wp）+ 多项目解决方案，引导器/入口程序集都该用 `<Reference HintPath>` 而非 `<ProjectReference>`，避免业务项目重建时连带锁文件冲突。
+
+---
+
 ## D 域：Debug 与诊断方法论
 
 > 本域记录 Cursor Debug 模式 / 临时埋点 / WPF 异常兜底 三类常踩坑。
@@ -829,6 +1042,39 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 
 ---
 
+## § 验证状态与残留风险（2026-04-20）
+
+以下为**对照仓库代码**的结论，用于回答「skill 里写的是否已落实」。
+
+### 已在关键路径落实（实现可核对）
+
+| 条目 | 核对要点 |
+|------|----------|
+| **A3** | `SettingsPanelViewModel.LoadSettings` 使用 `BuildStyleSignature()` 前后对比，**仅在不一致时** `_stylesDirty = true`（约 1190–1281 行），不是每次加载无脑置脏。 |
+| **A5** | `SettlementTableService` / `DesignSpecService.TryCreateTable` / `EquipmentFoundationService` / `PileDrawingService` / `GroupCirclesByElevationCommand` 均含 `SetSize` 后 `GetMergeRange` + `UnmergeCells` 循环（以工程内 `grep UnmergeCells` 为准）。 |
+| **A6** | `ReCall/Recall.cs` 存在 `PreloadCompanionAssemblies`，且在 `Assembly.Load(Refactored)` 前调用。 |
+| **A2 与代码一致** | `DocumentActivated` → `EnsureCurrentDocumentResourcesInitialized`；`DocumentCreated` → 仅 `GetOrCreate` VM（因 Ensure 绑定 `MdiActiveDocument`，见上文 A2 正文）。 |
+| **B10** | `BlenderThemeManager.PopulateAndRegister` 对 `SolidColorBrush` 使用 `OpacityProperty` 的 dummy `Binding`，防止 Seal（约 171–172 行）。 |
+| **B1/B2** | `HyCAD.BlenderUI/Themes/Controls/ScrollBar.xaml` 为 **`x:Key="BlenderScrollBar"`** 命名 Style，非隐式无 Key。 |
+| **D3 / D4** | `PluginInitializer.InstallWpfExceptionTraps`：`MdiActiveDocument` 空防御；`BindingErrorListener` 白名单 + `Debug.WriteLine`，避免命令行刷爆卡死。 |
+| **Badge 真修复（B11）** | `ReCall/Recall.cs::ResolveAssembly` 增加 `AutoCadHostAssemblyNames` 黑名单，宿主程序集（`AdWindows` / `AcMr` / ...）一律走 `AppDomain` 已加载查表，绝不从 deps 目录 byte[] 加载，杜绝 5.0.1.2 与 5.1.1.1 双载入；见 **B11** 全文。 |
+| **C1** | `HyCADTool.Refactored.csproj` 已移除 `<ProjectReference Include="..\ReCall\ReCall.csproj">`，改用 `<Reference Include="ReCall"><HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath></Reference>` + `EnsureReCallDllExists` cold-start Target（约 222–252 行）。`grep -n 'ReCall.csproj' HyCADTool.Refactored.csproj` 应 0 命中。AutoCAD 开着 dotnet build Refactored 实测 0 error。 |
+
+### 仍为环境型 / 缓解型风险（不是单靠改一行就能封死）
+
+| 风险 | 说明 |
+|------|------|
+| **`/AdWindows;component/themes/badge.xaml`** | 真根因为 ReCall AssemblyResolve 双载入旧版 AdWindows 5.0.1.2，与 AutoCAD 进程 5.1.1.1 形成类型身份割裂。复现时先查：**ReCall 宿主程序集黑名单是否完整**、bin/Debug 里是否多出本不该有的旧版 AutoCAD 宿主 dll（见 **B11**、`.cursor/rules/05-AdWindows-WPF-PaletteSet宿主.mdc`）。 |
+| **B10 同类** | 未来若有新的 `Freezable` 写入 Theme 字典且未做 freeze 阻断，仍可能再引入异常链。 |
+| **A1** | 依赖持续 Code Review：`SingleInstance` 服务不得长期缓存 `Database`。 |
+| **C1 同类** | 未来若新建解决方案项目（如 `HyCADTool.Plugins.X`）想引用 ReCall，必须用 `<Reference HintPath>` 而非 `<ProjectReference>`；同样必须保持 ReCall 不反向引用任何业务项目。审 PR 时 `grep` 一下 `ReCall\.csproj"` 看是否被任何 csproj 用 ProjectReference。 |
+
+### 与「Verification」自检表的关系
+
+下文 **Verification** 是**手工回归清单**；本节是**静态代码与架构级**核对。二者互补：Verification 失败时回到对应字母条目 + 本节残留风险排查。
+
+---
+
 ## Verification
 
 **A 域验证**
@@ -841,12 +1087,19 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 
 **B 域验证**
 
-- `C2 → C1 → HyB`（或 `Hy`）打开统一面板，AutoCAD 不闪退（B1/B2）
+- `C2 → C1 → HyB`（或 `Hy`）打开统一面板，AutoCAD 不闪退（B1/B2）；命令行无 `Badge` / `badge.xaml` 的 `XamlParseException`（B11）
 - 所有 UserControl 打开不抛 `StaticResourceExtension` 异常（B3）
 - XAML 设计器打开 `Samples/DemoWindow.xaml` 无 `XDG0066`（B5/B6）
 - 编译无 `MC3015` / `MC4111`（B7/B8）
 - `ColumnDefinition.Width` / `Margin` 类属性加载不报异常（B4）
 - 面板 Dock 到 AutoCAD 侧边不消失（B9）
+
+**C 域验证**
+
+- AutoCAD 开着的情况下 `dotnet build HyCADTool.Refactored/HyCADTool.Refactored.csproj -c Debug` 退出码 0，无 `MSB3027` / `MSB3021` / "文件被 AutoCAD Application 锁定" 错误（C1）
+- 构建后 `HyCADTool.Refactored.dll` 时间戳更新，`ReCall.dll` 时间戳保持不变（C1）
+- `grep -n 'ReCall\.csproj' HyCADTool.Refactored.csproj` 0 命中，`grep -n '<Reference Include="ReCall"' HyCADTool.Refactored.csproj` 命中 1 次（C1）
+- 全新 checkout（删 `ReCall/bin/Debug` 后）首次 Build Refactored，`EnsureReCallDllExists` Target 触发一次 ReCall 自动构建（C1 cold-start）
 
 **D 域验证**
 

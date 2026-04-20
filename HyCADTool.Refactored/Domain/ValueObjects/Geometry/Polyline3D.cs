@@ -36,7 +36,44 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
         [JsonIgnore]
         public int VertexCount => _vertices.Count;
 
-        /// <summary>任一 bulge 非零即视为"含弧段"。</summary>
+        /// <summary>
+        /// 对第 <paramref name="segmentIndex"/> 段圆弧（bulge≠0），求两侧切线无限延长线的交点（市政导线 PI），
+        /// 以及该段圆弧半径（米，正值）。
+        /// 用于从 LWPOLYLINE 反推道路 PI 表；直线段返回 false。
+        /// </summary>
+        public bool TryGetArcTangentIntersectionPi(int segmentIndex, out Point2D pi, out double radiusAbs)
+        {
+            pi = default;
+            radiusAbs = 0;
+            if (segmentIndex < 0 || segmentIndex >= SegmentCount) return false;
+            double bulge = _bulges[segmentIndex];
+            if (Math.Abs(bulge) < BulgeEpsilon) return false;
+
+            var seg = GetSegmentAt(segmentIndex);
+            ComputeArcGeometry(seg.Start, seg.End, bulge,
+                out _, out _, out double radius,
+                out double startAngle, out double sweep);
+
+            radiusAbs = Math.Abs(radius);
+            if (radiusAbs < BulgeEpsilon) return false;
+
+            // 与 TangentOnSegment(segmentIndex, t) 一致：切向 = 半径方向按 sweep 旋转 90°。
+            double a0 = startAngle;
+            double a1 = startAngle + sweep;
+            var radial0 = new Vector2D(Math.Cos(a0), Math.Sin(a0));
+            var radial1 = new Vector2D(Math.Cos(a1), Math.Sin(a1));
+            var t0 = sweep >= 0 ? radial0.Perpendicular() : -radial0.Perpendicular();
+            var t1 = sweep >= 0 ? radial1.Perpendicular() : -radial1.Perpendicular();
+            if (!t0.TryNormalize(out var d0) || !t1.TryNormalize(out var d1))
+                return false;
+
+            var p0 = new Point2D(seg.Start.X, seg.Start.Y);
+            var p1 = new Point2D(seg.End.X, seg.End.Y);
+            return TryIntersectLines2D(p0, d0, p1, d1, out pi);
+        }
+
+        /// <summary>
+        /// 任一 bulge 非零即视为"含弧段"。</summary>
         [JsonIgnore]
         public bool HasArcs
         {
@@ -403,6 +440,21 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Geometry
             while (_bulges.Count < _vertices.Count) _bulges.Add(0);
             if (_bulges.Count > _vertices.Count)
                 _bulges.RemoveRange(_vertices.Count, _bulges.Count - _vertices.Count);
+        }
+
+        /// <summary>
+        /// 无限长直线 p0 + s·d0 与 p1 + t·d1 的交点（d0、d1 已单位化）。
+        /// </summary>
+        private static bool TryIntersectLines2D(
+            Point2D p0, Vector2D d0, Point2D p1, Vector2D d1, out Point2D hit)
+        {
+            hit = default;
+            var w = p0.VectorTo(p1);
+            double det = d0.Cross(d1);
+            if (Math.Abs(det) < 1e-12) return false;
+            double s = w.Cross(d1) / det;
+            hit = p0.Add(d0 * s);
+            return true;
         }
 
         /// <summary>

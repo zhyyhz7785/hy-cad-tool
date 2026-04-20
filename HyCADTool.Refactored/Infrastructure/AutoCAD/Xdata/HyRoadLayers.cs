@@ -111,6 +111,22 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string CrossSectionOrientationLayer = "05_hy_道路_横断面_方位";
         public const short CrossSectionOrientationColor = 6; // 品红
 
+        // =========================================================================
+        //  M10 平面分段扫掠：3 个图层（左右红线 / 板块分界 / 标线）
+        // =========================================================================
+
+        /// <summary>M10：平面红线（左右最外侧边缘，总路幅边界）。</summary>
+        public const string PlanRedLineLayer = "05_hy_道路_平面_红线";
+        public const short PlanRedLineColor = 1; // 红：明显，通常用于红线
+
+        /// <summary>M10：平面板块分界线（机动车道 / 绿化带 / 人行道内部分界）。</summary>
+        public const string PlanBandDividerLayer = "05_hy_道路_平面_板块分界";
+        public const short PlanBandDividerColor = 30; // 橙：柔和，与红线区分
+
+        /// <summary>M10：平面标线（车道分界线 / 箭头 / 禁停网格，预留）。</summary>
+        public const string PlanMarkingLayer = "05_hy_道路_平面_标线";
+        public const short PlanMarkingColor = 7; // 白：与国标标线白漆一致
+
         /// <summary>
         /// 返回本模块需要注册的所有图层（(name, color) 对）。
         /// </summary>
@@ -140,6 +156,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),
                 (CrossSectionTitleLayer, CrossSectionTitleColor),
                 (CrossSectionOrientationLayer, CrossSectionOrientationColor),
+                (PlanRedLineLayer, PlanRedLineColor),
+                (PlanBandDividerLayer, PlanBandDividerColor),
+                (PlanMarkingLayer, PlanMarkingColor),
             };
         }
     }

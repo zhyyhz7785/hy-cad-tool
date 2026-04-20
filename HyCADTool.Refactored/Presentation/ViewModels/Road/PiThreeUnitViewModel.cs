@@ -24,8 +24,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// </summary>
     public sealed class PiThreeUnitViewModel : INotifyPropertyChanged
     {
-        private readonly List<PiElement> _elements;
-        private readonly int _piIndex;
+        private List<PiElement> _elements;
+        private int _piIndex;
         private bool _isInitializing;
 
         /// <summary>
@@ -62,6 +62,30 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 throw new ArgumentOutOfRangeException(nameof(piIndex),
                     $"piIndex={piIndex} 必须介于 [1, {elements.Count - 2}]。");
 
+            ConfirmCommand = new RelayCommand(ExecuteConfirm);
+            CancelCommand = new RelayCommand(ExecuteCancel);
+
+            RebindCore(elements, piIndex, initialDesignSpeed: 60);
+        }
+
+        /// <summary>
+        /// 非模态面板复用入口：在工作台切换 Alignment / PI 时直接更新内部状态，
+        /// 避免销毁 VM 导致事件订阅（PreviewRequested 等）断线。保留 DesignSpeed。
+        /// </summary>
+        public void Rebind(IReadOnlyList<PiElement> elements, int piIndex)
+        {
+            if (elements == null) throw new ArgumentNullException(nameof(elements));
+            if (elements.Count < 3)
+                throw new ArgumentException("PI 数量不足 3 个，无法编辑内部 PI。", nameof(elements));
+            if (piIndex <= 0 || piIndex >= elements.Count - 1)
+                throw new ArgumentOutOfRangeException(nameof(piIndex),
+                    $"piIndex={piIndex} 必须介于 [1, {elements.Count - 2}]。");
+
+            RebindCore(elements, piIndex, initialDesignSpeed: _designSpeed <= 0 ? 60 : _designSpeed);
+        }
+
+        private void RebindCore(IReadOnlyList<PiElement> elements, int piIndex, int initialDesignSpeed)
+        {
             _elements = new List<PiElement>(elements);
             _piIndex = piIndex;
 
@@ -71,19 +95,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             _spiralIn = current.SpiralIn;
             _spiralOut = current.SpiralOut;
             _isSymmetric = Math.Abs(current.SpiralIn - current.SpiralOut) <= AlignmentCodeChecker.SymmetryTolerance;
-            _designSpeed = 60;
+            _designSpeed = initialDesignSpeed;
 
-            ConfirmCommand = new RelayCommand(ExecuteConfirm);
-            CancelCommand = new RelayCommand(ExecuteCancel);
+            OnPropertyChanged(nameof(Radius));
+            OnPropertyChanged(nameof(SpiralIn));
+            OnPropertyChanged(nameof(SpiralOut));
+            OnPropertyChanged(nameof(IsSymmetric));
+            OnPropertyChanged(nameof(DesignSpeed));
 
             PiIndex = piIndex;
             TotalPi = elements.Count;
             Title = $"三单元平曲线设计 JD{piIndex}";
 
-            // 前后直线段长（几何常量，不会改变）
             PrevTangent = _elements[piIndex - 1].P.DistanceTo(_elements[piIndex].P);
             NextTangent = _elements[piIndex].P.DistanceTo(_elements[piIndex + 1].P);
 
+            ConfirmedElement = null;
             _isInitializing = false;
             Recalculate();
         }
@@ -164,15 +191,42 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         // ================================ UI 绑定：标签 / 派生量 ================================
 
-        public string Title { get; }
-        public int PiIndex { get; }
-        public int TotalPi { get; }
+        private string _title;
+        public string Title
+        {
+            get => _title;
+            private set => SetProperty(ref _title, value);
+        }
 
-        /// <summary>前直线段长（m），常量。</summary>
-        public double PrevTangent { get; }
+        private int _piIndexProp;
+        public int PiIndex
+        {
+            get => _piIndexProp;
+            private set => SetProperty(ref _piIndexProp, value);
+        }
 
-        /// <summary>后直线段长（m），常量。</summary>
-        public double NextTangent { get; }
+        private int _totalPi;
+        public int TotalPi
+        {
+            get => _totalPi;
+            private set => SetProperty(ref _totalPi, value);
+        }
+
+        private double _prevTangent;
+        /// <summary>前直线段长（m）。</summary>
+        public double PrevTangent
+        {
+            get => _prevTangent;
+            private set => SetProperty(ref _prevTangent, value);
+        }
+
+        private double _nextTangent;
+        /// <summary>后直线段长（m）。</summary>
+        public double NextTangent
+        {
+            get => _nextTangent;
+            private set => SetProperty(ref _nextTangent, value);
+        }
 
         private double _turnRad;
         public double TurnRad { get => _turnRad; private set => SetProperty(ref _turnRad, value); }
@@ -292,6 +346,26 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             ConfirmedElement = new PiElement(current.P, _radius, _spiralIn, _spiralOut, current.Tag);
             Confirmed?.Invoke(this, ConfirmedElement.Value);
             CloseRequested?.Invoke(this, true);
+        }
+
+        /// <summary>
+        /// 面板式（非模态）使用：取当前 PI 参数快照，不触发关闭事件、不弹未通过确认，
+        /// 由调用方（工作台 VM）决定是否落盘。
+        /// </summary>
+        public PiElement SnapshotCurrent()
+        {
+            var current = _elements[_piIndex];
+            return new PiElement(current.P, _radius, _spiralIn, _spiralOut, current.Tag);
+        }
+
+        /// <summary>
+        /// 返回当前工作副本（完整 PI 表），供工作台 VM 在非模态场景下重建几何。
+        /// </summary>
+        public IReadOnlyList<PiElement> GetWorkingElements()
+        {
+            var result = new List<PiElement>(_elements);
+            result[_piIndex] = SnapshotCurrent();
+            return result;
         }
 
         private static string BuildNonCompliantSummary(CodeCheckReport report)

@@ -138,16 +138,28 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             var exporter = ServiceLocator.Resolve<RoadJsonExportService>();
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
 
-            bool rebuilt;
+            bool rebuilt = false;
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
-                rebuilt = svc.RebuildCenterline(doc.Name, tr, db, alignment.Id, result.Polyline);
-                if (rebuilt)
+                try
                 {
-                    alignment.Source = BuildSource(elements);
+                    rebuilt = svc.RebuildCenterline(doc.Name, tr, db, alignment.Id, result.Polyline);
+                    if (rebuilt)
+                    {
+                        alignment.Source = BuildSource(elements);
+                    }
+                    tr.Commit();
                 }
-                tr.Commit();
+                catch (Autodesk.AutoCAD.Runtime.Exception ex)
+                {
+                    ed.WriteMessage(
+                        $"\n[道路] DWG Polyline 更新失败：{ex.Message}（ErrorStatus={ex.ErrorStatus}）。");
+                }
+                catch (Exception ex)
+                {
+                    ed.WriteMessage($"\n[道路] DWG Polyline 更新失败：{ex.Message}");
+                }
             }
 
             if (!rebuilt)

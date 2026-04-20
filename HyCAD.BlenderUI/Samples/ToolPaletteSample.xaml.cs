@@ -1,4 +1,5 @@
 using System.Windows;
+using HyCAD.BlenderUI.Theming;
 
 namespace HyCAD.BlenderUI.Samples
 {
@@ -11,6 +12,7 @@ namespace HyCAD.BlenderUI.Samples
         public ToolPaletteSample()
         {
             InitializeComponent();
+            BlenderThemeManager.Apply(BlenderThemeManager.BlenderThemeName.BlenderDark);
         }
     }
 }

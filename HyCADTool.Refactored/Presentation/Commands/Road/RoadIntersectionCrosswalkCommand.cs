@@ -7,7 +7,6 @@ using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Infrastructure.Configuration;
-using HyCADTool.Refactored.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands.Road
@@ -21,17 +20,9 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     ///
     /// <para><b>交互流程</b></para>
     /// <list type="number">
+    /// <item>先弹出 WPF 参数窗（<see cref="CrosswalkDrawParamsDialog"/>）编辑四项并写回 hy-settings；</item>
     /// <item>拾取目标交叉口任一实体（转角弧 / 坡道 / 盲道 / 路缘线）；</item>
     /// <item>命令自动为每条 Leg 生成 <see cref="Crosswalk"/>（base = 相邻 CornerArc 切点）；</item>
-    /// <item>参数默认值：
-    ///   <list type="bullet">
-    ///   <item>GapWidth（路缘 → L2）取 <see cref="SettingsPanelViewModel.RoadGapWidth"/> 或 <see cref="Crosswalk.DefaultGapWidth"/>；</item>
-    ///   <item>Width（L2 → L3）取 <see cref="SettingsPanelViewModel.RoadCrosswalkWidth"/> 或 <see cref="Crosswalk.DefaultWidth"/>；</item>
-    ///   <item>StopLineDistance（L3 → L4）取 <see cref="SettingsPanelViewModel.RoadStopLineDistance"/>；</item>
-    ///   <item>StripeSpacing 取 <see cref="SettingsPanelViewModel.RoadStripeSpacing"/>。</item>
-    ///   </list>
-    /// </item>
-    /// <item>交互再次允许用户覆盖上述 4 个值；</item>
     /// <item><see cref="RoadCrosswalkService.RebuildCrosswalks"/> 幂等清理 + 重绘；</item>
     /// <item>JSON 落盘。</item>
     /// </list>
@@ -48,6 +39,12 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             var ed = doc.Editor;
             var db = doc.Database;
 
+            if (!CrosswalkDrawParamsDialog.TryShow(out double gap, out double width, out double stop, out double spacing))
+            {
+                ed.WriteMessage("\n[道路] 已取消。");
+                return;
+            }
+
             var peo = new PromptEntityOptions(
                 "\n[道路] 拾取目标交叉口的任意实体（转角弧 / 坡道 / 盲道 / 路缘线）：")
             {
@@ -55,16 +52,6 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             };
             var per = ed.GetEntity(peo);
             if (per.Status != PromptStatus.OK) { ed.WriteMessage("\n[道路] 已取消。"); return; }
-
-            var vm = SettingsPanelViewModel.Current;
-            double gap = AskDouble(ed, "[道路] 路缘到横道的空挡 (m)",
-                vm?.RoadGapWidth ?? Crosswalk.DefaultGapWidth);
-            double width = AskDouble(ed, "[道路] 横道宽度 (m)",
-                vm?.RoadCrosswalkWidth ?? Crosswalk.DefaultWidth);
-            double stop = AskDouble(ed, "[道路] 横道到停止线的距离 (m)",
-                vm?.RoadStopLineDistance ?? Crosswalk.DefaultStopLineDistance);
-            double spacing = AskDouble(ed, "[道路] 条纹中心距 (m)",
-                vm?.RoadStripeSpacing ?? Crosswalk.DefaultStripeSpacing);
 
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
             var alnSvc = ServiceLocator.Resolve<RoadAlignmentService>();
@@ -114,20 +101,6 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                     $"\n[道路] 已为 {target.Legs.Count} 条 Leg 布置人行横道：" +
                     $"条纹 {stripeIds.Count} 条 / 停止线 {stopIds.Count} 条（Gap={gap:F2} W={width:F2} Stop={stop:F2} Spacing={spacing:F2}）。");
             }
-        }
-
-        private static double AskDouble(Editor ed, string prompt, double defaultValue)
-        {
-            var opt = new PromptDoubleOptions($"\n{prompt} (默认 {defaultValue:F2})：")
-            {
-                DefaultValue = defaultValue,
-                UseDefaultValue = true,
-                AllowNone = true,
-                AllowNegative = false,
-                AllowZero = true,
-            };
-            var r = ed.GetDouble(opt);
-            return r.Status == PromptStatus.OK ? r.Value : defaultValue;
         }
     }
 }

@@ -25,7 +25,8 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             // P3-I1-B 新增：Intersection（平面交叉口）
             // P3-I1-C 新增：CurbRamp（缘石坡道）+ TactilePaving（盲道）
             // P3-v1.1 新增：Crosswalk（人行横道）+ StopLine（停止线）
-            all.Should().HaveCount(22);
+            // M10 新增：PlanRedLine / PlanBandDivider / PlanMarking（3 个）
+            all.Should().HaveCount(25);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.GeometryPointLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.OffsetLayer);
@@ -34,6 +35,9 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.TactilePavingLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.CrosswalkLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StopLineLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.PlanRedLineLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.PlanBandDividerLayer);
+            all.Select(t => t.layerName).Should().Contain(HyRoadLayers.PlanMarkingLayer);
         }
 
         [Fact]

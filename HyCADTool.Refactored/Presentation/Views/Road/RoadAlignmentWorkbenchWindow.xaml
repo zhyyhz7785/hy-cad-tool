@@ -1,0 +1,17 @@
+<bui:BlenderWindow x:Class="HyCADTool.Refactored.Presentation.Views.Road.RoadAlignmentWorkbenchWindow"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:road="clr-namespace:HyCADTool.Refactored.Presentation.Views.Road"
+                   mc:Ignorable="d"
+                   Title="路线工作台"
+                   HeaderTitle="路线工作台"
+                   Width="1100" Height="640"
+                   MinWidth="820" MinHeight="480"
+                   WindowStartupLocation="CenterScreen">
+
+    <!-- 内容区：UserControl 内已 Merge BlenderTheme + RoadDesignerStyles（与旧 PaletteSet 宿主脱钩）。 -->
+    <road:RoadAlignmentWorkbenchPanel x:Name="WorkbenchHost"/>
+</bui:BlenderWindow>
