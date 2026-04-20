@@ -117,6 +117,13 @@ namespace HyCADTool.Refactored.Domain.Models.Road
     {
         Unknown = 0,
         PiTable = 1,
+
+        /// <summary>
+        /// 用户从任意图层的 Polyline 拾取登记而来、尚未提交为正式平面线位。
+        /// 提交到固定图层 <c>05_hy_道路_平面线位</c> 并写 HY_ROAD Xdata 后，
+        /// 通常被后续 PI 编辑改写为 <see cref="PiTable"/>。
+        /// </summary>
+        UserPicked = 2,
     }
 
     /// <summary>

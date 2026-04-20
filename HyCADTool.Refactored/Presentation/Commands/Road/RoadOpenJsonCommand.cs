@@ -67,6 +67,19 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 return;
             }
 
+            // v1.2「保存最后的文（件）」：写盘前先扫 DWG，把已无对应 HY_ROAD Polyline 的非 UserPicked Alignment
+            // 从 design 里清掉，避免 JSON 留着幽灵线位下一次 Load 又写回去。UserPicked 草稿恒保留。
+            int beforeCount = design.Alignments.Count;
+            int purged = 0;
+            try { purged = exporter.PurgeOrphans(doc, design); }
+            catch { /* PurgeOrphans 任何失败都不阻断写盘 */ }
+            if (purged > 0)
+            {
+                ed.WriteMessage(
+                    $"\n[道路] 写盘前同步：清理 {purged} 条「DWG 已无对应 Polyline」的孤儿 Alignment "
+                    + $"（剩余 {design.Alignments.Count}/{beforeCount}）。");
+            }
+
             var savedTo = exporter.SaveForDocument(design, doc.Name);
             if (savedTo != null)
             {

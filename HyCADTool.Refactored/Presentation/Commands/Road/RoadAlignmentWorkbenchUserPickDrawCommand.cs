@@ -19,7 +19,9 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             if (doc == null) return;
             var ed = doc.Editor;
 
-            Guid? id = RoadAlignmentUserPickPreviewSession.ConsumePendingWorkbenchAlignmentId();
+            var pending = RoadAlignmentUserPickPreviewSession.ConsumePendingWorkbench();
+            Guid? id = pending.alignmentId;
+            var colorMode = pending.colorMode;
             if (!id.HasValue || id.Value == Guid.Empty)
             {
                 ed.WriteMessage("\n[道路] 未收到工作台绘出请求。请在工作台点击「绘出预览」。");
@@ -42,10 +44,13 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
 
             try
             {
-                int n = RoadAlignmentUserPickPreviewService.DrawPreviewPolylines(doc, aln);
+                int n = RoadAlignmentUserPickPreviewService.DrawPreviewPolylines(doc, aln, colorMode);
+                string palette = colorMode == RoadAlignmentUserPickPreviewService.ColorMode.ByAlignmentId
+                    ? "（按 Alignment Id 统一取色）"
+                    : "（直=黄 / 缓=青 / 圆=绿）";
                 ed.WriteMessage(
                     n > 0
-                        ? $"\n[道路] 已在图层「{HyRoadLayers.UserPickPreviewLayer}」绘制 {n} 条 Polyline（直=黄 / 缓=青 / 圆=绿）。"
+                        ? $"\n[道路] 已在图层「{HyRoadLayers.UserPickPreviewLayer}」绘制 {n} 条 Polyline{palette}。"
                         : "\n[道路] 当前线位无可用中心线，未绘制。");
             }
             catch (Exception ex)

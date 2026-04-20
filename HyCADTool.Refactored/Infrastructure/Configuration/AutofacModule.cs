@@ -311,6 +311,14 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentService>()
                 .AsSelf()
                 .SingleInstance();
+            // 路线工作台「拾取登记」服务（UserPicked 源）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentUserPickRegisterService>()
+                .AsSelf()
+                .SingleInstance();
+            // 路线工作台「提交为平面线位」服务（UserPicked → HY_ROAD Alignment）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentCommitService>()
+                .AsSelf()
+                .SingleInstance();
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadProfileService>()
                 .AsSelf()
                 .SingleInstance();

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Autodesk.AutoCAD.ApplicationServices;
+using HyCADTool.Refactored.Domain.Events.Road;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
@@ -36,6 +37,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     public sealed class RoadAlignmentWorkbenchViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly RoadAlignmentPreviewService _preview;
+        private readonly IDisposable _alignmentChangedSub;
         private bool _disposed;
         private bool _suspendPiEditorEvents;
 
@@ -45,6 +47,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
             PickAlignmentCmd = new RelayCommand(PickAlignmentOnCanvas);
             DrawUserPickPreviewCmd = new RelayCommand(DrawUserPickPreview, () => SelectedAlignment != null);
+            CommitAlignmentCmd = new RelayCommand(CommitSelected, CanCommitSelected);
             ReverseCmd = new RelayCommand(ReverseSelected, () => SelectedAlignment != null);
             OffsetCmd = new RelayCommand(RunOffset, () => SelectedAlignment != null);
             ExportPiCsvCmd = new RelayCommand(() => ExportCsv(PiCsvKind.PiTable), () => SelectedAlignment != null);
@@ -64,7 +67,27 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
             RefreshCmd = new RelayCommand(RefreshAlignments);
 
+            // 订阅 AlignmentChangedEvent —— 拾取登记 / 提交 / PI 编辑收尾都会发；
+            // 用于 hyRoadAlnUserPickRegister 异步登记完成后 WPF 自动刷新并选中新 Alignment。
+            try
+            {
+                var bus = ServiceLocator.Resolve<IRoadEventBus>();
+                _alignmentChangedSub = bus.Subscribe<AlignmentChangedEvent>(OnAlignmentChangedFromBus);
+            }
+            catch { /* 测试环境无 bus 时容错 */ }
+
             RefreshAlignments();
+        }
+
+        /// <summary>
+        /// 预览着色模式。<c>true</c> 时整条 Alignment 用 <see cref="RoadAlignmentUserPickPreviewService.ColorIndexFor(Guid)"/>
+        /// 一种颜色（多条线对比用）；<c>false</c> 时按段类型分色（线/圆/缓和），便于核对几何质量。
+        /// </summary>
+        private bool _colorByAlignment;
+        public bool ColorByAlignment
+        {
+            get => _colorByAlignment;
+            set => SetProperty(ref _colorByAlignment, value);
         }
 
         // =============================== Alignment 列表 ===============================
@@ -141,6 +164,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         public ICommand PickAlignmentCmd { get; }
         public ICommand DrawUserPickPreviewCmd { get; }
+        public ICommand CommitAlignmentCmd { get; }
         public ICommand ReverseCmd { get; }
         public ICommand OffsetCmd { get; }
         public ICommand ExportPiCsvCmd { get; }
@@ -192,7 +216,33 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 // 文档被关闭等场景下 RebindForDocument 可能抛，忽略以保持 UI 不崩
             }
 
-            if (!registry.TryGet(doc.Name, out var design) || design.Alignments.Count == 0)
+            // v1.2 自动加载兜底：若 Registry 内存里还没 design（首次打开工作台 / 冷启动 AutoCAD
+            // 尚未跑任何 hy 命令的场景），且磁盘上存在同名 .roaddesign.json，就把它加载进内存。
+            // UserPicked 草稿与 PiTable 线位在 JSON 里都有完整 Centerline/PI 表，VM 编辑不依赖 DWG 里的 Polyline，
+            // 所以这里只把 JSON 灌进 Registry，不做 RedrawCenterlines（反向绘制走 hyRoadLoad，用户主动）。
+            if (!registry.TryGet(doc.Name, out var design) || design == null || design.Alignments.Count == 0)
+            {
+                try
+                {
+                    var exporter = ServiceLocator.Resolve<RoadJsonExportService>();
+                    var jsonPath = RoadJsonExportService.GetDefaultJsonPath(doc.Name);
+                    if (!string.IsNullOrWhiteSpace(jsonPath))
+                    {
+                        var loaded = exporter.Load(jsonPath);
+                        if (loaded != null && loaded.Alignments.Count > 0)
+                        {
+                            registry.Replace(doc.Name, loaded);
+                            design = loaded;
+                        }
+                    }
+                }
+                catch
+                {
+                    // JSON 损坏 / IO 异常：不阻断 UI，继续走"未登记"分支
+                }
+            }
+
+            if (design == null || design.Alignments.Count == 0)
             {
                 SelectedAlignment = null;
                 HeaderInfo = $"（{Path.GetFileName(doc.Name) ?? "-"}：未登记平面线位）";
@@ -407,27 +457,67 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private void PickAlignmentOnCanvas()
         {
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            if (doc == null) return;
-            if (!Commands.Road.RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var _, out var pickedId))
-                return;
-            LastPickedPolylineHandle = pickedId.IsValid ? pickedId.Handle.ToString() : string.Empty;
-            OnPropertyChanged(nameof(LastPickedPolylineHandle));
-            RefreshAlignments();
-            var target = Alignments.FirstOrDefault(a => a.Id == alignment.Id);
-            if (target != null) SelectedAlignment = target;
-            StatusText = string.IsNullOrEmpty(LastPickedPolylineHandle)
-                ? $"已拾取线位 {alignment.Name}。"
-                : $"已拾取线位 {alignment.Name}（源 Polyline Handle={LastPickedPolylineHandle}）。";
+            if (AcApp.DocumentManager.MdiActiveDocument == null) return;
+            // 非模态 WPF 线程禁止直接 LockDocument / 走 PromptEntity → 排队到命令线程的 hyRoadAlnUserPickRegister。
+            // 命令收尾会发布 AlignmentChangedEvent（Added / Updated），由 OnAlignmentChangedFromBus 自动刷新 + 选中。
+            CommandDispatcher.Send("hyRoadAlnUserPickRegister");
+            StatusText = "请在命令行拾取一条 Polyline（任意图层）…";
         }
 
         private void DrawUserPickPreview()
         {
             if (AcApp.DocumentManager.MdiActiveDocument == null || _selectedAlignment == null) return;
-            // 非模态 WPF 线程禁止直接 LockDocument / 写库 → 经 SendStringToExecute 排队到命令线程（见 CommandDispatcher 注释）。
-            RoadAlignmentUserPickPreviewSession.RequestWorkbenchDraw(_selectedAlignment.Id);
+            var mode = ColorByAlignment
+                ? RoadAlignmentUserPickPreviewService.ColorMode.ByAlignmentId
+                : RoadAlignmentUserPickPreviewService.ColorMode.BySegmentKind;
+            RoadAlignmentUserPickPreviewSession.RequestWorkbenchDraw(_selectedAlignment.Id, mode);
             CommandDispatcher.Send("hyRoadAlnUserPickDrawWB");
-            StatusText = "已请求绘出预览（排队到 AutoCAD 命令线程，结果见命令行）。";
+            StatusText = ColorByAlignment
+                ? "已请求绘出预览（按 Alignment Id 单色，结果见命令行）。"
+                : "已请求绘出预览（按段类型分色，结果见命令行）。";
+        }
+
+        // =============================== 提交：UserPicked → 平面线位 ===============================
+
+        private bool CanCommitSelected()
+        {
+            if (_selectedAlignment == null) return false;
+            var src = _selectedAlignment.Alignment.Source;
+            return src != null && src.Kind == AlignmentSourceKind.UserPicked;
+        }
+
+        private void CommitSelected()
+        {
+            if (AcApp.DocumentManager.MdiActiveDocument == null || _selectedAlignment == null) return;
+            RoadAlignmentCommitSession.RequestCommit(_selectedAlignment.Id);
+            CommandDispatcher.Send("hyRoadAlnCommit");
+            StatusText = "已请求提交为平面线位（排队到 AutoCAD 命令线程，结果见命令行）。";
+        }
+
+        private void OnAlignmentChangedFromBus(AlignmentChangedEvent evt)
+        {
+            // 弱引用回调可能在任意线程，UI 操作必须 marshal 回 Dispatcher。
+            try
+            {
+                var disp = System.Windows.Application.Current?.Dispatcher;
+                if (disp != null && !disp.CheckAccess())
+                {
+                    disp.BeginInvoke(new Action(() => OnAlignmentChangedFromBus(evt)));
+                    return;
+                }
+            }
+            catch { /* 设计期 / 单元测试无 Dispatcher */ }
+
+            if (_disposed) return;
+            // 收到任意变更先刷新；若是新增 / 提交后改了 Source.Kind，外加预选目标 Alignment。
+            try { RefreshAlignments(); } catch { /* ignore */ }
+            try
+            {
+                var target = Alignments.FirstOrDefault(a => a.Id == evt.AlignmentId);
+                if (target != null && !ReferenceEquals(target, _selectedAlignment))
+                    SelectedAlignment = target;
+            }
+            catch { /* ignore */ }
         }
 
         private void ReverseSelected()
@@ -727,6 +817,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             try
             {
                 if (PiEditorVm != null) PiEditorVm.PreviewRequested -= OnPiEditorPreviewRequested;
+                _alignmentChangedSub?.Dispose();
                 _preview.Dispose();
             }
             catch { /* ignore */ }

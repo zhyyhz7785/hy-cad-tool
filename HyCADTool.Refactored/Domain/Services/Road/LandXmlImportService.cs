@@ -36,7 +36,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
 
         /// <summary>
         /// 从磁盘文件解析 LandXML 1.2；文件不存在或无有效 Alignment 时抛异常。
-        /// 文件内含多条 <c>&lt;Alignment&gt;</c> 时仅取首条。
+        /// 文件内含多条 <c>&lt;Alignment&gt;</c> 时仅取首条。多条用 <see cref="LoadAllFromFile"/>。
         /// </summary>
         public static Alignment LoadFromFile(string path)
         {
@@ -44,6 +44,19 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             if (!File.Exists(path)) throw new FileNotFoundException("LandXML 文件不存在", path);
             var xml = File.ReadAllText(path);
             return ParseXmlString(xml);
+        }
+
+        /// <summary>
+        /// 从磁盘文件解析 LandXML 1.2，返回文件内所有可解析的 <c>&lt;Alignment&gt;</c>（v1.2 多路线导入）。
+        /// 单条 Alignment 解析异常会被记录到返回的 <c>errors</c>，不影响其他条目。
+        /// 当文件解析失败 / 无任何 Alignment 时仍抛异常。
+        /// </summary>
+        public static IReadOnlyList<Alignment> LoadAllFromFile(string path, out IReadOnlyList<string> errors)
+        {
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("path 为空", nameof(path));
+            if (!File.Exists(path)) throw new FileNotFoundException("LandXML 文件不存在", path);
+            var xml = File.ReadAllText(path);
+            return ParseAllFromXmlString(xml, out errors);
         }
 
         /// <summary>
@@ -66,6 +79,50 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 throw new InvalidDataException("LandXML 文档不含 <Alignment> 元素。");
 
             return ParseAlignmentElement(alignmentEl);
+        }
+
+        /// <summary>
+        /// 从 XML 字符串解析所有 <c>&lt;Alignment&gt;</c>。单条失败收集到 <paramref name="errors"/>，不中断；
+        /// 整个文件根标签错误 / 0 条可解析时抛异常。
+        /// </summary>
+        public static IReadOnlyList<Alignment> ParseAllFromXmlString(string xml, out IReadOnlyList<string> errors)
+        {
+            if (string.IsNullOrWhiteSpace(xml)) throw new ArgumentException("xml 为空", nameof(xml));
+            XDocument doc;
+            try { doc = XDocument.Parse(xml); }
+            catch (Exception ex) { throw new InvalidDataException("LandXML 解析失败：" + ex.Message, ex); }
+
+            var root = doc.Root;
+            if (root == null || !string.Equals(root.Name.LocalName, "LandXML", StringComparison.Ordinal))
+                throw new InvalidDataException("根元素不是 LandXML。");
+
+            var alignmentEls = root.Descendants().Where(e => e.Name.LocalName == "Alignment").ToList();
+            if (alignmentEls.Count == 0)
+                throw new InvalidDataException("LandXML 文档不含 <Alignment> 元素。");
+
+            var ok = new List<Alignment>();
+            var errs = new List<string>();
+            for (int i = 0; i < alignmentEls.Count; i++)
+            {
+                try
+                {
+                    var aln = ParseAlignmentElement(alignmentEls[i]);
+                    if (aln != null) ok.Add(aln);
+                }
+                catch (Exception ex)
+                {
+                    string nm = alignmentEls[i].Attribute("name")?.Value ?? $"#{i + 1}";
+                    errs.Add($"Alignment[{nm}] 解析失败：{ex.Message}");
+                }
+            }
+            errors = errs;
+
+            if (ok.Count == 0)
+                throw new InvalidDataException(
+                    "LandXML 内全部 Alignment 解析失败。"
+                    + (errs.Count > 0 ? " 详细：" + string.Join(" | ", errs) : ""));
+
+            return ok;
         }
 
         private static Alignment ParseAlignmentElement(XElement alignmentEl)

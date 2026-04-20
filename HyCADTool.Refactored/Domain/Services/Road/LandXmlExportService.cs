@@ -56,11 +56,28 @@ namespace HyCADTool.Refactored.Domain.Services.Road
 
         /// <summary>
         /// 生成一段 <b>完整合法</b>的 LandXML 1.2 文本（UTF-8，带 XML 声明）。
+        /// 单 Alignment overload 等价于 <see cref="BuildXmlString(IEnumerable{Alignment}, PiDesignOptions, string)"/> 仅传一条。
         /// </summary>
         public static string BuildXmlString(Alignment alignment, PiDesignOptions options = null)
         {
             if (alignment == null) throw new ArgumentNullException(nameof(alignment));
-            var doc = BuildDocument(alignment, options);
+            return BuildXmlString(new[] { alignment }, options, alignment.Name);
+        }
+
+        /// <summary>
+        /// 生成包含多条 Alignment 的 LandXML 1.2 文本（v1.2 多路线导出）。
+        /// 每条 Alignment 作为 <c>&lt;Alignments&gt;</c> 内的一个 <c>&lt;Alignment&gt;</c> 子元素，共享同一个 Units / Project。
+        /// </summary>
+        /// <param name="alignments">导出的 Alignment 集合。<c>null</c> / 空集 / 全部不可用都会抛 <see cref="ArgumentException"/>。</param>
+        /// <param name="options">PI 分段计算配置；<c>null</c> 用默认。</param>
+        /// <param name="projectName">LandXML <c>Project name</c>，建议传当前 DWG 名。<c>null</c> 时取首条 Alignment.Name。</param>
+        public static string BuildXmlString(IEnumerable<Alignment> alignments, PiDesignOptions options = null, string projectName = null)
+        {
+            if (alignments == null) throw new ArgumentNullException(nameof(alignments));
+            var list = alignments.Where(a => a != null).ToList();
+            if (list.Count == 0) throw new ArgumentException("alignments 不含可用条目", nameof(alignments));
+
+            var doc = BuildDocument(list, options, projectName);
             var sb = new StringBuilder();
             var settings = new XmlWriterSettings
             {
@@ -83,12 +100,21 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// </summary>
         public static void SaveToFile(Alignment alignment, string path, PiDesignOptions options = null)
         {
+            if (alignment == null) throw new ArgumentNullException(nameof(alignment));
+            SaveAllToFile(new[] { alignment }, path, options, alignment.Name);
+        }
+
+        /// <summary>
+        /// 多 Alignment 落盘（v1.2 多路线导出入口）。
+        /// </summary>
+        public static void SaveAllToFile(IEnumerable<Alignment> alignments, string path, PiDesignOptions options = null, string projectName = null)
+        {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("path 为空", nameof(path));
             var dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            var xml = BuildXmlString(alignment, options);
+            var xml = BuildXmlString(alignments, options, projectName);
             var bom = Encoding.UTF8.GetPreamble();
             var body = Encoding.UTF8.GetBytes(xml);
             var all = new byte[bom.Length + body.Length];
@@ -99,20 +125,9 @@ namespace HyCADTool.Refactored.Domain.Services.Road
 
         // ---------- 内部实现 ----------
 
-        private static XDocument BuildDocument(Alignment alignment, PiDesignOptions options)
+        private static XDocument BuildDocument(IList<Alignment> alignments, PiDesignOptions options, string projectName)
         {
-            AlignmentBreakdown breakdown = null;
-            if (alignment.Source?.PiElements != null && alignment.Source.PiElements.Count >= 2)
-            {
-                var elements = alignment.Source.PiElements
-                    .Select(e => new PiElement(e.P, e.Radius, e.SpiralIn, e.SpiralOut, e.Tag))
-                    .ToList();
-                breakdown = AlignmentStationBreakdown.Build(
-                    elements, alignment.StartStation, options, alignment.StationEquations);
-            }
-
-            double length = alignment.Centerline?.GetPlanarLength() ?? 0.0;
-
+            var first = alignments[0];
             var root = new XElement(Ns + "LandXML",
                 new XAttribute("version", LandXmlVersion),
                 new XAttribute(XNamespace.Xmlns + "xsi", "http://www.w3.org/2001/XMLSchema-instance"));
@@ -128,10 +143,31 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     new XAttribute("directionUnit", "decimal degrees"))));
 
             root.Add(new XElement(Ns + "Project",
-                new XAttribute("name", alignment.Name ?? "hyRoadAln")));
+                new XAttribute("name", projectName ?? first.Name ?? "hyRoadAln")));
 
             var alignmentsEl = new XElement(Ns + "Alignments",
-                new XAttribute("name", alignment.Name ?? "hyRoadAln"));
+                new XAttribute("name", projectName ?? first.Name ?? "hyRoadAln"));
+
+            foreach (var aln in alignments)
+                alignmentsEl.Add(BuildAlignmentElementCore(aln, options));
+
+            root.Add(alignmentsEl);
+            return new XDocument(new XDeclaration("1.0", "UTF-8", null), root);
+        }
+
+        private static XElement BuildAlignmentElementCore(Alignment alignment, PiDesignOptions options)
+        {
+            AlignmentBreakdown breakdown = null;
+            if (alignment.Source?.PiElements != null && alignment.Source.PiElements.Count >= 2)
+            {
+                var elements = alignment.Source.PiElements
+                    .Select(e => new PiElement(e.P, e.Radius, e.SpiralIn, e.SpiralOut, e.Tag))
+                    .ToList();
+                breakdown = AlignmentStationBreakdown.Build(
+                    elements, alignment.StartStation, options, alignment.StationEquations);
+            }
+
+            double length = alignment.Centerline?.GetPlanarLength() ?? 0.0;
 
             var alignmentEl = new XElement(Ns + "Alignment",
                 new XAttribute("name", alignment.Name ?? "Alignment"),
@@ -165,7 +201,6 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
             }
 
-            // 桩号方程
             foreach (var eq in SafeEquations(alignment))
             {
                 double staBack = StationConverter.ToDisplayStation(
@@ -176,10 +211,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     new XAttribute("staInternal", Fmt(eq.BeforeRaw))));
             }
 
-            alignmentsEl.Add(alignmentEl);
-            root.Add(alignmentsEl);
-
-            return new XDocument(new XDeclaration("1.0", "UTF-8", null), root);
+            return alignmentEl;
         }
 
         private static XElement BuildSegmentElement(SegmentRecord seg)

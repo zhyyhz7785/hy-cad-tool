@@ -28,6 +28,8 @@ namespace HyCADTool.ReCall
                 ["hyRoadAlnStaEq"] = "rEq",
                 ["hyRoadAlnReverse"] = "rRv",
                 ["hyRoadAlnOffset"] = "rOf",
+                ["hyRoadAlnUserPickRegister"] = "rLap",
+                ["hyRoadAlnCommit"] = "rLac",
                 ["hyRoadAlnExportXml"] = "rXo",
                 ["hyRoadAlnImportXml"] = "rXi",
                 ["hyRoadIntersection"] = "rIs",

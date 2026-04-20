@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using Newtonsoft.Json;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
@@ -64,6 +68,78 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             if (string.IsNullOrWhiteSpace(path)) return null;
             Save(roadDesign, path);
             return path;
+        }
+
+        /// <summary>
+        /// 「保存最后的文（件）」入口（v1.2 决策 4）：
+        /// 落盘 JSON 之前，先把 <see cref="Domain.Models.Road.AlignmentSourceKind.PiTable"/> /
+        /// <see cref="Domain.Models.Road.AlignmentSourceKind.Unknown"/> 类的"已无对应 HY_ROAD Polyline"的孤儿
+        /// Alignment 从 <paramref name="design"/> 中删除，再写盘。
+        ///
+        /// <see cref="Domain.Models.Road.AlignmentSourceKind.UserPicked"/> 的草稿线位永远保留——它本就允许
+        /// "图上无正式 Polyline、仅 Domain + 预览实体"的状态。
+        /// </summary>
+        public string SaveForDocumentSyncDwg(Document doc, RoadDesign design)
+        {
+            if (doc == null) return null;
+            if (design == null || design.IsEmpty) return null;
+            try
+            {
+                int purged = PurgeOrphans(doc, design);
+                if (purged > 0)
+                    design.LastModifiedUtc = DateTime.UtcNow;
+            }
+            catch
+            {
+                // PurgeOrphans 任何失败（事务、Xdata 异常）都不阻断保存。
+            }
+            return SaveForDocument(design, doc.Name);
+        }
+
+        /// <summary>
+        /// 扫描 ModelSpace 收集所有挂 HY_ROAD KIND=Alignment 的 Polyline ID 集合，
+        /// 然后剔除 <paramref name="design"/> 里 <c>Source.Kind != UserPicked</c> 且不在该集合中的 Alignment。
+        /// 返回剔除条数。
+        /// </summary>
+        public int PurgeOrphans(Document doc, RoadDesign design)
+        {
+            if (doc == null || design == null || design.Alignments.Count == 0) return 0;
+
+            var live = new HashSet<Guid>();
+            var db = doc.Database;
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                foreach (ObjectId id in ms)
+                {
+                    DBObject ent;
+                    try { ent = tr.GetObject(id, OpenMode.ForRead); }
+                    catch { continue; }
+                    if (!(ent is Polyline)) continue;
+                    var kind = HyRoadXdata.ReadKind(tr, ent);
+                    if (!string.Equals(kind, HyRoadXdata.KindAlignment, StringComparison.Ordinal)) continue;
+                    var gid = HyRoadXdata.ReadId(tr, ent);
+                    if (gid != Guid.Empty) live.Add(gid);
+                }
+                tr.Commit();
+            }
+
+            int removed = 0;
+            for (int i = design.Alignments.Count - 1; i >= 0; i--)
+            {
+                var aln = design.Alignments[i];
+                if (aln == null) continue;
+
+                var kind = aln.Source?.Kind ?? AlignmentSourceKind.Unknown;
+                if (kind == AlignmentSourceKind.UserPicked) continue;       // 草稿不算孤儿
+                if (live.Contains(aln.Id)) continue;                        // 实际仍在 DWG
+
+                design.Alignments.RemoveAt(i);
+                removed++;
+            }
+            return removed;
         }
 
         /// <summary>

@@ -50,14 +50,24 @@
                            Foreground="{DynamicResource Brush_TextSecondary}"
                            Text="{Binding HeaderInfo}"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="拾取" MinWidth="64" Margin="2,0"
+                    <Button Content="拾取登记" MinWidth="80" Margin="2,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding PickAlignmentCmd}"
-                            ToolTip="在图上拾取一条 HY_ROAD Alignment Polyline"/>
+                            ToolTip="在图上拾取任意图层的 Polyline / 2DPolyline / 3DPolyline；若已有 HY_ROAD 标记则直接选中，否则登记为「草稿线位」（UserPicked），不动原实体的图层 / Xdata"/>
                     <Button Content="绘出预览" MinWidth="88" Margin="2,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawUserPickPreviewCmd}"
-                            ToolTip="把当前选中线位按直/缓/圆分段画到图层「用户拾取」（黄/青/绿）；不写 HY_ROAD"/>
+                            ToolTip="把当前选中线位按直/缓/圆分段画到图层「用户拾取」；勾「按线位单色」时则整条用 AlignmentId 哈希分配的同色（多线对比用）"/>
+                    <CheckBox Content="按线位单色"
+                              IsChecked="{Binding ColorByAlignment, Mode=TwoWay}"
+                              Style="{StaticResource BlenderCheckBox}"
+                              VerticalAlignment="Center"
+                              Margin="6,0,2,0"
+                              ToolTip="勾选后预览用 AlignmentId 哈希出 12 色调色板里的一种颜色，便于在多线场景中区分线位"/>
+                    <Button Content="提交为平面线位" MinWidth="120" Margin="2,0"
+                            Style="{StaticResource BlenderButton}"
+                            Command="{Binding CommitAlignmentCmd}"
+                            ToolTip="把当前「草稿线位（UserPicked）」正式写入图层「05_hy_道路_平面线位」并挂 HY_ROAD Xdata；同时擦除该线位的预览实体；提交后可被 PI 编辑/插入/删除/反转/桩号方程等命令直接消费"/>
                     <Button Content="反转" MinWidth="64" Margin="2,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ReverseCmd}"
@@ -235,26 +245,20 @@
                             </StackPanel>
                         </ScrollViewer>
 
+                        <!--
+                            PI 编辑器底部提示区：原位置的「应用到 DWG / 撤销」两个重要按钮
+                            已下移至整窗口底栏（最后一行），避免窗口高度变小时被挤出可视区，
+                            见《RoadAlignmentWorkbenchPanel.xaml#全窗口底栏》；此处仅保留
+                            "实时预览"文字提示，供用户识别顶部 PI 参数改动会走 AutoCAD 瞬态黄线。
+                        -->
                         <Border Grid.Row="2"
                                 Background="{DynamicResource Brush_RegionBack}"
                                 BorderBrush="{DynamicResource Brush_BorderDark}"
                                 BorderThickness="0,1,0,0"
                                 Padding="8,6">
-                            <DockPanel LastChildFill="False">
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="应用到 DWG" MinWidth="96" Margin="2,0"
-                                            Style="{StaticResource BlenderButton}"
-                                            Command="{Binding ApplyPiEditCmd}"
-                                            ToolTip="按当前 R/Ls 重建中心线并落盘 JSON"/>
-                                    <Button Content="撤销" MinWidth="64" Margin="2,0"
-                                            Style="{StaticResource BlenderButton}"
-                                            Command="{Binding RevertPiEditCmd}"
-                                            ToolTip="放弃未提交的参数改动"/>
-                                </StackPanel>
-                                <TextBlock VerticalAlignment="Center"
-                                           Foreground="{DynamicResource Brush_TextSecondary}"
-                                           Text="实时预览：AutoCAD 瞬态黄线"/>
-                            </DockPanel>
+                            <TextBlock VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       Text="实时预览：AutoCAD 瞬态黄线（「应用到 DWG / 撤销」已移至窗口底栏）"/>
                         </Border>
                     </Grid>
                 </Grid>
@@ -327,6 +331,20 @@
                 Padding="8,4">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <!--
+                        PI 编辑「应用到 DWG / 撤销」放在窗口底栏首位，保证窗口高度再小也能看到。
+                        CanExecute 已在 VM 里校验 PiEditorVm != null && 非端点 PI，未选中时按钮自动灰化。
+                    -->
+                    <Button Content="应用到 DWG" MinWidth="96" Margin="2,0"
+                            Style="{StaticResource BlenderButton}"
+                            Command="{Binding ApplyPiEditCmd}"
+                            ToolTip="按当前 PI 的 R/Ls 重建中心线并落盘 JSON（需在左列选中非端点 PI）"/>
+                    <Button Content="撤销" MinWidth="64" Margin="2,0"
+                            Style="{StaticResource BlenderButton}"
+                            Command="{Binding RevertPiEditCmd}"
+                            ToolTip="放弃当前 PI 未提交的参数改动"/>
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Margin="6,2"/>
                     <Button Content="桩号标注" MinWidth="80" Margin="2,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawStationLabelsCmd}"

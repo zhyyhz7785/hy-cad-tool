@@ -158,6 +158,13 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadAlnStaEq")][CommandMethod("rEq")]     public void Cmd_hyRoadAlnStaEq()     => ReCallClass.Invoke("hyRoadAlnStaEq");
         [CommandMethod("hyRoadAlnReverse")][CommandMethod("rRv")]   public void Cmd_hyRoadAlnReverse()   => ReCallClass.Invoke("hyRoadAlnReverse");
         [CommandMethod("hyRoadAlnOffset")][CommandMethod("rOf")]    public void Cmd_hyRoadAlnOffset()    => ReCallClass.Invoke("hyRoadAlnOffset");
+        // 用户拾取 → 草稿登记 → 提交（v1.2 路线工作台全工作流）
+        // hyRoadAlnUserPickDraw / hyRoadAlnUserPickDrawWB 已存在 commands.json，作为预览命令直接走面板按钮排队的 SendStringToExecute；
+        // hyRoadAlnUserPickRegister + hyRoadAlnCommit 新增正式 [CommandMethod]，用户也可直接命令行调用。
+        [CommandMethod("hyRoadAlnUserPickDraw")]                        public void Cmd_hyRoadAlnUserPickDraw()    => ReCallClass.Invoke("hyRoadAlnUserPickDraw");
+        [CommandMethod("hyRoadAlnUserPickDrawWB")]                      public void Cmd_hyRoadAlnUserPickDrawWB()  => ReCallClass.Invoke("hyRoadAlnUserPickDrawWB");
+        [CommandMethod("hyRoadAlnUserPickRegister")][CommandMethod("rLap")] public void Cmd_hyRoadAlnUserPickRegister() => ReCallClass.Invoke("hyRoadAlnUserPickRegister");
+        [CommandMethod("hyRoadAlnCommit")][CommandMethod("rLac")]       public void Cmd_hyRoadAlnCommit()          => ReCallClass.Invoke("hyRoadAlnCommit");
         [CommandMethod("hyRoadAlnExportXml")][CommandMethod("rXo")] public void Cmd_hyRoadAlnExportXml() => ReCallClass.Invoke("hyRoadAlnExportXml");
         [CommandMethod("hyRoadAlnImportXml")][CommandMethod("rXi")] public void Cmd_hyRoadAlnImportXml() => ReCallClass.Invoke("hyRoadAlnImportXml");
         [CommandMethod("hyRoadIntersection")][CommandMethod("rIs")]            public void Cmd_hyRoadIntersection()            => ReCallClass.Invoke("hyRoadIntersection");
