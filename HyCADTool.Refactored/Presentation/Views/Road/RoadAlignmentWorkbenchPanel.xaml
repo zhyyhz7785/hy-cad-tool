@@ -101,32 +101,56 @@
                 <ColumnDefinition Width="300" MinWidth="240"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 左列：Alignment 列表 + PI 列表 -->
-            <bui:PropertyEditor Grid.Column="0"
-                                Title="线位 / PI"
-                                ShowIconBar="False"
-                                ShowSearch="False">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+            <!--
+                左列：线位列表（上）+ PI 列表（下），拆成两个独立 bui:PropertyEditor，
+                中间加水平 GridSplitter 可拖动调整比例。避免线位条数多时把 PI 列表挤出可视区。
+                两个子列表各自带滚动条（BlenderListBox Template 内含 ScrollViewer）。
+            -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="120"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="*" MinHeight="120"/>
+                </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0"
-                               Margin="6,6,6,2"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               Text="平面线位列表"/>
-                    <ListBox Grid.Row="1"
-                             Margin="6,0,6,4"
+                <!-- 上：平面线位列表 -->
+                <bui:PropertyEditor Grid.Row="0"
+                                    Title="平面线位列表"
+                                    ShowIconBar="False"
+                                    ShowSearch="False">
+                    <ListBox Margin="6,4,6,6"
                              ItemsSource="{Binding Alignments}"
                              SelectedItem="{Binding SelectedAlignment, Mode=TwoWay}"
                              Style="{StaticResource BlenderListBox}"
-                             DisplayMemberPath="Header"/>
+                             DisplayMemberPath="Header"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                </bui:PropertyEditor>
 
-                    <DockPanel Grid.Row="2" Margin="6,4,6,2" LastChildFill="True">
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <GridSplitter Grid.Row="1"
+                              Height="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Cursor="SizeNS"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows"
+                              Style="{StaticResource BlenderSplitter}"/>
+
+                <!-- 下：PI 列表（附 +PI / -PI 按钮） -->
+                <bui:PropertyEditor Grid.Row="2"
+                                    Title="PI 列表（* = 端点）"
+                                    ShowIconBar="False"
+                                    ShowSearch="False">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    Margin="6,4,6,2">
                             <Button Content="+PI" MinWidth="40" Margin="2,0"
                                     Style="{StaticResource BlenderButton}"
                                     Command="{Binding InsertPiCmd}"
@@ -136,18 +160,18 @@
                                     Command="{Binding DeletePiCmd}"
                                     ToolTip="删除当前选中的内部 PI"/>
                         </StackPanel>
-                        <TextBlock VerticalAlignment="Center"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   Text="PI 列表（* = 端点）"/>
-                    </DockPanel>
-                    <ListBox Grid.Row="3"
-                             Margin="6,0,6,6"
-                             ItemsSource="{Binding PiItems}"
-                             SelectedItem="{Binding SelectedPi, Mode=TwoWay}"
-                             Style="{StaticResource BlenderListBox}"
-                             DisplayMemberPath="Header"/>
-                </Grid>
-            </bui:PropertyEditor>
+
+                        <ListBox Grid.Row="1"
+                                 Margin="6,0,6,6"
+                                 ItemsSource="{Binding PiItems}"
+                                 SelectedItem="{Binding SelectedPi, Mode=TwoWay}"
+                                 Style="{StaticResource BlenderListBox}"
+                                 DisplayMemberPath="Header"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                    </Grid>
+                </bui:PropertyEditor>
+            </Grid>
 
             <GridSplitter Grid.Column="1"
                           Width="4"

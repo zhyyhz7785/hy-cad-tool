@@ -190,12 +190,16 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                     foreach (var e in validation.Errors) o.Violations.Add(e);
                 }
 
-                // (V2) 视觉疑似弧但 bulge 全 0：大概率是 PEDIT → S 样条拟合，Centerline 与屏幕不一致
-                if (o.RawBulgeNonZeroCount == 0 && !o.RawHasSegmentArcs
+                // (V2) 视觉疑似弧但 bulge 全 0：大概率是 PEDIT → S 样条拟合，Centerline 与屏幕不一致。
+                // 关键排除：若存在 SegmentType.Line 段，说明这是正常的直线折线（哪怕只有 1 段），不应误报；
+                // 只有"既无 Arc 段，也无 Line 段（段类型全是 Empty/Point/Coincident）"才可能是样条拟合拟合异常。
+                if (o.RawBulgeNonZeroCount == 0
+                    && !o.RawHasSegmentArcs
+                    && !o.RawHasSegmentLines
                     && o.Alignment.Centerline.VertexCount >= 2)
                 {
                     o.Violations.Add(
-                        "未检测到任何弧段（所有 bulge=0）。若屏幕上是曲线，可能是 PEDIT → S 样条拟合或直线近似弧。"
+                        "未检测到任何弧段/直线段（所有 bulge=0 且段类型异常）。若屏幕上是曲线，可能是 PEDIT → S 样条拟合。"
                         + " 修复：PEDIT → D 还原折线 → PEDIT → F 圆弧拟合 → 重跑 hyRoadA；或用 hyRoadAlnByPi 走 PI 法。");
                 }
 
