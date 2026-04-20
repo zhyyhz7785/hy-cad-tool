@@ -35,6 +35,13 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const short OffsetColor = 30; // 橙：与中心线（品红）/ 桩号（白）区分
 
         /// <summary>
+        /// 路线工作台「绘出当前线位」预览层（<c>hyRoadAlnUserPickDraw</c>）。
+        /// 实体颜色按段类型单独指定（直/缓/圆），与图层索引色无关。
+        /// </summary>
+        public const string UserPickPreviewLayer = "用户拾取";
+        public const short UserPickPreviewLayerColor = 7; // 白：图层默认；分段仍用 ByBlock/ByAci 着色
+
+        /// <summary>
         /// 平面交叉口转角圆弧（hyRoadIntersection）。
         /// <para>存放 <c>Intersection.CornerArcs</c> 转换得到的 AutoCAD <see cref="Autodesk.AutoCAD.DatabaseServices.Arc"/>；
         /// 每条弧挂 HY_ROAD Xdata（KIND="Intersection"，ID=Intersection.Id），支持幂等重建。</para>
@@ -159,6 +166,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (PlanRedLineLayer, PlanRedLineColor),
                 (PlanBandDividerLayer, PlanBandDividerColor),
                 (PlanMarkingLayer, PlanMarkingColor),
+                (UserPickPreviewLayer, UserPickPreviewLayerColor),
             };
         }
     }

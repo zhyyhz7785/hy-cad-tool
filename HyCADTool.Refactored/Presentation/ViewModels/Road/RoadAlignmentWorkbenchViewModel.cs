@@ -11,8 +11,11 @@ using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.Commands;
+using HyCADTool.Refactored.Presentation.Commands.Road;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -41,6 +44,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             _preview = new RoadAlignmentPreviewService();
 
             PickAlignmentCmd = new RelayCommand(PickAlignmentOnCanvas);
+            DrawUserPickPreviewCmd = new RelayCommand(DrawUserPickPreview, () => SelectedAlignment != null);
             ReverseCmd = new RelayCommand(ReverseSelected, () => SelectedAlignment != null);
             OffsetCmd = new RelayCommand(RunOffset, () => SelectedAlignment != null);
             ExportPiCsvCmd = new RelayCommand(() => ExportCsv(PiCsvKind.PiTable), () => SelectedAlignment != null);
@@ -130,9 +134,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         private string _headerInfo = "-";
         public string HeaderInfo { get => _headerInfo; private set => SetProperty(ref _headerInfo, value); }
 
+        /// <summary>最近一次「拾取」在 DWG 中选中的 Polyline 句柄（十六进制字符串）；便于与 AutoCAD 交互对照。</summary>
+        public string LastPickedPolylineHandle { get; private set; }
+
         // =============================== Commands ===============================
 
         public ICommand PickAlignmentCmd { get; }
+        public ICommand DrawUserPickPreviewCmd { get; }
         public ICommand ReverseCmd { get; }
         public ICommand OffsetCmd { get; }
         public ICommand ExportPiCsvCmd { get; }
@@ -401,10 +409,25 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
-            if (!Commands.Road.RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var _)) return;
+            if (!Commands.Road.RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var _, out var pickedId))
+                return;
+            LastPickedPolylineHandle = pickedId.IsValid ? pickedId.Handle.ToString() : string.Empty;
+            OnPropertyChanged(nameof(LastPickedPolylineHandle));
             RefreshAlignments();
             var target = Alignments.FirstOrDefault(a => a.Id == alignment.Id);
             if (target != null) SelectedAlignment = target;
+            StatusText = string.IsNullOrEmpty(LastPickedPolylineHandle)
+                ? $"已拾取线位 {alignment.Name}。"
+                : $"已拾取线位 {alignment.Name}（源 Polyline Handle={LastPickedPolylineHandle}）。";
+        }
+
+        private void DrawUserPickPreview()
+        {
+            if (AcApp.DocumentManager.MdiActiveDocument == null || _selectedAlignment == null) return;
+            // 非模态 WPF 线程禁止直接 LockDocument / 写库 → 经 SendStringToExecute 排队到命令线程（见 CommandDispatcher 注释）。
+            RoadAlignmentUserPickPreviewSession.RequestWorkbenchDraw(_selectedAlignment.Id);
+            CommandDispatcher.Send("hyRoadAlnUserPickDrawWB");
+            StatusText = "已请求绘出预览（排队到 AutoCAD 命令线程，结果见命令行）。";
         }
 
         private void ReverseSelected()

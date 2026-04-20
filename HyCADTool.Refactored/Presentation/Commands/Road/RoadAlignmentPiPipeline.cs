@@ -36,10 +36,12 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
         public static bool PickAlignment(
             Document doc,
             out Alignment alignment,
-            out List<PiElement> elements)
+            out List<PiElement> elements,
+            out ObjectId pickedPolylineId)
         {
             alignment = null;
             elements = null;
+            pickedPolylineId = ObjectId.Null;
 
             if (doc == null) return false;
             var ed = doc.Editor;
@@ -63,6 +65,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             {
                 svc.RebindForDocument(doc.Name, tr, db);
 
+                pickedPolylineId = per.ObjectId;
                 var ent = tr.GetObject(per.ObjectId, OpenMode.ForRead);
                 var kind = HyRoadXdata.ReadKind(tr, ent);
                 if (!string.Equals(kind, "Alignment", StringComparison.Ordinal))

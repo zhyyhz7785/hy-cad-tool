@@ -37,7 +37,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             if (doc == null) return;
             var ed = doc.Editor;
 
-            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements))
+            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements, out _))
                 return;
 
             // 计算 raw 总长，供后续输入校验（方程 BeforeRaw ∈ (0, totalRaw)）

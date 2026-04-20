@@ -32,7 +32,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             if (doc == null) return;
             var ed = doc.Editor;
 
-            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements))
+            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements, out _))
                 return;
 
             if (!ConfirmReverse(ed, alignment)) { ed.WriteMessage("\n[道路] 已取消。"); return; }

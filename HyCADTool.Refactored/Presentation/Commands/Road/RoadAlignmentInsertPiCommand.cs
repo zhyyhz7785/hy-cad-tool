@@ -33,7 +33,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             if (doc == null) return;
             var ed = doc.Editor;
 
-            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements))
+            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements, out _))
                 return;
 
             if (elements.Count < 2)

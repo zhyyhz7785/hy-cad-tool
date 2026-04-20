@@ -7,7 +7,8 @@
                    xmlns:road="clr-namespace:HyCADTool.Refactored.Presentation.Views.Road"
                    mc:Ignorable="d"
                    Title="路线工作台"
-                   HeaderTitle="路线工作台"
+                   UseCustomChrome="False"
+                   ShowInTaskbar="True"
                    Width="1100" Height="640"
                    MinWidth="820" MinHeight="480"
                    WindowStartupLocation="CenterScreen">

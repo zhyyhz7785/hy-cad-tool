@@ -23,7 +23,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
 
-            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements))
+            if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements, out _))
                 return;
 
             var panels = ServiceLocator.Resolve<PanelManager>();
