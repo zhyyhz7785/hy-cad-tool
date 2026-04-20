@@ -1,0 +1,94 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.WidgetVisualGallery"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   mc:Ignorable="d"
+                   Title="HyCAD.BlenderUI — Widget Visual Gallery"
+                   HeaderTitle="widget_draw_backdrop 回归（阶段 1）"
+                   Width="920"
+                   Height="720"
+                   UseCustomChrome="False"
+                   ResizeMode="CanResize"
+                   ShowInTaskbar="True"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  Style="{StaticResource BlenderScrollViewer}">
+        <StackPanel Margin="12">
+            <TextBlock Margin="0,0,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="Button / ToggleButton（渐变底板）"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Margin="0,0,8,0" Content="BlenderButton" Style="{StaticResource BlenderButton}" Width="120"/>
+                <Button Margin="0,0,8,0" Content="Flat" Style="{StaticResource BlenderButtonFlat}"/>
+                <ToggleButton Margin="0,0,8,0" Content="Toggle" Style="{StaticResource BlenderToggleButton}"/>
+                <ToggleButton IsChecked="True" Content="On" Style="{StaticResource BlenderToggleButton}" Width="80"/>
+            </StackPanel>
+
+            <TextBlock Margin="0,8,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="TextBox（浮雕渐变）"/>
+            <TextBox Width="280" Style="{StaticResource BlenderTextBox}" Text="Emboss input"/>
+
+            <TextBlock Margin="0,16,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="CheckBox"/>
+            <CheckBox Margin="0,0,0,12" Style="{StaticResource BlenderCheckBox}" Content="启用规范检查" IsChecked="True"/>
+
+            <TextBlock Margin="0,8,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="ComboBox"/>
+            <ComboBox Width="200" Style="{StaticResource BlenderComboBox}" SelectedIndex="0" Margin="0,0,0,12">
+                <ComboBoxItem Content="Option A"/>
+                <ComboBoxItem Content="Option B"/>
+            </ComboBox>
+
+            <TextBlock Margin="0,8,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="Slider / NumericSlider"/>
+            <Slider Width="240" Minimum="0" Maximum="100" Value="35" Style="{StaticResource BlenderSlider}" Margin="0,0,0,8"/>
+            <bui:PropertyRow Label="数值">
+                <bui:NumericSlider Minimum="0" Maximum="10" Step="0.1" Decimals="2" Value="3.14"/>
+            </bui:PropertyRow>
+
+            <TextBlock Margin="0,16,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="Expander"/>
+            <Expander Header="展开分组" Style="{StaticResource BlenderExpander}" Margin="0,0,0,12">
+                <TextBlock Text="内容区 Brush_PanelBack"/>
+            </Expander>
+
+            <TextBlock Margin="0,8,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="TabControl"/>
+            <TabControl Style="{StaticResource BlenderTabControl}" Height="120" Margin="0,0,0,12">
+                <TabItem Header="Tab 1"><TextBlock Margin="8" Text="区域 A"/></TabItem>
+                <TabItem Header="Tab 2"><TextBlock Margin="8" Text="区域 B"/></TabItem>
+            </TabControl>
+
+            <TextBlock Margin="0,8,0,8" FontSize="{DynamicResource Metric_FontHeader}"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="Outliner（树线 + 选中左边条）"/>
+            <TreeView Height="120" Style="{StaticResource BlenderOutliner}">
+                <TreeViewItem Header="集合" IsExpanded="True">
+                    <TreeViewItem Header="对象 A"/>
+                    <TreeViewItem Header="对象 B"/>
+                </TreeViewItem>
+            </TreeView>
+        </StackPanel>
+    </ScrollViewer>
+</bui:BlenderWindow>

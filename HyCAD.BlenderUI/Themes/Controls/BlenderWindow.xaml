@@ -12,6 +12,7 @@
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Fonts.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/Button.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 

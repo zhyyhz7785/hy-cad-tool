@@ -15,14 +15,26 @@
                 <ControlTemplate TargetType="{x:Type CheckBox}">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="Box" Width="14" Height="14" Margin="0,0,6,0"
-                                Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="{DynamicResource Metric_CornerRadiusSmall}"
                                 SnapsToDevicePixels="True">
+                            <Border.Style>
+                                <Style TargetType="{x:Type Border}">
+                                    <Setter Property="Background">
+                                        <Setter.Value>
+                                            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                                <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Idle}}"/>
+                                                <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_Shadedown_Idle}}"/>
+                                            </LinearGradientBrush>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Border.Style>
                             <Path x:Name="Tick"
-                                  Stroke="{DynamicResource Brush_TextOnAccent}" StrokeThickness="1.6"
-                                  Data="M 2,6 L 5,9 L 11,3"
+                                  Stroke="{DynamicResource Brush_TextOnAccent}" StrokeThickness="1.8"
+                                  StrokeLineJoin="Round"
+                                  Data="M 2.5,6.5 L 5.5,9.5 L 11,3"
                                   SnapsToDevicePixels="True"
                                   Visibility="Collapsed"/>
                         </Border>
@@ -30,7 +42,7 @@
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Box"  Property="Background" Value="{DynamicResource Brush_CheckboxChecked}"/>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush_CheckboxChecked}"/>
                             <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">

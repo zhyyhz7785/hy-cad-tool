@@ -11,6 +11,7 @@
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Fonts.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/ScrollBar.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
 
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/NumericSlider.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/PropertyRow.xaml"/>

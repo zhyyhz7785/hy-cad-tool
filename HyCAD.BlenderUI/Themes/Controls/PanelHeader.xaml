@@ -165,7 +165,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ctrl:Popover}">
-                    <Popup AllowsTransparency="True"
+                    <Popup AllowsTransparency="False"
                            IsOpen="{Binding IsOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                            PlacementTarget="{TemplateBinding PlacementTarget}"
                            Placement="{TemplateBinding Placement}"

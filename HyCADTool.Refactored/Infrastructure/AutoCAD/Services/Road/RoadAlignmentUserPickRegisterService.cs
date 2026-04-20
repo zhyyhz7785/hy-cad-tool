@@ -101,6 +101,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 Source = source,
             };
             design.Alignments.Add(alignment);
+            alignment.CaptureRaw();
             design.LastModifiedUtc = DateTime.UtcNow;
 
             _eventBus.Publish(new AlignmentChangedEvent(design.Id, alignment.Id, RoadChangeKind.Created));

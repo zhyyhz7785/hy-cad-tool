@@ -20,6 +20,10 @@
     <Optimize>false</Optimize>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <DefineConstants>TRACE</DefineConstants>
     <DebugType>pdbonly</DebugType>

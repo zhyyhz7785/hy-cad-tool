@@ -2,6 +2,10 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:ctrl="clr-namespace:HyCAD.BlenderUI.Controls">
 
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <!-- ctrl 命名空间仅为 TargetType 引用 NumericSlider 使用 -->
 
     <Style TargetType="{x:Type ctrl:NumericSlider}">
@@ -19,7 +23,7 @@
                 <ControlTemplate TargetType="{x:Type ctrl:NumericSlider}">
                     <Grid x:Name="PART_Root">
                         <Border x:Name="Bd"
-                                Background="{TemplateBinding Background}"
+                                Style="{StaticResource BlenderWidgetBackdropIdle}"
                                 CornerRadius="{DynamicResource Metric_CornerRadius}"
                                 BorderBrush="{DynamicResource Brush_InputBorder}"
                                 BorderThickness="1"
@@ -94,6 +98,7 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="PART_FillBar" Property="Fill" Value="{DynamicResource Brush_SliderFillHover}"/>
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_InputFocusBorder}"/>
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropHover}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

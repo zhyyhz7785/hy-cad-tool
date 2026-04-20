@@ -22,12 +22,27 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
-                    <Border x:Name="Bd" Margin="2"
-                            Background="{DynamicResource Brush_ScrollThumb}"
-                            CornerRadius="3"/>
+                    <Border x:Name="Bd" Margin="2,2,2,2" MinWidth="4" MinHeight="4"
+                            CornerRadius="3"
+                            SnapsToDevicePixels="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Idle}}"/>
+                                <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_ScrollThumb}}"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ScrollThumbHover}"/>
+                            <Setter TargetName="Bd" Property="Margin" Value="1"/>
+                            <Setter TargetName="Bd" Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                        <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Hover}}"/>
+                                        <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_ScrollThumbHover}}"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

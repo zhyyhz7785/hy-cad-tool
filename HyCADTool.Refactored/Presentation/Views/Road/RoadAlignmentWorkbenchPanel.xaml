@@ -18,7 +18,7 @@
 
     <!--
         路线工作台 UserControl：
-        - 本地 Merge BlenderTheme + RoadDesignerStyles，避免宿主隐式 Style 污染（pitfall B1/B2）；由 RoadAlignmentWorkbenchWindow 承载；
+        - 本地 Merge BlenderTheme + RoadDesignerStyles，避免宿主隐式 Style 污染（pitfall B1/B2）；由 PaletteSet 宿主（PanelManager.ShowAlignmentWorkbench）承载；
         - 三列 Blender 布局（参考 HyCAD.BlenderUI/Samples/SplitDesignerSample.xaml）；
         - 顶栏操作 / 底栏标注 / 中列 PI 编辑复用 PiThreeUnitViewModel。
     -->
@@ -60,7 +60,13 @@
                     <Button Content="预览" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding DrawUserPickPreviewCmd}"
-                            ToolTip="绘出预览：把当前选中线位按直/缓/圆分段画到图层「用户拾取」；勾「按线位单色」时则整条用 AlignmentId 哈希分配的同色"/>
+                            ToolTip="绘出预览：把当前选中线位按直/缓入/缓出/圆分段画到图层「用户拾取」（直=黄、缓入=青、缓出=橙、圆=绿）；勾「单色」时整条用 AlignmentId 哈希分配的同色"/>
+                    <CheckBox Content="原线"
+                              IsChecked="{Binding IsRawPolylineVisible, Mode=TwoWay}"
+                              Style="{StaticResource BlenderCheckBox}"
+                              VerticalAlignment="Center"
+                              Margin="4,0,2,0"
+                              ToolTip="开启：把所有线位的创建时刻中心线快照画到图层「05_hy_道路_原线」（ACI 252）；关闭：擦除"/>
                     <CheckBox Content="单色"
                               IsChecked="{Binding ColorByAlignment, Mode=TwoWay}"
                               Style="{StaticResource BlenderCheckBox}"

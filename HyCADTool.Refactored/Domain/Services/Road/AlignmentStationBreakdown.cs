@@ -177,7 +177,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                         start: ts, end: sc,
                         startBearing: tInBearing, endBearing: scBearing,
                         radius: radius, spiralA: Math.Sqrt(radius * lsIn), spiralLs: lsIn,
-                        piIndex: i);
+                        piIndex: i,
+                        spiralRole: SpiralSegmentRole.Entry);
                     s += lsIn;
                     prevEnd = sc;
                     prevBearing = scBearing;
@@ -205,7 +206,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                         start: cs, end: st,
                         startBearing: csBearing, endBearing: tOutBearing,
                         radius: radius, spiralA: Math.Sqrt(radius * lsOut), spiralLs: lsOut,
-                        piIndex: i);
+                        piIndex: i,
+                        spiralRole: SpiralSegmentRole.Exit);
                     s += lsOut;
                     prevEnd = st;
                     prevBearing = tOutBearing;
@@ -278,7 +280,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     endPoint: seg.EndPoint,
                     startBearingRad: seg.StartBearingRad,
                     endBearingRad: seg.EndBearingRad,
-                    piIndex: seg.PiIndex));
+                    piIndex: seg.PiIndex,
+                    spiralRole: seg.SpiralRole));
             }
 
             var mappedPoints = new List<GeometryPoint>(raw.GeometryPoints.Count);
@@ -345,7 +348,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             double radius,
             double spiralA,
             double spiralLs,
-            int piIndex)
+            int piIndex,
+            SpiralSegmentRole spiralRole = SpiralSegmentRole.None)
         {
             segments.Add(new SegmentRecord(
                 index: segments.Count,
@@ -360,7 +364,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 endPoint: end,
                 startBearingRad: startBearing,
                 endBearingRad: endBearing,
-                piIndex: piIndex));
+                piIndex: piIndex,
+                spiralRole: spiralRole));
         }
 
         /// <summary>
@@ -386,6 +391,17 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         Spiral = 1,
         /// <summary>圆曲线段。</summary>
         Arc = 2,
+    }
+
+    /// <summary>缓和曲线段在 PI 处的角色（入缓 / 出缓），用于预览着色区分。</summary>
+    public enum SpiralSegmentRole
+    {
+        /// <summary>非缓和段或未定。</summary>
+        None = 0,
+        /// <summary>入缓 TS → SC。</summary>
+        Entry = 1,
+        /// <summary>出缓 CS → ST。</summary>
+        Exit = 2,
     }
 
     /// <summary>
@@ -494,6 +510,9 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <summary>所属内部 PI 索引（直线首尾段 = -1）。</summary>
         public int PiIndex { get; }
 
+        /// <summary>缓和段为入缓 / 出缓；非缓和段为 <see cref="SpiralSegmentRole.None"/>。</summary>
+        public SpiralSegmentRole SpiralRole { get; }
+
         public SegmentRecord(
             int index,
             SegmentKind kind,
@@ -507,7 +526,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             Point2D endPoint,
             double startBearingRad,
             double endBearingRad,
-            int piIndex)
+            int piIndex,
+            SpiralSegmentRole spiralRole = SpiralSegmentRole.None)
         {
             Index = index;
             Kind = kind;
@@ -522,6 +542,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             StartBearingRad = startBearingRad;
             EndBearingRad = endBearingRad;
             PiIndex = piIndex;
+            SpiralRole = spiralRole;
         }
 
         /// <summary>格式化段类型中文短名：直/缓/圆。</summary>

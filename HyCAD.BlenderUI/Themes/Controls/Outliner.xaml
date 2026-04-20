@@ -8,6 +8,7 @@
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Fonts.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
     <!--
@@ -75,19 +76,27 @@
                         <Border x:Name="Bd"
                                 Background="{TemplateBinding Background}"
                                 Height="22"
+                                BorderThickness="0"
                                 SnapsToDevicePixels="True">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="1"/>
+                                    <ColumnDefinition Width="15"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0"
+                                        Background="{DynamicResource Brush_BorderMid}"
+                                        Opacity="0.45"
+                                        Width="1"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,2,0,2"/>
                                 <ToggleButton x:Name="Expander"
-                                              Grid.Column="0"
+                                              Grid.Column="1"
                                               ClickMode="Press"
                                               IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                               Style="{StaticResource OutlinerExpandToggle}"/>
                                 <ContentPresenter x:Name="PART_Header"
-                                                  Grid.Column="1"
+                                                  Grid.Column="2"
                                                   ContentSource="Header"
                                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -109,6 +118,8 @@
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ItemSelected}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_AccentBlue}"/>
+                            <Setter TargetName="Bd" Property="BorderThickness" Value="2,0,0,0"/>
                             <Setter Property="Foreground" Value="{DynamicResource Brush_ItemSelectedText}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>

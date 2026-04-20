@@ -41,6 +41,19 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string UserPickPreviewLayer = "用户拾取";
         public const short UserPickPreviewLayerColor = 7; // 白：图层默认；分段仍用 ByBlock/ByAci 着色
 
+        /// <summary>路线工作台「原线」开关：创建时刻中心线快照重绘层（颜色 ACI 252，实体 ByLayer）。</summary>
+        public const string RawPolylineLayer = "05_hy_道路_原线";
+        public const short RawPolylineColor = 252;
+
+        /// <summary>
+        /// 路线工作台当前选中 Alignment 的「主预览」实体图层（黄色，可 ERASE / LAYOFF）。
+        /// 由 <c>RoadAlignmentLivePreviewService</c> 幂等写入 / 擦除；PaletteSet 关闭时统一清零。
+        /// 与 <see cref="RawPolylineLayer"/> 的区别：原线是创建快照（可跨会话留存），
+        /// 预览只是工作台打开期间的视觉反馈（关掉面板就该消失）。
+        /// </summary>
+        public const string LivePreviewLayer = "05_hy_道路_预览";
+        public const short LivePreviewColor = 2; // Yellow：与原有 Transient 黄线视觉一致
+
         /// <summary>
         /// 平面交叉口转角圆弧（hyRoadIntersection）。
         /// <para>存放 <c>Intersection.CornerArcs</c> 转换得到的 AutoCAD <see cref="Autodesk.AutoCAD.DatabaseServices.Arc"/>；
@@ -167,6 +180,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (PlanBandDividerLayer, PlanBandDividerColor),
                 (PlanMarkingLayer, PlanMarkingColor),
                 (UserPickPreviewLayer, UserPickPreviewLayerColor),
+                (RawPolylineLayer, RawPolylineColor),
+                (LivePreviewLayer, LivePreviewColor),
             };
         }
     }

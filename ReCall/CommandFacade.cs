@@ -163,6 +163,8 @@ namespace HyCADTool.ReCall
         // hyRoadAlnUserPickRegister + hyRoadAlnCommit 新增正式 [CommandMethod]，用户也可直接命令行调用。
         [CommandMethod("hyRoadAlnUserPickDraw")]                        public void Cmd_hyRoadAlnUserPickDraw()    => ReCallClass.Invoke("hyRoadAlnUserPickDraw");
         [CommandMethod("hyRoadAlnUserPickDrawWB")]                      public void Cmd_hyRoadAlnUserPickDrawWB()  => ReCallClass.Invoke("hyRoadAlnUserPickDrawWB");
+        [CommandMethod("hyRoadAlnRawShow")]                             public void Cmd_hyRoadAlnRawShow()         => ReCallClass.Invoke("hyRoadAlnRawShow");
+        [CommandMethod("hyRoadAlnRawHide")]                             public void Cmd_hyRoadAlnRawHide()         => ReCallClass.Invoke("hyRoadAlnRawHide");
         [CommandMethod("hyRoadAlnUserPickRegister")][CommandMethod("rLap")] public void Cmd_hyRoadAlnUserPickRegister() => ReCallClass.Invoke("hyRoadAlnUserPickRegister");
         [CommandMethod("hyRoadAlnCommit")][CommandMethod("rLac")]       public void Cmd_hyRoadAlnCommit()          => ReCallClass.Invoke("hyRoadAlnCommit");
         [CommandMethod("hyRoadAlnExportXml")][CommandMethod("rXo")] public void Cmd_hyRoadAlnExportXml() => ReCallClass.Invoke("hyRoadAlnExportXml");

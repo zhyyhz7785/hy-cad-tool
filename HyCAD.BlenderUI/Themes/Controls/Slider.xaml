@@ -38,10 +38,18 @@
                         </Grid.RowDefinitions>
                         <TickBar x:Name="TopTick" Grid.Row="0" Visibility="Collapsed" Placement="Top"
                                  Fill="{TemplateBinding Foreground}" Height="4"/>
-                        <Border x:Name="TrackBackground" Grid.Row="1" Height="4" VerticalAlignment="Center"
-                                Background="{DynamicResource Brush_SliderBack}"
+                        <Border x:Name="TrackBackground" Grid.Row="1" Height="5" VerticalAlignment="Center"
                                 CornerRadius="2"
-                                SnapsToDevicePixels="True"/>
+                                BorderBrush="{DynamicResource Brush_WidgetOutlineDark}"
+                                BorderThickness="0,0,0,1"
+                                SnapsToDevicePixels="True">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                    <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Idle}}"/>
+                                    <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_SliderBack}}"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
                         <Track x:Name="PART_Track" Grid.Row="1">
                             <Track.DecreaseRepeatButton>
                                 <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
@@ -57,11 +65,17 @@
                                         <ControlTemplate TargetType="{x:Type Thumb}">
                                             <Border x:Name="Bd"
                                                     Width="12" Height="18"
-                                                    Background="{DynamicResource Brush_SliderFill}"
                                                     BorderBrush="{DynamicResource Brush_ButtonBorder}"
                                                     BorderThickness="1"
                                                     CornerRadius="2"
-                                                    SnapsToDevicePixels="True"/>
+                                                    SnapsToDevicePixels="True">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                                        <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_SliderFillHover}}"/>
+                                                        <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_SliderFill}}"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_SliderFillHover}"/>

@@ -109,7 +109,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             {
                 ed.WriteMessage(
                     $"\n[道路] 已登记草稿线位 {alignment.Name}（PI={piCount}，长={length:F3} m，源 Handle={pickedHandle ?? "-"}）。"
-                    + "\n[道路] 提示：在路线工作台点「绘出预览」可在「用户拾取」层按段着色查看；"
+                    + "\n[道路] 提示：在路线工作台点「预览」可在「用户拾取」层按段着色查看（直/缓入/缓出/圆）；"
                     + "\n[道路] 确认后点「提交为平面线位」把草稿写入 05_hy_道路_平面线位 层并挂 HY_ROAD Xdata。");
             }
 

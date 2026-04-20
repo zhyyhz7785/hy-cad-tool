@@ -1,0 +1,31 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.AreaSplitJoinSample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   xmlns:sv="clr-namespace:HyCAD.BlenderUI.Controls.ScreenView"
+                   Title="AreaSplitJoinSample"
+                   HeaderTitle="AreaTreeModel + BlenderScreen"
+                   Width="700" Height="500"
+                   UseCustomChrome="False"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}">
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="8">
+            <Button Content="水平拆分" Click="OnSplitH" Style="{StaticResource BlenderButton}" Margin="0,0,8,0"/>
+            <Button Content="垂直拆分" Click="OnSplitV" Style="{StaticResource BlenderButton}"/>
+        </StackPanel>
+        <sv:BlenderScreen x:Name="ScreenHost" Grid.Row="1" Margin="8"/>
+    </Grid>
+</bui:BlenderWindow>

@@ -32,7 +32,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// - 切换 Alignment / PI 时尽量复用 <see cref="PiThreeUnitViewModel.Rebind"/>，避免预览订阅断线；
     /// - <see cref="RefreshAlignments"/> 在 PanelManager 的 DocumentActivated 钩子里被调用（工作台 WPF 窗口可见时），
     ///   以此替代"每命令重新打开窗口"的传统做法；
-    /// - VM 持有 <see cref="RoadAlignmentPreviewService"/>，Dispose 时释放 Transient 句柄。
+    /// - <b>双层预览策略</b>（2026-04-21 起）：
+    ///   <list type="bullet">
+    ///     <item>主预览（选中 Alignment 切换 / Apply / Reverse）→ 实体写入 <c>05_hy_道路_预览</c> 图层
+    ///       （<see cref="RoadAlignmentLivePreviewService"/>），用户可 <c>ERASE</c> / <c>LAYOFF</c>。</item>
+    ///     <item>PI 编辑实时预览（滑块 / 数值输入每变一下都刷新）→ 保留 <see cref="RoadAlignmentPreviewService"/>
+    ///       的 Transient，避免高频事务污染 AutoCAD Undo 栈。</item>
+    ///   </list>
+    ///   PanelManager 监听 PaletteSet Visible → false 时会统一调
+    ///   <see cref="HideAllWorkbenchArtifacts"/> 把实体预览 / Transient / 原线 / UserPick 预览全部清零，
+    ///   再次打开时调 <see cref="RestoreWorkbenchArtifacts"/> 按当前选中线位重画主预览。
     /// </summary>
     public sealed class RoadAlignmentWorkbenchViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -40,6 +49,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         private readonly IDisposable _alignmentChangedSub;
         private bool _disposed;
         private bool _suspendPiEditorEvents;
+        private string _lastWorkbenchDocNameForRaw;
+        private bool _isRawPolylineVisible;
+        private bool _suppressRawPolylineToggle;
 
         public RoadAlignmentWorkbenchViewModel()
         {
@@ -81,13 +93,29 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         /// <summary>
         /// 预览着色模式。<c>true</c> 时整条 Alignment 用 <see cref="RoadAlignmentUserPickPreviewService.ColorIndexFor(Guid)"/>
-        /// 一种颜色（多条线对比用）；<c>false</c> 时按段类型分色（线/圆/缓和），便于核对几何质量。
+        /// 一种颜色（多条线对比用）；<c>false</c> 时按段类型分色（直/缓入/缓出/圆），便于核对几何质量。
         /// </summary>
         private bool _colorByAlignment;
         public bool ColorByAlignment
         {
             get => _colorByAlignment;
             set => SetProperty(ref _colorByAlignment, value);
+        }
+
+        /// <summary>
+        /// 「原线」开关：开启时在图层「05_hy_道路_原线」绘制所有线位创建时刻中心线快照；关闭时擦除。
+        /// </summary>
+        public bool IsRawPolylineVisible
+        {
+            get => _isRawPolylineVisible;
+            set
+            {
+                if (_isRawPolylineVisible == value) return;
+                _isRawPolylineVisible = value;
+                OnPropertyChanged(nameof(IsRawPolylineVisible));
+                if (!_suppressRawPolylineToggle)
+                    CommandDispatcher.Send(value ? "hyRoadAlnRawShow" : "hyRoadAlnRawHide");
+            }
         }
 
         // =============================== Alignment 列表 ===============================
@@ -210,6 +238,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 return;
             }
 
+            if (doc.Name != _lastWorkbenchDocNameForRaw)
+            {
+                if (_isRawPolylineVisible)
+                {
+                    _suppressRawPolylineToggle = true;
+                    _isRawPolylineVisible = false;
+                    OnPropertyChanged(nameof(IsRawPolylineVisible));
+                    _suppressRawPolylineToggle = false;
+                    CommandDispatcher.Send("hyRoadAlnRawHide");
+                }
+                _lastWorkbenchDocNameForRaw = doc.Name;
+            }
+
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
             var svc = ServiceLocator.Resolve<RoadAlignmentService>();
             try
@@ -282,6 +323,59 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         /// <summary>
+        /// PaletteSet 关闭（<c>Visible</c> 由 true 变 false）时由 <c>PanelManager</c> 调用：
+        /// 把工作台当前会话产生的所有临时图形一次性清零，让"关闭面板 = 屏幕干净"成为可预期交互。
+        ///
+        /// <para>清理范围（固定顺序，幂等、异常安全）：</para>
+        /// <list type="number">
+        ///   <item>主预览实体（<c>05_hy_道路_预览</c> 图层，<see cref="RoadAlignmentLivePreviewService.EraseAll"/>）</item>
+        ///   <item>PI 实时预览 Transient（<see cref="_preview"/>.Clear）</item>
+        ///   <item>「原线」图层（若开关打开则 <c>hyRoadAlnRawHide</c> + 复位 ViewModel 开关，避免死循环 Send）</item>
+        ///   <item>「用户拾取」预览图层（<see cref="RoadAlignmentUserPickPreviewService.EraseAllPreviews"/>）</item>
+        /// </list>
+        ///
+        /// VM 本体、Selection、JSON Registry 都不碰：下次 <see cref="RestoreWorkbenchArtifacts"/> 能按原选中线位把主预览重画出来。
+        /// </summary>
+        public void HideAllWorkbenchArtifacts()
+        {
+            if (_disposed) return;
+
+            ClearLivePreview();
+            try { _preview.Clear(); } catch { /* ignore */ }
+
+            if (_isRawPolylineVisible)
+            {
+                try { CommandDispatcher.Send("hyRoadAlnRawHide"); } catch { /* ignore */ }
+                _suppressRawPolylineToggle = true;
+                try
+                {
+                    _isRawPolylineVisible = false;
+                    OnPropertyChanged(nameof(IsRawPolylineVisible));
+                }
+                finally { _suppressRawPolylineToggle = false; }
+            }
+
+            try
+            {
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                if (doc != null) RoadAlignmentUserPickPreviewService.EraseAllPreviews(doc);
+            }
+            catch { /* ignore */ }
+        }
+
+        /// <summary>
+        /// PaletteSet 再次显示时调用：按当前 <see cref="SelectedAlignment"/> 重画主预览实体。
+        /// 不重建"原线"与 UserPick 预览，因为它们是用户显式操作的产物；要恢复请用户重新点开关 / 按钮。
+        /// </summary>
+        public void RestoreWorkbenchArtifacts()
+        {
+            if (_disposed) return;
+            var aln = _selectedAlignment?.Alignment;
+            if (aln == null) return;
+            UpdatePreviewFromDomain(aln);
+        }
+
+        /// <summary>
         /// 由命令层（hyRoadAlnEditPi / hyRoadA / hyRoadAlnByPi 收尾）调用：
         /// 预选指定 Alignment 并可选预选内部 PI。会触发 <see cref="RefreshAlignments"/>。
         /// </summary>
@@ -315,7 +409,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             {
                 SelectedPi = null;
                 PiEditorVm = null;
-                _preview.Clear();
+                ClearLivePreview();
+                try { _preview.Clear(); } catch { /* ignore */ }
                 StatusText = "未选中 Alignment。";
                 return;
             }
@@ -405,10 +500,27 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             try { _preview.Update(result.Polyline); } catch { /* 文档关闭等场景忽略 */ }
         }
 
+        /// <summary>
+        /// 更新「主预览」：把当前选中 Alignment 的中心线写到 <c>05_hy_道路_预览</c> 图层的真实体。
+        /// 幂等（内部先擦旧 LivePreview 实体）；文档已关闭 / 中心线无效时等价于 <see cref="ClearLivePreview"/>。
+        /// </summary>
         private void UpdatePreviewFromDomain(Alignment aln)
         {
-            if (aln?.Centerline == null || aln.Centerline.VertexCount < 2) return;
-            try { _preview.Update(aln.Centerline); } catch { /* ignore */ }
+            if (aln == null) return;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            try { RoadAlignmentLivePreviewService.DrawForAlignment(doc, aln); } catch { /* ignore */ }
+            // PI 编辑器每次 PreviewRequested 会自行刷新 Transient；这里不碰 _preview。
+        }
+
+        /// <summary>
+        /// 擦除主预览实体（不影响 PI 实时预览 Transient、原线图层、UserPick 预览）。
+        /// </summary>
+        private void ClearLivePreview()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            try { RoadAlignmentLivePreviewService.EraseAll(doc); } catch { /* ignore */ }
         }
 
         private void ClearDetails()
@@ -420,6 +532,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             SelectedStationEquation = null;
             SelectedPi = null;
             PiEditorVm = null;
+            ClearLivePreview();
             try { _preview.Clear(); } catch { /* ignore */ }
         }
 
@@ -856,6 +969,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 if (PiEditorVm != null) PiEditorVm.PreviewRequested -= OnPiEditorPreviewRequested;
                 _alignmentChangedSub?.Dispose();
                 _preview.Dispose();
+                // 兜底：插件卸载 / 最终释放时把遗留的主预览实体也擦掉，不在 DWG 上留垃圾。
+                ClearLivePreview();
             }
             catch { /* ignore */ }
         }

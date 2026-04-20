@@ -1,6 +1,10 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <Style TargetType="{x:Type Expander}" x:Key="BlenderExpander">
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
@@ -20,8 +24,9 @@
                         </Grid.RowDefinitions>
                         <Border x:Name="Header" Grid.Row="0"
                                 Height="{DynamicResource Metric_ExpanderHeight}"
-                                Background="{DynamicResource Brush_ExpanderHeader}"
-                                CornerRadius="{DynamicResource Metric_CornerRadius}"
+                                Style="{StaticResource BlenderWidgetBackdropIdle}"
+                                BorderBrush="{DynamicResource Brush_BorderMid}"
+                                BorderThickness="1"
                                 SnapsToDevicePixels="True">
                             <ToggleButton x:Name="HeaderBtn"
                                           IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
@@ -64,7 +69,7 @@
                             <Setter TargetName="ContentHost" Property="Visibility" Value="Visible"/>
                         </Trigger>
                         <Trigger SourceName="HeaderBtn" Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Header" Property="Background" Value="{DynamicResource Brush_ExpanderHeaderHover}"/>
+                            <Setter TargetName="Header" Property="Style" Value="{StaticResource BlenderWidgetBackdropHover}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

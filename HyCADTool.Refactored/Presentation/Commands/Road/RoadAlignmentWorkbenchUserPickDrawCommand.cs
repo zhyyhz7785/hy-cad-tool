@@ -47,7 +47,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 int n = RoadAlignmentUserPickPreviewService.DrawPreviewPolylines(doc, aln, colorMode);
                 string palette = colorMode == RoadAlignmentUserPickPreviewService.ColorMode.ByAlignmentId
                     ? "（按 Alignment Id 统一取色）"
-                    : "（直=黄 / 缓=青 / 圆=绿）";
+                    : "（直=黄 / 缓入=青 / 缓出=橙 / 圆=绿）";
                 ed.WriteMessage(
                     n > 0
                         ? $"\n[道路] 已在图层「{HyRoadLayers.UserPickPreviewLayer}」绘制 {n} 条 Polyline{palette}。"

@@ -21,7 +21,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
 
             int n = RoadAlignmentUserPickPreviewService.DrawPreviewPolylines(doc, alignment);
             ed.WriteMessage(
-                $"\n[道路] 已在图层「{HyRoadLayers.UserPickPreviewLayer}」绘制 {n} 条 Polyline（直=黄 / 缓=青 / 圆=绿）。");
+                $"\n[道路] 已在图层「{HyRoadLayers.UserPickPreviewLayer}」绘制 {n} 条 Polyline（直=黄 / 缓入=青 / 缓出=橙 / 圆=绿）。");
         }
     }
 }

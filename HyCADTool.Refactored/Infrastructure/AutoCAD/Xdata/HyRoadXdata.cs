@@ -37,6 +37,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
 
         /// <summary>平面线位。</summary>
         public const string KindAlignment = "Alignment";
+        /// <summary>路线工作台「原线」开关绘制的 Polyline（非正式中心线实体）。</summary>
+        public const string KindAlignmentRawPick = "AlignmentRawPick";
+        /// <summary>
+        /// 路线工作台主预览实体（当前选中 Alignment 的中心线黄色预览，绘制在
+        /// <c>HyRoadLayers.LivePreviewLayer</c> 上）。与 <see cref="KindAlignmentRawPick"/> 区分：
+        /// RawPick 是创建时刻快照（横跨所有线位），LivePreview 只是工作台当前会话视觉反馈，
+        /// 面板关闭时由 <c>RoadAlignmentLivePreviewService.EraseAll</c> 自动清理。
+        /// </summary>
+        public const string KindAlignmentLivePreview = "AlignmentLivePreview";
         /// <summary>交叉口。</summary>
         public const string KindIntersection = "Intersection";
         /// <summary>交叉口转角圆弧。</summary>

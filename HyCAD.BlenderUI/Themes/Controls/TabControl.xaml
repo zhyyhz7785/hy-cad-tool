@@ -1,6 +1,10 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <Style TargetType="{x:Type TabItem}" x:Key="BlenderTabItem">
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
@@ -57,7 +61,15 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Background="{DynamicResource Brush_HeaderBack}">
+                        <Border Grid.Row="0"
+                                BorderBrush="{DynamicResource Brush_BorderDark}"
+                                BorderThickness="0,0,0,1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                    <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_Shadetop_Idle}}"/>
+                                    <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_HeaderBack}}"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
                             <TabPanel x:Name="HeaderPanel" IsItemsHost="True"
                                       Panel.ZIndex="1"
                                       KeyboardNavigation.TabIndex="1"/>

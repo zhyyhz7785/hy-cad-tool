@@ -1,0 +1,21 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.AutoPropertySample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   Title="AutoPropertySample"
+                   HeaderTitle="UILayout + PropertyToWidget"
+                   Width="420" Height="360"
+                   UseCustomChrome="False"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+    <ContentControl x:Name="Host"/>
+</bui:BlenderWindow>

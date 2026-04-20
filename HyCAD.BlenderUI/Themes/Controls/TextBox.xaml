@@ -17,14 +17,28 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TextBox}">
                     <Border x:Name="Bd"
-                            Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{DynamicResource Metric_CornerRadius}"
                             SnapsToDevicePixels="True">
-                        <ScrollViewer x:Name="PART_ContentHost"
-                                      Padding="{TemplateBinding Padding}"
-                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
+                                <GradientStop Offset="0" Color="{Binding Color, Source={DynamicResource Brush_EmbossHighlight}}"/>
+                                <GradientStop Offset="0.12" Color="{Binding Color, Source={DynamicResource Brush_InputBack}}"/>
+                                <GradientStop Offset="1" Color="{Binding Color, Source={DynamicResource Brush_EmbossShadow}}"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid>
+                            <Border Height="1" VerticalAlignment="Top" Margin="1,1,1,0"
+                                    Background="{DynamicResource Brush_WidgetOutlineLight}"
+                                    Opacity="0.35"
+                                    CornerRadius="1,1,0,0"
+                                    SnapsToDevicePixels="True"/>
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="0,2,0,0"
+                                          Padding="{TemplateBinding Padding}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocused" Value="True">

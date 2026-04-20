@@ -1,0 +1,14 @@
+<UserControl x:Class="HyCAD.BlenderUI.PaletteSetDemo.PaletteSetDemoPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sv="clr-namespace:HyCAD.BlenderUI.Controls.ScreenView;assembly=HyCAD.BlenderUI">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <sv:BlenderArea SpaceType="Properties"/>
+</UserControl>

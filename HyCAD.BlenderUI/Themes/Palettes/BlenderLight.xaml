@@ -76,4 +76,17 @@
     <SolidColorBrush x:Key="Brush_SliderFill"           Color="#4772B3"/>
     <SolidColorBrush x:Key="Brush_SliderFillHover"      Color="#5984C5"/>
 
+    <SolidColorBrush x:Key="Brush_Shadetop_Idle"        Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Idle"      Color="#C8C8C8"/>
+    <SolidColorBrush x:Key="Brush_Shadetop_Hover"      Color="#6A90D0"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Hover"     Color="#4A7AB8"/>
+    <SolidColorBrush x:Key="Brush_Shadetop_Pressed"    Color="#5580C0"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Pressed"   Color="#3A5F94"/>
+    <SolidColorBrush x:Key="Brush_Shadetop_Selected"   Color="#5580C0"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Selected"  Color="#3A5F94"/>
+    <SolidColorBrush x:Key="Brush_EmbossHighlight"    Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="Brush_EmbossShadow"       Color="#C0C0C0"/>
+    <SolidColorBrush x:Key="Brush_WidgetOutlineLight" Color="#D0D0D0"/>
+    <SolidColorBrush x:Key="Brush_WidgetOutlineDark"  Color="#A8A8A8"/>
+
 </ResourceDictionary>

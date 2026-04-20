@@ -19,7 +19,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
     ///
     /// <para>颜色策略：</para>
     /// <list type="bullet">
-    ///   <item>分段色（<see cref="ColorMode.BySegmentKind"/>）：直=黄、缓=青、圆=绿。用于看清几何组成。</item>
+    ///   <item>分段色（<see cref="ColorMode.BySegmentKind"/>）：直=黄、缓入=青、缓出=橙、圆=绿。用于看清几何组成。</item>
     ///   <item>按 Alignment 分色（<see cref="ColorMode.ByAlignmentId"/>）：同一条 Alignment 所有段同色，
     ///     多条 UserPicked 线位同屏时按 Id 哈希轮流取色，容易分辨"哪段属于哪条"。</item>
     /// </list>
@@ -58,14 +58,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             184, // 粉紫
         };
 
-        /// <summary>直线：黄；缓和：青；圆曲线：绿。</summary>
-        public static short ColorIndexFor(SegmentKind kind)
+        /// <summary>分段色：直=黄、缓入=青、缓出=橙、圆=绿。</summary>
+        public static short ColorIndexFor(SegmentRecord seg)
         {
-            switch (kind)
+            switch (seg.Kind)
             {
                 case SegmentKind.Line: return 2;
-                case SegmentKind.Spiral: return 4;
                 case SegmentKind.Arc: return 3;
+                case SegmentKind.Spiral:
+                    switch (seg.SpiralRole)
+                    {
+                        case SpiralSegmentRole.Exit: return 30;
+                        case SpiralSegmentRole.Entry:
+                        case SpiralSegmentRole.None:
+                        default: return 4;
+                    }
                 default: return 7;
             }
         }
@@ -120,7 +127,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                             pl.Layer = HyRoadLayers.UserPickPreviewLayer;
                             short aci = colorMode == ColorMode.ByAlignmentId
                                 ? ColorIndexFor(alignment.Id)
-                                : ColorIndexFor(seg.Kind);
+                                : ColorIndexFor(seg);
                             pl.Color = Color.FromColorIndex(ColorMethod.ByAci, aci);
                             btr.AppendEntity(pl);
                             tr.AddNewlyCreatedDBObject(pl, true);
@@ -167,6 +174,54 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             if (db == null) throw new ArgumentNullException(nameof(db));
             if (alignmentId == Guid.Empty) return 0;
             return ErasePreviewsForAlignmentInternal(tr, db, alignmentId);
+        }
+
+        /// <summary>
+        /// 擦除当前文档 ModelSpace 中所有 KIND=<see cref="KindAlignmentPreview"/> 的预览实体（不区分 Alignment）。
+        /// 内部自开 LockDocument + Transaction；失败（文档销毁 / Lock 抛）静默返回 0，不向 VM 线程扩散。
+        /// 供路线工作台 PaletteSet 关闭时一次性清零使用。
+        /// </summary>
+        /// <returns>擦除条数；doc 为 null 或异常时返回 0。</returns>
+        public static int EraseAllPreviews(Document doc)
+        {
+            if (doc == null) return 0;
+            try
+            {
+                var db = doc.Database;
+                int n;
+                using (doc.LockDocument())
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    n = EraseAllPreviewsInternal(tr, db);
+                    tr.Commit();
+                }
+                return n;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static int EraseAllPreviewsInternal(Transaction tr, Database db)
+        {
+            var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+            var toErase = new List<ObjectId>();
+            foreach (ObjectId id in ms)
+            {
+                var ent = tr.GetObject(id, OpenMode.ForRead);
+                if (ent == null) continue;
+                var k = HyRoadXdata.ReadKind(tr, ent);
+                if (!string.Equals(k, KindAlignmentPreview, StringComparison.Ordinal)) continue;
+                toErase.Add(id);
+            }
+            foreach (var id in toErase)
+            {
+                var ent = tr.GetObject(id, OpenMode.ForWrite);
+                if (ent != null && !ent.IsErased) ent.Erase();
+            }
+            return toErase.Count;
         }
 
         private static int ErasePreviewsForAlignmentInternal(Transaction tr, Database db, Guid alignmentId)

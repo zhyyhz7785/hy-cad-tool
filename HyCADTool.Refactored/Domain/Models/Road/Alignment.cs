@@ -40,6 +40,22 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public Polyline3D Centerline { get; set; } = new Polyline3D();
 
         /// <summary>
+        /// 创建 / 登记时刻的平面中心线深拷贝（"原线"证据），与后续 PI 编辑后的 <see cref="Centerline"/> 可分离。
+        /// 用于路线工作台「原线」开关在图层 <c>05_hy_道路_原线</c> 上重绘；老 JSON 无此字段时为 null。
+        /// </summary>
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public Polyline3D RawPickedPolyline { get; set; }
+
+        /// <summary>
+        /// 将当前 <see cref="Centerline"/> 深拷贝写入 <see cref="RawPickedPolyline"/>（顶点不足 2 则跳过）。
+        /// </summary>
+        public void CaptureRaw()
+        {
+            if (Centerline == null || Centerline.VertexCount < 2) return;
+            RawPickedPolyline = Centerline.Clone();
+        }
+
+        /// <summary>
         /// 参数化几何元素链（v1 预留 + 可逐步填充）：直线 / 圆曲线 / 缓和曲线。
         /// 对 Civil 3D 等软件的 Alignment Entity 链的概念对应。
         /// </summary>

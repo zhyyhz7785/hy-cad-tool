@@ -17,10 +17,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Button}">
                     <Border x:Name="Bd"
-                            Background="{TemplateBinding Background}"
+                            Style="{StaticResource BlenderWidgetBackdropIdle}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{DynamicResource Metric_CornerRadius}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter Margin="{TemplateBinding Padding}"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -29,10 +28,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonHover}"/>
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropHover}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonPressed}"/>
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropPressed}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
@@ -49,20 +48,36 @@
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Padding" Value="{DynamicResource Metric_ButtonPaddingFlat}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Bd"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            CornerRadius="{DynamicResource Metric_CornerRadius}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonPressed}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
-    <!--
-        BlenderToggleButton：独立完整 Style（NOT BasedOn BlenderButton）。
-        历史陷阱：BlenderButton 的 TargetType=Button、Template TargetType=Button；
-        ToggleButton 与 Button 互为 ButtonBase 的兄弟节点，并不存在父子关系。
-        如果用 BasedOn="{StaticResource BlenderButton}" 把 Button-Style 当 ToggleButton-Style 的基样式，
-        XamlReader 会直接抛 "Style.TargetType 不兼容" 的 XamlParseException
-        （在加载窗口设置 ToggleButton.Style 那一刻原生崩溃）。
-        所以这里完整重写所有 Setter 和 ControlTemplate（TargetType=ToggleButton），独立闭环。
-
-        IsChecked 的 Trigger 必须放进 ControlTemplate.Triggers 里直接修改 Bd.Background，
-        Style.Triggers 改 Background 在 Template 已经把 Background 绑死时不会生效。
-    -->
     <Style TargetType="{x:Type ToggleButton}" x:Key="BlenderToggleButton">
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
@@ -79,10 +94,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ToggleButton}">
                     <Border x:Name="Bd"
-                            Background="{TemplateBinding Background}"
+                            Style="{StaticResource BlenderWidgetBackdropIdle}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{DynamicResource Metric_CornerRadius}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter Margin="{TemplateBinding Padding}"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -90,20 +104,37 @@
                                           RecognizesAccessKey="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonHover}"/>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ButtonPressed}"/>
-                        </Trigger>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_AccentBlue}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextOnAccent}"/>
-                        </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
                             <Setter TargetName="Bd" Property="Opacity" Value="0.6"/>
                         </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropSelected}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextOnAccent}"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True"/>
+                                <Condition Property="IsPressed" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropPressed}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextOnAccent}"/>
+                        </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                                <Condition Property="IsChecked" Value="False"/>
+                                <Condition Property="IsPressed" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropHover}"/>
+                        </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsPressed" Value="True"/>
+                                <Condition Property="IsChecked" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropPressed}"/>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

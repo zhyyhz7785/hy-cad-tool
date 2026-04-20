@@ -1,7 +1,6 @@
 using Autodesk.AutoCAD.Windows;
 using Autofac;
 using System;
-using System.Windows;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation
@@ -32,6 +31,13 @@ namespace HyCADTool.Refactored.Presentation
         private PaletteSet _alignmentPaletteSet;
         private Views.Road.RoadAlignmentWorkbenchPanel _alignmentPanel;
         private ViewModels.Road.RoadAlignmentWorkbenchViewModel _alignmentVm;
+
+        /// <summary>
+        /// 路线工作台 PaletteSet 上一次 <c>StateChanged</c> 观察到的 Visible 值，用于做边缘触发：
+        /// 只有在 Visible 从 true → false 时才调 <c>HideAllWorkbenchArtifacts</c>，
+        /// 从 false → true 时才调 <c>RestoreWorkbenchArtifacts</c>；避免 Dock/Float 切换重复触发。
+        /// </summary>
+        private bool _alignmentPaletteWasVisible;
 
         public PanelManager(IComponentContext componentContext)
         {
@@ -183,14 +189,40 @@ namespace HyCADTool.Refactored.Presentation
             // 初始停靠在底部（editor 上方、命令行之上）；用户可拖出浮动或改停靠位。
             _alignmentPaletteSet.Dock = DockSides.Bottom;
             _alignmentPaletteSet.Visible = true;
+            _alignmentPaletteWasVisible = true;
 
             TryStripAlignmentCaptionIfDocked();
         }
 
-        /// <summary>监听 Dock/Float/显示切换；Dock 时抹掉原生标题栏（对齐 <see cref="CreateHyBlenderPanel"/>）。</summary>
+        /// <summary>
+        /// 监听 Dock/Float/显示切换：
+        /// - Dock 时抹掉原生标题栏（对齐 <see cref="CreateHyBlenderPanel"/>）；
+        /// - Visible 由 true → false（点 X / AutoHide 收起 / 程序 Visible=false）时调
+        ///   <see cref="ViewModels.Road.RoadAlignmentWorkbenchViewModel.HideAllWorkbenchArtifacts"/>
+        ///   把工作台产生的所有临时图形一次清零，解决"关了面板预览黄线赖在图上删不掉"的问题；
+        /// - Visible 由 false → true 时调 <c>RestoreWorkbenchArtifacts</c> 按原选中线位重画主预览。
+        ///
+        /// 注意：StateChanged 也会在 Dock/Float 切换时触发，此时 Visible 保持不变，
+        /// 这里用 <see cref="_alignmentPaletteWasVisible"/> 边缘触发，避免无谓重画 / 清理。
+        /// </summary>
         private void OnAlignmentPaletteStateChanged(object sender, PaletteSetStateEventArgs e)
         {
             TryStripAlignmentCaptionIfDocked();
+
+            if (_alignmentPaletteSet == null) return;
+            bool nowVisible = _alignmentPaletteSet.Visible;
+            if (nowVisible == _alignmentPaletteWasVisible) return;
+
+            _alignmentPaletteWasVisible = nowVisible;
+            try
+            {
+                if (!nowVisible) _alignmentVm?.HideAllWorkbenchArtifacts();
+                else _alignmentVm?.RestoreWorkbenchArtifacts();
+            }
+            catch
+            {
+                // StateChanged 是 AutoCAD 原生回调，外抛会升级为宿主致命错误，必须吞掉
+            }
         }
 
         /// <summary>

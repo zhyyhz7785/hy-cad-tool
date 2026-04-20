@@ -131,6 +131,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 
             HyRoadXdata.Write(transaction, database, polyline, alignment.Id, "Alignment", SchemaVersion.Current);
 
+            alignment.CaptureRaw();
+
             design.LastModifiedUtc = DateTime.UtcNow;
             _eventBus.Publish(new AlignmentChangedEvent(design.Id, alignment.Id, kind));
             return alignment;
