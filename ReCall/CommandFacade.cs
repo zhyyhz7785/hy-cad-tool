@@ -167,6 +167,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadAlnRawHide")]                             public void Cmd_hyRoadAlnRawHide()         => ReCallClass.Invoke("hyRoadAlnRawHide");
         [CommandMethod("hyRoadAlnUserPickRegister")][CommandMethod("rLap")] public void Cmd_hyRoadAlnUserPickRegister() => ReCallClass.Invoke("hyRoadAlnUserPickRegister");
         [CommandMethod("hyRoadAlnCommit")][CommandMethod("rLac")]       public void Cmd_hyRoadAlnCommit()          => ReCallClass.Invoke("hyRoadAlnCommit");
+        [CommandMethod("hyRoadAlnDeletePick")]                         public void Cmd_hyRoadAlnDeletePick()      => ReCallClass.Invoke("hyRoadAlnDeletePick");
         [CommandMethod("hyRoadAlnExportXml")][CommandMethod("rXo")] public void Cmd_hyRoadAlnExportXml() => ReCallClass.Invoke("hyRoadAlnExportXml");
         [CommandMethod("hyRoadAlnImportXml")][CommandMethod("rXi")] public void Cmd_hyRoadAlnImportXml() => ReCallClass.Invoke("hyRoadAlnImportXml");
         [CommandMethod("hyRoadIntersection")][CommandMethod("rIs")]            public void Cmd_hyRoadIntersection()            => ReCallClass.Invoke("hyRoadIntersection");

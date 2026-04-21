@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.GraphicsInterface;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
@@ -10,116 +11,347 @@ using AcDb = Autodesk.AutoCAD.DatabaseServices;
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 {
     /// <summary>
-    /// 把 Domain <see cref="Polyline3D"/> 投影到 AutoCAD Transient 图层的预览服务。
+    /// 路线工作台三态瞬态图形服务（AutoCAD Transient Graphics）：
+    /// <list type="bullet">
+    ///   <item><b>Outline</b>（黄）— 平面线位列表当前行，整条中心线；<b>只要有选中线位就恒显示</b>；</item>
+    ///   <item><b>PI Point</b>（绿）— PI 列表当前内部行，交点处小圆；直径 = 当前视图高度的 <see cref="PiScreenRatio"/>（默认 5%），
+    ///         随 AutoCAD ZOOM/PAN/VIEW/REGEN 命令结束自动重绘；</item>
+    ///   <item><b>Segment Line</b>（蓝）— 分段表当前行，段起终点弦线。</item>
+    /// </list>
+    ///
+    /// <para>三态独立三批 Drawable，互不干扰；可同时存在（黄线 + 绿点 + 蓝线）。</para>
     ///
     /// 设计约束（参见 skill: hycad-autocad-singleton-database-context）：
-    /// - <b>不缓存</b> Document / Database：每次 <see cref="Update"/> / <see cref="Clear"/>
-    ///   时重新解析 <c>MdiActiveDocument</c>；
-    /// - 对外可见的只有 <see cref="Update"/> / <see cref="Clear"/> / <see cref="Dispose"/>；
+    /// - <b>不缓存</b> Document / Database：每次 Render 时重新解析 <c>MdiActiveDocument</c>；
     /// - 预览只使用 Transient Graphics，不入 ModelSpace，也不开启事务；
-    /// - 单实例生命周期被调用方（命令层）约束，一次编辑会话对应一个实例。
-    ///
-    /// 用法示例（命令层）：
-    /// <code>
-    /// using (var preview = new RoadAlignmentPreviewService())
-    /// {
-    ///     vm.PreviewRequested += (_, r) => preview.Update(r.Polyline);
-    ///     AcApp.ShowModalWindow(win);
-    /// } // 这里会自动 Clear
-    /// </code>
+    /// - 单实例生命周期由调用方约束，一次编辑会话对应一个实例。
     /// </summary>
     public sealed class RoadAlignmentPreviewService : IDisposable
     {
-        /// <summary>预览线的 AutoCAD 颜色索引（255 色）。默认偏亮的黄色，在暗色背景上显眼。</summary>
-        public short ColorIndex { get; set; } = 2; // AutoCAD Yellow
+        /// <summary>路线轮廓（列表选中线位）— ACI 黄。</summary>
+        public const short ColorAlignmentOutline = 2;
+
+        /// <summary>PI 交点（PI 列表选中）— ACI 绿。</summary>
+        public const short ColorPiPoint = 3;
+
+        /// <summary>分段（分段表选中）— ACI 蓝。</summary>
+        public const short ColorSegmentLine = 5;
+
+        /// <summary>
+        /// Outline 颜色索引（ACI 0-256）。默认 <see cref="ColorAlignmentOutline"/>=黄；
+        /// 老调用方（<c>RoadExtractCommand</c> / <c>RoadAlignmentTableCommand</c>）可以设置其他颜色做一次性高亮，此时一般只用 <see cref="Update(Polyline3D)"/>。
+        /// </summary>
+        public short ColorIndex { get; set; } = ColorAlignmentOutline;
+
+        /// <summary>PI 小圆直径占当前视图高度的比例（0.05 = 5%）。</summary>
+        public double PiScreenRatio { get; set; } = 0.05;
+
+        /// <summary>PI 小圆在无法读取视图高度时的兜底半径（图纸单位）。</summary>
+        public double PiFallbackRadius { get; set; } = 2.5;
 
         /// <summary>Transient 绘制模式。DirectTopmost 置顶；不被 Zoom 擦除。</summary>
         public TransientDrawingMode DrawingMode { get; set; } = TransientDrawingMode.DirectTopmost;
 
-        private readonly List<Drawable> _drawables = new List<Drawable>();
+        private readonly List<Drawable> _outlineDrawables = new List<Drawable>();
+        private readonly List<Drawable> _piDrawables = new List<Drawable>();
+        private readonly List<Drawable> _segmentDrawables = new List<Drawable>();
+
+        private Polyline3D _currentOutline;
+        private bool _hasPi;
+        private double _piX, _piY;
+        private bool _hasSegment;
+        private Point2D _segStart, _segEnd;
+
+        private Document _subscribedDoc;
         private bool _disposed;
 
-        // 记录发起本次预览会话的 Document 标识：
-        // 若更新时发现活动文档换了，则先 Clear 再按新文档画；避免把旧 Drawable 误 Erase 到新文档。
-        // 注意：TransientManager 是进程级的，Drawable 本身不绑文档；但为了语义清晰仍做此守护。
-        private object _originDocId;
+        public RoadAlignmentPreviewService()
+        {
+            TrySubscribeViewEvents(AcApp.DocumentManager.MdiActiveDocument);
+        }
+
+        // =============================== 外部 API ===============================
+
+        /// <summary>兼容旧调用：等价于仅设置 Outline（清除 PI / Segment）。</summary>
+        public void Update(Polyline3D polyline) => Render(polyline, false, 0, 0, false, default, default);
+
+        /// <summary>仅替换 Outline，保留当前 PI / Segment。</summary>
+        public void ShowAlignmentOutline(Polyline3D polyline)
+            => Render(polyline, _hasPi, _piX, _piY, _hasSegment, _segStart, _segEnd);
+
+        /// <summary>仅替换 PI 小圆（绿），保留当前 Outline / Segment。</summary>
+        public void ShowPiPoint(double x, double y)
+            => Render(_currentOutline, true, x, y, _hasSegment, _segStart, _segEnd);
+
+        /// <summary>仅替换 Segment 蓝线，保留当前 Outline / PI。</summary>
+        public void ShowSegmentLine(Point2D start, Point2D end)
+            => Render(_currentOutline, _hasPi, _piX, _piY, true, start, end);
 
         /// <summary>
-        /// 用新的 <paramref name="polyline"/> 替换当前预览。传入 null 或空折线时等价于 <see cref="Clear"/>。
+        /// 一次性设定三态（任何一个传 null / false 表示清除该态）。
+        /// 用于 VM 统一入口 <c>RefreshWorkbenchTransientVisuals</c>。
         /// </summary>
-        public void Update(Polyline3D polyline)
+        public void Render(
+            Polyline3D outline,
+            (double X, double Y)? pi,
+            (Point2D Start, Point2D End)? segment)
+        {
+            bool hasPi = pi.HasValue;
+            double px = hasPi ? pi.Value.X : 0;
+            double py = hasPi ? pi.Value.Y : 0;
+
+            bool hasSeg = segment.HasValue;
+            Point2D s = hasSeg ? segment.Value.Start : default;
+            Point2D e = hasSeg ? segment.Value.End : default;
+
+            Render(outline, hasPi, px, py, hasSeg, s, e);
+        }
+
+        private void Render(
+            Polyline3D outline,
+            bool hasPi, double piX, double piY,
+            bool hasSeg, Point2D segStart, Point2D segEnd)
         {
             if (_disposed) return;
+
+            _currentOutline = outline;
+            _hasPi = hasPi;
+            _piX = piX;
+            _piY = piY;
+            _hasSegment = hasSeg;
+            _segStart = segStart;
+            _segEnd = segEnd;
 
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
             {
-                Clear();
+                ClearBucket(_outlineDrawables);
+                ClearBucket(_piDrawables);
+                ClearBucket(_segmentDrawables);
                 return;
             }
+            TrySubscribeViewEvents(doc);
 
-            // 文档切换防御：如果当前活动文档与首次绘制时不一致，直接清掉老 Drawable。
-            if (_originDocId != null && !ReferenceEquals(_originDocId, doc))
-            {
-                Clear();
-            }
-            _originDocId = doc;
+            RenderOutline(doc);
+            RenderPi(doc);
+            RenderSegment(doc);
+            UpdateScreenSafe(doc);
+        }
 
-            Clear();
+        /// <summary>清除全部三态。</summary>
+        public void Clear()
+        {
+            if (_disposed) return;
+            _currentOutline = null;
+            _hasPi = false;
+            _hasSegment = false;
 
-            if (polyline == null || polyline.VertexCount < 2) return;
+            ClearBucket(_outlineDrawables);
+            ClearBucket(_piDrawables);
+            ClearBucket(_segmentDrawables);
 
-            // 复用 Bridge：Domain Polyline3D → AutoCAD Polyline（未入库，直接作为 Drawable 用）。
-            // ToAutoCadPolyline 会保留 bulges，Transient 自然按弧段渲染。
-            // AcDb.Polyline 既是数据库实体也是 Drawable，TransientManager 可直接接受。
+            try { AcApp.DocumentManager.MdiActiveDocument?.Editor.UpdateScreen(); }
+            catch { /* ignore */ }
+        }
+
+        // =============================== 内部：三态各自 Render ===============================
+
+        private void RenderOutline(Document doc)
+        {
+            ClearBucket(_outlineDrawables);
+            if (_currentOutline == null || _currentOutline.VertexCount < 2) return;
+
             AcDb.Polyline acPoly = null;
             try
             {
-                acPoly = RoadGeometryBridge.ToAutoCadPolyline(polyline);
+                acPoly = RoadGeometryBridge.ToAutoCadPolyline(_currentOutline);
                 acPoly.ColorIndex = ColorIndex;
-
-                TransientManager.CurrentTransientManager.AddTransient(
-                    acPoly,
-                    DrawingMode,
-                    128,
-                    new IntegerCollection());
-
-                _drawables.Add(acPoly);
-                acPoly = null; // 所有权已转移到 _drawables，避免 finally 重复 Dispose
+                AddTransient(_outlineDrawables, acPoly);
+                acPoly = null;
             }
             finally
             {
                 acPoly?.Dispose();
             }
-
-            // 刷新屏幕，让瞬态图形立即可见
-            try { doc.Editor.UpdateScreen(); }
-            catch { /* 某些状态下 Editor 不可用，忽略 */ }
         }
 
-        /// <summary>清除当前所有预览 Drawable（幂等、异常安全）。</summary>
-        public void Clear()
+        private void RenderPi(Document doc)
         {
-            if (_drawables.Count == 0) return;
+            ClearBucket(_piDrawables);
+            if (!_hasPi) return;
 
+            double r = ComputePiRadius(doc);
+            AcDb.Circle c = null;
+            try
+            {
+                c = new AcDb.Circle(new Point3d(_piX, _piY, 0), Vector3d.ZAxis, r);
+                c.ColorIndex = ColorPiPoint;
+                AddTransient(_piDrawables, c);
+                c = null;
+            }
+            finally
+            {
+                c?.Dispose();
+            }
+        }
+
+        private void RenderSegment(Document doc)
+        {
+            ClearBucket(_segmentDrawables);
+            if (!_hasSegment) return;
+
+            AcDb.Polyline pl = null;
+            try
+            {
+                pl = new AcDb.Polyline(2);
+                pl.AddVertexAt(0, new Point2d(_segStart.X, _segStart.Y), 0, 0, 0);
+                pl.AddVertexAt(1, new Point2d(_segEnd.X, _segEnd.Y), 0, 0, 0);
+                pl.ColorIndex = ColorSegmentLine;
+                AddTransient(_segmentDrawables, pl);
+                pl = null;
+            }
+            finally
+            {
+                pl?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 读当前 ViewPort 的高度（图纸单位）→ 直径 = h × <see cref="PiScreenRatio"/> → 半径 = 直径 / 2。
+        /// 读不到时退回 <see cref="PiFallbackRadius"/>。
+        /// </summary>
+        private double ComputePiRadius(Document doc)
+        {
+            try
+            {
+                using (var view = doc.Editor.GetCurrentView())
+                {
+                    double h = view?.Height ?? 0;
+                    if (h > 1e-9)
+                    {
+                        double r = h * PiScreenRatio * 0.5;
+                        if (r > 1e-9) return r;
+                    }
+                }
+            }
+            catch { /* GetCurrentView 在某些状态下抛异常 */ }
+            return PiFallbackRadius;
+        }
+
+        // =============================== 内部：Transient 绘制 / 清除 ===============================
+
+        private void AddTransient(List<Drawable> bucket, AcDb.Entity ent)
+        {
+            TransientManager.CurrentTransientManager.AddTransient(
+                ent,
+                DrawingMode,
+                128,
+                new IntegerCollection());
+            bucket.Add(ent);
+        }
+
+        private static void ClearBucket(List<Drawable> bucket)
+        {
+            if (bucket.Count == 0) return;
             var tm = TransientManager.CurrentTransientManager;
-            foreach (var d in _drawables)
+            foreach (var d in bucket)
             {
                 try { tm.EraseTransient(d, new IntegerCollection()); }
-                catch { /* Drawable 已被 AutoCAD 回收/文档关闭 */ }
+                catch { /* 已被回收 */ }
                 try { d.Dispose(); }
                 catch { /* 同上 */ }
             }
-            _drawables.Clear();
-
-            try { AcApp.DocumentManager.MdiActiveDocument?.Editor.UpdateScreen(); }
-            catch { /* UpdateScreen 失败不影响正确性 */ }
+            bucket.Clear();
         }
+
+        private static void UpdateScreenSafe(Document doc)
+        {
+            try { doc.Editor.UpdateScreen(); }
+            catch { /* ignore */ }
+        }
+
+        // =============================== 视图变化订阅（PI 缩放跟随） ===============================
+
+        private void TrySubscribeViewEvents(Document doc)
+        {
+            if (doc == null || _disposed) return;
+            if (ReferenceEquals(_subscribedDoc, doc)) return;
+
+            UnsubscribeViewEvents();
+
+            try
+            {
+                doc.CommandEnded += OnDocumentCommandEnded;
+                _subscribedDoc = doc;
+            }
+            catch { /* ignore */ }
+        }
+
+        private void UnsubscribeViewEvents()
+        {
+            if (_subscribedDoc == null) return;
+            try { _subscribedDoc.CommandEnded -= OnDocumentCommandEnded; }
+            catch { /* ignore */ }
+            _subscribedDoc = null;
+        }
+
+        /// <summary>
+        /// AutoCAD 命令结束事件：ZOOM / PAN / VIEW / REGEN / 3DORBIT 等会改变视图比例，
+        /// 收到则重绘 PI 小圆以保持「直径 = 视图高度 × PiScreenRatio」。
+        /// Outline / Segment 用图纸坐标，不受缩放影响，但一并 Render 开销极低。
+        /// </summary>
+        private void OnDocumentCommandEnded(object sender, CommandEventArgs e)
+        {
+            if (_disposed) return;
+            if (!IsViewChangeCommand(e?.GlobalCommandName)) return;
+            if (!_hasPi && _currentOutline == null && !_hasSegment) return;
+
+            var doc = sender as Document ?? AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            try
+            {
+                RenderOutline(doc);
+                RenderPi(doc);
+                RenderSegment(doc);
+                UpdateScreenSafe(doc);
+            }
+            catch { /* ignore — 防止事件链向上抛 */ }
+        }
+
+        private static bool IsViewChangeCommand(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            string n = name.Trim().TrimStart('_', '.', '-').ToUpperInvariant();
+            switch (n)
+            {
+                case "ZOOM":
+                case "RTZOOM":
+                case "PAN":
+                case "RTPAN":
+                case "VIEW":
+                case "-VIEW":
+                case "REGEN":
+                case "REGENALL":
+                case "3DORBIT":
+                case "3DFORBIT":
+                case "3DCORBIT":
+                case "NAVSWHEEL":
+                case "STEERINGWHEELS":
+                case "DSVIEWER":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        // =============================== IDisposable ===============================
 
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
+            UnsubscribeViewEvents();
             Clear();
             GC.SuppressFinalize(this);
         }

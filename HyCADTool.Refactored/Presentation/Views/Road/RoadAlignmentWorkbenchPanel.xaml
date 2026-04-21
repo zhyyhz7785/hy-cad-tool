@@ -54,10 +54,9 @@
                            Text="{Binding HeaderInfo}"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <!--
-                        工作流三连（拾取 → 预览 → 应用）；其余「原线 / 单色 / 提交 / 刷新」按钮在
-                        2026-04-21 工作流简化中移除。v2 简化：PI 调整只有瞬态黄，分段彩色由用户手动点
-                        「预览」追加到 05_hy_道路_预览；原线层 05_hy_道路_原线 启动即锁定，只存 RawPick 档案，
-                        Apply 定稿时临时解锁清掉本 Id。
+                        工作流：拾取 → 预览 → 应用 → 删除（图中拾取 hyRoadAlnDeletePick）→ 原线（批量 RawPick）；
+                        v2：PI 调整只有瞬态黄；分段彩色由用户点「预览」追加到 05_hy_道路_预览；
+                        原线层 05_hy_道路_原线 启动即锁定，Apply 定稿时临时解锁清本 Id。
                     -->
                     <Button Content="拾取" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
@@ -71,6 +70,14 @@
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ApplyAlignmentCmd}"
                             ToolTip="一键定稿：临时解锁 05_hy_道路_原线 清空本线位档案（RawPick + 历史预览残留），在 05_hy_道路_平面线位 层新建/就地更新正式 Polyline，同步 .roaddesign.json；这是唯一真正「保存」的动作，LivePreview 不动"/>
+                    <Button Content="删除" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
+                            Style="{StaticResource BlenderButton}"
+                            Command="{Binding DeleteAlignmentPickCmd}"
+                            ToolTip="先选或框选图中 HY_ROAD 平面线位（正式线/原线/预览，可多选、与 CAD 选择一致），再执行删除：擦除相关 DWG 并更新或删除 .roaddesign.json（与列表右键「删除当前路线」互补）"/>
+                    <Button Content="原线" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
+                            Style="{StaticResource BlenderButton}"
+                            Command="{Binding DrawAllRawPolylinesCmd}"
+                            ToolTip="用 05_hy_道路_原线 批量重绘所有已保存的开始选择 Polyline（RawPick 档案）"/>
                     <Rectangle Width="1" Margin="4,2" Fill="{DynamicResource Brush_BorderDark}"/>
                     <Button Content="反转" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
@@ -96,11 +103,11 @@
         <!-- ============================= 三列主体 ============================= -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" MinWidth="170"/>
+                <ColumnDefinition Width="300" MinWidth="200"/>
                 <ColumnDefinition Width="4"/>
-                <ColumnDefinition Width="*"  MinWidth="240"/>
+                <ColumnDefinition Width="*"  MinWidth="100"/>
                 <ColumnDefinition Width="4"/>
-                <ColumnDefinition Width="240" MinWidth="190"/>
+                <ColumnDefinition Width="350" MinWidth="200"/>
             </Grid.ColumnDefinitions>
 
             <!--
@@ -328,7 +335,7 @@
                                 Padding="{DynamicResource Metric_Padding_8_6}">
                             <TextBlock VerticalAlignment="Center"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
-                                       Text="调 PI：瞬态黄实时反馈；「撤销」回退未提交值；点顶栏「预览」追加分段彩色到 05_hy_道路_预览；点顶栏「应用」定稿到 05_hy_道路_平面线位 层"/>
+                                       Text="调 PI：左列线位黄轮廓 / PI 绿点 / 分段蓝弦为瞬态定位（全局一批）；「撤销」回退未提交值；点顶栏「预览」追加分段彩色到 05_hy_道路_预览；点顶栏「应用」定稿到 05_hy_道路_平面线位 层"/>
                         </Border>
                     </Grid>
                 </Grid>
@@ -352,6 +359,7 @@
                     <StackPanel>
                         <Expander Header="分段表" IsExpanded="True" Style="{StaticResource BlenderExpander}">
                             <ListBox ItemsSource="{Binding Segments}"
+                                     SelectedItem="{Binding SelectedSegment, Mode=TwoWay}"
                                      MaxHeight="140"
                                      Style="{StaticResource BlenderListBox}"
                                      DisplayMemberPath="Header"/>

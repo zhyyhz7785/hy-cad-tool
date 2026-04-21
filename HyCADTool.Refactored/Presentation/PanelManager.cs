@@ -341,9 +341,9 @@ namespace HyCADTool.Refactored.Presentation
             {
                 var disp = _alignmentPanel.Dispatcher;
                 if (disp.CheckAccess())
-                    _alignmentVm.RefreshAlignments();
+                    _alignmentVm.RefreshAlignmentsSuppressingListLocator();
                 else
-                    disp.BeginInvoke(new Action(_alignmentVm.RefreshAlignments));
+                    disp.BeginInvoke(new Action(_alignmentVm.RefreshAlignmentsSuppressingListLocator));
             }
             catch
             {

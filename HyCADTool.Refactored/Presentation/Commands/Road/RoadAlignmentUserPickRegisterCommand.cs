@@ -6,6 +6,9 @@ using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation;
+using System.Windows;
+using System.Windows.Threading;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands.Road
@@ -149,6 +152,33 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             }
 
             RoadAlignmentUserPickRegistrationSession.SetLastRegistered(alignment.Id);
+
+            // 回到 WPF 线程打开/刷新路线工作台并选中本条线位（含「复用已有 HY_ROAD」拾取）。
+            try
+            {
+                var disp = Application.Current?.Dispatcher;
+                if (disp != null)
+                {
+                    var id = alignment.Id;
+                    disp.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            var pm = ServiceLocator.Resolve<PanelManager>();
+                            pm?.ShowAlignmentWorkbench(id, null);
+                        }
+                        catch
+                        {
+                            /* 无宿主 / 未注入时忽略 */
+                        }
+                    }), DispatcherPriority.Background);
+                }
+            }
+            catch
+            {
+                /* Dispatcher 不可用 */
+            }
+
             int piCount = alignment.Source?.PiElements?.Count ?? 0;
             double length = alignment.Centerline?.GetPlanarLength() ?? 0;
 
@@ -164,8 +194,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                     : "注：原 Polyline 未能删除，请确认无锁定 / 无块参照。";
                 ed.WriteMessage(
                     $"\n[道路] 已登记线位 {alignment.Name}（PI={piCount}，长={length:F3} m，源 Handle={pickedHandle ?? "-"}）。{erasedNote}"
-                    + "\n[道路] 提示：在路线工作台调整 PI 参数时，05_hy_道路_原线 层会实时刷新分段彩色预览；"
-                    + "\n[道路] 点「应用」将把当前设计定稿到 05_hy_道路_平面线位 层并同步 .roaddesign.json。");
+                    + "\n[道路] 点「预览」可追加分段彩色到 05_hy_道路_预览；点「应用」定稿到 05_hy_道路_平面线位 并同步 .roaddesign.json。");
             }
 
             try
