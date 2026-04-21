@@ -8,8 +8,14 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Refactored.Presentation.Commands.Road
 {
     /// <summary>
-    /// <c>hyRoadAlnUserPickDrawWB</c> — 仅供路线工作台按钮调用：在 AutoCAD 命令线程上把
+    /// <c>hyRoadAlnUserPickDrawWB</c> — 在 AutoCAD 命令线程上把
     /// <see cref="RoadAlignmentUserPickPreviewSession"/> 中登记的线位绘到「用户拾取」层。
+    ///
+    /// <para><b>⚠ 工作台 UI 不再使用</b>（2026-04-21 工作流简化）：
+    /// 路线工作台的「预览」按钮已改为直接在 WPF 线程调用
+    /// <see cref="RoadAlignmentLivePreviewService.DrawForAlignment(Autodesk.AutoCAD.ApplicationServices.Document, Domain.Models.Road.Alignment)"/>
+    /// 向 <see cref="HyRoadLayers.LivePreviewLayer"/>（05_hy_道路_预览）追加分段彩色快照，无需跨线程 session 传参。
+    /// 本命令保留仅为命令行兼容（脚本 / 旧面板）。</para>
     /// </summary>
     public sealed class RoadAlignmentWorkbenchUserPickDrawCommand
     {

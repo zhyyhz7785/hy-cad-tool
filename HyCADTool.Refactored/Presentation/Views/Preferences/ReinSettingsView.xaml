@@ -17,16 +17,16 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="ReinPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 钢筋参数 -->
             <DataTemplate x:Key="Section_Rein">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <bc:PropertyRow Label="锚固长度 (AnchorageLength)" Style="{StaticResource ReinPropertyRow}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="锚固长度" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="500"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="点钢筋间距 (DotSeparation)" Style="{StaticResource ReinPropertyRow}">
+                    <bc:PropertyRow Label="点钢筋间距" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="200"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="最小弯折长度" Style="{StaticResource ReinPropertyRow}">
@@ -35,7 +35,7 @@
                     <bc:PropertyRow Label="锚固连接长度" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="1500"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="弯钩长度 (HookLength)" Style="{StaticResource ReinPropertyRow}">
+                    <bc:PropertyRow Label="弯钩长度" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="1.0"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="保护层厚度" Style="{StaticResource ReinPropertyRow}">
@@ -47,7 +47,7 @@
                     <bc:PropertyRow Label="点钢筋偏移" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="1.35"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="多段线宽 (PolylineWidth)" Style="{StaticResource ReinPropertyRow}">
+                    <bc:PropertyRow Label="多段线宽" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="0"/>
                     </bc:PropertyRow>
                 </StackPanel>
@@ -55,7 +55,7 @@
 
             <!-- 尺寸参数（钢筋相关） -->
             <DataTemplate x:Key="Section_ReinDim">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="内部尺寸距离" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="7"/>
                     </bc:PropertyRow>
@@ -65,7 +65,7 @@
                     <bc:PropertyRow Label="带尺寸距离" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="14"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="引线距离 (Mleader)" Style="{StaticResource ReinPropertyRow}">
+                    <bc:PropertyRow Label="引线距离" Style="{StaticResource ReinPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="5"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="距离容差" Style="{StaticResource ReinPropertyRow}">

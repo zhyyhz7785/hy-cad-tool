@@ -17,12 +17,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="ClusterPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 聚类：聚类参数（Epsilon/MinPoints/阈值/边距） -->
             <DataTemplate x:Key="Section_ClusterParams">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="预设方案 (1/2/3)" Style="{StaticResource ClusterPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding ClusterVm.SelectedPreset, UpdateSourceTrigger=LostFocus, FallbackValue=1}"/>
@@ -52,7 +52,7 @@
 
             <!-- 聚类：绘图开关 -->
             <DataTemplate x:Key="Section_ClusterDrawSwitch">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <TextBlock Text="X / Y 聚类" Foreground="{DynamicResource Brush_TextDisabled}"
                                FontSize="{DynamicResource Metric_FontSmall}" Margin="0,0,0,4"/>
                     <WrapPanel>

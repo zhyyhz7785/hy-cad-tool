@@ -6,7 +6,12 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Refactored.Presentation.Commands.Road
 {
     /// <summary>
-    /// <c>hyRoadAlnRawShow</c> — 路线工作台「原线」开关打开：在图层「05_hy_道路_原线」绘制所有线位的原线快照。
+    /// <c>hyRoadAlnRawShow</c> — 在图层「05_hy_道路_原线」（<see cref="HyRoadLayers.RawPolylineLayer"/>）
+    /// 以 <see cref="HyRoadXdata.KindAlignmentRawPick"/> KIND 批量绘制所有线位的原线快照（ACI 252 ByLayer 本色）。
+    ///
+    /// <para><b>⚠ 工作台 UI 不再使用</b>（2026-04-21 工作流简化）：
+    /// 拾取后会自动调用 <see cref="RoadAlignmentRawPolylineService.DrawForAlignment"/> 写入一次永久快照，
+    /// 无需用户再开 / 关。本命令保留仅为命令行兼容、批量补绘场景（例如 JSON 迁移后一次性回写 DWG）。</para>
     /// </summary>
     public sealed class RoadAlignmentRawShowCommand
     {
@@ -44,7 +49,12 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     }
 
     /// <summary>
-    /// <c>hyRoadAlnRawHide</c> — 路线工作台「原线」开关关闭：擦除原线图层上的 HY_ROAD 原线实体。
+    /// <c>hyRoadAlnRawHide</c> — 擦除图层「05_hy_道路_原线」上所有 <see cref="HyRoadXdata.KindAlignmentRawPick"/>
+    /// 原线实体（<i>不</i>擦除 <see cref="HyRoadXdata.KindAlignmentDesignPreview"/> 分段彩色预览）。
+    ///
+    /// <para><b>⚠ 工作台 UI 不再使用</b>（2026-04-21 工作流简化）：
+    /// 拾取写入的 RawPick 记录与 Alignment 生命周期绑定，不再由开关切换；
+    /// 本命令保留仅用于批量清理 / 旧 DWG 迁移场景。</para>
     /// </summary>
     public sealed class RoadAlignmentRawHideCommand
     {

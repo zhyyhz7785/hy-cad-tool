@@ -17,13 +17,13 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="RoadPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 道路：人行横道 -->
             <DataTemplate x:Key="Section_RoadCrosswalk">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                    <bc:PropertyRow Label="间隙宽度 (Gap)" Style="{StaticResource RoadPropertyRow}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="间隙宽度" Style="{StaticResource RoadPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadGapWidth, UpdateSourceTrigger=LostFocus, FallbackValue=5}"/>
                     </bc:PropertyRow>
@@ -44,7 +44,7 @@
 
             <!-- 道路：市政道路 P0（接 Settings.RoadDesign 子 VM） -->
             <DataTemplate x:Key="Section_RoadMunicipal">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <TextBlock Text="（市政道路 P0：参数承载于 SettingsPanelViewModel.RoadDesign 子 VM，此处仅陈列入口；命令从常用栏触发）"
                                Foreground="{DynamicResource Brush_TextDisabled}"
                                FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,4"/>

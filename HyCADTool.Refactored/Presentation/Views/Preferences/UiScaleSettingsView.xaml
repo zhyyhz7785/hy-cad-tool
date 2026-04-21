@@ -24,12 +24,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="UiScalePropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
         <TextBlock Text="界面尺寸预设" FontSize="{DynamicResource Metric_FontMain}" FontWeight="SemiBold"
                    Foreground="{DynamicResource Brush_TextPrimary}" Margin="0,0,0,6"/>
         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">

@@ -17,12 +17,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="EquipPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 设备基础：参数（当前用 EquipmentDataFilePath 作为外部数据入口） -->
             <DataTemplate x:Key="Section_EquipFoundationParams">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="设备数据文件 (.md)" Style="{StaticResource EquipPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.EquipmentDataFilePath, UpdateSourceTrigger=LostFocus}"/>

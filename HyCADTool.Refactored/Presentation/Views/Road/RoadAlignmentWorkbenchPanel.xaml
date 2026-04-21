@@ -53,30 +53,25 @@
                            TextTrimming="CharacterEllipsis"
                            Text="{Binding HeaderInfo}"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <!--
+                        工作流三连（拾取 → 预览 → 应用）；其余「原线 / 单色 / 提交 / 刷新」按钮在
+                        2026-04-21 工作流简化中移除。v2 简化：PI 调整只有瞬态黄，分段彩色由用户手动点
+                        「预览」追加到 05_hy_道路_预览；原线层 05_hy_道路_原线 启动即锁定，只存 RawPick 档案，
+                        Apply 定稿时临时解锁清掉本 Id。
+                    -->
                     <Button Content="拾取" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding PickAlignmentCmd}"
-                            ToolTip="拾取登记：在图上拾取任意图层的 Polyline / 2DPolyline / 3DPolyline；若已有 HY_ROAD 标记则直接选中，否则登记为「草稿线位」（UserPicked），不动原实体的图层 / Xdata"/>
+                            ToolTip="拾取登记：在 CAD 中点选任意图层的 Polyline；若已有 HY_ROAD Alignment 标记则直接选中编辑，否则删除原图并转存到 05_hy_道路_原线 层（252 本色），登记为待定稿线位"/>
                     <Button Content="预览" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
-                            Command="{Binding DrawUserPickPreviewCmd}"
-                            ToolTip="绘出预览：把当前选中线位按直/缓入/缓出/圆分段画到图层「用户拾取」（直=黄、缓入=青、缓出=橙、圆=绿）；勾「单色」时整条用 AlignmentId 哈希分配的同色"/>
-                    <CheckBox Content="原线"
-                              IsChecked="{Binding IsRawPolylineVisible, Mode=TwoWay}"
-                              Style="{StaticResource BlenderCheckBox}"
-                              VerticalAlignment="Center"
-                              Margin="4,0,2,0"
-                              ToolTip="开启：把所有线位的创建时刻中心线快照画到图层「05_hy_道路_原线」（ACI 252）；关闭：擦除"/>
-                    <CheckBox Content="单色"
-                              IsChecked="{Binding ColorByAlignment, Mode=TwoWay}"
-                              Style="{StaticResource BlenderCheckBox}"
-                              VerticalAlignment="Center"
-                              Margin="4,0,2,0"
-                              ToolTip="按线位单色：预览用 AlignmentId 哈希出 12 色调色板里的一种颜色，便于在多线场景中区分线位"/>
-                    <Button Content="提交" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
+                            Command="{Binding DrawLivePreviewCmd}"
+                            ToolTip="追加分段彩色快照到 05_hy_道路_预览 层（直/缓入/缓出/圆按 ACI 区分）；不清理任何图层，原线层由用户按需自行解锁 ERASE — 本按钮暗示&quot;需要手动优化路线&quot;，可叠加多组方案并排比对"/>
+                    <Button Content="应用" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
-                            Command="{Binding CommitAlignmentCmd}"
-                            ToolTip="提交为平面线位：把当前「草稿线位（UserPicked）」正式写入图层「05_hy_道路_平面线位」并挂 HY_ROAD Xdata；同时擦除该线位的预览实体"/>
+                            Command="{Binding ApplyAlignmentCmd}"
+                            ToolTip="一键定稿：临时解锁 05_hy_道路_原线 清空本线位档案（RawPick + 历史预览残留），在 05_hy_道路_平面线位 层新建/就地更新正式 Polyline，同步 .roaddesign.json；这是唯一真正「保存」的动作，LivePreview 不动"/>
+                    <Rectangle Width="1" Margin="4,2" Fill="{DynamicResource Brush_BorderDark}"/>
                     <Button Content="反转" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ReverseCmd}"
@@ -94,10 +89,6 @@
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding ExportFrameCsvCmd}"
                             ToolTip="导出段表 CSV"/>
-                    <Rectangle Width="1" Margin="4,2" Fill="{DynamicResource Brush_BorderDark}"/>
-                    <Button Content="刷新" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_XS}" Margin="1,0"
-                            Style="{StaticResource BlenderButton}"
-                            Command="{Binding RefreshCmd}"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -311,8 +302,7 @@
                         </ScrollViewer>
 
                         <!--
-                            PI 编辑器底部提示区：「应用到 DWG / 撤销」在整窗口底栏；
-                            此处保留实时预览说明。
+                            PI 编辑器底部提示区：解释两层预览 + 顶栏「应用」按钮的语义（v2 简化）。
                         -->
                         <Border Grid.Row="3"
                                 Background="{DynamicResource Brush_RegionBack}"
@@ -321,7 +311,7 @@
                                 Padding="{DynamicResource Metric_Padding_8_6}">
                             <TextBlock VerticalAlignment="Center"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
-                                       Text="实时预览：AutoCAD 瞬态黄线（「应用 / 撤销」在窗口底栏）"/>
+                                       Text="调 PI：瞬态黄实时反馈；「撤销」回退未提交值；点顶栏「预览」追加分段彩色到 05_hy_道路_预览；点顶栏「应用」定稿到 05_hy_道路_平面线位 层"/>
                         </Border>
                     </Grid>
                 </Grid>
@@ -395,17 +385,13 @@
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <!--
-                        PI 编辑「应用到 DWG / 撤销」放在窗口底栏首位，保证窗口高度再小也能看到。
-                        CanExecute 已在 VM 里校验 PiEditorVm != null && 非端点 PI，未选中时按钮自动灰化。
+                        「应用」按钮在 2026-04-21 工作流简化中移到了顶栏「拾取」旁（工作流三连）。
+                        底栏留「撤销」+ 标注类操作（桩号 / 配置 / 几何点）。
                     -->
-                    <Button Content="应用" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"
-                            Style="{StaticResource BlenderButton}"
-                            Command="{Binding ApplyPiEditCmd}"
-                            ToolTip="应用到 DWG：按当前 PI 的 R/Ls 重建中心线并落盘 JSON（需在左列选中非端点 PI）"/>
                     <Button Content="撤销" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_S}" Margin="1,0"
                             Style="{StaticResource BlenderButton}"
                             Command="{Binding RevertPiEditCmd}"
-                            ToolTip="放弃当前 PI 未提交的参数改动"/>
+                            ToolTip="放弃当前 PI 未提交的参数改动（仅回滚 PI 三单元编辑器，不影响已定稿的 05_hy_道路_平面线位 Polyline）"/>
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
                                Margin="4,2"/>
                     <Button Content="桩号" MinWidth="{DynamicResource Metric_ToolButtonMinWidth_M}" Margin="1,0"

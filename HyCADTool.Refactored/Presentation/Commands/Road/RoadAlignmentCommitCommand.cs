@@ -16,6 +16,10 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     ///
     /// AlignmentId 通过 <see cref="RoadAlignmentCommitSession"/> 从工作台 WPF 线程传递（参考
     /// <see cref="RoadAlignmentUserPickPreviewSession"/> 的一次性旗标模式），避免跨线程调用 ViewModel。
+    ///
+    /// <para><b>⚠ 工作台 UI 不再使用</b>（2026-04-21 工作流简化）：
+    /// 路线工作台的「应用」按钮已切换到 <see cref="Infrastructure.AutoCAD.Services.Road.RoadAlignmentApplyService"/>，
+    /// 一键完成「草稿提交 + PI 编辑落地」。本命令保留仅为命令行兼容（脚本 / 历史文档）。</para>
     /// </summary>
     public sealed class RoadAlignmentCommitCommand
     {

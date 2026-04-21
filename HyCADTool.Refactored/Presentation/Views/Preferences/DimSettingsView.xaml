@@ -17,12 +17,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="DimPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 尺寸参数：从 Settings 读取通用 Dim* 参数（与钢筋尺寸独立，后者见 ReinSettingsView） -->
             <DataTemplate x:Key="Section_DimParams">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="Dimtxt（字高）" Style="{StaticResource DimPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.Dimtxt, UpdateSourceTrigger=LostFocus, FallbackValue=2.5}"/>

@@ -114,13 +114,13 @@
         </Setter>
     </Style>
 
-    <!-- PanelHeader -->
+    <!-- PanelHeader（2026-04-21 高度 28 → 22，向 Blender 侧栏看齐） -->
     <Style TargetType="{x:Type ctrl:PanelHeader}">
         <Setter Property="Background" Value="{DynamicResource Brush_PanelHeaderBack}"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
         <Setter Property="FontSize" Value="{DynamicResource Metric_FontHeader}"/>
-        <Setter Property="Height" Value="28"/>
+        <Setter Property="Height" Value="22"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>

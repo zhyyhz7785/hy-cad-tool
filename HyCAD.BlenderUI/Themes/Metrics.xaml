@@ -13,25 +13,29 @@
       状态条、Workspace 等见下方 Workspace 区。
     -->
 
-    <!-- 字体梯度 -->
+    <!--
+      字体梯度（2026-04-21 收紧到 Blender 侧栏密度：Main 11 / Header 12；原 12/13 过大）
+    -->
     <sys:Double x:Key="Metric_FontMicro">9</sys:Double>
-    <sys:Double x:Key="Metric_FontSettlementHint">10.5</sys:Double>
+    <sys:Double x:Key="Metric_FontSettlementHint">10</sys:Double>
     <sys:Double x:Key="Metric_FontCaption">10</sys:Double>
-    <sys:Double x:Key="Metric_FontSmall">11</sys:Double>
-    <sys:Double x:Key="Metric_FontMain">12</sys:Double>
-    <sys:Double x:Key="Metric_FontHeader">13</sys:Double>
-    <sys:Double x:Key="Metric_FontIcon">14</sys:Double>
-    <sys:Double x:Key="Metric_FontIconLarge">16</sys:Double>
+    <sys:Double x:Key="Metric_FontSmall">10</sys:Double>
+    <sys:Double x:Key="Metric_FontMain">11</sys:Double>
+    <sys:Double x:Key="Metric_FontHeader">12</sys:Double>
+    <sys:Double x:Key="Metric_FontIcon">13</sys:Double>
+    <sys:Double x:Key="Metric_FontIconLarge">15</sys:Double>
 
-    <!-- 行高 / 控件高度梯度 -->
-    <sys:Double x:Key="Metric_RowCompact">22</sys:Double>
-    <sys:Double x:Key="Metric_InputLineHeight">24</sys:Double>
-    <sys:Double x:Key="Metric_RowHeight">26</sys:Double>
-    <sys:Double x:Key="Metric_RowTall">28</sys:Double>
-    <sys:Double x:Key="Metric_IconBarItemHeight">32</sys:Double>
-    <sys:Double x:Key="Metric_ButtonHeight">30</sys:Double>
-    <sys:Double x:Key="Metric_ButtonBarHeight">50</sys:Double>
-    <sys:Double x:Key="Metric_ExpanderHeight">24</sys:Double>
+    <!--
+      行高 / 控件高度梯度（2026-04-21 收紧：Row 22→20、Input 24→20、Tall 28→24、Expander 24→20、Button 30→24）
+    -->
+    <sys:Double x:Key="Metric_RowCompact">18</sys:Double>
+    <sys:Double x:Key="Metric_InputLineHeight">20</sys:Double>
+    <sys:Double x:Key="Metric_RowHeight">20</sys:Double>
+    <sys:Double x:Key="Metric_RowTall">24</sys:Double>
+    <sys:Double x:Key="Metric_IconBarItemHeight">28</sys:Double>
+    <sys:Double x:Key="Metric_ButtonHeight">24</sys:Double>
+    <sys:Double x:Key="Metric_ButtonBarHeight">40</sys:Double>
+    <sys:Double x:Key="Metric_ExpanderHeight">20</sys:Double>
 
     <!-- 图标条 / 装饰 -->
     <sys:Double x:Key="Metric_IconBarWidth">32</sys:Double>
@@ -43,15 +47,16 @@
     <CornerRadius x:Key="Metric_CornerRadius">3</CornerRadius>
     <CornerRadius x:Key="Metric_CornerRadiusSmall">2</CornerRadius>
 
-    <Thickness x:Key="Metric_ButtonPadding">8,3</Thickness>
-    <Thickness x:Key="Metric_ButtonPaddingSmall">6,2</Thickness>
-    <Thickness x:Key="Metric_ButtonPaddingTiny">6,1</Thickness>
-    <Thickness x:Key="Metric_ButtonPaddingFlat">8,4</Thickness>
-    <Thickness x:Key="Metric_InputPadding">6,2</Thickness>
-    <Thickness x:Key="Metric_SectionInset">8,6</Thickness>
-    <Thickness x:Key="Metric_PropertyListMargin">6,4,6,6</Thickness>
-    <Thickness x:Key="Metric_PropertyListMarginTight">6,0,6,6</Thickness>
-    <Thickness x:Key="Metric_GroupInset">10,8</Thickness>
+    <!-- 2026-04-21 收紧：按钮/输入内边距统一到 2 行高，分组 Inset 从 10,8 → 6,4 -->
+    <Thickness x:Key="Metric_ButtonPadding">6,2</Thickness>
+    <Thickness x:Key="Metric_ButtonPaddingSmall">4,1</Thickness>
+    <Thickness x:Key="Metric_ButtonPaddingTiny">4,0</Thickness>
+    <Thickness x:Key="Metric_ButtonPaddingFlat">6,2</Thickness>
+    <Thickness x:Key="Metric_InputPadding">4,1</Thickness>
+    <Thickness x:Key="Metric_SectionInset">6,4</Thickness>
+    <Thickness x:Key="Metric_PropertyListMargin">4,2,4,4</Thickness>
+    <Thickness x:Key="Metric_PropertyListMarginTight">4,0,4,4</Thickness>
+    <Thickness x:Key="Metric_GroupInset">6,4</Thickness>
     <Thickness x:Key="Metric_CellPaddingTight">2,2</Thickness>
     <Thickness x:Key="Metric_FooterBottomInset">0,0,0,4</Thickness>
     <Thickness x:Key="Metric_FormHintIndent">150,0,0,5</Thickness>
@@ -98,11 +103,11 @@
     <sys:Double x:Key="Metric_NumInputWidth_M">28</sys:Double>
     <sys:Double x:Key="Metric_MarkdownToolbarSepHeight">14</sys:Double>
 
-    <!-- 标签列 TextBlock.Width -->
-    <sys:Double x:Key="Metric_LabelWidth_S">80</sys:Double>
-    <sys:Double x:Key="Metric_LabelWidth_M">120</sys:Double>
-    <sys:Double x:Key="Metric_LabelWidth_L">150</sys:Double>
-    <sys:Double x:Key="Metric_LabelWidth_PrefsNarrow">140</sys:Double>
+    <!-- 标签列 TextBlock.Width（2026-04-21 收紧，匹配 Blender 属性面板左列宽度） -->
+    <sys:Double x:Key="Metric_LabelWidth_S">70</sys:Double>
+    <sys:Double x:Key="Metric_LabelWidth_M">100</sys:Double>
+    <sys:Double x:Key="Metric_LabelWidth_L">130</sys:Double>
+    <sys:Double x:Key="Metric_LabelWidth_PrefsNarrow">120</sys:Double>
 
     <!-- 列表 / 检查项 -->
     <sys:Double x:Key="Metric_CheckDotSize">8</sys:Double>

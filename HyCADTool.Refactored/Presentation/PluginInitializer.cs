@@ -229,6 +229,22 @@ namespace HyCADTool.Refactored.Presentation
                 WriteMessage("\n  ✓ 图层已创建");
                 WriteMessage($"\n  ✓ 设置文件: {ViewModels.SettingsPanelViewModel.GetSettingsFilePath()}");
 
+                // rLaw 原线层锁定：05_hy_道路_原线 启动即置 IsLocked = true。
+                // 工作台内部写入 RawPick / Apply 清理需要临时 LayerLockScope.Unlock。
+                try
+                {
+                    var doc = AcApp.DocumentManager.MdiActiveDocument;
+                    if (doc != null)
+                    {
+                        HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayerInitializer
+                            .EnsureRawPolylineLayerLocked(doc);
+                    }
+                }
+                catch
+                {
+                    /* 无活动文档 / 冷启动静默 */
+                }
+
                 // 主题兜底（v2 host-replace 模型）：
                 // - LoadSettings 中 Theme setter 已经 Apply 过一次，把 BlenderThemeManager.Current
                 //   设为目标值（此时 ColorsHost 还没创建，无 host 可改）；
@@ -726,6 +742,10 @@ namespace HyCADTool.Refactored.Presentation
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.OffsetColor),
                 (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.UserPickPreviewLayer,
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.UserPickPreviewLayerColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.RawPolylineLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.RawPolylineColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.LivePreviewLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.LivePreviewColor),
             };
         }
 

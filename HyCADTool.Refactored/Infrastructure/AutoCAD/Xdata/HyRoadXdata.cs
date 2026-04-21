@@ -35,15 +35,30 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         // KIND 常量（M6 扩展到 14 种）。命令层必须通过本组常量写入 / 读取，避免字符串散落。
         // =============================================================================
 
-        /// <summary>平面线位。</summary>
+        /// <summary>
+        /// 平面线位（唯一真正的中心线实体，位于 <c>05_hy_道路_平面线位</c>）。
+        /// 只有「应用」按钮（<see cref="KindAlignmentDesignPreview"/> / <see cref="KindAlignmentRawPick"/>
+        /// 皆为过程态）才会产出此 KIND；保存回 <c>.roaddesign.json</c> 以该实体几何为准。
+        /// </summary>
         public const string KindAlignment = "Alignment";
-        /// <summary>路线工作台「原线」开关绘制的 Polyline（非正式中心线实体）。</summary>
+        /// <summary>
+        /// 「拾取原始记录」：用户点选 Polyline 时，按原几何在 <c>05_hy_道路_原线</c> 重绘的快照
+        /// （ByLayer 252 单色，图层本色）。每条 alignment 最多一条，不随 PI 调整变化，
+        /// 只有重新拾取 / 显式删除才会消失。是工作台的「起点档案」。
+        /// </summary>
         public const string KindAlignmentRawPick = "AlignmentRawPick";
         /// <summary>
-        /// 路线工作台主预览实体（当前选中 Alignment 的中心线黄色预览，绘制在
-        /// <c>HyRoadLayers.LivePreviewLayer</c> 上）。与 <see cref="KindAlignmentRawPick"/> 区分：
-        /// RawPick 是创建时刻快照（横跨所有线位），LivePreview 只是工作台当前会话视觉反馈，
-        /// 面板关闭时由 <c>RoadAlignmentLivePreviewService.EraseAll</c> 自动清理。
+        /// 「设计态彩色预览」：PI 调整稳定后（debounce 落地时刻）在 <c>05_hy_道路_原线</c>
+        /// 用分段硬编码 ACI（直=黄 / 缓=青/橙 / 圆=绿）重绘的预览。
+        /// 与 <see cref="KindAlignmentRawPick"/> 同层共存 — RawPick 管「原始形态」、
+        /// DesignPreview 管「当前设计效果」，擦除按 KIND+ID 精确剥离、互不干扰。
+        /// </summary>
+        public const string KindAlignmentDesignPreview = "AlignmentDesignPreview";
+        /// <summary>
+        /// 「用户快照预览」：用户手动点击「预览」按钮时，在 <c>05_hy_道路_预览</c>
+        /// 以分段彩色绘制的一次性快照，由用户自己负责清理。
+        /// 不会进入 <c>.roaddesign.json</c>，「应用」按钮也不会自动擦除此层 — 允许用户
+        /// 保留多个历史版本的 polyline 并排比对。面板关闭不清理。
         /// </summary>
         public const string KindAlignmentLivePreview = "AlignmentLivePreview";
         /// <summary>交叉口。</summary>
@@ -93,6 +108,23 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         /// </summary>
         public static bool IsControlKind(string kind)
             => !string.IsNullOrEmpty(kind) && kind.StartsWith("Control.", System.StringComparison.Ordinal);
+
+        /// <summary>
+        /// 判断 KIND 是否与某条 <c>Alignment</c> 关联（正式线位或任一过程态预览 / 原线档案）。
+        /// 用于拾取时分流：
+        /// <list type="bullet">
+        ///   <item>true — 说明用户点中了工作台自己画过的线，按 Id 回查 <c>RoadDesign</c> 复用原 Alignment，不删不重登。</item>
+        ///   <item>false / 无 Xdata — 说明是外部 Polyline，走「新登记 + 删原 + 转存到原线层」工作流。</item>
+        /// </list>
+        /// </summary>
+        public static bool IsAlignmentKind(string kind)
+        {
+            if (string.IsNullOrEmpty(kind)) return false;
+            return string.Equals(kind, KindAlignment, System.StringComparison.Ordinal)
+                || string.Equals(kind, KindAlignmentRawPick, System.StringComparison.Ordinal)
+                || string.Equals(kind, KindAlignmentDesignPreview, System.StringComparison.Ordinal)
+                || string.Equals(kind, KindAlignmentLivePreview, System.StringComparison.Ordinal);
+        }
 
         /// <summary>
         /// 确保 <see cref="RegAppName"/> 已注册到数据库的 RegAppTable。

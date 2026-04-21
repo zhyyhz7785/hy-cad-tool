@@ -14,6 +14,7 @@ using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.Commands;
 using HyCADTool.Refactored.Presentation.Commands.Road;
@@ -26,22 +27,29 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// 「路线工作台」面板的根 ViewModel。聚合当前 DWG 的 Alignment 列表 + 选中线位的 PI 列表 +
     /// 复用 <see cref="PiThreeUnitViewModel"/> 做 PI 参数编辑 + 只读分段/方程/几何点表。
     ///
-    /// 设计原则：
-    /// - 所有对 DWG 的写入都走命令层管线（<see cref="Commands.Road.RoadAlignmentPiPipeline"/>），
-    ///   VM 只做 UI 状态、预览与一次性 orchestration；
-    /// - 切换 Alignment / PI 时尽量复用 <see cref="PiThreeUnitViewModel.Rebind"/>，避免预览订阅断线；
-    /// - <see cref="RefreshAlignments"/> 在 PanelManager 的 DocumentActivated 钩子里被调用（工作台 WPF 窗口可见时），
-    ///   以此替代"每命令重新打开窗口"的传统做法；
-    /// - <b>双层预览策略</b>（2026-04-21 起）：
-    ///   <list type="bullet">
-    ///     <item>主预览（选中 Alignment 切换 / Apply / Reverse）→ 实体写入 <c>05_hy_道路_预览</c> 图层
-    ///       （<see cref="RoadAlignmentLivePreviewService"/>），用户可 <c>ERASE</c> / <c>LAYOFF</c>。</item>
-    ///     <item>PI 编辑实时预览（滑块 / 数值输入每变一下都刷新）→ 保留 <see cref="RoadAlignmentPreviewService"/>
-    ///       的 Transient，避免高频事务污染 AutoCAD Undo 栈。</item>
-    ///   </list>
-    ///   PanelManager 监听 PaletteSet Visible → false 时会统一调
-    ///   <see cref="HideAllWorkbenchArtifacts"/> 把实体预览 / Transient / 原线 / UserPick 预览全部清零，
-    ///   再次打开时调 <see cref="RestoreWorkbenchArtifacts"/> 按当前选中线位重画主预览。
+    /// <para><b>工作流（简化版 v2 · 2026-04-21）</b>：拾取 → PI 调整（仅瞬态黄）→ 应用定稿。</para>
+    ///
+    /// <para><b>两层预览 + 一层存档</b>（DesignPreview 自动彩色机制已下线）：</para>
+    /// <list type="number">
+    ///   <item>
+    ///     <b>瞬态黄</b>（<see cref="_preview"/>.Update）— PI 参数每次变化同步刷新 TransientManager；
+    ///     不进 DWG 实体，切 Alignment / Apply 即清。
+    ///   </item>
+    ///   <item>
+    ///     <b>用户快照</b>（<see cref="RoadAlignmentLivePreviewService"/>，KIND=AlignmentLivePreview，
+    ///     绘在 <c>05_hy_道路_预览</c>）— 用户点<b>预览</b>按钮时手动追加一批分段彩色 Polyline；
+    ///     面板关闭 / 切 Alignment / Apply 都<b>不会</b>自动清，由用户 <c>ERASE</c> / <c>LAYOFF</c> 自管。
+    ///   </item>
+    /// </list>
+    ///
+    /// <para><b>存档</b>：<c>05_hy_道路_平面线位</c>（KIND=Alignment）是唯一进 <c>.roaddesign.json</c> 的真实体，
+    /// 只由「应用」按钮（<see cref="ApplyAlignmentCmd"/> → <see cref="RoadAlignmentApplyService"/>）产出 / 更新。</para>
+    ///
+    /// <para><c>05_hy_道路_原线</c>（KIND=AlignmentRawPick）启动即锁定，只容纳 252 本色拾取档案；
+    /// 工作台本身<b>不</b>再向该层写入设计态彩色，Apply 定稿时会临时解锁清掉本 Id 的所有 HY_ROAD 实体。</para>
+    ///
+    /// <para>生命周期：<see cref="HideAllWorkbenchArtifacts"/>（PaletteSet Visible=false）擦瞬态；
+    /// <b>不</b>碰 RawPick 永久档案、<b>不</b>碰用户快照、<b>不</b>碰正式线位。</para>
     /// </summary>
     public sealed class RoadAlignmentWorkbenchViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -49,17 +57,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         private readonly IDisposable _alignmentChangedSub;
         private bool _disposed;
         private bool _suspendPiEditorEvents;
-        private string _lastWorkbenchDocNameForRaw;
-        private bool _isRawPolylineVisible;
-        private bool _suppressRawPolylineToggle;
 
         public RoadAlignmentWorkbenchViewModel()
         {
             _preview = new RoadAlignmentPreviewService();
 
             PickAlignmentCmd = new RelayCommand(PickAlignmentOnCanvas);
-            DrawUserPickPreviewCmd = new RelayCommand(DrawUserPickPreview, () => SelectedAlignment != null);
-            CommitAlignmentCmd = new RelayCommand(CommitSelected, CanCommitSelected);
+            DrawLivePreviewCmd = new RelayCommand(DrawLivePreviewSnapshot, () => SelectedAlignment != null);
             ReverseCmd = new RelayCommand(ReverseSelected, () => SelectedAlignment != null);
             OffsetCmd = new RelayCommand(RunOffset, () => SelectedAlignment != null);
             ExportPiCsvCmd = new RelayCommand(() => ExportCsv(PiCsvKind.PiTable), () => SelectedAlignment != null);
@@ -67,7 +71,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
             InsertPiCmd = new RelayCommand(InsertPi, () => SelectedAlignment != null);
             DeletePiCmd = new RelayCommand(DeletePi, CanDeleteSelectedPi);
-            ApplyPiEditCmd = new RelayCommand(ApplyPiEdit, () => PiEditorVm != null && SelectedPi != null && !SelectedPi.IsEndpoint);
+            // 「应用」不再依赖 SelectedPi — 只要当前 Alignment 有可构几何的 PI 表（≥ 2）就允许一键定稿。
+            ApplyAlignmentCmd = new RelayCommand(ApplyAlignment, CanApplyAlignment);
             RevertPiEditCmd = new RelayCommand(RevertPiEdit, () => PiEditorVm != null && SelectedPi != null && !SelectedPi.IsEndpoint);
 
             DrawStationLabelsCmd = new RelayCommand<object>(p => DrawStationLabels(p is bool b && b));
@@ -77,10 +82,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             DeleteStationEquationCmd = new RelayCommand(DeleteSelectedStationEquation,
                 () => SelectedAlignment != null && SelectedStationEquation != null);
 
-            RefreshCmd = new RelayCommand(RefreshAlignments);
-
-            // 订阅 AlignmentChangedEvent —— 拾取登记 / 提交 / PI 编辑收尾都会发；
-            // 用于 hyRoadAlnUserPickRegister 异步登记完成后 WPF 自动刷新并选中新 Alignment。
             try
             {
                 var bus = ServiceLocator.Resolve<IRoadEventBus>();
@@ -89,33 +90,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             catch { /* 测试环境无 bus 时容错 */ }
 
             RefreshAlignments();
-        }
-
-        /// <summary>
-        /// 预览着色模式。<c>true</c> 时整条 Alignment 用 <see cref="RoadAlignmentUserPickPreviewService.ColorIndexFor(Guid)"/>
-        /// 一种颜色（多条线对比用）；<c>false</c> 时按段类型分色（直/缓入/缓出/圆），便于核对几何质量。
-        /// </summary>
-        private bool _colorByAlignment;
-        public bool ColorByAlignment
-        {
-            get => _colorByAlignment;
-            set => SetProperty(ref _colorByAlignment, value);
-        }
-
-        /// <summary>
-        /// 「原线」开关：开启时在图层「05_hy_道路_原线」绘制所有线位创建时刻中心线快照；关闭时擦除。
-        /// </summary>
-        public bool IsRawPolylineVisible
-        {
-            get => _isRawPolylineVisible;
-            set
-            {
-                if (_isRawPolylineVisible == value) return;
-                _isRawPolylineVisible = value;
-                OnPropertyChanged(nameof(IsRawPolylineVisible));
-                if (!_suppressRawPolylineToggle)
-                    CommandDispatcher.Send(value ? "hyRoadAlnRawShow" : "hyRoadAlnRawHide");
-            }
         }
 
         // =============================== Alignment 列表 ===============================
@@ -200,22 +174,23 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         // =============================== Commands ===============================
 
+        /// <summary>顶栏「拾取」— 派发 <c>hyRoadAlnUserPickRegister</c>，内部做 HY_ROAD 分流 + 原线层转存。</summary>
         public ICommand PickAlignmentCmd { get; }
-        public ICommand DrawUserPickPreviewCmd { get; }
-        public ICommand CommitAlignmentCmd { get; }
+        /// <summary>顶栏「预览」— 把当前 alignment 追加到 <c>05_hy_道路_预览</c>（用户快照，不自动清）。</summary>
+        public ICommand DrawLivePreviewCmd { get; }
+        /// <summary>顶栏「应用 / 一键定稿」— 落到 <c>05_hy_道路_平面线位</c> + <c>.roaddesign.json</c>，是唯一的真实保存动作。</summary>
+        public ICommand ApplyAlignmentCmd { get; }
         public ICommand ReverseCmd { get; }
         public ICommand OffsetCmd { get; }
         public ICommand ExportPiCsvCmd { get; }
         public ICommand ExportFrameCsvCmd { get; }
         public ICommand InsertPiCmd { get; }
         public ICommand DeletePiCmd { get; }
-        public ICommand ApplyPiEditCmd { get; }
         public ICommand RevertPiEditCmd { get; }
         public ICommand DrawStationLabelsCmd { get; }
         public ICommand DrawGeometryPointsCmd { get; }
         public ICommand AddStationEquationCmd { get; }
         public ICommand DeleteStationEquationCmd { get; }
-        public ICommand RefreshCmd { get; }
 
         // =============================== 外部 API（由 PanelManager 调用）===============================
 
@@ -236,19 +211,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 StatusText = "无活动图纸";
                 ClearDetails();
                 return;
-            }
-
-            if (doc.Name != _lastWorkbenchDocNameForRaw)
-            {
-                if (_isRawPolylineVisible)
-                {
-                    _suppressRawPolylineToggle = true;
-                    _isRawPolylineVisible = false;
-                    OnPropertyChanged(nameof(IsRawPolylineVisible));
-                    _suppressRawPolylineToggle = false;
-                    CommandDispatcher.Send("hyRoadAlnRawHide");
-                }
-                _lastWorkbenchDocNameForRaw = doc.Name;
             }
 
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
@@ -324,55 +286,37 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         /// <summary>
         /// PaletteSet 关闭（<c>Visible</c> 由 true 变 false）时由 <c>PanelManager</c> 调用：
-        /// 把工作台当前会话产生的所有临时图形一次性清零，让"关闭面板 = 屏幕干净"成为可预期交互。
+        /// 把工作台<b>过程态</b>的所有临时图形一次性清零，让"关闭面板 = 屏幕干净"成为可预期交互。
         ///
-        /// <para>清理范围（固定顺序，幂等、异常安全）：</para>
-        /// <list type="number">
-        ///   <item>主预览实体（<c>05_hy_道路_预览</c> 图层，<see cref="RoadAlignmentLivePreviewService.EraseAll"/>）</item>
-        ///   <item>PI 实时预览 Transient（<see cref="_preview"/>.Clear）</item>
-        ///   <item>「原线」图层（若开关打开则 <c>hyRoadAlnRawHide</c> + 复位 ViewModel 开关，避免死循环 Send）</item>
-        ///   <item>「用户拾取」预览图层（<see cref="RoadAlignmentUserPickPreviewService.EraseAllPreviews"/>）</item>
+        /// <para>清理范围（幂等、异常安全）：</para>
+        /// <list type="bullet">
+        ///   <item><b>瞬态黄线</b>（PI 实时预览 Transient）</item>
+        ///   <item><b>设计态彩色</b>（<c>05_hy_道路_原线</c> 上 KIND=AlignmentDesignPreview 的实体）</item>
+        ///   <item>debounce timer 停转 —— 关面板期间不应有延迟重绘残留</item>
         /// </list>
         ///
-        /// VM 本体、Selection、JSON Registry 都不碰：下次 <see cref="RestoreWorkbenchArtifacts"/> 能按原选中线位把主预览重画出来。
+        /// <para><b>不清理</b>的三类（重要）：</para>
+        /// <list type="bullet">
+        ///   <item><b>原线 RawPick</b>（<c>05_hy_道路_原线</c>，KIND=AlignmentRawPick）— 永久档案；</item>
+        ///   <item><b>用户快照</b>（<c>05_hy_道路_预览</c>，KIND=AlignmentLivePreview）— 用户自管；</item>
+        ///   <item><b>正式线位</b>（<c>05_hy_道路_平面线位</c>，KIND=Alignment）— 唯一真实保存实体。</item>
+        /// </list>
         /// </summary>
         public void HideAllWorkbenchArtifacts()
         {
             if (_disposed) return;
 
-            ClearLivePreview();
             try { _preview.Clear(); } catch { /* ignore */ }
-
-            if (_isRawPolylineVisible)
-            {
-                try { CommandDispatcher.Send("hyRoadAlnRawHide"); } catch { /* ignore */ }
-                _suppressRawPolylineToggle = true;
-                try
-                {
-                    _isRawPolylineVisible = false;
-                    OnPropertyChanged(nameof(IsRawPolylineVisible));
-                }
-                finally { _suppressRawPolylineToggle = false; }
-            }
-
-            try
-            {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc != null) RoadAlignmentUserPickPreviewService.EraseAllPreviews(doc);
-            }
-            catch { /* ignore */ }
         }
 
         /// <summary>
-        /// PaletteSet 再次显示时调用：按当前 <see cref="SelectedAlignment"/> 重画主预览实体。
-        /// 不重建"原线"与 UserPick 预览，因为它们是用户显式操作的产物；要恢复请用户重新点开关 / 按钮。
+        /// PaletteSet 再次显示时调用：v2 工作流不再有自动彩色预览，保留桩方法避免宿主旧调用点链式崩。
+        /// 瞬态黄由滑块事件重新驱动；用户快照 / RawPick / 正式线位都不在本方法负责范围。
         /// </summary>
         public void RestoreWorkbenchArtifacts()
         {
             if (_disposed) return;
-            var aln = _selectedAlignment?.Alignment;
-            if (aln == null) return;
-            UpdatePreviewFromDomain(aln);
+            // no-op（v2：DesignPreview 已下线）
         }
 
         /// <summary>
@@ -405,12 +349,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             GeometryPoints.Clear();
             SelectedStationEquation = null;
 
+            try { _preview.Clear(); } catch { /* ignore */ }
+
             if (_selectedAlignment == null)
             {
                 SelectedPi = null;
                 PiEditorVm = null;
-                ClearLivePreview();
-                try { _preview.Clear(); } catch { /* ignore */ }
                 StatusText = "未选中 Alignment。";
                 return;
             }
@@ -438,8 +382,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             var firstInternal = PiItems.FirstOrDefault(p => !p.IsEndpoint);
             SelectedPi = firstInternal;
             StatusText = $"已切换到 {aln.Name}（PI {pis.Count}，长 {aln.Centerline?.GetPlanarLength() ?? 0:F2} m）。";
-
-            UpdatePreviewFromDomain(aln);
         }
 
         /// <summary>
@@ -493,34 +435,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             }
         }
 
+        /// <summary>
+        /// PI 参数每次变化（滑块 / 输入框）— 同步刷新 Transient 黄线（即时反馈）。
+        /// v2 工作流：不再自动刷新 <c>05_hy_道路_原线</c> 的彩色 DesignPreview；
+        /// 用户需要在 DWG 查看分段彩色请点顶栏「预览」追加到 <c>05_hy_道路_预览</c>。
+        /// </summary>
         private void OnPiEditorPreviewRequested(object sender, PiDesignResult result)
         {
             if (_suspendPiEditorEvents) return;
             if (result.Polyline == null) return;
             try { _preview.Update(result.Polyline); } catch { /* 文档关闭等场景忽略 */ }
-        }
-
-        /// <summary>
-        /// 更新「主预览」：把当前选中 Alignment 的中心线写到 <c>05_hy_道路_预览</c> 图层的真实体。
-        /// 幂等（内部先擦旧 LivePreview 实体）；文档已关闭 / 中心线无效时等价于 <see cref="ClearLivePreview"/>。
-        /// </summary>
-        private void UpdatePreviewFromDomain(Alignment aln)
-        {
-            if (aln == null) return;
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            if (doc == null) return;
-            try { RoadAlignmentLivePreviewService.DrawForAlignment(doc, aln); } catch { /* ignore */ }
-            // PI 编辑器每次 PreviewRequested 会自行刷新 Transient；这里不碰 _preview。
-        }
-
-        /// <summary>
-        /// 擦除主预览实体（不影响 PI 实时预览 Transient、原线图层、UserPick 预览）。
-        /// </summary>
-        private void ClearLivePreview()
-        {
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            if (doc == null) return;
-            try { RoadAlignmentLivePreviewService.EraseAll(doc); } catch { /* ignore */ }
         }
 
         private void ClearDetails()
@@ -532,7 +456,6 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             SelectedStationEquation = null;
             SelectedPi = null;
             PiEditorVm = null;
-            ClearLivePreview();
             try { _preview.Clear(); } catch { /* ignore */ }
         }
 
@@ -587,34 +510,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             StatusText = "请在命令行拾取一条 Polyline（任意图层）…";
         }
 
-        private void DrawUserPickPreview()
+        /// <summary>
+        /// 「预览」按钮 — 把当前选中 alignment 追加一批分段彩色 Polyline 到 <c>05_hy_道路_预览</c> 图层。
+        /// <para>与 DesignPreview 的差别：</para>
+        /// <list type="bullet">
+        ///   <item>DesignPreview（自动）→ <c>05_hy_道路_原线</c>，每次 PI 调整 debounce 都重刷；</item>
+        ///   <item>LivePreview（手动）→ <c>05_hy_道路_预览</c>，追加模式，用户自管；Apply 不会动。</item>
+        /// </list>
+        /// </summary>
+        private void DrawLivePreviewSnapshot()
         {
-            if (AcApp.DocumentManager.MdiActiveDocument == null || _selectedAlignment == null) return;
-            var mode = ColorByAlignment
-                ? RoadAlignmentUserPickPreviewService.ColorMode.ByAlignmentId
-                : RoadAlignmentUserPickPreviewService.ColorMode.BySegmentKind;
-            RoadAlignmentUserPickPreviewSession.RequestWorkbenchDraw(_selectedAlignment.Id, mode);
-            CommandDispatcher.Send("hyRoadAlnUserPickDrawWB");
-            StatusText = ColorByAlignment
-                ? "已请求绘出预览（按 Alignment Id 单色，结果见命令行）。"
-                : "已请求绘出预览（按段类型分色，结果见命令行）。";
-        }
-
-        // =============================== 提交：UserPicked → 平面线位 ===============================
-
-        private bool CanCommitSelected()
-        {
-            if (_selectedAlignment == null) return false;
-            var src = _selectedAlignment.Alignment.Source;
-            return src != null && src.Kind == AlignmentSourceKind.UserPicked;
-        }
-
-        private void CommitSelected()
-        {
-            if (AcApp.DocumentManager.MdiActiveDocument == null || _selectedAlignment == null) return;
-            RoadAlignmentCommitSession.RequestCommit(_selectedAlignment.Id);
-            CommandDispatcher.Send("hyRoadAlnCommit");
-            StatusText = "已请求提交为平面线位（排队到 AutoCAD 命令线程，结果见命令行）。";
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null || _selectedAlignment == null) return;
+            int n = RoadAlignmentLivePreviewService.DrawForAlignment(doc, _selectedAlignment.Alignment);
+            StatusText = n > 0
+                ? $"已在 05_hy_道路_预览 追加 {n} 条分段彩色 Polyline（用户快照，需手动 ERASE 清理）。"
+                : "预览追加失败：Alignment 中心线可能无效。";
         }
 
         private void OnAlignmentChangedFromBus(AlignmentChangedEvent evt)
@@ -728,28 +639,73 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             return name.Trim();
         }
 
-        // =============================== 中列：PI 编辑 ===============================
+        // =============================== 顶栏：应用 / 一键定稿 ===============================
 
-        private void ApplyPiEdit()
+        private bool CanApplyAlignment()
+        {
+            if (_selectedAlignment == null) return false;
+            // 需要至少 2 个 PI 点（端点）才能重建几何。
+            int count = 0;
+            if (PiItems.Count >= 2)
+            {
+                count = PiItems.Count;
+            }
+            else
+            {
+                var src = _selectedAlignment.Alignment?.Source?.PiElements;
+                count = src?.Count ?? 0;
+            }
+            return count >= 2;
+        }
+
+        /// <summary>
+        /// 「应用」按钮 — 一键定稿：把当前 PI 表（或 PI 编辑器工作副本）写入 <c>05_hy_道路_平面线位</c>
+        /// 的正式 Polyline（新建 / 就地更新），同步 <c>.roaddesign.json</c>。
+        ///
+        /// <para>优先使用 <see cref="PiEditorVm"/> 的工作副本（包含用户未提交的滑块调整）；
+        /// 无编辑器时退回用 <see cref="PiItems"/>。</para>
+        /// </summary>
+        private void ApplyAlignment()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
-            if (doc == null || _selectedAlignment == null || _selectedPi == null || _selectedPi.IsEndpoint) return;
-            if (PiEditorVm == null) return;
+            if (doc == null || _selectedAlignment == null) return;
 
-            var aln = _selectedAlignment.Alignment;
-            var elements = PiEditorVm.GetWorkingElements().ToList();
+            List<PiElement> elements;
+            if (PiEditorVm != null)
+            {
+                elements = PiEditorVm.GetWorkingElements().ToList();
+            }
+            else
+            {
+                elements = PiItems.Select(p => p.Element).ToList();
+            }
+            if (elements.Count < 2)
+            {
+                StatusText = "PI 数量 < 2，无法定稿。";
+                return;
+            }
+
+            try { _preview.Clear(); } catch { /* ignore */ }
 
             try
             {
-                if (Commands.Road.RoadAlignmentPiPipeline.RebuildAndPersist(
-                        doc, aln, elements, $"PI[{_selectedPi.Index}] 已更新（面板）。"))
+                var apply = ServiceLocator.Resolve<RoadAlignmentApplyService>();
+                var result = apply.Apply(doc, _selectedAlignment.Alignment, elements);
+                if (!result.Success)
                 {
-                    StatusText = $"PI[{_selectedPi.Index}] 已应用。";
-                    ReloadSelectedAlignmentFromDomain(preservePiIndex: _selectedPi.Index);
+                    StatusText = "应用失败：" + (result.Message ?? "未知错误。");
+                    return;
                 }
-                else
+
+                int? preservePi = _selectedPi?.Index;
+                ReloadSelectedAlignmentFromDomain(preservePiIndex: preservePi);
+                StatusText = string.IsNullOrEmpty(result.Message)
+                    ? "已应用到 05_hy_道路_平面线位。"
+                    : result.Message;
+
+                if (!string.IsNullOrEmpty(result.JsonPath))
                 {
-                    StatusText = "应用失败（详情见命令行）。";
+                    StatusText += $"  JSON: {result.JsonPath}";
                 }
             }
             catch (Exception ex)
@@ -924,20 +880,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         ///
         /// <para>背景：本项目 <see cref="RelayCommand"/> 刻意不挂 <c>CommandManager.RequerySuggested</c>，
         /// 所以 <c>SelectedAlignment / SelectedPi / PiEditorVm / SelectedStationEquation</c> 变化时
-        /// 需要显式调用本方法，否则底栏「应用 / 撤销」等按钮会一直停留在构造时评估的灰态。
-        /// 纯静态命令（<c>PickAlignmentCmd</c> / <c>RefreshCmd</c>）无 canExecute，也安全调用。</para>
+        /// 需要显式调用本方法，否则顶栏「应用」/ 底栏「撤销」等按钮会一直停留在构造时评估的灰态。
+        /// 纯静态命令（<c>PickAlignmentCmd</c>）无 canExecute，也安全调用。</para>
         /// </summary>
         private void RefreshCommandStates()
         {
-            (DrawUserPickPreviewCmd as RelayCommand)?.RaiseCanExecuteChanged();
-            (CommitAlignmentCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (DrawLivePreviewCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (ApplyAlignmentCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (ReverseCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (OffsetCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportPiCsvCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportFrameCsvCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (InsertPiCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (DeletePiCmd as RelayCommand)?.RaiseCanExecuteChanged();
-            (ApplyPiEditCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (RevertPiEditCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (AddStationEquationCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (DeleteStationEquationCmd as RelayCommand)?.RaiseCanExecuteChanged();
@@ -969,8 +924,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 if (PiEditorVm != null) PiEditorVm.PreviewRequested -= OnPiEditorPreviewRequested;
                 _alignmentChangedSub?.Dispose();
                 _preview.Dispose();
-                // 兜底：插件卸载 / 最终释放时把遗留的主预览实体也擦掉，不在 DWG 上留垃圾。
-                ClearLivePreview();
+                // v2：DesignPreview 自动彩色机制已下线，这里无需清任何 DWG 实体。
+                // RawPick / LivePreview / 正式线位皆为用户资产，不碰。
             }
             catch { /* ignore */ }
         }

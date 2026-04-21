@@ -17,12 +17,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="ElevationPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 标高：符号样式（当前通用使用 Settings.Scale / Settings.TextSize 推导 → 只读展示） -->
             <DataTemplate x:Key="Section_ElevationSymbol">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <TextBlock Text="（当前标高符号从设置→样式预览派生；此处预留将来符号高度/三角/线粗独立参数。）"
                                Foreground="{DynamicResource Brush_TextDisabled}"
                                FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,6"/>
@@ -41,7 +41,7 @@
 
             <!-- 标高：文字样式（引用 Settings 文字参数） -->
             <DataTemplate x:Key="Section_ElevationText">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="文字样式名" Style="{StaticResource ElevationPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  IsReadOnly="True"

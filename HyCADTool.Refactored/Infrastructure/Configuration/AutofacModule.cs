@@ -316,7 +316,12 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
             // 路线工作台「提交为平面线位」服务（UserPicked → HY_ROAD Alignment）
+            // 保留用于向后兼容老命令 hyRoadAlnCommit；工作台 UI 不再绑定，改走 RoadAlignmentApplyService。
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentCommitService>()
+                .AsSelf()
+                .SingleInstance();
+            // 路线工作台「一键定稿」服务（新工作流）：合并 Commit 与 RebuildCenterline 的两段流水
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentApplyService>()
                 .AsSelf()
                 .SingleInstance();
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadProfileService>()

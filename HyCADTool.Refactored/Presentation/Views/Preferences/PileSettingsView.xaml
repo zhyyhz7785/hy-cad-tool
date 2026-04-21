@@ -17,12 +17,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="PilePropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="150"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 桩基：桩参数 -->
             <DataTemplate x:Key="Section_PileParams">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="直径/边长 (mm)" Style="{StaticResource PilePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.DiameterOrEdge, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
@@ -57,24 +57,24 @@
 
             <!-- 桩基：边距参数 -->
             <DataTemplate x:Key="Section_PileMargin">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="到轮廓距离" Style="{StaticResource PilePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.InputDistanceFromContour, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="上边距 (MarginUp)" Style="{StaticResource PilePropertyRow}">
+                    <bc:PropertyRow Label="上边距" Style="{StaticResource PilePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginUp, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="下边距 (MarginDown)" Style="{StaticResource PilePropertyRow}">
+                    <bc:PropertyRow Label="下边距" Style="{StaticResource PilePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginDown, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="左边距 (MarginLeft)" Style="{StaticResource PilePropertyRow}">
+                    <bc:PropertyRow Label="左边距" Style="{StaticResource PilePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginLeft, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="右边距 (MarginRight)" Style="{StaticResource PilePropertyRow}">
+                    <bc:PropertyRow Label="右边距" Style="{StaticResource PilePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding PileVm.MarginRight, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
                     </bc:PropertyRow>

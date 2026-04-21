@@ -2,7 +2,9 @@
 name: hycad-project-pitfalls
 description: |
   HyCADTool 项目（HyCADTool.Refactored + HyCAD.BlenderUI + AutoCAD 插件）全部已验证的陷阱清单。
-  覆盖：AutoCAD API 多文档 / 单例 Database 缓存 / Table Title 自动合并 / 样式与图层初始化 / 配置分裂；
+  覆盖：AutoCAD API 多文档 / 单例 Database 缓存 / Table Title 自动合并 / 样式与图层初始化 / 配置分裂 /
+  HyRoad 图层注册清单分裂（HyRoadLayers 常量 ↔ PluginInitializer.GetRequiredLayers() 手写清单必须同步，
+  否则 Entity.Layer 静默回落 0 层；锁定层写入强制用 LayerLockScope.Unlock，finally 吞异常）；
   WPF + PaletteSet 宿主：隐式 Style 原生崩溃 / StaticResource 跨字典 / DynamicResource 类型错配 /
   ControlTemplate.Triggers 位置 / Trigger.TargetName 可达性 / MarkupExtension 当 Converter 递归 /
   子 UserControl 未本地 Merge 主题 / PaletteSet 原框强拆 /
@@ -24,7 +26,7 @@ description: |
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.8.0
+version: 1.10.0
 date: 2026-04-21
 ---
 
@@ -283,6 +285,88 @@ private static void PreloadCompanionAssemblies(string loadDepsPath, Editor ed)
 **规则**：今后新增 `HyCAD.*.dll` 伙伴程序集并在 Refactored XAML 里跨程序集引用 pack URI 的，**不需要**修改 ReCall——命名以 `HyCAD` 前缀开头即自动被预加载。非 `HyCAD*` 前缀的新伙伴程序集需回来改 `PreloadCompanionAssemblies` 的 glob 模式。
 
 **同类宿主风险提示**：Revit `DockablePaneProvider` / Office VSTO 等 byte[] 加载的寄生式 WPF 宿主，跨程序集 pack URI 同样会触发本坑。
+
+---
+
+### A7【改 2026-04-21 v2】HyRoad 图层注册清单分裂：`HyRoadLayers.GetAll()` vs `PluginInitializer.GetRequiredLayers()`
+
+**现象**
+
+- 冷启动 AutoCAD，新 DWG 直接跑拾取命令
+- 期望：`05_hy_道路_原线` 上出现一条锁定状态的 252 灰 Polyline（RawPick 档案）
+- 实际：Polyline 出现在 `0` 图层、显示为**默认色（黄或白）**，并不锁定
+- 或者：新开 DWG 点「预览」— LivePreview 也落到 `0` 图层的默认色
+
+**触发条件**
+
+- 新增了 `HyRoadLayers.XxxLayer` 常量（如 `RawPolylineLayer` / `LivePreviewLayer`）
+- **但**忘记同步到 `PluginInitializer.GetRequiredLayers()` 的手写清单中
+- Entity 创建时 `entity.Layer = "<不存在的层名>"` → AutoCAD 静默回落到当前图层 `"0"`，不抛异常
+
+**根因**：HyCAD 项目存在<b>两份并行维护</b>的图层清单
+
+- `HyCADTool.Refactored\Infrastructure\AutoCAD\Xdata\HyRoadLayers.cs` — 常量 + `GetAll()` 语义清单（服务代码查名用）
+- `HyCADTool.Refactored\Presentation\PluginInitializer.cs` `GetRequiredLayers()` — 启动批量创建用的手写 `(name, color)[]`
+
+两份清单由不同提交维护，很容易一边加常量一边忘更新创建清单。AutoCAD 对 `pl.Layer = "unknownName"` 不报错只回落，debug 时只能靠眼睛看颜色发现不对。
+
+**正确做法**
+
+1. 新增 `HyRoad*Layer` 常量时**必须同步更新** `PluginInitializer.GetRequiredLayers()`（或后续重构为直接 `foreach HyRoadLayers.GetAll()` 取代手写清单）
+2. 图层有**锁定 / 冻结 / 线型**等特殊属性时走 `HyRoadLayerInitializer` 独立静态方法（`GetRequiredLayers()` 签名只有 `(name, color)`，承载不了 lock 位）。典型：
+   - `HyRoadLayerInitializer.EnsureRawPolylineLayerLocked(doc)` — 保证 `05_hy_道路_原线` 存在且 `IsLocked = true`
+   - 调用点：`PluginInitializer.InitializeStylesAndLayers()` 批量创建之后
+3. 向**锁定层**写入 / 擦除实体的事务块必须包裹 `LayerLockScope.Unlock(tr, db, layerName)`：
+
+```csharp
+using (doc.LockDocument())
+using (var tr = db.TransactionManager.StartTransaction())
+{
+    using (LayerLockScope.Unlock(tr, db, HyRoadLayers.RawPolylineLayer))
+    {
+        // 在同一事务里向锁定层 Append / Erase；Dispose 时自动恢复锁定
+        var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
+        btr.AppendEntity(poly);
+        tr.AddNewlyCreatedDBObject(poly, true);
+    }
+    tr.Commit();
+}
+```
+
+`LayerLockScope` 内部：构造时记录 `LayerTableRecord.IsLocked` 原值 → `UpgradeOpen` 置 false；`Dispose` 时若原本锁定就 `UpgradeOpen` 改回 true，**所有异常全部吞**（避免 AutoCAD shutdown 路径上 finally 抛出升级为原生崩）。
+
+**反例**（2026-04-21 实测 bug 链）
+
+```csharp
+// GetRequiredLayers() 忘加 RawPolylineLayer + LivePreviewLayer
+private (string, short)[] GetRequiredLayers() => new[]
+{
+    (HyRoadLayers.AlignmentLayer, HyRoadLayers.AlignmentLayerColor),
+    // ← 缺 RawPolylineLayer / LivePreviewLayer
+};
+
+// 拾取命令里向"不存在的层"写实体
+var pl = RoadGeometryBridge.ToAutoCadPolyline(poly);
+pl.Layer = HyRoadLayers.RawPolylineLayer;  // ← AutoCAD 静默回落到 "0"
+pl.Color = Color.FromColorIndex(ColorMethod.ByLayer, 0);
+btr.AppendEntity(pl);
+// 结果：0 层黄线，不是预期的 252 灰锁定线
+```
+
+**已修复**：
+
+- `HyCADTool.Refactored\Presentation\PluginInitializer.cs` `GetRequiredLayers()` 补齐 `RawPolylineLayer` + `LivePreviewLayer`
+- 新增 `HyCADTool.Refactored\Infrastructure\AutoCAD\Xdata\HyRoadLayerInitializer.cs`，启动调用 `EnsureRawPolylineLayerLocked`
+- 新增 `HyCADTool.Refactored\Infrastructure\AutoCAD\Services\Road\LayerLockScope.cs`（`IDisposable`）
+- `RoadAlignmentRawPolylineService.DrawAll/DrawForAlignment/EraseAll` + `RoadAlignmentApplyService.Apply` 所有对原线层的读写包裹 `LayerLockScope.Unlock`
+- 顺便下线了 DesignPreview 自动彩色机制：原线层现在**只**容纳 RawPick 一种 KIND，不再需要"同层多 KIND"共存（但 `KindAlignmentDesignPreview` 常量保留，用于 Apply 清理历史 DWG 残留）
+
+**规则**
+
+- 新增 `HyRoadLayers` 常量 → 必须审查 `PluginInitializer.GetRequiredLayers()` 是否同步
+- 图层有锁定 / 冻结 / 线型特殊属性 → 独立 `HyRoadLayerInitializer.EnsureXxx(doc)`，不要硬塞进批量清单
+- 锁定层写入**必须**用 `LayerLockScope.Unlock`；禁止在命令里直接 `layer.IsLocked = false` 不复原
+- 同层多 KIND（历史场景）如需共存，擦除严格按 `(KIND, Id)` 过滤；禁止 `EraseByLayer` 作为公开 API
 
 ---
 

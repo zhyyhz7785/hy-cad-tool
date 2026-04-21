@@ -27,7 +27,7 @@ namespace HyCAD.BlenderUI.Controls
 
         public static readonly DependencyProperty LabelWidthProperty = DependencyProperty.Register(
             nameof(LabelWidth), typeof(GridLength), typeof(PropertyRow),
-            new PropertyMetadata(new GridLength(90)));
+            new PropertyMetadata(new GridLength(100)));
 
         public GridLength LabelWidth
         {
@@ -37,7 +37,7 @@ namespace HyCAD.BlenderUI.Controls
 
         public static readonly DependencyProperty RowSpacingProperty = DependencyProperty.Register(
             nameof(RowSpacing), typeof(Thickness), typeof(PropertyRow),
-            new PropertyMetadata(new Thickness(0, 2, 0, 2)));
+            new PropertyMetadata(new Thickness(0, 1, 0, 1)));
 
         public Thickness RowSpacing
         {

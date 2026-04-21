@@ -16,7 +16,7 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{TemplateBinding LabelWidth}"/>
-                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="4"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0"

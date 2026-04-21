@@ -17,12 +17,12 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="AnchorBoltPropertyRow" TargetType="{x:Type bc:PropertyRow}">
-                <Setter Property="LabelWidth" Value="140"/>
+                <Setter Property="LabelWidth" Value="120"/>
             </Style>
 
             <!-- 地脚螺栓：螺栓参数（短期内无专属字段，暂只读展示通用缩放/说明） -->
             <DataTemplate x:Key="Section_AnchorBoltParams">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <TextBlock Text="（地脚螺栓参数随绘图交互逐次录入，无全局默认；此处预留未来默认间距、锚固深度、垫片直径等字段。）"
                                Foreground="{DynamicResource Brush_TextDisabled}"
                                FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,6"/>

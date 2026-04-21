@@ -39,7 +39,7 @@
 
             <!-- 文字样式 -->
             <DataTemplate x:Key="Section_Text">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
 
                     <TextBlock Text="样式 1：0-hy-说明-T（TrueType 标题/说明）" Style="{StaticResource SubHeader}"/>
                     <bc:PropertyRow Label="字体名称" Style="{StaticResource StylePropertyRow}">
@@ -83,7 +83,7 @@
                     </bc:PropertyRow>
 
                     <TextBlock Text="公共" Style="{StaticResource SubHeader}" Margin="0,8,0,4"/>
-                    <bc:PropertyRow Label="字高 (TextSize)" Style="{StaticResource StylePropertyRow}">
+                    <bc:PropertyRow Label="字高" Style="{StaticResource StylePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Width="{DynamicResource Metric_InputWidth_ML}" HorizontalAlignment="Left"
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
@@ -96,7 +96,7 @@
 
             <!-- 标注样式 -->
             <DataTemplate x:Key="Section_Dim">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="Dimtxt" Style="{StaticResource StylePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="2.5"/>
                     </bc:PropertyRow>
@@ -119,7 +119,7 @@
 
             <!-- 引线样式 -->
             <DataTemplate x:Key="Section_MLeader">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <bc:PropertyRow Label="箭头尺寸" Style="{StaticResource StylePropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}" Text="2.0"/>
                     </bc:PropertyRow>
@@ -137,7 +137,7 @@
 
             <!-- 表格样式 -->
             <DataTemplate x:Key="Section_Table">
-                <StackPanel Margin="{DynamicResource Metric_SectionInset}">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
                     <TextBlock Text="（TODO：接入表格样式参数，对应 TableStyleName 及将来的列宽/行高默认值）"
                                Foreground="{DynamicResource Brush_TextDisabled}"
                                FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic"/>

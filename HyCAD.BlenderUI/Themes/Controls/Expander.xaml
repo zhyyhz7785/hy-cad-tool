@@ -37,13 +37,13 @@
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="{x:Type ToggleButton}">
                                         <Border Background="{TemplateBinding Background}">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,6,0">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
                                                 <Path x:Name="Arrow"
-                                                      Width="8" Height="8"
+                                                      Width="7" Height="7"
                                                       Stretch="Uniform"
                                                       Fill="{DynamicResource Brush_TextSecondary}"
                                                       Data="M 0,0 L 8,4 L 0,8 Z"
-                                                      VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                      VerticalAlignment="Center" Margin="0,0,4,0"/>
                                                 <ContentPresenter ContentSource="Content" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Border>
@@ -57,11 +57,11 @@
                                 <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"/>
                             </ToggleButton>
                         </Border>
-                        <Border x:Name="ContentHost" Grid.Row="1" Margin="0,2,0,6"
+                        <Border x:Name="ContentHost" Grid.Row="1" Margin="0,1,0,3"
                                 Visibility="Collapsed"
                                 Background="{DynamicResource Brush_PanelBack}"
                                 CornerRadius="{DynamicResource Metric_CornerRadius}">
-                            <ContentPresenter Margin="6"/>
+                            <ContentPresenter Margin="4"/>
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
