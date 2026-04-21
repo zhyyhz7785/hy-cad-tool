@@ -68,7 +68,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 
                         var pl = RoadGeometryBridge.ToAutoCadPolyline(poly);
                         pl.Layer = HyRoadLayers.RawPolylineLayer;
-                        pl.Color = Color.FromColorIndex(ColorMethod.ByLayer, 0);
+                        pl.ColorIndex = 256; // AutoCAD 标准 ByLayer
                         btr.AppendEntity(pl);
                         tr.AddNewlyCreatedDBObject(pl, true);
                         HyRoadXdata.Write(tr, db, pl, a.Id, HyRoadXdata.KindAlignmentRawPick, SchemaVersion.Current);
@@ -135,7 +135,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                         var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
                         var pl = RoadGeometryBridge.ToAutoCadPolyline(poly);
                         pl.Layer = HyRoadLayers.RawPolylineLayer;
-                        pl.Color = Color.FromColorIndex(ColorMethod.ByLayer, 0);
+                        pl.ColorIndex = 256; // AutoCAD 标准 ByLayer
                         btr.AppendEntity(pl);
                         tr.AddNewlyCreatedDBObject(pl, true);
                         HyRoadXdata.Write(tr, db, pl, aln.Id, HyRoadXdata.KindAlignmentRawPick, SchemaVersion.Current);

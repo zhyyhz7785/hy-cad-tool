@@ -522,10 +522,79 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null || _selectedAlignment == null) return;
-            int n = RoadAlignmentLivePreviewService.DrawForAlignment(doc, _selectedAlignment.Alignment);
+
+            var previewAlignment = BuildLivePreviewAlignment();
+            if (previewAlignment == null)
+            {
+                StatusText = "预览追加失败：当前瞬态黄线对应的 PI 工作数据无效。";
+                return;
+            }
+
+            int n = RoadAlignmentLivePreviewService.DrawForAlignment(doc, previewAlignment);
             StatusText = n > 0
                 ? $"已在 05_hy_道路_预览 追加 {n} 条分段彩色 Polyline（用户快照，需手动 ERASE 清理）。"
-                : "预览追加失败：Alignment 中心线可能无效。";
+                : "预览追加失败：当前瞬态黄线生成失败。";
+        }
+
+        /// <summary>
+        /// 为「预览」按钮构造一条临时 Alignment：
+        /// 优先使用 PI 编辑器工作副本（即瞬态黄线对应的最新几何），不回退到旧的 SelectedAlignment.Centerline，
+        /// 避免把用户最初拾取的原始 Polyline 误追加到 05_hy_道路_预览。
+        /// </summary>
+        private Alignment BuildLivePreviewAlignment()
+        {
+            if (_selectedAlignment?.Alignment == null) return null;
+
+            List<PiElement> elements;
+            if (PiEditorVm != null)
+            {
+                elements = PiEditorVm.GetWorkingElements()?.ToList();
+            }
+            else if (PiItems.Count >= 2)
+            {
+                elements = PiItems.Select(p => p.Element).ToList();
+            }
+            else
+            {
+                elements = _selectedAlignment.Alignment.Source?.PiElements?
+                    .Select(e => new PiElement(e.P, e.Radius, e.SpiralIn, e.SpiralOut, e.Tag))
+                    .ToList();
+            }
+
+            if (elements == null || elements.Count < 2) return null;
+
+            try
+            {
+                var result = AlignmentPiDesigner.Build(elements, new PiDesignOptions());
+                if (result.Polyline == null || result.Polyline.VertexCount < 2) return null;
+
+                var source = new AlignmentSource { Kind = AlignmentSourceKind.PiTable };
+                foreach (var e in elements)
+                {
+                    source.PiElements.Add(new AlignmentPiInput
+                    {
+                        P = e.P,
+                        Radius = e.Radius,
+                        SpiralIn = e.SpiralIn,
+                        SpiralOut = e.SpiralOut,
+                        Tag = e.Tag,
+                    });
+                }
+
+                var selected = _selectedAlignment.Alignment;
+                return new Alignment
+                {
+                    Id = selected.Id,
+                    Name = selected.Name,
+                    StartStation = selected.StartStation,
+                    Centerline = result.Polyline,
+                    Source = source,
+                };
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void OnAlignmentChangedFromBus(AlignmentChangedEvent evt)

@@ -238,7 +238,6 @@
                                         <bui:PropertyRow Label="对称锁">
                                             <CheckBox Content="Ls1 = Ls2（对称）"
                                                       IsChecked="{Binding IsSymmetric}"
-                                                      Style="{StaticResource BlenderCheckBox}"
                                                       VerticalAlignment="Center"/>
                                         </bui:PropertyRow>
                                         <bui:PropertyRow Label="入侧缓长 Ls1 (m)">
