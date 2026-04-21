@@ -5,7 +5,6 @@
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Colors.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Metrics.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Fonts.xaml"/>
-        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
     <Style TargetType="{x:Type TabItem}" x:Key="BlenderTabItem">
@@ -65,14 +64,9 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0"
+                                Background="{DynamicResource Brush_HeaderBack}"
                                 BorderBrush="{DynamicResource Brush_BorderDark}"
                                 BorderThickness="0,0,0,1">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Idle}}"/>
-                                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_HeaderBack}}"/>
-                                </LinearGradientBrush>
-                            </Border.Background>
                             <TabPanel x:Name="HeaderPanel" IsItemsHost="True"
                                       Panel.ZIndex="1"
                                       KeyboardNavigation.TabIndex="1"/>

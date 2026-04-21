@@ -2,7 +2,6 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/WidgetBackdrop.xaml"/>
         <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Controls/ScrollBar.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
@@ -25,9 +24,10 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ToggleButton}">
                     <Border x:Name="Bd"
-                            Style="{StaticResource BlenderWidgetBackdropIdle}"
+                            Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Metric_CornerRadius}"
                             SnapsToDevicePixels="True">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -44,7 +44,11 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_InputFocusBorder}"/>
-                            <Setter TargetName="Bd" Property="Style" Value="{StaticResource BlenderWidgetBackdropHover}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_InputFocusBorder}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_PanelBack}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

@@ -700,6 +700,29 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             _crownProfile = band.CrownProfile;
             _surfaceLayer = band.SurfaceLayer;
             _laneCount = band.LaneCount;
+
+            _isActive = true;
+
+            StructureLayers = new ObservableCollection<StructureLayerNode>();
+            StructureLayers.CollectionChanged += OnStructureLayersChanged;
+
+            // 方案优先级：band 自带 → 按 Kind 默认注入 → 空（非承载结构）。
+            if (band.StructureScheme != null && band.StructureScheme.Layers != null)
+            {
+                foreach (var layer in band.StructureScheme.Layers)
+                    StructureLayers.Add(StructureLayerNode.From(layer));
+            }
+            else if (IsStructureBearing(band.Kind))
+            {
+                InjectDefaultStructure(band.Kind);
+            }
+
+            AddSurfaceLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Surface));
+            AddBaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Base));
+            AddSubbaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Subbase));
+            RemoveSelectedLayerCommand = new RelayCommand(RemoveActiveLayer, () => _activeStructureLayer != null);
+            MoveLayerUpCommand = new RelayCommand(MoveActiveLayerUp, () => CanMoveActive(up: true));
+            MoveLayerDownCommand = new RelayCommand(MoveActiveLayerDown, () => CanMoveActive(up: false));
         }
 
         // ============================== 基础字段 ==============================
@@ -715,7 +738,165 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public TemplateComponentKind Kind
         {
             get => _kind;
-            set => SetProperty(ref _kind, value);
+            set
+            {
+                if (!SetProperty(ref _kind, value)) return;
+                OnPropertyChanged(nameof(HasStructureLayers));
+
+                // 切到承载结构的 Kind 且 StructureLayers 为空 → 从 DefaultStructureSchemes.For 注入；
+                // 切到不承载结构（绿化带 / 中分带 / 缘石） → 清空层。
+                if (IsStructureBearing(value))
+                {
+                    if (StructureLayers.Count == 0)
+                        InjectDefaultStructure(value);
+                }
+                else
+                {
+                    ClearStructureLayers();
+                }
+            }
+        }
+
+        // ============================== v2.1: 启用状态 + 结构层 ==============================
+
+        private bool _isActive;
+        /// <summary>
+        /// 大纲勾选「启用」。当前 Phase 1 仅用于 UI 视觉提示，未来 Recalculate 可据此跳过条带。
+        /// </summary>
+        public bool IsActive
+        {
+            get => _isActive;
+            set => SetProperty(ref _isActive, value);
+        }
+
+        /// <summary>
+        /// 路面结构层（面 / 基 / 垫）。由 <see cref="Kind"/> setter 按需自动注入或清空；
+        /// 也可由 UI Toolbar 的 +面 / +基 / +垫 / 删除 / 上移 / 下移 命令手动增删。
+        /// </summary>
+        public ObservableCollection<StructureLayerNode> StructureLayers { get; }
+
+        private StructureLayerNode _activeStructureLayer;
+        /// <summary>UI 在 ListBox 中选中的那一层（用于右侧"结构层细表"区域的 DataContext）。</summary>
+        public StructureLayerNode ActiveStructureLayer
+        {
+            get => _activeStructureLayer;
+            set
+            {
+                if (!SetProperty(ref _activeStructureLayer, value)) return;
+                (RemoveSelectedLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (MoveLayerUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (MoveLayerDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        /// <summary>
+        /// UI 派生：当前 Kind 是否承载结构层（Pavement / NonMotorized / Sidewalk）。
+        /// 决定右侧"路面结构层"Expander 的可见性。
+        /// </summary>
+        public bool HasStructureLayers => IsStructureBearing(_kind);
+
+        // ============================== 结构层命令 ==============================
+
+        public ICommand AddSurfaceLayerCommand { get; }
+        public ICommand AddBaseLayerCommand { get; }
+        public ICommand AddSubbaseLayerCommand { get; }
+        public ICommand RemoveSelectedLayerCommand { get; }
+        public ICommand MoveLayerUpCommand { get; }
+        public ICommand MoveLayerDownCommand { get; }
+
+        private static bool IsStructureBearing(TemplateComponentKind kind)
+            => kind == TemplateComponentKind.Pavement
+               || kind == TemplateComponentKind.NonMotorized
+               || kind == TemplateComponentKind.Sidewalk;
+
+        private void InjectDefaultStructure(TemplateComponentKind kind)
+        {
+            var scheme = DefaultStructureSchemes.For(kind);
+            if (scheme == null) return;
+            foreach (var layer in scheme.Layers)
+            {
+                StructureLayers.Add(StructureLayerNode.From(layer));
+            }
+        }
+
+        private void ClearStructureLayers()
+        {
+            if (StructureLayers.Count == 0) return;
+            StructureLayers.Clear();
+            ActiveStructureLayer = null;
+        }
+
+        private void AppendLayer(StructureLayerKind kind)
+        {
+            var node = new StructureLayerNode
+            {
+                Name = DefaultNameFor(kind),
+                LayerKind = kind,
+                ThicknessCm = DefaultThicknessFor(kind),
+            };
+            StructureLayers.Add(node);
+            ActiveStructureLayer = node;
+        }
+
+        private void RemoveActiveLayer()
+        {
+            if (_activeStructureLayer == null) return;
+            int idx = StructureLayers.IndexOf(_activeStructureLayer);
+            if (idx < 0) return;
+            StructureLayers.RemoveAt(idx);
+            ActiveStructureLayer = StructureLayers.Count == 0
+                ? null
+                : StructureLayers[Math.Min(idx, StructureLayers.Count - 1)];
+        }
+
+        private bool CanMoveActive(bool up)
+        {
+            if (_activeStructureLayer == null) return false;
+            int idx = StructureLayers.IndexOf(_activeStructureLayer);
+            if (idx < 0) return false;
+            return up ? idx > 0 : idx < StructureLayers.Count - 1;
+        }
+
+        private void MoveActiveLayerUp()
+        {
+            int idx = StructureLayers.IndexOf(_activeStructureLayer);
+            if (idx <= 0) return;
+            StructureLayers.Move(idx, idx - 1);
+        }
+
+        private void MoveActiveLayerDown()
+        {
+            int idx = StructureLayers.IndexOf(_activeStructureLayer);
+            if (idx < 0 || idx >= StructureLayers.Count - 1) return;
+            StructureLayers.Move(idx, idx + 1);
+        }
+
+        private void OnStructureLayersChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // 集合变化触发 ToBand 重新包一份方案，VM 层 OnBandRowChanged 会 Recalculate。
+            OnPropertyChanged(nameof(StructureLayers));
+        }
+
+        private static string DefaultNameFor(StructureLayerKind kind)
+        {
+            switch (kind)
+            {
+                case StructureLayerKind.Surface: return "面层";
+                case StructureLayerKind.Base: return "基层";
+                case StructureLayerKind.Subbase: return "垫层";
+                default: return "结构层";
+            }
+        }
+
+        private static double DefaultThicknessFor(StructureLayerKind kind)
+        {
+            switch (kind)
+            {
+                case StructureLayerKind.Surface: return 4;
+                case StructureLayerKind.Base: return 20;
+                case StructureLayerKind.Subbase: return 15;
+                default: return 10;
+            }
         }
 
         private double _width;
@@ -742,6 +923,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             get => _side;
             set => SetProperty(ref _side, value);
+        }
+
+        private bool _isSelected;
+        /// <summary>
+        /// TreeView 选中状态的两向绑定载体。VM 层在 <c>SelectedBand</c> 变化时同步设置，
+        /// XAML 层 <c>TreeViewItem.IsSelected</c> TwoWay 绑定它，实现 VM↔TreeView 双向选中。
+        /// </summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
         }
 
         // ============================== v2: 外侧路牙 ==============================
@@ -874,14 +1066,30 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 ? KerbSpec.None
                 : new KerbSpec(InnerKerbType, InnerKerbModel, InnerKerbHeight, InnerKerbWidth);
 
+            StructureLayerScheme scheme = null;
+            if (IsStructureBearing(Kind) && StructureLayers.Count > 0)
+            {
+                scheme = new StructureLayerScheme
+                {
+                    Name = $"{Name}(结构)",
+                    IsBuiltIn = false,
+                };
+                foreach (var node in StructureLayers)
+                {
+                    scheme.Layers.Add(node.ToModel());
+                }
+            }
+
             return new CrossSectionBand(
                 Name, Kind, Width, CrossSlopePct, overrideSide ?? Side,
                 outerKerb, innerKerb,
-                SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+                SlopeType, CrownProfile, SurfaceLayer, LaneCount,
+                scheme);
         }
 
         /// <summary>
         /// 从镜像源行复制全部 v2 字段（不含 Side，由调用方决定）。
+        /// 结构层做深拷贝：每个 <see cref="StructureLayerNode"/> 新建一份实例，避免镜像后两侧共享节点。
         /// </summary>
         public void CopyFrom(BandRowViewModel source)
         {
@@ -902,6 +1110,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             CrownProfile = source.CrownProfile;
             SurfaceLayer = source.SurfaceLayer;
             LaneCount = source.LaneCount;
+            IsActive = source.IsActive;
+
+            // 结构层深拷贝：先清空（避免 Kind setter 已经按新 Kind 注入的默认层与源层混在一起），
+            // 再按源行的节点逐个 From(ToModel()) 复制，保留厚度 / 填料 / 加宽 / 坡度等。
+            StructureLayers.Clear();
+            foreach (var srcLayer in source.StructureLayers)
+            {
+                StructureLayers.Add(StructureLayerNode.From(srcLayer.ToModel()));
+            }
+            ActiveStructureLayer = null;
         }
 
         private static KerbSpec PickKerbPreset(RoadKerbType type)

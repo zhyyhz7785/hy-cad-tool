@@ -21,22 +21,11 @@
                 <ControlTemplate TargetType="{x:Type CheckBox}">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="Box" Width="14" Height="14" Margin="0,0,6,0"
+                                Background="{DynamicResource Brush_CheckboxBack}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="{DynamicResource Metric_CornerRadiusSmall}"
                                 SnapsToDevicePixels="True">
-                            <Border.Style>
-                                <Style TargetType="{x:Type Border}">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                                                <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Idle}}"/>
-                                                <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Idle}}"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Border.Style>
                             <Path x:Name="Tick"
                                   Stroke="{DynamicResource Brush_TextOnAccent}" StrokeThickness="1.8"
                                   StrokeLineJoin="Round"
@@ -54,6 +43,13 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush_AccentBlueHover}"/>
                         </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                                <Condition Property="IsChecked" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
+                        </MultiTrigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
                             <Setter TargetName="Box" Property="Opacity" Value="0.6"/>

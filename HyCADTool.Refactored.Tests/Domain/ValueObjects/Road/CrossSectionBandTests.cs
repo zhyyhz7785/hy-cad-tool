@@ -128,6 +128,52 @@ namespace HyCADTool.Refactored.Tests.Domain.ValueObjects.Road
             a.Should().Be(b);
             a.GetHashCode().Should().Be(b.GetHashCode());
         }
+
+        // ---------- StructureScheme 字段扩展（Phase 1：仅 VM/UI 侧使用，JSON 不持久化）----------
+
+        [Fact]
+        public void StructureScheme_DefaultsTo_Null()
+        {
+            var b = CrossSectionBand.Lane(3.5);
+            b.StructureScheme.Should().BeNull();
+        }
+
+        [Fact]
+        public void WithStructureScheme_AssignsAndKeepsOtherFields()
+        {
+            var scheme = new StructureLayerScheme { Name = "路面结构" };
+            var b = CrossSectionBand.Lane(3.5, 1.5, name: "机动车道1");
+            var nb = b.WithStructureScheme(scheme);
+
+            nb.StructureScheme.Should().BeSameAs(scheme);
+            nb.Width.Should().Be(b.Width);
+            nb.CrossSlopePct.Should().Be(b.CrossSlopePct);
+            nb.Kind.Should().Be(b.Kind);
+            nb.Name.Should().Be(b.Name);
+        }
+
+        [Fact]
+        public void WithWidth_KeepsStructureScheme()
+        {
+            var scheme = new StructureLayerScheme { Name = "路面结构" };
+            var b = CrossSectionBand.Lane(3.5).WithStructureScheme(scheme);
+            var nb = b.WithWidth(4.0);
+            nb.StructureScheme.Should().BeSameAs(scheme);
+        }
+
+        [Fact]
+        public void Equals_ComparesStructureScheme_ByReference()
+        {
+            var schemeA = new StructureLayerScheme { Name = "A" };
+            var schemeB = new StructureLayerScheme { Name = "B" };
+
+            var x = CrossSectionBand.Lane(3.5).WithStructureScheme(schemeA);
+            var y = CrossSectionBand.Lane(3.5).WithStructureScheme(schemeA);
+            var z = CrossSectionBand.Lane(3.5).WithStructureScheme(schemeB);
+
+            x.Should().Be(y);
+            x.Should().NotBe(z);
+        }
     }
 
     public class CrossSectionLayoutTests

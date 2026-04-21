@@ -99,15 +99,24 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// </summary>
         public int LaneCount { get; }
 
+        /// <summary>
+        /// 路面结构层方案（可空）。承载"面层 / 基层 / 垫层"多层分层构造（M7+）。
+        /// 运行时由上层 UI（`BandRowViewModel`）根据 <see cref="Kind"/> 自动注入默认方案；
+        /// 当前 Phase 1 的 <c>CrossSectionLayoutBuilder</c> 不把本字段写入 <see cref="Models.Road.Template"/>
+        /// （Template JSON Schema 保持不变），Phase 2 再做持久化。绿化带 / 中分带 / 缘石不挂方案。
+        /// </summary>
+        public StructureLayerScheme StructureScheme { get; }
+
         // ==================================== 构造函数 ====================================
 
         /// <summary>
-        /// 旧 5 参数构造函数。新字段使用安全默认值（无路牙 / 单坡 / 直线型 / 无铺装 / 0 车道）。
+        /// 旧 5 参数构造函数。新字段使用安全默认值（无路牙 / 单坡 / 直线型 / 无铺装 / 0 车道 / 无结构方案）。
         /// </summary>
         public CrossSectionBand(string name, TemplateComponentKind kind, double width, double crossSlopePct, BandSide side)
             : this(name, kind, width, crossSlopePct, side,
                    KerbSpec.None, KerbSpec.None,
-                   RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.None, 0)
+                   RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.None, 0,
+                   structureScheme: null)
         {
         }
 
@@ -125,7 +134,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             RoadSlopeType slopeType,
             RoadCrownProfile crownProfile,
             RoadSurfaceLayer surfaceLayer,
-            int laneCount)
+            int laneCount,
+            StructureLayerScheme structureScheme = null)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("条带名称不能为空。", nameof(name));
             if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0)
@@ -148,6 +158,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             CrownProfile = crownProfile;
             SurfaceLayer = surfaceLayer;
             LaneCount = laneCount;
+            StructureScheme = structureScheme;
         }
 
         // ==================================== With* 方法 ====================================
@@ -155,47 +166,54 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         /// <summary>返回相同字段、只改变宽度的新条带。</summary>
         public CrossSectionBand WithWidth(double width)
-            => new CrossSectionBand(Name, Kind, width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变横坡的新条带。</summary>
         public CrossSectionBand WithSlope(double crossSlopePct)
-            => new CrossSectionBand(Name, Kind, Width, crossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, crossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变类型的新条带（横坡不变）。</summary>
         public CrossSectionBand WithKind(TemplateComponentKind kind)
-            => new CrossSectionBand(Name, kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变侧别的新条带（镜像时用）。</summary>
         public CrossSectionBand WithSide(BandSide side)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变名称的新条带。</summary>
         public CrossSectionBand WithName(string name)
-            => new CrossSectionBand(name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变外侧路牙规格的新条带。</summary>
         public CrossSectionBand WithOuterKerb(KerbSpec kerb)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, kerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, kerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变内侧路牙规格的新条带。</summary>
         public CrossSectionBand WithInnerKerb(KerbSpec kerb)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, kerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, kerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变坡型的新条带。</summary>
         public CrossSectionBand WithSlopeType(RoadSlopeType slopeType)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, slopeType, CrownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, slopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变路拱形式的新条带。</summary>
         public CrossSectionBand WithCrownProfile(RoadCrownProfile crownProfile)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, crownProfile, SurfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, crownProfile, SurfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变路面结构的新条带。</summary>
         public CrossSectionBand WithSurfaceLayer(RoadSurfaceLayer surfaceLayer)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, surfaceLayer, LaneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, surfaceLayer, LaneCount, StructureScheme);
 
         /// <summary>返回相同字段、只改变车道数的新条带。</summary>
         public CrossSectionBand WithLaneCount(int laneCount)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, laneCount);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, laneCount, StructureScheme);
+
+        /// <summary>
+        /// 返回相同字段、只改变 <see cref="StructureScheme"/> 的新条带。
+        /// 传 <c>null</c> 清除当前方案（例如切到绿化带 / 中分带时）。
+        /// </summary>
+        public CrossSectionBand WithStructureScheme(StructureLayerScheme scheme)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, scheme);
 
         // ==================================== 简化工厂 ====================================
         //
@@ -244,7 +262,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                && SlopeType == other.SlopeType
                && CrownProfile == other.CrownProfile
                && SurfaceLayer == other.SurfaceLayer
-               && LaneCount == other.LaneCount;
+               && LaneCount == other.LaneCount
+               && ReferenceEquals(StructureScheme, other.StructureScheme);
 
         public override bool Equals(object obj) => obj is CrossSectionBand b && Equals(b);
 
@@ -263,6 +282,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 h = (h * 397) ^ (int)CrownProfile;
                 h = (h * 397) ^ (int)SurfaceLayer;
                 h = (h * 397) ^ LaneCount;
+                // StructureScheme 按引用参与 hash（方案是 Entity，Id 稳定但不比较内部 Layers）
+                h = (h * 397) ^ (StructureScheme?.Id.GetHashCode() ?? 0);
                 return h;
             }
         }

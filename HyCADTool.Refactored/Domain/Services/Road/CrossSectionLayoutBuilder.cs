@@ -53,6 +53,12 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// v2 备注：路牙、抛物线路拱等扩展信息暂不写入 Template（Template 仅承载主轮廓拓扑），
         /// 完整数据由上层 <see cref="CrossSectionLayout"/> 保存为独立 JSON。
         /// </para>
+        /// <para>
+        /// M7+ 备注：<see cref="CrossSectionBand.StructureScheme"/>（面/基/垫结构层方案）在 rCs
+        /// 面板 v2 中作为内存字段存在，**本 Phase 1 刻意不落盘到 Template / Template JSON**，
+        /// 以保证旧 Template 序列化内容 bit-identical；结构层持久化由 Phase 2 的 JSON Schema
+        /// 扩展统一落地（参见 042 索引与 0XX 规划文档）。
+        /// </para>
         /// </summary>
         public static Template ToTemplate(CrossSectionLayout layout, Guid? templateId = null, string name = null)
         {

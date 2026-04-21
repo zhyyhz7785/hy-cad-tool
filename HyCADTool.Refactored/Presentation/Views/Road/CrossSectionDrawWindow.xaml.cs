@@ -31,7 +31,6 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
     {
         private CrossSectionDrawViewModel _vm;
         private CrossSectionFigure _currentFigure;
-        private bool _suppressOutlinerEvent;
         private GridLength _outlinerWidth;
         private GridLength _outlinerSplitterWidth;
         private GridLength _propertyWidth;
@@ -115,10 +114,6 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             {
                 ApplyPanelVisibility();
             }
-            else if (e.PropertyName == nameof(CrossSectionDrawViewModel.SelectedBand))
-            {
-                SyncOutlinerSelection(_vm.SelectedBand);
-            }
         }
 
         private void ApplyPanelVisibility()
@@ -149,37 +144,6 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 PropertyColumn.Width = new GridLength(0);
                 PropertySplitterColumn.Width = new GridLength(0);
                 PropertyPanel.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        private void SyncOutlinerSelection(BandRowViewModel target)
-        {
-            if (_suppressOutlinerEvent) return;
-
-            _suppressOutlinerEvent = true;
-            try
-            {
-                if (target == null)
-                {
-                    LeftBandList.SelectedItem = null;
-                    RightBandList.SelectedItem = null;
-                    return;
-                }
-
-                if (_vm != null && _vm.LeftBands.Contains(target))
-                {
-                    LeftBandList.SelectedItem = target;
-                    RightBandList.SelectedItem = null;
-                }
-                else if (_vm != null && _vm.RightBands.Contains(target))
-                {
-                    LeftBandList.SelectedItem = null;
-                    RightBandList.SelectedItem = target;
-                }
-            }
-            finally
-            {
-                _suppressOutlinerEvent = false;
             }
         }
 
@@ -251,29 +215,17 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
         }
 
         // =========================================================================
-        //  Outliner 选中 -> VM.SelectedBand
+        //  Outliner 选中 -> VM.SelectedOutlineNode（三路互斥 / TreeView 原生回调）
         // =========================================================================
 
-        private void OutlinerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// TreeView 选中切换时回调。直接把新节点交给 VM.SelectedOutlineNode，
+        /// VM 内部统一分发到 SelectedBand / SelectedMedianNode / SelectedSideNode 并同步 IsSelected。
+        /// </summary>
+        private void OutlinerTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (_vm == null) return;
-            if (_suppressOutlinerEvent) return;
-
-            _suppressOutlinerEvent = true;
-            try
-            {
-                if (sender is ListBox list)
-                {
-                    if (list != LeftBandList) LeftBandList.UnselectAll();
-                    if (list != RightBandList) RightBandList.UnselectAll();
-
-                    _vm.SelectedBand = list.SelectedItem as BandRowViewModel;
-                }
-            }
-            finally
-            {
-                _suppressOutlinerEvent = false;
-            }
+            _vm.SelectedOutlineNode = e.NewValue;
         }
 
         // =========================================================================

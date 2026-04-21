@@ -7,56 +7,27 @@
     </ResourceDictionary.MergedDictionaries>
 
     <!--
-      widget_draw_backdrop 命名样式（阶段 0）
-      渐变端点走 DynamicResource Brush_Shadetop_* / Brush_Shadedown_*（Brush Facade 可热切换）
-      外轮廓：Brush_BorderMid 或 Brush_WidgetOutlineLight/Dark（按控件选用）
+      widget_draw_backdrop 命名样式（扁平版）
+      统一改为纯色底板，移除渐变/浮雕观感。
     -->
 
     <Style x:Key="BlenderWidgetBackdropIdle" TargetType="{x:Type Border}">
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{DynamicResource Metric_CornerRadius}"/>
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Idle}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Idle}}"/>
-                </LinearGradientBrush>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Background" Value="{DynamicResource Brush_ButtonIdle}"/>
     </Style>
 
     <Style x:Key="BlenderWidgetBackdropHover" TargetType="{x:Type Border}" BasedOn="{StaticResource BlenderWidgetBackdropIdle}">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Hover}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Hover}}"/>
-                </LinearGradientBrush>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
     </Style>
 
     <Style x:Key="BlenderWidgetBackdropPressed" TargetType="{x:Type Border}" BasedOn="{StaticResource BlenderWidgetBackdropIdle}">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Pressed}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Pressed}}"/>
-                </LinearGradientBrush>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Background" Value="{DynamicResource Brush_PanelBack}"/>
     </Style>
 
     <Style x:Key="BlenderWidgetBackdropSelected" TargetType="{x:Type Border}" BasedOn="{StaticResource BlenderWidgetBackdropIdle}">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1" MappingMode="RelativeToBoundingBox">
-                    <GradientStop Offset="0" Color="{Binding Color, Source={StaticResource Brush_Shadetop_Selected}}"/>
-                    <GradientStop Offset="1" Color="{Binding Color, Source={StaticResource Brush_Shadedown_Selected}}"/>
-                </LinearGradientBrush>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Background" Value="{DynamicResource Brush_ItemSelected}"/>
     </Style>
 
 </ResourceDictionary>

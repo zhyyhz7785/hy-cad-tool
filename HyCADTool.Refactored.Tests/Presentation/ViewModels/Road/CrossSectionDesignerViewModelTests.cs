@@ -298,5 +298,154 @@ namespace HyCADTool.Refactored.Tests.Presentation.ViewModels.Road
             vm.Invoking(v => v.Recalculate()).Should().NotThrow();
             vm.TotalWidth.Should().Be(vm.CenterMedianWidth);
         }
+
+        // ---------- BandRow 路面结构层（面/基/垫）----------
+
+        [Fact]
+        public void BandRow_PavementKind_InjectsDefaultStructureLayers()
+        {
+            var vm = NewVmWithArterial();
+            var pavement = vm.LeftBands.First(r => r.Kind == TemplateComponentKind.Pavement);
+
+            pavement.HasStructureLayers.Should().BeTrue();
+            pavement.StructureLayers.Should().NotBeEmpty("Pavement 类型应在 ctor 自动注入默认面/基/垫层");
+            pavement.StructureLayers.Any(l => l.LayerKind == StructureLayerKind.Surface).Should().BeTrue();
+            pavement.StructureLayers.Any(l => l.LayerKind == StructureLayerKind.Base).Should().BeTrue();
+        }
+
+        [Fact]
+        public void BandRow_GreenStripKind_DoesNotInjectStructureLayers()
+        {
+            var vm = NewVmWithArterial();
+            var green = vm.LeftBands.FirstOrDefault(r => r.Kind == TemplateComponentKind.GreenStrip)
+                        ?? vm.RightBands.FirstOrDefault(r => r.Kind == TemplateComponentKind.GreenStrip);
+
+            if (green != null)
+            {
+                green.HasStructureLayers.Should().BeFalse();
+                green.StructureLayers.Should().BeEmpty();
+            }
+        }
+
+        [Fact]
+        public void BandRow_ChangeKindToPavement_InjectsLayers_ChangeAway_ClearsLayers()
+        {
+            var vm = NewVmWithArterial();
+            // 造一个已有 Pavement 条带并改到 GreenStrip
+            var row = vm.LeftBands.First(r => r.Kind == TemplateComponentKind.Pavement);
+            row.StructureLayers.Should().NotBeEmpty();
+
+            row.Kind = TemplateComponentKind.GreenStrip;
+            row.HasStructureLayers.Should().BeFalse();
+            row.StructureLayers.Should().BeEmpty();
+
+            row.Kind = TemplateComponentKind.Pavement;
+            row.HasStructureLayers.Should().BeTrue();
+            row.StructureLayers.Should().NotBeEmpty();
+        }
+
+        [Fact]
+        public void BandRow_AddSurfaceLayerCommand_AppendsSurfaceLayer()
+        {
+            var vm = NewVmWithArterial();
+            var row = vm.LeftBands.First(r => r.Kind == TemplateComponentKind.Pavement);
+            int before = row.StructureLayers.Count;
+
+            row.AddSurfaceLayerCommand.Execute(null);
+
+            row.StructureLayers.Count.Should().Be(before + 1);
+            row.StructureLayers.Last().LayerKind.Should().Be(StructureLayerKind.Surface);
+        }
+
+        [Fact]
+        public void BandRow_ToBand_RoundTripsStructureScheme()
+        {
+            var vm = NewVmWithArterial();
+            var row = vm.LeftBands.First(r => r.Kind == TemplateComponentKind.Pavement);
+
+            var band = row.ToBand();
+            band.StructureScheme.Should().NotBeNull();
+            band.StructureScheme.Layers.Count.Should().Be(row.StructureLayers.Count);
+        }
+    }
+
+    // =====================================================================================
+    //  CrossSectionDrawViewModel 专属：OutlineRoot / 三路选中 / MedianOutlineNode
+    // =====================================================================================
+
+    public class CrossSectionDrawViewModelTests
+    {
+        [Fact]
+        public void OutlineRoot_HasThreeSections()
+        {
+            var vm = new CrossSectionDrawViewModel(CrossSectionPresets.CreateCjj37UrbanArterial());
+
+            vm.OutlineRoot.Should().NotBeNull();
+            vm.OutlineRoot.Count.Should().Be(3, "依次为：中央隔离带 / 左侧 / 右侧");
+            vm.MedianNode.Should().NotBeNull();
+            vm.LeftSideNode.Should().NotBeNull();
+            vm.RightSideNode.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void SelectedOutlineNode_WhenBand_MakesSelectedBandEqual()
+        {
+            var vm = new CrossSectionDrawViewModel(CrossSectionPresets.CreateCjj37UrbanArterial());
+            var first = vm.LeftBands.First();
+
+            vm.SelectedOutlineNode = first;
+
+            vm.SelectedBand.Should().BeSameAs(first);
+            vm.SelectedMedianNode.Should().BeNull();
+            vm.SelectedSideNode.Should().BeNull();
+            first.IsSelected.Should().BeTrue();
+        }
+
+        [Fact]
+        public void SelectedOutlineNode_WhenMedian_ClearsSelectedBand()
+        {
+            var vm = new CrossSectionDrawViewModel(CrossSectionPresets.CreateCjj37UrbanArterial());
+            vm.SelectedOutlineNode = vm.LeftBands.First();
+
+            vm.SelectedOutlineNode = vm.MedianNode;
+
+            vm.SelectedBand.Should().BeNull();
+            vm.SelectedMedianNode.Should().BeSameAs(vm.MedianNode);
+        }
+
+        [Fact]
+        public void MedianNode_IsActive_TogglesCenterMedianWidth()
+        {
+            var vm = new CrossSectionDrawViewModel(CrossSectionPresets.CreateCjj37UrbanArterial());
+            vm.CenterMedianWidth = 2.0;
+            vm.MedianNode.IsActive.Should().BeTrue();
+
+            vm.MedianNode.IsActive = false;
+            vm.CenterMedianWidth.Should().Be(0);
+            vm.MedianNode.IsActive.Should().BeFalse();
+
+            vm.MedianNode.IsActive = true;
+            vm.CenterMedianWidth.Should().BeApproximately(2.0, 1e-9, "取消时缓存的非零宽度应恢复");
+        }
+
+        [Fact]
+        public void MedianNode_Width_SyncsToCenterMedianWidth()
+        {
+            var vm = new CrossSectionDrawViewModel(CrossSectionPresets.CreateCjj37UrbanArterial());
+            vm.CenterMedianWidth = 2.0;
+
+            vm.MedianNode.Width = 3.5;
+
+            vm.CenterMedianWidth.Should().BeApproximately(3.5, 1e-9);
+        }
+
+        [Fact]
+        public void SideOutlineNode_Children_MirrorsBandCollections()
+        {
+            var vm = new CrossSectionDrawViewModel(CrossSectionPresets.CreateCjj37UrbanArterial());
+
+            vm.LeftSideNode.Children.Should().BeSameAs(vm.LeftBands);
+            vm.RightSideNode.Children.Should().BeSameAs(vm.RightBands);
+        }
     }
 }

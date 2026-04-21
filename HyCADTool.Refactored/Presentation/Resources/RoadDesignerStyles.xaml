@@ -38,6 +38,23 @@
     <cv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
 
     <!--
+      BoolToVis：true → Visible，false → Collapsed。用于右侧"路面结构层"Expander
+      根据 SelectedBand.HasStructureLayers 显示/隐藏。
+    -->
+    <cv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+    <!--
+      KindToColorBrush：把 TemplateComponentKind 映射到 Outliner 色条 SolidColorBrush。
+      Brush 已 Freeze，可跨 ResourceDictionary seal 安全使用。
+    -->
+    <cv:KindToColorBrushConverter x:Key="KindToColorBrushConverter"/>
+
+    <!--
+      LayerKindToBrush：把 StructureLayerKind（面/基/垫/自定义）映射到色条 SolidColorBrush。
+    -->
+    <cv:LayerKindToBrushConverter x:Key="LayerKindToBrushConverter"/>
+
+    <!--
       规范检查项 6 行模板：
         左侧色块（Pass=绿 / Fail=红）+ 名称 + Message/Suggestion 双行
         Bind 路径：CodeCheckItem.{Passed,Name,Message,Suggestion,HasSuggestion}

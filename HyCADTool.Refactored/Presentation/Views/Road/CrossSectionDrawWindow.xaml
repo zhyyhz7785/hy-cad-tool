@@ -204,81 +204,102 @@
                 <ColumnDefinition x:Name="PropertyColumn" Width="340" MinWidth="280"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ============================== Col 0：Outliner ============================== -->
+            <!-- ============================== Col 0：Outliner (TreeView 三段) ============================== -->
             <bui:PropertyEditor Grid.Column="0"
                                 x:Name="OutlinerPanel"
                                 Title="大纲"
                                 ShowSearch="False"
                                 ShowPin="False"
                                 ShowIconBar="False">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                <TreeView x:Name="OutlinerTree"
+                          ItemsSource="{Binding OutlineRoot}"
+                          SelectedItemChanged="OutlinerTree_SelectedItemChanged"
+                          Style="{StaticResource BlenderOutliner}"
+                          BorderThickness="0"
+                          Background="Transparent">
+                    <TreeView.ItemContainerStyle>
+                        <!--
+                            基于 BlenderOutlinerItem，追加 IsSelected / IsExpanded 两向绑定到节点 VM，
+                            使得 VM-侧（Add/Paste 等）改 SelectedBand 时 TreeView 可视化跟随。
+                        -->
+                        <Style TargetType="TreeViewItem" BasedOn="{StaticResource BlenderOutlinerItem}">
+                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
 
-                    <TextBlock Grid.Row="0"
-                               Text="左半（中→外）"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               FontSize="{DynamicResource Metric_FontSmall}" Margin="6,4,6,2"/>
-                    <ListBox Grid.Row="1"
-                             x:Name="LeftBandList"
-                             ItemsSource="{Binding LeftBands}"
-                             SelectionChanged="OutlinerList_SelectionChanged"
-                             Style="{StaticResource BlenderListBox}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="2,1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="60"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding Name}"
-                                               Foreground="{DynamicResource Brush_TextPrimary}"
-                                               FontSize="{DynamicResource Metric_FontMain}"/>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Width, StringFormat=F2 m}"
-                                               Foreground="{DynamicResource Brush_TextSecondary}"
-                                               FontSize="{DynamicResource Metric_FontSmall}"
-                                               HorizontalAlignment="Right"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <TreeView.Resources>
+                        <!-- 中央隔离带节点：checkbox + NumericSlider 并排 -->
+                        <DataTemplate DataType="{x:Type vm:MedianOutlineNode}">
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                          Style="{StaticResource BlenderCheckBox}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,6,0"
+                                          ToolTip="启用 / 取消中央隔离带"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding DisplayTitle}"
+                                           Foreground="{DynamicResource Brush_TextPrimary}"
+                                           VerticalAlignment="Center"
+                                           FontSize="{DynamicResource Metric_FontMain}"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Width, StringFormat=F2 m}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
 
-                    <TextBlock Grid.Row="2"
-                               Text="右半（中→外）"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               FontSize="{DynamicResource Metric_FontSmall}" Margin="6,8,6,2"/>
-                    <ListBox Grid.Row="3"
-                             x:Name="RightBandList"
-                             ItemsSource="{Binding RightBands}"
-                             SelectionChanged="OutlinerList_SelectionChanged"
-                             Style="{StaticResource BlenderListBox}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="2,1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="60"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding Name}"
-                                               Foreground="{DynamicResource Brush_TextPrimary}"
-                                               FontSize="{DynamicResource Metric_FontMain}"/>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Width, StringFormat=F2 m}"
-                                               Foreground="{DynamicResource Brush_TextSecondary}"
-                                               FontSize="{DynamicResource Metric_FontSmall}"
-                                               HorizontalAlignment="Right"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
+                        <!-- 左/右侧根节点：展开显示子条带 -->
+                        <HierarchicalDataTemplate DataType="{x:Type vm:SideOutlineNode}"
+                                                  ItemsSource="{Binding Children}">
+                            <TextBlock Text="{Binding DisplayTitle}"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontWeight="SemiBold"
+                                       FontSize="{DynamicResource Metric_FontMain}"/>
+                        </HierarchicalDataTemplate>
+
+                        <!-- 条带节点：启用 checkbox + 类型色条 + 名称 + 宽度 -->
+                        <DataTemplate DataType="{x:Type vm:BandRowViewModel}">
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                          Style="{StaticResource BlenderCheckBox}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,4,0"
+                                          ToolTip="是否启用此条带"/>
+                                <Border Grid.Column="1"
+                                        Width="4" Margin="0,2,4,2"
+                                        CornerRadius="1"
+                                        Background="{Binding Kind, Converter={StaticResource KindToColorBrushConverter}}"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Name}"
+                                           Foreground="{DynamicResource Brush_TextPrimary}"
+                                           VerticalAlignment="Center"
+                                           FontSize="{DynamicResource Metric_FontMain}"/>
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding Width, StringFormat=F2 m}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </TreeView.Resources>
+                </TreeView>
             </bui:PropertyEditor>
 
             <!-- ============================== Col 1：左侧 Splitter ============================== -->
@@ -365,6 +386,26 @@
                                 ShowPin="False"
                                 ShowIconBar="False">
                 <StackPanel>
+                    <!-- ============================== 中央隔离带（选中 Median 时显示） ============================== -->
+                    <Expander Header="中央隔离带"
+                              IsExpanded="True"
+                              Style="{StaticResource BlenderExpander}"
+                              Visibility="{Binding SelectedMedianNode, Converter={StaticResource NullToVisibilityConverter}}">
+                        <StackPanel DataContext="{Binding MedianNode}">
+                            <bui:PropertyRow Label="启用">
+                                <CheckBox IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                          Style="{StaticResource BlenderCheckBox}"
+                                          VerticalAlignment="Center"
+                                          Content="启用中央隔离带"/>
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="宽度 (m)">
+                                <bui:NumericSlider Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                   Minimum="0" Maximum="20"
+                                                   Step="0.1" Decimals="2" Unit="m"/>
+                            </bui:PropertyRow>
+                        </StackPanel>
+                    </Expander>
+
                     <!-- ============================== 选中条带：基础参数 ============================== -->
                     <Expander Header="选中条带"
                               IsExpanded="True"
@@ -417,6 +458,119 @@
                                                    Minimum="0" Maximum="6"
                                                    Step="1" Decimals="0"/>
                             </bui:PropertyRow>
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- ============================== 路面结构层（面层 / 基层 / 垫层） ============================== -->
+                    <!--
+                      仅当 SelectedBand.HasStructureLayers = true 时可见（即 Kind ∈ {Pavement,NonMotorized,Sidewalk}）。
+                      三路添加按钮 + 上移/下移/删除 + 列表 + 当前层详情（类型 / 厚度 / 名称 / 填料）。
+                    -->
+                    <Expander Header="路面结构层"
+                              IsExpanded="True"
+                              Style="{StaticResource BlenderExpander}"
+                              Visibility="{Binding SelectedBand.HasStructureLayers, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+                        <StackPanel DataContext="{Binding SelectedBand}">
+                            <bui:PropertyRow Label="新增层">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="面层"
+                                            Command="{Binding AddSurfaceLayerCommand}"
+                                            Style="{StaticResource BlenderButton}"
+                                            Margin="0,0,4,0" MinWidth="52"/>
+                                    <Button Content="基层"
+                                            Command="{Binding AddBaseLayerCommand}"
+                                            Style="{StaticResource BlenderButton}"
+                                            Margin="0,0,4,0" MinWidth="52"/>
+                                    <Button Content="垫层"
+                                            Command="{Binding AddSubbaseLayerCommand}"
+                                            Style="{StaticResource BlenderButton}"
+                                            MinWidth="52"/>
+                                </StackPanel>
+                            </bui:PropertyRow>
+
+                            <bui:PropertyRow Label="调整顺序">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="上移"
+                                            Command="{Binding MoveLayerUpCommand}"
+                                            Style="{StaticResource BlenderButton}"
+                                            Margin="0,0,4,0" MinWidth="52"/>
+                                    <Button Content="下移"
+                                            Command="{Binding MoveLayerDownCommand}"
+                                            Style="{StaticResource BlenderButton}"
+                                            Margin="0,0,4,0" MinWidth="52"/>
+                                    <Button Content="删除"
+                                            Command="{Binding RemoveSelectedLayerCommand}"
+                                            Style="{StaticResource BlenderButton}"
+                                            MinWidth="52"/>
+                                </StackPanel>
+                            </bui:PropertyRow>
+
+                            <ListBox ItemsSource="{Binding StructureLayers}"
+                                     SelectedItem="{Binding ActiveStructureLayer, Mode=TwoWay}"
+                                     Style="{StaticResource BlenderListBox}"
+                                     MinHeight="80" MaxHeight="180"
+                                     Margin="0,4,0,4">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="2,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="64"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0"
+                                                    Width="4" Margin="0,2,4,2"
+                                                    CornerRadius="1"
+                                                    Background="{Binding LayerKind, Converter={StaticResource LayerKindToBrushConverter}}"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding LayerKind}"
+                                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                                       FontSize="{DynamicResource Metric_FontSmall}"
+                                                       Margin="0,0,6,0"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding Name}"
+                                                       Foreground="{DynamicResource Brush_TextPrimary}"
+                                                       FontSize="{DynamicResource Metric_FontMain}"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{Binding ThicknessCm, StringFormat={}{0:F1} cm}"
+                                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                                       FontSize="{DynamicResource Metric_FontSmall}"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- 当前选中层的详情编辑 -->
+                            <StackPanel DataContext="{Binding ActiveStructureLayer}"
+                                        Visibility="{Binding Converter={StaticResource NullToVisibilityConverter}}">
+                                <bui:PropertyRow Label="名称">
+                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource BlenderTextBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="类型">
+                                    <ComboBox ItemsSource="{x:Static vm:StructureLayerViewModel.AvailableKinds}"
+                                              SelectedItem="{Binding LayerKind, UpdateSourceTrigger=PropertyChanged}"
+                                              Style="{StaticResource BlenderComboBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="厚度 (cm)">
+                                    <bui:NumericSlider Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                       Minimum="0" Maximum="80"
+                                                       Step="0.5" Decimals="1" Unit="cm"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="填料">
+                                    <TextBox Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource BlenderTextBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="填充符号">
+                                    <TextBox Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource BlenderTextBox}"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
                         </StackPanel>
                     </Expander>
 

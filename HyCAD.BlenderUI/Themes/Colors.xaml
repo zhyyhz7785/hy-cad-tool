@@ -2,6 +2,17 @@
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <ResourceDictionary.MergedDictionaries>
+        <!--
+         设计器 / 静态解析 fallback：
+         ColorsHost 的 Brush_* 实际由 code-behind 在构造时动态写入，但 XAML 设计器在校验
+         Themes/Controls/*.xaml 里的 StaticResource / DynamicResource 时，经常看不到这些运行时注入的 key。
+         这里先合入一份默认调色板，保证设计期可解析；运行时构造函数随后会把同名 Brush_* 直接写到
+         当前字典自身，从而覆盖该 fallback，并继续保持 v3 的可变 brush 机制。
+        -->
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <!--
      主题色板入口（v3 — Mutable Brush Facade，参考 Blender preferences.themes[0] 全局可变思想）
 

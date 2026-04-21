@@ -31,7 +31,7 @@
         <StackPanel Margin="12">
             <TextBlock Margin="0,0,0,8" FontSize="{DynamicResource Metric_FontHeader}"
                        Foreground="{DynamicResource Brush_TextSecondary}"
-                       Text="Button / ToggleButton（渐变底板）"/>
+                       Text="Button / ToggleButton（扁平实底）"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <Button Margin="0,0,8,0" Content="BlenderButton" Style="{StaticResource BlenderButton}" Width="120"/>
                 <Button Margin="0,0,8,0" Content="Flat" Style="{StaticResource BlenderButtonFlat}"/>
