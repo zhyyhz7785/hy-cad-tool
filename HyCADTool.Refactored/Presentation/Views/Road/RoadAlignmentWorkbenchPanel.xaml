@@ -126,7 +126,18 @@
                              Style="{StaticResource BlenderListBox}"
                              DisplayMemberPath="Header"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ContextMenu>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <MenuItem Header="原线"
+                                          Command="{Binding DrawAllRawPolylinesCmd}"
+                                          ToolTip="用 05_hy_道路_原线 批量重绘所有已保存的开始选择 Polyline（RawPick 档案）"/>
+                                <MenuItem Header="删除当前路线"
+                                          Command="{Binding DeleteAlignmentCmd}"
+                                          ToolTip="删除当前列表选中的路线：同时删除 AutoCAD 中 05_hy_道路_平面线位 正式线，以及 .roaddesign.json 中对应 Alignment"/>
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
+                    </ListBox>
                 </bui:PropertyEditor>
 
                 <GridSplitter Grid.Row="1"
@@ -236,9 +247,16 @@
                                                                Minimum="0" Maximum="5000" Step="5" Decimals="3" Unit="m"/>
                                         </bui:PropertyRow>
                                         <bui:PropertyRow Label="对称锁">
-                                            <CheckBox Content="Ls1 = Ls2（对称）"
-                                                      IsChecked="{Binding IsSymmetric}"
-                                                      VerticalAlignment="Center"/>
+                                            <CheckBox IsChecked="{Binding IsSymmetric}"
+                                                      VerticalAlignment="Center"
+                                                      Foreground="{DynamicResource Brush_TextPrimary}"
+                                                      FontFamily="{DynamicResource Font_Main}"
+                                                      FontSize="{DynamicResource Metric_FontMain}">
+                                                <TextBlock Text="Ls1 = Ls2（对称）"
+                                                           Foreground="{DynamicResource Brush_TextPrimary}"
+                                                           FontFamily="{DynamicResource Font_Main}"
+                                                           FontSize="{DynamicResource Metric_FontMain}"/>
+                                            </CheckBox>
                                         </bui:PropertyRow>
                                         <bui:PropertyRow Label="入侧缓长 Ls1 (m)">
                                             <bui:NumericSlider Value="{Binding SpiralIn, Mode=TwoWay}"

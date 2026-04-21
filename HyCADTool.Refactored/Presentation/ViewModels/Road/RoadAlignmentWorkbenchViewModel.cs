@@ -68,11 +68,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             OffsetCmd = new RelayCommand(RunOffset, () => SelectedAlignment != null);
             ExportPiCsvCmd = new RelayCommand(() => ExportCsv(PiCsvKind.PiTable), () => SelectedAlignment != null);
             ExportFrameCsvCmd = new RelayCommand(() => ExportCsv(PiCsvKind.Frame), () => SelectedAlignment != null);
+            DrawAllRawPolylinesCmd = new RelayCommand(DrawAllRawPolylines, () => Alignments.Count > 0);
 
             InsertPiCmd = new RelayCommand(InsertPi, () => SelectedAlignment != null);
             DeletePiCmd = new RelayCommand(DeletePi, CanDeleteSelectedPi);
             // 「应用」不再依赖 SelectedPi — 只要当前 Alignment 有可构几何的 PI 表（≥ 2）就允许一键定稿。
             ApplyAlignmentCmd = new RelayCommand(ApplyAlignment, CanApplyAlignment);
+            DeleteAlignmentCmd = new RelayCommand(DeleteAlignment, () => SelectedAlignment != null);
             RevertPiEditCmd = new RelayCommand(RevertPiEdit, () => PiEditorVm != null && SelectedPi != null && !SelectedPi.IsEndpoint);
 
             DrawStationLabelsCmd = new RelayCommand<object>(p => DrawStationLabels(p is bool b && b));
@@ -180,6 +182,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public ICommand DrawLivePreviewCmd { get; }
         /// <summary>顶栏「应用 / 一键定稿」— 落到 <c>05_hy_道路_平面线位</c> + <c>.roaddesign.json</c>，是唯一的真实保存动作。</summary>
         public ICommand ApplyAlignmentCmd { get; }
+        /// <summary>顶栏「删除」— 删除当前 Alignment 的正式线 / 原线 / 快照并同步从 <c>.roaddesign.json</c> 移除。</summary>
+        public ICommand DeleteAlignmentCmd { get; }
+        /// <summary>批量重绘所有已保存 RawPick 到 <c>05_hy_道路_原线</c>。</summary>
+        public ICommand DrawAllRawPolylinesCmd { get; }
         public ICommand ReverseCmd { get; }
         public ICommand OffsetCmd { get; }
         public ICommand ExportPiCsvCmd { get; }
@@ -367,6 +373,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 PiEditorVm = null;
                 StatusText = $"{aln.Name}：非 PI 法创建，PI 表不可用。请先跑 hyRoadAlnByPi。";
                 BuildReadModels(aln, piDesignerFallback: true);
+                ShowSelectedAlignmentLocator(aln);
                 return;
             }
 
@@ -382,6 +389,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             var firstInternal = PiItems.FirstOrDefault(p => !p.IsEndpoint);
             SelectedPi = firstInternal;
             StatusText = $"已切换到 {aln.Name}（PI {pis.Count}，长 {aln.Centerline?.GetPlanarLength() ?? 0:F2} m）。";
+            ShowSelectedAlignmentLocator(aln);
+        }
+
+        /// <summary>
+        /// 当用户在左侧路线列表切换 <see cref="SelectedAlignment"/> 时，
+        /// 用一条瞬态黄线把对应路线高亮出来，方便在 CAD 画面里快速定位。
+        /// 这里只做“定位高亮”，不写入任何 DWG 实体。
+        /// </summary>
+        private void ShowSelectedAlignmentLocator(Alignment aln)
+        {
+            if (aln?.Centerline == null || aln.Centerline.VertexCount < 2) return;
+            try { _preview.Update(aln.Centerline); } catch { /* ignore */ }
         }
 
         /// <summary>
@@ -522,18 +541,26 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null || _selectedAlignment == null) return;
+            try { _preview.Clear(); } catch { /* ignore */ }
 
-            var previewAlignment = BuildLivePreviewAlignment();
-            if (previewAlignment == null)
+            try
             {
-                StatusText = "预览追加失败：当前瞬态黄线对应的 PI 工作数据无效。";
-                return;
-            }
+                var previewAlignment = BuildLivePreviewAlignment();
+                if (previewAlignment == null)
+                {
+                    StatusText = "预览追加失败：当前瞬态黄线对应的 PI 工作数据无效。";
+                    return;
+                }
 
-            int n = RoadAlignmentLivePreviewService.DrawForAlignment(doc, previewAlignment);
-            StatusText = n > 0
-                ? $"已在 05_hy_道路_预览 追加 {n} 条分段彩色 Polyline（用户快照，需手动 ERASE 清理）。"
-                : "预览追加失败：当前瞬态黄线生成失败。";
+                int n = RoadAlignmentLivePreviewService.DrawForAlignment(doc, previewAlignment);
+                StatusText = n > 0
+                    ? $"已在 05_hy_道路_预览 追加 {n} 条分段彩色 Polyline（用户快照，需手动 ERASE 清理）。"
+                    : "预览追加失败：当前瞬态黄线生成失败。";
+            }
+            finally
+            {
+                try { _preview.Clear(); } catch { /* ignore */ }
+            }
         }
 
         /// <summary>
@@ -781,6 +808,91 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             {
                 StatusText = $"应用失败：{ex.Message}";
             }
+            finally
+            {
+                try { _preview.Clear(); } catch { /* ignore */ }
+            }
+        }
+
+        private void DeleteAlignment()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            var selected = _selectedAlignment?.Alignment;
+            if (doc == null || selected == null) return;
+
+            var confirm = System.Windows.MessageBox.Show(
+                $"确认删除线位「{selected.Name}」？\n\n"
+                + "将同时删除：\n"
+                + "- AutoCAD 中 05_hy_道路_平面线位 的正式线\n"
+                + "- 本线位的原线/预览残留/相关标注\n"
+                + "- .roaddesign.json 中对应 Alignment 记录",
+                "路线工作台 — 删除线位",
+                System.Windows.MessageBoxButton.OKCancel,
+                System.Windows.MessageBoxImage.Warning);
+            if (confirm != System.Windows.MessageBoxResult.OK) return;
+
+            try { _preview.Clear(); } catch { /* ignore */ }
+
+            try
+            {
+                var service = ServiceLocator.Resolve<RoadAlignmentDeleteService>();
+                var result = service.Delete(doc, selected);
+                if (!result.Success)
+                {
+                    StatusText = "删除失败：" + (result.Message ?? "未知错误。");
+                    return;
+                }
+
+                RefreshAlignments();
+                StatusText = result.Message;
+                if (!string.IsNullOrEmpty(result.JsonPath))
+                {
+                    StatusText += $"  JSON: {result.JsonPath}";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"删除失败：{ex.Message}";
+            }
+            finally
+            {
+                try { _preview.Clear(); } catch { /* ignore */ }
+            }
+        }
+
+        private void DrawAllRawPolylines()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+            {
+                StatusText = "无活动图纸。";
+                return;
+            }
+
+            try
+            {
+                var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
+                if (!registry.TryGet(doc.Name, out var design) || design == null || design.Alignments.Count == 0)
+                {
+                    StatusText = "当前图纸无已保存路线，无法重绘原线。";
+                    return;
+                }
+
+                var (drawn, upgraded) = RoadAlignmentRawPolylineService.DrawAll(doc, design);
+                if (upgraded > 0)
+                {
+                    var exporter = ServiceLocator.Resolve<RoadJsonExportService>();
+                    exporter.SaveForDocument(design, doc.Name);
+                }
+
+                StatusText = drawn > 0
+                    ? $"已在 {HyRoadLayers.RawPolylineLayer} 重绘 {drawn} 条原线。"
+                    : "无可重绘的原线（缺少有效 RawPick / Centerline）。";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"原线重绘失败：{ex.Message}";
+            }
         }
 
         private void RevertPiEdit()
@@ -954,8 +1066,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         /// </summary>
         private void RefreshCommandStates()
         {
+            (DrawAllRawPolylinesCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (DrawLivePreviewCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (ApplyAlignmentCmd as RelayCommand)?.RaiseCanExecuteChanged();
+            (DeleteAlignmentCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (ReverseCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (OffsetCmd as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportPiCsvCmd as RelayCommand)?.RaiseCanExecuteChanged();

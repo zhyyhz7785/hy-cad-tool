@@ -324,6 +324,10 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentApplyService>()
                 .AsSelf()
                 .SingleInstance();
+            // 路线工作台「删除线位」服务：删 DWG 正式线 / 原线 / 快照并同步删 JSON 中的 Alignment
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadAlignmentDeleteService>()
+                .AsSelf()
+                .SingleInstance();
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadProfileService>()
                 .AsSelf()
                 .SingleInstance();
