@@ -142,6 +142,8 @@ namespace HyCADTool.ReCall
         #endregion
 
         #region 道路 (Road) — hyRoad* + r* 短别名
+        // 045 / M6：项目树命令
+        [CommandMethod("hyRoadTree")][CommandMethod("rTree")]       public void Cmd_hyRoadTree()         => ReCallClass.Invoke("hyRoadTree");
         [CommandMethod("hyRoad")][CommandMethod("rCx")]             public void Cmd_hyRoad()             => ReCallClass.Invoke("hyRoad");
         [CommandMethod("hyRoadA")][CommandMethod("rLa")]            public void Cmd_hyRoadA()            => ReCallClass.Invoke("hyRoadA");
         [CommandMethod("hyRoadAw")][CommandMethod("rLaw")]          public void Cmd_hyRoadAw()           => ReCallClass.Invoke("hyRoadAw");

@@ -21,6 +21,9 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>路线工作台 PaletteSet GUID（2026-04-21 切到 PaletteSet 宿主后新增）。</summary>
         private static readonly Guid AlignmentWorkbenchPaletteGuid = new Guid("B2C3D4E5-F607-8901-BC23-456789012345");
 
+        /// <summary>项目树 PaletteSet GUID（045 / M6）。</summary>
+        private static readonly Guid RoadProjectTreePaletteGuid = new Guid("C3D4E5F6-0708-9012-CD34-56789012345A");
+
         private readonly IComponentContext _componentContext;
 
         private PaletteSet _blenderPaletteSet;
@@ -31,6 +34,11 @@ namespace HyCADTool.Refactored.Presentation
         private PaletteSet _alignmentPaletteSet;
         private Views.Road.RoadAlignmentWorkbenchPanel _alignmentPanel;
         private ViewModels.Road.RoadAlignmentWorkbenchViewModel _alignmentVm;
+
+        // ===== 项目树（045 / M6，独立 PaletteSet，默认停靠在左侧） =====
+        private PaletteSet _projectTreePaletteSet;
+        private Views.Road.RoadProjectTreePanel _projectTreePanel;
+        private ViewModels.Road.RoadProjectTreeViewModel _projectTreeVm;
 
         /// <summary>
         /// 路线工作台 PaletteSet 上一次 <c>StateChanged</c> 观察到的 Visible 值，用于做边缘触发：
@@ -164,6 +172,108 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>路线工作台 PaletteSet 是否仍可见。</summary>
         public bool IsAlignmentWorkbenchVisible
             => _alignmentPaletteSet != null && _alignmentPaletteSet.Visible;
+
+        // ===== 045 / M6：项目树（Road Project Tree） =====
+
+        /// <summary>
+        /// 显示"项目树" PaletteSet（045 / M6）。命令入口 <c>hyRoadTree</c> / 别名 <c>rTree</c>。
+        /// <para>默认停靠在左侧（与 HyBlenderPanel 并列），宽 320；可拖浮动。</para>
+        /// <para>每次显示会从当前文档的 <see cref="Infrastructure.AutoCAD.Services.Road.RoadProjectRegistry"/> 取项目重新建树。</para>
+        /// </summary>
+        public void ShowRoadProjectTree()
+        {
+            RegisterDocumentEvents();
+
+            if (_projectTreePaletteSet == null)
+                CreateRoadProjectTreePalette();
+            else
+                _projectTreePaletteSet.Visible = true;
+
+            RefreshProjectTreeFromCurrentDocument();
+        }
+
+        /// <summary>项目树 PaletteSet 是否可见。</summary>
+        public bool IsRoadProjectTreeVisible
+            => _projectTreePaletteSet != null && _projectTreePaletteSet.Visible;
+
+        private void CreateRoadProjectTreePalette()
+        {
+            // 从 DI 取 VM（含注入的 handler）；若 DI 未注册则退回默认 Null handler
+            try
+            {
+                _projectTreeVm = _componentContext.Resolve<ViewModels.Road.RoadProjectTreeViewModel>();
+            }
+            catch
+            {
+                _projectTreeVm = new ViewModels.Road.RoadProjectTreeViewModel();
+            }
+
+            _projectTreePanel = new Views.Road.RoadProjectTreePanel { ViewModel = _projectTreeVm };
+
+            _projectTreePaletteSet = new PaletteSet("项目树", RoadProjectTreePaletteGuid)
+            {
+                Size = new System.Drawing.Size(320, 720),
+                MinimumSize = new System.Drawing.Size(240, 360),
+                DockEnabled = (DockSides)((int)DockSides.Left | (int)DockSides.Right),
+                Style = PaletteSetStyles.ShowCloseButton |
+                        PaletteSetStyles.ShowAutoHideButton |
+                        PaletteSetStyles.Snappable
+            };
+
+            _projectTreePaletteSet.AddVisual("项目树", _projectTreePanel);
+            _projectTreePaletteSet.StateChanged += OnProjectTreePaletteStateChanged;
+            _projectTreePaletteSet.Visible = true;
+
+            TryStripProjectTreeCaptionIfDocked();
+        }
+
+        /// <summary>
+        /// 按当前 AutoCAD MdiActiveDocument 刷新项目树：
+        /// <c>RoadProjectRegistry.GetOrCreateForDocument</c> → 喂给 VM；失败或无 DI 时静默。
+        /// </summary>
+        public void RefreshProjectTreeFromCurrentDocument()
+        {
+            if (_projectTreeVm == null) return;
+            try
+            {
+                var doc = AcApp.DocumentManager?.MdiActiveDocument;
+                if (doc == null) return;
+                var reg = _componentContext.Resolve<Infrastructure.AutoCAD.Services.Road.RoadProjectRegistry>();
+                var project = reg?.GetOrCreateForDocument(doc.Name);
+                if (project == null) return;
+
+                var disp = _projectTreePanel?.Dispatcher;
+                void Apply() => _projectTreeVm.Project = project;
+                if (disp == null || disp.CheckAccess()) Apply();
+                else disp.Invoke(Apply);
+            }
+            catch
+            {
+                // DI 缺 RoadProjectRegistry 或 doc 拿不到，安静吞
+            }
+        }
+
+        private void OnProjectTreePaletteStateChanged(object sender, PaletteSetStateEventArgs e)
+        {
+            TryStripProjectTreeCaptionIfDocked();
+        }
+
+        private void TryStripProjectTreeCaptionIfDocked()
+        {
+            if (_projectTreePaletteSet == null || _projectTreePanel == null) return;
+            if (_projectTreePaletteSet.Dock == DockSides.None) return;
+
+            _projectTreePanel.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Loaded,
+                new Action(() =>
+                {
+                    try
+                    {
+                        Infrastructure.AutoCAD.UI.PaletteTitleBarStripper.TryStripCaption("项目树");
+                    }
+                    catch { }
+                }));
+        }
 
         /// <summary>
         /// 创建路线工作台 PaletteSet（一次性创建、全会话复用，对齐 <see cref="CreateHyBlenderPanel"/> 模式）。
@@ -334,21 +444,29 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         private void OnDocumentActivated(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
-            if (_alignmentVm == null || _alignmentPaletteSet == null || _alignmentPanel == null) return;
-            if (!_alignmentPaletteSet.Visible) return;
-
+            // 路线工作台
             try
             {
-                var disp = _alignmentPanel.Dispatcher;
-                if (disp.CheckAccess())
-                    _alignmentVm.RefreshAlignmentsSuppressingListLocator();
-                else
-                    disp.BeginInvoke(new Action(_alignmentVm.RefreshAlignmentsSuppressingListLocator));
+                if (_alignmentVm != null && _alignmentPaletteSet != null && _alignmentPanel != null && _alignmentPaletteSet.Visible)
+                {
+                    var disp = _alignmentPanel.Dispatcher;
+                    if (disp.CheckAccess())
+                        _alignmentVm.RefreshAlignmentsSuppressingListLocator();
+                    else
+                        disp.BeginInvoke(new Action(_alignmentVm.RefreshAlignmentsSuppressingListLocator));
+                }
             }
-            catch
+            catch { /* DocumentActivated 回调不可向外抛，否则会升级为 AutoCAD 原生致命错误 */ }
+
+            // 045 / M6：项目树
+            try
             {
-                // DocumentActivated 回调不可向外抛，否则会升级为 AutoCAD 原生致命错误
+                if (_projectTreeVm != null && _projectTreePaletteSet != null && _projectTreePanel != null && _projectTreePaletteSet.Visible)
+                {
+                    RefreshProjectTreeFromCurrentDocument();
+                }
             }
+            catch { }
         }
     }
 }

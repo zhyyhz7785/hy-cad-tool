@@ -148,9 +148,11 @@ namespace HyCADTool.Refactored.Tests.Domain.Models.Road
         }
 
         [Fact]
-        public void SchemaVersion_CurrentIs12()
+        public void SchemaVersion_CurrentIsV2()
         {
-            SchemaVersion.Current.Should().Be("1.2");
+            // 045 / M2：Schema 升到 v2.0（引入 RoadProject 根聚合 + Civil 占位集合）。
+            SchemaVersion.Current.Should().Be("2.0");
+            SchemaVersion.CurrentProject.Should().Be("2.0");
             SchemaVersion.MinimumSupported.Should().Be("1.0");
         }
     }

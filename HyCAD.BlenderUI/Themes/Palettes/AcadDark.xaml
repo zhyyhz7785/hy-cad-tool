@@ -28,6 +28,15 @@
     <SolidColorBrush x:Key="Brush_BorderDark"           Color="#1A1A1A"/>
     <SolidColorBrush x:Key="Brush_BorderMid"            Color="#3F3F3F"/>
 
+    <!-- 与 Blender 键对齐：Acad 面板层级近似（Ribbon 深灰带 + 再嵌套） -->
+    <SolidColorBrush x:Key="Brush_PropertyPanelBody"       Color="#373737"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeader"     Color="#2A2A2A"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeaderHover" Color="#353535"/>
+    <SolidColorBrush x:Key="Brush_PropertyGroupHeaderHover" Color="#404040"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellBack"       Color="#252526"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellOutline"    Color="#3F3F3F"/>
+    <SolidColorBrush x:Key="Brush_NumFieldBack"           Color="#3F3F3F"/>
+
     <!-- 标签 / 选中高亮（AutoCAD focus 蓝 #3070C0） -->
     <SolidColorBrush x:Key="Brush_TabInactive"          Color="#3D3D3D"/>
     <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#3070C0"/>

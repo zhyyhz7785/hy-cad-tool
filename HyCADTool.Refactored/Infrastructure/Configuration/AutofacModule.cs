@@ -292,6 +292,21 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
+            // 045 / M5：项目级注册表（包住 RoadDesignRegistry 做跨 DWG + Data Shortcut）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadProjectRegistry>()
+                .AsSelf()
+                .SingleInstance();
+
+            // 045 / M4：项目树交互 handler（AutoCAD 实现）
+            builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.AutoCadRoadTreeInteractionHandler>()
+                .As<HyCADTool.Refactored.Presentation.ViewModels.Road.IRoadTreeInteractionHandler>()
+                .SingleInstance();
+
+            // 045 / M3：项目树 ViewModel（每次 Resolve 新建一个；面板单例持有一次即可）
+            builder.RegisterType<HyCADTool.Refactored.Presentation.ViewModels.Road.RoadProjectTreeViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
+
             // M6：历史还原服务（纯 Domain I/O，单例即可，无状态）。
             builder.RegisterType<HyCADTool.Refactored.Domain.Services.Road.HistoryService>()
                 .AsSelf()

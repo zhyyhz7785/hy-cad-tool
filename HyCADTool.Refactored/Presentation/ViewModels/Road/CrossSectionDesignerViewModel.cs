@@ -32,7 +32,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     public class CrossSectionDesignerViewModel : INotifyPropertyChanged
     {
         /// <summary>支持的比例尺分母（1:50 / 1:100 / 1:200）。</summary>
-        public static readonly IReadOnlyList<int> AvailableScales = new[] { 50, 100, 200 };
+        public static readonly IReadOnlyList<int> AvailableScales = new[] { 50, 100, 150, 200 };
+
+        /// <summary>界面显示用小数位。</summary>
+        public static readonly IReadOnlyList<int> AvailableDisplayPrecisions = new[] { 0, 1, 2, 3 };
 
         /// <summary>支持的设计速度（沿用 <see cref="AlignmentCodeChecker.SupportedSpeeds"/>）。</summary>
         public IReadOnlyList<int> AvailableSpeeds => AlignmentCodeChecker.SupportedSpeeds;
@@ -235,6 +238,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             get => _scaleDenominator;
             set { if (SetProperty(ref _scaleDenominator, value <= 0 ? 100 : value)) Recalculate(); }
+        }
+
+        private int _displayPrecision = 2;
+        public int DisplayPrecision
+        {
+            get => _displayPrecision;
+            set
+            {
+                int clamped = value < 0 ? 0 : (value > 3 ? 3 : value);
+                SetProperty(ref _displayPrecision, clamped);
+            }
         }
 
         private string _title;
@@ -700,6 +714,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             _crownProfile = band.CrownProfile;
             _surfaceLayer = band.SurfaceLayer;
             _laneCount = band.LaneCount;
+            _elevationDiff = band.ElevationDiff;
 
             _isActive = true;
 
@@ -717,9 +732,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 InjectDefaultStructure(band.Kind);
             }
 
-            AddSurfaceLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Surface));
-            AddBaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Base));
-            AddSubbaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Subbase));
+            AddSurfaceLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Surface), () => CanAddSurfaceLayer);
+            AddBaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Base), () => CanAddBaseLayer);
+            AddSubbaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Subbase), () => CanAddSubbaseLayer);
             RemoveSelectedLayerCommand = new RelayCommand(RemoveActiveLayer, () => _activeStructureLayer != null);
             MoveLayerUpCommand = new RelayCommand(MoveActiveLayerUp, () => CanMoveActive(up: true));
             MoveLayerDownCommand = new RelayCommand(MoveActiveLayerDown, () => CanMoveActive(up: false));
@@ -754,6 +769,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 {
                     ClearStructureLayers();
                 }
+                OnPropertyChanged(nameof(SurfaceLayersView));
+                OnPropertyChanged(nameof(BaseLayersView));
+                OnPropertyChanged(nameof(SubbaseLayersView));
+                OnPropertyChanged(nameof(CanAddSurfaceLayer));
+                OnPropertyChanged(nameof(CanAddBaseLayer));
+                OnPropertyChanged(nameof(CanAddSubbaseLayer));
+                (AddSurfaceLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (AddBaseLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (AddSubbaseLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
@@ -795,6 +819,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         /// </summary>
         public bool HasStructureLayers => IsStructureBearing(_kind);
 
+        public IEnumerable<StructureLayerNode> SurfaceLayersView => StructureLayers.Where(l => l.LayerKind == StructureLayerKind.Surface);
+        public IEnumerable<StructureLayerNode> BaseLayersView => StructureLayers.Where(l => l.LayerKind == StructureLayerKind.Base);
+        public IEnumerable<StructureLayerNode> SubbaseLayersView => StructureLayers.Where(l => l.LayerKind == StructureLayerKind.Subbase);
+
+        public bool CanAddSurfaceLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Surface) < 3;
+        public bool CanAddBaseLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Base) < 5;
+        public bool CanAddSubbaseLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Subbase) < 2;
+
         // ============================== 结构层命令 ==============================
 
         public ICommand AddSurfaceLayerCommand { get; }
@@ -828,6 +860,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private void AppendLayer(StructureLayerKind kind)
         {
+            if ((kind == StructureLayerKind.Surface && !CanAddSurfaceLayer)
+                || (kind == StructureLayerKind.Base && !CanAddBaseLayer)
+                || (kind == StructureLayerKind.Subbase && !CanAddSubbaseLayer))
+            {
+                return;
+            }
+
             var node = new StructureLayerNode
             {
                 Name = DefaultNameFor(kind),
@@ -875,6 +914,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             // 集合变化触发 ToBand 重新包一份方案，VM 层 OnBandRowChanged 会 Recalculate。
             OnPropertyChanged(nameof(StructureLayers));
+            OnPropertyChanged(nameof(SurfaceLayersView));
+            OnPropertyChanged(nameof(BaseLayersView));
+            OnPropertyChanged(nameof(SubbaseLayersView));
+            OnPropertyChanged(nameof(CanAddSurfaceLayer));
+            OnPropertyChanged(nameof(CanAddBaseLayer));
+            OnPropertyChanged(nameof(CanAddSubbaseLayer));
+            (AddSurfaceLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (AddBaseLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (AddSubbaseLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private static string DefaultNameFor(StructureLayerKind kind)
@@ -915,6 +963,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 if (double.IsNaN(value) || double.IsInfinity(value)) return;
                 double clamped = Math.Max(-20, Math.Min(20, value));
                 SetProperty(ref _slope, clamped);
+            }
+        }
+
+        private double _elevationDiff;
+        public double ElevationDiff
+        {
+            get => _elevationDiff;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double clamped = Math.Max(-2.0, Math.Min(2.0, value));
+                SetProperty(ref _elevationDiff, clamped);
             }
         }
 
@@ -1084,7 +1144,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 Name, Kind, Width, CrossSlopePct, overrideSide ?? Side,
                 outerKerb, innerKerb,
                 SlopeType, CrownProfile, SurfaceLayer, LaneCount,
-                scheme);
+                scheme, ElevationDiff);
         }
 
         /// <summary>
@@ -1110,6 +1170,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             CrownProfile = source.CrownProfile;
             SurfaceLayer = source.SurfaceLayer;
             LaneCount = source.LaneCount;
+            ElevationDiff = source.ElevationDiff;
             IsActive = source.IsActive;
 
             // 结构层深拷贝：先清空（避免 Kind setter 已经按新 Kind 注入的默认层与源层混在一起），

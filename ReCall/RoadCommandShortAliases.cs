@@ -53,6 +53,8 @@ namespace HyCADTool.ReCall
                 ["hyRoadSave"] = "rSv",
                 ["hyRoadLoad"] = "rLd",
                 ["hyRoad3dExportGltf"] = "rGf",
+                // 045 / M6：项目树
+                ["hyRoadTree"] = "rTree",
             };
 
         /// <summary>若存在短别名则返回 <c>正式名 + 两个空格 + 短名</c>，否则返回正式名。</summary>

@@ -35,6 +35,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             CopySelectedBandCommand = new RelayCommand(ExecuteCopySelected, () => SelectedBand != null);
             PasteBandCommand = new RelayCommand(ExecutePasteToSelectedSide, () => _bandClipboard != null);
+            InsertBandAfterSelectedCommand = new RelayCommand<TemplateComponentKind>(ExecuteInsertBandAfterSelected);
+            PickBandGeometryCommand = new RelayCommand(() => PickGeometryRequested?.Invoke(this, SelectedBand), () => SelectedBand != null);
             ToggleOutlinerCommand = new RelayCommand(() => IsOutlinerVisible = !IsOutlinerVisible);
             TogglePropertyPaneCommand = new RelayCommand(() => IsPropertyPaneVisible = !IsPropertyPaneVisible);
             DrawCommand = ConfirmCommand;
@@ -52,6 +54,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 {
                     OnPropertyChanged(nameof(SelectedSideLabel));
                     SyncTreeSelection();
+                    (PickBandGeometryCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
                 else if (e.PropertyName == nameof(CenterMedianWidth))
                 {
@@ -161,8 +164,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         public ICommand CopySelectedBandCommand { get; }
         public ICommand PasteBandCommand { get; }
+        public ICommand InsertBandAfterSelectedCommand { get; }
+        public ICommand PickBandGeometryCommand { get; }
         public ICommand ToggleOutlinerCommand { get; }
         public ICommand TogglePropertyPaneCommand { get; }
+
+        public event EventHandler<BandRowViewModel> PickGeometryRequested;
 
         /// <summary>语义化别名：与 <see cref="CrossSectionDesignerViewModel.ConfirmCommand"/> 同一命令实例。</summary>
         public ICommand DrawCommand { get; }
@@ -188,6 +195,50 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             var newRow = new BandRowViewModel(band.WithSide(targetSide));
             collection.Add(newRow);
             SelectedBand = newRow;
+        }
+
+        private void ExecuteInsertBandAfterSelected(TemplateComponentKind kind)
+        {
+            var targetSide = SelectedBand?.Side;
+            if (targetSide != BandSide.Left && targetSide != BandSide.Right)
+            {
+                targetSide = SelectedSideNode == RightSideNode ? BandSide.Right : BandSide.Left;
+            }
+
+            var collection = targetSide == BandSide.Right ? RightBands : LeftBands;
+            var newBand = CreateDefaultBand(kind, targetSide.Value);
+            var newRow = new BandRowViewModel(newBand);
+
+            int insertIndex = collection.Count;
+            if (SelectedBand != null && SelectedBand.Side == targetSide)
+            {
+                var selectedIndex = collection.IndexOf(SelectedBand);
+                if (selectedIndex >= 0) insertIndex = selectedIndex + 1;
+            }
+
+            collection.Insert(insertIndex, newRow);
+            SelectedBand = newRow;
+        }
+
+        private static CrossSectionBand CreateDefaultBand(TemplateComponentKind kind, BandSide side)
+        {
+            switch (kind)
+            {
+                case TemplateComponentKind.Pavement:
+                    return CrossSectionBand.Lane(3.5, 1.5, side, "机动车道");
+                case TemplateComponentKind.NonMotorized:
+                    return CrossSectionBand.NonMotor(3.5, 1.5, side, "非机动车道");
+                case TemplateComponentKind.Sidewalk:
+                    return CrossSectionBand.Sidewalk(2.5, 1.5, side, "人行道");
+                case TemplateComponentKind.GreenStrip:
+                    return CrossSectionBand.GreenStrip(2.0, side, "绿化带");
+                case TemplateComponentKind.Kerb:
+                    return CrossSectionBand.Kerb(0.15, side, "路牙");
+                case TemplateComponentKind.MedianStrip:
+                    return CrossSectionBand.Median(2.0, "中分带").WithSide(side);
+                default:
+                    return CrossSectionBand.Lane(3.5, 1.5, side, "机动车道");
+            }
         }
 
         // ============================== Outliner 三段节点 + 选中路由 ==============================

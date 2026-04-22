@@ -2,9 +2,12 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Controls;
+using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 
 namespace HyCADTool.Refactored.Presentation.Views.Road
@@ -58,6 +61,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             viewModel.PreviewRequested += OnPreviewRequested;
             viewModel.CloseRequested += OnCloseRequested;
             viewModel.PropertyChanged += OnVmPropertyChanged;
+            viewModel.PickGeometryRequested += OnPickGeometryRequested;
 
             viewModel.NonCompliantConfirm = summary => MessageBox.Show(
                 this,
@@ -79,6 +83,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 viewModel.PreviewRequested -= OnPreviewRequested;
                 viewModel.CloseRequested -= OnCloseRequested;
                 viewModel.PropertyChanged -= OnVmPropertyChanged;
+                viewModel.PickGeometryRequested -= OnPickGeometryRequested;
                 CloseClicked -= OnCloseClicked;
             };
         }
@@ -214,6 +219,27 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             }
         }
 
+        private void OutlinerAddButton_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            if (btn == null || btn.ContextMenu == null) return;
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+            e.Handled = true;
+        }
+
+        private void OutlinerAddMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm == null) return;
+            var item = sender as MenuItem;
+            if (item == null) return;
+            if (!(item.Tag is TemplateComponentKind)) return;
+            var kind = (TemplateComponentKind)item.Tag;
+            if (_vm.InsertBandAfterSelectedCommand.CanExecute(kind))
+                _vm.InsertBandAfterSelectedCommand.Execute(kind);
+            e.Handled = true;
+        }
+
         // =========================================================================
         //  Outliner 选中 -> VM.SelectedOutlineNode（三路互斥 / TreeView 原生回调）
         // =========================================================================
@@ -246,6 +272,30 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
         private void RedrawPreview()
         {
             CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator);
+        }
+
+        private void OnPickGeometryRequested(object sender, BandRowViewModel row)
+        {
+            if (row == null) return;
+            Dispatcher.BeginInvoke(new Action(() => Hide()), DispatcherPriority.Background);
+            try
+            {
+                var result = RoadCsPickGeometryInteractor.PickAndExtract(row.Kind);
+                if (result == null) return;
+                row.Width = result.Width;
+                row.CrossSlopePct = result.SlopePct;
+                row.ElevationDiff = result.ElevationDiff;
+                RoadCsPickGeometryInteractor.DistributeThickness(row, result.ThicknessCm);
+            }
+            finally
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Show();
+                    Activate();
+                    Focus();
+                }), DispatcherPriority.Background);
+            }
         }
     }
 }

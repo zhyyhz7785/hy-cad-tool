@@ -28,6 +28,14 @@
     <SolidColorBrush x:Key="Brush_BorderDark"           Color="#A0A0A0"/>
     <SolidColorBrush x:Key="Brush_BorderMid"            Color="#C8C8C8"/>
 
+    <SolidColorBrush x:Key="Brush_PropertyPanelBody"       Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeader"     Color="#DCDCDC"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeaderHover" Color="#E2E2E2"/>
+    <SolidColorBrush x:Key="Brush_PropertyGroupHeaderHover" Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellBack"       Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellOutline"    Color="#C8C8C8"/>
+    <SolidColorBrush x:Key="Brush_NumFieldBack"           Color="#F0F0F0"/>
+
     <!-- 标签 / 选中高亮（AutoCAD focus 蓝 #3070C0） -->
     <SolidColorBrush x:Key="Brush_TabInactive"          Color="#D6D6D6"/>
     <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#3070C0"/>

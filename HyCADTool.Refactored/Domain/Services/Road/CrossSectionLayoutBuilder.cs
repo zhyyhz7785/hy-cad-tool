@@ -26,6 +26,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     /// </summary>
     public static class CrossSectionLayoutBuilder
     {
+        private const string ElevationDiffKey = "ElevationDiff";
         /// <summary>
         /// 比较两条带"从中心向外扫描"时 y 偏移时的符号：
         /// 返回 -1 表示外侧 y 比内侧 y 低（路面类）；返回 0 表示水平。
@@ -95,7 +96,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 double dy = band.Width * (band.CrossSlopePct / 100.0) * sign;
                 xL += dx;
                 yL += dy;
-                leftOuterToInner.Add(MakePoint(xL, yL, band.Name + "外缘"));
+                leftOuterToInner.Add(MakePoint(xL, yL, band.Name + "外缘", band.ElevationDiff));
                 leftSegKinds.Add((band.Kind, band.Name));
             }
             // 反转成"最外 → 中心"顺序
@@ -115,7 +116,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 double dy = band.Width * (band.CrossSlopePct / 100.0) * sign;
                 xR += dx;
                 yR += dy;
-                rightOuterList.Add(MakePoint(xR, yR, band.Name + "外缘"));
+                rightOuterList.Add(MakePoint(xR, yR, band.Name + "外缘", band.ElevationDiff));
                 rightSegKinds.Add((band.Kind, band.Name));
             }
 
@@ -188,12 +189,20 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             return tpl;
         }
 
-        private static TemplatePoint MakePoint(double x, double y, string name) => new TemplatePoint
+        private static TemplatePoint MakePoint(double x, double y, string name, double elevationDiff = 0)
         {
-            Name = name,
-            HorizontalOffset = x,
-            VerticalOffset = y,
-        };
+            var point = new TemplatePoint
+            {
+                Name = name,
+                HorizontalOffset = x,
+                VerticalOffset = y,
+            };
+            if (Math.Abs(elevationDiff) > 1e-9)
+            {
+                point.ExtendedData[ElevationDiffKey] = elevationDiff.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            return point;
+        }
 
         // ============================================================================
         //  Template → Layout（反向，加载已有模板到编辑器）
@@ -299,7 +308,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
                 leftBandsFromOuter.Add(new CrossSectionBand(
                     CleanBandName(p1.Name ?? p0.Name, prefix: ""),
-                    kind, w, slopePct, BandSide.Left));
+                    kind, w, slopePct, BandSide.Left)
+                    .WithElevationDiff(ReadElevationDiff(p0)));
             }
             // 反转成"从中心向外"
             leftBandsFromOuter.Reverse();
@@ -325,7 +335,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
                 rightBandsFromInner.Add(new CrossSectionBand(
                     CleanBandName(p1.Name ?? p0.Name, prefix: ""),
-                    kind, w, slopePct, BandSide.Right));
+                    kind, w, slopePct, BandSide.Right)
+                    .WithElevationDiff(ReadElevationDiff(p1)));
             }
 
             try
@@ -593,9 +604,19 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 var geo = CrossSectionGeometryGenerator.GenerateBand(sx, sy, band, side);
                 list.Add(geo);
                 sx = geo.NextInnerX;
-                sy = geo.NextInnerY;
+                sy = geo.NextInnerY + band.ElevationDiff;
             }
             return list;
+        }
+
+        private static double ReadElevationDiff(TemplatePoint point)
+        {
+            if (point?.ExtendedData == null) return 0;
+            if (!point.ExtendedData.TryGetValue(ElevationDiffKey, out var raw)) return 0;
+            if (string.IsNullOrWhiteSpace(raw)) return 0;
+            return double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)
+                ? value
+                : 0;
         }
 
         private static List<FigureDimensionSegment> BuildDimensionSegments(

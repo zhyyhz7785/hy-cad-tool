@@ -274,6 +274,38 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             }
         }
 
+        public string GetCurrentDimensionStyleName()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+                throw new InvalidOperationException("No active document");
+
+            var db = doc.Database;
+
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    if (db.Dimstyle.IsNull)
+                    {
+                        tr.Commit();
+                        return string.Empty;
+                    }
+
+                    var dimStyleRecord = tr.GetObject(db.Dimstyle, OpenMode.ForRead) as DimStyleTableRecord;
+                    string styleName = dimStyleRecord?.Name ?? string.Empty;
+                    tr.Commit();
+                    return styleName;
+                }
+                catch
+                {
+                    tr.Abort();
+                    throw;
+                }
+            }
+        }
+
         private static void ApplyTextStyleFont(TextStyleTableRecord rec, string fontName, string bigFontName)
         {
             if (rec == null) return;

@@ -52,6 +52,11 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// </summary>
         void SetCurrentDimensionStyle(string styleName);
 
+        /// <summary>
+        /// 获取当前图纸激活的标注样式名称。
+        /// </summary>
+        string GetCurrentDimensionStyleName();
+
         // === 多重引线样式 ===
 
         /// <summary>

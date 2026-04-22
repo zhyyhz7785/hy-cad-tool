@@ -355,16 +355,35 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// <summary>0-Hy-{M}-{S}-Table-{u}（表格无小数位）</summary>
         public string TableStyleName => BuildScaleContext().BuildTableStyleName();
 
-        // ---- "已应用"样式名：只在 ApplyStyle() 成功落盘后才更新 ----
-        // 目的：面板状态栏显示的是 AutoCAD 里真正激活的标注样式名，
-        // 不随用户正在编辑的主/副比例输入框实时跳变，避免"显示已切但其实还没生效"的误导。
-        // UseSubScale / Unit / Precision 这些会 auto-apply 的模式切换会同步更新此字段；
-        // MainScale / SubScale 这类数值微调不 auto-apply，此字段会保持在上次"置为当前"的结果。
+        // ---- "已应用"样式名：状态栏优先显示 AutoCAD 当前激活的标注样式 ----
+        // 取不到当前图纸真实样式时，才回退到上次 ApplyStyle 成功时的上下文，
+        // 避免面板显示和 AutoCAD 实际激活样式不一致。
         private ScaleContext _appliedContext;
 
-        /// <summary>上次 ApplyStyle 成功时落盘的标注样式名（供状态栏绑定）。</summary>
-        public string AppliedDimStyleName =>
-            (_appliedContext ?? BuildScaleContext()).BuildDimStyleName();
+        /// <summary>状态栏显示的当前标注样式名；优先取 AutoCAD 当前激活样式。</summary>
+        public string AppliedDimStyleName
+        {
+            get
+            {
+                string currentStyleName = TryGetCurrentDimensionStyleName();
+                if (!string.IsNullOrWhiteSpace(currentStyleName))
+                    return currentStyleName;
+
+                return (_appliedContext ?? BuildScaleContext()).BuildDimStyleName();
+            }
+        }
+
+        private string TryGetCurrentDimensionStyleName()
+        {
+            try
+            {
+                return _styleService?.GetCurrentDimensionStyleName();
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         #endregion
 
@@ -1381,6 +1400,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     /* 设计器 / 过早：忽略 */
                 }
+
+                OnPropertyChanged(nameof(AppliedDimStyleName));
             }
         }
 

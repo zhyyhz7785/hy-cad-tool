@@ -1,0 +1,566 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.CrossSectionV2SamplePanel"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   xmlns:smp="clr-namespace:HyCAD.BlenderUI.Samples"
+                   mc:Ignorable="d"
+                   Title="HyCAD.BlenderUI — rCs 横断面 v2 面板原型"
+                   HeaderTitle="rCs 横断面 v2 — 面板原型（Blender 样板）"
+                   Width="1280"
+                   Height="780"
+                   MinWidth="1040" MinHeight="600"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <!--
+      CrossSectionV2SamplePanel：
+        - 左：BlenderOutliner（中央隔离带 + 左/右侧根 + 条带 + 结构层），支持 VM↔TreeView 双向选中；
+        - 中：轻量 Canvas 预览，按 Side + Width + Kind 映射成底部色带 + 顶部标注；
+        - 右：PropertyEditor + 三级 PropertyGroup（一级/二级/三级 Expander 样式），
+               一级块按节点类型切换（断面总览 / 中央隔离带 / 侧别 / 条带 / 结构层）。
+
+      不引用 HyCADTool.Refactored / AutoCAD；所有数据住在本 sample 下的 V2CrossSectionSampleViewModel。
+    -->
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.HeaderRightContent>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="比例 1 :"/>
+            <ComboBox Width="90"
+                      ItemsSource="{Binding AvailableScales}"
+                      SelectedItem="{Binding ScaleDenominator, Mode=TwoWay}"
+                      Style="{StaticResource BlenderComboBox}"/>
+            <TextBlock VerticalAlignment="Center" Margin="12,0,6,0"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       Text="V (km/h)："/>
+            <ComboBox Width="70"
+                      ItemsSource="{Binding AvailableSpeeds}"
+                      SelectedItem="{Binding DesignSpeed, Mode=TwoWay}"
+                      Style="{StaticResource BlenderComboBox}"/>
+        </StackPanel>
+    </bui:BlenderWindow.HeaderRightContent>
+
+    <bui:BlenderWindow.FooterLeftContent>
+        <TextBlock VerticalAlignment="Center"
+                   FontFamily="Consolas"
+                   FontSize="{DynamicResource Metric_FontSmall}"
+                   Foreground="{DynamicResource Brush_TextSecondary}"
+                   Text="{Binding FootprintSummary}"/>
+    </bui:BlenderWindow.FooterLeftContent>
+
+    <bui:BlenderWindow.StatusContent>
+        <TextBlock VerticalAlignment="Center"
+                   FontSize="{DynamicResource Metric_FontSmall}"
+                   Foreground="{DynamicResource Brush_TextSecondary}"
+                   Text="{Binding SelectionPath, StringFormat=选中：{0}}"/>
+    </bui:BlenderWindow.StatusContent>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <StackPanel Orientation="Horizontal">
+            <Button Content="关闭" Width="80" Style="{StaticResource BlenderButton}"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <!-- ============================================================ -->
+    <!--  主体：3 列                                                     -->
+    <!-- ============================================================ -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" MinWidth="240"/>
+            <ColumnDefinition Width="4"/>
+            <ColumnDefinition Width="*" MinWidth="360"/>
+            <ColumnDefinition Width="4"/>
+            <ColumnDefinition Width="360" MinWidth="300"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============================== Col 0：左侧大纲 ============================== -->
+        <bui:PropertyEditor Grid.Column="0"
+                            Title="大纲"
+                            ShowSearch="False"
+                            ShowPin="False"
+                            ShowIconBar="False">
+            <DockPanel LastChildFill="True">
+                <!-- 顶部横向工具条（增删 / 调整顺序） -->
+                <bui:Toolbar DockPanel.Dock="Top">
+                    <Button Content="＋左" ToolTip="左侧末尾追加条带"
+                            Command="{Binding AddLeftBandCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            Padding="6,2" Margin="2"/>
+                    <Button Content="＋右" ToolTip="右侧末尾追加条带"
+                            Command="{Binding AddRightBandCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            Padding="6,2" Margin="2"/>
+                    <Button Content="× 删" ToolTip="删除当前选中条带"
+                            Command="{Binding RemoveSelectedCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            Padding="6,2" Margin="2"/>
+                    <Button Content="↑" ToolTip="向内侧移动一格"
+                            Command="{Binding MoveUpCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            Padding="6,2" Margin="2"/>
+                    <Button Content="↓" ToolTip="向外侧移动一格"
+                            Command="{Binding MoveDownCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            Padding="6,2" Margin="2"/>
+                </bui:Toolbar>
+
+                <TreeView x:Name="OutlinerTree"
+                          ItemsSource="{Binding OutlineRoots}"
+                          SelectedItemChanged="OutlinerTree_SelectedItemChanged"
+                          Style="{StaticResource BlenderOutliner}"
+                          BorderThickness="0"
+                          Background="Transparent">
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem" BasedOn="{StaticResource BlenderOutlinerItem}">
+                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+
+                    <TreeView.Resources>
+                        <!-- 中央隔离带：checkbox + 名称 + 摘要 -->
+                        <DataTemplate DataType="{x:Type smp:V2MedianNode}">
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                          Style="{StaticResource BlenderCheckBox}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,6,0"
+                                          ToolTip="启用 / 取消中央隔离带"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding DisplayTitle}"
+                                           Foreground="{DynamicResource Brush_TextPrimary}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Summary}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+
+                        <!-- 左/右侧根：展开显示子条带 -->
+                        <HierarchicalDataTemplate DataType="{x:Type smp:V2SideNode}"
+                                                  ItemsSource="{Binding Bands}">
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="80"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding DisplayTitle}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Summary}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </HierarchicalDataTemplate>
+
+                        <!-- 条带：启用 + 名称 + 结构层子集 + 宽度 -->
+                        <HierarchicalDataTemplate DataType="{x:Type smp:V2BandNode}"
+                                                  ItemsSource="{Binding StructureLayers}">
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                          Style="{StaticResource BlenderCheckBox}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,4,0"
+                                          ToolTip="是否启用此条带"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding DisplayTitle}"
+                                           Foreground="{DynamicResource Brush_TextPrimary}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Summary}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </HierarchicalDataTemplate>
+
+                        <!-- 结构层：类型 + 名称 + 厚度 -->
+                        <DataTemplate DataType="{x:Type smp:V2LayerNode}">
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="64"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding DisplayTitle}"
+                                           Foreground="{DynamicResource Brush_TextPrimary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Summary}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </TreeView.Resources>
+                </TreeView>
+            </DockPanel>
+        </bui:PropertyEditor>
+
+        <GridSplitter Grid.Column="1" Width="4"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="{DynamicResource Brush_BorderDark}"
+                      ShowsPreview="False"
+                      ResizeBehavior="PreviousAndNext"
+                      ResizeDirection="Columns"/>
+
+        <!-- ============================== Col 2：轻量预览 ============================== -->
+        <bui:PropertyEditor Grid.Column="2"
+                            Title="实时预览（单位 m，默认 1:150）"
+                            ShowSearch="False"
+                            ShowPin="False"
+                            ShowIconBar="False">
+            <Grid>
+                <Border Background="{DynamicResource Brush_RegionBack}"
+                        BorderBrush="{DynamicResource Brush_BorderDark}"
+                        BorderThickness="1">
+                    <Canvas x:Name="PreviewCanvas"
+                            ClipToBounds="True"
+                            Background="Transparent"
+                            SizeChanged="PreviewCanvas_SizeChanged"/>
+                </Border>
+                <TextBlock HorizontalAlignment="Right"
+                           VerticalAlignment="Bottom"
+                           Margin="0,0,10,6"
+                           Foreground="{DynamicResource Brush_TextSecondary}"
+                           FontFamily="Consolas"
+                           FontSize="{DynamicResource Metric_FontCaption}"
+                           Text="原型预览：按 Side + Kind + Width 映射色带；暂未接 AutoCAD 模型空间"/>
+            </Grid>
+        </bui:PropertyEditor>
+
+        <GridSplitter Grid.Column="3" Width="4"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="{DynamicResource Brush_BorderDark}"
+                      ShowsPreview="False"
+                      ResizeBehavior="PreviousAndNext"
+                      ResizeDirection="Columns"/>
+
+        <!-- ============================== Col 4：属性面板（三级 PropertyGroup） ============================== -->
+        <bui:PropertyEditor Grid.Column="4"
+                            Title="属性"
+                            ShowSearch="False"
+                            ShowPin="False"
+                            ShowIconBar="False">
+            <StackPanel>
+
+                <!-- ============================== 一级：断面总览（常驻） ============================== -->
+                <Expander Header="断面总览" Style="{StaticResource BlenderPropertyGroupLevel1}">
+                    <StackPanel>
+                        <Expander Header="总体设置" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <bui:PropertyRow Label="图名标题">
+                                    <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource BlenderTextBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="比例尺 1 :">
+                                    <ComboBox ItemsSource="{Binding AvailableScales}"
+                                              SelectedItem="{Binding ScaleDenominator, Mode=TwoWay}"
+                                              Style="{StaticResource BlenderComboBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="设计速度 V">
+                                    <ComboBox ItemsSource="{Binding AvailableSpeeds}"
+                                              SelectedItem="{Binding DesignSpeed, Mode=TwoWay}"
+                                              Style="{StaticResource BlenderComboBox}"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+
+                        <Expander Header="路幅摘要" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <bui:PropertyRow Label="左半幅 (m)">
+                                    <TextBlock Text="{Binding LeftHalfWidth, StringFormat=F2}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="中央隔离带 (m)">
+                                    <TextBlock Text="{Binding MedianWidth, StringFormat=F2}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="右半幅 (m)">
+                                    <TextBlock Text="{Binding RightHalfWidth, StringFormat=F2}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="总路幅 (m)">
+                                    <TextBlock Text="{Binding TotalWidth, StringFormat=F2}"
+                                               Foreground="{DynamicResource Brush_Success}"
+                                               FontWeight="SemiBold"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Expander>
+
+                <!-- ============================== 一级：中央隔离带（选中时） ============================== -->
+                <Expander Header="当前节点 · 中央隔离带"
+                          Style="{StaticResource BlenderPropertyGroupLevel1}"
+                          Visibility="{Binding IsMedianSelected, Converter={StaticResource BoolToVis}}">
+                    <StackPanel DataContext="{Binding SelectedMedian}">
+                        <Expander Header="总体设置" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <bui:PropertyRow Label="启用">
+                                    <CheckBox IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                              Style="{StaticResource BlenderCheckBox}"
+                                              VerticalAlignment="Center"
+                                              Content="是否布置中央隔离带"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+                        <Expander Header="几何参数" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <Expander Header="宽度" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="宽度 (m)">
+                                            <bui:NumericSlider Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               Minimum="0" Maximum="20"
+                                                               Step="0.1" Decimals="2" Unit="m"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Expander>
+
+                <!-- ============================== 一级：侧别根节点 ============================== -->
+                <Expander Header="当前节点 · 侧别"
+                          Style="{StaticResource BlenderPropertyGroupLevel1}"
+                          Visibility="{Binding IsSideSelected, Converter={StaticResource BoolToVis}}">
+                    <StackPanel DataContext="{Binding SelectedSide}">
+                        <Expander Header="总体设置" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <bui:PropertyRow Label="侧别">
+                                    <TextBlock Text="{Binding Side}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="条带数量">
+                                    <TextBlock Text="{Binding Bands.Count}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+                        <Expander Header="提示" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <TextBlock TextWrapping="Wrap"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           FontSize="{DynamicResource Metric_FontSmall}"
+                                           Text="在大纲上方工具条使用 ＋左 / ＋右 追加条带；选中条带后可 × 删、↑↓ 调整顺序。条带顺序按「从中心向边界」组织。"/>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Expander>
+
+                <!-- ============================== 一级：条带详情 ============================== -->
+                <Expander Header="当前节点 · 条带"
+                          Style="{StaticResource BlenderPropertyGroupLevel1}"
+                          Visibility="{Binding IsBandSelected, Converter={StaticResource BoolToVis}}">
+                    <StackPanel DataContext="{Binding SelectedBand}">
+
+                        <!-- 二级：总体设置 -->
+                        <Expander Header="总体设置" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <bui:PropertyRow Label="启用">
+                                    <CheckBox IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                              Style="{StaticResource BlenderCheckBox}"
+                                              VerticalAlignment="Center"
+                                              Content="是否计入路幅"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="名称">
+                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource BlenderTextBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="类型">
+                                    <ComboBox ItemsSource="{x:Static smp:V2CrossSectionSampleViewModel.AvailableKinds}"
+                                              SelectedItem="{Binding Kind, UpdateSourceTrigger=PropertyChanged}"
+                                              Style="{StaticResource BlenderComboBox}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="侧别">
+                                    <TextBlock Text="{Binding Side}"
+                                               Foreground="{DynamicResource Brush_TextSecondary}"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 二级：几何参数 -->
+                        <Expander Header="几何参数" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <Expander Header="宽度" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="宽度 (m)">
+                                            <bui:NumericSlider Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               Minimum="0.1" Maximum="30"
+                                                               Step="0.1" Decimals="2" Unit="m"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="车道划分" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="车道数">
+                                            <bui:NumericSlider Value="{Binding LaneCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               Minimum="0" Maximum="6"
+                                                               Step="1" Decimals="0"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 二级：横坡路拱 -->
+                        <Expander Header="横坡路拱" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <Expander Header="横坡" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="横坡 (%)">
+                                            <bui:NumericSlider Value="{Binding CrossSlopePct, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               Minimum="-20" Maximum="20"
+                                                               Step="0.1" Decimals="2" Unit="%"/>
+                                        </bui:PropertyRow>
+                                        <bui:PropertyRow Label="坡型">
+                                            <ComboBox ItemsSource="{x:Static smp:V2CrossSectionSampleViewModel.AvailableSlopeTypes}"
+                                                      SelectedItem="{Binding SlopeType, UpdateSourceTrigger=PropertyChanged}"
+                                                      Style="{StaticResource BlenderComboBox}"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="路拱形式" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="形式">
+                                            <ComboBox ItemsSource="{x:Static smp:V2CrossSectionSampleViewModel.AvailableCrownProfiles}"
+                                                      SelectedItem="{Binding CrownProfile, UpdateSourceTrigger=PropertyChanged}"
+                                                      Style="{StaticResource BlenderComboBox}"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Expander>
+
+                <!-- ============================== 一级：结构层编辑（条带 or 层被选中时） ============================== -->
+                <Expander Header="结构层编辑"
+                          Style="{StaticResource BlenderPropertyGroupLevel1}"
+                          Visibility="{Binding ActiveBandForStructure.HasStructureLayers, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                    <StackPanel>
+                        <!-- 二级：结构方案 -->
+                        <Expander Header="结构方案" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel DataContext="{Binding ActiveBandForStructure}">
+                                <bui:PropertyRow Label="承载条带">
+                                    <TextBlock Text="{Binding Name}"
+                                               Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="当前层组成">
+                                    <TextBlock Text="{Binding StructureSummary}"
+                                               Foreground="{DynamicResource Brush_TextSecondary}"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="规则">
+                                    <TextBlock TextWrapping="Wrap"
+                                               Foreground="{DynamicResource Brush_TextSecondary}"
+                                               FontSize="{DynamicResource Metric_FontSmall}"
+                                               Text="面层 2 ~ 3 / 基层 1 ~ 5 / 垫层 1 ~ 2；超出上下限时对应增删按钮自动禁用。"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 二级：层增删 -->
+                        <Expander Header="层增删" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                            <StackPanel>
+                                <bui:PropertyRow Label="新增">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="＋面层" MinWidth="52" Margin="0,0,4,0"
+                                                Command="{Binding AddSurfaceLayerCommand}"
+                                                Style="{StaticResource BlenderButton}"/>
+                                        <Button Content="＋基层" MinWidth="52" Margin="0,0,4,0"
+                                                Command="{Binding AddBaseLayerCommand}"
+                                                Style="{StaticResource BlenderButton}"/>
+                                        <Button Content="＋垫层" MinWidth="52"
+                                                Command="{Binding AddSubbaseLayerCommand}"
+                                                Style="{StaticResource BlenderButton}"/>
+                                    </StackPanel>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="删除">
+                                    <Button Content="× 删除选中层" MinWidth="120"
+                                            Command="{Binding RemoveSelectedLayerCommand}"
+                                            Style="{StaticResource BlenderButton}"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 二级：当前层详情 -->
+                        <Expander Header="当前层详情"
+                                  Style="{StaticResource BlenderPropertyGroupLevel2}"
+                                  Visibility="{Binding IsLayerSelected, Converter={StaticResource BoolToVis}}">
+                            <StackPanel DataContext="{Binding SelectedLayer}">
+                                <Expander Header="基础" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="类型">
+                                            <ComboBox ItemsSource="{x:Static smp:V2CrossSectionSampleViewModel.AvailableLayerKinds}"
+                                                      SelectedItem="{Binding LayerKind, UpdateSourceTrigger=PropertyChanged}"
+                                                      Style="{StaticResource BlenderComboBox}"/>
+                                        </bui:PropertyRow>
+                                        <bui:PropertyRow Label="名称">
+                                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource BlenderTextBox}"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="材料与厚度" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                    <StackPanel>
+                                        <bui:PropertyRow Label="厚度 (cm)">
+                                            <bui:NumericSlider Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               Minimum="0" Maximum="80"
+                                                               Step="0.5" Decimals="1" Unit="cm"/>
+                                        </bui:PropertyRow>
+                                        <bui:PropertyRow Label="材料">
+                                            <TextBox Text="{Binding Material, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource BlenderTextBox}"/>
+                                        </bui:PropertyRow>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+        </bui:PropertyEditor>
+    </Grid>
+</bui:BlenderWindow>

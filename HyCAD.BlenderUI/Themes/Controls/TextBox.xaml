@@ -46,4 +46,35 @@
         </Setter>
     </Style>
 
+    <!-- Blender tui.wcol_num.inner（#545454）：侧栏数值展示/伪数值框，区别于 wcol_text 纯编辑底 -->
+    <Style x:Key="BlenderNumField" TargetType="{x:Type TextBox}" BasedOn="{StaticResource BlenderTextBox}">
+        <Setter Property="Background" Value="{DynamicResource Brush_NumFieldBack}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderMid}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TextBox}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Metric_CornerRadiusWidget}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Padding="{TemplateBinding Padding}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_InputFocusBorder}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextDisabled}"/>
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

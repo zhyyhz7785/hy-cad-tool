@@ -297,7 +297,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             {
                 erased = drawService.Clear(tr, doc.Database, template.Id);
                 created = drawService.Draw(tr, doc.Database, result.Figure, template, origin,
-                    modelUnitPerMeter: 1.0, mode: drawMode);
+                    modelUnitPerMeter: 1.0, mode: drawMode, layout: result.Layout);
                 tr.Commit();
             }
 

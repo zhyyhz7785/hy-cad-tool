@@ -12,6 +12,8 @@ namespace HyCAD.BlenderUI.TestHost
             InitializeComponent();
             List.ItemsSource = new[]
             {
+                typeof(CrossSectionV2SamplePanel),
+                typeof(CrossSectionV3SamplePanel),
                 typeof(WidgetVisualGallery),
                 typeof(WidgetGallerySample),
                 typeof(AutoPropertySample),
@@ -20,6 +22,7 @@ namespace HyCAD.BlenderUI.TestHost
                 typeof(SpaceTypeShowcaseSample),
                 typeof(FullDesignerSample),
                 typeof(SplitDesignerSample),
+                typeof(ThreeLevelPropertyGroupSample),
             };
         }
 

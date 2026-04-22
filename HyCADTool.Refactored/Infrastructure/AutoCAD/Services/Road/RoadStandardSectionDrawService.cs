@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
@@ -64,7 +65,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Template template,
             Point2d origin,
             double modelUnitPerMeter = 1.0)
-            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness);
+            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null);
 
         /// <summary>
         /// M7.4 重载：指定绘图模式。
@@ -78,7 +79,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Template template,
             Point2d origin,
             double modelUnitPerMeter,
-            CrossSectionDrawMode mode)
+            CrossSectionDrawMode mode,
+            CrossSectionLayout layout = null)
         {
             if (transaction == null) throw new ArgumentNullException(nameof(transaction));
             if (database == null) throw new ArgumentNullException(nameof(database));
@@ -263,7 +265,66 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     HyRoadLayers.CrossSectionTitleLayer, titleH, alignCenter: true);
             }
 
+            if (layout != null)
+            {
+                added += DrawElevationDiffLeaders(transaction, ms, database, template.Id, figure, layout, origin, s);
+            }
+
             return added;
+        }
+
+        private int DrawElevationDiffLeaders(
+            Transaction transaction,
+            BlockTableRecord ms,
+            Database database,
+            Guid templateId,
+            CrossSectionFigure figure,
+            CrossSectionLayout layout,
+            Point2d origin,
+            double s)
+        {
+            if (figure.TopLabels == null || figure.TopLabels.Count == 0) return 0;
+            int added = 0;
+            int labelIndex = 0;
+
+            foreach (var band in layout.LeftBands)
+            {
+                if (Math.Abs(band.ElevationDiff) > 1e-6)
+                    added += AddElevationLeader(transaction, ms, database, templateId, figure.TopLabels[labelIndex], band.ElevationDiff, origin, s);
+                labelIndex++;
+            }
+
+            if (layout.CenterMedianWidth > 0) labelIndex++;
+
+            foreach (var band in layout.RightBands)
+            {
+                if (labelIndex >= figure.TopLabels.Count) break;
+                if (Math.Abs(band.ElevationDiff) > 1e-6)
+                    added += AddElevationLeader(transaction, ms, database, templateId, figure.TopLabels[labelIndex], band.ElevationDiff, origin, s);
+                labelIndex++;
+            }
+
+            return added;
+        }
+
+        private int AddElevationLeader(
+            Transaction transaction,
+            BlockTableRecord ms,
+            Database database,
+            Guid templateId,
+            FigureTopLabel topLabel,
+            double elevationDiff,
+            Point2d origin,
+            double s)
+        {
+            var anchor = new Point3d(origin.X + topLabel.CenterX * s, origin.Y + (topLabel.CenterY - 0.1) * s, 0);
+            var mleader = new[] { anchor }.AddMleader(distance: Math.Max(0.8, 1.2 * s), content: $"{elevationDiff:+0.000;-0.000}");
+            mleader.Layer = HyRoadLayers.CrossSectionAnnotationLayer;
+            mleader.ColorIndex = 256;
+            ms.AppendEntity(mleader);
+            transaction.AddNewlyCreatedDBObject(mleader, true);
+            TagEntity(transaction, database, mleader, templateId);
+            return 1;
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using System.IO;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.Models.Road.Serialization;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using Newtonsoft.Json;
 
@@ -48,6 +49,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             var dir = Path.GetDirectoryName(dwgPath) ?? ".";
             var name = Path.GetFileNameWithoutExtension(dwgPath);
             return Path.Combine(dir, name + ".roaddesign.json");
+        }
+
+        /// <summary>
+        /// 推断 <c>.roadproject.json</c> 默认路径（同 DWG 同名，045 / M2 新增）。
+        /// </summary>
+        public static string GetDefaultProjectJsonPath(string dwgPath)
+        {
+            if (string.IsNullOrEmpty(dwgPath)) return null;
+            var dir = Path.GetDirectoryName(dwgPath) ?? ".";
+            var name = Path.GetFileNameWithoutExtension(dwgPath);
+            return Path.Combine(dir, name + ".roadproject.json");
         }
 
         /// <summary>
@@ -191,6 +203,132 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     $"不兼容的 schema 版本：{design.Schema}（最低支持 {SchemaVersion.MinimumSupported}）。");
             }
             return design;
+        }
+
+        // =============================================================
+        //  045 / M2：RoadProject（v2.0）读写 + v1.x 自动迁移
+        // =============================================================
+
+        /// <summary>
+        /// 把 <see cref="RoadProject"/> 原子地序列化到 <c>.roadproject.json</c>。
+        /// <para>同 <see cref="Save(RoadDesign,string)"/>：tmp + 原子替换，避免写入中途崩溃导致空文件。</para>
+        /// </summary>
+        public void SaveProject(RoadProject project, string path)
+        {
+            if (project == null) throw new ArgumentNullException(nameof(project));
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("path 不能为空", nameof(path));
+
+            RoadProjectMigration.EnsureV2Fields(project);
+            project.LastModifiedUtc = DateTime.UtcNow;
+
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            string tmp = path + ".tmp";
+            string content = JsonConvert.SerializeObject(project, _settings);
+            File.WriteAllText(tmp, content, new System.Text.UTF8Encoding(false));
+
+            if (File.Exists(path))
+            {
+                File.Replace(tmp, path, path + ".bak", ignoreMetadataErrors: true);
+                try { File.Delete(path + ".bak"); } catch { /* 忽略备份清理失败 */ }
+            }
+            else
+            {
+                File.Move(tmp, path);
+            }
+        }
+
+        /// <summary>
+        /// 从文件反序列化 <see cref="RoadProject"/>，支持两种输入：
+        /// <list type="bullet">
+        ///   <item><c>*.roadproject.json</c>（v2.0 原生）→ 直接反序列化；</item>
+        ///   <item><c>*.roaddesign.json</c>（v1.x 旧格式）→ 先反序列化 <see cref="RoadDesign"/>，
+        ///         再用 <see cref="RoadProjectMigration.WrapSingleDesign"/> 包为单 <c>Designs[0]</c> 的 project。</item>
+        /// </list>
+        /// <para>文件不存在返回 null；schema 低于 <see cref="SchemaVersion.MinimumSupported"/> 抛异常。</para>
+        /// <para>本方法不改写原文件（非破坏）：v1.x 的 <c>.roaddesign.json</c> 保持原状，只在内存里包装。</para>
+        /// </summary>
+        public RoadProject LoadProject(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            if (!File.Exists(path)) return null;
+
+            string content = File.ReadAllText(path);
+
+            bool isProjectFile = path.EndsWith(".roadproject.json", StringComparison.OrdinalIgnoreCase);
+
+            if (isProjectFile)
+            {
+                var project = JsonConvert.DeserializeObject<RoadProject>(content, _settings);
+                if (project == null) return null;
+
+                // 项目级 schema 下限：v2.0（v1 无项目文件）
+                if (!string.IsNullOrEmpty(project.Schema)
+                    && string.Compare(project.Schema, SchemaVersion.MinimumSupported, StringComparison.Ordinal) < 0)
+                {
+                    throw new InvalidOperationException(
+                        $"不兼容的项目 schema 版本：{project.Schema}（最低支持 {SchemaVersion.MinimumSupported}）。");
+                }
+
+                return RoadProjectMigration.EnsureV2Fields(project);
+            }
+
+            // 旧的 .roaddesign.json：先按 RoadDesign 解析，再包装
+            var design = JsonConvert.DeserializeObject<RoadDesign>(content, _settings);
+            if (design != null
+                && !string.IsNullOrEmpty(design.Schema)
+                && string.Compare(design.Schema, SchemaVersion.MinimumSupported, StringComparison.Ordinal) < 0)
+            {
+                throw new InvalidOperationException(
+                    $"不兼容的 schema 版本：{design.Schema}（最低支持 {SchemaVersion.MinimumSupported}）。");
+            }
+
+            return RoadProjectMigration.WrapSingleDesign(design);
+        }
+
+        /// <summary>
+        /// 命令收尾的"按文档名同步写盘项目"便利方法（与 <see cref="SaveForDocument"/> 对齐）。
+        ///
+        /// 规则：
+        /// <list type="bullet">
+        ///   <item><paramref name="project"/> 为 null 或 <see cref="RoadProject.IsEmpty"/> → 返回 null；</item>
+        ///   <item><paramref name="documentName"/> 解析不出路径 → 返回 null；</item>
+        ///   <item>否则写 <c>.roadproject.json</c>，返回路径。</item>
+        /// </list>
+        /// </summary>
+        public string SaveProjectForDocument(RoadProject project, string documentName)
+        {
+            if (project == null || project.IsEmpty) return null;
+            if (string.IsNullOrWhiteSpace(documentName)) return null;
+            var path = GetDefaultProjectJsonPath(documentName);
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            SaveProject(project, path);
+            return path;
+        }
+
+        /// <summary>
+        /// 项目读入的"按文档名优先级"便利方法：
+        /// <list type="number">
+        ///   <item>若存在 <c>.roadproject.json</c> → <see cref="LoadProject"/>；</item>
+        ///   <item>否则若存在 <c>.roaddesign.json</c> → <see cref="LoadProject"/>（自动包装）；</item>
+        ///   <item>都不存在 → 返回 null。</item>
+        /// </list>
+        /// </summary>
+        public RoadProject LoadProjectForDocument(string documentName)
+        {
+            if (string.IsNullOrWhiteSpace(documentName)) return null;
+
+            var projectPath = GetDefaultProjectJsonPath(documentName);
+            if (!string.IsNullOrWhiteSpace(projectPath) && File.Exists(projectPath))
+                return LoadProject(projectPath);
+
+            var designPath = GetDefaultJsonPath(documentName);
+            if (!string.IsNullOrWhiteSpace(designPath) && File.Exists(designPath))
+                return LoadProject(designPath);
+
+            return null;
         }
     }
 }

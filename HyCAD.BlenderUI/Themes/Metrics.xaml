@@ -46,6 +46,8 @@
 
     <CornerRadius x:Key="Metric_CornerRadius">3</CornerRadius>
     <CornerRadius x:Key="Metric_CornerRadiusSmall">2</CornerRadius>
+    <!-- Blender tui.wcol_* roundness=0.2f × 默认 widget_unit≈20 → 可视圆角约 4px（interface_widgets.cc 等比换算） -->
+    <CornerRadius x:Key="Metric_CornerRadiusWidget">4</CornerRadius>
 
     <!-- 2026-04-21 收紧：按钮/输入内边距统一到 2 行高，分组 Inset 从 10,8 → 6,4 -->
     <Thickness x:Key="Metric_ButtonPadding">6,2</Thickness>
@@ -57,6 +59,8 @@
     <Thickness x:Key="Metric_PropertyListMargin">4,2,4,4</Thickness>
     <Thickness x:Key="Metric_PropertyListMarginTight">4,0,4,4</Thickness>
     <Thickness x:Key="Metric_GroupInset">6,4</Thickness>
+    <!-- PropertyGroup 内容区内边距：贴近 Blender 属性列密度（约 0.2×UI_UNIT 量级） -->
+    <Thickness x:Key="Metric_PropertyGroupContentPadding">4,2,6,3</Thickness>
     <Thickness x:Key="Metric_CellPaddingTight">2,2</Thickness>
     <Thickness x:Key="Metric_FooterBottomInset">0,0,0,4</Thickness>
     <Thickness x:Key="Metric_FormHintIndent">150,0,0,5</Thickness>

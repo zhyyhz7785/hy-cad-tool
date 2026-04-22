@@ -61,6 +61,12 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// v1 允许为 null。
         /// </summary>
         public string BlenderExtrudeHint { get; set; }
+
+        /// <summary>
+        /// 扩展元数据（向后兼容）。
+        /// 用于存放不改变主 JSON 结构的附加点信息，例如 rCs v3 的 ElevationDiff。
+        /// </summary>
+        public Dictionary<string, string> ExtendedData { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

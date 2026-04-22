@@ -40,7 +40,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 CrossSectionBand.Sidewalk(3.0, 1.5, BandSide.Right, "人行道"),
             };
             return CrossSectionLayout.Create(left, right,
-                centerMedianWidth: 2.0, designSpeed: 60, scaleDenominator: 100, title: "城市主干路 标准横断面图");
+                centerMedianWidth: 2.0, designSpeed: 60, scaleDenominator: 150, title: "城市主干路 标准横断面图");
         }
 
         /// <summary>

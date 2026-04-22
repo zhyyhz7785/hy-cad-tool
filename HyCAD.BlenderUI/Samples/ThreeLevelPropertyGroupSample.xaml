@@ -1,0 +1,203 @@
+<bui:BlenderWindow x:Class="HyCAD.BlenderUI.Samples.ThreeLevelPropertyGroupSample"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls"
+                   mc:Ignorable="d"
+                   Title="HyCAD.BlenderUI — Three Level Property Group Sample"
+                   HeaderTitle="三级属性分组样本"
+                   Width="420"
+                   Height="760"
+                   Background="{DynamicResource Brush_WindowBack}"
+                   FontFamily="{DynamicResource Font_Main}"
+                   FontSize="{DynamicResource Metric_FontMain}"
+                   Foreground="{DynamicResource Brush_TextPrimary}">
+
+    <!--
+      ThreeLevelPropertyGroupSample：对齐 Blender「输出属性」侧栏三级结构（userdef 色表 + wcol_num 数值底）。
+    -->
+
+    <bui:BlenderWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </bui:BlenderWindow.Resources>
+
+    <bui:BlenderWindow.FooterLeftContent>
+        <TextBlock VerticalAlignment="Center"
+                   Foreground="{DynamicResource Brush_TextSecondary}"
+                   Text="单列三级目录：一级 / 二级 / 三级"/>
+    </bui:BlenderWindow.FooterLeftContent>
+
+    <bui:BlenderWindow.StatusContent>
+        <TextBlock VerticalAlignment="Center"
+                   Foreground="{DynamicResource Brush_Success}"
+                   Text="可直接嵌入 PropertyEditor"/>
+    </bui:BlenderWindow.StatusContent>
+
+    <bui:BlenderWindow.FooterRightContent>
+        <Button Width="80" Content="关闭" Style="{StaticResource BlenderButton}"/>
+    </bui:BlenderWindow.FooterRightContent>
+
+    <bui:PropertyEditor Title="输出属性"
+                        ShowIconBar="False"
+                        ShowSearch="True">
+        <StackPanel>
+            <Expander Style="{StaticResource BlenderPropertyGroupLevel1}">
+                <Expander.Header>
+                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" Text="格式"/>
+                        <!-- 与参考图一致：标题右侧「列表」装饰（Section 菜单位） -->
+                        <Path Width="11"
+                              Height="11"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"
+                              Data="M 1,2.5 L 3,2.5 M 5,2.5 L 10,2.5 M 1,5.5 L 3,5.5 M 5,5.5 L 10,5.5 M 1,8.5 L 3,8.5 M 5,8.5 L 10,8.5"
+                              Fill="Transparent"
+                              SnapsToDevicePixels="True"
+                              Stroke="{DynamicResource Brush_TextDisabled}"
+                              StrokeEndLineCap="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeThickness="1.1"/>
+                    </StackPanel>
+                </Expander.Header>
+                <StackPanel>
+                    <Expander Header="分辨率" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                        <StackPanel>
+                            <Expander Header="基础尺寸" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                <StackPanel>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="分辨率 X">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="1920 px"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="分辨率 Y">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="1080 px"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow RowSpacing="0,0,0,0" Label="%">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="100%"/>
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Header="宽高比" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                <StackPanel>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="宽高比 X">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="1.000"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="宽高比 Y">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="1.000"/>
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander Header="输出" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                        <StackPanel>
+                            <Expander Header="文件设置" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                <StackPanel>
+                                    <bui:PropertyRow Label="路径">
+                                        <TextBox Style="{StaticResource BlenderTextBox}" Text="/tmp\"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="保存">
+                                        <CheckBox Content="文件扩展名"
+                                                  IsChecked="True"
+                                                  Style="{StaticResource BlenderCheckBox}"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="文件格式">
+                                        <ComboBox SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
+                                            <ComboBoxItem Content="PNG"/>
+                                            <ComboBoxItem Content="JPEG"/>
+                                            <ComboBoxItem Content="TIFF"/>
+                                        </ComboBox>
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Header="颜色" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                <StackPanel>
+                                    <bui:PropertyRow Label="颜色">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ToggleButton Margin="0,0,2,0" Content="BW" Style="{StaticResource BlenderToggleButton}"/>
+                                            <ToggleButton Margin="0,0,2,0" Content="RGB" Style="{StaticResource BlenderToggleButton}"/>
+                                            <ToggleButton Content="RGBA" IsChecked="True" Style="{StaticResource BlenderToggleButton}"/>
+                                        </StackPanel>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="色深">
+                                        <ComboBox SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
+                                            <ComboBoxItem Content="8"/>
+                                            <ComboBoxItem Content="16"/>
+                                        </ComboBox>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="压缩">
+                                        <bui:NumericSlider Decimals="0"
+                                                           Maximum="100"
+                                                           Minimum="0"
+                                                           Step="1"
+                                                           Unit="%"
+                                                           Value="15"/>
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </Expander>
+
+            <Expander Header="帧范围" Style="{StaticResource BlenderPropertyGroupLevel1}">
+                <StackPanel>
+                    <Expander Header="时间控制" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                        <StackPanel>
+                            <Expander Header="主范围" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                <StackPanel>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="帧率">
+                                        <ComboBox SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
+                                            <ComboBoxItem Content="24 fps"/>
+                                            <ComboBoxItem Content="30 fps"/>
+                                            <ComboBoxItem Content="60 fps"/>
+                                        </ComboBox>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="起始帧">
+                                        <bui:NumericSlider Decimals="0"
+                                                           Maximum="10000"
+                                                           Minimum="1"
+                                                           Step="1"
+                                                           Value="1"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="结束">
+                                        <bui:NumericSlider Decimals="0"
+                                                           Maximum="10000"
+                                                           Minimum="1"
+                                                           Step="1"
+                                                           Value="250"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="步长">
+                                        <bui:NumericSlider Decimals="0"
+                                                           Maximum="100"
+                                                           Minimum="1"
+                                                           Step="1"
+                                                           Value="1"/>
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Header="时间拉伸" IsEnabled="False" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                <StackPanel>
+                                    <bui:PropertyRow RowSpacing="0,0,0,1" Label="原始">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="100"/>
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="新的">
+                                        <TextBox Style="{StaticResource BlenderNumField}" Text="100"/>
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+    </bui:PropertyEditor>
+</bui:BlenderWindow>

@@ -29,6 +29,15 @@
     <SolidColorBrush x:Key="Brush_BorderDark"           Color="#737373"/>
     <SolidColorBrush x:Key="Brush_BorderMid"            Color="#B8B8B8"/>
 
+    <!-- 与 BlenderDark 同键：Light 侧栏层级（社区 Light 主题镜像近似） -->
+    <SolidColorBrush x:Key="Brush_PropertyPanelBody"       Color="#A8A8A8"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeader"     Color="#9A9A9A"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeaderHover" Color="#A0A0A0"/>
+    <SolidColorBrush x:Key="Brush_PropertyGroupHeaderHover" Color="#B0B0B0"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellBack"       Color="#989898"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellOutline"    Color="#B8B8B8"/>
+    <SolidColorBrush x:Key="Brush_NumFieldBack"           Color="#DBDBDB"/>
+
     <!-- 标签 / 选中高亮（Blender Blue 通用） -->
     <SolidColorBrush x:Key="Brush_TabInactive"          Color="#909090"/>
     <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#4772B3"/>

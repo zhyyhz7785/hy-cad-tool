@@ -171,9 +171,9 @@
                         BorderThickness="0,0,0,1"
                         Padding="{DynamicResource Metric_GroupInset}">
                     <WrapPanel Orientation="Horizontal" ItemHeight="{DynamicResource Metric_InputLineHeight}">
-                        <!-- 出图比例 -->
+                        <!-- 主比例 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
-                            <TextBlock Text="Scale 1 :"
+                            <TextBlock Text="主比例 1 :"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
                                        FontSize="{DynamicResource Metric_FontMain}"
                                        VerticalAlignment="Center"
@@ -185,9 +185,29 @@
                                      helper:TextBoxHelper.ScrollStep="5"
                                      Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                         </StackPanel>
+                        <!-- 副比例 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                            <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                      Content="启用副比例"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding Settings.UseSubScale, Mode=TwoWay}"
+                                      Margin="0,0,4,0"/>
+                            <TextBlock Text="1 :"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontSize="{DynamicResource Metric_FontMain}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}"
+                                     Width="{DynamicResource Metric_InputWidth_S}"
+                                     VerticalAlignment="Center"
+                                     IsEnabled="{Binding Settings.UseSubScale}"
+                                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                                     helper:TextBoxHelper.ScrollStep="5"
+                                     Text="{Binding Settings.SubScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                        </StackPanel>
                         <!-- 单位 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
-                            <TextBlock Text="Unit"
+                            <TextBlock Text="单位"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
                                        FontSize="{DynamicResource Metric_FontMain}"
                                        VerticalAlignment="Center"
@@ -216,7 +236,7 @@
                         </StackPanel>
                         <!-- 小数位 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
-                            <TextBlock Text="Digits"
+                            <TextBlock Text="小数位"
                                        Foreground="{DynamicResource Brush_TextSecondary}"
                                        FontSize="{DynamicResource Metric_FontMain}"
                                        VerticalAlignment="Center"
@@ -226,21 +246,6 @@
                                       VerticalAlignment="Center"
                                       ItemsSource="{Binding Settings.AllowedPrecisions}"
                                       SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
-                        </StackPanel>
-                        <!-- 副比例 -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-                            <CheckBox Style="{StaticResource BlenderCheckBox}"
-                                      Content="Sub 1 :"
-                                      VerticalAlignment="Center"
-                                      IsChecked="{Binding Settings.UseSubScale, Mode=TwoWay}"
-                                      Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}"
-                                     Width="{DynamicResource Metric_InputWidth_S}"
-                                     VerticalAlignment="Center"
-                                     IsEnabled="{Binding Settings.UseSubScale}"
-                                     helper:TextBoxHelper.EnableCustomHandlers="True"
-                                     helper:TextBoxHelper.ScrollStep="5"
-                                     Text="{Binding Settings.SubScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                         </StackPanel>
                     </WrapPanel>
                 </Border>

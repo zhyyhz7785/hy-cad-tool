@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HyCADTool.Refactored.Domain.Models.Road.Civil;
 
 namespace HyCADTool.Refactored.Domain.Models.Road
 {
@@ -38,6 +39,13 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// 与聚合根的 <c>RoadDesign.LastModifiedUtc</c> 双层记录，便于 v2 增量同步时按对象级颗粒度刷新。
         /// </summary>
         public DateTime LastModifiedUtc { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// 纵断设计图分幅集合（045 / M2 占位，Schema v2.0 新增）。
+        /// <para>对应用户草案图中「纵断设计图组1 → 0~175 / 175~350 / …」的分幅节点；
+        /// 支撑项目树 UI 展开，实际出图服务 v2.0 暂不接入。</para>
+        /// </summary>
+        public List<ProfileSheet> Sheets { get; } = new List<ProfileSheet>();
 
         public override string ToString() => $"Profile[{Name}, Id={Id:N}, PVI={Vertices.Count}]";
     }

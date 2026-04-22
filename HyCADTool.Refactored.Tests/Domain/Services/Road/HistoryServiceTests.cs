@@ -75,7 +75,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
             entry.SeqNo.Should().Be(1);
             entry.Description.Should().Be("导线法新建路线_路线1");
             entry.Checksum.Should().NotBeNullOrEmpty();
-            entry.SchemaVersion.Should().Be("1.2");
+            entry.SchemaVersion.Should().Be(SchemaVersion.Current, "快照里记录当前 schema；045 / M2 后升到 2.0");
 
             string snapPath = Path.Combine(_historyDir, entry.SnapshotFileName);
             File.Exists(snapPath).Should().BeTrue();

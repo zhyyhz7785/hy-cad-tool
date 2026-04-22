@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HyCADTool.Refactored.Domain.Models.Road.Civil;
 using HyCADTool.Refactored.Domain.Models.Road.ControlElements;
 using HyCADTool.Refactored.Domain.Models.Road.Serialization;
 using Newtonsoft.Json;
@@ -73,6 +74,38 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         /// </summary>
         public List<IntersectionBandMergeRule> IntersectionBandMergeRules { get; } = new List<IntersectionBandMergeRule>();
 
+        // ---------------- 045 / M2：项目树新增占位集合（Schema v2.0） ----------------
+        //
+        // 所有 Civil 系列集合均在 v2.0 引入；Newtonsoft 读取 v1.x 文件时缺失字段 → 保留构造函数的空 List。
+        // UI 层（RoadProjectTreePanel）按这些集合渲染对应节点；M2 阶段仅有空容器，不驱动几何。
+
+        /// <summary>曲面集合（EG / FG / TIN，045 §5.2）。v2.0 占位，UI 渲染"曲面"节点。</summary>
+        public List<Surface> Surfaces { get; } = new List<Surface>();
+
+        /// <summary>桥梁集合（045 §5.2）。v2.0 占位。</summary>
+        public List<Bridge> Bridges { get; } = new List<Bridge>();
+
+        /// <summary>隧道集合（045 §5.2）。v2.0 占位。</summary>
+        public List<Tunnel> Tunnels { get; } = new List<Tunnel>();
+
+        /// <summary>涵洞集合（045 §5.2）。v2.0 占位。</summary>
+        public List<Culvert> Culverts { get; } = new List<Culvert>();
+
+        /// <summary>立交集合（045 §4）。v2.0 占位，独立于 <see cref="Intersections"/>（平交）。</summary>
+        public List<Interchange> Interchanges { get; } = new List<Interchange>();
+
+        /// <summary>配景集合（过街/铁路/水域，045 §4）。v2.0 占位。</summary>
+        public List<Landscape> Landscapes { get; } = new List<Landscape>();
+
+        /// <summary>
+        /// 路外交通设施（标志/信号/监控，045 §4）。v2.0 占位；
+        /// 与路内 LaneMarking/StopLine/Crosswalk 分离（后者通过 Xdata 归属到 Alignment）。
+        /// </summary>
+        public List<TrafficFacility> ExternalTrafficFacilities { get; } = new List<TrafficFacility>();
+
+        /// <summary>地质集合（钻孔 / 地层，045 §5.2）。v2.0 占位。</summary>
+        public List<Geology> Geologies { get; } = new List<Geology>();
+
         /// <summary>
         /// 是否不含任何可持久化的子对象。
         ///
@@ -90,7 +123,16 @@ namespace HyCADTool.Refactored.Domain.Models.Road
             && Intersections.Count == 0
             && (Controls == null || Controls.Count == 0)
             && StructureLayerSchemes.Count == 0
-            && IntersectionBandMergeRules.Count == 0;
+            && IntersectionBandMergeRules.Count == 0
+            // v2.0 新增占位集合：空时不影响旧文件兼容，全部为空才算 empty
+            && Surfaces.Count == 0
+            && Bridges.Count == 0
+            && Tunnels.Count == 0
+            && Culverts.Count == 0
+            && Interchanges.Count == 0
+            && Landscapes.Count == 0
+            && ExternalTrafficFacilities.Count == 0
+            && Geologies.Count == 0;
 
         public override string ToString()
             => $"RoadDesign[{ProjectName}, Id={Id:N}, Schema={Schema}, A={Alignments.Count}, T={Templates.Count}, C={Corridors.Count}, I={Intersections.Count}]";

@@ -33,6 +33,23 @@
     <SolidColorBrush x:Key="Brush_BorderDark"           Color="#161616"/>
     <SolidColorBrush x:Key="Brush_BorderMid"            Color="#3D3D3D"/>
 
+    <!--
+      属性编辑器侧栏层级（Blender 4.x userdef_default_theme.c，RGBA 宏为 RRGGBBAA）：
+        .space_properties.back   = 0x30303000 → 不透明面板体 #303030
+        .space_properties.header = 0x303030b3 → 半透明头条（本处 L1 用实色 wcol_toolbar_item.inner #282828 作「略深头条」）
+        tui.wcol_box.item        = 0x191919ff → 嵌套 well 底
+        tui.wcol_box.outline     = 0x3d3d3dff
+        tui.wcol_num.inner       = 0x545454ff → 数值控件面（非 wcol_text 的纯编辑框）
+    -->
+    <SolidColorBrush x:Key="Brush_PropertyPanelBody"       Color="#303030"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeader"     Color="#282828"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeaderHover" Color="#323232"/>
+    <!-- 各级 Expander 头条共用悬停（略提亮，兼容 #282828/#303030/#191919 底） -->
+    <SolidColorBrush x:Key="Brush_PropertyGroupHeaderHover" Color="#353535"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellBack"       Color="#191919"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellOutline"    Color="#3D3D3D"/>
+    <SolidColorBrush x:Key="Brush_NumFieldBack"           Color="#545454"/>
+
     <!-- 标签 / 选中高亮（Blender Blue） -->
     <SolidColorBrush x:Key="Brush_TabInactive"          Color="#1D1D1D"/>
     <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#4772B3"/>

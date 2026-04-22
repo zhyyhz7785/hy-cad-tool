@@ -25,6 +25,13 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     /// </summary>
     public static class PolylineToBandExtractor
     {
+        public sealed class ExtractedBandGeometry
+        {
+            public CrossSectionBand Band { get; set; }
+            public double ThicknessCm { get; set; }
+            public double ElevationDiff { get; set; }
+        }
+
         /// <summary>
         /// 尝试从 <paramref name="polyline"/> 反解一条条带。失败返回 false，同时填入 <paramref name="errorReason"/>。
         /// </summary>
@@ -113,6 +120,38 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 errorReason = $"构造 CrossSectionBand 失败：{ex.Message}";
                 return false;
             }
+        }
+
+        public static bool TryExtractWithThickness(
+            Polyline3D polyline,
+            TemplateComponentKind kind,
+            BandSide side,
+            string name,
+            out ExtractedBandGeometry extracted,
+            out string errorReason)
+        {
+            extracted = null;
+            if (!TryExtract(polyline, kind, side, name, out var band, out errorReason))
+            {
+                return false;
+            }
+
+            double minY = double.PositiveInfinity, maxY = double.NegativeInfinity;
+            for (int i = 0; i < polyline.VertexCount; i++)
+            {
+                var v = polyline.GetPointAt(i);
+                if (v.Y < minY) minY = v.Y;
+                if (v.Y > maxY) maxY = v.Y;
+            }
+
+            double thicknessCm = (maxY - minY) * 100.0;
+            extracted = new ExtractedBandGeometry
+            {
+                Band = band,
+                ThicknessCm = thicknessCm < 0 ? 0 : Math.Round(thicknessCm, 2),
+                ElevationDiff = Math.Round(maxY - minY, 3),
+            };
+            return true;
         }
 
         /// <summary>

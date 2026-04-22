@@ -107,6 +107,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// </summary>
         public StructureLayerScheme StructureScheme { get; }
 
+        /// <summary>
+        /// 板块对外衔接高差（m）。正值表示外侧比内侧高，负值表示外侧更低。
+        /// 用于 rCs v3 的行内高差编辑与标高引线标注。
+        /// </summary>
+        public double ElevationDiff { get; }
+
         // ==================================== 构造函数 ====================================
 
         /// <summary>
@@ -116,7 +122,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             : this(name, kind, width, crossSlopePct, side,
                    KerbSpec.None, KerbSpec.None,
                    RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.None, 0,
-                   structureScheme: null)
+                   structureScheme: null,
+                   elevationDiff: 0)
         {
         }
 
@@ -135,7 +142,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             RoadCrownProfile crownProfile,
             RoadSurfaceLayer surfaceLayer,
             int laneCount,
-            StructureLayerScheme structureScheme = null)
+            StructureLayerScheme structureScheme = null,
+            double elevationDiff = 0)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("条带名称不能为空。", nameof(name));
             if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0)
@@ -159,6 +167,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             SurfaceLayer = surfaceLayer;
             LaneCount = laneCount;
             StructureScheme = structureScheme;
+            ElevationDiff = elevationDiff;
         }
 
         // ==================================== With* 方法 ====================================
@@ -166,54 +175,58 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         /// <summary>返回相同字段、只改变宽度的新条带。</summary>
         public CrossSectionBand WithWidth(double width)
-            => new CrossSectionBand(Name, Kind, width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变横坡的新条带。</summary>
         public CrossSectionBand WithSlope(double crossSlopePct)
-            => new CrossSectionBand(Name, Kind, Width, crossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, crossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变类型的新条带（横坡不变）。</summary>
         public CrossSectionBand WithKind(TemplateComponentKind kind)
-            => new CrossSectionBand(Name, kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变侧别的新条带（镜像时用）。</summary>
         public CrossSectionBand WithSide(BandSide side)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变名称的新条带。</summary>
         public CrossSectionBand WithName(string name)
-            => new CrossSectionBand(name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变外侧路牙规格的新条带。</summary>
         public CrossSectionBand WithOuterKerb(KerbSpec kerb)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, kerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, kerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变内侧路牙规格的新条带。</summary>
         public CrossSectionBand WithInnerKerb(KerbSpec kerb)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, kerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, kerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变坡型的新条带。</summary>
         public CrossSectionBand WithSlopeType(RoadSlopeType slopeType)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, slopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, slopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变路拱形式的新条带。</summary>
         public CrossSectionBand WithCrownProfile(RoadCrownProfile crownProfile)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, crownProfile, SurfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, crownProfile, SurfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变路面结构的新条带。</summary>
         public CrossSectionBand WithSurfaceLayer(RoadSurfaceLayer surfaceLayer)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, surfaceLayer, LaneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, surfaceLayer, LaneCount, StructureScheme, ElevationDiff);
 
         /// <summary>返回相同字段、只改变车道数的新条带。</summary>
         public CrossSectionBand WithLaneCount(int laneCount)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, laneCount, StructureScheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, laneCount, StructureScheme, ElevationDiff);
 
         /// <summary>
         /// 返回相同字段、只改变 <see cref="StructureScheme"/> 的新条带。
         /// 传 <c>null</c> 清除当前方案（例如切到绿化带 / 中分带时）。
         /// </summary>
         public CrossSectionBand WithStructureScheme(StructureLayerScheme scheme)
-            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, scheme);
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, scheme, ElevationDiff);
+
+        /// <summary>返回相同字段、只改变衔接高差的新条带。</summary>
+        public CrossSectionBand WithElevationDiff(double elevationDiff)
+            => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, StructureScheme, elevationDiff);
 
         // ==================================== 简化工厂 ====================================
         //
@@ -229,7 +242,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         public static CrossSectionBand LaneWithCurb(double width, double slopePct = 1.5, BandSide side = BandSide.Left, string name = "机动车道")
             => new CrossSectionBand(name, TemplateComponentKind.Pavement, width, slopePct, side,
                                     KerbSpec.DefaultCurb(), KerbSpec.None,
-                                    RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.PavementSurface, 1);
+                                    RoadSlopeType.Single, RoadCrownProfile.Linear, RoadSurfaceLayer.PavementSurface, 1, null, 0);
 
         /// <summary>非机动车道（默认 1.5% 横坡）。</summary>
         public static CrossSectionBand NonMotor(double width, double slopePct = 1.5, BandSide side = BandSide.Left, string name = "非机动车道")
@@ -263,7 +276,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                && CrownProfile == other.CrownProfile
                && SurfaceLayer == other.SurfaceLayer
                && LaneCount == other.LaneCount
-               && ReferenceEquals(StructureScheme, other.StructureScheme);
+               && ReferenceEquals(StructureScheme, other.StructureScheme)
+               && ElevationDiff.Equals(other.ElevationDiff);
 
         public override bool Equals(object obj) => obj is CrossSectionBand b && Equals(b);
 
@@ -284,6 +298,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 h = (h * 397) ^ LaneCount;
                 // StructureScheme 按引用参与 hash（方案是 Entity，Id 稳定但不比较内部 Layers）
                 h = (h * 397) ^ (StructureScheme?.Id.GetHashCode() ?? 0);
+                h = (h * 397) ^ ElevationDiff.GetHashCode();
                 return h;
             }
         }

@@ -50,6 +50,47 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         }
 
         /// <summary>
+        /// 获取当前单位因子（paper-mm → model-unit）。
+        /// 优先取活动文档的设置；拿不到时回退到全局活动比例上下文。
+        /// </summary>
+        public static double GetCurrentUnitFactor()
+        {
+            try
+            {
+                var vm = Presentation.ViewModels.SettingsPanelViewModel.Current;
+                if (vm != null)
+                {
+                    double unitFactor = vm.BuildScaleContext().UnitFactor;
+                    if (unitFactor > 0)
+                        return unitFactor;
+                }
+            }
+            catch
+            {
+            }
+
+            var fallback = ActiveScaleContextProvider.Current;
+            return fallback != null && fallback.UnitFactor > 0 ? fallback.UnitFactor : 1.0;
+        }
+
+        /// <summary>
+        /// 把纸面 mm 基值换算为当前图纸模型空间长度。
+        /// 统一规则：model = paper_mm × unitFactor × scale。
+        /// </summary>
+        public static double ToModelLength(double paperMillimeters, double scale)
+        {
+            return paperMillimeters * scale * GetCurrentUnitFactor();
+        }
+
+        /// <summary>
+        /// 把当前图纸模型空间高差换算为标高文字值（单位：m）。
+        /// </summary>
+        public static double ToElevationMeters(double modelDelta)
+        {
+            return modelDelta / GetCurrentUnitFactor() / 1000.0;
+        }
+
+        /// <summary>
         /// 从用户选择构建符号字典
         /// 键: Tuple(Shape ObjectId, Shape1 ObjectId)  值: Text ObjectId
         /// </summary>
@@ -169,8 +210,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     if (shape != null && text != null && shape.NumberOfVertices >= 3)
                     {
                         Point3d refPoint = shape.GetPoint3dAt(2);
-                        double elevation = (refPoint.Y - newBasePoint.Y) / 1000.0;
-                        text.TextString = Math.Abs(refPoint.Y - newBasePoint.Y) < 0.001
+                        double deltaY = refPoint.Y - newBasePoint.Y;
+                        double elevation = ToElevationMeters(deltaY);
+                        text.TextString = Math.Abs(elevation) <= 0.001
                             ? $"±{elevation:F3}"
                             : $"{elevation:F3}";
                     }
@@ -224,9 +266,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         public static Point3d CalculateCurrentPointFromText(
             Point3d textPosition, double scale, double d, double angleRadians)
         {
+            double paperToModelScale = ToModelLength(1.0, scale);
             double sqrt2 = Math.Sqrt(2) / 2 * d;
-            double offsetX = 0.909585 * sqrt2 * scale;
-            double offsetY = -1.57695 * sqrt2 * scale;
+            double offsetX = 0.909585 * sqrt2 * paperToModelScale;
+            double offsetY = -1.57695 * sqrt2 * paperToModelScale;
             return new Point3d(textPosition.X + offsetX, textPosition.Y + offsetY, 0);
         }
 
@@ -238,7 +281,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string styleName = vm != null ? vm.TextStyleName : "0_Hy_40";
             string fontName = vm != null ? vm.FontFileName : "tssdeng.shx";
             string bigFontName = vm != null ? vm.BigFontFileName : "hztxt.shx";
-            double textHeight = (vm != null ? vm.TextSize : 2.5) * (vm != null ? vm.Scale : 40.0);
+            double scale = vm != null ? vm.Scale : ActiveScaleContextProvider.Current.MainScale;
+            double textHeight = (vm != null ? vm.TextSize : 2.5) * GetCurrentUnitFactor() * scale;
             double widthFactor = vm != null ? vm.TextXScale : 0.7;
 
             ObjectId styleId = ObjectId.Null;
