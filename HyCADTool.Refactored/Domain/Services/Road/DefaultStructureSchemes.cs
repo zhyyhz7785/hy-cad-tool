@@ -40,47 +40,63 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             }
         }
 
-        /// <summary>机动车道默认：面层×1(4cm) + 基层×2(20+20cm) + 垫层×1(15cm)。</summary>
-        public static StructureLayerScheme CreatePavement()
+        /// <summary>机动车道默认：多面层 + 多基层 + 单垫层（rCs v2 用户约定）。</summary>
+        public static StructureLayerScheme CreatePavement() => CreateMotorizedFamily("机动车道(默认)");
+
+        /// <summary>非机动车道默认：与机动车道同构。</summary>
+        public static StructureLayerScheme CreateNonMotor() => CreateMotorizedFamily("非机动车道(默认)");
+
+        /// <summary>人行道默认：与机动车道同构（用户要求「同机动车道」）。</summary>
+        public static StructureLayerScheme CreateSidewalk() => CreateMotorizedFamily("人行道(默认)");
+
+        private static StructureLayerScheme CreateMotorizedFamily(string schemeName)
             => new StructureLayerScheme
             {
-                Name = "机动车道(默认)",
+                Name = schemeName,
                 IsBuiltIn = true,
                 Layers = new List<StructureLayer>
                 {
-                    new StructureLayer { Name = "细粒式沥青混凝土", LayerKind = StructureLayerKind.Surface, ThicknessCm = 4, FillMaterial = "细粒式沥青混凝土", PatternName = "ANSI37" },
-                    new StructureLayer { Name = "水泥稳定碎石基层", LayerKind = StructureLayerKind.Base, ThicknessCm = 20, FillMaterial = "水泥稳定碎石", PatternName = "ANSI31" },
-                    new StructureLayer { Name = "水泥稳定碎石下基层", LayerKind = StructureLayerKind.Base, ThicknessCm = 20, FillMaterial = "水泥稳定碎石", PatternName = "ANSI31" },
-                    new StructureLayer { Name = "天然砂砾垫层", LayerKind = StructureLayerKind.Subbase, ThicknessCm = 15, FillMaterial = "天然砂砾", PatternName = "AR-SAND" },
+                    S("细粒式SBS改性沥青混凝土(AC-13C)", StructureLayerKind.Surface, 4, "ANSI37"),
+                    S("粘层油(PC-3)", StructureLayerKind.Surface, 0, "ANSI36"),
+                    S("中粒式沥青混凝土(AC-16C)", StructureLayerKind.Surface, 8, "ANSI37"),
+                    S("粗粒式沥青混凝土AC-25C", StructureLayerKind.Surface, 8, "ANSI37"),
+                    S("乳化沥青稀浆封层(ES-3)", StructureLayerKind.Surface, 1, "AR-CONC"),
+                    S("透层油(AL(M)-2)", StructureLayerKind.Surface, 0, "AR-CONC"),
+                    B("水泥稳定碎石(5.0%)", 18, "ANSI31"),
+                    B("水泥稳定碎石(4.5%)", 18, "ANSI31"),
+                    B("14%灰土", 15, "AR-SAND"),
+                    B("12%灰土", 15, "AR-SAND"),
+                    new StructureLayer
+                    {
+                        Name = "路基处理8%灰土",
+                        LayerKind = StructureLayerKind.Subbase,
+                        ThicknessCm = 15,
+                        FillMaterial = "路基处理8%灰土",
+                        PatternName = "AR-SAND",
+                    },
                 },
             };
 
-        /// <summary>非机动车道默认：面层×1(3cm) + 基层×1(15cm) + 垫层×1(10cm)。</summary>
-        public static StructureLayerScheme CreateNonMotor()
-            => new StructureLayerScheme
+        private static StructureLayer S(string name, StructureLayerKind kind, double cm, string pattern)
+        {
+            return new StructureLayer
             {
-                Name = "非机动车道(默认)",
-                IsBuiltIn = true,
-                Layers = new List<StructureLayer>
-                {
-                    new StructureLayer { Name = "细粒式沥青混凝土", LayerKind = StructureLayerKind.Surface, ThicknessCm = 3, FillMaterial = "细粒式沥青混凝土", PatternName = "ANSI37" },
-                    new StructureLayer { Name = "水泥稳定碎石", LayerKind = StructureLayerKind.Base, ThicknessCm = 15, FillMaterial = "水泥稳定碎石", PatternName = "ANSI31" },
-                    new StructureLayer { Name = "天然砂砾垫层", LayerKind = StructureLayerKind.Subbase, ThicknessCm = 10, FillMaterial = "天然砂砾", PatternName = "AR-SAND" },
-                },
+                Name = name,
+                LayerKind = kind,
+                ThicknessCm = cm,
+                FillMaterial = name,
+                PatternName = pattern,
             };
+        }
 
-        /// <summary>人行道默认：面层×1(6cm 人行道砖) + 基层×1(10cm) + 垫层×1(5cm)。</summary>
-        public static StructureLayerScheme CreateSidewalk()
-            => new StructureLayerScheme
+        private static StructureLayer B(string name, double cm, string pattern) =>
+            new StructureLayer
             {
-                Name = "人行道(默认)",
-                IsBuiltIn = true,
-                Layers = new List<StructureLayer>
-                {
-                    new StructureLayer { Name = "人行道砖", LayerKind = StructureLayerKind.Surface, ThicknessCm = 6, FillMaterial = "人行道砖", PatternName = "AR-BRELM" },
-                    new StructureLayer { Name = "水泥砂浆找平", LayerKind = StructureLayerKind.Base, ThicknessCm = 10, FillMaterial = "水泥砂浆", PatternName = "AR-CONC" },
-                    new StructureLayer { Name = "天然砂砾垫层", LayerKind = StructureLayerKind.Subbase, ThicknessCm = 5, FillMaterial = "天然砂砾", PatternName = "AR-SAND" },
-                },
+                Name = name,
+                LayerKind = StructureLayerKind.Base,
+                ThicknessCm = cm,
+                FillMaterial = name,
+                PatternName = pattern,
             };
     }
 }

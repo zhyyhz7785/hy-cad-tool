@@ -27,6 +27,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     public static class CrossSectionLayoutBuilder
     {
         private const string ElevationDiffKey = "ElevationDiff";
+        private const string InnerElevationDiffKey = "InnerElevationDiff";
         /// <summary>
         /// 比较两条带"从中心向外扫描"时 y 偏移时的符号：
         /// 返回 -1 表示外侧 y 比内侧 y 低（路面类）；返回 0 表示水平。
@@ -89,6 +90,12 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var leftSegKinds = new List<(TemplateComponentKind Kind, string Name)>(leftKindCount);
 
             // 从内向外遍历，逐步更新 (xL, yL)；每段对应一个"外缘点"。
+            // 备注：InnerElevationDiff / ElevationDiff 刻意不并入 yL，
+            //      Template 保持"无跳变的 slope 积分"持久化形态，
+            //      高差跳变仅通过 ExtendedData 承载，
+            //      几何消费端（GenerateStrips）再加回来。这样：
+            //      a) ToTemplate ↔ FromTemplate 能稳定 roundtrip（slope 由 dy/w 反推，不被跳变干扰）；
+            //      b) 旧 Template JSON（无新键）加载出 InnerElevationDiff = 0，行为与旧版 bit-identical。
             foreach (var band in layout.LeftBands)
             {
                 double sign = SlopeSign(band.Kind);
@@ -96,7 +103,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 double dy = band.Width * (band.CrossSlopePct / 100.0) * sign;
                 xL += dx;
                 yL += dy;
-                leftOuterToInner.Add(MakePoint(xL, yL, band.Name + "外缘", band.ElevationDiff));
+                leftOuterToInner.Add(MakePoint(xL, yL, band.Name + "外缘",
+                                               band.ElevationDiff, band.InnerElevationDiff));
                 leftSegKinds.Add((band.Kind, band.Name));
             }
             // 反转成"最外 → 中心"顺序
@@ -116,7 +124,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 double dy = band.Width * (band.CrossSlopePct / 100.0) * sign;
                 xR += dx;
                 yR += dy;
-                rightOuterList.Add(MakePoint(xR, yR, band.Name + "外缘", band.ElevationDiff));
+                rightOuterList.Add(MakePoint(xR, yR, band.Name + "外缘",
+                                             band.ElevationDiff, band.InnerElevationDiff));
                 rightSegKinds.Add((band.Kind, band.Name));
             }
 
@@ -189,7 +198,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             return tpl;
         }
 
-        private static TemplatePoint MakePoint(double x, double y, string name, double elevationDiff = 0)
+        private static TemplatePoint MakePoint(double x, double y, string name,
+            double elevationDiff = 0, double innerElevationDiff = 0)
         {
             var point = new TemplatePoint
             {
@@ -200,6 +210,10 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             if (Math.Abs(elevationDiff) > 1e-9)
             {
                 point.ExtendedData[ElevationDiffKey] = elevationDiff.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            if (Math.Abs(innerElevationDiff) > 1e-9)
+            {
+                point.ExtendedData[InnerElevationDiffKey] = innerElevationDiff.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
             }
             return point;
         }
@@ -309,7 +323,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 leftBandsFromOuter.Add(new CrossSectionBand(
                     CleanBandName(p1.Name ?? p0.Name, prefix: ""),
                     kind, w, slopePct, BandSide.Left)
-                    .WithElevationDiff(ReadElevationDiff(p0)));
+                    .WithElevationDiff(ReadElevationDiff(p0))
+                    .WithInnerElevationDiff(ReadInnerElevationDiff(p0)));
             }
             // 反转成"从中心向外"
             leftBandsFromOuter.Reverse();
@@ -336,7 +351,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 rightBandsFromInner.Add(new CrossSectionBand(
                     CleanBandName(p1.Name ?? p0.Name, prefix: ""),
                     kind, w, slopePct, BandSide.Right)
-                    .WithElevationDiff(ReadElevationDiff(p1)));
+                    .WithElevationDiff(ReadElevationDiff(p1))
+                    .WithInnerElevationDiff(ReadInnerElevationDiff(p1)));
             }
 
             try
@@ -423,7 +439,11 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var leftPlacements = new StripPlacement[leftStrips.Count];
             var rightPlacements = new StripPlacement[rightStrips.Count];
 
-            // 左半反向：strip[N-1] (最外) 先放，strip[0] (最内) 最后放
+            // 左半反向：strip[N-1] (最外) 先放，strip[0] (最内) 最后放。
+            // 汇编后的 vertex 方向 = 外 → 内。
+            // 当两条相邻带之间存在高差跳变（前一带 ElevationDiff + 本带 InnerElevationDiff ≠ 0）时，
+            // 需要在"本带（更外）outer-写完之后、下一带（更内）outer-开始写之前"插一个 **"本带内缘顶点"**
+            //（位置 = geo.StartX/StartY，已含跳变的抬/落后 y），否则折线会把两端直接斜连成三角形。
             for (int s = leftStrips.Count - 1; s >= 0; s--)
             {
                 var geo = leftStrips[s];
@@ -437,11 +457,40 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     vertices.Add(new FigureVertex(bv.X, bv.Y, bv.Name));
                 }
 
+                // 内缘跳变顶点：与下一段（更内）的"外缘落点"对比
+                // s > 0：下一段是 leftStrips[s-1]，其"外缘"落点 = geo_(s-1).NextInnerX/Y
+                // s = 0：下一"段"是中心，落点 (xLeftInner, 0)
+                double nextX, nextY;
+                if (s > 0)
+                {
+                    var innerGeo = leftStrips[s - 1];
+                    nextX = innerGeo.NextInnerX;
+                    nextY = innerGeo.NextInnerY;
+                }
+                else
+                {
+                    nextX = xLeftInner;
+                    nextY = 0;
+                }
+
+                int placementInnerIdx;
+                bool hasInnerJump = Math.Abs(nextX - geo.StartX) > 1e-9 || Math.Abs(nextY - geo.StartY) > 1e-9;
+                if (hasInnerJump)
+                {
+                    vertices.Add(new FigureVertex(geo.StartX, geo.StartY, layout.LeftBands[s].Name + "内缘"));
+                    placementInnerIdx = vertices.Count - 1;
+                }
+                else
+                {
+                    // 与下一段 outer（或中心）共点：占位 -1，循环结束后统一回填为那一侧的 index
+                    placementInnerIdx = -1;
+                }
+
                 leftPlacements[s] = new StripPlacement
                 {
                     OuterVertexIndex = placementOuterIdx,
                     SurfaceOuterVertexIndex = placementSurfaceIdx,
-                    InnerVertexIndex = vertices.Count, // 暂占位，下一行写完中心后回填或下次循环覆写
+                    InnerVertexIndex = placementInnerIdx,
                     HasOuterKerb = geo.HasOuterKerb,
                 };
             }
@@ -449,14 +498,15 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             // 中心左
             int centerLeftIndex = vertices.Count;
             vertices.Add(new FigureVertex(xLeftInner, 0, "中心左"));
-            // 左半 strip[0] 的 InnerVertexIndex = 中心左
-            // 左半 strip[s] 的 InnerVertexIndex = strip[s-1] 的 OuterVertexIndex
+            // 回填左半 InnerVertexIndex 占位（-1）：strip[0] → 中心左；strip[s>0] → strip[s-1] 的 OuterVertexIndex
             if (leftStrips.Count > 0)
             {
-                leftPlacements[0].InnerVertexIndex = centerLeftIndex;
+                if (leftPlacements[0].InnerVertexIndex < 0)
+                    leftPlacements[0].InnerVertexIndex = centerLeftIndex;
                 for (int s = 1; s < leftStrips.Count; s++)
                 {
-                    leftPlacements[s].InnerVertexIndex = leftPlacements[s - 1].OuterVertexIndex;
+                    if (leftPlacements[s].InnerVertexIndex < 0)
+                        leftPlacements[s].InnerVertexIndex = leftPlacements[s - 1].OuterVertexIndex;
                 }
             }
 
@@ -467,11 +517,27 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 vertices.Add(new FigureVertex(xRightInner, 0, "中心右"));
             }
 
-            // 右半正向：strip[0] 先放
+            // 右半正向：strip[0] 先放；汇编方向 = 内 → 外。
+            // 与左半对称：在每段"outer 顶点写入前"，如果与上一段外缘（或中心）存在 X/Y 跳变，
+            // 就先吐一个"本段内缘顶点"使跳变表现为真正的竖直段。
             for (int s = 0; s < rightStrips.Count; s++)
             {
                 var geo = rightStrips[s];
-                int placementInnerIdx = s == 0 ? centerRightIndex : rightPlacements[s - 1].OuterVertexIndex;
+                int prevRefIdx = s == 0 ? centerRightIndex : rightPlacements[s - 1].OuterVertexIndex;
+                var prevRef = vertices[prevRefIdx];
+                bool hasInnerJump = Math.Abs(prevRef.X - geo.StartX) > 1e-9 || Math.Abs(prevRef.Y - geo.StartY) > 1e-9;
+
+                int placementInnerIdx;
+                if (hasInnerJump)
+                {
+                    vertices.Add(new FigureVertex(geo.StartX, geo.StartY, layout.RightBands[s].Name + "内缘"));
+                    placementInnerIdx = vertices.Count - 1;
+                }
+                else
+                {
+                    placementInnerIdx = prevRefIdx;
+                }
+
                 int firstWrittenIdx = vertices.Count;
                 int placementSurfaceIdx = firstWrittenIdx + geo.SurfaceOuterIndex;
 
@@ -601,6 +667,9 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             double sx = startX, sy = startY;
             foreach (var band in bands)
             {
+                // 本条带"内端"跳变：在生成该板块前先叠加 InnerElevationDiff，
+                // 让 GenerateBand 从抬/落后的内缘起步；外端跳变仍由下一轮的 sy += ElevationDiff 承担。
+                sy += band.InnerElevationDiff;
                 var geo = CrossSectionGeometryGenerator.GenerateBand(sx, sy, band, side);
                 list.Add(geo);
                 sx = geo.NextInnerX;
@@ -610,9 +679,15 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         private static double ReadElevationDiff(TemplatePoint point)
+            => ReadExtendedDouble(point, ElevationDiffKey);
+
+        private static double ReadInnerElevationDiff(TemplatePoint point)
+            => ReadExtendedDouble(point, InnerElevationDiffKey);
+
+        private static double ReadExtendedDouble(TemplatePoint point, string key)
         {
             if (point?.ExtendedData == null) return 0;
-            if (!point.ExtendedData.TryGetValue(ElevationDiffKey, out var raw)) return 0;
+            if (!point.ExtendedData.TryGetValue(key, out var raw)) return 0;
             if (string.IsNullOrWhiteSpace(raw)) return 0;
             return double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)
                 ? value

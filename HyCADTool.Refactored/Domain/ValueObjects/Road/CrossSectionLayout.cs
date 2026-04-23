@@ -73,6 +73,9 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// </summary>
         public double StationEnd { get; }
 
+        /// <summary>除 <see cref="StationStart"/>/<see cref="StationEnd"/> 外的附加桩号区间（与主段并列，多段时用于绑定多套断面）。</summary>
+        public IReadOnlyList<StationRangeSpan> AdditionalStationRanges { get; }
+
         private CrossSectionLayout(
             IReadOnlyList<CrossSectionBand> leftBands,
             IReadOnlyList<CrossSectionBand> rightBands,
@@ -84,7 +87,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             double profileElevationOffset,
             bool isEmptyAssembly,
             double stationStart,
-            double stationEnd)
+            double stationEnd,
+            IReadOnlyList<StationRangeSpan> additionalStationRanges)
         {
             LeftBands = leftBands;
             RightBands = rightBands;
@@ -97,6 +101,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             IsEmptyAssembly = isEmptyAssembly;
             StationStart = stationStart;
             StationEnd = stationEnd;
+            AdditionalStationRanges = additionalStationRanges ?? Array.Empty<StationRangeSpan>();
         }
 
         /// <summary>
@@ -121,7 +126,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             double profileElevationOffset = 0,
             bool isEmptyAssembly = false,
             double stationStart = 0,
-            double stationEnd = 0)
+            double stationEnd = 0,
+            IReadOnlyList<StationRangeSpan> additionalStationRanges = null)
         {
             if (leftBands == null) throw new ArgumentNullException(nameof(leftBands));
             if (rightBands == null) throw new ArgumentNullException(nameof(rightBands));
@@ -161,7 +167,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             return new CrossSectionLayout(
                 left.AsReadOnly(), right.AsReadOnly(),
                 centerMedianWidth, designSpeed, scaleDenominator, title,
-                resolvedCenterline, profileElevationOffset, isEmptyAssembly, stationStart, stationEnd);
+                resolvedCenterline, profileElevationOffset, isEmptyAssembly, stationStart, stationEnd,
+                additionalStationRanges);
         }
 
         // ==================================== 计算属性 ====================================
@@ -202,44 +209,48 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         public CrossSectionLayout WithLeftBands(IReadOnlyList<CrossSectionBand> leftBands)
             => Create(leftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
                       double.NaN /* 让中心线随新左半宽自动重算 */,
-                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithRightBands(IReadOnlyList<CrossSectionBand> rightBands)
             => Create(LeftBands, rightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithCenterMedianWidth(double w)
             => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title,
                       double.NaN /* 中分带宽变了，中心线重算 */,
-                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithDesignSpeed(int speed)
             => Create(LeftBands, RightBands, CenterMedianWidth, speed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithScale(int denom)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, denom, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithTitle(string title)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithCenterlinePosition(double centerlinePosition)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      centerlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd);
+                      centerlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithProfileElevationOffset(double offset)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, offset, IsEmptyAssembly, StationStart, StationEnd);
+                      CenterlinePosition, offset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithIsEmptyAssembly(bool isEmpty)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, isEmpty, StationStart, StationEnd);
+                      CenterlinePosition, ProfileElevationOffset, isEmpty, StationStart, StationEnd, AdditionalStationRanges);
 
         public CrossSectionLayout WithStations(double stationStart, double stationEnd)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, AdditionalStationRanges);
+
+        public CrossSectionLayout WithStationRanges(double stationStart, double stationEnd, IReadOnlyList<StationRangeSpan> additional)
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, additional);
 
         public override string ToString()
             => $"CrossSectionLayout[TotalWidth={TotalWidth:F3}m, Speed={DesignSpeed}km/h, Scale=1:{ScaleDenominator}]";

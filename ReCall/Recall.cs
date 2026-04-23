@@ -387,12 +387,21 @@ namespace HyCADTool.ReCall
             }
         }
 
+        /// <summary>
+        /// 三连段路幅（独立）→ <c>commands.json</c> 键 <c>hySeg3</c>。
+        /// 注册在 <see cref="ReCallClass"/>：与 <c>C2</c> 同属 NETLOAD 的 ReCall.dll，重装本 DLL 后即识别；
+        /// 勿在 <see cref="CommandFacade"/> 再挂同名 <c>CommandMethod</c>，以免重复定义。
+        /// </summary>
+        [CommandMethod("HYSEG3")]
+        [CommandMethod("hySeg3")]
+        public void HySeg3() => Invoke("hySeg3");
+
         #endregion
 
         #region ========== Invoke（命令表调度） ==========
 
         /// <summary>
-        /// 被 <see cref="CommandFacade"/> 里所有业务 <c>[CommandMethod]</c> 调用的统一入口。
+        /// 被 <see cref="CommandFacade"/> 与 <see cref="ReCallClass"/> 上各 <c>[CommandMethod]</c> 转发的统一入口。
         /// 1) 确保 Refactored 已加载（未加载提示 C2）
         /// 2) 处理 <c>_HyExec</c> 特殊分支（面板按钮待执行命令）
         /// 3) 查命令表获得 <see cref="CommandEntry"/>

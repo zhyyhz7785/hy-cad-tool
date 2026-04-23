@@ -53,6 +53,7 @@ namespace HyCADTool.ReCall
                 ["hyRoadSave"] = "rSv",
                 ["hyRoadLoad"] = "rLd",
                 ["hyRoad3dExportGltf"] = "rGf",
+                ["hyRoadSeg3"] = "r3s",
                 // 045 / M6：项目树
                 ["hyRoadTree"] = "rTree",
             };

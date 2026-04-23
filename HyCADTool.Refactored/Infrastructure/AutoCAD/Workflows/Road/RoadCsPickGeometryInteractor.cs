@@ -18,6 +18,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
             public double SlopePct { get; set; }
             public double ThicknessCm { get; set; }
             public double ElevationDiff { get; set; }
+            /// <summary>拾取实体的当前图层名（用于 rCs 属性面板回显）。</summary>
+            public string EntityLayer { get; set; }
         }
 
         public static PickResult PickAndExtract(TemplateComponentKind kind)
@@ -59,6 +61,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
                 SlopePct = extracted.Band.CrossSlopePct,
                 ThicknessCm = extracted.ThicknessCm,
                 ElevationDiff = extracted.ElevationDiff,
+                EntityLayer = polyline.Layer,
             };
         }
 

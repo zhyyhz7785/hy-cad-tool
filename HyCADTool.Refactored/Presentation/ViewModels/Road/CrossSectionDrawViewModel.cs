@@ -11,6 +11,7 @@ using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 {
@@ -55,6 +56,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                     OnPropertyChanged(nameof(SelectedSideLabel));
                     SyncTreeSelection();
                     (PickBandGeometryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (CopySelectedBandCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RemoveBandCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
                 else if (e.PropertyName == nameof(CenterMedianWidth))
                 {
@@ -63,6 +66,128 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             };
 
             UpdateStatus(LastFigure);
+            AfterCrossSectionShellReady();
+        }
+
+        private bool _scaleSync;
+        private bool _isSubscribedToSettings;
+        private string _lastPickedEntityLayer = string.Empty;
+
+        /// <summary>最近一次从图形拾取到的实体所在图层；未拾取时为空串。</summary>
+        public string LastPickedEntityLayer
+        {
+            get => _lastPickedEntityLayer;
+            set => SetProperty(ref _lastPickedEntityLayer, value ?? string.Empty);
+        }
+
+        private void AfterCrossSectionShellReady()
+        {
+            TryWireDrawingScaleToSettings();
+            TryApplyDefaultStationRangeForActiveRoute();
+            PropertyChanged += OnThisPropertyChanged;
+        }
+
+        private void OnThisPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e?.PropertyName == nameof(ScaleDenominator) && !_scaleSync)
+            {
+                OnDrawingScaleChangedFromPropertyPanel();
+            }
+        }
+
+        private void TryWireDrawingScaleToSettings()
+        {
+            if (_isSubscribedToSettings) return;
+            var s = ViewModels.SettingsPanelViewModel.Current;
+            if (s == null) return;
+            int denom = (int)Math.Round(s.Scale);
+            if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
+            s.PropertyChanged += OnHySettingsPropertyChanged;
+            _isSubscribedToSettings = true;
+        }
+
+        private void OnHySettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e?.PropertyName != nameof(ViewModels.SettingsPanelViewModel.Scale)) return;
+            if (_scaleSync) return;
+            if (!(sender is ViewModels.SettingsPanelViewModel s)) return;
+            int denom = (int)Math.Round(s.Scale);
+            if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
+        }
+
+        private void ApplyScaleFromExternal(int scaleDenominator, bool pushBackToSettings)
+        {
+            if (scaleDenominator <= 0) return;
+            _scaleSync = true;
+            try
+            {
+                if (ScaleDenominator != scaleDenominator)
+                {
+                    ScaleDenominator = scaleDenominator;
+                }
+                if (pushBackToSettings)
+                {
+                    var s = ViewModels.SettingsPanelViewModel.Current;
+                    if (s != null && Math.Abs(s.Scale - scaleDenominator) > 0.1)
+                    {
+                        s.Scale = scaleDenominator;
+                    }
+                }
+            }
+            finally
+            {
+                _scaleSync = false;
+            }
+        }
+
+        /// <summary>属性面板或 Hy 侧修改比例时调用：与设置面板 <see cref="ViewModels.SettingsPanelViewModel.Scale"/> 对齐。</summary>
+        public void OnDrawingScaleChangedFromPropertyPanel()
+        {
+            if (_scaleSync) return;
+            TryWireDrawingScaleToSettings();
+            ApplyScaleFromExternal(ScaleDenominator, pushBackToSettings: true);
+        }
+
+        private void TryApplyDefaultStationRangeForActiveRoute()
+        {
+            double? len;
+            try
+            {
+                len = TryGetFirstAlignmentLengthMeters();
+            }
+            catch
+            {
+                return;
+            }
+            ApplyDefaultStationByRouteLength(len);
+        }
+
+        private static double? TryGetFirstAlignmentLengthMeters()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return null;
+            var reg = HyCADTool.Refactored.Infrastructure.Configuration.ServiceLocator
+                .Resolve<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadDesignRegistry>();
+            if (!reg.TryGet(doc.Name, out var design) || design?.Alignments == null || design.Alignments.Count == 0)
+                return null;
+            var a = design.Alignments[0];
+            if (a?.Centerline == null) return null;
+            double m = a.Centerline.GetPlanarLength();
+            return m > 1e-6 ? m : (double?)null;
+        }
+
+        /// <summary>无有效路线时首段 0~0；有路线时首段 0~路线长（若当前尚未改动默认）。</summary>
+        public void ApplyDefaultStationByRouteLength(double? routeLengthMeters)
+        {
+            if (StationRangeRows == null || StationRangeRows.Count == 0) return;
+            if (routeLengthMeters is double l && l > 1e-3)
+            {
+                var r0 = StationRangeRows[0];
+                if (Math.Abs(r0.StartM) < 1e-3 && Math.Abs(r0.EndM) < 1e-3)
+                {
+                    r0.EndM = l;
+                }
+            }
         }
 
         /// <summary>

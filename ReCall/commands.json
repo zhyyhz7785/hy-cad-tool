@@ -78,6 +78,7 @@
         "HYDCEL":   { "type": "HyCADTool.Refactored.Presentation.Commands.DCELCommand",         "method": "Execute", "category": "杂项", "displayName": "DCEL",        "tooltip": "DCEL 闭合区域分析（HYDCEL）",   "order": 80 },
         "HYDCELSET":{ "type": "HyCADTool.Refactored.Presentation.Commands.DCELSettingsCommand", "method": "Execute", "category": "杂项", "displayName": "DCEL 设置",   "tooltip": "DCEL 设置（HYDCELSET）",         "order": 85 },
         "HY3":      { "type": "HyCADTool.Refactored.Presentation.Commands.Elevation3DCommand",  "method": "Execute", "category": "杂项", "displayName": "3D 标高",     "tooltip": "3D 标高（HY3）",                 "order": 90 },
+        "hySeg3":   { "type": "HyCADTool.Refactored.Presentation.Commands.StandaloneThreeSegmentChainCommand", "method": "Execute", "category": "杂项", "displayName": "三连段路幅(独立)", "tooltip": "只拾取起点 P0，其余由段长+方位角+转角算出；当前层 9 条 3D 线（hySeg3 / HYSEG3）", "order": 95 },
 
         "HYpile":   { "type": "HyCADTool.Refactored.Presentation.Commands.DrawPilesCommand",               "method": "Execute", "category": "桩基", "displayName": "绘制桩基",   "tooltip": "绘制桩基（HYpile）",               "order": 10 },
         "HYpileV":  { "type": "HyCADTool.Refactored.Presentation.Commands.PileVoronoiOptimizationCommand", "method": "Execute", "category": "桩基", "displayName": "Voronoi 优化", "tooltip": "Voronoi+Lloyd 桩位优化（HYpileV）", "order": 20 },
@@ -134,6 +135,7 @@
         "hyRoadSave":         { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadOpenJsonCommand",             "method": "Execute", "category": "道路", "roadPanelGroup": "工程", "displayName": "保存 JSON",      "tooltip": "保存道路 JSON（hyRoadSave）",          "order": 90 },
         "hyRoadLoad":         { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadImportJsonCommand",           "method": "Execute", "category": "道路", "roadPanelGroup": "工程", "displayName": "加载 JSON",      "tooltip": "加载道路 JSON（hyRoadLoad）",          "order": 100 },
         "hyRoad3dExportGltf": { "type": "HyCADTool.Refactored.Presentation.Commands.Road.Road3dExportGltfCommand",         "method": "Execute", "category": "道路", "roadPanelGroup": "工具", "displayName": "导出 glTF",      "tooltip": "导出 glTF 三维（hyRoad3dExportGltf）",  "order": 110 },
+        "hyRoadSeg3":         { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadThreeSegmentChainCommand",   "method": "Execute", "category": "道路", "roadPanelGroup": "工具", "displayName": "三连段路幅(演示)", "tooltip": "拾取 4 个中心折点，绘制 3+6 条 3D 线：宽 3.5 m/纵横坡 1.5%/B 段接头左+0.2 右−0.2 m（可改），hyRoadSeg3 = r3s",  "order": 111 },
 
         "hyRoadSnapshot":     { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadSnapshotCommand",             "method": "Execute", "category": "道路", "roadPanelGroup": "工程", "displayName": "保存还原点",    "tooltip": "创建数据还原点（hyRoadSnapshot，M6）", "order": 120 },
         "hyRoadHistory":      { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadHistoryCommand",              "method": "Execute", "category": "道路", "roadPanelGroup": "工程", "displayName": "数据还原",      "tooltip": "打开数据还原窗口（hyRoadHistory，M6）", "order": 121 },
@@ -158,7 +160,9 @@
 
         "N1":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentByPiCommand",   "method": "Execute", "_alias": "hyRoadAlnByPi 占位" },
         "N2":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadAlignmentEditPiCommand", "method": "Execute", "_alias": "hyRoadAlnEditPi 占位" },
-            "N3":  null, "N4":  null, "N5":  null,
+        "N3":  { "type": "HyCADTool.Refactored.Presentation.Commands.StandaloneThreeSegmentChainCommand", "method": "Execute", "category": "杂项", "displayName": "三连段路幅(N3)", "tooltip": "与 hySeg3 / HYSEG3 相同（仅换命令名；占位符 N3）", "order": 96 },
+        "N4":  { "type": "HyCADTool.Refactored.Presentation.Commands.Road.RoadThreeSegmentChainCommand", "method": "Execute", "category": "杂项", "displayName": "ABC 三段链(N4)", "tooltip": "XY 平面（X=里程 Y=高程）拾取一点画 a/b/c 三段，每段长 3.5 坡 1.5%，b 起点 Y +0.2 / b 终点 Y −0.2 跳变", "order": 97 },
+            "N5":  null,
         "N6":  null, "N7":  null, "N8":  null, "N9":  null, "N10": null,
         "N11": null, "N12": null, "N13": null, "N14": null, "N15": null,
         "N16": null, "N17": null, "N18": null, "N19": null, "N20": null,

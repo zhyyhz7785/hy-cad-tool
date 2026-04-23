@@ -286,6 +286,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 row.CrossSlopePct = result.SlopePct;
                 row.ElevationDiff = result.ElevationDiff;
                 RoadCsPickGeometryInteractor.DistributeThickness(row, result.ThicknessCm);
+                if (_vm != null) _vm.LastPickedEntityLayer = result.EntityLayer ?? string.Empty;
             }
             finally
             {

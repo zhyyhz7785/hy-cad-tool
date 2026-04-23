@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.Services.Road;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 {
@@ -232,7 +233,29 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public Guid Id { get; set; } = Guid.NewGuid();
 
         private string _name = string.Empty;
-        public string Name { get => _name; set { _name = value ?? string.Empty; OnPropertyChanged(); } }
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                var v = value ?? string.Empty;
+                if (_name == v) return;
+                _name = v;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(LayerHeaderDisplay));
+            }
+        }
+
+        /// <summary>Expander 标题：与填料同步，未填时退回名称。</summary>
+        public string LayerHeaderDisplay
+        {
+            get
+            {
+                var m = _fillMaterial?.Trim();
+                if (!string.IsNullOrEmpty(m)) return m;
+                return string.IsNullOrEmpty(_name) ? "（未命名）" : _name;
+            }
+        }
 
         private string _description = string.Empty;
         public string Description { get => _description; set { _description = value ?? string.Empty; OnPropertyChanged(); } }
@@ -256,7 +279,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public double RightSlope { get => _rightSlope; set { _rightSlope = value; OnPropertyChanged(); } }
 
         private string _fillMaterial = string.Empty;
-        public string FillMaterial { get => _fillMaterial; set { _fillMaterial = value ?? string.Empty; OnPropertyChanged(); } }
+        public string FillMaterial
+        {
+            get => _fillMaterial;
+            set
+            {
+                var v = value ?? string.Empty;
+                if (_fillMaterial == v) return;
+                _fillMaterial = v;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(LayerHeaderDisplay));
+                RoadMaterialFillPresets.EnsureInList(_layerKind, _fillMaterial);
+            }
+        }
 
         private string _patternName = string.Empty;
         public string PatternName { get => _patternName; set { _patternName = value ?? string.Empty; OnPropertyChanged(); } }

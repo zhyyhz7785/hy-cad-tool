@@ -31,8 +31,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// </summary>
     public class CrossSectionDesignerViewModel : INotifyPropertyChanged
     {
-        /// <summary>支持的比例尺分母（1:50 / 1:100 / 1:200）。</summary>
-        public static readonly IReadOnlyList<int> AvailableScales = new[] { 50, 100, 150, 200 };
+        /// <summary>支持的比例尺分母（与 Hy 主面板比例同语义，可扩展）。</summary>
+        public static readonly IReadOnlyList<int> AvailableScales = new[] { 40, 50, 75, 100, 150, 200, 500, 1000 };
 
         /// <summary>界面显示用小数位。</summary>
         public static readonly IReadOnlyList<int> AvailableDisplayPrecisions = new[] { 0, 1, 2, 3 };
@@ -144,6 +144,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 LoadLayout(p.Create());
             });
 
+            StationRangeRows = new ObservableCollection<StationRangeRowVm>();
+            StationRangeRows.CollectionChanged += OnStationRangeRowsCollectionChanged;
+            AddStationRangeCommand = new RelayCommand(AddExtraStationRow);
+            RemoveStationRangeCommand = new RelayCommand<StationRangeRowVm>(RemoveStationRow, CanRemoveStationRow);
+
             LoadLayout(initialLayout ?? CrossSectionPresets.CreateCjj37UrbanArterial());
         }
 
@@ -177,14 +182,60 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 SetProperty(ref _centerlinePosition, layout.CenterlinePosition, nameof(CenterlinePosition));
                 SetProperty(ref _profileElevationOffset, layout.ProfileElevationOffset, nameof(ProfileElevationOffset));
                 SetProperty(ref _isEmptyAssembly, layout.IsEmptyAssembly, nameof(IsEmptyAssembly));
-                SetProperty(ref _stationStart, layout.StationStart, nameof(StationStart));
-                SetProperty(ref _stationEnd, layout.StationEnd, nameof(StationEnd));
+                LoadStationRangeRowsFromLayout(layout);
             }
             finally
             {
                 _isBulkUpdating = false;
             }
             Recalculate();
+        }
+
+        private void OnStationRangeRowsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (_isBulkUpdating) return;
+            OnPropertyChanged(nameof(StationStart));
+            OnPropertyChanged(nameof(StationEnd));
+            Recalculate();
+        }
+
+        private void LoadStationRangeRowsFromLayout(CrossSectionLayout layout)
+        {
+            StationRangeRows.Clear();
+            StationRangeRows.Add(new StationRangeRowVm(this, layout.StationStart, layout.StationEnd));
+            if (layout.AdditionalStationRanges != null)
+            {
+                foreach (var a in layout.AdditionalStationRanges)
+                    StationRangeRows.Add(new StationRangeRowVm(this, a.StartM, a.EndM));
+            }
+        }
+
+        internal void NotifyStationRangeRowChanged(StationRangeRowVm row)
+        {
+            if (_isBulkUpdating) return;
+            if (StationRangeRows != null && StationRangeRows.Count > 0 && ReferenceEquals(StationRangeRows[0], row))
+            {
+                OnPropertyChanged(nameof(StationStart));
+                OnPropertyChanged(nameof(StationEnd));
+            }
+            Recalculate();
+        }
+
+        private void AddExtraStationRow()
+        {
+            var last = StationRangeRows.Count > 0 ? StationRangeRows[StationRangeRows.Count - 1] : null;
+            double s = last?.StartM ?? 0;
+            double t = last?.EndM ?? 0;
+            StationRangeRows.Add(new StationRangeRowVm(this, s, t));
+        }
+
+        private bool CanRemoveStationRow(StationRangeRowVm row)
+            => row != null && StationRangeRows.Count > 1;
+
+        private void RemoveStationRow(StationRangeRowVm row)
+        {
+            if (!CanRemoveStationRow(row)) return;
+            StationRangeRows.Remove(row);
         }
 
         private BandRowViewModel Wrap(CrossSectionBand band) => new BandRowViewModel(band);
@@ -212,8 +263,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public BandRowViewModel SelectedBand
         {
             get => _selectedBand;
-            set { if (SetProperty(ref _selectedBand, value)) RaiseCommandsChanged(); }
+            set
+            {
+                if (!SetProperty(ref _selectedBand, value)) return;
+                OnPropertyChanged(nameof(HasSelectedBand));
+                OnPropertyChanged(nameof(ShowNonGreenSelectedBandContent));
+                RaiseCommandsChanged();
+            }
         }
+
+        public bool HasSelectedBand => _selectedBand != null;
+
+        /// <summary>非绿化带条带时显示：详细条带/路牙等属性；绿化带仅依赖大纲与「公共」。</summary>
+        public bool ShowNonGreenSelectedBandContent => _selectedBand != null && !_selectedBand.IsGreenStripKind;
 
         // =========================================================================
         //  其他参数
@@ -303,20 +365,26 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             set { if (SetProperty(ref _isEmptyAssembly, value)) Recalculate(); }
         }
 
-        private double _stationStart;
-        /// <summary>断面适用的起始桩号（m）。<see cref="double.NaN"/> 表示不限制起始。</summary>
+        /// <summary>首段起始桩号（m），与 <see cref="StationRangeRows"/>[0] 同步。</summary>
         public double StationStart
         {
-            get => _stationStart;
-            set { if (SetProperty(ref _stationStart, value)) Recalculate(); }
+            get => StationRangeRows.Count > 0 ? StationRangeRows[0].StartM : 0;
+            set
+            {
+                if (StationRangeRows.Count == 0) StationRangeRows.Add(new StationRangeRowVm(this, value, 0));
+                else StationRangeRows[0].StartM = value;
+            }
         }
 
-        private double _stationEnd;
-        /// <summary>断面适用的终止桩号（m）。<see cref="double.NaN"/> 表示不限制终止。</summary>
+        /// <summary>首段终止桩号（m），与 <see cref="StationRangeRows"/>[0] 同步。</summary>
         public double StationEnd
         {
-            get => _stationEnd;
-            set { if (SetProperty(ref _stationEnd, value)) Recalculate(); }
+            get => StationRangeRows.Count > 0 ? StationRangeRows[0].EndM : 0;
+            set
+            {
+                if (StationRangeRows.Count == 0) StationRangeRows.Add(new StationRangeRowVm(this, 0, value));
+                else StationRangeRows[0].EndM = value;
+            }
         }
 
         // =========================================================================
@@ -353,6 +421,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public ICommand ConfirmCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand LoadPresetCommand { get; }
+        public ICommand AddStationRangeCommand { get; }
+        public ICommand RemoveStationRangeCommand { get; }
+
+        /// <summary>桩号区间多行：首行与 <see cref="StationStart"/>/<see cref="StationEnd"/> 对应，后续为 <see cref="CrossSectionLayout.AdditionalStationRanges"/>。</summary>
+        public ObservableCollection<StationRangeRowVm> StationRangeRows { get; }
 
         // =========================================================================
         //  重算核心
@@ -399,6 +472,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             var left = LeftBands.Select(r => r.ToBand(BandSide.Left)).ToList();
             var right = RightBands.Select(r => r.ToBand(BandSide.Right)).ToList();
+            double s0 = 0, e0 = 0;
+            var extra = new List<StationRangeSpan>();
+            if (StationRangeRows != null && StationRangeRows.Count > 0)
+            {
+                s0 = StationRangeRows[0].StartM;
+                e0 = StationRangeRows[0].EndM;
+                for (int i = 1; i < StationRangeRows.Count; i++)
+                {
+                    var r = StationRangeRows[i];
+                    extra.Add(new StationRangeSpan(r.StartM, r.EndM));
+                }
+            }
+
+            IReadOnlyList<StationRangeSpan> extraRO = extra.Count == 0 ? null : extra;
             return CrossSectionLayout.Create(
                 left, right,
                 centerMedianWidth: Math.Max(0, _centerMedianWidth),
@@ -408,8 +495,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 centerlinePosition: _centerlinePosition,
                 profileElevationOffset: _profileElevationOffset,
                 isEmptyAssembly: _isEmptyAssembly,
-                stationStart: _stationStart,
-                stationEnd: _stationEnd);
+                stationStart: s0,
+                stationEnd: e0,
+                additionalStationRanges: extraRO);
         }
 
         // =========================================================================
@@ -574,11 +662,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                     r.PropertyChanged -= OnBandRowChanged;
             }
             Recalculate();
+            RaiseCommandsChanged();
         }
 
         private void OnBandRowChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_isBulkUpdating) return;
+
+            if (sender == SelectedBand && e?.PropertyName == nameof(BandRowViewModel.Kind))
+                OnPropertyChanged(nameof(ShowNonGreenSelectedBandContent));
 
             // 镜像：行属性变化时把对应 index 的对侧 band 更新成"镜像"（含 v2 字段）
             if (_isMirror && sender is BandRowViewModel row)
@@ -654,9 +746,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private void RaiseCommandsChanged()
         {
-            // 简单实现：WPF 使用的 RelayCommand.CanExecuteChanged 没订阅 CommandManager，
-            // 数据绑定会在属性通知时重查 CanExecute（DataTrigger），足以覆盖 UI 刷新需要。
+            // RelayCommand 未挂 CommandManager.Requery：Button 只在首次绑定时算一次 CanExecute，
+            // 必须在依赖项（如 SelectedBand）变化时显式 RaiseCanExecuteChanged，否则「删除」等永灰。
             OnPropertyChanged(nameof(SelectedBand));
+            (RemoveBandCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -670,6 +765,51 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    /// <summary>横断面桩号范围一行（m）。</summary>
+    public sealed class StationRangeRowVm : INotifyPropertyChanged
+    {
+        private readonly CrossSectionDesignerViewModel _owner;
+        private double _startM;
+        private double _endM;
+
+        public StationRangeRowVm(CrossSectionDesignerViewModel owner, double startM, double endM)
+        {
+            _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            _startM = startM;
+            _endM = endM;
+        }
+
+        public double StartM
+        {
+            get => _startM;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                if (Math.Abs(_startM - value) < 1e-12) return;
+                _startM = value;
+                OnPropertyChanged();
+                _owner?.NotifyStationRangeRowChanged(this);
+            }
+        }
+
+        public double EndM
+        {
+            get => _endM;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                if (Math.Abs(_endM - value) < 1e-12) return;
+                _endM = value;
+                OnPropertyChanged();
+                _owner?.NotifyStationRangeRowChanged(this);
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
@@ -715,6 +855,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             _surfaceLayer = band.SurfaceLayer;
             _laneCount = band.LaneCount;
             _elevationDiff = band.ElevationDiff;
+            _innerElevationDiff = band.InnerElevationDiff;
 
             _isActive = true;
 
@@ -736,6 +877,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             AddBaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Base), () => CanAddBaseLayer);
             AddSubbaseLayerCommand = new RelayCommand(() => AppendLayer(StructureLayerKind.Subbase), () => CanAddSubbaseLayer);
             RemoveSelectedLayerCommand = new RelayCommand(RemoveActiveLayer, () => _activeStructureLayer != null);
+            RemoveStructureLayerCommand = new RelayCommand<StructureLayerNode>(RemoveOneStructureLayer, CanRemoveOneStructureLayer);
             MoveLayerUpCommand = new RelayCommand(MoveActiveLayerUp, () => CanMoveActive(up: true));
             MoveLayerDownCommand = new RelayCommand(MoveActiveLayerDown, () => CanMoveActive(up: false));
         }
@@ -756,6 +898,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             set
             {
                 if (!SetProperty(ref _kind, value)) return;
+                OnPropertyChanged(nameof(IsGreenStripKind));
                 OnPropertyChanged(nameof(HasStructureLayers));
 
                 // 切到承载结构的 Kind 且 StructureLayers 为空 → 从 DefaultStructureSchemes.For 注入；
@@ -813,6 +956,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             }
         }
 
+        /// <summary>选中为绿化带时，除全局公共区外不显示条带/路牙/结构等面板。</summary>
+        public bool IsGreenStripKind => _kind == TemplateComponentKind.GreenStrip;
+
         /// <summary>
         /// UI 派生：当前 Kind 是否承载结构层（Pavement / NonMotorized / Sidewalk）。
         /// 决定右侧"路面结构层"Expander 的可见性。
@@ -823,9 +969,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public IEnumerable<StructureLayerNode> BaseLayersView => StructureLayers.Where(l => l.LayerKind == StructureLayerKind.Base);
         public IEnumerable<StructureLayerNode> SubbaseLayersView => StructureLayers.Where(l => l.LayerKind == StructureLayerKind.Subbase);
 
-        public bool CanAddSurfaceLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Surface) < 3;
-        public bool CanAddBaseLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Base) < 5;
-        public bool CanAddSubbaseLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Subbase) < 2;
+        public bool CanAddSurfaceLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Surface) < 16;
+        public bool CanAddBaseLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Base) < 12;
+        public bool CanAddSubbaseLayer => StructureLayers.Count(l => l.LayerKind == StructureLayerKind.Subbase) < 6;
 
         // ============================== 结构层命令 ==============================
 
@@ -833,6 +979,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public ICommand AddBaseLayerCommand { get; }
         public ICommand AddSubbaseLayerCommand { get; }
         public ICommand RemoveSelectedLayerCommand { get; }
+        /// <summary>从 Expander 删除指定结构层（参数为 <see cref="StructureLayerNode"/>）。</summary>
+        public ICommand RemoveStructureLayerCommand { get; }
         public ICommand MoveLayerUpCommand { get; }
         public ICommand MoveLayerDownCommand { get; }
 
@@ -886,6 +1034,19 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             ActiveStructureLayer = StructureLayers.Count == 0
                 ? null
                 : StructureLayers[Math.Min(idx, StructureLayers.Count - 1)];
+        }
+
+        private bool CanRemoveOneStructureLayer(StructureLayerNode node)
+            => node != null && StructureLayers.Contains(node);
+
+        private void RemoveOneStructureLayer(StructureLayerNode node)
+        {
+            if (!CanRemoveOneStructureLayer(node)) return;
+            int idx = StructureLayers.IndexOf(node);
+            if (idx < 0) return;
+            StructureLayers.RemoveAt(idx);
+            if (ReferenceEquals(ActiveStructureLayer, node))
+                ActiveStructureLayer = null;
         }
 
         private bool CanMoveActive(bool up)
@@ -967,6 +1128,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         private double _elevationDiff;
+        /// <summary>
+        /// 外端高差（m）——本条带外缘 vs 下一条带内缘的 Y 跳变。
+        /// clamp 到 ±2m，与 <see cref="InnerElevationDiff"/> 对齐。
+        /// </summary>
         public double ElevationDiff
         {
             get => _elevationDiff;
@@ -975,6 +1140,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 if (double.IsNaN(value) || double.IsInfinity(value)) return;
                 double clamped = Math.Max(-2.0, Math.Min(2.0, value));
                 SetProperty(ref _elevationDiff, clamped);
+            }
+        }
+
+        private double _innerElevationDiff;
+        /// <summary>
+        /// 内端高差（m）——本条带内缘 vs 上一条带外缘的 Y 跳变。
+        /// clamp 到 ±2m；相邻两行共享边只应有一行填值，另一行留 0，避免重复叠加。
+        /// </summary>
+        public double InnerElevationDiff
+        {
+            get => _innerElevationDiff;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double clamped = Math.Max(-2.0, Math.Min(2.0, value));
+                SetProperty(ref _innerElevationDiff, clamped);
             }
         }
 
@@ -1144,7 +1325,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 Name, Kind, Width, CrossSlopePct, overrideSide ?? Side,
                 outerKerb, innerKerb,
                 SlopeType, CrownProfile, SurfaceLayer, LaneCount,
-                scheme, ElevationDiff);
+                scheme, ElevationDiff, InnerElevationDiff);
         }
 
         /// <summary>
@@ -1171,6 +1352,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             SurfaceLayer = source.SurfaceLayer;
             LaneCount = source.LaneCount;
             ElevationDiff = source.ElevationDiff;
+            InnerElevationDiff = source.InnerElevationDiff;
             IsActive = source.IsActive;
 
             // 结构层深拷贝：先清空（避免 Kind setter 已经按新 Kind 注入的默认层与源层混在一起），

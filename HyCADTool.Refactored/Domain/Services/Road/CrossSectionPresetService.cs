@@ -177,10 +177,11 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             public bool IsEmptyAssembly { get; set; }
             public double StationStart { get; set; }
             public double StationEnd { get; set; }
+            public List<StationRangeItemDto> AdditionalStationRanges { get; set; } = new List<StationRangeItemDto>();
 
             public static CrossSectionLayoutDto FromLayout(CrossSectionLayout l)
             {
-                return new CrossSectionLayoutDto
+                var dto = new CrossSectionLayoutDto
                 {
                     LeftBands = l.LeftBands.Select(CrossSectionBandDto.From).ToList(),
                     RightBands = l.RightBands.Select(CrossSectionBandDto.From).ToList(),
@@ -194,10 +195,23 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     StationStart = l.StationStart,
                     StationEnd = l.StationEnd,
                 };
+                if (l.AdditionalStationRanges != null && l.AdditionalStationRanges.Count > 0)
+                {
+                    foreach (var a in l.AdditionalStationRanges)
+                        dto.AdditionalStationRanges.Add(new StationRangeItemDto { StartM = a.StartM, EndM = a.EndM });
+                }
+                return dto;
             }
 
             public CrossSectionLayout ToLayout()
             {
+                IReadOnlyList<StationRangeSpan> extra = null;
+                if (AdditionalStationRanges != null && AdditionalStationRanges.Count > 0)
+                {
+                    extra = AdditionalStationRanges
+                        .Select(x => new StationRangeSpan(x.StartM, x.EndM))
+                        .ToList();
+                }
                 return CrossSectionLayout.Create(
                     LeftBands.Select(b => b.ToBand(BandSide.Left)).ToList().AsReadOnly(),
                     RightBands.Select(b => b.ToBand(BandSide.Right)).ToList().AsReadOnly(),
@@ -209,7 +223,14 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     ProfileElevationOffset,
                     IsEmptyAssembly,
                     StationStart,
-                    StationEnd);
+                    StationEnd,
+                    additionalStationRanges: extra);
+            }
+
+            public sealed class StationRangeItemDto
+            {
+                public double StartM { get; set; }
+                public double EndM { get; set; }
             }
         }
 

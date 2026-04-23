@@ -7,8 +7,9 @@ namespace HyCADTool.ReCall
     /// <summary>
     /// AutoCAD 命令总入口。
     ///
-    /// 每个 <c>[CommandMethod(key)]</c> 都只做一件事：转发给 <see cref="ReCallClass.Invoke"/>，
+    /// 大多数 <c>[CommandMethod(key)]</c> 只做一件事：转发给 <see cref="ReCallClass.Invoke"/>，
     /// 由 <see cref="CommandTable"/>（commands.json）决定真实目标 Type.Method。
+    /// 少数命令（如 <c>hySeg3</c>/<c>HYSEG3</c>）挂在 <see cref="ReCallClass"/> 上，与 <c>C2</c> 同 DLL，重装 ReCall 后即注册。
     ///
     /// 日常开发：
     /// - 改 Refactored 业务代码 → C2 热重载 → 立即生效（命令名不变）
@@ -196,6 +197,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadSave")][CommandMethod("rSv")]         public void Cmd_hyRoadSave()         => ReCallClass.Invoke("hyRoadSave");
         [CommandMethod("hyRoadLoad")][CommandMethod("rLd")]         public void Cmd_hyRoadLoad()         => ReCallClass.Invoke("hyRoadLoad");
         [CommandMethod("hyRoad3dExportGltf")][CommandMethod("rGf")] public void Cmd_hyRoad3dExportGltf() => ReCallClass.Invoke("hyRoad3dExportGltf");
+        [CommandMethod("hyRoadSeg3")][CommandMethod("r3s")]        public void Cmd_hyRoadSeg3()        => ReCallClass.Invoke("hyRoadSeg3");
         #endregion
 
         #region 几何工具 (Geometry Tools)
@@ -206,6 +208,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("HYOV")]      public void Cmd_HYOV()      => ReCallClass.Invoke("HYOV");
         [CommandMethod("HYOVSET")]   public void Cmd_HYOVSET()   => ReCallClass.Invoke("HYOVSET");
         [CommandMethod("HYBC")]      public void Cmd_HYBC()      => ReCallClass.Invoke("HYBC");
+        // hySeg3 / HYSEG3：注册在 ReCallClass（Recall.cs），与 C2 同程序集，避免仅 C2 热更后命令行仍「未知命令」。
         #endregion
 
         #region 三维建模 (3D Modeling)
