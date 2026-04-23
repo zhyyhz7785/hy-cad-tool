@@ -76,6 +76,30 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>除 <see cref="StationStart"/>/<see cref="StationEnd"/> 外的附加桩号区间（与主段并列，多段时用于绑定多套断面）。</summary>
         public IReadOnlyList<StationRangeSpan> AdditionalStationRanges { get; }
 
+        /// <summary>中分带左半幅宽度（m）。为 0 时几何上按 <c>CenterMedianWidth / 2</c> 等分；须 ≤ <see cref="CenterMedianWidth"/>。</summary>
+        public double MedianLeftSubWidth { get; }
+
+        /// <summary>中分带左半（靠左半幅—中心缝）的横坡（%）。</summary>
+        public double MedianLeftCrossSlopePct { get; }
+
+        /// <summary>中分带右半（中心缝—右半幅）的横坡（%）。</summary>
+        public double MedianRightCrossSlopePct { get; }
+
+        /// <summary>中分左半在靠左半幅侧边缘的高差跳变（m）。</summary>
+        public double MedianLeftOuterElevationDiff { get; }
+
+        /// <summary>中分左半在中心缝侧（与左半内缘重合）的附加高差（m），与 <see cref="MedianRightInnerElevationDiff"/> 在缝处叠加。</summary>
+        public double MedianLeftInnerElevationDiff { get; }
+
+        /// <summary>中分右半在中心缝侧的附加高差（m），与 <see cref="MedianLeftInnerElevationDiff"/> 在缝处叠加。</summary>
+        public double MedianRightInnerElevationDiff { get; }
+
+        /// <summary>中分右半在靠右半幅侧边缘的跳变（m）。</summary>
+        public double MedianRightOuterElevationDiff { get; }
+
+        /// <summary>UI 高差锁定：为 true 时仅人行道/条带中分带 等例外类型可编辑 内/外 端高差（见设计器规则）。</summary>
+        public bool ElevationDiffLocked { get; }
+
         private CrossSectionLayout(
             IReadOnlyList<CrossSectionBand> leftBands,
             IReadOnlyList<CrossSectionBand> rightBands,
@@ -88,7 +112,15 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             bool isEmptyAssembly,
             double stationStart,
             double stationEnd,
-            IReadOnlyList<StationRangeSpan> additionalStationRanges)
+            IReadOnlyList<StationRangeSpan> additionalStationRanges,
+            double medianLeftSubWidth,
+            double medianLeftCrossSlopePct,
+            double medianRightCrossSlopePct,
+            double medianLeftOuterElevationDiff,
+            double medianLeftInnerElevationDiff,
+            double medianRightInnerElevationDiff,
+            double medianRightOuterElevationDiff,
+            bool elevationDiffLocked)
         {
             LeftBands = leftBands;
             RightBands = rightBands;
@@ -102,6 +134,14 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             StationStart = stationStart;
             StationEnd = stationEnd;
             AdditionalStationRanges = additionalStationRanges ?? Array.Empty<StationRangeSpan>();
+            MedianLeftSubWidth = medianLeftSubWidth;
+            MedianLeftCrossSlopePct = medianLeftCrossSlopePct;
+            MedianRightCrossSlopePct = medianRightCrossSlopePct;
+            MedianLeftOuterElevationDiff = medianLeftOuterElevationDiff;
+            MedianLeftInnerElevationDiff = medianLeftInnerElevationDiff;
+            MedianRightInnerElevationDiff = medianRightInnerElevationDiff;
+            MedianRightOuterElevationDiff = medianRightOuterElevationDiff;
+            ElevationDiffLocked = elevationDiffLocked;
         }
 
         /// <summary>
@@ -127,7 +167,15 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             bool isEmptyAssembly = false,
             double stationStart = 0,
             double stationEnd = 0,
-            IReadOnlyList<StationRangeSpan> additionalStationRanges = null)
+            IReadOnlyList<StationRangeSpan> additionalStationRanges = null,
+            double medianLeftSubWidth = 0,
+            double medianLeftCrossSlopePct = 0,
+            double medianRightCrossSlopePct = 0,
+            double medianLeftOuterElevationDiff = 0,
+            double medianLeftInnerElevationDiff = 0,
+            double medianRightInnerElevationDiff = 0,
+            double medianRightOuterElevationDiff = 0,
+            bool elevationDiffLocked = true)
         {
             if (leftBands == null) throw new ArgumentNullException(nameof(leftBands));
             if (rightBands == null) throw new ArgumentNullException(nameof(rightBands));
@@ -143,6 +191,16 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 throw new ArgumentOutOfRangeException(nameof(stationStart), $"起始桩号必须为有限值，当前 {stationStart}。");
             if (double.IsInfinity(stationEnd))
                 throw new ArgumentOutOfRangeException(nameof(stationEnd), $"终止桩号必须为有限值，当前 {stationEnd}。");
+
+            double wSub = medianLeftSubWidth;
+            if (centerMedianWidth > 1e-9 && wSub > 0)
+            {
+                if (wSub > centerMedianWidth) wSub = centerMedianWidth;
+            }
+            else if (centerMedianWidth > 1e-9)
+            {
+                wSub = 0; // 0 → 几何解析为半宽
+            }
 
             var left = new List<CrossSectionBand>(leftBands.Count);
             foreach (var b in leftBands)
@@ -168,7 +226,15 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 left.AsReadOnly(), right.AsReadOnly(),
                 centerMedianWidth, designSpeed, scaleDenominator, title,
                 resolvedCenterline, profileElevationOffset, isEmptyAssembly, stationStart, stationEnd,
-                additionalStationRanges);
+                additionalStationRanges,
+                wSub,
+                medianLeftCrossSlopePct,
+                medianRightCrossSlopePct,
+                medianLeftOuterElevationDiff,
+                medianLeftInnerElevationDiff,
+                medianRightInnerElevationDiff,
+                medianRightOuterElevationDiff,
+                elevationDiffLocked);
         }
 
         // ==================================== 计算属性 ====================================
@@ -209,48 +275,81 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         public CrossSectionLayout WithLeftBands(IReadOnlyList<CrossSectionBand> leftBands)
             => Create(leftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
                       double.NaN /* 让中心线随新左半宽自动重算 */,
-                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithRightBands(IReadOnlyList<CrossSectionBand> rightBands)
             => Create(LeftBands, rightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithCenterMedianWidth(double w)
             => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title,
                       double.NaN /* 中分带宽变了，中心线重算 */,
-                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithDesignSpeed(int speed)
             => Create(LeftBands, RightBands, CenterMedianWidth, speed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithScale(int denom)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, denom, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithTitle(string title)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithCenterlinePosition(double centerlinePosition)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      centerlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      centerlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithProfileElevationOffset(double offset)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, offset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges);
+                      CenterlinePosition, offset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithIsEmptyAssembly(bool isEmpty)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, isEmpty, StationStart, StationEnd, AdditionalStationRanges);
+                      CenterlinePosition, ProfileElevationOffset, isEmpty, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithStations(double stationStart, double stationEnd)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, AdditionalStationRanges);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public CrossSectionLayout WithStationRanges(double stationStart, double stationEnd, IReadOnlyList<StationRangeSpan> additional)
             => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
-                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, additional);
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, additional,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
 
         public override string ToString()
             => $"CrossSectionLayout[TotalWidth={TotalWidth:F3}m, Speed={DesignSpeed}km/h, Scale=1:{ScaleDenominator}]";

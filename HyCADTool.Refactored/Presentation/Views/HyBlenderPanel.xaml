@@ -34,6 +34,29 @@
                 <Setter Property="Margin" Value="0,1"/>
             </Style>
 
+            <Style x:Key="CommandListBoxStyle" TargetType="{x:Type ListBox}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Margin" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+                <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+                <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+                <Setter Property="ItemContainerStyle">
+                    <Setter.Value>
+                        <Style TargetType="{x:Type ListBoxItem}">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        </Style>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <DataTemplate x:Key="CommandItemTemplate" DataType="{x:Type vm:CommandItemVm}">
                 <Button Style="{StaticResource CommandRowButton}"
                         Command="{Binding ExecuteCommand}"
@@ -71,8 +94,10 @@
                     <Expander.Header>
                         <TextBlock Text="{Binding Header}" FontWeight="SemiBold"/>
                     </Expander.Header>
-                    <ItemsControl ItemsSource="{Binding Items}"
-                                  ItemTemplate="{StaticResource CommandItemTemplate}"/>
+                    <ListBox ItemsSource="{Binding Items}"
+                             ItemTemplate="{StaticResource CommandItemTemplate}"
+                             Style="{StaticResource CommandListBoxStyle}"
+                             MaxHeight="320"/>
                 </Expander>
             </DataTemplate>
 
@@ -206,9 +231,9 @@
                 </ScrollViewer>
 
                 <!-- 状态 B：正常浏览 → 当前 Tab 的命令列表 -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <ScrollViewer.Style>
-                        <Style TargetType="{x:Type ScrollViewer}" BasedOn="{StaticResource BlenderScrollViewer}">
+                <Grid Margin="{DynamicResource Metric_ButtonPaddingSmall}">
+                    <Grid.Style>
+                        <Style TargetType="{x:Type Grid}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsSearching}" Value="False">
@@ -216,52 +241,44 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </ScrollViewer.Style>
-                    <StackPanel Margin="{DynamicResource Metric_ButtonPaddingSmall}">
-                        <!-- 道路：五区多 Expander -->
+                    </Grid.Style>
+
+                    <!-- 道路：五区多 Expander（外层可滚动） -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ScrollViewer.Style>
+                            <Style TargetType="{x:Type ScrollViewer}" BasedOn="{StaticResource BlenderScrollViewer}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedTab.HasRoadPanelGroups}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ScrollViewer.Style>
                         <ItemsControl ItemTemplate="{StaticResource RoadPanelSectionTemplate}"
-                                      ItemsSource="{Binding SelectedTab.RoadPanelGroups}">
-                            <ItemsControl.Style>
-                                <Style TargetType="{x:Type ItemsControl}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <MultiDataTrigger>
-                                            <MultiDataTrigger.Conditions>
-                                                <Condition Binding="{Binding IsSearching}" Value="False"/>
-                                                <Condition Binding="{Binding SelectedTab.HasRoadPanelGroups}" Value="True"/>
-                                            </MultiDataTrigger.Conditions>
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </MultiDataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ItemsControl.Style>
-                        </ItemsControl>
-                        <!-- 其他分类：单 Expander -->
-                        <StackPanel>
-                            <StackPanel.Style>
-                                <Style TargetType="{x:Type StackPanel}">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <MultiDataTrigger>
-                                            <MultiDataTrigger.Conditions>
-                                                <Condition Binding="{Binding IsSearching}" Value="False"/>
-                                                <Condition Binding="{Binding SelectedTab.HasRoadPanelGroups}" Value="True"/>
-                                            </MultiDataTrigger.Conditions>
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </MultiDataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-                            <Expander Style="{StaticResource BlenderExpander}" IsExpanded="True">
-                                <Expander.Header>
-                                    <TextBlock Text="{Binding SelectedTab.Name}" FontWeight="SemiBold"/>
-                                </Expander.Header>
-                                <ItemsControl ItemsSource="{Binding FilteredItems}"
-                                              ItemTemplate="{StaticResource CommandItemTemplate}"/>
-                            </Expander>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
+                                      ItemsSource="{Binding SelectedTab.RoadPanelGroups}"/>
+                    </ScrollViewer>
+
+                    <!-- 其他分类：单 Expander + 虚拟化列表 -->
+                    <Expander IsExpanded="True">
+                        <Expander.Style>
+                            <Style TargetType="{x:Type Expander}" BasedOn="{StaticResource BlenderExpander}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedTab.HasRoadPanelGroups}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Expander.Style>
+                        <Expander.Header>
+                            <TextBlock Text="{Binding SelectedTab.Name}" FontWeight="SemiBold"/>
+                        </Expander.Header>
+                        <ListBox ItemsSource="{Binding FilteredItems}"
+                                 ItemTemplate="{StaticResource CommandItemTemplate}"
+                                 Style="{StaticResource CommandListBoxStyle}"/>
+                    </Expander>
+                </Grid>
             </Grid>
 
             <!-- 底部：BlenderUI 原生 StatusBar -->

@@ -11,6 +11,7 @@ using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Infrastructure.Configuration;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels.Road
@@ -31,12 +32,25 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// </summary>
     public sealed class CrossSectionDrawViewModel : CrossSectionDesignerViewModel
     {
+        private readonly CrossSectionPresetService _presetService;
+        private IReadOnlyList<PresetDescriptor> _presetsCache;
+
+        /// <summary>
+        /// v2 预设列表：内置 + 用户 JSON 预设（若服务不可用则退回内置）。
+        /// </summary>
+        public new IReadOnlyList<PresetDescriptor> Presets
+            => _presetsCache ?? (_presetsCache = LoadPresetsSafe());
+
         public CrossSectionDrawViewModel(CrossSectionLayout initialLayout = null, Guid? existingTemplateId = null)
             : base(initialLayout, existingTemplateId)
         {
+            _presetService = TryResolvePresetService();
+            RefreshPresets();
+
             CopySelectedBandCommand = new RelayCommand(ExecuteCopySelected, () => SelectedBand != null);
             PasteBandCommand = new RelayCommand(ExecutePasteToSelectedSide, () => _bandClipboard != null);
             InsertBandAfterSelectedCommand = new RelayCommand<TemplateComponentKind>(ExecuteInsertBandAfterSelected);
+            InsertBandBeforeSelectedCommand = new RelayCommand<TemplateComponentKind>(ExecuteInsertBandBeforeSelected);
             PickBandGeometryCommand = new RelayCommand(() => PickGeometryRequested?.Invoke(this, SelectedBand), () => SelectedBand != null);
             ToggleOutlinerCommand = new RelayCommand(() => IsOutlinerVisible = !IsOutlinerVisible);
             TogglePropertyPaneCommand = new RelayCommand(() => IsPropertyPaneVisible = !IsPropertyPaneVisible);
@@ -67,6 +81,37 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
             UpdateStatus(LastFigure);
             AfterCrossSectionShellReady();
+        }
+
+        /// <summary>保存用户预设后调用，刷新下拉可见项。</summary>
+        public void RefreshPresets()
+        {
+            _presetsCache = null;
+            OnPropertyChanged(nameof(Presets));
+        }
+
+        private IReadOnlyList<PresetDescriptor> LoadPresetsSafe()
+        {
+            try
+            {
+                if (_presetService != null)
+                {
+                    var all = _presetService.LoadAll();
+                    if (all != null && all.Count > 0) return all;
+                }
+            }
+            catch
+            {
+                // 预设服务异常时退回内置预设，避免阻塞窗口打开。
+            }
+
+            return CrossSectionPresets.All;
+        }
+
+        private static CrossSectionPresetService TryResolvePresetService()
+        {
+            try { return ServiceLocator.Resolve<CrossSectionPresetService>(); }
+            catch { return null; }
         }
 
         private bool _scaleSync;
@@ -205,7 +250,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 foreach (var row in LeftBands) row.IsSelected = ReferenceEquals(row, target);
                 foreach (var row in RightBands) row.IsSelected = ReferenceEquals(row, target);
 
-                _medianNode.IsSelected = ReferenceEquals(_selectedMedianNode, _medianNode);
+                _medianNode.IsSelected = ReferenceEquals(_selectedMedianNode, _medianNode)
+                    || (_selectedOutlineNode is MedianHalfRowViewModel);
+                _medianNode.LeftHalf.IsSelected = ReferenceEquals(_selectedOutlineNode, _medianNode.LeftHalf);
+                _medianNode.RightHalf.IsSelected = ReferenceEquals(_selectedOutlineNode, _medianNode.RightHalf);
                 _leftSideNode.IsSelected = ReferenceEquals(_selectedSideNode, _leftSideNode);
                 _rightSideNode.IsSelected = ReferenceEquals(_selectedSideNode, _rightSideNode);
             }
@@ -290,6 +338,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public ICommand CopySelectedBandCommand { get; }
         public ICommand PasteBandCommand { get; }
         public ICommand InsertBandAfterSelectedCommand { get; }
+        /// <summary>在选中行「之前」按类型插入条带（大纲右键 / 顶栏「插入」子菜单）。</summary>
+        public ICommand InsertBandBeforeSelectedCommand { get; }
         public ICommand PickBandGeometryCommand { get; }
         public ICommand ToggleOutlinerCommand { get; }
         public ICommand TogglePropertyPaneCommand { get; }
@@ -340,6 +390,30 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 var selectedIndex = collection.IndexOf(SelectedBand);
                 if (selectedIndex >= 0) insertIndex = selectedIndex + 1;
             }
+
+            collection.Insert(insertIndex, newRow);
+            SelectedBand = newRow;
+        }
+
+        private void ExecuteInsertBandBeforeSelected(TemplateComponentKind kind)
+        {
+            var targetSide = SelectedBand?.Side;
+            if (targetSide != BandSide.Left && targetSide != BandSide.Right)
+            {
+                targetSide = SelectedSideNode == RightSideNode ? BandSide.Right : BandSide.Left;
+            }
+
+            var collection = targetSide == BandSide.Right ? RightBands : LeftBands;
+            var newBand = CreateDefaultBand(kind, targetSide.Value);
+            var newRow = new BandRowViewModel(newBand);
+
+            int insertIndex = 0;
+            if (SelectedBand != null && SelectedBand.Side == targetSide)
+            {
+                var selectedIndex = collection.IndexOf(SelectedBand);
+                if (selectedIndex >= 0) insertIndex = selectedIndex;
+            }
+            else if (collection.Count > 0) insertIndex = 0;
 
             collection.Insert(insertIndex, newRow);
             SelectedBand = newRow;
@@ -407,6 +481,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                         OnPropertyChanged(nameof(SelectedMedianNode));
                         OnPropertyChanged(nameof(SelectedSideNode));
                         SelectedBand = row;
+                        break;
+                    case MedianHalfRowViewModel mh:
+                        _selectedSideNode = null;
+                        OnPropertyChanged(nameof(SelectedSideNode));
+                        SelectedBand = null;
+                        SelectedMedianNode = mh.ParentNode;
                         break;
                     case MedianOutlineNode m:
                         _selectedSideNode = null;
@@ -528,9 +608,105 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
+    /// <summary>中分带「左半 / 右半」大纲行。字段绑定到 <see cref="CrossSectionDrawViewModel"/> 的 Median* 系列属性。</summary>
+    public sealed class MedianHalfRowViewModel : INotifyPropertyChanged
+    {
+        private readonly CrossSectionDrawViewModel _vm;
+        private readonly bool _isLeft;
+        private bool _isSelected;
+
+        public MedianHalfRowViewModel(CrossSectionDrawViewModel vm, MedianOutlineNode parent, bool isLeft)
+        {
+            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+            ParentNode = parent ?? throw new ArgumentNullException(nameof(parent));
+            _isLeft = isLeft;
+        }
+
+        public MedianOutlineNode ParentNode { get; }
+        public string RowTitle => _isLeft ? "中分(左半)" : "中分(右半)";
+
+        public bool IsSubWidthReadOnly => !_isLeft;
+
+        /// <summary>左半可编宽度；右半由 总宽 − 左半 联动，只读。</summary>
+        public bool IsSubWidthEditable => _isLeft;
+
+        public bool IsDiffFieldsEnabled => !_vm.IsElevationDiffLocked;
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected == value) return;
+                _isSelected = value;
+                OnPropertyChanged(nameof(IsSelected));
+            }
+        }
+
+        public double SubWidth
+        {
+            get => _isLeft ? _vm.MedianLeftSubWidth : _vm.MedianRightSubWidth;
+            set
+            {
+                if (_isLeft)
+                    _vm.MedianLeftSubWidth = value;
+            }
+        }
+
+        public double CrossSlopePct
+        {
+            get => _isLeft ? _vm.MedianLeftCrossSlopePct : _vm.MedianRightCrossSlopePct;
+            set
+            {
+                if (_isLeft)
+                    _vm.MedianLeftCrossSlopePct = value;
+                else
+                    _vm.MedianRightCrossSlopePct = value;
+            }
+        }
+
+        public double InnerElevationDiff
+        {
+            get => _isLeft ? _vm.MedianLeftInnerElevationDiff : _vm.MedianRightInnerElevationDiff;
+            set
+            {
+                if (_isLeft)
+                    _vm.MedianLeftInnerElevationDiff = value;
+                else
+                    _vm.MedianRightInnerElevationDiff = value;
+            }
+        }
+
+        public double OuterElevationDiff
+        {
+            get => _isLeft ? _vm.MedianLeftOuterElevationDiff : _vm.MedianRightOuterElevationDiff;
+            set
+            {
+                if (_isLeft)
+                    _vm.MedianLeftOuterElevationDiff = value;
+                else
+                    _vm.MedianRightOuterElevationDiff = value;
+            }
+        }
+
+        public void RefreshAll()
+        {
+            OnPropertyChanged(nameof(SubWidth));
+            OnPropertyChanged(nameof(CrossSlopePct));
+            OnPropertyChanged(nameof(InnerElevationDiff));
+            OnPropertyChanged(nameof(OuterElevationDiff));
+            OnPropertyChanged(nameof(IsDiffFieldsEnabled));
+            OnPropertyChanged(nameof(IsSubWidthEditable));
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
     /// <summary>
     /// 中央隔离带根节点。<see cref="IsActive"/> 与 <see cref="Width"/> 双向绑定到
     /// <see cref="CrossSectionDrawViewModel.CenterMedianWidth"/>（IsActive=false → 0；true → Width）。
+    /// 子行：<see cref="ChildRows"/>（左/右各一行：横坡与内/外 端 高差）。
     /// </summary>
     public sealed class MedianOutlineNode : OutlineNodeBase
     {
@@ -541,7 +717,35 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             _owner = owner ?? throw new ArgumentNullException(nameof(owner));
             if (_owner.CenterMedianWidth > 0) _lastNonZeroWidth = _owner.CenterMedianWidth;
+            LeftHalf = new MedianHalfRowViewModel(owner, this, isLeft: true);
+            RightHalf = new MedianHalfRowViewModel(owner, this, isLeft: false);
+            ChildRows = new ObservableCollection<MedianHalfRowViewModel> { LeftHalf, RightHalf };
+            _owner.PropertyChanged += OnOwnerPropertyChanged;
         }
+
+        private void OnOwnerPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var n = e?.PropertyName;
+            if (string.IsNullOrEmpty(n)) return;
+            if (n == nameof(CrossSectionDrawViewModel.IsElevationDiffLocked)
+                || n == nameof(CrossSectionDrawViewModel.CenterMedianWidth)
+                || n == nameof(CrossSectionDrawViewModel.MedianLeftSubWidth)
+                || n == nameof(CrossSectionDrawViewModel.MedianLeftCrossSlopePct)
+                || n == nameof(CrossSectionDrawViewModel.MedianRightCrossSlopePct)
+                || n == nameof(CrossSectionDrawViewModel.MedianLeftOuterElevationDiff)
+                || n == nameof(CrossSectionDrawViewModel.MedianLeftInnerElevationDiff)
+                || n == nameof(CrossSectionDrawViewModel.MedianRightInnerElevationDiff)
+                || n == nameof(CrossSectionDrawViewModel.MedianRightOuterElevationDiff)
+                || n == nameof(CrossSectionDrawViewModel.MedianRightSubWidth))
+            {
+                LeftHalf.RefreshAll();
+                RightHalf.RefreshAll();
+            }
+        }
+
+        public MedianHalfRowViewModel LeftHalf { get; }
+        public MedianHalfRowViewModel RightHalf { get; }
+        public ObservableCollection<MedianHalfRowViewModel> ChildRows { get; }
 
         public override string DisplayTitle => "中央隔离带";
 

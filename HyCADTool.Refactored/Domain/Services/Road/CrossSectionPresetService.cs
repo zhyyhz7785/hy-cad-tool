@@ -178,6 +178,14 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             public double StationStart { get; set; }
             public double StationEnd { get; set; }
             public List<StationRangeItemDto> AdditionalStationRanges { get; set; } = new List<StationRangeItemDto>();
+            public double MedianLeftSubWidth { get; set; }
+            public double MedianLeftCrossSlopePct { get; set; }
+            public double MedianRightCrossSlopePct { get; set; }
+            public double MedianLeftOuterElevationDiff { get; set; }
+            public double MedianLeftInnerElevationDiff { get; set; }
+            public double MedianRightInnerElevationDiff { get; set; }
+            public double MedianRightOuterElevationDiff { get; set; }
+            public bool ElevationDiffLocked { get; set; } = true;
 
             public static CrossSectionLayoutDto FromLayout(CrossSectionLayout l)
             {
@@ -194,6 +202,14 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     IsEmptyAssembly = l.IsEmptyAssembly,
                     StationStart = l.StationStart,
                     StationEnd = l.StationEnd,
+                    MedianLeftSubWidth = l.MedianLeftSubWidth,
+                    MedianLeftCrossSlopePct = l.MedianLeftCrossSlopePct,
+                    MedianRightCrossSlopePct = l.MedianRightCrossSlopePct,
+                    MedianLeftOuterElevationDiff = l.MedianLeftOuterElevationDiff,
+                    MedianLeftInnerElevationDiff = l.MedianLeftInnerElevationDiff,
+                    MedianRightInnerElevationDiff = l.MedianRightInnerElevationDiff,
+                    MedianRightOuterElevationDiff = l.MedianRightOuterElevationDiff,
+                    ElevationDiffLocked = l.ElevationDiffLocked,
                 };
                 if (l.AdditionalStationRanges != null && l.AdditionalStationRanges.Count > 0)
                 {
@@ -224,7 +240,15 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     IsEmptyAssembly,
                     StationStart,
                     StationEnd,
-                    additionalStationRanges: extra);
+                    additionalStationRanges: extra,
+                    medianLeftSubWidth: MedianLeftSubWidth,
+                    medianLeftCrossSlopePct: MedianLeftCrossSlopePct,
+                    medianRightCrossSlopePct: MedianRightCrossSlopePct,
+                    medianLeftOuterElevationDiff: MedianLeftOuterElevationDiff,
+                    medianLeftInnerElevationDiff: MedianLeftInnerElevationDiff,
+                    medianRightInnerElevationDiff: MedianRightInnerElevationDiff,
+                    medianRightOuterElevationDiff: MedianRightOuterElevationDiff,
+                    elevationDiffLocked: ElevationDiffLocked);
             }
 
             public sealed class StationRangeItemDto

@@ -18,30 +18,46 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     public static class CrossSectionPresets
     {
         /// <summary>
-        /// 城市主干路（双向 6 车道，中分带 2m，2 人行道 3.0m）。
-        /// 总宽约 29 m（2×(3.5×3 + 3.0) + 2 = 29）。
-        ///
-        /// 路牙：暂不内建。用户需要时可在 UI 面板里为某条带显式勾选（见 <see cref="CrossSectionBand.WithOuterKerb"/>）。
-        /// 本版本先把横断面几何（宽度/横坡/高差跳变）调通，路牙作为二期功能单独再打磨。
+        /// 城市主干路（默认双向 2 机动车道：每向 1 条 + 0.6m 中分 + 每侧 非机/人行/绿带）：
+        /// 中分 0.6m（左/右各 0.30m、横坡 1.5%）；
+        /// 每侧 机动+非机动车+人行道+绿带 ；左「机动1」/ 右「机动2」；人行道 内/外 端 0.15 / −0.15m ，其余 0 。
+        /// 总宽约 27m（0.6 + 2×(3.5+3.7+3.5+2.5)）。
         /// </summary>
         public static CrossSectionLayout CreateCjj37UrbanArterial()
         {
+            static CrossSectionBand SideWalkWithJump(BandSide side) =>
+                CrossSectionBand.Sidewalk(3.5, 1.5, side, "人行道")
+                    .WithInnerElevationDiff(0.15)
+                    .WithElevationDiff(-0.15);
+
             var left = new List<CrossSectionBand>
             {
                 CrossSectionBand.Lane(3.5, 1.5, BandSide.Left, "机动1"),
-                CrossSectionBand.Lane(3.5, 1.5, BandSide.Left, "机动2"),
-                CrossSectionBand.Lane(3.5, 1.5, BandSide.Left, "机动3"),
-                CrossSectionBand.Sidewalk(3.0, 1.5, BandSide.Left, "人行道"),
+                CrossSectionBand.NonMotor(3.7, 1.5, BandSide.Left, "非机动车道"),
+                SideWalkWithJump(BandSide.Left),
+                CrossSectionBand.GreenStrip(2.5, BandSide.Left, "绿化带"),
             };
             var right = new List<CrossSectionBand>
             {
-                CrossSectionBand.Lane(3.5, 1.5, BandSide.Right, "机动1"),
                 CrossSectionBand.Lane(3.5, 1.5, BandSide.Right, "机动2"),
-                CrossSectionBand.Lane(3.5, 1.5, BandSide.Right, "机动3"),
-                CrossSectionBand.Sidewalk(3.0, 1.5, BandSide.Right, "人行道"),
+                CrossSectionBand.NonMotor(3.7, 1.5, BandSide.Right, "非机动车道"),
+                SideWalkWithJump(BandSide.Right),
+                CrossSectionBand.GreenStrip(2.5, BandSide.Right, "绿化带"),
             };
-            return CrossSectionLayout.Create(left, right,
-                centerMedianWidth: 2.0, designSpeed: 60, scaleDenominator: 150, title: "城市主干路 标准横断面图");
+
+            return CrossSectionLayout.Create(
+                left, right,
+                centerMedianWidth: 0.6,
+                designSpeed: 40,
+                scaleDenominator: 100,
+                title: "城市主干路 标准横断面图",
+                medianLeftSubWidth: 0.30,
+                medianLeftCrossSlopePct: 1.5,
+                medianRightCrossSlopePct: 1.5,
+                medianLeftOuterElevationDiff: 0,
+                medianLeftInnerElevationDiff: 0,
+                medianRightInnerElevationDiff: 0,
+                medianRightOuterElevationDiff: 0);
         }
 
         /// <summary>
@@ -95,7 +111,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// </summary>
         public static IReadOnlyList<PresetDescriptor> All { get; } = new[]
         {
-            new PresetDescriptor("urban-arterial", "城市主干路（双向 6 车道）", CreateCjj37UrbanArterial),
+            new PresetDescriptor("urban-arterial", "城市主干路（双向 2 车道，0.6m 中分 + 非机-人行-绿带）", CreateCjj37UrbanArterial),
             new PresetDescriptor("secondary",    "城市次干路（双向 4 车道）", CreateCjj37SecondaryRoad),
             new PresetDescriptor("local",        "城市支路（双向 2 车道）",   CreateCjj37LocalRoad),
         };

@@ -174,6 +174,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 AttachAll();
 
                 SetProperty(ref _centerMedianWidth, layout.CenterMedianWidth, nameof(CenterMedianWidth));
+                SetProperty(ref _medianLeftSubWidth, layout.MedianLeftSubWidth, nameof(MedianLeftSubWidth));
+                SetProperty(ref _medianLeftCrossSlopePct, layout.MedianLeftCrossSlopePct, nameof(MedianLeftCrossSlopePct));
+                SetProperty(ref _medianRightCrossSlopePct, layout.MedianRightCrossSlopePct, nameof(MedianRightCrossSlopePct));
+                SetProperty(ref _medianLeftOuterElevationDiff, layout.MedianLeftOuterElevationDiff, nameof(MedianLeftOuterElevationDiff));
+                SetProperty(ref _medianLeftInnerElevationDiff, layout.MedianLeftInnerElevationDiff, nameof(MedianLeftInnerElevationDiff));
+                SetProperty(ref _medianRightInnerElevationDiff, layout.MedianRightInnerElevationDiff, nameof(MedianRightInnerElevationDiff));
+                SetProperty(ref _medianRightOuterElevationDiff, layout.MedianRightOuterElevationDiff, nameof(MedianRightOuterElevationDiff));
+                SetProperty(ref _isElevationDiffLocked, layout.ElevationDiffLocked, nameof(IsElevationDiffLocked));
+                OnPropertyChanged(nameof(MedianRightSubWidth));
                 SetProperty(ref _designSpeed, layout.DesignSpeed, nameof(DesignSpeed));
                 SetProperty(ref _scaleDenominator, layout.ScaleDenominator, nameof(ScaleDenominator));
                 SetProperty(ref _title, layout.Title, nameof(Title));
@@ -238,7 +247,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             StationRangeRows.Remove(row);
         }
 
-        private BandRowViewModel Wrap(CrossSectionBand band) => new BandRowViewModel(band);
+        private BandRowViewModel Wrap(CrossSectionBand band)
+        {
+            var r = new BandRowViewModel(band);
+            r.DesignHost = this;
+            return r;
+        }
+
+        private void RefreshBandElevationEditability()
+        {
+            foreach (var row in LeftBands) row?.RefreshElevationEditability();
+            foreach (var row in RightBands) row?.RefreshElevationEditability();
+        }
 
         private void AttachAll()
         {
@@ -285,7 +305,120 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public double CenterMedianWidth
         {
             get => _centerMedianWidth;
-            set { if (SetProperty(ref _centerMedianWidth, Sanitize(value))) Recalculate(); }
+            set
+            {
+                double v = Sanitize(value);
+                if (!SetProperty(ref _centerMedianWidth, v)) return;
+                if (v > 1e-9 && _medianLeftSubWidth > 1e-9 && _medianLeftSubWidth > v)
+                    _medianLeftSubWidth = v;
+                if (v > 1e-9) OnPropertyChanged(nameof(MedianRightSubWidth));
+                Recalculate();
+            }
+        }
+
+        private double _medianLeftSubWidth;
+        /// <summary>中分带左半宽（m），0 表示等分。须 ≤ <see cref="CenterMedianWidth"/>。</summary>
+        public double MedianLeftSubWidth
+        {
+            get => _medianLeftSubWidth;
+            set
+            {
+                double w = _centerMedianWidth;
+                if (w <= 1e-9) return;
+                double x = value <= 0 ? 0 : (value > w ? w : value);
+                if (SetProperty(ref _medianLeftSubWidth, x)) { OnPropertyChanged(nameof(MedianRightSubWidth)); Recalculate(); }
+            }
+        }
+
+        /// <summary>只读：中分带右半宽 = 总中分带 − 左半（几何上等价）。</summary>
+        public double MedianRightSubWidth => _centerMedianWidth > 1e-9
+            ? Math.Max(0, _centerMedianWidth - _medianLeftSubWidth)
+            : 0;
+
+        private double _medianLeftCrossSlopePct;
+        public double MedianLeftCrossSlopePct
+        {
+            get => _medianLeftCrossSlopePct;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double c = Math.Max(-20, Math.Min(20, value));
+                if (SetProperty(ref _medianLeftCrossSlopePct, c)) Recalculate();
+            }
+        }
+
+        private double _medianRightCrossSlopePct;
+        public double MedianRightCrossSlopePct
+        {
+            get => _medianRightCrossSlopePct;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double c = Math.Max(-20, Math.Min(20, value));
+                if (SetProperty(ref _medianRightCrossSlopePct, c)) Recalculate();
+            }
+        }
+
+        private double _medianLeftOuterElevationDiff;
+        public double MedianLeftOuterElevationDiff
+        {
+            get => _medianLeftOuterElevationDiff;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double c = Math.Max(-2, Math.Min(2, value));
+                if (SetProperty(ref _medianLeftOuterElevationDiff, c)) Recalculate();
+            }
+        }
+
+        private double _medianLeftInnerElevationDiff;
+        public double MedianLeftInnerElevationDiff
+        {
+            get => _medianLeftInnerElevationDiff;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double c = Math.Max(-2, Math.Min(2, value));
+                if (SetProperty(ref _medianLeftInnerElevationDiff, c)) Recalculate();
+            }
+        }
+
+        private double _medianRightInnerElevationDiff;
+        public double MedianRightInnerElevationDiff
+        {
+            get => _medianRightInnerElevationDiff;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double c = Math.Max(-2, Math.Min(2, value));
+                if (SetProperty(ref _medianRightInnerElevationDiff, c)) Recalculate();
+            }
+        }
+
+        private double _medianRightOuterElevationDiff;
+        public double MedianRightOuterElevationDiff
+        {
+            get => _medianRightOuterElevationDiff;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value)) return;
+                double c = Math.Max(-2, Math.Min(2, value));
+                if (SetProperty(ref _medianRightOuterElevationDiff, c)) Recalculate();
+            }
+        }
+
+        private bool _isElevationDiffLocked = true;
+        /// <summary>
+        /// 高差锁定：为 true 时仅「人行道 / 中分带条带」可编辑 内/外 端高差，中央隔离带行亦锁定。
+        /// </summary>
+        public bool IsElevationDiffLocked
+        {
+            get => _isElevationDiffLocked;
+            set
+            {
+                if (!SetProperty(ref _isElevationDiffLocked, value)) return;
+                RefreshBandElevationEditability();
+            }
         }
 
         private int _designSpeed;
@@ -462,6 +595,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 _isRefreshing = false;
             }
 
+            RefreshBandElevationEditability();
             RaiseCommandsChanged();
         }
 
@@ -497,7 +631,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 isEmptyAssembly: _isEmptyAssembly,
                 stationStart: s0,
                 stationEnd: e0,
-                additionalStationRanges: extraRO);
+                additionalStationRanges: extraRO,
+                medianLeftSubWidth: _medianLeftSubWidth,
+                medianLeftCrossSlopePct: _medianLeftCrossSlopePct,
+                medianRightCrossSlopePct: _medianRightCrossSlopePct,
+                medianLeftOuterElevationDiff: _medianLeftOuterElevationDiff,
+                medianLeftInnerElevationDiff: _medianLeftInnerElevationDiff,
+                medianRightInnerElevationDiff: _medianRightInnerElevationDiff,
+                medianRightOuterElevationDiff: _medianRightOuterElevationDiff,
+                elevationDiffLocked: _isElevationDiffLocked);
         }
 
         // =========================================================================
@@ -669,6 +811,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             if (_isBulkUpdating) return;
 
+            // 纯 UI/绑定可编辑性，不参与横断面重算。否则 Recalculate → RefreshBandElevationEditability
+            // 会对每行触发 IsInnerOuterElevationEnabled 的 PC，再次进入本 handler 又 Recalculate，形成 O(n) 重算雪崩并卡死 AutoCAD 主线程。
+            if (e?.PropertyName == nameof(BandRowViewModel.IsInnerOuterElevationEnabled)
+                || e?.PropertyName == nameof(BandRowViewModel.IsSelected))
+                return;
+
             if (sender == SelectedBand && e?.PropertyName == nameof(BandRowViewModel.Kind))
                 OnPropertyChanged(nameof(ShowNonGreenSelectedBandContent));
 
@@ -832,6 +980,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// </summary>
     public sealed class BandRowViewModel : INotifyPropertyChanged
     {
+        /// <summary>用于条带 内/外 端可编辑性（<see cref="IsInnerOuterElevationEnabled"/>）判断。</summary>
+        public CrossSectionDesignerViewModel DesignHost { get; internal set; }
+
         public BandRowViewModel(CrossSectionBand band)
         {
             _name = band.Name;
@@ -921,6 +1072,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 (AddSurfaceLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (AddBaseLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (AddSubbaseLayerCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                RefreshElevationEditability();
             }
         }
 
@@ -1158,6 +1310,17 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 SetProperty(ref _innerElevationDiff, clamped);
             }
         }
+
+        /// <summary>
+        /// 内/外 端高差是否可编辑。高差锁开启时仅人行道、条带中分带 可改。
+        /// </summary>
+        public bool IsInnerOuterElevationEnabled
+            => DesignHost == null
+               || !DesignHost.IsElevationDiffLocked
+               || Kind == TemplateComponentKind.Sidewalk
+               || Kind == TemplateComponentKind.MedianStrip;
+
+        public void RefreshElevationEditability() => OnPropertyChanged(nameof(IsInnerOuterElevationEnabled));
 
         private BandSide _side;
         public BandSide Side

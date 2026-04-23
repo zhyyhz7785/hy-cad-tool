@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Windows.Threading;
 using HyCADTool.ReCall;
 using HyCADTool.Refactored.Presentation.Services;
 
@@ -19,6 +21,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
     /// </summary>
     public class HyBlenderPanelViewModel : INotifyPropertyChanged
     {
+        private const int SearchDebounceMs = 160;
+
         /// <summary>左侧所有分类 Tab。</summary>
         public ObservableCollection<CategoryTabVm> Tabs { get; } = new ObservableCollection<CategoryTabVm>();
 
@@ -35,7 +39,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 OnPropertyChanged(nameof(IsPreferencesMode));
                 OnPropertyChanged(nameof(IsFilterMode));
                 OnPropertyChanged(nameof(IsCommandListMode));
-                RefreshFilter();
+                RefreshFilterNow("tab-switch");
             }
         }
 
@@ -66,7 +70,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 _searchText = value ?? string.Empty;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsSearching));
-                RefreshFilter();
+                ScheduleFilterRefresh();
             }
         }
 
@@ -112,9 +116,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         /// <summary>命令搜索扁平索引服务（启动时构建一次，后续 RefreshFilter 线性扫描）。</summary>
         private readonly CommandSearchService _searchService = new CommandSearchService();
+        private readonly DispatcherTimer _searchDebounceTimer;
 
         public HyBlenderPanelViewModel()
         {
+            _searchDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(SearchDebounceMs)
+            };
+            _searchDebounceTimer.Tick += OnSearchDebounceTick;
             LoadFromCommandTable();
         }
 
@@ -180,19 +190,45 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             SelectedTab = Tabs.FirstOrDefault();
         }
 
-        private void RefreshFilter()
+        private void OnSearchDebounceTick(object sender, EventArgs e)
         {
+            _searchDebounceTimer.Stop();
+            RefreshFilterNow("search-debounce");
+        }
+
+        private void ScheduleFilterRefresh()
+        {
+            _searchDebounceTimer.Stop();
+            _searchDebounceTimer.Start();
+        }
+
+        private void RefreshFilterNow(string reason)
+        {
+            var sw = Stopwatch.StartNew();
             FilteredItems.Clear();
             GlobalSearchResults.Clear();
 
-            if (_selectedTab == null) return;
-            if (IsPreferencesMode) return; // 设置 Tab 不走命令过滤
-            if (IsFilterMode) return;      // 过滤 Tab 有独立内容，不走命令过滤
+            if (_selectedTab == null)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return;
+            }
+            if (IsPreferencesMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 设置 Tab 不走命令过滤
+            }
+            if (IsFilterMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 过滤 Tab 有独立内容，不走命令过滤
+            }
 
             if (!IsSearching)
             {
                 foreach (var it in _selectedTab.Items)
                     FilteredItems.Add(it);
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, FilteredItems.Count, 0);
                 return;
             }
 
@@ -202,6 +238,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             foreach (var it in _searchService.SearchAll(_searchText))
                 GlobalSearchResults.Add(it);
+
+            LogFilterPerf(reason, sw.ElapsedMilliseconds, FilteredItems.Count, GlobalSearchResults.Count);
+        }
+
+        private static void LogFilterPerf(string reason, long elapsedMs, int tabCount, int globalCount)
+        {
+            // 仅写 Debug 输出：用于采集“搜索输入/切 Tab”基线，不阻塞命令行 UI。
+            Debug.WriteLine(
+                $"[HyPanel.Filter] reason={reason}, elapsedMs={elapsedMs}, tabItems={tabCount}, globalItems={globalCount}");
         }
 
         /// <summary>Hy 面板「道路」Tab 内五区顺序（与 commands.json roadPanelGroup 一致）。</summary>

@@ -429,10 +429,27 @@ namespace HyCADTool.Refactored.Domain.Services.Road
 
             double xLeftInner = -layout.CenterMedianWidth / 2.0;
             double xRightInner = +layout.CenterMedianWidth / 2.0;
+            double Wm = layout.CenterMedianWidth;
+            double wL = ResolveMedianLeftWidthMeters(layout, Wm);
+            double wR = Wm > 1e-9 ? (Wm - wL) : 0;
+            double xSplit = xLeftInner + wL;
 
-            // 1) 调用 Generator 算每个板块的多顶点几何（含路牙、抛物线插值）
+            // 1) 左条带自 (xL,0) 起。存在中分带时：右条带起点 = 中分带右缘标高 与 最内条 内端高差 反推；无中分带时沿用 y=0 起点
             var leftStrips = GenerateStrips(layout.LeftBands, xLeftInner, 0, BandSide.Left);
-            var rightStrips = GenerateStrips(layout.RightBands, xRightInner, 0, BandSide.Right);
+            double y0 = 0, y1 = 0, y2 = 0;
+            double rStartY = 0;
+            if (Wm > 1e-9)
+            {
+                y0 = (leftStrips.Count > 0 ? leftStrips[0].StartY : 0) + layout.MedianLeftOuterElevationDiff;
+                double yAfterL = y0 + wL * (layout.MedianLeftCrossSlopePct / 100.0);
+                y1 = yAfterL + layout.MedianLeftInnerElevationDiff + layout.MedianRightInnerElevationDiff;
+                y2 = y1 - wR * (layout.MedianRightCrossSlopePct / 100.0);
+                double yConnectRight = y2 + layout.MedianRightOuterElevationDiff;
+                if (layout.RightBands != null && layout.RightBands.Count > 0)
+                    rStartY = yConnectRight - layout.RightBands[0].InnerElevationDiff;
+            }
+
+            var rightStrips = GenerateStrips(layout.RightBands, xRightInner, rStartY, BandSide.Right);
 
             // 2) 拼接 vertices（最左 → 中心 → 最右）+ 同步建立 StripPlacement 索引映射
             var vertices = new List<FigureVertex>();
@@ -470,7 +487,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 else
                 {
                     nextX = xLeftInner;
-                    nextY = 0;
+                    nextY = Wm > 1e-9 ? y0 : 0;
                 }
 
                 int placementInnerIdx;
@@ -495,9 +512,27 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 };
             }
 
-            // 中心左
+            // 中分带顶面折线：中心左 / [中分缝] / 中心右
             int centerLeftIndex = vertices.Count;
-            vertices.Add(new FigureVertex(xLeftInner, 0, "中心左"));
+            int centerRightIndex = centerLeftIndex;
+            if (Wm > 1e-9)
+            {
+                vertices.Add(new FigureVertex(xLeftInner, y0, "中心左"));
+                if (wL > 1e-6 && wR > 1e-6
+                    && Math.Abs(xSplit - xLeftInner) > 1e-6
+                    && Math.Abs(xRightInner - xSplit) > 1e-6)
+                {
+                    vertices.Add(new FigureVertex(xSplit, y1, "中分缝"));
+                }
+                centerRightIndex = vertices.Count;
+                vertices.Add(new FigureVertex(xRightInner, y2, "中心右"));
+            }
+            else
+            {
+                vertices.Add(new FigureVertex(xLeftInner, 0, "中心左"));
+                centerRightIndex = centerLeftIndex;
+            }
+
             // 回填左半 InnerVertexIndex 占位（-1）：strip[0] → 中心左；strip[s>0] → strip[s-1] 的 OuterVertexIndex
             if (leftStrips.Count > 0)
             {
@@ -508,13 +543,6 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     if (leftPlacements[s].InnerVertexIndex < 0)
                         leftPlacements[s].InnerVertexIndex = leftPlacements[s - 1].OuterVertexIndex;
                 }
-            }
-
-            int centerRightIndex = centerLeftIndex;
-            if (layout.CenterMedianWidth > 0)
-            {
-                centerRightIndex = vertices.Count;
-                vertices.Add(new FigureVertex(xRightInner, 0, "中心右"));
             }
 
             // 右半正向：strip[0] 先放；汇编方向 = 内 → 外。
@@ -607,6 +635,21 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var slopes = new List<FigureSlopeLabel>();
             AppendSlopeLabels(slopes, layout.LeftBands, leftStrips);
             AppendSlopeLabels(slopes, layout.RightBands, rightStrips);
+            if (Wm > 1e-9)
+            {
+                if (Math.Abs(layout.MedianLeftCrossSlopePct) > 1e-6)
+                {
+                    double midX = (xLeftInner + xSplit) * 0.5;
+                    double midY = (y0 + y1) * 0.5 + 0.25;
+                    slopes.Add(new FigureSlopeLabel(midX, midY, $"{layout.MedianLeftCrossSlopePct:F1}%"));
+                }
+                if (Math.Abs(layout.MedianRightCrossSlopePct) > 1e-6)
+                {
+                    double midX2 = (xSplit + xRightInner) * 0.5;
+                    double midY2 = (y1 + y2) * 0.5 + 0.25;
+                    slopes.Add(new FigureSlopeLabel(midX2, midY2, $"{layout.MedianRightCrossSlopePct:F1}%"));
+                }
+            }
 
             // 6) 高差 Labels（从 vertices 直接取，去重相邻）
             var heights = new List<FigureHeightLabel>();
@@ -660,6 +703,14 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         // =============== Helpers ===============
+
+        private static double ResolveMedianLeftWidthMeters(CrossSectionLayout layout, double centerWidth)
+        {
+            if (centerWidth <= 1e-9) return 0;
+            double t = layout.MedianLeftSubWidth;
+            if (t > 1e-9 && t <= centerWidth) return t;
+            return centerWidth * 0.5;
+        }
 
         private static List<BandGeometry> GenerateStrips(IReadOnlyList<CrossSectionBand> bands, double startX, double startY, BandSide side)
         {
