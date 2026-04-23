@@ -417,8 +417,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         ///   <item>Vertices：从最左 → 最右 的外轮廓折线（含中分带两端点 + 路牙顶 + 路拱插值点）。</item>
         ///   <item>Panels：每条带 1 个（板块本身）+ 每路牙 1 个（如有）+ 中分带 1 个（如有）。</item>
         ///   <item>DimensionSegments：底部 Tier=0 总长 / Tier=1 分段 + 顶部 Tier=2 总宽。</item>
-        ///   <item>SlopeLabels：仅当条带 CrossSlopePct ≠ 0 才输出，定位在路面段中点。</item>
-        ///   <item>HeightLabels：所有 vertices 处（去除几乎重复点）。</item>
+        ///   <item>SlopeLabels：有横坡的条带在路面中点；相邻条带若连接处 y 平齐且横坡相同则合并为一条。</item>
+        ///   <item>HeightLabels：各顶点；相邻板块连接 y 平齐、横坡相同时不标该处标高（免重复矛盾）。</item>
         ///   <item>TopLabels：每条带中央一个（名称）+ 中分带 1 个（"中央分隔带"）。</item>
         ///   <item>Orientation / Title：固定左"北"右"南"、底部居中标题。</item>
         /// </list>
@@ -631,10 +631,10 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             // 4) Dimension Segments
             var dimSegs = BuildDimensionSegments(layout, leftStrips, rightStrips, xLeftInner, xRightInner);
 
-            // 5) 横坡 Labels
+            // 5) 横坡 Labels（同侧相邻条 y 平齐且同坡时合并，避免同缝两侧各标 1%）
             var slopes = new List<FigureSlopeLabel>();
-            AppendSlopeLabels(slopes, layout.LeftBands, leftStrips);
-            AppendSlopeLabels(slopes, layout.RightBands, rightStrips);
+            AppendSlopeLabelsMergingFlushJoints(slopes, layout.LeftBands, leftStrips);
+            AppendSlopeLabelsMergingFlushJoints(slopes, layout.RightBands, rightStrips);
             if (Wm > 1e-9)
             {
                 if (Math.Abs(layout.MedianLeftCrossSlopePct) > 1e-6)
@@ -651,7 +651,11 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
             }
 
-            // 6) 高差 Labels（从 vertices 直接取，去重相邻）
+            // 6) 高差 Labels（去重 + 同坡平齐条缝不标）
+            var noHeightJoints = new List<(double x, double y)>();
+            CollectNoHeightJointsOnFlushSameSlopePair(noHeightJoints, layout.LeftBands, leftStrips);
+            CollectNoHeightJointsOnFlushSameSlopePair(noHeightJoints, layout.RightBands, rightStrips);
+
             var heights = new List<FigureHeightLabel>();
             for (int i = 0; i < vertices.Count; i++)
             {
@@ -661,6 +665,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     var prev = vertices[i - 1];
                     if (Math.Abs(v.X - prev.X) < 1e-9 && Math.Abs(v.Y - prev.Y) < 1e-9) continue;
                 }
+                if (IsNearAnyJoint(v.X, v.Y, noHeightJoints, tol: 1e-3)) continue;
                 heights.Add(new FigureHeightLabel(v.X, v.Y, FormatHeight(v.Y)));
             }
 
@@ -799,20 +804,74 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             return dimSegs;
         }
 
-        private static void AppendSlopeLabels(List<FigureSlopeLabel> slopes,
+        /// <summary>同一侧上：下标 k 为靠中心(内条)，k+1 为更外条。连接 = 内条外缘(NextInner) 与 外条内端(Start)。</summary>
+        private static bool AreFlushBandJoint(BandGeometry innerStrip, BandGeometry outerStrip, double tol = 1e-4)
+        {
+            return Math.Abs(innerStrip.NextInnerX - outerStrip.StartX) < tol
+                   && Math.Abs(innerStrip.NextInnerY - outerStrip.StartY) < tol;
+        }
+
+        private static bool SlopesEqualForBandPair(CrossSectionBand innerBand, CrossSectionBand outerBand) =>
+            Math.Abs(innerBand.CrossSlopePct - outerBand.CrossSlopePct) < 1e-6;
+
+        private static void CollectNoHeightJointsOnFlushSameSlopePair(
+            List<(double x, double y)> sink,
             IReadOnlyList<CrossSectionBand> bands,
             IReadOnlyList<BandGeometry> strips)
         {
-            for (int s = 0; s < strips.Count; s++)
+            if (strips == null || bands == null || strips.Count < 2) return;
+            for (int k = 0; k < strips.Count - 1; k++)
             {
-                var band = bands[s];
-                var geo = strips[s];
-                int sign = CrossSectionGeometryGenerator.SurfaceSlopeSign(band.Kind);
-                if (band.CrossSlopePct == 0 || sign == 0) continue;
+                if (!SlopesEqualForBandPair(bands[k], bands[k + 1])) continue;
+                if (!AreFlushBandJoint(strips[k], strips[k + 1])) continue;
+                sink.Add((strips[k + 1].StartX, strips[k + 1].StartY));
+            }
+        }
 
-                double midX = (geo.StartX + geo.SurfaceOuterX) * 0.5;
-                double midY = (geo.StartY + geo.SurfaceOuterY) * 0.5 + 0.25;
-                slopes.Add(new FigureSlopeLabel(midX, midY, $"{band.CrossSlopePct:F1}%"));
+        private static bool IsNearAnyJoint(double x, double y, List<(double x, double y)> joints, double tol)
+        {
+            for (int i = 0; i < joints.Count; i++)
+            {
+                var j = joints[i];
+                if (Math.Abs(x - j.x) < tol && Math.Abs(y - j.y) < tol) return true;
+            }
+            return false;
+        }
+
+        /// <summary>若有横坡的相邻条 y 平齐且横坡%相同，将连续段只标一条横坡（位于该段有坡条中点之平均位置）。</summary>
+        private static void AppendSlopeLabelsMergingFlushJoints(
+            List<FigureSlopeLabel> slopes,
+            IReadOnlyList<CrossSectionBand> bands,
+            IReadOnlyList<BandGeometry> strips)
+        {
+            if (strips == null || bands == null || strips.Count == 0) return;
+            int s0 = 0;
+            while (s0 < strips.Count)
+            {
+                int s1 = s0;
+                while (s1 + 1 < strips.Count
+                      && SlopesEqualForBandPair(bands[s1], bands[s1 + 1])
+                      && AreFlushBandJoint(strips[s1], strips[s1 + 1]))
+                {
+                    s1++;
+                }
+                // 段 [s0..s1] 内，逐条有坡的条各取原中点，再平均，合并成一条文字（同%）
+                double sumMx = 0, sumMy = 0;
+                int c = 0;
+                double pct = bands[s0].CrossSlopePct;
+                for (int i = s0; i <= s1; i++)
+                {
+                    var band = bands[i];
+                    var geo = strips[i];
+                    int sign = CrossSectionGeometryGenerator.SurfaceSlopeSign(band.Kind);
+                    if (Math.Abs(band.CrossSlopePct) < 1e-9 || sign == 0) continue;
+                    sumMx += (geo.StartX + geo.SurfaceOuterX) * 0.5;
+                    sumMy += (geo.StartY + geo.SurfaceOuterY) * 0.5 + 0.25;
+                    c++;
+                    pct = band.CrossSlopePct;
+                }
+                if (c > 0) slopes.Add(new FigureSlopeLabel(sumMx / c, sumMy / c, $"{pct:F1}%"));
+                s0 = s1 + 1;
             }
         }
 
