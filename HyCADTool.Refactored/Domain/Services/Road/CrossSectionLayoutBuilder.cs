@@ -418,7 +418,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         ///   <item>Panels：每条带 1 个（板块本身）+ 每路牙 1 个（如有）+ 中分带 1 个（如有）。</item>
         ///   <item>DimensionSegments：底部 Tier=0 总长 / Tier=1 分段 + 顶部 Tier=2 总宽。</item>
         ///   <item>SlopeLabels：有横坡的条带在路面中点；相邻条带若连接处 y 平齐且横坡相同则合并为一条。</item>
-        ///   <item>HeightLabels：各顶点；相邻板块连接 y 平齐、横坡相同时不标该处标高（免重复矛盾）。</item>
+        ///   <item>HeightLabels：各顶点；竖向以道路中心线 x=0 处高程为 ±0.000（与「中心线/设计起点」一致，非最内车道缝）。有中分带时中分上只标一个 ±0.000（x=0），不标中心左/中分缝/中心右三处。相邻板 y 平齐、横坡同处不标（免矛盾）。</item>
         ///   <item>TopLabels：每条带中央一个（名称）+ 中分带 1 个（"中央分隔带"）。</item>
         ///   <item>Orientation / Title：固定左"北"右"南"、底部居中标题。</item>
         /// </list>
@@ -515,6 +515,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             // 中分带顶面折线：中心左 / [中分缝] / 中心右
             int centerLeftIndex = vertices.Count;
             int centerRightIndex = centerLeftIndex;
+            int medianSeamIndex = -1;
             if (Wm > 1e-9)
             {
                 vertices.Add(new FigureVertex(xLeftInner, y0, "中心左"));
@@ -522,6 +523,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     && Math.Abs(xSplit - xLeftInner) > 1e-6
                     && Math.Abs(xRightInner - xSplit) > 1e-6)
                 {
+                    medianSeamIndex = vertices.Count;
                     vertices.Add(new FigureVertex(xSplit, y1, "中分缝"));
                 }
                 centerRightIndex = vertices.Count;
@@ -584,6 +586,14 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 };
             }
 
+            // 2b) 设计竖向基准：以道路中心线 x=0 处顶面为 ±0.000（与中心线一致；非最内车道与缘石接点）
+            double yDatum = InterpolateYOnProfileAtX(vertices, 0);
+            for (int vi = 0; vi < vertices.Count; vi++)
+            {
+                var p = vertices[vi];
+                vertices[vi] = new FigureVertex(p.X, p.Y - yDatum, p.Name);
+            }
+
             // 3) Panels：板块本身 + 路牙（如有）+ 中分带
             var panels = new List<FigurePanel>();
 
@@ -631,34 +641,52 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             // 4) Dimension Segments
             var dimSegs = BuildDimensionSegments(layout, leftStrips, rightStrips, xLeftInner, xRightInner);
 
-            // 5) 横坡 Labels（同侧相邻条 y 平齐且同坡时合并，避免同缝两侧各标 1%）
+            // 5) 横坡 Labels（顶面 y 已按中心线归 0；与条带几何同减 yDatum）
             var slopes = new List<FigureSlopeLabel>();
-            AppendSlopeLabelsMergingFlushJoints(slopes, layout.LeftBands, leftStrips);
-            AppendSlopeLabelsMergingFlushJoints(slopes, layout.RightBands, rightStrips);
+            AppendSlopeLabelsMergingFlushJoints(slopes, layout.LeftBands, leftStrips, yDatum);
+            AppendSlopeLabelsMergingFlushJoints(slopes, layout.RightBands, rightStrips, yDatum);
             if (Wm > 1e-9)
             {
+                double mY0 = vertices[centerLeftIndex].Y;
+                double mY2 = vertices[centerRightIndex].Y;
+                double mY1 = medianSeamIndex >= 0
+                    ? vertices[medianSeamIndex].Y
+                    : mY0 + (mY2 - mY0) * (xSplit - xLeftInner) / (xRightInner - xLeftInner + 1e-12);
                 if (Math.Abs(layout.MedianLeftCrossSlopePct) > 1e-6)
                 {
                     double midX = (xLeftInner + xSplit) * 0.5;
-                    double midY = (y0 + y1) * 0.5 + 0.25;
+                    double midY = (mY0 + mY1) * 0.5 + 0.25;
                     slopes.Add(new FigureSlopeLabel(midX, midY, $"{layout.MedianLeftCrossSlopePct:F1}%"));
                 }
                 if (Math.Abs(layout.MedianRightCrossSlopePct) > 1e-6)
                 {
                     double midX2 = (xSplit + xRightInner) * 0.5;
-                    double midY2 = (y1 + y2) * 0.5 + 0.25;
+                    double midY2 = (mY1 + mY2) * 0.5 + 0.25;
                     slopes.Add(new FigureSlopeLabel(midX2, midY2, $"{layout.MedianRightCrossSlopePct:F1}%"));
                 }
             }
 
-            // 6) 高差 Labels（去重 + 同坡平齐条缝不标）
+            // 6) 标高 Labels（去重 + 同坡平齐条缝不标；有中分带时中分只标 x=0 一处 ±0.000）
             var noHeightJoints = new List<(double x, double y)>();
             CollectNoHeightJointsOnFlushSameSlopePair(noHeightJoints, layout.LeftBands, leftStrips);
             CollectNoHeightJointsOnFlushSameSlopePair(noHeightJoints, layout.RightBands, rightStrips);
+            for (int j = 0; j < noHeightJoints.Count; j++)
+            {
+                var t = noHeightJoints[j];
+                noHeightJoints[j] = (t.x, t.y - yDatum);
+            }
 
             var heights = new List<FigureHeightLabel>();
+            var skipMedianVertex = new HashSet<int>();
+            if (Wm > 1e-9)
+            {
+                skipMedianVertex.Add(centerLeftIndex);
+                skipMedianVertex.Add(centerRightIndex);
+                if (medianSeamIndex >= 0) skipMedianVertex.Add(medianSeamIndex);
+            }
             for (int i = 0; i < vertices.Count; i++)
             {
+                if (skipMedianVertex.Contains(i)) continue;
                 var v = vertices[i];
                 if (i > 0)
                 {
@@ -667,6 +695,10 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
                 if (IsNearAnyJoint(v.X, v.Y, noHeightJoints, tol: 1e-3)) continue;
                 heights.Add(new FigureHeightLabel(v.X, v.Y, FormatHeight(v.Y)));
+            }
+            if (Wm > 1e-9)
+            {
+                heights.Add(new FigureHeightLabel(0, 0, FormatHeight(0)));
             }
 
             // 7) 顶部 Labels：板块中点（X 取板块内端与路面外缘 X 的中点）+ 中分带
@@ -701,29 +733,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             var title = new FigureTitle(0, titleY,
                 string.IsNullOrWhiteSpace(layout.Title) ? "标准横断面图" : layout.Title.Trim());
 
-            // 外缘高差引线锚点：路面外缘接点，勿用 topY（条带名顶栏）作 Y，否则 MLeader 会飘在条带名上方
-            var elevDiffLeaders = new List<FigureElevationDiffLeader>();
-            for (int s = 0; s < leftStrips.Count; s++)
-            {
-                if (Math.Abs(layout.LeftBands[s].ElevationDiff) > 1e-6)
-                {
-                    var g0 = leftStrips[s];
-                    elevDiffLeaders.Add(new FigureElevationDiffLeader(
-                        g0.NextInnerX, g0.NextInnerY, layout.LeftBands[s].ElevationDiff));
-                }
-            }
-            for (int s = 0; s < rightStrips.Count; s++)
-            {
-                if (Math.Abs(layout.RightBands[s].ElevationDiff) > 1e-6)
-                {
-                    var g0 = rightStrips[s];
-                    elevDiffLeaders.Add(new FigureElevationDiffLeader(
-                        g0.NextInnerX, g0.NextInnerY, layout.RightBands[s].ElevationDiff));
-                }
-            }
-
             return new CrossSectionFigure(
-                vertices, panels, dimSegs, slopes, heights, topLabels, elevDiffLeaders,
+                vertices, panels, dimSegs, slopes, heights, topLabels,
                 orientation, title, layout.TotalWidth, layout.ScaleDenominator);
         }
 
@@ -862,7 +873,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         private static void AppendSlopeLabelsMergingFlushJoints(
             List<FigureSlopeLabel> slopes,
             IReadOnlyList<CrossSectionBand> bands,
-            IReadOnlyList<BandGeometry> strips)
+            IReadOnlyList<BandGeometry> strips,
+            double yDatum = 0)
         {
             if (strips == null || bands == null || strips.Count == 0) return;
             int s0 = 0;
@@ -890,9 +902,40 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     c++;
                     pct = band.CrossSlopePct;
                 }
-                if (c > 0) slopes.Add(new FigureSlopeLabel(sumMx / c, sumMy / c, $"{pct:F1}%"));
+                if (c > 0) slopes.Add(new FigureSlopeLabel(sumMx / c, sumMy / c - yDatum, $"{pct:F1}%"));
                 s0 = s1 + 1;
             }
+        }
+
+        /// <summary>沿最左→最外轮廓折线，对给定 x 线性插值顶面 y；无交则取与 x 最近顶点。用于 x=0 路中心高程作 ±0.000 基准。</summary>
+        private static double InterpolateYOnProfileAtX(IReadOnlyList<FigureVertex> path, double xTarget)
+        {
+            if (path == null || path.Count == 0) return 0;
+            if (path.Count == 1) return path[0].Y;
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                var a = path[i];
+                var b = path[i + 1];
+                double x1 = a.X, x2 = b.X;
+                if (Math.Abs(x2 - x1) < 1e-12) continue;
+                double lo = Math.Min(x1, x2);
+                double hi = Math.Max(x1, x2);
+                if (xTarget + 1e-9 < lo || xTarget - 1e-9 > hi) continue;
+                double t = (xTarget - x1) / (x2 - x1);
+                return a.Y + t * (b.Y - a.Y);
+            }
+            int best = 0;
+            double bestD = double.MaxValue;
+            for (int i = 0; i < path.Count; i++)
+            {
+                double d = Math.Abs(path[i].X - xTarget);
+                if (d < bestD)
+                {
+                    bestD = d;
+                    best = i;
+                }
+            }
+            return path[best].Y;
         }
 
         // 宽度文本：v1 统一用 m，保留 2 位小数（0 自动省略末尾 0）

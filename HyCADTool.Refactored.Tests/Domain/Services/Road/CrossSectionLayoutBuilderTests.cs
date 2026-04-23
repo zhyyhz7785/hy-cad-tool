@@ -219,8 +219,8 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         {
             var layout = BuildSymmetricLayout().WithScale(200).WithTitle("我的断面");
             var fig = CrossSectionLayoutBuilder.ToFigure(layout);
-            fig.Title.Text.Should().Contain("1:200");
-            fig.Title.Text.Should().Contain("我的断面");
+            fig.ScaleDenominator.Should().Be(200);
+            fig.Title.Text.Should().Be("我的断面");
         }
     }
 }

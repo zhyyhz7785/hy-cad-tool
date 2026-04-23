@@ -234,7 +234,9 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
 
             // ============================== 9. 图题（与出图 + 设置规格一致） ==============================
             DrawingSheetTitleWpfRenderer.DrawTopBand(
-                canvas, cw, titleSpec, figure.Title.Text, scaleDenominator ?? figure.ScaleDenominator);
+                canvas, cw, titleSpec,
+                DrawingSheetTitleText.RemoveTrailingScaleInTitle(figure.Title.Text),
+                scaleDenominator ?? figure.ScaleDenominator);
 
             // ============================== 10. 高度标签列 ==============================
             double heightCursorY = padTop + 32;

@@ -673,9 +673,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private string _sheetTitleScaleTextStyleName = "0-hy-说明-T";
         public string SheetTitleScaleTextStyleName { get => _sheetTitleScaleTextStyleName; set => SetProperty(ref _sheetTitleScaleTextStyleName, value ?? "0-hy-说明-T"); }
 
+        /// <summary>横断面图题主字高（纸面 mm，出图时 × UnitFactor×Scale 同 <see cref="ActualTextHeight"/>）。</summary>
         private double _sheetTitleMainTextHeight = 5.0;
         public double SheetTitleMainTextHeight { get => _sheetTitleMainTextHeight; set => SetProperty(ref _sheetTitleMainTextHeight, value); }
 
+        /// <summary>图题中比例「1:xxx」字高（纸面 mm）。</summary>
         private double _sheetTitleScaleTextHeight = 3.0;
         public double SheetTitleScaleTextHeight { get => _sheetTitleScaleTextHeight; set => SetProperty(ref _sheetTitleScaleTextHeight, value); }
 

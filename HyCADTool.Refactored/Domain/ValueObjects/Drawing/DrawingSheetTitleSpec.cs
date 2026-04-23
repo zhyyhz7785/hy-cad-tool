@@ -34,10 +34,16 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Drawing
         /// <summary>右侧比例文字样式名（可与主图名相同）。</summary>
         public string ScaleTextStyleName { get; }
 
-        /// <summary>主图名模型字高；≤0 时由出图端按注记样式/断面比例回退。</summary>
+        /// <summary>
+        /// 主图名<strong>纸面</strong>字高（mm），与设置「横断面图题」主字高及
+        /// <c>TextSize</c>→<c>ActualTextHeight</c> 的纸面语义一致；AutoCAD 出图时按
+        /// <c>paperMm × UnitFactor × MainScale</c> 换为模型单位。≤0 时由出图端按注记样式回退。
+        /// </summary>
         public double MainTextHeightModel { get; }
 
-        /// <summary>比例字模型高；≤0 时 = <see cref="ScaleTextHeightFactor"/>×主字高。</summary>
+        /// <summary>
+        /// 比例文字<strong>纸面</strong>字高（mm），换算同 <see cref="MainTextHeightModel"/>；≤0 时 = <see cref="ScaleTextHeightFactor"/>×主字高（模型高）。
+        /// </summary>
         public double ScaleTextHeightModel { get; }
 
         // —— 以下系数均相对主图题字高 H（0~1 为小数比） ——

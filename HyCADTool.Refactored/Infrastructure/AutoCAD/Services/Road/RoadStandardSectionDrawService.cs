@@ -8,6 +8,7 @@ using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
@@ -250,7 +251,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     annotationStyle?.TextStyleId ?? ObjectId.Null);
             }
 
-            // ---------------- 7. 标高 / 高程：MLeader + 与条带高差引线共享避让盒
+            // ---------------- 7. 标高：MLeader 避让盒
             // 同 x 的多个标高 → 并成一条 MText（\P 叠行）+ 锚 y 用竖向中点（图2）
             // ----------------
             var mleaderTextBoxes = new List<MLeaderTextAabb>();
@@ -280,16 +281,28 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     origin, figure.Orientation, s, annotationStyle);
             }
 
-            // ---------------- 10. 图题（规格化：双下划线 + 比例 + 左十字/方格） ----------------
+            // ---------------- 10. 图题（规格化：双下划线 + 比例 + 可选左十字/方格） ----------------
             if (!string.IsNullOrWhiteSpace(figure.Title.Text))
             {
                 var p = Map(figure.Title.CenterX, figure.Title.Y);
-                double titleH = Math.Max(0.3, 0.6 * s);
-                if (annotationStyle != null && annotationStyle.TextHeightModel > 1e-6)
-                {
+                string titleText = DrawingSheetTitleText.RemoveTrailingScaleInTitle(figure.Title.Text);
+                if (string.IsNullOrWhiteSpace(titleText)) titleText = figure.Title.Text.Trim();
+                // 图题主/副字高：与设置里「文字高度」一致，存纸面 mm；→ 模型单位 = paperMm×UnitFactor×MainScale（同 ActualTextHeight）
+                var scaleCtx = ActiveScaleContextProvider.Current;
+                double titleH;
+                if (titleSpec.MainTextHeightModel > 1e-9)
+                    titleH = titleSpec.MainTextHeightModel * scaleCtx.UnitFactor * scaleCtx.MainScale;
+                else if (annotationStyle != null && annotationStyle.TextHeightModel > 1e-6)
                     titleH = annotationStyle.TextHeightModel;
-                }
-                var tsId = annotationStyle?.TextStyleId ?? ObjectId.Null;
+                else
+                    titleH = Math.Max(0.3, 0.6 * s);
+                ObjectId mainStyleId = TryGetTextStyleId(transaction, database, titleSpec.MainTextStyleName);
+                if (mainStyleId.IsNull) mainStyleId = annotationStyle?.TextStyleId ?? ObjectId.Null;
+                ObjectId scaleStyleId = TryGetTextStyleId(transaction, database, titleSpec.ScaleTextStyleName);
+                if (scaleStyleId.IsNull) scaleStyleId = mainStyleId;
+                double scaleH = titleSpec.ScaleTextHeightModel > 1e-9
+                    ? titleSpec.ScaleTextHeightModel * scaleCtx.UnitFactor * scaleCtx.MainScale
+                    : titleSpec.ScaleTextHeightFactor * titleH;
                 string titleLayerOverride = annotationStyle?.TitleLayerName;
                 void AppendTitle(Entity e)
                 {
@@ -302,42 +315,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     AppendTitle,
                     titleSpec,
                     p,
-                    figure.Title.Text,
+                    titleText,
                     figure.ScaleDenominator,
                     titleH,
-                    tsId,
+                    mainStyleId,
+                    scaleStyleId,
+                    scaleH,
                     titleLayerOverride);
             }
 
-            if (figure.ElevationDiffLeaders != null && figure.ElevationDiffLeaders.Count > 0)
-            {
-                added += DrawElevationDiffLeaders(
-                    transaction, ms, database, template.Id, figure, origin, s, annotationStyle, mleaderTextBoxes);
-            }
-
-            return added;
-        }
-
-        private int DrawElevationDiffLeaders(
-            Transaction transaction,
-            BlockTableRecord ms,
-            Database database,
-            Guid templateId,
-            CrossSectionFigure figure,
-            Point2d origin,
-            double s,
-            CrossSectionAnnotationStyle annotationStyle,
-            List<MLeaderTextAabb> placedTextBoxes)
-        {
-            if (placedTextBoxes == null) placedTextBoxes = new List<MLeaderTextAabb>();
-            if (figure.ElevationDiffLeaders == null || figure.ElevationDiffLeaders.Count == 0) return 0;
-            int added = 0;
-            foreach (var ed in figure.ElevationDiffLeaders)
-            {
-                added += AddElevationLeader(
-                    transaction, ms, database, templateId, ed,
-                    origin, s, annotationStyle, placedTextBoxes);
-            }
             return added;
         }
 
@@ -419,36 +405,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             ms.AppendEntity(ml);
             tr.AddNewlyCreatedDBObject(ml, true);
             TagEntity(tr, db, ml, templateId);
-            return 1;
-        }
-
-        private int AddElevationLeader(
-            Transaction transaction,
-            BlockTableRecord ms,
-            Database database,
-            Guid templateId,
-            FigureElevationDiffLeader ed,
-            Point2d origin,
-            double s,
-            CrossSectionAnnotationStyle annotationStyle,
-            List<MLeaderTextAabb> placed)
-        {
-            if (placed == null) placed = new List<MLeaderTextAabb>();
-            var content = $"{ed.ElevationDiff:+0.000;-0.000}";
-            var anchor = new Point3d(origin.X + ed.AnchorX * s, origin.Y + ed.AnchorY * s, 0);
-            var textH = annotationStyle != null && annotationStyle.TextHeightModel > 1e-6
-                ? annotationStyle.TextHeightModel
-                : Math.Max(0.15, 0.3 * s);
-            var endPoint = ResolveMLeaderTextPlacement(
-                anchor, content, textH, s, placed,
-                initialOffset: (dx: 0.28 * s, dy: 0.10 * s));
-            var mleader = MLeaderExtensions.CreateMLeaderSinglePoint(
-                anchor, endPoint, content, annotationStyle?.MLeaderStyleId ?? ObjectId.Null);
-            mleader.Layer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
-            mleader.ColorIndex = 256;
-            ms.AppendEntity(mleader);
-            transaction.AddNewlyCreatedDBObject(mleader, true);
-            TagEntity(transaction, database, mleader, templateId);
             return 1;
         }
 
@@ -564,6 +520,13 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         // =========================================================================
         //  Internals
         // =========================================================================
+
+        private static ObjectId TryGetTextStyleId(Transaction tr, Database db, string styleName)
+        {
+            if (string.IsNullOrWhiteSpace(styleName)) return ObjectId.Null;
+            var tst = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+            return tst.Has(styleName) ? tst[styleName] : ObjectId.Null;
+        }
 
         private int DrawDimensionSegment(
             Transaction tr,

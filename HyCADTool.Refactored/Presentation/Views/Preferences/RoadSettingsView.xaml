@@ -43,12 +43,28 @@
                                Foreground="{DynamicResource Brush_TextSecondary}"
                                FontSize="{DynamicResource Metric_FontSmall}"/>
                     <bc:PropertyRow Label="十字装饰" Style="{StaticResource RoadPropertyRow}">
-                        <CheckBox IsChecked="{Binding Settings.SheetTitleShowCrosshair, FallbackValue=True}" VerticalAlignment="Center"/>
+                        <CheckBox IsChecked="{Binding Settings.SheetTitleShowCrosshair, FallbackValue=False}" VerticalAlignment="Center"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="显示比例" Style="{StaticResource RoadPropertyRow}">
                         <CheckBox IsChecked="{Binding Settings.SheetTitleShowScale, FallbackValue=True}" VerticalAlignment="Center"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="比例字高比" ToolTip="相对主图题字高，0.35~0.7" Style="{StaticResource RoadPropertyRow}">
+                    <bc:PropertyRow Label="图名样式" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleMainTextStyleName, UpdateSourceTrigger=LostFocus, FallbackValue='0-hy-说明-T'}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="图名高度" ToolTip="模型空间字高" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleMainTextHeight, UpdateSourceTrigger=LostFocus, FallbackValue=5}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="比例样式" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleScaleTextStyleName, UpdateSourceTrigger=LostFocus, FallbackValue='0-hy-说明-T'}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="比例高度" ToolTip="模型空间，双下划线段右侧" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleScaleTextHeight, UpdateSourceTrigger=LostFocus, FallbackValue=3}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="比例字高比" ToolTip="主/比例高度为 0 时：比例相对主字高，0.35~0.7" Style="{StaticResource RoadPropertyRow}">
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.SheetTitleScaleTextHeightRatio, UpdateSourceTrigger=LostFocus, FallbackValue=0.55}"/>
                     </bc:PropertyRow>

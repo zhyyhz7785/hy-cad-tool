@@ -22,7 +22,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             string mainTitle,
             int scaleDenominator,
             double mainTitleHeight,
-            ObjectId textStyleId,
+            ObjectId mainTextStyleId,
+            ObjectId scaleTextStyleId,
+            double scaleTextHeight,
             string? titleTextLayerNameOverride)
         {
             if (db == null) throw new ArgumentNullException(nameof(db));
@@ -48,9 +50,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 VerticalMode = TextVerticalMode.TextVerticalMid,
                 AlignmentPoint = titleCenterWcs,
             };
-            if (!textStyleId.IsNull)
+            if (!mainTextStyleId.IsNull)
             {
-                main.TextStyleId = textStyleId;
+                main.TextStyleId = mainTextStyleId;
             }
             main.AdjustAlignment(db);
             appendAndTag(main);
@@ -86,7 +88,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             if (spec.ShowScale && scaleDenominator > 0)
             {
                 string scaleString = string.Format(CultureInfo.InvariantCulture, spec.ScaleFormat, scaleDenominator);
-                double scaleH = spec.ScaleTextHeightFactor * h;
+                double sh = scaleTextHeight > 1e-9
+                    ? scaleTextHeight
+                    : Math.Max(1e-6, spec.ScaleTextHeightFactor * h);
                 double gap = spec.ScaleGapFromTextRightFactor * h;
                 double yAlign = 0.5 * (y1c + y2c);
                 var scalePt = new Point3d(maxX + gap, yAlign, 0);
@@ -94,14 +98,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 {
                     Position = scalePt,
                     TextString = scaleString,
-                    Height = scaleH,
+                    Height = sh,
                     Layer = textLayer,
                     ColorIndex = 256,
                     HorizontalMode = TextHorizontalMode.TextLeft,
                     VerticalMode = TextVerticalMode.TextVerticalMid,
                     AlignmentPoint = scalePt,
                 };
-                if (!textStyleId.IsNull) scale.TextStyleId = textStyleId;
+                if (!scaleTextStyleId.IsNull) scale.TextStyleId = scaleTextStyleId;
                 scale.AdjustAlignment(db);
                 appendAndTag(scale);
                 n++;

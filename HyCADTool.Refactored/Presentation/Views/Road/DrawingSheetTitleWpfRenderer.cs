@@ -15,7 +15,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
     /// </summary>
     internal static class DrawingSheetTitleWpfRenderer
     {
-        private const double MainFontPx = 14.0;
+        private const double MainFontPxFallback = 14.0;
+        private const double WpfScale = 2.0;
 
         public static void DrawTopBand(
             Canvas canvas,
@@ -28,7 +29,10 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             if (string.IsNullOrWhiteSpace(title)) return;
 
             spec ??= DrawingSheetTitleSpec.RoadCrossSectionDefault;
-            double h = MainFontPx;
+            // MainTextHeightModel / ScaleTextHeightModel 为纸面 mm（与 ActualTextHeight 的纸面值一致），此处仅作预览像素缩放
+            double h = spec.MainTextHeightModel > 1e-6
+                ? spec.MainTextHeightModel * WpfScale
+                : MainFontPxFallback;
             var mainBrush = CrossSectionPreviewRenderer.AnnotationBrush;
             var decoBrush = CrossSectionPreviewRenderer.AnnotationBrush;
 
@@ -47,11 +51,14 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             string? scaleString = (spec.ShowScale && scaleDenominator is int sd && sd > 0)
                 ? string.Format(CultureInfo.InvariantCulture, spec.ScaleFormat, sd)
                 : null;
+            double scaleFont = spec.ScaleTextHeightModel > 1e-6
+                ? spec.ScaleTextHeightModel * WpfScale
+                : spec.ScaleTextHeightFactor * h;
             var scaleTb = new TextBlock
             {
                 Text = scaleString ?? string.Empty,
                 Foreground = mainBrush,
-                FontSize = spec.ScaleTextHeightFactor * h,
+                FontSize = scaleFont,
             };
             scaleTb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             double scaleW = string.IsNullOrEmpty(scaleString) ? 0 : scaleTb.DesiredSize.Width;
