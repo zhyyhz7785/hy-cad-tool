@@ -138,6 +138,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             MoveDownCommand = new RelayCommand(MoveSelectedBandDown, () => CanMoveSelected(up: false));
             ConfirmCommand = new RelayCommand(ExecuteConfirm);
             CancelCommand = new RelayCommand(ExecuteCancel);
+            DrawStructureLinesCommand = new RelayCommand(ExecuteDrawStructureLines);
             LoadPresetCommand = new RelayCommand<PresetDescriptor>(p =>
             {
                 if (p == null) return;
@@ -542,6 +543,41 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public CrossSectionFigure LastFigure => _lastFigure;
         public CrossSectionLayout LastLayout => _lastLayout;
 
+        /// <summary>
+        /// 同一窗口会话共享的 Template.Id：
+        /// <list type="bullet">
+        ///   <item>编辑已有模板时（<see cref="ExistingTemplateId"/> != null）→ 直接沿用；</item>
+        ///   <item>新建场景首次需要 Template 时分配一个随机 Guid，之后所有 Build 请求复用同一 Id。</item>
+        /// </list>
+        /// 作用：让"向 CAD 绘制结构线"临时出图 与 后续"确定并出图"使用同一 XData.ID，
+        /// 这样 <c>RoadStandardSectionDrawService.Clear</c> 能干净清掉上一次残留，避免重复实体堆叠。
+        /// </summary>
+        private Guid? _sessionTemplateId;
+
+        /// <summary>
+        /// 返回本次窗口会话绑定的 Template.Id；首次调用时按 <see cref="ExistingTemplateId"/> 选择沿用或新建。
+        /// </summary>
+        protected Guid EnsureSessionTemplateId()
+        {
+            if (_sessionTemplateId.HasValue) return _sessionTemplateId.Value;
+            _sessionTemplateId = ExistingTemplateId ?? Guid.NewGuid();
+            return _sessionTemplateId.Value;
+        }
+
+        /// <summary>
+        /// 基于 <see cref="LastLayout"/> / <see cref="LastFigure"/> 构造一个完整的 <see cref="CrossSectionDesignerResult"/>；
+        /// 若 <see cref="Recalculate"/> 尚未产出有效 Layout/Figure（理论上不会发生），返回 null。
+        /// </summary>
+        public CrossSectionDesignerResult BuildResult()
+        {
+            if (_lastLayout == null || _lastFigure == null) return null;
+            var id = EnsureSessionTemplateId();
+            var template = CrossSectionLayoutBuilder.ToTemplate(_lastLayout,
+                templateId: id,
+                name: string.IsNullOrWhiteSpace(_lastLayout.Title) ? "标准横断面图" : _lastLayout.Title);
+            return new CrossSectionDesignerResult(template, _lastFigure, _lastLayout);
+        }
+
         // =========================================================================
         //  命令
         // =========================================================================
@@ -556,6 +592,30 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public ICommand LoadPresetCommand { get; }
         public ICommand AddStationRangeCommand { get; }
         public ICommand RemoveStationRangeCommand { get; }
+
+        /// <summary>
+        /// 「向 CAD 绘制结构线」命令：基于当前 <see cref="LastLayout"/> / <see cref="LastFigure"/> 构造结果，
+        /// 通过 <see cref="DrawStructureLinesRequested"/> 事件把 AutoCAD 副作用（LockDocument + Transaction +
+        /// Clear+Draw SingleLine）交给 View 层的 Interactor。
+        /// <para>执行特征：不关闭窗口、反复 Clear+Draw 同一 Template.Id、与实时预览几何一致、仅画结构线。</para>
+        /// <para>该命令放在父类 <see cref="CrossSectionDesignerViewModel"/> 以便：
+        /// （a）v1/v2 两个窗口都能复用同一 DrawMode 工作流；
+        /// （b）单元测试无需构造子类 <c>CrossSectionDrawViewModel</c>（子类会 touch AutoCAD API）。</para>
+        /// </summary>
+        public ICommand DrawStructureLinesCommand { get; }
+
+        /// <summary>
+        /// View 层订阅：收到事件后完成 "首次 Hide+Prompt+Draw+Show / 后续直接 Draw"。
+        /// <para>EventArgs 即本次绘制要交付的 <see cref="CrossSectionDesignerResult"/>（非 null）。</para>
+        /// </summary>
+        public event EventHandler<CrossSectionDesignerResult> DrawStructureLinesRequested;
+
+        private void ExecuteDrawStructureLines()
+        {
+            var result = BuildResult();
+            if (result == null) return;
+            DrawStructureLinesRequested?.Invoke(this, result);
+        }
 
         /// <summary>桩号区间多行：首行与 <see cref="StationStart"/>/<see cref="StationEnd"/> 对应，后续为 <see cref="CrossSectionLayout.AdditionalStationRanges"/>。</summary>
         public ObservableCollection<StationRangeRowVm> StationRangeRows { get; }
@@ -858,10 +918,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 if (!NonCompliantConfirm(summary)) return;
             }
 
-            var template = CrossSectionLayoutBuilder.ToTemplate(_lastLayout,
-                templateId: ExistingTemplateId,
-                name: string.IsNullOrWhiteSpace(_lastLayout.Title) ? "标准横断面图" : _lastLayout.Title);
-            var result = new CrossSectionDesignerResult(template, _lastFigure, _lastLayout);
+            var result = BuildResult();
+            if (result == null) return;
             Confirmed?.Invoke(this, result);
             CloseRequested?.Invoke(this, true);
         }

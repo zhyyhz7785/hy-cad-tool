@@ -25,7 +25,7 @@
         Row 0  顶部 EditorHeader  - 主操作链（存为预设/隐藏侧栏/镜像）+ 预设下拉
         Row 1  主体 5 列：
         | Outliner (大纲) | V-Splitter | ViewportArea (Toolbar + Canvas) | V-Splitter | PropertyEditor (属性) |
-        Row 2  底部 StatusBar    - 路幅 / 当前选中条带 / 规范检查通过状况
+        Row 2  底部 StatusBar    - 路幅 / 比例·设计时速 / 规范提示（StatusMessage）
         
         该窗口与旧 CrossSectionDesignerWindow 共用：
         - CrossSectionDesignerViewModel（基类）业务逻辑；
@@ -603,19 +603,47 @@
                                     ShowPin="False"
                                     ShowSearch="False">
                     <Grid>
-                        <Border Style="{StaticResource RoadCanvasBorderStyle}">
-                            <Canvas x:Name="PreviewCanvas"
-                                    Background="Transparent"
-                                    ClipToBounds="True"
-                                    SizeChanged="PreviewCanvas_SizeChanged" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Margin="0,0,0,0">
+                            <Grid>
+                                <Canvas x:Name="PreviewCanvas"
+                                        Background="Transparent"
+                                        ClipToBounds="True"
+                                        SizeChanged="PreviewCanvas_SizeChanged" />
+                                <TextBlock Margin="0,0,8,4"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"
+                                           FontFamily="Consolas"
+                                           FontSize="{DynamicResource Metric_FontCaption}"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           Text="按 [Alt+N] 新建 / [Alt+L] 预设 / [Ctrl+C/V] 复制粘贴 / [Ctrl+Enter] 出图 / [Esc] 取消" />
+                            </Grid>
                         </Border>
-                        <TextBlock Margin="0,0,8,4"
-                                   HorizontalAlignment="Right"
-                                   VerticalAlignment="Bottom"
-                                   FontFamily="Consolas"
-                                   FontSize="{DynamicResource Metric_FontCaption}"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   Text="按 [Alt+N] 新建 / [Alt+L] 预设 / [Ctrl+C/V] 复制粘贴 / [Ctrl+Enter] 出图 / [Esc] 取消" />
+
+                        <!--
+                            实时预览下方命令按钮条（v2.1）：
+                            - 「向 CAD 绘制结构线」：复用预览几何，以 SingleLine 模式把当前方案画到 AutoCAD 模型空间。
+                              首次点击会 Hide 窗口让用户在命令行拾取插入点，之后反复点击按同一 Template.Id 清旧重绘，
+                              窗口保持打开便于"调整 → 再绘制"闭环。
+                            - 标注 / 厚度轮廓 / 尺寸链 按钮留待后续版本挂入本工具条。
+                        -->
+                        <Border Grid.Row="1"
+                                Margin="0,4,0,0"
+                                Padding="0,4"
+                                BorderBrush="{DynamicResource Brush_BorderDark}"
+                                BorderThickness="0,1,0,0">
+                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                <Button Margin="4,0"
+                                        Padding="{DynamicResource Metric_Padding_8_2}"
+                                        Command="{Binding DrawStructureLinesCommand}"
+                                        Content="向 CAD 绘制结构线"
+                                        Style="{StaticResource BlenderButton}"
+                                        ToolTip="按当前参数在 AutoCAD 模型空间绘制结构线（仅顶面 + 中心线 + 方位箭头）。首次点击需在命令行指定插入点，之后复用；窗口保持打开。" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </bui:PropertyEditor>
             </Grid>
@@ -651,84 +679,28 @@
                             <bui:PropertyRow Label="小数位">
                                 <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableDisplayPrecisions}" SelectedItem="{Binding DisplayPrecision, Mode=TwoWay}" Style="{StaticResource BlenderComboBox}" />
                             </bui:PropertyRow>
-                            <bui:PropertyRow Label="中分带宽 (m)">
-                                <bui:NumericSlider Decimals="2"
-                                                   Maximum="20"
-                                                   Minimum="0"
-                                                   Step="0.5"
-                                                   Unit="m"
-                                                   Value="{Binding CenterMedianWidth, Mode=TwoWay}" />
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="桩号范围 (m)">
+                            <Expander Header="其它" IsExpanded="False" Style="{StaticResource BlenderExpander}">
                                 <StackPanel>
-                                    <ItemsControl ItemsSource="{Binding StationRangeRows}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="0,2,0,0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="22" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <bui:NumericSlider Grid.Column="0"
-                                                                       Margin="0,0,4,0"
-                                                                       Decimals="2"
-                                                                       Maximum="200000"
-                                                                       Minimum="0"
-                                                                       Step="1"
-                                                                       Unit="m"
-                                                                       Value="{Binding StartM, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                    <bui:NumericSlider Grid.Column="1"
-                                                                       Margin="0,0,4,0"
-                                                                       Decimals="2"
-                                                                       Maximum="200000"
-                                                                       Minimum="0"
-                                                                       Step="1"
-                                                                       Unit="m"
-                                                                       Value="{Binding EndM, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                    <Button Grid.Column="2"
-                                                            Command="{Binding DataContext.RemoveStationRangeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"
-                                                            Content="✕"
-                                                            Style="{StaticResource BlenderButtonFlat}"
-                                                            ToolTip="删除本段" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Button Margin="0,4,0,0"
-                                            HorizontalAlignment="Left"
-                                            Command="{Binding AddStationRangeCommand}"
-                                            Content="＋ 添加桩号段"
-                                            Style="{StaticResource BlenderButton}" />
+                                    <bui:PropertyRow Label="空装配">
+                                        <CheckBox VerticalAlignment="Center"
+                                                  Content="标记为占位（不出图）"
+                                                  IsChecked="{Binding IsEmptyAssembly}"
+                                                  Style="{StaticResource BlenderCheckBox}" />
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="几何拾取">
+                                        <Button Command="{Binding PickBandGeometryCommand}"
+                                                Content="从图形拾取..."
+                                                IsEnabled="{Binding HasSelectedBand}"
+                                                Style="{StaticResource BlenderButton}" />
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="拾取对象图层">
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                                   Text="{Binding LastPickedEntityLayer, TargetNullValue=—, FallbackValue=—}"
+                                                   TextWrapping="Wrap" />
+                                    </bui:PropertyRow>
                                 </StackPanel>
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="路面抬升 (m)">
-                                <bui:NumericSlider Decimals="3"
-                                                   Maximum="2"
-                                                   Minimum="-2"
-                                                   Step="0.05"
-                                                   Unit="m"
-                                                   Value="{Binding ProfileElevationOffset, Mode=TwoWay}" />
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="空装配">
-                                <CheckBox VerticalAlignment="Center"
-                                          Content="标记为占位（不出图）"
-                                          IsChecked="{Binding IsEmptyAssembly}"
-                                          Style="{StaticResource BlenderCheckBox}" />
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="几何拾取">
-                                <Button Command="{Binding PickBandGeometryCommand}"
-                                        Content="从图形拾取..."
-                                        IsEnabled="{Binding HasSelectedBand}"
-                                        Style="{StaticResource BlenderButton}" />
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="拾取对象图层">
-                                <TextBlock VerticalAlignment="Center"
-                                           Foreground="{DynamicResource Brush_TextSecondary}"
-                                           Text="{Binding LastPickedEntityLayer, TargetNullValue=—, FallbackValue=—}"
-                                           TextWrapping="Wrap" />
-                            </bui:PropertyRow>
+                            </Expander>
                         </StackPanel>
                     </Expander>
 
@@ -755,11 +727,8 @@
                         </StackPanel>
                     </Expander>
 
-                    <!--  ============================== 选中条带：基础参数 ==============================  -->
-                    <Expander Header="选中条带"
-                              IsExpanded="True"
-                              Style="{StaticResource BlenderExpander}"
-                              Visibility="{Binding ShowNonGreenSelectedBandContent, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <!--  ============================== 当前条带基础参数（与「公共属性」同级，无分组标题） ==============================  -->
+                    <StackPanel Visibility="{Binding ShowNonGreenSelectedBandContent, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel DataContext="{Binding SelectedBand}">
                             <bui:PropertyRow Label="名称">
                                 <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
@@ -817,7 +786,7 @@
                                                    Value="{Binding LaneCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </bui:PropertyRow>
                         </StackPanel>
-                    </Expander>
+                    </StackPanel>
 
                     <Expander Header="路面结构"
                               IsExpanded="True"

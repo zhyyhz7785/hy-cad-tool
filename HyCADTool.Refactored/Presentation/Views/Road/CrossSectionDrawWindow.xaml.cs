@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Input;
+using Autodesk.AutoCAD.Geometry;
 using HyCAD.BlenderUI.Controls;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
@@ -22,7 +23,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
     /// <list type="bullet">
     ///   <item>采用 BlenderUI 的 workbench 拓扑（顶 EditorHeader / 左 Outliner / 中 Toolbar+Canvas / 右 PropertyEditor / 底 StatusBar）；</item>
     ///   <item>左右侧栏可独立折叠；条带选择走 ListBox（Outliner）而非 DataGrid；</item>
-    ///   <item>属性面板按"选中条带 / 外侧路牙 / 内侧路牙 / 全局 / 桩号 / 规范检查"分组，覆盖 Stage 1 新增的 v2 字段；</item>
+    ///   <item>属性面板：公共属性、条带基础参数（名称/类型/横坡等，无单独分组标题）、外侧路牙、内侧路牙、路面结构、全局、桩号、规范检查；</item>
     ///   <item>预览渲染走共享 <see cref="CrossSectionPreviewRenderer"/>，与旧窗口一致。</item>
     /// </list>
     /// </para>
@@ -64,6 +65,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             viewModel.CloseRequested += OnCloseRequested;
             viewModel.PropertyChanged += OnVmPropertyChanged;
             viewModel.PickGeometryRequested += OnPickGeometryRequested;
+            viewModel.DrawStructureLinesRequested += OnDrawStructureLinesRequested;
 
             viewModel.NonCompliantConfirm = summary => MessageBox.Show(
                 this,
@@ -86,6 +88,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 viewModel.CloseRequested -= OnCloseRequested;
                 viewModel.PropertyChanged -= OnVmPropertyChanged;
                 viewModel.PickGeometryRequested -= OnPickGeometryRequested;
+                viewModel.DrawStructureLinesRequested -= OnDrawStructureLinesRequested;
                 CloseClicked -= OnCloseClicked;
             };
         }
@@ -388,6 +391,58 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 row.ElevationDiff = result.ElevationDiff;
                 RoadCsPickGeometryInteractor.DistributeThickness(row, result.ThicknessCm);
                 if (_vm != null) _vm.LastPickedEntityLayer = result.EntityLayer ?? string.Empty;
+            }
+            finally
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Show();
+                    Activate();
+                    Focus();
+                }), DispatcherPriority.Background);
+            }
+        }
+
+        /// <summary>
+        /// 本窗口会话内缓存的"结构线插入点"（WCS 二维）。
+        /// 首次点击"向 CAD 绘制结构线"按钮时为 null，此时会 Hide 窗口让用户 PromptPoint；
+        /// 之后的每次点击沿用这个点，<see cref="RoadCsDrawSingleLineInteractor"/> 会按 Template.Id Clear 旧实体后重绘，
+        /// 达到"反复调整即时重绘且不漂移"的手感。
+        /// </summary>
+        private Point2d? _structureLinesOrigin;
+
+        private void OnDrawStructureLinesRequested(object sender, CrossSectionDesignerResult result)
+        {
+            if (result == null) return;
+
+            if (_structureLinesOrigin.HasValue)
+            {
+                // 后续点击：origin 已缓存，无需 Hide 窗口；LockDocument 能与可见 WPF 并存。
+                try
+                {
+                    RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, "绘制失败：" + ex.Message, "向 CAD 绘制结构线",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                return;
+            }
+
+            // 首次点击：Hide → PromptPoint → Draw → Show
+            Dispatcher.BeginInvoke(new Action(() => Hide()), DispatcherPriority.Background);
+            try
+            {
+                var picked = RoadCsDrawSingleLineInteractor.PromptInsertionPoint();
+                if (picked == null) return;
+                _structureLinesOrigin = picked.Value;
+                RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "绘制失败：" + ex.Message, "向 CAD 绘制结构线",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally
             {
