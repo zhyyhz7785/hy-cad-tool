@@ -125,7 +125,7 @@
 | 路径 / 文件 | 说明 |
 |-------------|------|
 | `Infrastructure/AutoCAD/Services/Road/RoadStandardSectionDrawService.cs` | 标准横断面图落模、图层与 `CrossSectionDrawMode` |
-| `Presentation/Factories/RoadCsDrawStyleFactory.cs` | rCs 出图样式快照：CommitStyles 后置为当前，按名解析 Text/Dim/MLeader 的 `ObjectId`（不建 hy-rcs-*） |
+| `Presentation/Factories/RoadCsDrawStyleFactory.cs` | rCs 快照：仅 Commit 文字+引线；`Dim` 用 `db.Dimstyle`；不建 hy-rcs-*、不写入设置侧标注样式 |
 | `Domain/ValueObjects/Road/CrossSectionAnnotationStyle.cs` | 出图标注样式快照（Text/Dim/MLeader StyleId + model 高度参数） |
 | `Infrastructure/AutoCAD/Xdata/HyRoadXdata.cs` | 含 `KindCrossSection` 等与道路实体身份绑定 |
 

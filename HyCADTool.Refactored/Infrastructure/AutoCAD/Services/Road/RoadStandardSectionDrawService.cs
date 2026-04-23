@@ -216,7 +216,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 added += DrawDimensionSegment(transaction, ms, database, template.Id,
                     new Point3d(origin.X + seg.StartX * s, origin.Y + dimTopY, 0),
                     new Point3d(origin.X + seg.EndX * s, origin.Y + dimTopY, 0),
-                    seg.Text, true, annotationStyle, txtH);
+                    true, annotationStyle, txtH);
             }
 
             // ---------------- 5. 底部 Tier=1 分段 + Tier=0 总长 ----------------
@@ -231,7 +231,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 else continue;
                 a = new Point3d(origin.X + seg.StartX * s, origin.Y + y, 0);
                 b = new Point3d(origin.X + seg.EndX * s, origin.Y + y, 0);
-                added += DrawDimensionSegment(transaction, ms, database, template.Id, a, b, seg.Text, false, annotationStyle, txtH);
+                added += DrawDimensionSegment(transaction, ms, database, template.Id, a, b, false, annotationStyle, txtH);
             }
 
             // ---------------- 6. 横坡标注 ----------------
@@ -514,7 +514,6 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Guid templateId,
             Point3d a,
             Point3d b,
-            string text,
             bool above,
             CrossSectionAnnotationStyle annotationStyle,
             double fallbackTextHeight)
@@ -524,10 +523,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 (a.X + b.X) * 0.5,
                 a.Y + (above ? dimLineOffset : -dimLineOffset),
                 0);
-            var displayText = string.IsNullOrWhiteSpace(text)
-                ? Math.Abs(b.X - a.X).ToString($"F{Math.Max(0, annotationStyle?.Precision ?? 0)}")
-                : text;
-            var dim = new AlignedDimension(a, b, dimLinePoint, displayText, ObjectId.Null)
+            // 不写入「文字替代」：第四参用空，由两定义点得测量值，再经标注样式（如线性比例/测量单位）出字；特性中「文字替代」保持空
+            var dim = new AlignedDimension(a, b, dimLinePoint, string.Empty, ObjectId.Null)
             {
                 Layer = annotationStyle?.DimensionLayerName ?? HyRoadLayers.CrossSectionDimensionLayer,
                 ColorIndex = 256,

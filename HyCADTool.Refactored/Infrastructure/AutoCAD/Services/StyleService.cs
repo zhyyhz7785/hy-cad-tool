@@ -440,8 +440,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     }
                     mleaderStyle.ArrowSize = arrowSize * unitFactor * scale;
 
-                    // 着陆间距与线宽（使用传入参数）
+                    // 着陆间隙（文字与基线间小间距，纸面 mm → 模型）
                     mleaderStyle.LandingGap = landingGap * unitFactor * scale;
+                    // 狗腿/基线水平段长：未设时 CAD 默认易很大，数字左侧拉很长白线（特性「基线距离」/ DoglegLength）
+                    double modelTextH = textHeight * unitFactor * scale;
+                    mleaderStyle.DoglegLength = modelTextH * 0.45;
+                    mleaderStyle.EnableDogleg = true;
                     mleaderStyle.LeaderLineWeight = LineWeight.ByLayer;
 
                     // 设为当前引线样式

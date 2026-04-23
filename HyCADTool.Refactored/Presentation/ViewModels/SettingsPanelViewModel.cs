@@ -992,7 +992,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
         #region 命令实现
 
-        private void ApplyStyle()
+        /// <param name="includeDimensionAndTable">
+        /// 为 false 时只同步文字与多重引线，不 <see cref="IStyleService.CreateDimensionStyle"/> / 不建表格样式；
+        /// 供 rCs 等以几何为真值的出图，避免将设置中的单位/比例写入标注样式表。此时不置 <c>_stylesDirty = false</c>、不 <see cref="SaveSettings"/>。
+        /// </param>
+        private void ApplyStyle(bool includeDimensionAndTable = true)
         {
             try
             {
@@ -1009,12 +1013,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 _styleService.CreateTextStyle(StyleSName, StyleSFont, StyleSBigFont, TextSize * uf * scale, StyleSXScale);
                 _styleService.SetCurrentTextStyle(StyleSName);
 
-                // 标注样式：paper-mm 基值原样传入，内部 × uf 存盘，再由 DIMSCALE 放大
-                _styleService.CreateDimensionStyle(
-                    ctx.BuildDimStyleName(), TextStyleName, scale,
-                    Dimtxt, Dimexo, Dimexe, Dimdle, Dimgap, Dimasz,
-                    dimlfac, dimdec, uf);
-                _styleService.SetCurrentDimensionStyle(ctx.BuildDimStyleName());
+                if (includeDimensionAndTable)
+                {
+                    // 标注样式：paper-mm 基值原样传入，内部 × uf 存盘，再由 DIMSCALE 放大
+                    _styleService.CreateDimensionStyle(
+                        ctx.BuildDimStyleName(), TextStyleName, scale,
+                        Dimtxt, Dimexo, Dimexe, Dimdle, Dimgap, Dimasz,
+                        dimlfac, dimdec, uf);
+                    _styleService.SetCurrentDimensionStyle(ctx.BuildDimStyleName());
+                }
 
                 // 引线样式：paper-mm 基值原样传入，内部 × uf × scale 写入
                 _styleService.CreateMLeaderStyle(
@@ -1022,19 +1029,29 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     MLeaderArrowSize, MLeaderLandingGap, TextSize, MLeaderTextColorIndex, uf);
                 _styleService.SetCurrentMLeaderStyle(ctx.BuildMLeaderStyleName());
 
-                _styleService.CreateTableStyle(ctx.BuildTableStyleName(), TextStyleName);
-                _styleService.SetCurrentTableStyle(ctx.BuildTableStyleName());
+                if (includeDimensionAndTable)
+                {
+                    _styleService.CreateTableStyle(ctx.BuildTableStyleName(), TextStyleName);
+                    _styleService.SetCurrentTableStyle(ctx.BuildTableStyleName());
+                }
 
                 ActiveScaleContextProvider.Set(ctx);
 
                 _appliedContext = ctx;
                 OnPropertyChanged(nameof(AppliedDimStyleName));
 
-                _stylesDirty = false;
-                SaveSettings();
-                StatusMessage = ctx.UseSubScale
-                    ? $"样式应用成功 (M=1:{scale} S=1:{ctx.SubScale} {ctx.UnitShortName} p={dimdec})"
-                    : $"样式应用成功 (1:{scale} {ctx.UnitShortName} p={dimdec})";
+                if (includeDimensionAndTable)
+                {
+                    _stylesDirty = false;
+                    SaveSettings();
+                    StatusMessage = ctx.UseSubScale
+                        ? $"样式应用成功 (M=1:{scale} S=1:{ctx.SubScale} {ctx.UnitShortName} p={dimdec})"
+                        : $"样式应用成功 (1:{scale} {ctx.UnitShortName} p={dimdec})";
+                }
+                else
+                {
+                    StatusMessage = "已同步文字与多重引线（未写入标注/表格样式，尺寸以几何与图中当前标注样式为准）";
+                }
             }
             catch (System.Exception ex)
             {
@@ -1055,12 +1072,20 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         }
 
         /// <summary>
-        /// 将「界面-设置」中的文字/标注/多重引线/表格样式写入当前 DWG，与按「置为当前」等效（内部 <see cref="ApplyStyle"/>）。
-        /// 供 rCs 等出图在落图前调用，使实体使用 <see cref="TextStyleName"/> / <see cref="DimStyleName"/> / <see cref="MLeaderStyleName"/> 对应样式表项。
+        /// 将「界面-设置」中的文字/标注/多重引线/表格样式写入当前 DWG，与按「置为当前」等效（内部 <see cref="ApplyStyle()"/> 全量）。
         /// </summary>
         public void CommitStylesToActiveDocument()
         {
-            ApplyStyle();
+            ApplyStyle(includeDimensionAndTable: true);
+        }
+
+        /// <summary>
+        /// 仅将文字、多重引线样式按当前设置写入 DWG，不创建/不覆盖标注样式与表格样式。
+        /// rCs 出图在「尺寸以几何为真、设置单位可能变化」场景下应使用本方法，尺寸实体上挂 <see cref="Autodesk.AutoCAD.DatabaseServices.Database.Dimstyle"/>（只读取当前图）而非按设置名解析。
+        /// </summary>
+        public void CommitTextAndMLeaderStylesToActiveDocument()
+        {
+            ApplyStyle(includeDimensionAndTable: false);
         }
 
         private void SaveAsDefault()

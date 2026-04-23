@@ -32,10 +32,10 @@ namespace HyCADTool.Refactored.Presentation.Factories
                     textHeightModel: 0.3,
                     mleaderLandingGapModel: 0.05,
                     mleaderArrowSizeModel: 0.2,
-                    precision: 0);
+                    precision: 3);
             }
 
-            settings.CommitStylesToActiveDocument();
+            settings.CommitTextAndMLeaderStylesToActiveDocument();
             return ResolveFromSettings(doc, settings);
         }
 
@@ -45,9 +45,7 @@ namespace HyCADTool.Refactored.Presentation.Factories
         {
             var db = doc.Database;
             var textName = string.IsNullOrWhiteSpace(settings.TextStyleName) ? "0-hy-说明-S" : settings.TextStyleName.Trim();
-            var dimName = string.IsNullOrWhiteSpace(settings.DimStyleName)
-                ? settings.BuildScaleContext().BuildDimStyleName()
-                : settings.DimStyleName.Trim();
+            // 不解析设置里的 DimStyleName：不写入标注样式表，尺寸文字以几何为准；外观用当前图 Database.Dimstyle（只读）
             var mleaderName = string.IsNullOrWhiteSpace(settings.MLeaderStyleName)
                 ? settings.BuildScaleContext().BuildMLeaderStyleName()
                 : settings.MLeaderStyleName.Trim();
@@ -55,8 +53,8 @@ namespace HyCADTool.Refactored.Presentation.Factories
             var textH = GetActualTextHeightOr(settings, 0.3);
             var gap = GetActualMLeaderLandingOr(settings, 0.05);
             var arr = GetActualMLeaderArrowOr(settings, 0.2);
-            var prec = settings.Precision;
-            if (prec < 0) prec = 0;
+            // 与 BuildDimensionSegments / FormatWidthMeters 小数习惯一致，不随设置里的单位/精度切换
+            const int prec = 3;
 
             ObjectId textId;
             ObjectId dimId;
@@ -64,7 +62,7 @@ namespace HyCADTool.Refactored.Presentation.Factories
             using (var tr = db.TransactionManager.StartOpenCloseTransaction())
             {
                 textId = FindTextStyleId(tr, db, textName) ?? ObjectId.Null;
-                dimId = (dimName == null) ? ObjectId.Null : (FindDimStyleId(tr, db, dimName) ?? ObjectId.Null);
+                dimId = db.Dimstyle;
                 mleaderId = (mleaderName == null) ? ObjectId.Null : (FindMLeaderStyleId(tr, db, mleaderName) ?? ObjectId.Null);
                 tr.Commit();
             }
@@ -112,12 +110,6 @@ namespace HyCADTool.Refactored.Presentation.Factories
         private static ObjectId? FindTextStyleId(Transaction tr, Database db, string name)
         {
             var st = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead, false, true);
-            return st.Has(name) ? st[name] : (ObjectId?)null;
-        }
-
-        private static ObjectId? FindDimStyleId(Transaction tr, Database db, string name)
-        {
-            var st = (DimStyleTable)tr.GetObject(db.DimStyleTableId, OpenMode.ForRead, false, true);
             return st.Has(name) ? st[name] : (ObjectId?)null;
         }
 

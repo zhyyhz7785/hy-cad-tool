@@ -192,8 +192,30 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             mt.Contents = content;
             mt.Rotation = 0;
             ml.MText = mt;
-
+            ApplyTightDoglegForSinglePointMLeader(ml, content);
             return ml;
+        }
+
+        /// <summary>
+        /// 单点引线时收紧「基线/狗腿」水平段（特性中常显示为基线距离/狗腿长）。
+        /// 未设置时 CAD 易用很大的默认，数字左侧会拉出很长白线，需进特性手改 <see cref="MLeader.DoglegLength"/>。
+        /// </summary>
+        private static void ApplyTightDoglegForSinglePointMLeader(MLeader ml, string content)
+        {
+            if (ml == null) return;
+            double th = ml.TextHeight;
+            if (th < 1e-9) th = 0.15;
+            int n = string.IsNullOrEmpty(content) ? 1 : Math.Min(content.Length, 20);
+            // 与字高、字长成比例并设上界，避免长横线
+            double d = Math.Max(th * 0.12, Math.Min(th * 0.52, n * th * 0.11 + th * 0.08));
+            try
+            {
+                ml.SetDoglegLength(0, d);
+            }
+            catch
+            {
+                // 老版本/异常时略过
+            }
         }
 
         /// <summary>计算两点中点</summary>
