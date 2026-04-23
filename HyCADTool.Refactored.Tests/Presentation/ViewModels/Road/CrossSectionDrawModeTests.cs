@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HyCADTool.Refactored.Domain.Services.Road;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 using Xunit;
 
@@ -42,6 +43,12 @@ namespace HyCADTool.Refactored.Tests.Presentation.ViewModels.Road
 
             vm.UseStructureThicknessMode = true; // 本就 true
             changeCount.Should().Be(0);
+        }
+
+        [Fact]
+        public void DrawMode_ContainsTopSurfaceWithAnnotation_WithExpectedValue()
+        {
+            ((int)CrossSectionDrawMode.TopSurfaceWithAnnotation).Should().Be(2);
         }
     }
 }

@@ -53,6 +53,7 @@
 | 055 | [055-M6-M10完工报告-2026-04-20.md](./055-M6-M10完工报告-2026-04-20.md) | M7 板块方案 / 预设 / `CrossSectionDrawMode` 等 |
 | 057 | [057-数据格式与持久化策略-2026-04-20.md](./057-数据格式与持久化策略-2026-04-20.md) | `.roaddesign.json`、Registry |
 | 046 | [046-道路设计-rCs-v3-横断面增强-2026-04-22.md](./046-道路设计-rCs-v3-横断面增强-2026-04-22.md) | rCs v3：大纲行内输入/拖拽、三级结构层、拾取赋值、高差引线 |
+| 048 | [048-道路设计-rCs-v4-落图标注-2026-04-23.md](./048-道路设计-rCs-v4-落图标注-2026-04-23.md) | rCs v4：一键横断面出图（顶面+标注）、`AlignedDimension`、样式工厂 |
 
 ---
 
@@ -124,6 +125,8 @@
 | 路径 / 文件 | 说明 |
 |-------------|------|
 | `Infrastructure/AutoCAD/Services/Road/RoadStandardSectionDrawService.cs` | 标准横断面图落模、图层与 `CrossSectionDrawMode` |
+| `Presentation/Factories/RoadCsDrawStyleFactory.cs` | rCs 出图样式快照：CommitStyles 后置为当前，按名解析 Text/Dim/MLeader 的 `ObjectId`（不建 hy-rcs-*） |
+| `Domain/ValueObjects/Road/CrossSectionAnnotationStyle.cs` | 出图标注样式快照（Text/Dim/MLeader StyleId + model 高度参数） |
 | `Infrastructure/AutoCAD/Xdata/HyRoadXdata.cs` | 含 `KindCrossSection` 等与道路实体身份绑定 |
 
 ### 5.8 邻接（消费 Template / Layout，非 rCs 本体但常一起查）

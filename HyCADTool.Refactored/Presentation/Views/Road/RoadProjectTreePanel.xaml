@@ -73,22 +73,22 @@
             -->
             <ContextMenu x:Key="Road_TreeNodeContextMenu">
                 <MenuItem Header="打开 (双击)"
-                          Command="{Binding PlacementTarget.DataContext.OpenCommand, RelativeSource={RelativeSource Self}}"
-                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource Self}}"/>
+                          Command="{Binding PlacementTarget.DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                 <MenuItem Header="定位到图形 (ZoomTo)"
-                          Command="{Binding PlacementTarget.DataContext.ZoomToCommand, RelativeSource={RelativeSource Self}}"
-                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource Self}}"/>
+                          Command="{Binding PlacementTarget.DataContext.ZoomToCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                 <Separator/>
                 <MenuItem Header="重命名"
-                          Command="{Binding PlacementTarget.DataContext.RenameCommand, RelativeSource={RelativeSource Self}}"
-                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource Self}}"/>
+                          Command="{Binding PlacementTarget.DataContext.RenameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                 <MenuItem Header="删除"
-                          Command="{Binding PlacementTarget.DataContext.DeleteCommand, RelativeSource={RelativeSource Self}}"
-                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource Self}}"/>
+                          Command="{Binding PlacementTarget.DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                 <Separator/>
                 <MenuItem Header="导出 LandXML"
-                          Command="{Binding PlacementTarget.DataContext.ExportLandXmlCommand, RelativeSource={RelativeSource Self}}"
-                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource Self}}"/>
+                          Command="{Binding PlacementTarget.DataContext.ExportLandXmlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                          CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
             </ContextMenu>
         </ResourceDictionary>
     </UserControl.Resources>

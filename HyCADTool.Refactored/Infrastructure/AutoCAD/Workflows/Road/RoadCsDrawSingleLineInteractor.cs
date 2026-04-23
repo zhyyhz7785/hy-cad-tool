@@ -2,6 +2,7 @@ using System;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
@@ -9,8 +10,8 @@ using HyCADTool.Refactored.Presentation.ViewModels.Road;
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
 {
     /// <summary>
-    /// 「向 CAD 绘制结构线」的 AutoCAD 交互器：
-    /// 提供 <see cref="PromptInsertionPoint"/>（Editor.GetPoint）与 <see cref="DrawAt"/>（LockDocument + Transaction + Clear+Draw SingleLine）两步工具。
+        /// 「向 CAD 绘制横断面」的 AutoCAD 交互器：
+        /// 提供 <see cref="PromptInsertionPoint"/>（Editor.GetPoint）与 <see cref="DrawAt"/>（LockDocument + Transaction + Clear+Draw）两步工具。
     ///
     /// <para>本类有意不持有任何"上次 origin"状态，由 View 层根据会话语义缓存（首次 Prompt，之后复用）。
     /// 这样解耦避免了跨文档切换时残留插入点的问题。</para>
@@ -34,7 +35,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return null;
 
-            var opt = new PromptPointOptions("\n[道路] 指定横断面结构线插入点：")
+            var opt = new PromptPointOptions("\n[道路] 指定横断面插入点：")
             {
                 AllowNone = false,
             };
@@ -55,7 +56,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
         /// 此方法包装 <c>doc.LockDocument() + Transaction</c>，在调用时会占用 AutoCAD 文档锁，
         /// 期间 WPF 窗口仍可保持可见（不会因为锁冲突而崩溃 / 阻塞），符合"反复调整即时重绘"的交互预期。
         /// </remarks>
-        public static DrawResult DrawAt(CrossSectionDesignerResult result, Point2d origin)
+        public static DrawResult DrawAt(
+            CrossSectionDesignerResult result,
+            Point2d origin,
+            CrossSectionAnnotationStyle annotationStyle = null)
         {
             if (result == null) throw new ArgumentNullException(nameof(result));
 
@@ -79,19 +83,20 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
                         result.Template,
                         origin,
                         modelUnitPerMeter: 1.0,
-                        mode: CrossSectionDrawMode.SingleLine,
-                        layout: result.Layout);
+                        mode: CrossSectionDrawMode.TopSurfaceWithAnnotation,
+                        layout: result.Layout,
+                        annotationStyle: annotationStyle);
                     tr.Commit();
                 }
             }
             catch (Exception ex)
             {
-                doc.Editor.WriteMessage($"\n[道路] 结构线绘制失败：{ex.Message}");
+                doc.Editor.WriteMessage($"\n[道路] 横断面绘制失败：{ex.Message}");
                 return DrawResult.Failed(ex.Message);
             }
 
             doc.Editor.WriteMessage(
-                $"\n[道路] 结构线已更新（擦除 {erased} / 生成 {created}）@ ({origin.X:F2}, {origin.Y:F2})。");
+                $"\n[道路] 横断面已更新（擦除 {erased} / 生成 {created}）@ ({origin.X:F2}, {origin.Y:F2})。");
             return DrawResult.Success(origin, erased, created);
         }
 

@@ -51,7 +51,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Converters
             var text = value as string;
             if (string.IsNullOrWhiteSpace(text))
             {
-                return new object[] { 0d, Binding.DoNothing };
+                // 失焦时空串不写回 0，避免误清空；源值不变后 Convert 会恢复格式化显示。
+                return new object[] { DependencyProperty.UnsetValue, Binding.DoNothing };
             }
 
             double parsed;

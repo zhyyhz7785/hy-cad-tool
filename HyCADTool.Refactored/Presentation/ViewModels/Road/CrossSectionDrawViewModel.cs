@@ -83,6 +83,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             AfterCrossSectionShellReady();
         }
 
+        /// <inheritdoc />
+        protected override void OnAfterPresetLayoutLoaded()
+            => ApplyHySettingsScaleAndPrecisionToDrawing();
+
         /// <summary>保存用户预设后调用，刷新下拉可见项。</summary>
         public void RefreshPresets()
         {
@@ -115,6 +119,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         private bool _scaleSync;
+        private bool _precisionSync;
         private bool _isSubscribedToSettings;
         private string _lastPickedEntityLayer = string.Empty;
 
@@ -138,6 +143,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             {
                 OnDrawingScaleChangedFromPropertyPanel();
             }
+            else if (e?.PropertyName == nameof(DisplayPrecision) && !_precisionSync)
+            {
+                OnDrawingPrecisionChangedFromPropertyPanel();
+            }
         }
 
         private void TryWireDrawingScaleToSettings()
@@ -147,17 +156,63 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             if (s == null) return;
             int denom = (int)Math.Round(s.Scale);
             if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
+            ApplyPrecisionFromExternal(s.Precision, pushBackToSettings: false);
             s.PropertyChanged += OnHySettingsPropertyChanged;
             _isSubscribedToSettings = true;
         }
 
         private void OnHySettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e?.PropertyName != nameof(ViewModels.SettingsPanelViewModel.Scale)) return;
-            if (_scaleSync) return;
             if (!(sender is ViewModels.SettingsPanelViewModel s)) return;
+            if (e?.PropertyName == nameof(ViewModels.SettingsPanelViewModel.Scale))
+            {
+                if (_scaleSync) return;
+                int denom = (int)Math.Round(s.Scale);
+                if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
+            }
+            else if (e?.PropertyName == nameof(ViewModels.SettingsPanelViewModel.Precision))
+            {
+                if (_precisionSync) return;
+                ApplyPrecisionFromExternal(s.Precision, pushBackToSettings: false);
+            }
+        }
+
+        /// <summary>载入预设几何后仍用 Hy 设置面板的绘图比例与标注小数位（与界面设置一致）。</summary>
+        private void ApplyHySettingsScaleAndPrecisionToDrawing()
+        {
+            var s = ViewModels.SettingsPanelViewModel.Current;
+            if (s == null) return;
             int denom = (int)Math.Round(s.Scale);
             if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
+            ApplyPrecisionFromExternal(s.Precision, pushBackToSettings: false);
+        }
+
+        private void ApplyPrecisionFromExternal(int precision, bool pushBackToSettings)
+        {
+            _precisionSync = true;
+            try
+            {
+                if (DisplayPrecision != precision)
+                    DisplayPrecision = precision;
+                if (pushBackToSettings)
+                {
+                    var s = ViewModels.SettingsPanelViewModel.Current;
+                    if (s != null && s.Precision != precision)
+                        s.Precision = precision;
+                }
+            }
+            finally
+            {
+                _precisionSync = false;
+            }
+        }
+
+        /// <summary>代码侧修改 <see cref="DisplayPrecision"/> 时与 <see cref="ViewModels.SettingsPanelViewModel.Precision"/> 对齐。</summary>
+        private void OnDrawingPrecisionChangedFromPropertyPanel()
+        {
+            if (_precisionSync) return;
+            TryWireDrawingScaleToSettings();
+            ApplyPrecisionFromExternal(DisplayPrecision, pushBackToSettings: true);
         }
 
         private void ApplyScaleFromExternal(int scaleDenominator, bool pushBackToSettings)

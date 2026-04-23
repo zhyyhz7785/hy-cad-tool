@@ -37,6 +37,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         /// <summary>界面显示用小数位。</summary>
         public static readonly IReadOnlyList<int> AvailableDisplayPrecisions = new[] { 0, 1, 2, 3 };
 
+        /// <summary>
+        /// 左侧大纲内联数值框的显示小数位，与 Hy 标注小数位 <see cref="DisplayPrecision"/> 解耦（米制条带宽/坡/高差保持 2 位）。
+        /// </summary>
+        public int OutlineInlineDecimalPlaces => 2;
+
         /// <summary>支持的设计速度（沿用 <see cref="AlignmentCodeChecker.SupportedSpeeds"/>）。</summary>
         public IReadOnlyList<int> AvailableSpeeds => AlignmentCodeChecker.SupportedSpeeds;
 
@@ -143,6 +148,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             {
                 if (p == null) return;
                 LoadLayout(p.Create());
+                OnAfterPresetLayoutLoaded();
             });
 
             StationRangeRows = new ObservableCollection<StationRangeRowVm>();
@@ -156,6 +162,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         // =========================================================================
         //  布局加载 / 重新填充
         // =========================================================================
+
+        /// <summary>在「加载预设」命令完成 <see cref="LoadLayout"/> 后调用；子类可重写以同步 Hy 设置面板等全局项。</summary>
+        protected virtual void OnAfterPresetLayoutLoaded() { }
 
         /// <summary>
         /// 用 <paramref name="layout"/> 重填所有字段。触发一次 <see cref="Recalculate"/>。

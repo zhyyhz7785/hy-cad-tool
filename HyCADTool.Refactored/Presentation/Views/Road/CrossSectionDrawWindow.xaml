@@ -5,6 +5,7 @@
                    xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
                    xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
                    xmlns:cv="clr-namespace:HyCADTool.Refactored.Presentation.Views.Converters"
+                   xmlns:local="clr-namespace:HyCADTool.Refactored.Presentation.Views.Road"
                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                    xmlns:ms="clr-namespace:HyCADTool.Refactored.Domain.Services.Road;assembly=HyCADTool.Refactored"
@@ -391,7 +392,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="SubWidth" />
-                                                        <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -399,7 +400,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="CrossSlopePct" />
-                                                        <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -410,7 +411,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="InnerElevationDiff" />
-                                                        <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -421,7 +422,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="OuterElevationDiff" />
-                                                        <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -454,7 +455,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="Width" />
-                                                <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -546,7 +547,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="Width" />
-                                                <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -554,7 +555,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="CrossSlopePct" />
-                                                <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -565,7 +566,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="InnerElevationDiff" />
-                                                <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -576,7 +577,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="ElevationDiff" />
-                                                <Binding Path="DataContext.DisplayPrecision" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -625,7 +626,7 @@
 
                         <!--
                             实时预览下方命令按钮条（v2.1）：
-                            - 「向 CAD 绘制结构线」：复用预览几何，以 SingleLine 模式把当前方案画到 AutoCAD 模型空间。
+                            - 「向 CAD 绘制横断面」：复用预览几何，以 TopSurfaceWithAnnotation 模式把当前方案画到 AutoCAD 模型空间。
                               首次点击会 Hide 窗口让用户在命令行拾取插入点，之后反复点击按同一 Template.Id 清旧重绘，
                               窗口保持打开便于"调整 → 再绘制"闭环。
                             - 标注 / 厚度轮廓 / 尺寸链 按钮留待后续版本挂入本工具条。
@@ -639,9 +640,9 @@
                                 <Button Margin="4,0"
                                         Padding="{DynamicResource Metric_Padding_8_2}"
                                         Command="{Binding DrawStructureLinesCommand}"
-                                        Content="向 CAD 绘制结构线"
+                                        Content="向 CAD 绘制横断面"
                                         Style="{StaticResource BlenderButton}"
-                                        ToolTip="按当前参数在 AutoCAD 模型空间绘制结构线（仅顶面 + 中心线 + 方位箭头）。首次点击需在命令行指定插入点，之后复用；窗口保持打开。" />
+                                        ToolTip="按当前参数在 AutoCAD 模型空间绘制横断面（顶面 + 尺寸 + 文字 + 引线）。首次点击需在命令行指定插入点，之后复用；窗口保持打开。文字/引线/尺寸样式取自界面-设置。" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -672,12 +673,6 @@
                             </bui:PropertyRow>
                             <bui:PropertyRow Label="设计时速 (km/h)">
                                 <ComboBox ItemsSource="{Binding AvailableSpeeds}" SelectedItem="{Binding DesignSpeed, Mode=TwoWay}" Style="{StaticResource BlenderComboBox}" />
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="比例尺 1 :">
-                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableScales}" SelectedItem="{Binding ScaleDenominator, Mode=TwoWay}" Style="{StaticResource BlenderComboBox}" />
-                            </bui:PropertyRow>
-                            <bui:PropertyRow Label="小数位">
-                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableDisplayPrecisions}" SelectedItem="{Binding DisplayPrecision, Mode=TwoWay}" Style="{StaticResource BlenderComboBox}" />
                             </bui:PropertyRow>
                             <Expander Header="其它" IsExpanded="False" Style="{StaticResource BlenderExpander}">
                                 <StackPanel>
@@ -726,67 +721,6 @@
                             </bui:PropertyRow>
                         </StackPanel>
                     </Expander>
-
-                    <!--  ============================== 当前条带基础参数（与「公共属性」同级，无分组标题） ==============================  -->
-                    <StackPanel Visibility="{Binding ShowNonGreenSelectedBandContent, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel DataContext="{Binding SelectedBand}">
-                            <bui:PropertyRow Label="名称">
-                                <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="类型">
-                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableKinds}" SelectedItem="{Binding Kind, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource BlenderComboBox}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="宽度 (m)">
-                                <bui:NumericSlider Decimals="2"
-                                                   Maximum="30"
-                                                   Minimum="0.1"
-                                                   Step="0.1"
-                                                   Unit="m"
-                                                   Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="横坡 (%)">
-                                <bui:NumericSlider Decimals="2"
-                                                   Maximum="20"
-                                                   Minimum="-20"
-                                                   Step="0.1"
-                                                   Unit="%"
-                                                   Value="{Binding CrossSlopePct, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="高差 (m)">
-                                <bui:NumericSlider Decimals="3"
-                                                   IsEnabled="{Binding IsInnerOuterElevationEnabled}"
-                                                   Maximum="2"
-                                                   Minimum="-2"
-                                                   Step="0.005"
-                                                   Unit="m"
-                                                   Value="{Binding ElevationDiff, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="坡型">
-                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableSlopeTypes}" SelectedItem="{Binding SlopeType, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource BlenderComboBox}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="路拱形式">
-                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableCrownProfiles}" SelectedItem="{Binding CrownProfile, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource BlenderComboBox}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="路面结构">
-                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableSurfaceLayers}" SelectedItem="{Binding SurfaceLayer, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource BlenderComboBox}" />
-                            </bui:PropertyRow>
-
-                            <bui:PropertyRow Label="车道数">
-                                <bui:NumericSlider Decimals="0"
-                                                   Maximum="6"
-                                                   Minimum="0"
-                                                   Step="1"
-                                                   Value="{Binding LaneCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </bui:PropertyRow>
-                        </StackPanel>
-                    </StackPanel>
 
                     <Expander Header="路面结构"
                               IsExpanded="True"

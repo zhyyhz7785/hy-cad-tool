@@ -1054,6 +1054,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             // 否则「单位/副比例」等模式切换的 auto-apply 失败后用户再点「置为当前」会被误判为无需同步。
         }
 
+        /// <summary>
+        /// 将「界面-设置」中的文字/标注/多重引线/表格样式写入当前 DWG，与按「置为当前」等效（内部 <see cref="ApplyStyle"/>）。
+        /// 供 rCs 等出图在落图前调用，使实体使用 <see cref="TextStyleName"/> / <see cref="DimStyleName"/> / <see cref="MLeaderStyleName"/> 对应样式表项。
+        /// </summary>
+        public void CommitStylesToActiveDocument()
+        {
+            ApplyStyle();
+        }
+
         private void SaveAsDefault()
         {
             CommitFocusedTextBoxValue();

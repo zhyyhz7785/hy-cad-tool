@@ -166,6 +166,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
         /// <param name="content">文字内容</param>
         public static MLeader CreateMLeaderSinglePoint(Point3d startPoint, Point3d endPoint, string content)
         {
+            return CreateMLeaderSinglePoint(startPoint, endPoint, content, ObjectId.Null);
+        }
+
+        /// <summary>
+        /// 单点引线；若 <paramref name="mleaderStyleId"/> 有效则先挂样式再生成 MText，
+        /// 否则与无参版相同（使用当前文档多重引线样式）。
+        /// </summary>
+        public static MLeader CreateMLeaderSinglePoint(Point3d startPoint, Point3d endPoint, string content, ObjectId mleaderStyleId)
+        {
             var db = Application.DocumentManager.MdiActiveDocument.Database;
             MLeader ml = new MLeader();
 
@@ -174,7 +183,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             ml.AddFirstVertex(leaderLineIndex, startPoint);
             ml.AddLastVertex(leaderLineIndex, endPoint);
 
-            ml.MLeaderStyle = db.MLeaderstyle;
+            ml.MLeaderStyle = mleaderStyleId.IsNull ? db.MLeaderstyle : mleaderStyleId;
 
             MText mt = new MText();
             mt.TextStyleId = ml.TextStyleId;

@@ -5,12 +5,15 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Input;
 using Autodesk.AutoCAD.Geometry;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCAD.BlenderUI.Controls;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.Factories;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 
 namespace HyCADTool.Refactored.Presentation.Views.Road
@@ -394,22 +397,53 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             }
             finally
             {
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Show();
-                    Activate();
-                    Focus();
-                }), DispatcherPriority.Background);
+                TryRestoreWindowAfterAutoCadStep();
             }
         }
 
         /// <summary>
+        /// AutoCAD 交互结束（拾取点 / 拾取几何）后恢复窗口显示。
+        /// 用户可能在命令等待期间已关闭本窗口，此时不能再 <see cref="Window.Show"/>，否则抛 <see cref="InvalidOperationException"/>。
+        /// </summary>
+        private void TryRestoreWindowAfterAutoCadStep()
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    Show();
+                    Activate();
+                    Focus();
+                }
+                catch (InvalidOperationException)
+                {
+                    // 窗口已关闭（Close 后不可再 Show），忽略
+                }
+            }), DispatcherPriority.Background);
+        }
+
+        /// <summary>
         /// 本窗口会话内缓存的"结构线插入点"（WCS 二维）。
-        /// 首次点击"向 CAD 绘制结构线"按钮时为 null，此时会 Hide 窗口让用户 PromptPoint；
+        /// 首次点击"向 CAD 绘制横断面"按钮时为 null，此时会 Hide 窗口让用户 PromptPoint；
         /// 之后的每次点击沿用这个点，<see cref="RoadCsDrawSingleLineInteractor"/> 会按 Template.Id Clear 旧实体后重绘，
         /// 达到"反复调整即时重绘且不漂移"的手感。
         /// </summary>
         private Point2d? _structureLinesOrigin;
+
+        private static CrossSectionAnnotationStyle BuildAnnotationStyleOrNull()
+        {
+            try
+            {
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                if (doc == null) return null;
+                var settings = SettingsPanelViewModel.Current;
+                return new RoadCsDrawStyleFactory().Build(doc, settings);
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         private void OnDrawStructureLinesRequested(object sender, CrossSectionDesignerResult result)
         {
@@ -420,11 +454,12 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 // 后续点击：origin 已缓存，无需 Hide 窗口；LockDocument 能与可见 WPF 并存。
                 try
                 {
-                    RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value);
+                    var annotationStyle = BuildAnnotationStyleOrNull();
+                    RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value, annotationStyle);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "绘制失败：" + ex.Message, "向 CAD 绘制结构线",
+                    MessageBox.Show(this, "绘制失败：" + ex.Message, "向 CAD 绘制横断面",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 return;
@@ -437,21 +472,17 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 var picked = RoadCsDrawSingleLineInteractor.PromptInsertionPoint();
                 if (picked == null) return;
                 _structureLinesOrigin = picked.Value;
-                RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value);
+                var annotationStyle = BuildAnnotationStyleOrNull();
+                RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value, annotationStyle);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "绘制失败：" + ex.Message, "向 CAD 绘制结构线",
+                MessageBox.Show(this, "绘制失败：" + ex.Message, "向 CAD 绘制横断面",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally
             {
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    Show();
-                    Activate();
-                    Focus();
-                }), DispatcherPriority.Background);
+                TryRestoreWindowAfterAutoCadStep();
             }
         }
 
