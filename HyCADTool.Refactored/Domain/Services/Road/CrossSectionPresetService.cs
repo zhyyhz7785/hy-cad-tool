@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using Newtonsoft.Json;
 
@@ -77,10 +78,22 @@ namespace HyCADTool.Refactored.Domain.Services.Road
 
             // 用户
             string path = Path.Combine(_userDir, SanitizeFileName(presetKey) + ".json");
-            if (!File.Exists(path)) return null;
+            if (File.Exists(path))
+            {
+                var descr = TryLoadFile(path);
+                return descr?.Create();
+            }
 
-            var descr = TryLoadFile(path);
-            return descr?.Create();
+            // 兼容：若文件名与 key 不一致（例如按显示名覆盖后复用旧文件路径），回退扫描 Key。
+            if (!Directory.Exists(_userDir)) return null;
+            foreach (var file in Directory.EnumerateFiles(_userDir, "*.json").OrderBy(f => f, StringComparer.Ordinal))
+            {
+                if (!TryReadPresetFile(file, out var pf) || pf == null) continue;
+                if (!string.Equals((pf.Key ?? string.Empty).Trim(), presetKey.Trim(), StringComparison.OrdinalIgnoreCase))
+                    continue;
+                return pf.Layout?.ToLayout();
+            }
+            return null;
         }
 
         /// <summary>
@@ -94,13 +107,21 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             if (layout == null) throw new ArgumentNullException(nameof(layout));
 
             Directory.CreateDirectory(_userDir);
-            string path = Path.Combine(_userDir, SanitizeFileName(presetKey) + ".json");
+            string normalizedDisplayName = string.IsNullOrWhiteSpace(displayName) ? presetKey : displayName.Trim();
+            string path = TryFindUserPresetPathByDisplayName(normalizedDisplayName)
+                          ?? Path.Combine(_userDir, SanitizeFileName(presetKey) + ".json");
+            string persistedKey = presetKey;
+            if (File.Exists(path) && TryReadPresetFile(path, out var existing) && existing != null)
+            {
+                if (!string.IsNullOrWhiteSpace(existing.Key))
+                    persistedKey = existing.Key;
+            }
 
             var dto = CrossSectionLayoutDto.FromLayout(layout);
             var file = new PresetFile
             {
-                Key = presetKey,
-                DisplayName = string.IsNullOrWhiteSpace(displayName) ? presetKey : displayName,
+                Key = persistedKey,
+                DisplayName = normalizedDisplayName,
                 Layout = dto,
             };
 
@@ -116,10 +137,28 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         public bool DeleteUserPreset(string presetKey)
         {
             if (string.IsNullOrWhiteSpace(presetKey)) return false;
+            if (IsBuiltInPresetKey(presetKey)) return false;
             string path = Path.Combine(_userDir, SanitizeFileName(presetKey) + ".json");
             if (!File.Exists(path)) return false;
             File.Delete(path);
             return true;
+        }
+
+        /// <summary>按显示名删除用户预设（内置预设不可删）。</summary>
+        public bool DeleteUserPresetByDisplayName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName)) return false;
+            string path = TryFindUserPresetPathByDisplayName(displayName);
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+            File.Delete(path);
+            return true;
+        }
+
+        /// <summary>是否为内置预设 key。</summary>
+        public bool IsBuiltInPresetKey(string presetKey)
+        {
+            if (string.IsNullOrWhiteSpace(presetKey)) return false;
+            return CrossSectionPresets.All.Any(p => string.Equals(p.Key, presetKey, StringComparison.OrdinalIgnoreCase));
         }
 
         // =============================================================================
@@ -142,6 +181,37 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             catch
             {
                 return null;
+            }
+        }
+
+        private string TryFindUserPresetPathByDisplayName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName)) return null;
+            if (!Directory.Exists(_userDir)) return null;
+            string normalized = displayName.Trim();
+
+            foreach (var path in Directory.EnumerateFiles(_userDir, "*.json").OrderBy(f => f, StringComparer.Ordinal))
+            {
+                if (!TryReadPresetFile(path, out var file) || file == null) continue;
+                if (string.Equals((file.DisplayName ?? string.Empty).Trim(), normalized, StringComparison.OrdinalIgnoreCase))
+                    return path;
+            }
+
+            return null;
+        }
+
+        private bool TryReadPresetFile(string path, out PresetFile file)
+        {
+            file = null;
+            try
+            {
+                string text = File.ReadAllText(path, Encoding.UTF8);
+                file = JsonConvert.DeserializeObject<PresetFile>(text, _settings);
+                return file != null;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -265,6 +335,14 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             public double Width { get; set; }
             public double CrossSlopePct { get; set; }
             public int LaneCount { get; set; }
+            public double ElevationDiff { get; set; }
+            public double InnerElevationDiff { get; set; }
+            public int SlopeType { get; set; }
+            public int CrownProfile { get; set; }
+            public int SurfaceLayer { get; set; }
+            public KerbSpecDto OuterKerb { get; set; }
+            public KerbSpecDto InnerKerb { get; set; }
+            public StructureLayerScheme StructureScheme { get; set; }
 
             public static CrossSectionBandDto From(CrossSectionBand b)
                 => new CrossSectionBandDto
@@ -274,16 +352,62 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     Width = b.Width,
                     CrossSlopePct = b.CrossSlopePct,
                     LaneCount = b.LaneCount,
+                    ElevationDiff = b.ElevationDiff,
+                    InnerElevationDiff = b.InnerElevationDiff,
+                    SlopeType = (int)b.SlopeType,
+                    CrownProfile = (int)b.CrownProfile,
+                    SurfaceLayer = (int)b.SurfaceLayer,
+                    OuterKerb = KerbSpecDto.From(b.OuterKerb),
+                    InnerKerb = KerbSpecDto.From(b.InnerKerb),
+                    StructureScheme = b.StructureScheme,
                 };
 
             public CrossSectionBand ToBand(BandSide side)
             {
+                var outerKerb = OuterKerb?.ToKerbSpec() ?? KerbSpec.None;
+                var innerKerb = InnerKerb?.ToKerbSpec() ?? KerbSpec.None;
                 return new CrossSectionBand(
                     Name ?? "Band",
                     (HyCADTool.Refactored.Domain.Models.Road.TemplateComponentKind)Kind,
                     Width > 0 ? Width : 1.0,
                     CrossSlopePct,
-                    side);
+                    side,
+                    outerKerb,
+                    innerKerb,
+                    Enum.IsDefined(typeof(RoadSlopeType), SlopeType) ? (RoadSlopeType)SlopeType : RoadSlopeType.Single,
+                    Enum.IsDefined(typeof(RoadCrownProfile), CrownProfile) ? (RoadCrownProfile)CrownProfile : RoadCrownProfile.Linear,
+                    Enum.IsDefined(typeof(RoadSurfaceLayer), SurfaceLayer) ? (RoadSurfaceLayer)SurfaceLayer : RoadSurfaceLayer.None,
+                    LaneCount < 0 ? 0 : LaneCount,
+                    StructureScheme,
+                    ElevationDiff,
+                    InnerElevationDiff);
+            }
+        }
+
+        internal sealed class KerbSpecDto
+        {
+            public int Type { get; set; }
+            public string Model { get; set; }
+            public double Height { get; set; }
+            public double Width { get; set; }
+
+            public static KerbSpecDto From(KerbSpec kerb)
+                => new KerbSpecDto
+                {
+                    Type = (int)kerb.Type,
+                    Model = kerb.Model,
+                    Height = kerb.Height,
+                    Width = kerb.Width,
+                };
+
+            public KerbSpec ToKerbSpec()
+            {
+                var kerbType = Enum.IsDefined(typeof(RoadKerbType), Type)
+                    ? (RoadKerbType)Type
+                    : RoadKerbType.None;
+                var h = double.IsNaN(Height) || double.IsInfinity(Height) || Height < 0 ? 0 : Height;
+                var w = double.IsNaN(Width) || double.IsInfinity(Width) || Width < 0 ? 0 : Width;
+                return new KerbSpec(kerbType, Model ?? string.Empty, h, w);
             }
         }
     }

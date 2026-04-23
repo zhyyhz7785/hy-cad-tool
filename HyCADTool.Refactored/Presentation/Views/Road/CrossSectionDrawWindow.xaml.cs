@@ -204,8 +204,62 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             if (PresetCombo.SelectedItem is Domain.Services.Road.PresetDescriptor p)
             {
                 if (_vm.LoadPresetCommand.CanExecute(p)) _vm.LoadPresetCommand.Execute(p);
-                PresetCombo.SelectedItem = null;
             }
+        }
+
+        private void DeletePresetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm == null) return;
+
+            if (!(PresetCombo.SelectedItem is Domain.Services.Road.PresetDescriptor p))
+            {
+                MessageBox.Show(this, "请先在预设下拉中选择要删除的用户预设。", "删除预设", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var presetSvc = ResolvePresetServiceSafe();
+            if (presetSvc == null)
+            {
+                MessageBox.Show(this, "预设服务不可用，无法删除。", "删除预设", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (presetSvc.IsBuiltInPresetKey(p.Key))
+            {
+                MessageBox.Show(this, "内置预设不可删除。", "删除预设", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var ok = MessageBox.Show(
+                this,
+                $"确认删除用户预设“{p.DisplayName}”吗？\n此操作不可撤销。",
+                "删除预设",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (ok != MessageBoxResult.Yes) return;
+
+            bool deleted = false;
+            try
+            {
+                deleted = presetSvc.DeleteUserPresetByDisplayName(p.DisplayName);
+                if (!deleted) deleted = presetSvc.DeleteUserPreset(p.Key);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"删除失败：{ex.Message}", "删除预设", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (!deleted)
+            {
+                MessageBox.Show(this, "未找到可删除的用户预设文件。", "删除预设", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            _vm.RefreshPresets();
+            PresetCombo.SelectedItem = null;
+            MessageBox.Show(this, "已删除用户预设。", "删除预设", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void OutlinerAddButton_Click(object sender, RoutedEventArgs e)

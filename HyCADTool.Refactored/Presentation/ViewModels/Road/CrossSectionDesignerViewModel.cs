@@ -665,11 +665,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private void RemoveSelectedBand()
         {
-            if (SelectedBand == null) return;
-            var side = FindSide(SelectedBand, out var col, out var idx);
+            var removing = SelectedBand;
+            if (removing == null) return;
+
+            var side = FindSide(removing, out var col, out var idx);
             if (col == null) return;
             col.RemoveAt(idx);
-            SelectedBand.PropertyChanged -= OnBandRowChanged;
+            removing.PropertyChanged -= OnBandRowChanged;
 
             if (_isMirror && !_isBulkUpdating)
             {

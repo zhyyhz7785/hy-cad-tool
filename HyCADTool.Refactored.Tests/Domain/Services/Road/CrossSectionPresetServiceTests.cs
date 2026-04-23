@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using FluentAssertions;
+using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using Xunit;
@@ -129,6 +130,66 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
             var svc = new CrossSectionPresetService(_dir);
             var all = svc.LoadAll();
             all.Count.Should().Be(CrossSectionPresets.All.Count); // 坏文件不影响内置
+        }
+
+        [Fact]
+        public void SaveAndLoadUserPreset_PreservesExtendedBandFields()
+        {
+            var svc = new CrossSectionPresetService(_dir);
+            var layout = svc.LoadByName("urban-arterial");
+            var left = layout.LeftBands.ToList();
+            left[0] = left[0]
+                .WithElevationDiff(0.12)
+                .WithInnerElevationDiff(-0.04)
+                .WithSlopeType(RoadSlopeType.Double)
+                .WithCrownProfile(RoadCrownProfile.Parabolic)
+                .WithSurfaceLayer(RoadSurfaceLayer.PavementSurface)
+                .WithOuterKerb(new KerbSpec(RoadKerbType.Curb, "15x10x50", 0.18, 0.15))
+                .WithInnerKerb(new KerbSpec(RoadKerbType.Plain, "10x10x30", 0.02, 0.10));
+            var updated = layout.WithLeftBands(left);
+
+            svc.SaveUserPreset("extended-field-case", "扩展字段方案", updated);
+            var loaded = svc.LoadByName("extended-field-case");
+
+            loaded.Should().NotBeNull();
+            var band = loaded.LeftBands[0];
+            band.ElevationDiff.Should().BeApproximately(0.12, 1e-9);
+            band.InnerElevationDiff.Should().BeApproximately(-0.04, 1e-9);
+            band.SlopeType.Should().Be(RoadSlopeType.Double);
+            band.CrownProfile.Should().Be(RoadCrownProfile.Parabolic);
+            band.SurfaceLayer.Should().Be(RoadSurfaceLayer.PavementSurface);
+            band.OuterKerb.Type.Should().Be(RoadKerbType.Curb);
+            band.InnerKerb.Type.Should().Be(RoadKerbType.Plain);
+        }
+
+        [Fact]
+        public void SaveUserPreset_SameDisplayName_OverwritesExistingUserPreset()
+        {
+            var svc = new CrossSectionPresetService(_dir);
+            var first = svc.LoadByName("local").WithTitle("第一版");
+            var second = svc.LoadByName("secondary").WithTitle("第二版");
+
+            svc.SaveUserPreset("preset-a", "同名方案", first);
+            svc.SaveUserPreset("preset-b", "同名方案", second);
+
+            var all = svc.LoadAll();
+            all.Count(p => p.DisplayName == "同名方案").Should().Be(1);
+
+            var sameName = all.Single(p => p.DisplayName == "同名方案");
+            var loaded = svc.LoadByName(sameName.Key);
+            loaded.Title.Should().Be("第二版");
+        }
+
+        [Fact]
+        public void DeleteUserPresetByDisplayName_RemovesOnlyUserPreset()
+        {
+            var svc = new CrossSectionPresetService(_dir);
+            var layout = svc.LoadByName("local");
+            svc.SaveUserPreset("for-delete", "待删除方案", layout);
+
+            svc.DeleteUserPresetByDisplayName("待删除方案").Should().BeTrue();
+            svc.DeleteUserPresetByDisplayName("待删除方案").Should().BeFalse();
+            svc.DeleteUserPresetByDisplayName("城市主干路（CJJ37）").Should().BeFalse("内置预设不在用户目录，不允许删除");
         }
     }
 }

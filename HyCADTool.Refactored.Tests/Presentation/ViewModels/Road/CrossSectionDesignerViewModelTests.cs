@@ -86,6 +86,16 @@ namespace HyCADTool.Refactored.Tests.Presentation.ViewModels.Road
         }
 
         [Fact]
+        public void RemoveBandCommand_DoesNotThrow_WhenSelectionClearedDuringCollectionChanged()
+        {
+            var vm = NewVmWithArterial();
+            vm.SelectedBand = vm.LeftBands.First();
+            vm.LeftBands.CollectionChanged += (_, __) => vm.SelectedBand = null;
+
+            vm.Invoking(x => x.RemoveBandCommand.Execute(null)).Should().NotThrow();
+        }
+
+        [Fact]
         public void MoveUp_MoveDown_ReorderCurrentCollection()
         {
             var vm = NewVmWithArterial();

@@ -89,6 +89,12 @@
                       ItemsSource="{Binding Presets}"
                       SelectionChanged="PresetCombo_SelectionChanged"
                       Style="{StaticResource BlenderComboBox}" />
+            <Button Margin="6,0,0,0"
+                    Padding="{DynamicResource Metric_Padding_8_2}"
+                    Click="DeletePresetButton_Click"
+                    Content="删除预设"
+                    Style="{StaticResource BlenderButtonFlat}"
+                    ToolTip="删除当前选中的用户预设（内置预设不可删）" />
         </StackPanel>
     </bui:BlenderWindow.HeaderRightContent>
 
