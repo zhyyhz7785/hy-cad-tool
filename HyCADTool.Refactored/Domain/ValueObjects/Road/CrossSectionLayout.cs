@@ -41,6 +41,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>显示标题（用于标题栏文字，例如"标准横断面图  1:100"）。</summary>
         public string Title { get; }
 
+        /// <summary>
+        /// 标准横断面图顶部“平面带”沿道路方向的长度（m）。
+        /// 用于 rCs 标准横断面图的区域 1；默认 6.5 m。
+        /// </summary>
+        public double PlanStripLength { get; }
+
         // ==================================== v2 新增字段 ====================================
 
         /// <summary>
@@ -107,6 +113,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             int designSpeed,
             int scaleDenominator,
             string title,
+            double planStripLength,
             double centerlinePosition,
             double profileElevationOffset,
             bool isEmptyAssembly,
@@ -128,6 +135,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             DesignSpeed = designSpeed;
             ScaleDenominator = scaleDenominator;
             Title = title ?? string.Empty;
+            PlanStripLength = planStripLength;
             CenterlinePosition = centerlinePosition;
             ProfileElevationOffset = profileElevationOffset;
             IsEmptyAssembly = isEmptyAssembly;
@@ -162,6 +170,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             int designSpeed,
             int scaleDenominator = 100,
             string title = "标准横断面图",
+            double planStripLength = 6.5,
             double centerlinePosition = double.NaN,
             double profileElevationOffset = 0,
             bool isEmptyAssembly = false,
@@ -185,6 +194,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 throw new ArgumentOutOfRangeException(nameof(designSpeed), $"设计速度必须 > 0，当前 {designSpeed}。");
             if (scaleDenominator <= 0)
                 throw new ArgumentOutOfRangeException(nameof(scaleDenominator), $"比例分母必须 > 0，当前 {scaleDenominator}。");
+            if (double.IsNaN(planStripLength) || double.IsInfinity(planStripLength) || planStripLength <= 0)
+                throw new ArgumentOutOfRangeException(nameof(planStripLength), $"平面带长度必须 > 0，当前 {planStripLength}。");
             if (double.IsInfinity(profileElevationOffset))
                 throw new ArgumentOutOfRangeException(nameof(profileElevationOffset), $"高程偏移必须为有限值，当前 {profileElevationOffset}。");
             if (double.IsInfinity(stationStart))
@@ -224,7 +235,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
             return new CrossSectionLayout(
                 left.AsReadOnly(), right.AsReadOnly(),
-                centerMedianWidth, designSpeed, scaleDenominator, title,
+                centerMedianWidth, designSpeed, scaleDenominator, title, planStripLength,
                 resolvedCenterline, profileElevationOffset, isEmptyAssembly, stationStart, stationEnd,
                 additionalStationRanges,
                 wSub,
@@ -273,7 +284,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         // ==================================== 不变式改写 ====================================
 
         public CrossSectionLayout WithLeftBands(IReadOnlyList<CrossSectionBand> leftBands)
-            => Create(leftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(leftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       double.NaN /* 让中心线随新左半宽自动重算 */,
                       ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
@@ -281,14 +292,14 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithRightBands(IReadOnlyList<CrossSectionBand> rightBands)
-            => Create(LeftBands, rightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, rightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithCenterMedianWidth(double w)
-            => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       double.NaN /* 中分带宽变了，中心线重算 */,
                       ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
@@ -296,56 +307,63 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithDesignSpeed(int speed)
-            => Create(LeftBands, RightBands, CenterMedianWidth, speed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, speed, ScaleDenominator, Title, PlanStripLength,
                       CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithScale(int denom)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, denom, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, denom, Title, PlanStripLength,
                       CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithTitle(string title)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, title, PlanStripLength,
+                      CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
+                      MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
+                      MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
+                      ElevationDiffLocked);
+
+        public CrossSectionLayout WithPlanStripLength(double planStripLength)
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, planStripLength,
                       CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithCenterlinePosition(double centerlinePosition)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       centerlinePosition, ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithProfileElevationOffset(double offset)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       CenterlinePosition, offset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithIsEmptyAssembly(bool isEmpty)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       CenterlinePosition, ProfileElevationOffset, isEmpty, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithStations(double stationStart, double stationEnd)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,
                       ElevationDiffLocked);
 
         public CrossSectionLayout WithStationRanges(double stationStart, double stationEnd, IReadOnlyList<StationRangeSpan> additional)
-            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title,
+            => Create(LeftBands, RightBands, CenterMedianWidth, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
                       CenterlinePosition, ProfileElevationOffset, IsEmptyAssembly, stationStart, stationEnd, additional,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,

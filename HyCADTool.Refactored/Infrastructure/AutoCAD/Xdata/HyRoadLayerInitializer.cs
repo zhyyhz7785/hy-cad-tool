@@ -7,7 +7,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
 {
     /// <summary>
     /// HyRoad 模块图层的<b>锁定 / 特殊属性</b>初始化工具。
-    /// 普通「存在即可」的图层在 <c>PluginInitializer.GetRequiredLayers()</c> 里批量创建；
+    /// 普通「存在即可」的图层在插件初始化时由 <c>ILayerService.EnsureUserLayerItems</c>（来自 hy-settings 层表）批量创建；
     /// 需要额外强制属性（如锁定）的图层走本类。
     ///
     /// <para>当前受管图层：</para>

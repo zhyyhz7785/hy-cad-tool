@@ -416,8 +416,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <list type="bullet">
         ///   <item>Vertices：从最左 → 最右 的外轮廓折线（含中分带两端点 + 路牙顶 + 路拱插值点）。</item>
         ///   <item>Panels：每条带 1 个（板块本身）+ 每路牙 1 个（如有）+ 中分带 1 个（如有）。</item>
-        ///   <item>DimensionSegments：底部 Tier=0 总长 / Tier=1 分段 + 顶部 Tier=2 总宽。</item>
-        ///   <item>SlopeLabels：有横坡的条带在路面中点；相邻条带若连接处 y 平齐且横坡相同则合并为一条。</item>
+        ///   <item>DimensionSegments：仅底部一路总宽（红线全幅一条），不再生成分段 / 顶排总宽。</item>
+        ///   <item>SlopeLabels：有横坡的条带在路面中点（不含中分/中央隔离带）；相邻条带若连接处 y 平齐且横坡相同则合并为一条。</item>
         ///   <item>HeightLabels：各顶点；竖向以道路中心线 x=0 处高程为 ±0.000（与「中心线/设计起点」一致，非最内车道缝）。有中分带时中分上只标一个 ±0.000（x=0），不标中心左/中分缝/中心右三处。相邻板 y 平齐、横坡同处不标（免矛盾）。</item>
         ///   <item>TopLabels：每条带中央一个（名称）+ 中分带 1 个（"中央分隔带"）。</item>
         ///   <item>Orientation / Title：固定左"北"右"南"、底部居中标题。</item>
@@ -639,32 +639,13 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             }
 
             // 4) Dimension Segments
-            var dimSegs = BuildDimensionSegments(layout, leftStrips, rightStrips, xLeftInner, xRightInner);
+            var dimSegs = BuildDimensionSegments(layout);
 
             // 5) 横坡 Labels（顶面 y 已按中心线归 0；与条带几何同减 yDatum）
             var slopes = new List<FigureSlopeLabel>();
             AppendSlopeLabelsMergingFlushJoints(slopes, layout.LeftBands, leftStrips, yDatum);
             AppendSlopeLabelsMergingFlushJoints(slopes, layout.RightBands, rightStrips, yDatum);
-            if (Wm > 1e-9)
-            {
-                double mY0 = vertices[centerLeftIndex].Y;
-                double mY2 = vertices[centerRightIndex].Y;
-                double mY1 = medianSeamIndex >= 0
-                    ? vertices[medianSeamIndex].Y
-                    : mY0 + (mY2 - mY0) * (xSplit - xLeftInner) / (xRightInner - xLeftInner + 1e-12);
-                if (Math.Abs(layout.MedianLeftCrossSlopePct) > 1e-6)
-                {
-                    double midX = (xLeftInner + xSplit) * 0.5;
-                    double midY = (mY0 + mY1) * 0.5 + 0.25;
-                    slopes.Add(new FigureSlopeLabel(midX, midY, $"{layout.MedianLeftCrossSlopePct:F1}%"));
-                }
-                if (Math.Abs(layout.MedianRightCrossSlopePct) > 1e-6)
-                {
-                    double midX2 = (xSplit + xRightInner) * 0.5;
-                    double midY2 = (mY1 + mY2) * 0.5 + 0.25;
-                    slopes.Add(new FigureSlopeLabel(midX2, midY2, $"{layout.MedianRightCrossSlopePct:F1}%"));
-                }
-            }
+            // 中分/中央隔离带不输出横坡标注（出图在坡度字下用箭头，见 RoadStandardSectionDrawService）
 
             // 6) 标高 Labels（去重 + 同坡平齐条缝不标；有中分带时中分只标 x=0 一处 ±0.000）
             var noHeightJoints = new List<(double x, double y)>();
@@ -781,12 +762,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 : 0;
         }
 
-        private static List<FigureDimensionSegment> BuildDimensionSegments(
-            CrossSectionLayout layout,
-            IReadOnlyList<BandGeometry> leftStrips,
-            IReadOnlyList<BandGeometry> rightStrips,
-            double xLeftInner,
-            double xRightInner)
+        private static List<FigureDimensionSegment> BuildDimensionSegments(CrossSectionLayout layout)
         {
             var dimSegs = new List<FigureDimensionSegment>();
 
@@ -794,43 +770,12 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             double rightmostX = +layout.RightHalfWidth + layout.CenterMedianWidth / 2.0;
             double totalWidth = layout.TotalWidth;
 
-            // Tier=1 分段链：每条带一格（左半从最外→中心；中分带；右半从中心→最外）
-            double currX = leftmostX;
-            for (int i = layout.LeftBands.Count - 1; i >= 0; i--)
+            // 仅底部一路：红线全幅总长度（与 Layout.TotalWidth 一致），无分段/顶排尺寸
+            if (totalWidth > 1e-9)
             {
-                var b = layout.LeftBands[i];
-                double next = currX + b.Width;
-                dimSegs.Add(new FigureDimensionSegment(currX, next, FormatWidthMeters(b.Width), tier: 1));
-                currX = next;
-            }
-            if (layout.CenterMedianWidth > 0)
-            {
-                double next = currX + layout.CenterMedianWidth;
-                dimSegs.Add(new FigureDimensionSegment(currX, next, FormatWidthMeters(layout.CenterMedianWidth), tier: 1));
-                currX = next;
-            }
-            foreach (var b in layout.RightBands)
-            {
-                double next = currX + b.Width;
-                dimSegs.Add(new FigureDimensionSegment(currX, next, FormatWidthMeters(b.Width), tier: 1));
-                currX = next;
-            }
-
-            // Tier=0 总长链：左半 / [中分带] / 右半
-            if (layout.LeftHalfWidth > 0)
-                dimSegs.Add(new FigureDimensionSegment(leftmostX, xLeftInner,
-                    FormatWidthMeters(layout.LeftHalfWidth), tier: 0));
-            if (layout.CenterMedianWidth > 0)
-                dimSegs.Add(new FigureDimensionSegment(xLeftInner, xRightInner,
-                    FormatWidthMeters(layout.CenterMedianWidth), tier: 0));
-            if (layout.RightHalfWidth > 0)
-                dimSegs.Add(new FigureDimensionSegment(xRightInner, rightmostX,
-                    FormatWidthMeters(layout.RightHalfWidth), tier: 0));
-
-            // Tier=2 顶部总宽
-            if (totalWidth > 0)
                 dimSegs.Add(new FigureDimensionSegment(leftmostX, rightmostX,
-                    FormatWidthMeters(totalWidth), tier: 2));
+                    FormatWidthMeters(totalWidth), tier: 0));
+            }
 
             return dimSegs;
         }

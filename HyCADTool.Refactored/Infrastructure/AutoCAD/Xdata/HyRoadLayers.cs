@@ -1,192 +1,167 @@
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
+
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
 {
     /// <summary>
-    /// 道路模块使用的 AutoCAD 标准图层名 + 颜色索引常量。
+    /// 道路模块使用的 AutoCAD 标准图层名（经 <see cref="UserLayerNameResolver"/> 解析，可在「设置—图层」中改名）+ 颜色索引常量。
     ///
-    /// 命名规范：<c>05_hy_道路_子模块</c>（紧邻既有 <c>04_hy_*</c> 前缀后面）。
-    /// - <see cref="AlignmentLayer"/>：P1 平面线位中心线（从 JSON 反向绘制时使用）。
-    /// - 其他预留：P2 纵断面 / P5 走廊 / P3 标线。命令层 v1 暂不强制使用，面向 v2 扩展。
-    ///
-    /// 配合 <c>PluginInitializer.GetRequiredLayers()</c> 在插件启动时创建。
+    /// 默认名与 LayerCatalogFactory 内置层表一致。
+    /// <see cref="GetAll"/> 返回默认名与颜色，供层表工厂与首次建层使用（不调用解析器，避免循环依赖）。
     /// </summary>
     public static class HyRoadLayers
     {
-        public const string AlignmentLayer = "05_hy_道路_平面线位";
-        public const short AlignmentColor = 6; // 品红：视觉上与既有道路人行横道图层区分
+        private const string _defAlignment = "05_hy_道路_平面线位";
+        private const string _defProfile = "05_hy_道路_纵断面";
+        private const string _defCorridor = "05_hy_道路_走廊";
+        private const string _defMarking = "05_hy_道路_标线";
+        private const string _defStation = "05_hy_道路_桩号";
+        private const string _defGeometryPoint = "05_hy_道路_几何点";
+        private const string _defOffset = "05_hy_道路_偏移线";
+        private const string _defUserPick = "用户拾取";
+        private const string _defRaw = "05_hy_道路_原线";
+        private const string _defLivePreview = "05_hy_道路_预览";
+        private const string _defIntersection = "05_hy_道路_交叉口";
+        private const string _defCurbRamp = "05_hy_道路_缘石坡道";
+        private const string _defTactile = "05_hy_道路_盲道";
+        private const string _defCrosswalk = "05_hy_道路_人行横道";
+        private const string _defStopLine = "05_hy_道路_停止线";
+        private const string _defCsOutline = "05_hy_道路_横断面_轮廓";
+        private const string _defCsCenter = "05_hy_道路_横断面_中心线";
+        private const string _defCsPavement = "05_hy_道路_横断面_车行道";
+        private const string _defCsSidewalk = "05_hy_道路_横断面_人行道";
+        private const string _defCsKerb = "05_hy_道路_横断面_路牙";
+        private const string _defCsGreen = "05_hy_道路_横断面_绿化带";
+        private const string _defCsDim = "05_hy_道路_横断面_尺寸链";
+        private const string _defCsAnno = "05_hy_道路_横断面_文字";
+        private const string _defCsTitle = "05_hy_道路_横断面_图题";
+        private const string _defCsTitleDeco = "05_hy_道路_横断面_图题_装饰";
+        private const string _defCsOrientation = "05_hy_道路_横断面_方位";
+        private const string _defPlanRed = "05_hy_道路_平面_红线";
+        private const string _defPlanBand = "05_hy_道路_平面_板块分界";
+        private const string _defPlanMarking = "05_hy_道路_平面_标线";
 
-        public const string ProfileLayer = "05_hy_道路_纵断面";
-        public const short ProfileColor = 2; // 黄：P2 预留
+        public static string AlignmentLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlaneAlignment, _defAlignment);
+        public const short AlignmentColor = 6;
 
-        public const string CorridorLayer = "05_hy_道路_走廊";
-        public const short CorridorColor = 8; // 浅灰：P5 预留
+        public static string ProfileLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadProfile, _defProfile);
+        public const short ProfileColor = 2;
 
-        public const string MarkingLayer = "05_hy_道路_标线";
-        public const short MarkingColor = 3; // 绿：P3 预留
+        public static string CorridorLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCorridor, _defCorridor);
+        public const short CorridorColor = 8;
 
-        public const string StationLayer = "05_hy_道路_桩号";
-        public const short StationColor = 7; // 白/黑：与图底线色反白，主桩文字清晰可读
+        public static string MarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadMarking, _defMarking);
+        public const short MarkingColor = 3;
 
-        /// <summary>几何点标注（BP / EP / PI / BC / EC / TS / SC / CS / ST）。hyRoadAlnGeomPt 专用。</summary>
-        public const string GeometryPointLayer = "05_hy_道路_几何点";
-        public const short GeometryPointColor = 4; // 青：与桩号主文字（白）/ 中心线（品红）视觉分离
+        public static string StationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadStation, _defStation);
+        public const short StationColor = 7;
 
-        /// <summary>偏移辅助线（hyRoadAlnOffset 左右路幅 / 路缘石示意线）。</summary>
-        public const string OffsetLayer = "05_hy_道路_偏移线";
-        public const short OffsetColor = 30; // 橙：与中心线（品红）/ 桩号（白）区分
+        public static string GeometryPointLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadGeometryPoint, _defGeometryPoint);
+        public const short GeometryPointColor = 4;
 
-        /// <summary>
-        /// 路线工作台「绘出当前线位」预览层（<c>hyRoadAlnUserPickDraw</c>）。
-        /// 实体颜色按段类型单独指定（直/缓/圆），与图层索引色无关。
-        /// </summary>
-        public const string UserPickPreviewLayer = "用户拾取";
-        public const short UserPickPreviewLayerColor = 7; // 白：图层默认；分段仍用 ByBlock/ByAci 着色
+        public static string OffsetLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadOffset, _defOffset);
+        public const short OffsetColor = 30;
 
-        /// <summary>路线工作台「原线」开关：创建时刻中心线快照重绘层（颜色 ACI 252，实体 ByLayer）。</summary>
-        public const string RawPolylineLayer = "05_hy_道路_原线";
+        public static string UserPickPreviewLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadUserPickPreview, _defUserPick);
+        public const short UserPickPreviewLayerColor = 7;
+
+        public static string RawPolylineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadRawPolyline, _defRaw);
         public const short RawPolylineColor = 252;
 
-        /// <summary>
-        /// 路线工作台当前选中 Alignment 的「主预览」实体图层（黄色，可 ERASE / LAYOFF）。
-        /// 由 <c>RoadAlignmentLivePreviewService</c> 幂等写入 / 擦除；PaletteSet 关闭时统一清零。
-        /// 与 <see cref="RawPolylineLayer"/> 的区别：原线是创建快照（可跨会话留存），
-        /// 预览只是工作台打开期间的视觉反馈（关掉面板就该消失）。
-        /// </summary>
-        public const string LivePreviewLayer = "05_hy_道路_预览";
-        public const short LivePreviewColor = 2; // Yellow：与原有 Transient 黄线视觉一致
+        public static string LivePreviewLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadLivePreview, _defLivePreview);
+        public const short LivePreviewColor = 2;
 
-        /// <summary>
-        /// 平面交叉口转角圆弧（hyRoadIntersection）。
-        /// <para>存放 <c>Intersection.CornerArcs</c> 转换得到的 AutoCAD <see cref="Autodesk.AutoCAD.DatabaseServices.Arc"/>；
-        /// 每条弧挂 HY_ROAD Xdata（KIND="Intersection"，ID=Intersection.Id），支持幂等重建。</para>
-        /// </summary>
-        public const string IntersectionLayer = "05_hy_道路_交叉口";
-        public const short IntersectionColor = 1; // 红：交叉口在平面图上应显眼，与中心线（品红）区分
+        public static string IntersectionLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadIntersection, _defIntersection);
+        public const short IntersectionColor = 1;
 
-        /// <summary>
-        /// 缘石坡道（hyRoadCurbRamp）。GB 50763 §3.2 无障碍坡道，挂 HY_ROAD Xdata（KIND="CurbRamp"，ID=Intersection.Id）。
-        /// </summary>
-        public const string CurbRampLayer = "05_hy_道路_缘石坡道";
-        public const short CurbRampColor = 11; // 淡红：与交叉口（红）同色系但明度较低，区别于主体转角圆弧
+        public static string CurbRampLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCurbRamp, _defCurbRamp);
+        public const short CurbRampColor = 11;
 
-        /// <summary>
-        /// 盲道（hyRoadTactilePaving）。GB 50763 §3.3 行进盲道 / 提示盲道，挂 HY_ROAD Xdata（KIND="TactilePaving"，ID=Intersection.Id）。
-        /// </summary>
-        public const string TactilePavingLayer = "05_hy_道路_盲道";
-        public const short TactilePavingColor = 42; // 土黄：实际盲道材质为黄色地砖
+        public static string TactilePavingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadTactilePaving, _defTactile);
+        public const short TactilePavingColor = 42;
 
-        /// <summary>
-        /// 人行横道条纹（hyRoadIntersectionCrosswalk）。CJJ 37-2012 §11.3 人行横道，挂 HY_ROAD Xdata（KIND="Crosswalk"，ID=Intersection.Id）。
-        /// </summary>
-        public const string CrosswalkLayer = "05_hy_道路_人行横道";
-        public const short CrosswalkColor = 7; // 白：与国标路面标线白漆一致
+        public static string CrosswalkLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrosswalk, _defCrosswalk);
+        public const short CrosswalkColor = 7;
 
-        /// <summary>
-        /// 停止线（hyRoadIntersectionCrosswalk 附带）。GB 5768-2009 停止线，挂 HY_ROAD Xdata（KIND="StopLine"，ID=Intersection.Id）。
-        /// </summary>
-        public const string StopLineLayer = "05_hy_道路_停止线";
-        public const short StopLineColor = 7; // 白
+        public static string StopLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadStopLine, _defStopLine);
+        public const short StopLineColor = 7;
 
-        // =========================================================================
-        //  M3 标准横断面图：9 个图层
-        // =========================================================================
-        // 命名：05_hy_道路_横断面_<语义>，允许用户按图层批量改色 / 冻结 / 出图样板匹配
+        public static string CrossSectionOutlineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOutline, _defCsOutline);
+        public const short CrossSectionOutlineColor = 7;
 
-        /// <summary>横断面-轮廓（主轮廓线、顶面 polyline）。</summary>
-        public const string CrossSectionOutlineLayer = "05_hy_道路_横断面_轮廓";
-        public const short CrossSectionOutlineColor = 7; // 白
+        public static string CrossSectionCenterlineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionCenterline, _defCsCenter);
+        public const short CrossSectionCenterlineColor = 1;
 
-        /// <summary>横断面-中心线（虚线，细）。</summary>
-        public const string CrossSectionCenterlineLayer = "05_hy_道路_横断面_中心线";
-        public const short CrossSectionCenterlineColor = 1; // 红
+        public static string CrossSectionPavementLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionPavement, _defCsPavement);
+        public const short CrossSectionPavementColor = 5;
 
-        /// <summary>横断面-机动车道填色 / 阴影。</summary>
-        public const string CrossSectionPavementLayer = "05_hy_道路_横断面_车行道";
-        public const short CrossSectionPavementColor = 5; // 蓝
+        public static string CrossSectionSidewalkLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionSidewalk, _defCsSidewalk);
+        public const short CrossSectionSidewalkColor = 52;
 
-        /// <summary>横断面-人行道填色 / 阴影。</summary>
-        public const string CrossSectionSidewalkLayer = "05_hy_道路_横断面_人行道";
-        public const short CrossSectionSidewalkColor = 52; // 橙黄
+        public static string CrossSectionKerbLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionKerb, _defCsKerb);
+        public const short CrossSectionKerbColor = 8;
 
-        /// <summary>横断面-路牙（立缘石 / 平石的"L 型"凸起几何）。v2 新增，与人行道分离便于改色 / 冻结。</summary>
-        public const string CrossSectionKerbLayer = "05_hy_道路_横断面_路牙";
-        public const short CrossSectionKerbColor = 8; // 深灰：立缘石的素色混凝土质感
+        public static string CrossSectionGreenLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionGreen, _defCsGreen);
+        public const short CrossSectionGreenColor = 92;
 
-        /// <summary>横断面-绿化带填色 / 阴影（含中分带 / 分车绿带）。</summary>
-        public const string CrossSectionGreenLayer = "05_hy_道路_横断面_绿化带";
-        public const short CrossSectionGreenColor = 92; // 绿
+        public static string CrossSectionDimensionLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionDimension, _defCsDim);
+        public const short CrossSectionDimensionColor = 4;
 
-        /// <summary>横断面-尺寸链（底部 / 顶部尺寸线）。</summary>
-        public const string CrossSectionDimensionLayer = "05_hy_道路_横断面_尺寸链";
-        public const short CrossSectionDimensionColor = 4; // 青
+        public static string CrossSectionAnnotationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionAnnotation, _defCsAnno);
+        public const short CrossSectionAnnotationColor = 7;
 
-        /// <summary>横断面-横坡 / 高差 / 条带名文字（MTEXT）。</summary>
-        public const string CrossSectionAnnotationLayer = "05_hy_道路_横断面_文字";
-        public const short CrossSectionAnnotationColor = 7; // 白
+        public static string CrossSectionTitleLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, _defCsTitle);
+        public const short CrossSectionTitleColor = 3;
 
-        /// <summary>横断面-图题（底部居中大字）。</summary>
-        public const string CrossSectionTitleLayer = "05_hy_道路_横断面_图题";
-        public const short CrossSectionTitleColor = 3; // 绿
-
-        /// <summary>横断面-图题装饰（双下划线、十字等，可与图题分色）。</summary>
-        public const string CrossSectionTitleDecorationLayer = "05_hy_道路_横断面_图题_装饰";
+        public static string CrossSectionTitleDecorationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitleDecoration, _defCsTitleDeco);
         public const short CrossSectionTitleDecorationColor = 3;
 
-        /// <summary>横断面-方位 / 箭头。</summary>
-        public const string CrossSectionOrientationLayer = "05_hy_道路_横断面_方位";
-        public const short CrossSectionOrientationColor = 6; // 品红
+        public static string CrossSectionOrientationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOrientation, _defCsOrientation);
+        public const short CrossSectionOrientationColor = 6;
 
-        // =========================================================================
-        //  M10 平面分段扫掠：3 个图层（左右红线 / 板块分界 / 标线）
-        // =========================================================================
+        public static string PlanRedLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanRedLine, _defPlanRed);
+        public const short PlanRedLineColor = 1;
 
-        /// <summary>M10：平面红线（左右最外侧边缘，总路幅边界）。</summary>
-        public const string PlanRedLineLayer = "05_hy_道路_平面_红线";
-        public const short PlanRedLineColor = 1; // 红：明显，通常用于红线
+        public static string PlanBandDividerLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanBandDivider, _defPlanBand);
+        public const short PlanBandDividerColor = 30;
 
-        /// <summary>M10：平面板块分界线（机动车道 / 绿化带 / 人行道内部分界）。</summary>
-        public const string PlanBandDividerLayer = "05_hy_道路_平面_板块分界";
-        public const short PlanBandDividerColor = 30; // 橙：柔和，与红线区分
+        public static string PlanMarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanMarking, _defPlanMarking);
+        public const short PlanMarkingColor = 7;
 
-        /// <summary>M10：平面标线（车道分界线 / 箭头 / 禁停网格，预留）。</summary>
-        public const string PlanMarkingLayer = "05_hy_道路_平面_标线";
-        public const short PlanMarkingColor = 7; // 白：与国标标线白漆一致
-
-        /// <summary>
-        /// 返回本模块需要注册的所有图层（(name, color) 对）。
-        /// </summary>
+        /// <summary>默认名 + 色表（供层表工厂；不调用 <see cref="UserLayerNameResolver"/>）。</summary>
         public static (string layerName, short colorIndex)[] GetAll()
         {
             return new[]
             {
-                (AlignmentLayer, AlignmentColor),
-                (ProfileLayer, ProfileColor),
-                (CorridorLayer, CorridorColor),
-                (MarkingLayer, MarkingColor),
-                (StationLayer, StationColor),
-                (GeometryPointLayer, GeometryPointColor),
-                (OffsetLayer, OffsetColor),
-                (IntersectionLayer, IntersectionColor),
-                (CurbRampLayer, CurbRampColor),
-                (TactilePavingLayer, TactilePavingColor),
-                (CrosswalkLayer, CrosswalkColor),
-                (StopLineLayer, StopLineColor),
-                (CrossSectionOutlineLayer, CrossSectionOutlineColor),
-                (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
-                (CrossSectionPavementLayer, CrossSectionPavementColor),
-                (CrossSectionSidewalkLayer, CrossSectionSidewalkColor),
-                (CrossSectionKerbLayer, CrossSectionKerbColor),
-                (CrossSectionGreenLayer, CrossSectionGreenColor),
-                (CrossSectionDimensionLayer, CrossSectionDimensionColor),
-                (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),
-                (CrossSectionTitleLayer, CrossSectionTitleColor),
-                (CrossSectionTitleDecorationLayer, CrossSectionTitleDecorationColor),
-                (CrossSectionOrientationLayer, CrossSectionOrientationColor),
-                (PlanRedLineLayer, PlanRedLineColor),
-                (PlanBandDividerLayer, PlanBandDividerColor),
-                (PlanMarkingLayer, PlanMarkingColor),
-                (UserPickPreviewLayer, UserPickPreviewLayerColor),
-                (RawPolylineLayer, RawPolylineColor),
-                (LivePreviewLayer, LivePreviewColor),
+                (_defAlignment, AlignmentColor),
+                (_defProfile, ProfileColor),
+                (_defCorridor, CorridorColor),
+                (_defMarking, MarkingColor),
+                (_defStation, StationColor),
+                (_defGeometryPoint, GeometryPointColor),
+                (_defOffset, OffsetColor),
+                (_defIntersection, IntersectionColor),
+                (_defCurbRamp, CurbRampColor),
+                (_defTactile, TactilePavingColor),
+                (_defCrosswalk, CrosswalkColor),
+                (_defStopLine, StopLineColor),
+                (_defCsOutline, CrossSectionOutlineColor),
+                (_defCsCenter, CrossSectionCenterlineColor),
+                (_defCsPavement, CrossSectionPavementColor),
+                (_defCsSidewalk, CrossSectionSidewalkColor),
+                (_defCsKerb, CrossSectionKerbColor),
+                (_defCsGreen, CrossSectionGreenColor),
+                (_defCsDim, CrossSectionDimensionColor),
+                (_defCsAnno, CrossSectionAnnotationColor),
+                (_defCsTitle, CrossSectionTitleColor),
+                (_defCsTitleDeco, CrossSectionTitleDecorationColor),
+                (_defCsOrientation, CrossSectionOrientationColor),
+                (_defPlanRed, PlanRedLineColor),
+                (_defPlanBand, PlanBandDividerColor),
+                (_defPlanMarking, PlanMarkingColor),
+                (_defUserPick, UserPickPreviewLayerColor),
+                (_defRaw, RawPolylineColor),
+                (_defLivePreview, LivePreviewColor),
             };
         }
     }

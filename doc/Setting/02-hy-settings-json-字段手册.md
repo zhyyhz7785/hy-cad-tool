@@ -112,6 +112,30 @@
 
 ---
 
+## 5a. 字段分组：用户图层表 `UserLayerSettings`（v1+）
+
+| JSON 属性 | 类型 | 含义 |
+|-----------|------|------|
+| `UserLayerSettings` | object | 可选；缺省则首次加载时与程序 `LayerCatalogFactory` 默认表合并。 |
+| `UserLayerSettings.Version` | int | 结构版本，当前为 `1`（`LayerCatalogFactory.CurrentCatalogVersion`）。 |
+| `UserLayerSettings.Items` | array | 图层行列表，元素字段见下。 |
+
+`Items[]` 每项（`LayerDefinitionItem`）主要字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `SemanticId` | string | 稳定语义键（如 `Road.PlaneAlignment`、`Builtin.Rein.Line`），勿手改。 |
+| `Name` | string | 落图用图层名（可编辑）。 |
+| `AciColor` | number | 索引色 1–255。 |
+| `LinetypeName` | string | 线型名，如 `Continuous`。 |
+| `LineWeightRaw` | int | 线宽；-1 表示 `ByLayer`。 |
+| `IsPlottable` | bool | 是否可打印。 |
+| `IsLocked` | bool | 预留；当前 `Ensure` 实现以颜色/线型/线宽为主。 |
+
+**合并策略**：`UserLayerSettingsMerger.MergeWithDefaults`：以当前程序默认表为底，用磁盘项覆盖同 `SemanticId` 的可编辑字段，并**补齐**新版本新增的语义行。
+
+---
+
 ## 6. 字段分组：界面外观（Blender / PaletteSet）
 
 | JSON 属性 | 类型 | 默认值 | 含义 |
@@ -135,9 +159,10 @@
 
 ## 8. 明确不在此文件中的内容
 
-- **AutoCAD 图层名称与颜色表**：由 `PluginInitializer.GetRequiredLayers()` 与 `HyRoadLayers` 定义，**不**写入 `hy-settings.json`。  
 - **桩基面板独立文件**：`hy-pile-settings.json`（见 [05](./05-模块独立设置文件.md)）。  
 - **沉降面板独立文件**：`hy-settlement-settings.json`。
+
+> **图层说明**：可编辑用户图层表已写入本文件的 `UserLayerSettings`；程序内置**默认**仍由 `LayerCatalogFactory` 与 `HyRoadLayers.GetAll()` 提供。详见 [04](./04-图层与样式初始化.md)、[09](./09-新增设置扩展规范.md)。
 
 ---
 

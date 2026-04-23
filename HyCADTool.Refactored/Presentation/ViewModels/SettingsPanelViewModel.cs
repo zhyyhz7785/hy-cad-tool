@@ -2,6 +2,7 @@ using Autofac;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -12,7 +13,9 @@ using HyCAD.BlenderUI.Theming;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Models.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
@@ -33,6 +36,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
     public class SettingsPanelViewModel : INotifyPropertyChanged
     {
         private readonly IStyleService _styleService;
+
+        /// <summary>用户可编辑图层表（与 hy-settings.json 中 <see cref="UserLayerSettings"/> 同步）。</summary>
+        public ObservableCollection<LayerDefinitionItem> LayerCatalogItems { get; }
+            = new ObservableCollection<LayerDefinitionItem>();
+
+        /// <summary>按当前层表在当前 DWG 中创建/更新图层属性。</summary>
+        public ICommand ApplyLayerCatalogToDocumentCommand { get; }
+
+        /// <summary>将层表恢复为程序默认并可选写盘（与自动保存联动）。</summary>
+        public ICommand RestoreDefaultLayerCatalogCommand { get; }
 
         /// <summary>
         /// 样式脏标记：参数变更后置 true，样式同步后置 false
@@ -126,6 +139,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             // 从持久化文件加载上次保存的设置
             LoadSettings();
+            ApplyLayerCatalogToDocumentCommand = new RelayCommand(ApplyLayerCatalogToCurrentDocument);
+            RestoreDefaultLayerCatalogCommand = new RelayCommand(RestoreDefaultLayerCatalog);
         }
 
         public SettingsPanelViewModel()
@@ -137,6 +152,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             CmdG1 = CmdG2 = CmdGe = CmdGe1 = CmdGd = new RelayCommand(() => { });
             CmdGb = CmdGb1 = CmdGb2 = new RelayCommand(() => { });
             CmdRoad = new RelayCommand(() => { });
+            ApplyLayerCatalogToDocumentCommand = new RelayCommand(() => { });
+            RestoreDefaultLayerCatalogCommand = new RelayCommand(() => { });
         }
 
         #endregion
@@ -1188,8 +1205,84 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             OnPropertyChanged(nameof(UiInputWidthScale));
             try { BlenderMetricsScaleManager.Apply(1.0, 1.0, 1.0); } catch { /* 忽略 */ }
 
+            LoadLayerCatalogFromSettingsData(null);
             SaveSettings();
             StatusMessage = "已恢复默认值";
+        }
+
+        #endregion
+
+        #region 图层表（UserLayerSettings）
+
+        /// <summary>按语义 ID 从当前 <see cref="LayerCatalogItems"/> 解析落图用图层名；无匹配则 <paramref name="defaultName"/>。</summary>
+        public string TryResolveLayerName(string semanticId, string defaultName)
+        {
+            if (string.IsNullOrWhiteSpace(semanticId)) return defaultName ?? string.Empty;
+            var def = defaultName ?? string.Empty;
+            foreach (var it in LayerCatalogItems)
+            {
+                if (it == null) continue;
+                if (string.Equals(it.SemanticId, semanticId, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(it.Name)) return it.Name.Trim();
+                    return def;
+                }
+            }
+            return def;
+        }
+
+        /// <summary>文档初始化前确保内存中层表已加载（与 <see cref="LoadSettings()"/> 一致）。</summary>
+        public void EnsureLayerCatalogForDocumentInit()
+        {
+            if (LayerCatalogItems != null && LayerCatalogItems.Count > 0) return;
+            LoadLayerCatalogFromSettingsData(null);
+        }
+
+        private void LoadLayerCatalogFromSettingsData(UserLayerSettings s)
+        {
+            var merged = UserLayerSettingsMerger.MergeWithDefaults(s);
+            LayerCatalogItems.Clear();
+            foreach (var it in merged.Items)
+                LayerCatalogItems.Add(it.Clone());
+        }
+
+        private UserLayerSettings BuildUserLayerSettingsForSave()
+        {
+            if (LayerCatalogItems == null || LayerCatalogItems.Count == 0)
+                return UserLayerSettingsMerger.MergeWithDefaults(null);
+            return new UserLayerSettings
+            {
+                Version = LayerCatalogFactory.CurrentCatalogVersion,
+                Items = LayerCatalogItems.Select(x => x.Clone()).ToList()
+            };
+        }
+
+        public void ApplyLayerCatalogToCurrentDocument()
+        {
+            try
+            {
+                if (LayerCatalogItems == null || LayerCatalogItems.Count == 0)
+                    LoadLayerCatalogFromSettingsData(null);
+                ILayerService layerService;
+                if (!ServiceLocator.TryResolve(out layerService))
+                {
+                    StatusMessage = "无法解析 ILayerService，图层未应用。";
+                    return;
+                }
+                layerService.EnsureUserLayerItems(LayerCatalogItems.ToList());
+                StatusMessage = "已按当前层表更新当前图纸的图层。";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"图层应用失败: {ex.Message}";
+            }
+        }
+
+        public void RestoreDefaultLayerCatalog()
+        {
+            LoadLayerCatalogFromSettingsData(null);
+            StatusMessage = "图层表已恢复为程序默认；若开启自动保存将写入 hy-settings。";
+            if (_autoSaveEnabled && !_isLoading) SaveSettings();
         }
 
         #endregion
@@ -1341,7 +1434,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     UiDensityScale = UiDensityScale,
                     UiInputWidthScale = UiInputWidthScale,
                     // 其他
-                    EquipmentDataFilePath = EquipmentDataFilePath
+                    EquipmentDataFilePath = EquipmentDataFilePath,
+                    UserLayerSettings = BuildUserLayerSettingsForSave()
                 };
 
                 var json = JsonConvert.SerializeObject(data, Formatting.Indented);
@@ -1380,12 +1474,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     _isLoading = false;
                     if (explicitPath != null) throw new FileNotFoundException("设置文件不存在", path);
+                    LoadLayerCatalogFromSettingsData(null);
                     return;
                 }
 
                 var json = File.ReadAllText(path);
                 var data = JsonConvert.DeserializeObject<SettingsData>(json);
-                if (data == null) { _isLoading = false; return; }
+                if (data == null)
+                {
+                    _isLoading = false;
+                    LoadLayerCatalogFromSettingsData(null);
+                    return;
+                }
 
                 // Tab A: 样式 —— 先读比例相关字段（新 JSON 可能缺失，走向后兼容）
                 Scale = data.Scale > 0 ? data.Scale : 50.0;
@@ -1480,6 +1580,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 // 其他
                 if (!string.IsNullOrEmpty(data.EquipmentDataFilePath))
                     EquipmentDataFilePath = data.EquipmentDataFilePath;
+
+                LoadLayerCatalogFromSettingsData(data.UserLayerSettings);
 
                 // 只有样式相关参数实际变化时，才标记需要重新同步样式。
                 // 否则 gj/gb 等每次执行都会白白重建一轮样式，造成重复执行前的明显停顿。
@@ -1629,6 +1731,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double UiInputWidthScale { get; set; } = 1.0;
             // 其他
             public string EquipmentDataFilePath { get; set; } = "";
+
+            /// <summary>用户可编辑图层表（v1+）；旧 JSON 缺省则读盘后合并默认。</summary>
+            public UserLayerSettings UserLayerSettings { get; set; }
         }
 
         #endregion

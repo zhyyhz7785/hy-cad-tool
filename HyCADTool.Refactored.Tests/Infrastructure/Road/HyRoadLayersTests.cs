@@ -86,6 +86,8 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
         {
             foreach (var (name, _) in HyRoadLayers.GetAll())
             {
+                // 路线工作台「用户拾取」为历史图层名，无前缀，经设置可改名
+                if (name == "用户拾取") continue;
                 name.Should().StartWith("05_hy_道路_",
                     "统一采用 05_hy_道路_ 前缀，避免与既有 00-04 模块冲突");
             }

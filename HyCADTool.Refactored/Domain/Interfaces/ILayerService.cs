@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 
 namespace HyCADTool.Refactored.Domain.Interfaces
 {
@@ -74,6 +75,11 @@ namespace HyCADTool.Refactored.Domain.Interfaces
         /// <param name="entityId">实体ID</param>
         /// <param name="layerName">图层名称</param>
         void SetEntityLayer(string entityId, string layerName);
+
+        /// <summary>
+        /// 按用户层表在任意文档中确保图层存在并更新颜色/线型/线宽等（用于 hy-settings 图层与初始化流程）。
+        /// </summary>
+        void EnsureUserLayerItems(IReadOnlyList<LayerDefinitionItem> items);
     }
 }
 

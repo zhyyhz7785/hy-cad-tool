@@ -145,6 +145,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             Categories.Add(new SettingsCategoryVm("设置",       "⚙", new[]
             {
+                new SettingsGroupVm("图层",         "LayerCatalog"),
                 new SettingsGroupVm("文字样式",     "TextStyle"),
                 new SettingsGroupVm("标注样式",     "DimStyle"),
                 new SettingsGroupVm("引线样式",     "MLeaderStyle"),

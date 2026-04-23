@@ -184,13 +184,13 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         }
 
         [Fact]
-        public void ToFigure_DimensionSegments_IncludeAllTiers()
+        public void ToFigure_DimensionSegments_OnlyTotalWidth_Tier0()
         {
             var layout = BuildSymmetricLayout();
             var fig = CrossSectionLayoutBuilder.ToFigure(layout);
-            fig.DimensionSegments.Any(d => d.Tier == 0).Should().BeTrue();
-            fig.DimensionSegments.Any(d => d.Tier == 1).Should().BeTrue();
-            fig.DimensionSegments.Any(d => d.Tier == 2).Should().BeTrue();
+            fig.DimensionSegments.Count(d => d.Tier == 0).Should().Be(1);
+            fig.DimensionSegments.Any(d => d.Tier == 1).Should().BeFalse();
+            fig.DimensionSegments.Any(d => d.Tier == 2).Should().BeFalse();
         }
 
         [Fact]

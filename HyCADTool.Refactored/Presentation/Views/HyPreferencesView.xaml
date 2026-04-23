@@ -70,6 +70,7 @@
             </Style>
 
             <!-- ===== 二级 Expander 内容：根据 GroupKey 选择具体骨架；命中则显示示例 UserControl，否则显示 TODO 占位 ===== -->
+            <DataTemplate x:Key="GroupKey_LayerCatalog">         <sub:LayerSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_Theme">                <sub:ThemeSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_UiScale">              <sub:UiScaleSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_KeyMap">               <sub:KeyMapSettingsView/></DataTemplate>
@@ -268,6 +269,9 @@
                                         <Style TargetType="{x:Type ContentControl}">
                                             <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_Placeholder}"/>
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding GroupKey}" Value="LayerCatalog">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_LayerCatalog}"/>
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding GroupKey}" Value="Theme">
                                                     <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_Theme}"/>
                                                 </DataTrigger>

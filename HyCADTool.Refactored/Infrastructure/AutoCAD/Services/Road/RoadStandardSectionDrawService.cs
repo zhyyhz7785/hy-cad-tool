@@ -35,8 +35,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
     ///   <item>主轮廓 LWPolyline（闭合）+ 顶面 polyline。</item>
     ///   <item>按 <see cref="FigurePanel.Kind"/> 分色的分段 Hatch（可选；v1 仅 LWPoly 切片）。</item>
     ///   <item>中心虚线 Line。</item>
-    ///   <item>底部尺寸链（Tier=0/1）+ 顶部尺寸链（Tier=2），用 <see cref="Line"/> + <see cref="DBText"/> 手绘，不依赖 DIMSTYLE。</item>
-    ///   <item>横坡标注、高差标注、顶部条带名（DBText）。</item>
+    ///   <item>道路下仅一道总宽尺寸（Tier=0）；顶排总宽与分条尺寸已取消；<see cref="AlignedDimension"/>，不依赖 DIMSTYLE 文字替代。</item>
+    ///   <item>横坡（DBText + 竖向指坡箭头，箭头端与路顶面留 2mm 纸面间距）；中分带不生成横坡；顶部条带名（DBText）。</item>
     ///   <item>方位箭头、图题。</item>
     ///   <item>所有生成的实体挂 HY_ROAD Xdata：<c>ID=template.Id</c>，<c>KIND=CrossSectionStandard</c>。</item>
     /// </list>
@@ -208,47 +208,34 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             TagEntity(transaction, database, center, template.Id);
             added++;
 
-            // ---------------- 4. 顶部 Tier=2 总宽尺寸线（单横线） ----------------
+            // ---------------- 4. 线型字高（顶排总宽尺寸已取消，见下仅一道总宽） ----------------
             double txtH = Math.Max(0.15, 0.3 * s);
             if (annotationStyle != null && annotationStyle.TextHeightModel > 1e-6)
             {
                 txtH = annotationStyle.TextHeightModel;
             }
-            double dimTopY = (ymax + 1.2) * s;
-            foreach (var seg in figure.DimensionSegments)
-            {
-                if (seg.Tier != 2) continue;
-                added += DrawDimensionSegment(transaction, ms, database, template.Id,
-                    new Point3d(origin.X + seg.StartX * s, origin.Y + dimTopY, 0),
-                    new Point3d(origin.X + seg.EndX * s, origin.Y + dimTopY, 0),
-                    true, annotationStyle, txtH);
-            }
 
-            // ---------------- 5. 底部 Tier=1 分段 + Tier=0 总长 ----------------
-            double dimT1Y = -1.0 * s;  // 靠近地面
-            double dimT0Y = -2.0 * s;  // 更下方
+            // ---------------- 5. 道路下方第二道尺寸线仅标红线总宽（无顶排、无分条与左/中/右分链） ----------------
+            double dimTotalY = -2.0 * s;
             foreach (var seg in figure.DimensionSegments)
             {
-                Point3d a, b;
-                double y;
-                if (seg.Tier == 1) y = dimT1Y;
-                else if (seg.Tier == 0) y = dimT0Y;
-                else continue;
-                a = new Point3d(origin.X + seg.StartX * s, origin.Y + y, 0);
-                b = new Point3d(origin.X + seg.EndX * s, origin.Y + y, 0);
+                if (seg.Tier != 0) continue;
+                var a = new Point3d(origin.X + seg.StartX * s, origin.Y + dimTotalY, 0);
+                var b = new Point3d(origin.X + seg.EndX * s, origin.Y + dimTotalY, 0);
                 added += DrawDimensionSegment(transaction, ms, database, template.Id, a, b, false, annotationStyle, txtH);
             }
 
-            // ---------------- 6. 横坡标注 ----------------
+            // ---------------- 6. 横坡：文字 + 指向下方路面（箭头端至路顶面 2mm 纸面，同 ActualTextHeight 换算） ----------------
+            var slopeLayer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
+            var scaleC = ActiveScaleContextProvider.Current;
+            const double paperMmToRoad = 2.0;
+            double roadGapModel = paperMmToRoad * scaleC.UnitFactor * scaleC.MainScale;
+            double roadGapFig = roadGapModel / s; // 图面米，顶面 y
             foreach (var slope in figure.SlopeLabels)
             {
-                var p = Map(slope.PositionX, slope.PositionY + 0.15);
-                added += AddText(transaction, ms, database, template.Id, p, slope.Text,
-                    annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer,
-                    txtH,
-                    0,
-                    false,
-                    annotationStyle?.TextStyleId ?? ObjectId.Null);
+                added += DrawCrossSectionSlopeTextAndDownArrow(
+                    transaction, ms, database, template.Id, slope, Map, s, txtH, slopeLayer,
+                    annotationStyle?.TextStyleId ?? ObjectId.Null, roadGapFig);
             }
 
             // ---------------- 7. 标高：MLeader 避让盒
@@ -261,17 +248,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     transaction, ms, database, template.Id, g, Map, s, txtH, annotationStyle, mleaderTextBoxes);
             }
 
-            // ---------------- 8. 顶部条带名（竖写；v1 退化为水平） ----------------
-            foreach (var top in figure.TopLabels)
-            {
-                var p = Map(top.CenterX - 0.3, top.CenterY);
-                added += AddText(transaction, ms, database, template.Id, p, top.Text,
-                    annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer,
-                    txtH,
-                    rotationDeg: top.Vertical ? 90 : 0,
-                    alignCenter: false,
-                    textStyleId: annotationStyle?.TextStyleId ?? ObjectId.Null);
-            }
+            // ---------------- 8. 顶栏条带名（绿化带等）不绘于道路上方，略（预览仍可在 WPF 显示） ----------------
 
             // ---------------- 9. 方位箭头 ----------------
             if (!string.IsNullOrWhiteSpace(figure.Orientation.LeftLabel) ||
@@ -284,7 +261,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             // ---------------- 10. 图题（规格化：双下划线 + 比例 + 可选左十字/方格） ----------------
             if (!string.IsNullOrWhiteSpace(figure.Title.Text))
             {
-                var p = Map(figure.Title.CenterX, figure.Title.Y);
+                // 图名相对 Figure 再下移 1cm（纸面，同 ActualTextHeight 换算）
+                var scaleCtxForTitle = ActiveScaleContextProvider.Current;
+                double oneCmPaperMm = 10.0;
+                double titleDropFigure =
+                    (oneCmPaperMm * scaleCtxForTitle.UnitFactor * scaleCtxForTitle.MainScale) / s;
+                var p = Map(figure.Title.CenterX, figure.Title.Y - titleDropFigure);
                 string titleText = DrawingSheetTitleText.RemoveTrailingScaleInTitle(figure.Title.Text);
                 if (string.IsNullOrWhiteSpace(titleText)) titleText = figure.Title.Text.Trim();
                 // 图题主/副字高：与设置里「文字高度」一致，存纸面 mm；→ 模型单位 = paperMm×UnitFactor×MainScale（同 ActualTextHeight）
@@ -557,6 +539,77 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             ms.AppendEntity(dim);
             tr.AddNewlyCreatedDBObject(dim, true);
             TagEntity(tr, db, dim, templateId);
+            return 1;
+        }
+
+        /// <param name="roadGapFigure">路顶面至箭头端（尖端）的竖向图面间距（m），已含 2mm 纸面→模型换算 / s。</param>
+        private int DrawCrossSectionSlopeTextAndDownArrow(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Guid templateId,
+            FigureSlopeLabel slope,
+            Func<double, double, Point3d> map,
+            double s,
+            double textH,
+            string layer,
+            ObjectId textStyleId,
+            double roadGapFigure)
+        {
+            int n = 0;
+            n += AddText(tr, ms, db, templateId, map(slope.PositionX, slope.PositionY + 0.15), slope.Text,
+                layer, textH, 0, false, textStyleId);
+            // 竖向自「略低于文字行」向下面路顶，尖端距路 2mm（纸面）
+            double yTip = slope.PositionY + roadGapFigure;
+            double yStart = slope.PositionY + 0.10;
+            if (yTip > yStart - 1e-6)
+            {
+                yStart = yTip + 0.12;
+            }
+            var pHigh = map(slope.PositionX, yStart);
+            var pTip = map(slope.PositionX, yTip);
+            if (pHigh.Y - pTip.Y > 1e-9 * s)
+            {
+                var shaft = new Line(pHigh, pTip) { Layer = layer, ColorIndex = 256 };
+                ms.AppendEntity(shaft);
+                tr.AddNewlyCreatedDBObject(shaft, true);
+                TagEntity(tr, db, shaft, templateId);
+                n++;
+            }
+            var pTail = map(slope.PositionX, yTip + Math.Max(0.08, 0.2 * s));
+            n += AddSlopeArrowHead(tr, ms, db, templateId, pTip, pTail, layer, Math.Max(0.08, 0.12 * s));
+            return n;
+        }
+
+        /// <summary>横坡用竖向小箭头，尖端在 <paramref name="head"/>（路侧），<paramref name="tail"/> 在上方沿坡向。</summary>
+        private int AddSlopeArrowHead(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Guid templateId,
+            Point3d head,
+            Point3d tail,
+            string layer,
+            double wingMeters)
+        {
+            var pl = new Polyline(3);
+            var ddx = tail.X - head.X;
+            var ddy = tail.Y - head.Y;
+            var len = Math.Sqrt(ddx * ddx + ddy * ddy);
+            if (len < 1e-12) return 0;
+            var nx = -ddy / len * wingMeters;
+            var ny = ddx / len * wingMeters;
+            var pa = new Point2d(tail.X + nx, tail.Y + ny);
+            var pb = new Point2d(tail.X - nx, tail.Y - ny);
+            pl.AddVertexAt(0, new Point2d(head.X, head.Y), 0, 0, 0);
+            pl.AddVertexAt(1, pa, 0, 0, 0);
+            pl.AddVertexAt(2, pb, 0, 0, 0);
+            pl.Closed = true;
+            pl.Layer = layer;
+            pl.ColorIndex = 256;
+            ms.AppendEntity(pl);
+            tr.AddNewlyCreatedDBObject(pl, true);
+            TagEntity(tr, db, pl, templateId);
             return 1;
         }
 

@@ -663,94 +663,16 @@ namespace HyCADTool.Refactored.Presentation
 
                 var vm = ViewModels.SettingsPanelViewModel.GetOrCreate(documentName, styleService);
                 vm.LoadSettings();
+                vm.EnsureLayerCatalogForDocumentInit();
                 vm.EnsureStylesApplied();
 
-                layerService.CreateMultipleLayers(GetRequiredLayers());
+                layerService.EnsureUserLayerItems(vm.LayerCatalogItems.ToList());
                 _initializedDocuments.Add(documentName);
             }
             catch (System.Exception ex)
             {
                 WriteMessage($"\n  ⚠ 文档资源初始化警告：{ex.Message}");
             }
-        }
-
-        private static (string layerName, short colorIndex)[] GetRequiredLayers()
-        {
-            return new[]
-            {
-                // ── 钢筋 ──
-                ("01_hy_1钢筋_线钢筋", (short)1),
-                ("01_hy_1钢筋_点钢筋", (short)5),
-                ("01_hy_1钢筋_线钢筋_外部", (short)1),
-                // ── 公共标注 ──
-                ("00_hy_3公共_标注1_外", (short)3),
-                ("00_hy_3公共_标注3_引线", (short)92),
-                // ── 筏板附加配筋 ──
-                ("00_hy_配筋轮廓", (short)1),
-                ("00_hy_调整配筋轮廓", (short)3),
-                ("00_hy_筏板附加配筋x_上", (short)1),
-                ("00_hy_筏板附加配筋x_下", (short)1),
-                ("00_hy_筏板附加配筋y_上", (short)3),
-                ("00_hy_筏板附加配筋y_下", (short)3),
-                ("00_hy_筏板附加配筋文字_x", (short)7),
-                ("00_hy_筏板附加配筋文字_y", (short)7),
-                ("00_hy_筏板附加配筋x_标注", (short)1),
-                ("00_hy_筏板附加配筋Y_标注", (short)3),
-                // ── 视口 ──
-                ("00_hy_2公共_视口", (short)1),
-                // ── 桩基 ──
-                ("02_hy_1桩_主", (short)3),
-                ("02_hy_3桩_地基内轮廓", (short)8),
-                // ── 垫层 ──
-                ("00_hy_垫层", (short)7),
-                // ── 图框 ──
-                ("00_hy_图框", (short)7),
-                // ── 配筋文字分类 ──
-                ("HY_H向钢筋", (short)7),
-                ("HY_V向钢筋", (short)2),
-                ("HY_手动配筋", (short)1),
-                // ── 聚类分析 ──
-                ("00_hy_BP", (short)3),
-                ("00_hy_AAP", (short)1),
-                ("00_hy_BAP", (short)4),
-                ("00_hy_ABolt", (short)2),
-                ("00_hy_SteelPlate", (short)5),
-                ("00_hy_AxisCircle", (short)7),
-                ("00_hy_AxisText", (short)7),
-                ("00_hy_Region", (short)9),
-                ("00_hy_RegionText", (short)9),
-                ("00_hy_Dim_X", (short)7),
-                ("00_hy_Dim_Y", (short)7),
-                ("00_hy_ClusterEP", (short)8),
-                ("00_hy_ClusterEEP", (short)8),
-                ("00_hy_ClusterHull", (short)6),
-                ("00_hy_ClusterPts", (short)34),
-                // ── 道路（P1+）──
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.AlignmentLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.AlignmentColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.ProfileLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.ProfileColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CorridorLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CorridorColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.MarkingColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.StationLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.StationColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.GeometryPointLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.GeometryPointColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.OffsetLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.OffsetColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.UserPickPreviewLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.UserPickPreviewLayerColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.RawPolylineLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.RawPolylineColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.LivePreviewLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.LivePreviewColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleColor),
-                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleDecorationLayer,
-                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleDecorationColor),
-            };
         }
 
         /// <summary>

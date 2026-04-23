@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
 using HyCADTool.Refactored.Domain.Interfaces;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -417,6 +418,73 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             // 如果线型不存在，返回连续线型
             return linetypeTable["Continuous"];
+        }
+
+        /// <inheritdoc />
+        public void EnsureUserLayerItems(IReadOnlyList<LayerDefinitionItem> items)
+        {
+            if (items == null || items.Count == 0) return;
+
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) throw new InvalidOperationException("No active document");
+            var db = doc.Database;
+
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+                var ltTable = (LinetypeTable)tr.GetObject(db.LinetypeTableId, OpenMode.ForRead);
+                var continuousId = ltTable["Continuous"];
+
+                foreach (var it in items)
+                {
+                    if (it == null || string.IsNullOrWhiteSpace(it.Name)) continue;
+                    var layerName = it.Name.Trim();
+                    LayerTableRecord rec;
+                    if (layerTable.Has(layerName))
+                    {
+                        rec = (LayerTableRecord)tr.GetObject(layerTable[layerName], OpenMode.ForWrite);
+                    }
+                    else
+                    {
+                        layerTable.UpgradeOpen();
+                        rec = new LayerTableRecord { Name = layerName };
+                        layerTable.Add(rec);
+                        tr.AddNewlyCreatedDBObject(rec, true);
+                    }
+
+                    rec.Color = Color.FromColorIndex(ColorMethod.ByAci, it.AciColor);
+                    var lt = string.IsNullOrWhiteSpace(it.LinetypeName) ? "Continuous" : it.LinetypeName.Trim();
+                    if (ltTable.Has(lt))
+                        rec.LinetypeObjectId = ltTable[lt];
+                    else
+                        rec.LinetypeObjectId = continuousId;
+
+                    if (it.LineWeightRaw < 0)
+                        rec.LineWeight = LineWeight.ByLayer;
+                    else
+                    {
+                        var w = it.LineWeightRaw;
+                        if (w >= 0 && w < 32)
+                        {
+                            try { rec.LineWeight = (LineWeight)w; }
+                            catch { rec.LineWeight = LineWeight.ByLayer; }
+                        }
+                        else
+                            rec.LineWeight = LineWeight.ByLayer;
+                    }
+
+                    try
+                    {
+                        // AutoCAD 2010+ 常见属性
+                        var pl = rec.GetType().GetProperty("Plottable");
+                        pl?.SetValue(rec, it.IsPlottable);
+                    }
+                    catch { }
+                }
+
+                tr.Commit();
+            }
         }
     }
 }

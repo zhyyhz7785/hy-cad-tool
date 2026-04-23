@@ -20,6 +20,12 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public string Name { get; set; }
 
         /// <summary>
+        /// 模板级扩展元数据（向后兼容）。
+        /// 用于承载不适合拆成强类型属性、但需要随 Template 一起持久化的附加参数。
+        /// </summary>
+        public Dictionary<string, string> ExtendedData { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
         /// 横截点序列（按横向偏移从左到右）。中心点 Offset=0 一般位于集合中部。
         /// </summary>
         public List<TemplatePoint> Points { get; } = new List<TemplatePoint>();
