@@ -697,13 +697,33 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             double orientationY = topY + 2.0;
             var orientation = new FigureOrientation(leftmostX, rightmostX, orientationY, "北", "南");
             double titleY = MinY(vertices) - 3.0;
+            // 图名不含比例；比例由 DrawingSheetTitleDrawer 按 Figure.ScaleDenominator 单独注写（避免与行内重复）。
             var title = new FigureTitle(0, titleY,
-                string.IsNullOrWhiteSpace(layout.Title)
-                    ? $"标准横断面图  1:{layout.ScaleDenominator}"
-                    : $"{layout.Title}  1:{layout.ScaleDenominator}");
+                string.IsNullOrWhiteSpace(layout.Title) ? "标准横断面图" : layout.Title.Trim());
+
+            // 外缘高差引线锚点：路面外缘接点，勿用 topY（条带名顶栏）作 Y，否则 MLeader 会飘在条带名上方
+            var elevDiffLeaders = new List<FigureElevationDiffLeader>();
+            for (int s = 0; s < leftStrips.Count; s++)
+            {
+                if (Math.Abs(layout.LeftBands[s].ElevationDiff) > 1e-6)
+                {
+                    var g0 = leftStrips[s];
+                    elevDiffLeaders.Add(new FigureElevationDiffLeader(
+                        g0.NextInnerX, g0.NextInnerY, layout.LeftBands[s].ElevationDiff));
+                }
+            }
+            for (int s = 0; s < rightStrips.Count; s++)
+            {
+                if (Math.Abs(layout.RightBands[s].ElevationDiff) > 1e-6)
+                {
+                    var g0 = rightStrips[s];
+                    elevDiffLeaders.Add(new FigureElevationDiffLeader(
+                        g0.NextInnerX, g0.NextInnerY, layout.RightBands[s].ElevationDiff));
+                }
+            }
 
             return new CrossSectionFigure(
-                vertices, panels, dimSegs, slopes, heights, topLabels,
+                vertices, panels, dimSegs, slopes, heights, topLabels, elevDiffLeaders,
                 orientation, title, layout.TotalWidth, layout.ScaleDenominator);
         }
 

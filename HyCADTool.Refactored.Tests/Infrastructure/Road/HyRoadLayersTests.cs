@@ -26,7 +26,8 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             // P3-I1-C 新增：CurbRamp（缘石坡道）+ TactilePaving（盲道）
             // P3-v1.1 新增：Crosswalk（人行横道）+ StopLine（停止线）
             // M10 新增：PlanRedLine / PlanBandDivider / PlanMarking（3 个）
-            all.Should().HaveCount(25);
+            // 图题装饰层：CrossSectionTitleDecorationLayer
+            all.Should().HaveCount(29);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.StationLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.GeometryPointLayer);
             all.Select(t => t.layerName).Should().Contain(HyRoadLayers.OffsetLayer);
@@ -55,6 +56,7 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
                 HyRoadLayers.CrossSectionDimensionLayer,
                 HyRoadLayers.CrossSectionAnnotationLayer,
                 HyRoadLayers.CrossSectionTitleLayer,
+                HyRoadLayers.CrossSectionTitleDecorationLayer,
                 HyRoadLayers.CrossSectionOrientationLayer,
             });
         }
@@ -64,7 +66,7 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
         {
             var all = HyRoadLayers.GetAll();
             var csLayers = all.Where(t => t.layerName.Contains("横断面")).ToArray();
-            csLayers.Should().HaveCount(10, "M3 共 9 个横断面图层 + v2 路牙独立图层 = 10");
+            csLayers.Should().HaveCount(11, "横断面相关图层含图题装饰等");
             foreach (var (name, _) in csLayers)
             {
                 name.Should().StartWith("05_hy_道路_横断面_");

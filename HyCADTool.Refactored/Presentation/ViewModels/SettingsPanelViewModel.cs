@@ -12,9 +12,11 @@ using HyCAD.BlenderUI.Theming;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Models.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.Factories;
 using HyCADTool.Refactored.Presentation.Views.Helpers;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -658,6 +660,47 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private double _roadStripeSpacing = 1.0;
         public double RoadStripeSpacing { get => _roadStripeSpacing; set => SetProperty(ref _roadStripeSpacing, value); }
 
+        // ── 横断面图题（DrawingSheetTitleSpec 持久化） ────────────────────────────
+        private bool _sheetTitleShowCrosshair;
+        public bool SheetTitleShowCrosshair { get => _sheetTitleShowCrosshair; set => SetProperty(ref _sheetTitleShowCrosshair, value); }
+
+        private bool _sheetTitleShowScale = true;
+        public bool SheetTitleShowScale { get => _sheetTitleShowScale; set => SetProperty(ref _sheetTitleShowScale, value); }
+
+        private string _sheetTitleMainTextStyleName = "0-hy-说明-T";
+        public string SheetTitleMainTextStyleName { get => _sheetTitleMainTextStyleName; set => SetProperty(ref _sheetTitleMainTextStyleName, value ?? "0-hy-说明-T"); }
+
+        private string _sheetTitleScaleTextStyleName = "0-hy-说明-T";
+        public string SheetTitleScaleTextStyleName { get => _sheetTitleScaleTextStyleName; set => SetProperty(ref _sheetTitleScaleTextStyleName, value ?? "0-hy-说明-T"); }
+
+        private double _sheetTitleMainTextHeight = 5.0;
+        public double SheetTitleMainTextHeight { get => _sheetTitleMainTextHeight; set => SetProperty(ref _sheetTitleMainTextHeight, value); }
+
+        private double _sheetTitleScaleTextHeight = 3.0;
+        public double SheetTitleScaleTextHeight { get => _sheetTitleScaleTextHeight; set => SetProperty(ref _sheetTitleScaleTextHeight, value); }
+
+        private double _sheetTitleScaleTextHeightRatio = 0.55;
+        public double SheetTitleScaleTextHeightRatio { get => _sheetTitleScaleTextHeightRatio; set => SetProperty(ref _sheetTitleScaleTextHeightRatio, value); }
+
+        private double _sheetTitleTopLineWidthFactor = 0.07;
+        public double SheetTitleTopLineWidthFactor { get => _sheetTitleTopLineWidthFactor; set => SetProperty(ref _sheetTitleTopLineWidthFactor, value); }
+
+        private double _sheetTitleBottomLineWidthFactor = 0.02;
+        public double SheetTitleBottomLineWidthFactor { get => _sheetTitleBottomLineWidthFactor; set => SetProperty(ref _sheetTitleBottomLineWidthFactor, value); }
+
+        private double _sheetTitleTextToLinesGapFactor = 0.12;
+        public double SheetTitleTextToLinesGapFactor { get => _sheetTitleTextToLinesGapFactor; set => SetProperty(ref _sheetTitleTextToLinesGapFactor, value); }
+
+        private double _sheetTitleDoubleLineSpacingFactor = 0.05;
+        public double SheetTitleDoubleLineSpacingFactor { get => _sheetTitleDoubleLineSpacingFactor; set => SetProperty(ref _sheetTitleDoubleLineSpacingFactor, value); }
+
+        private double _sheetTitleScaleGapFromTextFactor = 0.12;
+        public double SheetTitleScaleGapFromTextFactor { get => _sheetTitleScaleGapFromTextFactor; set => SetProperty(ref _sheetTitleScaleGapFromTextFactor, value); }
+
+        /// <summary>根据当前设置与 <see cref="HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers"/> 默认生成图题规格。</summary>
+        public DrawingSheetTitleSpec CreateDrawingSheetTitleSpec()
+            => DrawingSheetTitleStyleFactory.FromSettings(this);
+
         // ── 平面线位（Alignment）默认值 — 供 hyRoadAlnByPi 等命令读默认 ─────────────
         private double _alignmentDefaultRadius = 30.0;
         public double AlignmentDefaultRadius { get => _alignmentDefaultRadius; set => SetProperty(ref _alignmentDefaultRadius, value); }
@@ -1264,6 +1307,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     RoadCrosswalkWidth = RoadCrosswalkWidth,
                     RoadStopLineDistance = RoadStopLineDistance,
                     RoadStripeSpacing = RoadStripeSpacing,
+                    SheetTitleShowCrosshair = SheetTitleShowCrosshair,
+                    SheetTitleShowScale = SheetTitleShowScale,
+                    SheetTitleMainTextStyleName = SheetTitleMainTextStyleName,
+                    SheetTitleScaleTextStyleName = SheetTitleScaleTextStyleName,
+                    SheetTitleMainTextHeight = SheetTitleMainTextHeight,
+                    SheetTitleScaleTextHeight = SheetTitleScaleTextHeight,
+                    SheetTitleScaleTextHeightRatio = SheetTitleScaleTextHeightRatio,
+                    SheetTitleTopLineWidthFactor = SheetTitleTopLineWidthFactor,
+                    SheetTitleBottomLineWidthFactor = SheetTitleBottomLineWidthFactor,
+                    SheetTitleTextToLinesGapFactor = SheetTitleTextToLinesGapFactor,
+                    SheetTitleDoubleLineSpacingFactor = SheetTitleDoubleLineSpacingFactor,
+                    SheetTitleScaleGapFromTextFactor = SheetTitleScaleGapFromTextFactor,
                     // Tab C: Alignment 默认
                     AlignmentDefaultRadius = AlignmentDefaultRadius,
                     AlignmentDefaultSpiralIn = AlignmentDefaultSpiralIn,
@@ -1385,6 +1440,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 RoadCrosswalkWidth = data.RoadCrosswalkWidth;
                 RoadStopLineDistance = data.RoadStopLineDistance;
                 RoadStripeSpacing = data.RoadStripeSpacing;
+                SheetTitleShowCrosshair = data.SheetTitleShowCrosshair;
+                SheetTitleShowScale = data.SheetTitleShowScale;
+                if (!string.IsNullOrWhiteSpace(data.SheetTitleMainTextStyleName)) SheetTitleMainTextStyleName = data.SheetTitleMainTextStyleName;
+                if (!string.IsNullOrWhiteSpace(data.SheetTitleScaleTextStyleName)) SheetTitleScaleTextStyleName = data.SheetTitleScaleTextStyleName;
+                if (data.SheetTitleMainTextHeight > 0) SheetTitleMainTextHeight = data.SheetTitleMainTextHeight;
+                if (data.SheetTitleScaleTextHeight > 0) SheetTitleScaleTextHeight = data.SheetTitleScaleTextHeight;
+                if (data.SheetTitleScaleTextHeightRatio > 0) SheetTitleScaleTextHeightRatio = data.SheetTitleScaleTextHeightRatio;
+                if (data.SheetTitleTopLineWidthFactor > 0) SheetTitleTopLineWidthFactor = data.SheetTitleTopLineWidthFactor;
+                if (data.SheetTitleBottomLineWidthFactor > 0) SheetTitleBottomLineWidthFactor = data.SheetTitleBottomLineWidthFactor;
+                if (data.SheetTitleTextToLinesGapFactor >= 0) SheetTitleTextToLinesGapFactor = data.SheetTitleTextToLinesGapFactor;
+                if (data.SheetTitleDoubleLineSpacingFactor >= 0) SheetTitleDoubleLineSpacingFactor = data.SheetTitleDoubleLineSpacingFactor;
+                if (data.SheetTitleScaleGapFromTextFactor >= 0) SheetTitleScaleGapFromTextFactor = data.SheetTitleScaleGapFromTextFactor;
                 // Tab C: Alignment 默认
                 AlignmentDefaultRadius = data.AlignmentDefaultRadius;
                 AlignmentDefaultSpiralIn = data.AlignmentDefaultSpiralIn;
@@ -1523,6 +1590,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double RoadCrosswalkWidth { get; set; } = 5.0;
             public double RoadStopLineDistance { get; set; } = 2.0;
             public double RoadStripeSpacing { get; set; } = 1.0;
+            public bool SheetTitleShowCrosshair { get; set; } = false;
+            public bool SheetTitleShowScale { get; set; } = true;
+            public string SheetTitleMainTextStyleName { get; set; } = "0-hy-说明-T";
+            public string SheetTitleScaleTextStyleName { get; set; } = "0-hy-说明-T";
+            public double SheetTitleMainTextHeight { get; set; } = 5.0;
+            public double SheetTitleScaleTextHeight { get; set; } = 3.0;
+            public double SheetTitleScaleTextHeightRatio { get; set; } = 0.55;
+            public double SheetTitleTopLineWidthFactor { get; set; } = 0.07;
+            public double SheetTitleBottomLineWidthFactor { get; set; } = 0.02;
+            public double SheetTitleTextToLinesGapFactor { get; set; } = 0.12;
+            public double SheetTitleDoubleLineSpacingFactor { get; set; } = 0.05;
+            public double SheetTitleScaleGapFromTextFactor { get; set; } = 0.12;
             // Alignment 默认值（hyRoadAlnByPi 等命令读默认）
             public double AlignmentDefaultRadius { get; set; } = 30.0;
             public double AlignmentDefaultSpiralIn { get; set; } = 0.0;

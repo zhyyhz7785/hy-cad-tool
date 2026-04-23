@@ -746,6 +746,10 @@ namespace HyCADTool.Refactored.Presentation
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.RawPolylineColor),
                 (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.LivePreviewLayer,
                     HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.LivePreviewColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleColor),
+                (HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleDecorationLayer,
+                    HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata.HyRoadLayers.CrossSectionTitleDecorationColor),
             };
         }
 

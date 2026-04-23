@@ -12,7 +12,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
     /// - 如果绘图直接吃 <see cref="CrossSectionLayout"/>，WPF Canvas 预览和 AutoCAD
     ///   <c>RoadStandardSectionDrawService</c> 会重复两套"条带 → 折线"的变换。
     /// - 通过 <see cref="Services.Road.CrossSectionLayoutBuilder.ToFigure"/> 一次铺平，
-    ///   两个渲染目标只需遍历本 VO 的 7 个列表即可。
+    ///   两个渲染目标只需遍历本 VO 的列表即可（含 <see cref="ElevationDiffLeaders"/>）。
     ///
     /// 本 VO 坐标以 <b>米（m）</b> 为单位，原点为"路面设计中心线 + 中心线海拔 ±0"。
     /// 渲染端按 <see cref="ScaleDenominator"/> 自行缩放模型空间尺寸。
@@ -34,8 +34,14 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>高差标注（主要断点的 y 值）。</summary>
         public IReadOnlyList<FigureHeightLabel> HeightLabels { get; }
 
-        /// <summary>顶部文字标签排（竖写，每条带一个）。</summary>
+        /// <summary>顶部文字标签排（竖写，每条带一个；Y 在顶栏，不应用作路面高差锚点）。</summary>
         public IReadOnlyList<FigureTopLabel> TopLabels { get; }
+
+        /// <summary>
+        /// 条带 <see cref="CrossSectionBand.ElevationDiff"/> 引线：锚点在外缘路面对象点（<c>NextInner</c>），
+        /// 与 <see cref="TopLabels"/> 顶栏名位置无关；避免 MLeader 起点误用 <see cref="FigureTopLabel.CenterY"/> 飘在条带名上方。
+        /// </summary>
+        public IReadOnlyList<FigureElevationDiffLeader> ElevationDiffLeaders { get; }
 
         /// <summary>方位指示（例如左"北"右"南"）。</summary>
         public FigureOrientation Orientation { get; }
@@ -56,6 +62,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             IReadOnlyList<FigureSlopeLabel> slopeLabels,
             IReadOnlyList<FigureHeightLabel> heightLabels,
             IReadOnlyList<FigureTopLabel> topLabels,
+            IReadOnlyList<FigureElevationDiffLeader> elevationDiffLeaders,
             FigureOrientation orientation,
             FigureTitle title,
             double totalWidth,
@@ -67,6 +74,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             SlopeLabels = slopeLabels ?? Array.Empty<FigureSlopeLabel>();
             HeightLabels = heightLabels ?? Array.Empty<FigureHeightLabel>();
             TopLabels = topLabels ?? Array.Empty<FigureTopLabel>();
+            ElevationDiffLeaders = elevationDiffLeaders ?? Array.Empty<FigureElevationDiffLeader>();
             Orientation = orientation;
             Title = title;
             TotalWidth = totalWidth;
@@ -174,6 +182,21 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             PositionX = positionX;
             PositionY = positionY;
             Text = text ?? string.Empty;
+        }
+    }
+
+    /// <summary>条带外端高差（m）的引线锚在路面接缝，与顶栏 <see cref="FigureTopLabel"/> 坐标无关。</summary>
+    public readonly struct FigureElevationDiffLeader
+    {
+        public double AnchorX { get; }
+        public double AnchorY { get; }
+        public double ElevationDiff { get; }
+
+        public FigureElevationDiffLeader(double anchorX, double anchorY, double elevationDiff)
+        {
+            AnchorX = anchorX;
+            AnchorY = anchorY;
+            ElevationDiff = elevationDiff;
         }
     }
 

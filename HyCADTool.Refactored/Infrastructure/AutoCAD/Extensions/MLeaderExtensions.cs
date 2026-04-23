@@ -205,7 +205,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions
             if (ml == null) return;
             double th = ml.TextHeight;
             if (th < 1e-9) th = 0.15;
-            int n = string.IsNullOrEmpty(content) ? 1 : Math.Min(content.Length, 20);
+            int n = 1;
+            if (!string.IsNullOrEmpty(content))
+            {
+                foreach (var line in content.Split(new[] { "\\P" }, StringSplitOptions.None))
+                {
+                    int L = Math.Min((line ?? string.Empty).Length, 20);
+                    n = Math.Max(n, Math.Max(1, L));
+                }
+            }
             // 与字高、字长成比例并设上界，避免长横线
             double d = Math.Max(th * 0.12, Math.Min(th * 0.52, n * th * 0.11 + th * 0.08));
             try

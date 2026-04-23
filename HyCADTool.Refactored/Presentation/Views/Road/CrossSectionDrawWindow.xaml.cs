@@ -9,6 +9,7 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCAD.BlenderUI.Controls;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
@@ -378,7 +379,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
 
         private void RedrawPreview()
         {
-            CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator);
+            CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator, null,
+                SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec());
         }
 
         private void OnPickGeometryRequested(object sender, BandRowViewModel row)
@@ -455,7 +457,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 try
                 {
                     var annotationStyle = BuildAnnotationStyleOrNull();
-                    RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value, annotationStyle);
+                    var titleSpec = SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec() ?? DrawingSheetTitleSpec.RoadCrossSectionDefault;
+                    RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value, annotationStyle, titleSpec);
                 }
                 catch (Exception ex)
                 {
@@ -473,7 +476,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 if (picked == null) return;
                 _structureLinesOrigin = picked.Value;
                 var annotationStyle = BuildAnnotationStyleOrNull();
-                RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value, annotationStyle);
+                var titleSpec = SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec() ?? DrawingSheetTitleSpec.RoadCrossSectionDefault;
+                RoadCsDrawSingleLineInteractor.DrawAt(result, _structureLinesOrigin.Value, annotationStyle, titleSpec);
             }
             catch (Exception ex)
             {

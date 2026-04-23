@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Controls;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 
 namespace HyCADTool.Refactored.Presentation.Views.Road
@@ -175,7 +176,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
 
         private void RedrawPreview()
         {
-            CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator);
+            CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator, null,
+                SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec());
         }
     }
 }

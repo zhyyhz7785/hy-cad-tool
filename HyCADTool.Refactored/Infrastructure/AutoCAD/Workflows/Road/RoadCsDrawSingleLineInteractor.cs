@@ -2,6 +2,7 @@ using System;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
@@ -59,7 +60,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
         public static DrawResult DrawAt(
             CrossSectionDesignerResult result,
             Point2d origin,
-            CrossSectionAnnotationStyle annotationStyle = null)
+            CrossSectionAnnotationStyle annotationStyle = null,
+            DrawingSheetTitleSpec sheetTitleSpec = null)
         {
             if (result == null) throw new ArgumentNullException(nameof(result));
 
@@ -85,7 +87,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
                         modelUnitPerMeter: 1.0,
                         mode: CrossSectionDrawMode.TopSurfaceWithAnnotation,
                         layout: result.Layout,
-                        annotationStyle: annotationStyle);
+                        annotationStyle: annotationStyle,
+                        sheetTitleSpec: sheetTitleSpec);
                     tr.Commit();
                 }
             }

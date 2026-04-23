@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 
 namespace HyCADTool.Refactored.Presentation.Views.Road
@@ -68,7 +69,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             Canvas canvas,
             CrossSectionFigure figure,
             int? scaleDenominator,
-            IReadOnlyDictionary<TemplateComponentKind, Brush> panelFills = null)
+            IReadOnlyDictionary<TemplateComponentKind, Brush> panelFills = null,
+            DrawingSheetTitleSpec titleSpec = null)
         {
             if (canvas == null) return;
             canvas.Children.Clear();
@@ -230,20 +232,9 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 DrawOrientation(canvas, figure.Orientation);
             }
 
-            // ============================== 9. 标题 ==============================
-            if (!string.IsNullOrWhiteSpace(figure.Title.Text))
-            {
-                var title = new TextBlock
-                {
-                    Text = figure.Title.Text,
-                    Foreground = AnnotationBrush,
-                    FontSize = 13,
-                    FontWeight = FontWeights.SemiBold,
-                };
-                Canvas.SetLeft(title, 8);
-                Canvas.SetTop(title, 8);
-                canvas.Children.Add(title);
-            }
+            // ============================== 9. 图题（与出图 + 设置规格一致） ==============================
+            DrawingSheetTitleWpfRenderer.DrawTopBand(
+                canvas, cw, titleSpec, figure.Title.Text, scaleDenominator ?? figure.ScaleDenominator);
 
             // ============================== 10. 高度标签列 ==============================
             double heightCursorY = padTop + 32;
@@ -253,12 +244,11 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 heightCursorY += 14;
             }
 
-            // ============================== 11. 比例 / 路幅 信息 ==============================
+            // ============================== 11. 路幅（比例已并入图题带） ==============================
             var info = new TextBlock
             {
                 Text = string.Format(CultureInfo.InvariantCulture,
-                    "比例 1:{0}  路幅 {1:F2} m",
-                    scaleDenominator ?? 100,
+                    "路幅 {0:F2} m",
                     spanX),
                 Foreground = AnnotationBrush,
                 FontFamily = new FontFamily("Consolas"),

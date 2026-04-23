@@ -7,8 +7,10 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 using HyCADTool.Refactored.Presentation.Views.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -266,6 +268,9 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
             var exporter = ServiceLocator.Resolve<RoadJsonExportService>();
             var drawService = ServiceLocator.Resolve<RoadStandardSectionDrawService>();
+            DrawingSheetTitleSpec titleSpec = SettingsPanelViewModel.Current != null
+                ? SettingsPanelViewModel.Current.CreateDrawingSheetTitleSpec()
+                : DrawingSheetTitleSpec.RoadCrossSectionDefault;
 
             var design = registry.GetOrCreate(doc.Name);
             var template = result.Template;
@@ -297,7 +302,8 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             {
                 erased = drawService.Clear(tr, doc.Database, template.Id);
                 created = drawService.Draw(tr, doc.Database, result.Figure, template, origin,
-                    modelUnitPerMeter: 1.0, mode: drawMode, layout: result.Layout);
+                    modelUnitPerMeter: 1.0, mode: drawMode, layout: result.Layout, annotationStyle: null,
+                    sheetTitleSpec: titleSpec);
                 tr.Commit();
             }
 

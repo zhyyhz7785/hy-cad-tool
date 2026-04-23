@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
@@ -67,7 +68,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Template template,
             Point2d origin,
             double modelUnitPerMeter = 1.0)
-            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null, null);
+            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null, null, null);
 
         /// <summary>
         /// M7.4 重载：指定绘图模式。
@@ -83,7 +84,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             double modelUnitPerMeter,
             CrossSectionDrawMode mode,
             CrossSectionLayout layout = null,
-            CrossSectionAnnotationStyle annotationStyle = null)
+            CrossSectionAnnotationStyle annotationStyle = null,
+            DrawingSheetTitleSpec sheetTitleSpec = null)
         {
             if (transaction == null) throw new ArgumentNullException(nameof(transaction));
             if (database == null) throw new ArgumentNullException(nameof(database));
@@ -93,6 +95,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
 
             HyRoadXdata.EnsureRegApp(transaction, database);
             EnsureLayersVisible(transaction, database);
+
+            var titleSpec = sheetTitleSpec ?? DrawingSheetTitleSpec.RoadCrossSectionDefault;
 
             var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
             var ms = (BlockTableRecord)transaction.GetObject(
@@ -246,12 +250,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     annotationStyle?.TextStyleId ?? ObjectId.Null);
             }
 
-            // ---------------- 7. 标高 / 高程：MLeader + 与条带高差引线共享避让盒 ----------------
+            // ---------------- 7. 标高 / 高程：MLeader + 与条带高差引线共享避让盒
+            // 同 x 的多个标高 → 并成一条 MText（\P 叠行）+ 锚 y 用竖向中点（图2）
+            // ----------------
             var mleaderTextBoxes = new List<MLeaderTextAabb>();
-            foreach (var h in figure.HeightLabels.OrderBy(x => x.PositionX).ThenBy(x => x.PositionY))
+            foreach (var g in GroupHeightLabelsByColocatedX(figure.HeightLabels))
             {
                 added += AddHeightMLeader(
-                    transaction, ms, database, template.Id, h, Map, s, txtH, annotationStyle, mleaderTextBoxes);
+                    transaction, ms, database, template.Id, g, Map, s, txtH, annotationStyle, mleaderTextBoxes);
             }
 
             // ---------------- 8. 顶部条带名（竖写；v1 退化为水平） ----------------
@@ -274,7 +280,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     origin, figure.Orientation, s, annotationStyle);
             }
 
-            // ---------------- 10. 标题 ----------------
+            // ---------------- 10. 图题（规格化：双下划线 + 比例 + 左十字/方格） ----------------
             if (!string.IsNullOrWhiteSpace(figure.Title.Text))
             {
                 var p = Map(figure.Title.CenterX, figure.Title.Y);
@@ -283,17 +289,30 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 {
                     titleH = annotationStyle.TextHeightModel;
                 }
-                added += AddText(transaction, ms, database, template.Id, p, figure.Title.Text,
-                    annotationStyle?.TitleLayerName ?? HyRoadLayers.CrossSectionTitleLayer,
+                var tsId = annotationStyle?.TextStyleId ?? ObjectId.Null;
+                string titleLayerOverride = annotationStyle?.TitleLayerName;
+                void AppendTitle(Entity e)
+                {
+                    ms.AppendEntity(e);
+                    transaction.AddNewlyCreatedDBObject(e, true);
+                    TagEntity(transaction, database, e, template.Id);
+                }
+                added += DrawingSheetTitleDrawer.Draw(
+                    database,
+                    AppendTitle,
+                    titleSpec,
+                    p,
+                    figure.Title.Text,
+                    figure.ScaleDenominator,
                     titleH,
-                    alignCenter: true,
-                    textStyleId: annotationStyle?.TextStyleId ?? ObjectId.Null);
+                    tsId,
+                    titleLayerOverride);
             }
 
-            if (layout != null)
+            if (figure.ElevationDiffLeaders != null && figure.ElevationDiffLeaders.Count > 0)
             {
                 added += DrawElevationDiffLeaders(
-                    transaction, ms, database, template.Id, figure, layout, origin, s, annotationStyle, mleaderTextBoxes);
+                    transaction, ms, database, template.Id, figure, origin, s, annotationStyle, mleaderTextBoxes);
             }
 
             return added;
@@ -305,43 +324,53 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Database database,
             Guid templateId,
             CrossSectionFigure figure,
-            CrossSectionLayout layout,
             Point2d origin,
             double s,
             CrossSectionAnnotationStyle annotationStyle,
             List<MLeaderTextAabb> placedTextBoxes)
         {
-            if (figure.TopLabels == null || figure.TopLabels.Count == 0) return 0;
-            int added = 0;
-            int labelIndex = 0;
             if (placedTextBoxes == null) placedTextBoxes = new List<MLeaderTextAabb>();
-
-            foreach (var band in layout.LeftBands)
+            if (figure.ElevationDiffLeaders == null || figure.ElevationDiffLeaders.Count == 0) return 0;
+            int added = 0;
+            foreach (var ed in figure.ElevationDiffLeaders)
             {
-                if (Math.Abs(band.ElevationDiff) > 1e-6)
-                {
-                    added += AddElevationLeader(
-                        transaction, ms, database, templateId, figure.TopLabels[labelIndex], band.ElevationDiff,
-                        origin, s, annotationStyle, placedTextBoxes);
-                }
-                labelIndex++;
+                added += AddElevationLeader(
+                    transaction, ms, database, templateId, ed,
+                    origin, s, annotationStyle, placedTextBoxes);
             }
-
-            if (layout.CenterMedianWidth > 0) labelIndex++;
-
-            foreach (var band in layout.RightBands)
-            {
-                if (labelIndex >= figure.TopLabels.Count) break;
-                if (Math.Abs(band.ElevationDiff) > 1e-6)
-                {
-                    added += AddElevationLeader(
-                        transaction, ms, database, templateId, figure.TopLabels[labelIndex], band.ElevationDiff,
-                        origin, s, annotationStyle, placedTextBoxes);
-                }
-                labelIndex++;
-            }
-
             return added;
+        }
+
+        /// <summary>同横坐标（竖向台阶/缝）的标高并成一条引线，MText 用 \P 叠行、锚点 y 取中点。</summary>
+        private static List<FigureHeightLabel[]> GroupHeightLabelsByColocatedX(
+            IReadOnlyList<FigureHeightLabel> labels, double xTolMeters = 1e-3)
+        {
+            var result = new List<List<FigureHeightLabel>>();
+            if (labels == null || labels.Count == 0) return new List<FigureHeightLabel[]>();
+            var ordered = labels.OrderBy(h => h.PositionX).ThenByDescending(h => h.PositionY);
+            foreach (var h in ordered)
+            {
+                List<FigureHeightLabel> target = null;
+                foreach (var g in result)
+                {
+                    if (Math.Abs(g[0].PositionX - h.PositionX) < xTolMeters)
+                    {
+                        target = g;
+                        break;
+                    }
+                }
+                if (target == null)
+                {
+                    target = new List<FigureHeightLabel>();
+                    result.Add(target);
+                }
+                target.Add(h);
+            }
+            foreach (var g in result)
+            {
+                g.Sort((a, b) => b.PositionY.CompareTo(a.PositionY));
+            }
+            return result.Select(x => x.ToArray()).ToList();
         }
 
         private int AddHeightMLeader(
@@ -349,16 +378,37 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             BlockTableRecord ms,
             Database db,
             Guid templateId,
-            FigureHeightLabel h,
+            IReadOnlyList<FigureHeightLabel> group,
             Func<double, double, Point3d> map,
             double s,
             double textH,
             CrossSectionAnnotationStyle annotationStyle,
             List<MLeaderTextAabb> placed)
         {
-            var content = h.Text?.Trim() ?? string.Empty;
-            if (string.IsNullOrEmpty(content)) return 0;
-            var anchor = map(h.PositionX, h.PositionY);
+            if (group == null || group.Count == 0) return 0;
+            var parts = new List<string>(group.Count);
+            foreach (var h in group)
+            {
+                var t = h.Text?.Trim() ?? string.Empty;
+                if (t.Length > 0) parts.Add(t);
+            }
+            if (parts.Count == 0) return 0;
+            string content = parts.Count == 1
+                ? parts[0]
+                : string.Join("\\P", parts);
+            Point3d anchor;
+            if (group.Count == 1)
+            {
+                var h0 = group[0];
+                anchor = map(h0.PositionX, h0.PositionY);
+            }
+            else
+            {
+                // 引线起点取较低处（y 小）；文字仍上行较高、下行较低（组内已按 Y 降序拼入 parts）
+                double yMin = group.Min(h => h.PositionY);
+                double x0 = group[0].PositionX;
+                anchor = map(x0, yMin);
+            }
             var endPoint = ResolveMLeaderTextPlacement(
                 anchor, content, textH, s, placed,
                 initialOffset: (dx: 0.28 * s, dy: 0.10 * s));
@@ -377,22 +427,21 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             BlockTableRecord ms,
             Database database,
             Guid templateId,
-            FigureTopLabel topLabel,
-            double elevationDiff,
+            FigureElevationDiffLeader ed,
             Point2d origin,
             double s,
             CrossSectionAnnotationStyle annotationStyle,
             List<MLeaderTextAabb> placed)
         {
             if (placed == null) placed = new List<MLeaderTextAabb>();
-            var content = $"{elevationDiff:+0.000;-0.000}";
-            var anchor = new Point3d(origin.X + topLabel.CenterX * s, origin.Y + (topLabel.CenterY - 0.1) * s, 0);
+            var content = $"{ed.ElevationDiff:+0.000;-0.000}";
+            var anchor = new Point3d(origin.X + ed.AnchorX * s, origin.Y + ed.AnchorY * s, 0);
             var textH = annotationStyle != null && annotationStyle.TextHeightModel > 1e-6
                 ? annotationStyle.TextHeightModel
                 : Math.Max(0.15, 0.3 * s);
             var endPoint = ResolveMLeaderTextPlacement(
                 anchor, content, textH, s, placed,
-                initialOffset: (dx: 0.12 * s, dy: Math.Max(0.75 * s, 0.9 * s)));
+                initialOffset: (dx: 0.28 * s, dy: 0.10 * s));
             var mleader = MLeaderExtensions.CreateMLeaderSinglePoint(
                 anchor, endPoint, content, annotationStyle?.MLeaderStyleId ?? ObjectId.Null);
             mleader.Layer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
@@ -407,9 +456,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         private static MLeaderTextAabb EstimateMLeaderTextBounds(Point3d lowerLeft, string content, double textH)
         {
             if (textH < 1e-9) textH = 0.15;
-            int len = Math.Max(1, (content ?? string.Empty).Length);
-            double w = Math.Max(textH * 1.4, len * textH * 0.45);
-            double h = textH * 1.25;
+            var raw = content ?? string.Empty;
+            // MText 行分隔 \P
+            var lines = raw.Split(new[] { "\\P" }, StringSplitOptions.None);
+            int lineCount = Math.Max(1, lines.Length);
+            int maxLen = 1;
+            foreach (var line in lines)
+            {
+                int L = (line ?? string.Empty).Length;
+                if (L > maxLen) maxLen = L;
+            }
+            double w = Math.Max(textH * 1.4, maxLen * textH * 0.45);
+            double h = textH * 1.25 * lineCount;
             return MLeaderTextAabb.FromLowerLeft(lowerLeft, w, h);
         }
 

@@ -392,7 +392,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="SubWidth" />
-                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -400,7 +400,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="CrossSlopePct" />
-                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -411,7 +411,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="InnerElevationDiff" />
-                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -422,7 +422,7 @@
                                                 <TextBox.Text>
                                                     <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                         <Binding Mode="TwoWay" Path="OuterElevationDiff" />
-                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                                     </MultiBinding>
                                                 </TextBox.Text>
                                             </TextBox>
@@ -455,7 +455,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="Width" />
-                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -547,7 +547,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="Width" />
-                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -555,7 +555,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="CrossSlopePct" />
-                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -566,7 +566,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="InnerElevationDiff" />
-                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>
@@ -577,7 +577,7 @@
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="ElevationDiff" />
-                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type local:CrossSectionDrawWindow}}" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type bui:BlenderWindow}}" />
                                             </MultiBinding>
                                         </TextBox.Text>
                                     </TextBox>

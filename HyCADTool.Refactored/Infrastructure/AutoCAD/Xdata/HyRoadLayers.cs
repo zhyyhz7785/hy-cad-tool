@@ -127,6 +127,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
         public const string CrossSectionTitleLayer = "05_hy_道路_横断面_图题";
         public const short CrossSectionTitleColor = 3; // 绿
 
+        /// <summary>横断面-图题装饰（双下划线、十字等，可与图题分色）。</summary>
+        public const string CrossSectionTitleDecorationLayer = "05_hy_道路_横断面_图题_装饰";
+        public const short CrossSectionTitleDecorationColor = 3;
+
         /// <summary>横断面-方位 / 箭头。</summary>
         public const string CrossSectionOrientationLayer = "05_hy_道路_横断面_方位";
         public const short CrossSectionOrientationColor = 6; // 品红
@@ -175,6 +179,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
                 (CrossSectionDimensionLayer, CrossSectionDimensionColor),
                 (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),
                 (CrossSectionTitleLayer, CrossSectionTitleColor),
+                (CrossSectionTitleDecorationLayer, CrossSectionTitleDecorationColor),
                 (CrossSectionOrientationLayer, CrossSectionOrientationColor),
                 (PlanRedLineLayer, PlanRedLineColor),
                 (PlanBandDividerLayer, PlanBandDividerColor),

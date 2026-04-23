@@ -39,6 +39,40 @@
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadStripeSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=1}"/>
                     </bc:PropertyRow>
+                    <TextBlock Text="横断面图题（与模型出图、预览统一）" Margin="0,12,0,4"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               FontSize="{DynamicResource Metric_FontSmall}"/>
+                    <bc:PropertyRow Label="十字装饰" Style="{StaticResource RoadPropertyRow}">
+                        <CheckBox IsChecked="{Binding Settings.SheetTitleShowCrosshair, FallbackValue=True}" VerticalAlignment="Center"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="显示比例" Style="{StaticResource RoadPropertyRow}">
+                        <CheckBox IsChecked="{Binding Settings.SheetTitleShowScale, FallbackValue=True}" VerticalAlignment="Center"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="比例字高比" ToolTip="相对主图题字高，0.35~0.7" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleScaleTextHeightRatio, UpdateSourceTrigger=LostFocus, FallbackValue=0.55}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="上/下划线宽" ToolTip="相对主字高，上粗/下细" Style="{StaticResource RoadPropertyRow}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Style="{StaticResource BlenderTextBox}" MinWidth="56"
+                                     Text="{Binding Settings.SheetTitleTopLineWidthFactor, UpdateSourceTrigger=LostFocus, FallbackValue=0.07}"/>
+                            <TextBlock Text=" / " VerticalAlignment="Center" Margin="4,0" Foreground="{DynamicResource Brush_TextDisabled}"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}" MinWidth="56"
+                                     Text="{Binding Settings.SheetTitleBottomLineWidthFactor, UpdateSourceTrigger=LostFocus, FallbackValue=0.02}"/>
+                        </StackPanel>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="字到上线距" ToolTip="主图题底到粗下划线顶，相对主字高" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleTextToLinesGapFactor, UpdateSourceTrigger=LostFocus, FallbackValue=0.12}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="双线间距" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleDoubleLineSpacingFactor, UpdateSourceTrigger=LostFocus, FallbackValue=0.05}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="比例与图名距" ToolTip="双下划线右端与比例字左，相对主字高" Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.SheetTitleScaleGapFromTextFactor, UpdateSourceTrigger=LostFocus, FallbackValue=0.12}"/>
+                    </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>
 
