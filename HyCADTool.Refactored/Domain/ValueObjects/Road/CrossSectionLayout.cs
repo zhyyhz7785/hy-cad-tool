@@ -29,7 +29,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>右半路幅条带（从中心向外）。</summary>
         public IReadOnlyList<CrossSectionBand> RightBands { get; }
 
-        /// <summary>中央分隔带宽度（m）。为 0 时不画中分带。</summary>
+        /// <summary>中央分隔带宽度（m）。为 0 时不画分隔带。</summary>
         public double CenterMedianWidth { get; }
 
         /// <summary>设计速度（km/h），供 <see cref="Services.Road.CrossSectionCodeChecker"/> 查表。</summary>
@@ -51,7 +51,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         /// <summary>
         /// 道路中心线在断面图上的水平位置（m），相对左红线（leftmost = 0）的距离。
-        /// 默认为 <c>LeftHalfWidth + CenterMedianWidth / 2</c>，即左半幅 + 中分带半宽。
+        /// 默认为 <c>LeftHalfWidth + CenterMedianWidth / 2</c>，即左半幅 + 分隔带半宽。
         /// 用户可显式覆盖（例如非对称设计时把中心线偏向一侧）。
         /// </summary>
         public double CenterlinePosition { get; }
@@ -82,13 +82,13 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>除 <see cref="StationStart"/>/<see cref="StationEnd"/> 外的附加桩号区间（与主段并列，多段时用于绑定多套断面）。</summary>
         public IReadOnlyList<StationRangeSpan> AdditionalStationRanges { get; }
 
-        /// <summary>中分带左半幅宽度（m）。为 0 时几何上按 <c>CenterMedianWidth / 2</c> 等分；须 ≤ <see cref="CenterMedianWidth"/>。</summary>
+        /// <summary>分隔带左半幅宽度（m）。为 0 时几何上按 <c>CenterMedianWidth / 2</c> 等分；须 ≤ <see cref="CenterMedianWidth"/>。</summary>
         public double MedianLeftSubWidth { get; }
 
-        /// <summary>中分带左半（靠左半幅—中心缝）的横坡（%）。</summary>
+        /// <summary>分隔带左半（靠左半幅—中心缝）的横坡（%）。</summary>
         public double MedianLeftCrossSlopePct { get; }
 
-        /// <summary>中分带右半（中心缝—右半幅）的横坡（%）。</summary>
+        /// <summary>分隔带右半（中心缝—右半幅）的横坡（%）。</summary>
         public double MedianRightCrossSlopePct { get; }
 
         /// <summary>中分左半在靠左半幅侧边缘的高差跳变（m）。</summary>
@@ -103,7 +103,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>中分右半在靠右半幅侧边缘的跳变（m）。</summary>
         public double MedianRightOuterElevationDiff { get; }
 
-        /// <summary>UI 高差锁定：为 true 时仅人行道/条带中分带 等例外类型可编辑 内/外 端高差（见设计器规则）。</summary>
+        /// <summary>UI 高差锁定：为 true 时仅人行道/条带分隔带 等例外类型可编辑 内/外 端高差（见设计器规则）。</summary>
         public bool ElevationDiffLocked { get; }
 
         private CrossSectionLayout(
@@ -226,7 +226,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
                 right.Add(b.Side == BandSide.Right ? b : b.WithSide(BandSide.Right));
             }
 
-            // 默认中心线位置 = 左半宽 + 中分带半宽（与对称布置等效）
+            // 默认中心线位置 = 左半宽 + 分隔带半宽（与对称布置等效）
             double leftWidth = 0;
             foreach (var b in left) leftWidth += b.Width;
             double resolvedCenterline = double.IsNaN(centerlinePosition)
@@ -272,7 +272,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             }
         }
 
-        /// <summary>红线总宽 = 左半 + 中分带 + 右半（m）。</summary>
+        /// <summary>红线总宽 = 左半 + 分隔带 + 右半（m）。</summary>
         public double TotalWidth => LeftHalfWidth + CenterMedianWidth + RightHalfWidth;
 
         /// <summary>左右是否对称（以 0.01 m 为容差比较半幅宽）。</summary>
@@ -300,7 +300,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         public CrossSectionLayout WithCenterMedianWidth(double w)
             => Create(LeftBands, RightBands, w, DesignSpeed, ScaleDenominator, Title, PlanStripLength,
-                      double.NaN /* 中分带宽变了，中心线重算 */,
+                      double.NaN /* 分隔带宽变了，中心线重算 */,
                       ProfileElevationOffset, IsEmptyAssembly, StationStart, StationEnd, AdditionalStationRanges,
                       MedianLeftSubWidth, MedianLeftCrossSlopePct, MedianRightCrossSlopePct,
                       MedianLeftOuterElevationDiff, MedianLeftInnerElevationDiff, MedianRightInnerElevationDiff, MedianRightOuterElevationDiff,

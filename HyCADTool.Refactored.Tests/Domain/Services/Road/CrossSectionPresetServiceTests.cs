@@ -51,7 +51,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
 
             // 基于内置做小改：宽度换一下
             var layout = svc.LoadByName("urban-arterial");
-            var newLayout = layout.WithDesignSpeed(70).WithTitle("自定义方案A");
+            var newLayout = layout.WithDesignSpeed(70).WithTitle("自定义方案A").WithPlanStripLength(8.4);
 
             svc.SaveUserPreset("my-custom", "我的方案 A", newLayout);
 
@@ -62,6 +62,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
             loaded.Should().NotBeNull();
             loaded.DesignSpeed.Should().Be(70);
             loaded.Title.Should().Be("自定义方案A");
+            loaded.PlanStripLength.Should().BeApproximately(8.4, 1e-9);
         }
 
         [Fact]

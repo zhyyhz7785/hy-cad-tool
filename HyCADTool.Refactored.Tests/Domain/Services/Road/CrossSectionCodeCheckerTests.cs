@@ -11,7 +11,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
     /// </summary>
     public class CrossSectionCodeCheckerTests
     {
-        // 构造一个默认"全部合规"的布局（无中分带，左右各 2 条 3.5m/1.5% 车道 + 3.0m 人行道）
+        // 构造一个默认"全部合规"的布局（无分隔带，左右各 2 条 3.5m/1.5% 车道 + 3.0m 人行道）
         private static CrossSectionLayout BuildCompliantLayout()
         {
             return CrossSectionLayout.Create(
@@ -138,7 +138,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
                 designSpeed: 60);
             var item = CrossSectionCodeChecker.Check(layout).Items.First(i => i.Name == "中央分隔带宽");
             item.Passed.Should().BeFalse();
-            item.Suggestion.Should().Contain("中分带");
+            item.Suggestion.Should().Contain("分隔带");
         }
 
         [Fact]

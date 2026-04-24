@@ -391,8 +391,9 @@ namespace HyCADTool.ReCall
         /// 三连段路幅（独立）→ <c>commands.json</c> 键 <c>hySeg3</c>。
         /// 注册在 <see cref="ReCallClass"/>：与 <c>C2</c> 同属 NETLOAD 的 ReCall.dll，重装本 DLL 后即识别；
         /// 勿在 <see cref="CommandFacade"/> 再挂同名 <c>CommandMethod</c>，以免重复定义。
+        /// 说明：AutoCAD 全局命令名<strong>不区分大小写</strong>，同一方法上不可再写 <c>[CommandMethod("HYSEG3")]</c>，
+        /// 否则第二次 <c>AddCommand</c> 会抛 <c>eDuplicateKey</c>；命令行输入 <c>HYSEG3</c> 与 <c>hySeg3</c> 仍等价。
         /// </summary>
-        [CommandMethod("HYSEG3")]
         [CommandMethod("hySeg3")]
         public void HySeg3() => Invoke("hySeg3");
 

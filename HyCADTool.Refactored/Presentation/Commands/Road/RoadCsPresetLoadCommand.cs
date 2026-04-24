@@ -49,7 +49,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             ed.WriteMessage(
                 $"\n[道路] 已加载：{layout.Title}"
                 + $"\n        总宽 {layout.TotalWidth:F2} m，设计速度 {layout.DesignSpeed} km/h，比例 1:{layout.ScaleDenominator}"
-                + $"\n        左半 {layout.LeftBands.Count} 条带 / 右半 {layout.RightBands.Count} 条带 / 中分带 {layout.CenterMedianWidth:F2} m"
+                + $"\n        左半 {layout.LeftBands.Count} 条带 / 右半 {layout.RightBands.Count} 条带 / 分隔带 {layout.CenterMedianWidth:F2} m"
                 + "\n[道路] 提示：跑 hyRoadCs 并在顶部下拉框选择此预设即可用于出图（M7 UI 接入后）。");
         }
     }

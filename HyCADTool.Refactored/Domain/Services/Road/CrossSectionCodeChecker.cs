@@ -289,7 +289,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             {
                 ok = false;
                 msg = $"中央分隔带 {layout.CenterMedianWidth:F2} m < {MinMedianWidth:F2} m。";
-                suggestion = $"建议把中分带宽提高到 ≥ {MinMedianWidth:F2} m；若需更窄可取消中分带（设为 0）。";
+                suggestion = $"建议把分隔带宽提高到 ≥ {MinMedianWidth:F2} m；若需更窄可取消分隔带（设为 0）。";
             }
 
             items.Add(new CodeCheckItem("中央分隔带宽", ok, msg, suggestion));

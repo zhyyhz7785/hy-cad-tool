@@ -17,7 +17,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     ///
     /// 职责：
     /// <list type="bullet">
-    ///   <item>维护左右两侧条带的 <see cref="BandRowViewModel"/>，+ 中分带宽 / 设计速度 / 比例尺。</item>
+    ///   <item>维护左右两侧条带的 <see cref="BandRowViewModel"/>，+ 分隔带宽 / 设计速度 / 比例尺。</item>
     ///   <item>每次变更后重算：<see cref="CrossSectionLayout"/> → <see cref="CrossSectionFigure"/> + 规范检查。</item>
     ///   <item>触发 <see cref="PreviewRequested"/> 让 WPF Canvas 重绘。</item>
     ///   <item>确认/取消时通过 <see cref="Confirmed"/> / <see cref="Cancelled"/> 事件回传。</item>
@@ -196,6 +196,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 SetProperty(ref _designSpeed, layout.DesignSpeed, nameof(DesignSpeed));
                 SetProperty(ref _scaleDenominator, layout.ScaleDenominator, nameof(ScaleDenominator));
                 SetProperty(ref _title, layout.Title, nameof(Title));
+                SetProperty(ref _planStripLength, layout.PlanStripLength, nameof(PlanStripLength));
                 SetProperty(ref _isMirror, layout.IsSymmetric, nameof(IsMirror));
 
                 SetProperty(ref _centerlinePosition, layout.CenterlinePosition, nameof(CenterlinePosition));
@@ -327,7 +328,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         private double _medianLeftSubWidth;
-        /// <summary>中分带左半宽（m），0 表示等分。须 ≤ <see cref="CenterMedianWidth"/>。</summary>
+        /// <summary>分隔带左半宽（m），0 表示等分。须 ≤ <see cref="CenterMedianWidth"/>。</summary>
         public double MedianLeftSubWidth
         {
             get => _medianLeftSubWidth;
@@ -340,7 +341,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             }
         }
 
-        /// <summary>只读：中分带右半宽 = 总中分带 − 左半（几何上等价）。</summary>
+        /// <summary>只读：分隔带右半宽 = 总分隔带 − 左半（几何上等价）。</summary>
         public double MedianRightSubWidth => _centerMedianWidth > 1e-9
             ? Math.Max(0, _centerMedianWidth - _medianLeftSubWidth)
             : 0;
@@ -419,7 +420,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private bool _isElevationDiffLocked = true;
         /// <summary>
-        /// 高差锁定：为 true 时仅「人行道 / 中分带条带」可编辑 内/外 端高差，中央隔离带行亦锁定。
+        /// 高差锁定：为 true 时仅「人行道 / 分隔带条带」可编辑 内/外 端高差，中央隔离带行亦锁定。
         /// </summary>
         public bool IsElevationDiffLocked
         {
@@ -461,6 +462,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             get => _title;
             set { if (SetProperty(ref _title, value ?? string.Empty)) Recalculate(); }
+        }
+
+        private double _planStripLength = 6.5;
+        /// <summary>标准横断面图顶部平面带长度（m）。</summary>
+        public double PlanStripLength
+        {
+            get => _planStripLength;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0) return;
+                if (SetProperty(ref _planStripLength, value)) Recalculate();
+            }
         }
 
         private bool _isMirror;
@@ -646,7 +659,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             try
             {
                 _lastLayout = BuildLayout();
-                _lastFigure = CrossSectionLayoutBuilder.ToFigure(_lastLayout);
+                bool useWE = SettingsPanelViewModel.Current?.RoadCrossSectionOrientationUseWestEast == true;
+                _lastFigure = CrossSectionLayoutBuilder.ToFigure(
+                    _lastLayout,
+                    orientationLeftLabel: useWE ? "西" : "北",
+                    orientationRightLabel: useWE ? "东" : "南");
                 _lastReport = CrossSectionCodeChecker.Check(_lastLayout);
 
                 LeftHalfWidth = _lastLayout.LeftHalfWidth;
@@ -695,6 +712,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 designSpeed: _designSpeed <= 0 ? 60 : _designSpeed,
                 scaleDenominator: _scaleDenominator <= 0 ? 100 : _scaleDenominator,
                 title: _title,
+                planStripLength: _planStripLength <= 0 ? 6.5 : _planStripLength,
                 centerlinePosition: _centerlinePosition,
                 profileElevationOffset: _profileElevationOffset,
                 isEmptyAssembly: _isEmptyAssembly,
@@ -1122,7 +1140,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 OnPropertyChanged(nameof(HasStructureLayers));
 
                 // 切到承载结构的 Kind 且 StructureLayers 为空 → 从 DefaultStructureSchemes.For 注入；
-                // 切到不承载结构（绿化带 / 中分带 / 缘石） → 清空层。
+                // 切到不承载结构（绿化带 / 分隔带 / 缘石） → 清空层。
                 if (IsStructureBearing(value))
                 {
                     if (StructureLayers.Count == 0)
@@ -1381,7 +1399,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         /// <summary>
-        /// 内/外 端高差是否可编辑。高差锁开启时仅人行道、条带中分带 可改。
+        /// 内/外 端高差是否可编辑。高差锁开启时仅人行道、条带分隔带 可改。
         /// </summary>
         public bool IsInnerOuterElevationEnabled
             => DesignHost == null

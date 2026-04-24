@@ -9,7 +9,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     /// <para>
     /// rCs（横断面绘制）面板 v2：当用户把条带 Kind 切到"承载结构"类型（机动车道 / 非机动车道 / 人行道）
     /// 时，<c>BandRowViewModel</c> 在首次无方案时从本工厂注入一份默认 <see cref="StructureLayerScheme"/>；
-    /// 切到绿化带 / 中分带 / 缘石等"不承载结构"类型时方案保持为 null（UI 上也不显示"路面结构层"Expander）。
+    /// 切到绿化带 / 分隔带 / 缘石等"不承载结构"类型时方案保持为 null（UI 上也不显示"路面结构层"Expander）。
     /// </para>
     ///
     /// <para>

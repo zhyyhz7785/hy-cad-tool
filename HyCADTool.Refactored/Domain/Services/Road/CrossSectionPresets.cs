@@ -61,7 +61,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         /// <summary>
-        /// 城市次干路（双向 4 车道，无中分带，2 人行道 2.5m）。
+        /// 城市次干路（双向 4 车道，无分隔带，2 人行道 2.5m）。
         /// 总宽约 19 m（2×(3.5×2 + 2.5) = 19）。
         ///
         /// 路牙：暂不内建（二期再开）。
@@ -85,7 +85,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         }
 
         /// <summary>
-        /// 城市支路（双向 2 车道，无中分带，2 人行道 2.0m）。
+        /// 城市支路（双向 2 车道，无分隔带，2 人行道 2.0m）。
         /// 总宽约 11 m（2×(3.5 + 2.0) = 11）。
         ///
         /// 路牙：暂不内建（二期再开）。

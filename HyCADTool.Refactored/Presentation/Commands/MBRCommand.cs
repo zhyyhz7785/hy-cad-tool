@@ -6,6 +6,9 @@ using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Services.GeometryAlgorithms;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using System;
 using System.Collections.Generic;
@@ -24,7 +27,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class MBRCommand
     {
-        private const string DEFAULT_LAYER_NAME = "00_hy_2公共_视口";
+        private static string DefaultLayerName => UserLayerNameResolver.Get(LayerSemanticIds.PublicViewport, LayerBuiltinDefaults.PublicViewport);
         private const short DEFAULT_LAYER_COLOR = 1; // 红色
         private const double DEFAULT_DISTANCE_THRESHOLD = 1500.0;
         private const double DEFAULT_EXPAND_X = 100.0;
@@ -105,7 +108,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                 ed.WriteMessage($"\n处理完成！");
                 ed.WriteMessage($"\n  聚类数量：{clusters.Count}");
-                ed.WriteMessage($"\n  目标图层：{DEFAULT_LAYER_NAME}");
+                ed.WriteMessage($"\n  目标图层：{DefaultLayerName}");
             }
             catch (System.Exception ex)
             {
@@ -232,14 +235,14 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                 // 创建矩形多段线
                 Polyline rectangle = CreateRectangleFromBoundingBox(expandedBounds);
-                rectangle.Layer = DEFAULT_LAYER_NAME;
+                rectangle.Layer = DefaultLayerName;
 
                 btr.AppendEntity(rectangle);
                 tr.AddNewlyCreatedDBObject(rectangle, true);
                 rectangle.Dispose();
             }
 
-            ed.WriteMessage($"\n成功生成 {clusters.Count} 个区域的最小外接矩形，位于图层 '{DEFAULT_LAYER_NAME}'。");
+            ed.WriteMessage($"\n成功生成 {clusters.Count} 个区域的最小外接矩形，位于图层 '{DefaultLayerName}'。");
         }
 
         /// <summary>

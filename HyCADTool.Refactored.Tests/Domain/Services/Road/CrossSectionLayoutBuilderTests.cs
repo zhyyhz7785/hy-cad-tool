@@ -13,7 +13,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
     /// </summary>
     public class CrossSectionLayoutBuilderTests
     {
-        // 简化构造：对称双向 2 车道 + 中分带 2m
+        // 简化构造：对称双向 2 车道 + 分隔带 2m
         private static CrossSectionLayout BuildSymmetricLayout()
         {
             return CrossSectionLayout.Create(
@@ -48,7 +48,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
                 designSpeed: 60);
             var tpl = CrossSectionLayoutBuilder.ToTemplate(layout);
 
-            // 无中分带时：左 2 + 合并中心 1 + 右 2 = 5
+            // 无分隔带时：左 2 + 合并中心 1 + 右 2 = 5
             tpl.Points.Count.Should().Be(5);
             tpl.Components.Count.Should().Be(4);
         }
@@ -97,7 +97,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         [Fact]
         public void FromTemplate_Roundtrip_Preserves_Widths_And_Slopes()
         {
-            var layout = BuildSymmetricLayout();
+            var layout = BuildSymmetricLayout().WithPlanStripLength(8.2);
             var tpl = CrossSectionLayoutBuilder.ToTemplate(layout);
 
             var back = CrossSectionLayoutBuilder.FromTemplate(tpl);
@@ -105,6 +105,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
             back!.LeftBands.Count.Should().Be(layout.LeftBands.Count);
             back.RightBands.Count.Should().Be(layout.RightBands.Count);
             back.CenterMedianWidth.Should().BeApproximately(layout.CenterMedianWidth, 1e-6);
+            back.PlanStripLength.Should().BeApproximately(layout.PlanStripLength, 1e-9);
 
             for (int i = 0; i < layout.LeftBands.Count; i++)
             {
@@ -172,11 +173,13 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         }
 
         [Fact]
-        public void ToFigure_TopLabelCountMatchesBandsPlusMedian()
+        public void ToFigure_TopLabelCountExcludesCentralMedianName()
         {
             var layout = BuildSymmetricLayout();
             var fig = CrossSectionLayoutBuilder.ToFigure(layout);
-            fig.TopLabels.Count.Should().Be(layout.LeftBands.Count + layout.RightBands.Count + 1);
+            // 出图不生成「中央分隔带」条目标签，只保留左右各带名称
+            fig.TopLabels.Count.Should().Be(layout.LeftBands.Count + layout.RightBands.Count);
+            fig.TopLabels.Any(t => (t.Text ?? string.Empty).Contains("中央")).Should().BeFalse();
 
             var noMed = layout.WithCenterMedianWidth(0);
             var figNoMed = CrossSectionLayoutBuilder.ToFigure(noMed);
@@ -184,13 +187,31 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         }
 
         [Fact]
-        public void ToFigure_DimensionSegments_OnlyTotalWidth_Tier0()
+        public void ToFigure_DimensionSegments_BuildsTopAndBottomChains()
         {
             var layout = BuildSymmetricLayout();
             var fig = CrossSectionLayoutBuilder.ToFigure(layout);
-            fig.DimensionSegments.Count(d => d.Tier == 0).Should().Be(1);
-            fig.DimensionSegments.Any(d => d.Tier == 1).Should().BeFalse();
-            fig.DimensionSegments.Any(d => d.Tier == 2).Should().BeFalse();
+            fig.DimensionSegments.Count(d => d.Tier == 0 && d.Track == FigureDimensionTrack.Top).Should().Be(1);
+            fig.DimensionSegments.Count(d => d.Tier == 0 && d.Track == FigureDimensionTrack.Bottom).Should().Be(2);
+            fig.DimensionSegments.Count(d => d.Tier == 1 && d.Track == FigureDimensionTrack.Top)
+                .Should().Be(layout.LeftBands.Count + layout.RightBands.Count + 1);
+            fig.DimensionSegments.Count(d => d.Tier == 1 && d.Track == FigureDimensionTrack.Bottom)
+                .Should().Be(layout.LeftBands.Count + layout.RightBands.Count + 1);
+        }
+
+        [Fact]
+        public void ToFigure_AxisMarkers_FixedToLeftCenterRight()
+        {
+            var layout = BuildSymmetricLayout();
+            var fig = CrossSectionLayoutBuilder.ToFigure(layout);
+
+            fig.AxisMarkers.Should().HaveCount(3);
+            fig.AxisMarkers[0].Label.Should().Be("道路左红线");
+            fig.AxisMarkers[1].Label.Should().Be("中心线");
+            fig.AxisMarkers[2].Label.Should().Be("道路右红线");
+            fig.AxisMarkers[1].X.Should().BeApproximately(0, 1e-9);
+            fig.AxisMarkers[0].X.Should().BeApproximately(-layout.TotalWidth / 2.0, 1e-9);
+            fig.AxisMarkers[2].X.Should().BeApproximately(+layout.TotalWidth / 2.0, 1e-9);
         }
 
         [Fact]
@@ -209,9 +230,10 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
         [Fact]
         public void ToFigure_TotalWidth_ReflectsLayoutTotal()
         {
-            var layout = BuildSymmetricLayout();
+            var layout = BuildSymmetricLayout().WithPlanStripLength(7.8);
             var fig = CrossSectionLayoutBuilder.ToFigure(layout);
             fig.TotalWidth.Should().BeApproximately(layout.TotalWidth, 1e-9);
+            fig.PlanStripLength.Should().BeApproximately(layout.PlanStripLength, 1e-9);
         }
 
         [Fact]

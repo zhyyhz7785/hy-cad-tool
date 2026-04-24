@@ -106,7 +106,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     ///   <item>路面内部按 <see cref="RoadCrownProfile"/> 插值（Linear 不插值；Parabolic 用 N 等分二次曲线；Folded 用单一折点）。</item>
     ///   <item>路牙凸起（仅 <see cref="CrossSectionBand.OuterKerb"/>.IsPresent 时）按"路面外缘 → 路牙底外 → 路牙顶外 → 路牙顶内"产生 3 个新顶点；
     ///       下一板块内端 = 路牙顶内（X 与路面外缘相同，Y 抬升 KerbHeight）。</item>
-    ///   <item>横坡符号：内高外低 → <c>Pct &gt; 0</c>，对路面/非机动/人行/路肩生效；缘石/中分带/绿化带视为水平。</item>
+    ///   <item>横坡符号：内高外低 → <c>Pct &gt; 0</c>，对路面/非机动/人行/路肩生效；缘石/分隔带/绿化带视为水平。</item>
     /// </list>
     /// </summary>
     public static class CrossSectionGeometryGenerator
@@ -125,7 +125,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <summary>
         /// 板块路面横坡的"外缘 y 相对内端 y 的符号"：
         /// 返回 -1 表示外缘 y 比内端 y 低（路面/非机动/人行/路肩，"内高外低"）；
-        /// 返回 0 表示水平段（缘石/中分带/绿化带/边坡，v1 不算斜坡）。
+        /// 返回 0 表示水平段（缘石/分隔带/绿化带/边坡，v1 不算斜坡）。
         /// </summary>
         public static int SurfaceSlopeSign(TemplateComponentKind kind)
         {

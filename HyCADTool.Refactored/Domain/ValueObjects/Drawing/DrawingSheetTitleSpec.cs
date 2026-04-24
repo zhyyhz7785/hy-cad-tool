@@ -11,10 +11,10 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Drawing
     public sealed class DrawingSheetTitleSpec
     {
         /// <summary>与 <c>HyRoadLayers.CrossSectionTitleLayer</c> 一致，Factory 会合并为同值。</summary>
-        public const string DefaultTitleTextLayer = "05_hy_道路_横断面_图题";
+        public const string DefaultTitleTextLayer = "02-hy-3横断-图题";
 
         /// <summary>与 <c>HyRoadLayers.CrossSectionTitleDecorationLayer</c> 一致。</summary>
-        public const string DefaultTitleDecorationLayer = "05_hy_道路_横断面_图题_装饰";
+        public const string DefaultTitleDecorationLayer = "02-hy-3横断-图题";
 
         public bool ShowCrosshair { get; }
         public bool ShowScale { get; }
@@ -70,8 +70,8 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Drawing
             scaleFormat: "1:{0}",
             mainTextStyleName: "0-hy-说明-T",
             scaleTextStyleName: "0-hy-说明-T",
-            mainTextHeightModel: 5.0,
-            scaleTextHeightModel: 3.0,
+            mainTextHeightModel: 4.0,
+            scaleTextHeightModel: 2.5,
             textToUpperLineGapFactor: 0.12,
             upperLineWidthFactor: 0.07,
             doubleLineSpacingFactor: 0.05,

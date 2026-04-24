@@ -1,10 +1,13 @@
 using System;
 using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
+using HyCADTool.Refactored.Presentation.Factories;
+using HyCADTool.Refactored.Presentation.ViewModels;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 
@@ -75,32 +78,86 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows.Road
             try
             {
                 using (doc.LockDocument())
-                using (var tr = doc.Database.TransactionManager.StartTransaction())
                 {
-                    erased = drawService.Clear(tr, doc.Database, result.Template.Id);
-                    created = drawService.Draw(
-                        tr,
-                        doc.Database,
-                        result.Figure,
-                        result.Template,
-                        origin,
-                        modelUnitPerMeter: 1.0,
-                        mode: CrossSectionDrawMode.TopSurfaceWithAnnotation,
-                        layout: result.Layout,
-                        annotationStyle: annotationStyle,
-                        sheetTitleSpec: sheetTitleSpec);
-                    tr.Commit();
+                    // 关键安全措施：在锁内"重算一次"当前 doc 的 Database，保证后续 ObjectId 都 bind 到这个 db。
+                    // 外层调用者构造的 annotationStyle 可能在 Prompt 期间 MdiActiveDocument 切换过，导致 ObjectId 不在当前 db → eNotInDatabase。
+                    var safeDb = doc.Database;
+                    CrossSectionAnnotationStyle safeStyle = RebuildAnnotationStyleForCurrentDoc(doc, annotationStyle);
+                    using (var tr = safeDb.TransactionManager.StartTransaction())
+                    {
+                        erased = drawService.Clear(tr, safeDb, result.Template.Id);
+                        double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
+                        created = drawService.Draw(
+                            tr,
+                            safeDb,
+                            result.Figure,
+                            result.Template,
+                            origin,
+                            modelUnitPerMeter: 1.0,
+                            mode: CrossSectionDrawMode.TopSurfaceWithAnnotation,
+                            layout: result.Layout,
+                            annotationStyle: safeStyle,
+                            sheetTitleSpec: sheetTitleSpec,
+                            planStripVerticalOffsetMeters: planOff);
+                        tr.Commit();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                doc.Editor.WriteMessage($"\n[道路] 横断面绘制失败：{ex.Message}");
+                // 打印异常类型 + 完整堆栈到命令行，方便定位 eNotInDatabase 之类"隐式"错误的抛出点。
+                // AutoCAD 命令行一行不宜过长，按行切后逐条写出，避免被末尾截断。
+                doc.Editor.WriteMessage($"\n[道路] 横断面绘制失败：{ex.GetType().Name}: {ex.Message}");
+                var stack = ex.StackTrace ?? string.Empty;
+                foreach (var line in stack.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    doc.Editor.WriteMessage("\n[道路]  " + line);
+                }
+                var inner = ex.InnerException;
+                int depth = 0;
+                while (inner != null && depth++ < 3)
+                {
+                    doc.Editor.WriteMessage($"\n[道路] ←内部: {inner.GetType().Name}: {inner.Message}");
+                    foreach (var line in (inner.StackTrace ?? string.Empty).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        doc.Editor.WriteMessage("\n[道路]  " + line);
+                    }
+                    inner = inner.InnerException;
+                }
                 return DrawResult.Failed(ex.Message);
             }
 
             doc.Editor.WriteMessage(
                 $"\n[道路] 横断面已更新（擦除 {erased} / 生成 {created}）@ ({origin.X:F2}, {origin.Y:F2})。");
             return DrawResult.Success(origin, erased, created);
+        }
+
+        /// <summary>
+        /// 在 LockDocument 内重建 <see cref="CrossSectionAnnotationStyle"/>，按"名字 → 当前 db 的 ObjectId"重新解析，
+        /// 彻底规避"锁外构造的 ObjectId 属于前一个 Database → eNotInDatabase"的锁切换竞态。
+        /// </summary>
+        /// <param name="doc">当前活动文档（已被外层 <c>using (doc.LockDocument())</c> 锁定）。</param>
+        /// <param name="external">调用方预先构造的 style；仅用其携带的"名字 / 图层 / 字高等非 ObjectId 字段"作为输入。</param>
+        private static CrossSectionAnnotationStyle RebuildAnnotationStyleForCurrentDoc(
+            Document doc,
+            CrossSectionAnnotationStyle external)
+        {
+            try
+            {
+                var settings = SettingsPanelViewModel.Current;
+                // 有设置就走 Factory 正路，让它在当前 doc.Database 里按名字重新取 ObjectId。
+                if (settings != null)
+                {
+                    return new RoadCsDrawStyleFactory().Build(doc, settings);
+                }
+                // 没有设置单例：也用 Factory 的 null-settings 分支（它会在当前 db 里取 rcsTop 样式，其余全部回退为 ObjectId.Null，天然安全）。
+                return new RoadCsDrawStyleFactory().Build(doc, null);
+            }
+            catch
+            {
+                // 极端兜底：完全不传 style，Draw 会用 fallback 字高 + 默认图层，出图仍可成功；宁丑不崩。
+                return null;
+            }
         }
 
         /// <summary>View 层按需判断是否成功并向用户反馈的简化结果。</summary>

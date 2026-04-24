@@ -28,6 +28,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
     {
         private const string ElevationDiffKey = "ElevationDiff";
         private const string InnerElevationDiffKey = "InnerElevationDiff";
+        private const string PlanStripLengthKey = "PlanStripLength";
         /// <summary>
         /// 比较两条带"从中心向外扫描"时 y 偏移时的符号：
         /// 返回 -1 表示外侧 y 比内侧 y 低（路面类）；返回 0 表示水平。
@@ -45,7 +46,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <summary>
         /// 把条带布置转换为 Domain <see cref="Template"/>。
         ///
-        /// 点序：从最左 → 中分带左边缘 → 中分带右边缘 → 最右，
+        /// 点序：从最左 → 分隔带左边缘 → 分隔带右边缘 → 最右，
         /// 每段的 <see cref="TemplateComponent.Kind"/> 记录功能类型。
         ///
         /// <paramref name="templateId"/>：沿用旧 Id 做"增量保存"；null 则由 <see cref="Template"/>
@@ -71,6 +72,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 Name = string.IsNullOrWhiteSpace(name) ? (string.IsNullOrEmpty(layout.Title) ? "Template" : layout.Title) : name
             };
             if (templateId.HasValue) tpl.Id = templateId.Value;
+            tpl.ExtendedData[PlanStripLengthKey] = layout.PlanStripLength.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
 
             // 1) 收集"左→右"顺序的点，按公式 y' = y + w·(i/100)·slopeSign 逐段推进
             //    同时顺序发射 Components
@@ -84,7 +86,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             double yL = 0;
             // 先收集左半所有点（顺序"最外 … 中心"），最后反转
             var leftOuterToInner = new List<TemplatePoint>();
-            // 中心点（中分带左边缘）先记下，留到后面统一合并
+            // 中心点（分隔带左边缘）先记下，留到后面统一合并
             var leftInnerAnchor = MakePoint(xL, yL, "中心左");
             int leftKindCount = layout.LeftBands.Count;
             var leftSegKinds = new List<(TemplateComponentKind Kind, string Name)>(leftKindCount);
@@ -129,7 +131,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 rightSegKinds.Add((band.Kind, band.Name));
             }
 
-            // 2) 合并点序：左外缘 … 左中心 [中分带] 右中心 … 右外缘
+            // 2) 合并点序：左外缘 … 左中心 [分隔带] 右中心 … 右外缘
             tpl.Points.AddRange(leftOuterToInner);
             tpl.Points.Add(leftInnerAnchor);
             if (layout.CenterMedianWidth > 0)
@@ -138,7 +140,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             }
             else
             {
-                // 无中分带时，左中心和右中心重合 (0,0)；为避免重复点，仅保留一个（leftInnerAnchor 已在）
+                // 无分隔带时，左中心和右中心重合 (0,0)；为避免重复点，仅保留一个（leftInnerAnchor 已在）
                 // 但后续 Components 仍需指向 rightInnerAnchor 的"身份"，这里把 rightInnerAnchor
                 // 的 Id 替换为 leftInnerAnchor 的 Id。
                 rightInnerAnchor.Id = leftInnerAnchor.Id;
@@ -164,7 +166,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 });
             }
 
-            //    中分带段（仅当存在）
+            //    分隔带段（仅当存在）
             if (layout.CenterMedianWidth > 0)
             {
                 var leftC = tpl.Points[leftBandCount];
@@ -228,7 +230,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <b>约束</b>（不满足则返回 null）：
         /// <list type="bullet">
         ///   <item>至少 2 个点；点横偏移从左到右单调不减。</item>
-        ///   <item>若存在"中心 0 偏移点（左/右）"则中分带宽 = (xRightCenter − xLeftCenter)；否则视为 0。</item>
+        ///   <item>若存在"中心 0 偏移点（左/右）"则分隔带宽 = (xRightCenter − xLeftCenter)；否则视为 0。</item>
         ///   <item>段数 = 点数 − 1。</item>
         /// </list>
         ///
@@ -254,7 +256,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 if (!ReferenceEquals(orderedPoints[i], template.Points[i])) return null;
             }
 
-            // 识别中分带：若某一对相邻点以 x=0 为中心且段 Kind=MedianStrip 则视为中分带
+            // 识别分隔带：若某一对相邻点以 x=0 为中心且段 Kind=MedianStrip 则视为分隔带
             int medianLeftIdx = -1;
             for (int i = 0; i < template.Components.Count; i++)
             {
@@ -282,7 +284,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             }
             else
             {
-                // 无中分带：找 |x| 最小的点当作"中心"
+                // 无分隔带：找 |x| 最小的点当作"中心"
                 int cIdx = 0;
                 for (int i = 1; i < template.Points.Count; i++)
                 {
@@ -363,7 +365,8 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     centerMedianWidth,
                     defaultSpeed,
                     defaultScale,
-                    string.IsNullOrEmpty(template.Name) ? defaultTitle : template.Name);
+                    string.IsNullOrEmpty(template.Name) ? defaultTitle : template.Name,
+                    planStripLength: ReadTemplateExtendedDouble(template, PlanStripLengthKey, 6.5));
             }
             catch (ArgumentOutOfRangeException)
             {
@@ -414,18 +417,28 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         ///
         /// 产出：
         /// <list type="bullet">
-        ///   <item>Vertices：从最左 → 最右 的外轮廓折线（含中分带两端点 + 路牙顶 + 路拱插值点）。</item>
-        ///   <item>Panels：每条带 1 个（板块本身）+ 每路牙 1 个（如有）+ 中分带 1 个（如有）。</item>
-        ///   <item>DimensionSegments：仅底部一路总宽（红线全幅一条），不再生成分段 / 顶排总宽。</item>
+        ///   <item>Vertices：从最左 → 最右 的外轮廓折线（含分隔带两端点 + 路牙顶 + 路拱插值点）。</item>
+        ///   <item>Panels：每条带 1 个（板块本身）+ 每路牙 1 个（如有）+ 分隔带 1 个（如有）。</item>
+        ///   <item>DimensionSegments：顶部 / 底部两组尺寸链，各含分段链 + 总宽链；底部总宽在中心线处拆为左半幅 + 右半幅两条。</item>
         ///   <item>SlopeLabels：有横坡的条带在路面中点（不含中分/中央隔离带）；相邻条带若连接处 y 平齐且横坡相同则合并为一条。</item>
-        ///   <item>HeightLabels：各顶点；竖向以道路中心线 x=0 处高程为 ±0.000（与「中心线/设计起点」一致，非最内车道缝）。有中分带时中分上只标一个 ±0.000（x=0），不标中心左/中分缝/中心右三处。相邻板 y 平齐、横坡同处不标（免矛盾）。</item>
-        ///   <item>TopLabels：每条带中央一个（名称）+ 中分带 1 个（"中央分隔带"）。</item>
+        ///   <item>HeightLabels：各顶点；竖向以道路中心线 x=0 处高程为 ±0.000（与「中心线/设计起点」一致，非最内车道缝）。有分隔带时中分上只标一个 ±0.000（x=0），不标中心左/中分缝/中心右三处。相邻板 y 平齐、横坡同处不标（免矛盾）。</item>
+        ///   <item>TopLabels：每条带中央一个（名称）+ 分隔带 1 个（"中央分隔带"）。</item>
+        ///   <item>AxisMarkers：固定左红线 / 中心线 / 右红线三条轴线。</item>
         ///   <item>Orientation / Title：固定左"北"右"南"、底部居中标题。</item>
         /// </list>
         /// </summary>
         public static CrossSectionFigure ToFigure(CrossSectionLayout layout)
+            => ToFigure(layout, orientationLeftLabel: "北", orientationRightLabel: "南");
+
+        /// <summary>带方位字重载：Presentation 层按设置（北南 / 西东）传入。</summary>
+        public static CrossSectionFigure ToFigure(
+            CrossSectionLayout layout,
+            string orientationLeftLabel,
+            string orientationRightLabel)
         {
             if (layout == null) throw new ArgumentNullException(nameof(layout));
+            if (string.IsNullOrWhiteSpace(orientationLeftLabel)) orientationLeftLabel = "北";
+            if (string.IsNullOrWhiteSpace(orientationRightLabel)) orientationRightLabel = "南";
 
             double xLeftInner = -layout.CenterMedianWidth / 2.0;
             double xRightInner = +layout.CenterMedianWidth / 2.0;
@@ -434,7 +447,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             double wR = Wm > 1e-9 ? (Wm - wL) : 0;
             double xSplit = xLeftInner + wL;
 
-            // 1) 左条带自 (xL,0) 起。存在中分带时：右条带起点 = 中分带右缘标高 与 最内条 内端高差 反推；无中分带时沿用 y=0 起点
+            // 1) 左条带自 (xL,0) 起。存在分隔带时：右条带起点 = 分隔带右缘标高 与 最内条 内端高差 反推；无分隔带时沿用 y=0 起点
             var leftStrips = GenerateStrips(layout.LeftBands, xLeftInner, 0, BandSide.Left);
             double y0 = 0, y1 = 0, y2 = 0;
             double rStartY = 0;
@@ -512,7 +525,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 };
             }
 
-            // 中分带顶面折线：中心左 / [中分缝] / 中心右
+            // 分隔带顶面折线：中心左 / [中分缝] / 中心右
             int centerLeftIndex = vertices.Count;
             int centerRightIndex = centerLeftIndex;
             int medianSeamIndex = -1;
@@ -594,7 +607,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 vertices[vi] = new FigureVertex(p.X, p.Y - yDatum, p.Name);
             }
 
-            // 3) Panels：板块本身 + 路牙（如有）+ 中分带
+            // 3) Panels：板块本身 + 路牙（如有）+ 分隔带
             var panels = new List<FigurePanel>();
 
             // 左半板块（按 vertices 从左到右顺序）：先输出"最外"板块，最后输出"最内"板块
@@ -614,7 +627,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
             }
 
-            // 中分带
+            // 分隔带
             if (layout.CenterMedianWidth > 0)
             {
                 panels.Add(new FigurePanel(TemplateComponentKind.MedianStrip,
@@ -647,7 +660,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             AppendSlopeLabelsMergingFlushJoints(slopes, layout.RightBands, rightStrips, yDatum);
             // 中分/中央隔离带不输出横坡标注（出图在坡度字下用箭头，见 RoadStandardSectionDrawService）
 
-            // 6) 标高 Labels（去重 + 同坡平齐条缝不标；有中分带时中分只标 x=0 一处 ±0.000）
+            // 6) 标高 Labels（去重 + 同坡平齐条缝不标；有分隔带时中分只标 x=0 一处 ±0.000）
             var noHeightJoints = new List<(double x, double y)>();
             CollectNoHeightJointsOnFlushSameSlopePair(noHeightJoints, layout.LeftBands, leftStrips);
             CollectNoHeightJointsOnFlushSameSlopePair(noHeightJoints, layout.RightBands, rightStrips);
@@ -682,7 +695,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 heights.Add(new FigureHeightLabel(0, 0, FormatHeight(0)));
             }
 
-            // 7) 顶部 Labels：板块中点（X 取板块内端与路面外缘 X 的中点）+ 中分带
+            // 7) 顶部 Labels：各板块中点（X 取板块内端与路面外缘 X 的中点），不含分隔带名
             double topY = MaxY(vertices) + 1.5;
             var topLabels = new List<FigureTopLabel>();
             for (int s = 0; s < leftStrips.Count; s++)
@@ -692,10 +705,6 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 double centerX = (geo.StartX + geo.SurfaceOuterX) * 0.5;
                 topLabels.Add(new FigureTopLabel(centerX, topY, band.Name));
             }
-            if (layout.CenterMedianWidth > 0)
-            {
-                topLabels.Add(new FigureTopLabel(0, topY, "中央分隔带"));
-            }
             for (int s = 0; s < rightStrips.Count; s++)
             {
                 var band = layout.RightBands[s];
@@ -704,19 +713,25 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 topLabels.Add(new FigureTopLabel(centerX, topY, band.Name));
             }
 
-            // 8) Orientation + Title
+            // 8) 轴线 / 方位 / 标题
             double leftmostX = vertices.Count > 0 ? vertices[0].X : -layout.LeftHalfWidth;
             double rightmostX = vertices.Count > 0 ? vertices[vertices.Count - 1].X : +layout.RightHalfWidth;
+            var axisMarkers = new List<FigureAxisMarker>
+            {
+                new FigureAxisMarker(leftmostX, "道路左红线"),
+                new FigureAxisMarker(0, "中心线"),
+                new FigureAxisMarker(rightmostX, "道路右红线"),
+            };
             double orientationY = topY + 2.0;
-            var orientation = new FigureOrientation(leftmostX, rightmostX, orientationY, "北", "南");
+            var orientation = new FigureOrientation(leftmostX, rightmostX, orientationY, orientationLeftLabel, orientationRightLabel);
             double titleY = MinY(vertices) - 3.0;
             // 图名不含比例；比例由 DrawingSheetTitleDrawer 按 Figure.ScaleDenominator 单独注写（避免与行内重复）。
             var title = new FigureTitle(0, titleY,
                 string.IsNullOrWhiteSpace(layout.Title) ? "标准横断面图" : layout.Title.Trim());
 
             return new CrossSectionFigure(
-                vertices, panels, dimSegs, slopes, heights, topLabels,
-                orientation, title, layout.TotalWidth, layout.ScaleDenominator);
+                vertices, panels, dimSegs, slopes, heights, topLabels, axisMarkers,
+                orientation, title, layout.TotalWidth, layout.ScaleDenominator, layout.PlanStripLength);
         }
 
         // =============== Helpers ===============
@@ -762,22 +777,66 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 : 0;
         }
 
+        private static double ReadTemplateExtendedDouble(Template template, string key, double fallback)
+        {
+            if (template?.ExtendedData == null) return fallback;
+            if (!template.ExtendedData.TryGetValue(key, out var raw)) return fallback;
+            if (string.IsNullOrWhiteSpace(raw)) return fallback;
+            return double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)
+                ? value
+                : fallback;
+        }
+
         private static List<FigureDimensionSegment> BuildDimensionSegments(CrossSectionLayout layout)
         {
             var dimSegs = new List<FigureDimensionSegment>();
+            double leftmostX = -layout.TotalWidth / 2.0;
+            double rightmostX = +layout.TotalWidth / 2.0;
+            if (layout.TotalWidth <= 1e-9) return dimSegs;
 
-            double leftmostX = -layout.LeftHalfWidth - layout.CenterMedianWidth / 2.0;
-            double rightmostX = +layout.RightHalfWidth + layout.CenterMedianWidth / 2.0;
-            double totalWidth = layout.TotalWidth;
-
-            // 仅底部一路：红线全幅总长度（与 Layout.TotalWidth 一致），无分段/顶排尺寸
-            if (totalWidth > 1e-9)
+            foreach (var (start, end) in EnumerateDimensionSpans(layout))
             {
-                dimSegs.Add(new FigureDimensionSegment(leftmostX, rightmostX,
-                    FormatWidthMeters(totalWidth), tier: 0));
+                string text = FormatWidthMeters(end - start);
+                dimSegs.Add(new FigureDimensionSegment(start, end, text, tier: 1, track: FigureDimensionTrack.Top));
+                dimSegs.Add(new FigureDimensionSegment(start, end, text, tier: 1, track: FigureDimensionTrack.Bottom));
             }
 
+            string totalText = FormatWidthMeters(layout.TotalWidth);
+            dimSegs.Add(new FigureDimensionSegment(leftmostX, rightmostX, totalText, tier: 0, track: FigureDimensionTrack.Top));
+            // 下侧总宽：在中心线处分为两条（与「左半幅总宽/右半幅总宽」一致，对称时数值相同）
+            const double centerX = 0.0;
+            double leftHalfW = centerX - leftmostX;
+            double rightHalfW = rightmostX - centerX;
+            string leftTotalText = FormatWidthMeters(leftHalfW);
+            string rightTotalText = FormatWidthMeters(rightHalfW);
+            dimSegs.Add(new FigureDimensionSegment(leftmostX, centerX, leftTotalText, tier: 0, track: FigureDimensionTrack.Bottom));
+            dimSegs.Add(new FigureDimensionSegment(centerX, rightmostX, rightTotalText, tier: 0, track: FigureDimensionTrack.Bottom));
             return dimSegs;
+        }
+
+        private static IEnumerable<(double start, double end)> EnumerateDimensionSpans(CrossSectionLayout layout)
+        {
+            double cursor = -layout.TotalWidth / 2.0;
+            for (int i = layout.LeftBands.Count - 1; i >= 0; i--)
+            {
+                double end = cursor + layout.LeftBands[i].Width;
+                yield return (cursor, end);
+                cursor = end;
+            }
+
+            if (layout.CenterMedianWidth > 1e-9)
+            {
+                double end = cursor + layout.CenterMedianWidth;
+                yield return (cursor, end);
+                cursor = end;
+            }
+
+            for (int i = 0; i < layout.RightBands.Count; i++)
+            {
+                double end = cursor + layout.RightBands[i].Width;
+                yield return (cursor, end);
+                cursor = end;
+            }
         }
 
         /// <summary>同一侧上：下标 k 为靠中心(内条)，k+1 为更外条。连接 = 内条外缘(NextInner) 与 外条内端(Start)。</summary>
@@ -834,6 +893,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 }
                 // 段 [s0..s1] 内，逐条有坡的条各取原中点，再平均，合并成一条文字（同%）
                 double sumMx = 0, sumMy = 0;
+                double cumDx = 0, cumDy = 0;
                 int c = 0;
                 double pct = bands[s0].CrossSlopePct;
                 for (int i = s0; i <= s1; i++)
@@ -844,10 +904,23 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     if (Math.Abs(band.CrossSlopePct) < 1e-9 || sign == 0) continue;
                     sumMx += (geo.StartX + geo.SurfaceOuterX) * 0.5;
                     sumMy += (geo.StartY + geo.SurfaceOuterY) * 0.5 + 0.25;
+                    cumDx += geo.SurfaceOuterX - geo.StartX;
+                    cumDy += geo.SurfaceOuterY - geo.StartY;
                     c++;
                     pct = band.CrossSlopePct;
                 }
-                if (c > 0) slopes.Add(new FigureSlopeLabel(sumMx / c, sumMy / c - yDatum, $"{pct:F1}%"));
+                if (c > 0)
+                {
+                    // 水平箭头指向「低侧」：Outer 比 Start 低则指向 Outer 方向，反之反向。
+                    int dirSign = 0;
+                    if (Math.Abs(cumDx) > 1e-9)
+                    {
+                        int sx = cumDx > 0 ? 1 : -1;
+                        int sy = cumDy < -1e-9 ? 1 : (cumDy > 1e-9 ? -1 : 1);
+                        dirSign = sx * sy;
+                    }
+                    slopes.Add(new FigureSlopeLabel(sumMx / c, sumMy / c - yDatum, $"{pct:F1}%", dirSign));
+                }
                 s0 = s1 + 1;
             }
         }

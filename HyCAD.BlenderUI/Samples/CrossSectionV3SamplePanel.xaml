@@ -401,7 +401,7 @@
                                         <TextBlock Text="{Binding LeftHalfWidth, StringFormat={}{0:F2}}"
                                                    Foreground="{DynamicResource Brush_TextPrimary}"/>
                                     </bui:PropertyRow>
-                                    <bui:PropertyRow Label="中分带 (m)">
+                                    <bui:PropertyRow Label="分隔带 (m)">
                                         <TextBlock Text="{Binding MedianWidth, StringFormat={}{0:F2}}"
                                                    Foreground="{DynamicResource Brush_TextPrimary}"/>
                                     </bui:PropertyRow>

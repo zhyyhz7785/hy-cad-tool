@@ -3,6 +3,9 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
@@ -34,8 +37,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
         private readonly ILayerService _layerService;
         private readonly Mode _mode;
 
-        private const string LayerMLeader = "00_hy_3公共_标注3_引线";
-        private const string LayerDotRein = "01_hy_1钢筋_点钢筋";
+        private static string LayerMLeader => UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
+        private static string LayerDotRein => UserLayerNameResolver.Get(LayerSemanticIds.ReinPoint, LayerBuiltinDefaults.ReinPoint);
         private const double PointOffset = 100.0; // 沿多段线偏移距离（mm）
         private const double SixPointDimDistance = 465.0; // gb2 水平偏移距离
 

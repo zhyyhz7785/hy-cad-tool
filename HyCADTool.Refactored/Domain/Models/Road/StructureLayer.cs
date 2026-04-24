@@ -1,4 +1,5 @@
 using System;
+using HyCADTool.Refactored.Domain.ValueObjects.Road;
 
 namespace HyCADTool.Refactored.Domain.Models.Road
 {
@@ -66,12 +67,27 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         public string FillMaterial { get; set; }
 
         /// <summary>AutoCAD 填充符号模式名（对应 Hatch PatternName，例："ANSI31"、"AR-CONC"）。</summary>
+        /// <para>已废弃：新数据请用 <see cref="PlanFill"/> / <see cref="SectionFill"/>；保留以兼容历史 JSON 与 <see cref="MigrateLegacyPatternName"/>。</para>
         public string PatternName { get; set; }
+
+        /// <summary>道路**平面图**（俯视）用填充；与 <see cref="SectionFill"/> 独立。</summary>
+        public LayerFillSettings PlanFill { get; set; } = LayerFillSettings.Empty();
+
+        /// <summary>横断面**坡面图**（侧视）用填充；与 <see cref="PlanFill"/> 独立。</summary>
+        public LayerFillSettings SectionFill { get; set; } = LayerFillSettings.Empty();
 
         /// <summary>可选的描述。</summary>
         public string Description { get; set; }
+
+        /// <summary>从旧版 <see cref="PatternName"/> 同步到 <see cref="SectionFill"/>，避免升级后断填充。</summary>
+        public void MigrateLegacyPatternName()
+        {
+            if (SectionFill == null) SectionFill = LayerFillSettings.Empty();
+            LayerFillSettings.MigrateFromLegacyPatternName(SectionFill, PatternName);
+        }
 
         public override string ToString()
             => $"StructureLayer[{Name}({LayerKind}) h={ThicknessCm}cm]";
     }
 }
+

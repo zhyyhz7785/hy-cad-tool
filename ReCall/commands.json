@@ -66,6 +66,7 @@
         "hymdE": { "type": "HyCADTool.Refactored.Presentation.Commands.DesignSpecEditCommand", "method": "Execute", "category": "导出说明", "displayName": "编辑设计说明",  "tooltip": "编辑设计说明（hymdE）",      "order": 20 },
         "hyex":     { "type": "HyCADTool.Refactored.Presentation.Commands.ExportMarkdownTableCommand",         "method": "Execute", "category": "导出说明", "displayName": "导出 Markdown", "tooltip": "导出 Markdown 表（hyex）",      "order": 30 },
         "hyex_csv": { "type": "HyCADTool.Refactored.Presentation.Commands.ExportEntityPropertiesToCsvCommand", "method": "Execute", "category": "导出说明", "displayName": "导出 CSV",       "tooltip": "导出实体属性到 CSV（hyex_csv）","order": 40 },
+        "hyLtCapture": { "type": "HyCADTool.Refactored.Presentation.Commands.CaptureDrawingLinetypesCommand", "method": "Execute", "category": "导出说明", "displayName": "提取线型目录", "tooltip": "从当前 DWG 线型表写入 hy-linetype-catalog.json，可选另存 .lin，并更新 hy-settings.json 中的 LinetypeCatalog（hyLtCapture）", "order": 45 },
 
         "hyAxis": { "type": "HyCADTool.Refactored.Presentation.Commands.AlignedAxisTextCommand",     "method": "Execute", "category": "杂项", "displayName": "轴线文字对齐", "tooltip": "轴线文字对齐（hyAxis）",         "order": 10 },
         "HyRT":   { "type": "HyCADTool.Refactored.Presentation.Commands.RaftThicknessTextCommand",   "method": "Execute", "category": "杂项", "displayName": "筏板厚度文字", "tooltip": "筏板厚度文字（HyRT）",          "order": 20 },

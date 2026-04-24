@@ -39,6 +39,11 @@
                         <TextBox Style="{StaticResource BlenderTextBox}"
                                  Text="{Binding Settings.RoadStripeSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=1}"/>
                     </bc:PropertyRow>
+                    <bc:PropertyRow Label="平面带上移" ToolTip="标准横断面图中，平面带及其上方尺寸/注记整体相对路顶+1.2m 的附加上移量（图面 m，与 rCs 出图一致）。"
+                                    Style="{StaticResource RoadPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.RoadCrossSectionPlanStripVerticalOffsetM, UpdateSourceTrigger=LostFocus, FallbackValue=5}"/>
+                    </bc:PropertyRow>
                     <TextBlock Text="横断面图题（与模型出图、预览统一）" Margin="0,12,0,4"
                                Foreground="{DynamicResource Brush_TextSecondary}"
                                FontSize="{DynamicResource Metric_FontSmall}"/>

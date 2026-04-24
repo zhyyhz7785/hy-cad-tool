@@ -10,7 +10,16 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Configuration.User
         public const string ReinPoint = "Builtin.Rein.Point";
         public const string ReinLineExternal = "Builtin.Rein.LineExternal";
         public const string CommonDimOuter = "Builtin.Common.DimOuter";
+        public const string CommonDimInsideHorizontal = "Builtin.Common.DimInsideHorizontal";
+        public const string CommonDimInsideVertical = "Builtin.Common.DimInsideVertical";
         public const string CommonMLeader = "Builtin.Common.MLeader";
+        public const string PublicAxisMain = "Builtin.Public.AxisMain";
+        public const string PublicAxisText = "Builtin.Public.AxisText";
+        public const string PublicTableMain = "Builtin.Public.TableMain";
+        public const string PublicNoteGeneral = "Builtin.Public.NoteGeneral";
+        public const string ElevationSymbol = "Builtin.Elevation.Symbol";
+        public const string ElevationNoText = "Builtin.Elevation.NoText";
+        public const string ElevationWarning = "Builtin.Elevation.Warning";
         public const string RaftOutline = "Builtin.Raft.Outline";
         public const string RaftOutlineAdjust = "Builtin.Raft.OutlineAdjust";
         public const string RaftSlabXTop = "Builtin.Raft.SlabXTop";
@@ -75,5 +84,14 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Configuration.User
         public const string RoadPlanRedLine = "Road.Plan.RedLine";
         public const string RoadPlanBandDivider = "Road.Plan.BandDivider";
         public const string RoadPlanMarking = "Road.Plan.Marking";
+
+        /// <summary>三维筏板体（原 00_hy_筏板3D）。</summary>
+        public const string RaftSolid3D = "Structure.Raft.Solid";
+        public const string EquipFoundationSideSolid = "Structure.EquipFoundation.SideSolid";
+        public const string EquipFoundationTopSolid = "Structure.EquipFoundation.TopSolid";
+        public const string EquipFoundationBottomSolid = "Structure.EquipFoundation.BottomSolid";
+        public const string WallMainSolid = "Structure.Wall.Solid";
+        public const string WallRetainSolid = "Structure.Wall.RetainSolid";
+        public const string WallConnectSolid = "Structure.Wall.ConnectSolid";
     }
 }

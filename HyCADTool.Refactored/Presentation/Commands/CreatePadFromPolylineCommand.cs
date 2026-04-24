@@ -1,7 +1,9 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -109,7 +111,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                             pad.AddVertexAt(2, new Point2d(p3.X, p3.Y), 0, 0, 0);
                             pad.AddVertexAt(3, new Point2d(p4.X, p4.Y), 0, 0, 0);
                             pad.Closed = true;
-                            pad.Layer = "00_hy_垫层";
+                            pad.Layer = UserLayerNameResolver.Get(LayerSemanticIds.Cushion, LayerBuiltinDefaults.Cushion);
 
                             ms.AppendEntity(pad);
                             tr.AddNewlyCreatedDBObject(pad, true);

@@ -3,7 +3,9 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Entities.Pile;
 using HyCADTool.Refactored.Domain.Services;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using System;
 using System.Collections.Generic;
@@ -17,9 +19,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
     /// </summary>
     public class PileDrawingService
     {
-        private const string LAYER_PILE = "02_hy_1桩_主";
-        private const string LAYER_GRID = "02_hy_3桩_地基内轮廓";
-        private const string LAYER_ANNOTATION = "00_hy_3公共_标注3_引线";
+        private static string LayerPile => UserLayerNameResolver.Get(LayerSemanticIds.PileMain, LayerBuiltinDefaults.PileMain);
+        private static string LayerGrid => UserLayerNameResolver.Get(LayerSemanticIds.PileContour, LayerBuiltinDefaults.PileContour);
+        private static string LayerAnnotation => UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
 
         /// <summary>
         /// 绘制桩布置结果
@@ -57,7 +59,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 DrawSmallRects(tr, btr, result.SmallRects);
 
                 // 3. 绘制内缩矩形
-                DrawRect(tr, btr, result.InsetRect, LAYER_GRID);
+                DrawRect(tr, btr, result.InsetRect, LayerGrid);
 
                 // 4. 桩编号标注
                 DrawPileAnnotations(tr, btr, result);
@@ -98,7 +100,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     pl.Closed = true;
                     ent = pl;
                 }
-                ent.Layer = LAYER_PILE;
+                ent.Layer = LayerPile;
                 btr.AppendEntity(ent);
                 tr.AddNewlyCreatedDBObject(ent, true);
             }
@@ -109,7 +111,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             foreach (var r in rects)
             {
                 var pl = CreatePolylineFromRect(r);
-                pl.Layer = LAYER_GRID;
+                pl.Layer = LayerGrid;
                 btr.AppendEntity(pl);
                 tr.AddNewlyCreatedDBObject(pl, true);
             }
@@ -136,7 +138,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 leader.AppendVertex(cadPt);
                 leader.AppendVertex(textPt);
                 leader.HasArrowHead = true;
-                leader.Layer = LAYER_ANNOTATION;
+                leader.Layer = LayerAnnotation;
                 btr.AppendEntity(leader);
                 tr.AddNewlyCreatedDBObject(leader, true);
 
@@ -144,7 +146,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 mtext.Contents = id.ToString();
                 mtext.Location = new Point3d(pt.X + 6 * scale, pt.Y + 6 * scale, 0);
                 mtext.TextHeight = 2.5 * scale;
-                mtext.Layer = LAYER_ANNOTATION;
+                mtext.Layer = LayerAnnotation;
                 btr.AppendEntity(mtext);
                 tr.AddNewlyCreatedDBObject(mtext, true);
 
@@ -215,7 +217,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             }
 
             table.Position = insertPt;
-            table.Layer = LAYER_ANNOTATION;
+            table.Layer = LayerAnnotation;
             btr.AppendEntity(table);
             tr.AddNewlyCreatedDBObject(table, true);
         }

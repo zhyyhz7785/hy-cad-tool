@@ -9,6 +9,7 @@ using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.FillRendering;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
@@ -36,7 +37,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
     ///   <item>按 <see cref="FigurePanel.Kind"/> 分色的分段 Hatch（可选；v1 仅 LWPoly 切片）。</item>
     ///   <item>中心虚线 Line。</item>
     ///   <item>道路下仅一道总宽尺寸（Tier=0）；顶排总宽与分条尺寸已取消；<see cref="AlignedDimension"/>，不依赖 DIMSTYLE 文字替代。</item>
-    ///   <item>横坡（DBText + 竖向指坡箭头，箭头端与路顶面留 2mm 纸面间距）；中分带不生成横坡；顶部条带名（DBText）。</item>
+    ///   <item>横坡（DBText + 竖向指坡箭头，箭头端与路顶面留 2mm 纸面间距）；分隔带不生成横坡；顶部条带名（DBText）。</item>
     ///   <item>方位箭头、图题。</item>
     ///   <item>所有生成的实体挂 HY_ROAD Xdata：<c>ID=template.Id</c>，<c>KIND=CrossSectionStandard</c>。</item>
     /// </list>
@@ -69,13 +70,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Template template,
             Point2d origin,
             double modelUnitPerMeter = 1.0)
-            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null, null, null);
+            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null, null, null, planStripVerticalOffsetMeters: 5.0);
 
         /// <summary>
         /// M7.4 重载：指定绘图模式。
         /// <para><see cref="CrossSectionDrawMode.SingleLine"/> 时跳过板块闭合填充 / 尺寸链 / 标注 / 标题，只保留：
         /// 顶面轮廓 Polyline + 中心虚线 + 方位箭头，专供平面图单线投影使用。</para>
         /// </summary>
+        /// <param name="planStripVerticalOffsetMeters">平面带底边在图面中相对「路顶 ymax+1.2m」的附加上移量（m），与设置「道路 · 平面带上移」一致，默认 5。</param>
         public int Draw(
             Transaction transaction,
             Database database,
@@ -86,18 +88,22 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             CrossSectionDrawMode mode,
             CrossSectionLayout layout = null,
             CrossSectionAnnotationStyle annotationStyle = null,
-            DrawingSheetTitleSpec sheetTitleSpec = null)
+            DrawingSheetTitleSpec sheetTitleSpec = null,
+            double planStripVerticalOffsetMeters = 5.0)
         {
             if (transaction == null) throw new ArgumentNullException(nameof(transaction));
             if (database == null) throw new ArgumentNullException(nameof(database));
             if (figure == null) throw new ArgumentNullException(nameof(figure));
             if (template == null) throw new ArgumentNullException(nameof(template));
             if (modelUnitPerMeter <= 0) throw new ArgumentOutOfRangeException(nameof(modelUnitPerMeter));
+            if (double.IsNaN(planStripVerticalOffsetMeters) || double.IsInfinity(planStripVerticalOffsetMeters))
+                throw new ArgumentOutOfRangeException(nameof(planStripVerticalOffsetMeters));
 
             HyRoadXdata.EnsureRegApp(transaction, database);
             EnsureLayersVisible(transaction, database);
 
             var titleSpec = sheetTitleSpec ?? DrawingSheetTitleSpec.RoadCrossSectionDefault;
+            EnsureStyleLayersVisible(transaction, database, annotationStyle, titleSpec);
 
             var bt = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
             var ms = (BlockTableRecord)transaction.GetObject(
@@ -132,9 +138,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 // 先画中心线（step 3），再画方位箭头（step 9），直接 return。
                 double ymaxS = 0;
                 foreach (var v in figure.Vertices) if (v.Y > ymaxS) ymaxS = v.Y;
+                const double singleLineCenterXOffsetM = 0.3;
                 var centerS = new Line(
-                    new Point3d(origin.X, origin.Y - 0.5 * s, 0),
-                    new Point3d(origin.X, origin.Y + (ymaxS + 0.6) * s, 0))
+                    new Point3d(origin.X + singleLineCenterXOffsetM * s, origin.Y - 0.5 * s, 0),
+                    new Point3d(origin.X + singleLineCenterXOffsetM * s, origin.Y + (ymaxS + 0.6) * s, 0))
                 {
                     Layer = HyRoadLayers.CrossSectionCenterlineLayer,
                     ColorIndex = 256,
@@ -154,7 +161,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 return added;
             }
 
-            // 路面/绿化/中分带等"路面板块"用"顶 + 底"闭合（构成立柱）；
+            // 路面/绿化/分隔带等"路面板块"用"顶 + 底"闭合（构成立柱）；
             // 路牙（Kerb）的 vertices 本身已构成完整的 L 型凸起多边形，直接自闭合（不加底边）。
             // TopSurfaceWithAnnotation 只需要顶面轮廓 + 标注，不绘制板块闭合。
             if (mode != CrossSectionDrawMode.TopSurfaceWithAnnotation)
@@ -191,54 +198,70 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 }
             }
 
-            // ---------------- 3. 中心线（虚线） ----------------
-            // 中心 X=0 画一条虚线段，从底(-0.5m)到顶(max(y)+0.6m)
+            if (mode == CrossSectionDrawMode.WithStructureThickness && layout != null)
+            {
+                added += DrawStructureLayerFills(
+                    transaction, ms, database, template.Id, figure, layout, origin, s);
+            }
+
+            // ---------------- 3. 字高 / 标准图区域标高 ----------------
             double ymax = 0;
             foreach (var v in figure.Vertices) if (v.Y > ymax) ymax = v.Y;
-            var center = new Line(
-                new Point3d(origin.X, origin.Y - 0.5 * s, 0),
-                new Point3d(origin.X, origin.Y + (ymax + 0.6) * s, 0))
-            {
-                Layer = HyRoadLayers.CrossSectionCenterlineLayer,
-                ColorIndex = 256,
-            };
-            TrySetLinetype(transaction, database, center, "HIDDEN");
-            ms.AppendEntity(center);
-            transaction.AddNewlyCreatedDBObject(center, true);
-            TagEntity(transaction, database, center, template.Id);
-            added++;
-
-            // ---------------- 4. 线型字高（顶排总宽尺寸已取消，见下仅一道总宽） ----------------
             double txtH = Math.Max(0.15, 0.3 * s);
             if (annotationStyle != null && annotationStyle.TextHeightModel > 1e-6)
             {
                 txtH = annotationStyle.TextHeightModel;
             }
+            double planStripBottomY = ymax + 1.2 + planStripVerticalOffsetMeters;
+            double planStripTopY = planStripBottomY + Math.Max(0.5, figure.PlanStripLength);
+            double axisBottomY = (figure.Vertices.Count > 0 ? figure.Vertices.Min(v => v.Y) : 0) - 2.8;
+            // 左/中/右竖向线画至「平面带上侧 +5m」行，与北南向紫线、轴线字同高。
+            const double rcsTopAxisAndOrientationM = 5.0;
+            double axisTopY = planStripTopY + rcsTopAxisAndOrientationM;
 
-            // ---------------- 5. 道路下方第二道尺寸线仅标红线总宽（无顶排、无分条与左/中/右分链） ----------------
-            double dimTotalY = -2.0 * s;
+            // ---------------- 4. 顶部平面带 ----------------
+            if (layout != null)
+            {
+                added += DrawPlanStrip(transaction, ms, database, template.Id, layout, origin, s, planStripBottomY, planStripTopY);
+            }
+
+            // ---------------- 5. 左/中/右轴线（竖线自断面底至平面带+5m；字在整段竖线竖向中点，左右红线另 ±0.3m 水平微移） ----------------
+            added += DrawAxisMarkers(
+                transaction, ms, database, template.Id, figure, origin, s, axisBottomY, axisTopY, annotationStyle, txtH);
+
+            // ---------------- 6. 上下尺寸链（显式绿色）；整链图面 y 统一下移 0.5m，避免与路面线拥挤 ----------------
+            const double rcsDimensionChainDropFigureM = 0.5;
+            double dimRowGap = Math.Max(0.45, txtH * 1.9);
             foreach (var seg in figure.DimensionSegments)
             {
-                if (seg.Tier != 0) continue;
-                var a = new Point3d(origin.X + seg.StartX * s, origin.Y + dimTotalY, 0);
-                var b = new Point3d(origin.X + seg.EndX * s, origin.Y + dimTotalY, 0);
-                added += DrawDimensionSegment(transaction, ms, database, template.Id, a, b, false, annotationStyle, txtH);
+                double featureY;
+                double dimOffset;
+                if (seg.Track == FigureDimensionTrack.Top)
+                {
+                    featureY = planStripTopY - rcsDimensionChainDropFigureM;
+                    dimOffset = seg.Tier == 0 ? dimRowGap * 2.2 : dimRowGap;
+                }
+                else
+                {
+                    featureY = 0.0 - rcsDimensionChainDropFigureM;
+                    dimOffset = seg.Tier == 0 ? -dimRowGap * 2.2 : -dimRowGap;
+                }
+
+                var a = new Point3d(origin.X + seg.StartX * s, origin.Y + featureY * s, 0);
+                var b = new Point3d(origin.X + seg.EndX * s, origin.Y + featureY * s, 0);
+                added += DrawDimensionSegment(transaction, ms, database, template.Id, a, b, annotationStyle, txtH, dimOffset * s);
             }
 
-            // ---------------- 6. 横坡：文字 + 指向下方路面（箭头端至路顶面 2mm 纸面，同 ActualTextHeight 换算） ----------------
+            // ---------------- 7. 横坡：文字 + 下方水平箭头（箭头方向随坡向，从高侧指向低侧） ----------------
             var slopeLayer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
-            var scaleC = ActiveScaleContextProvider.Current;
-            const double paperMmToRoad = 2.0;
-            double roadGapModel = paperMmToRoad * scaleC.UnitFactor * scaleC.MainScale;
-            double roadGapFig = roadGapModel / s; // 图面米，顶面 y
             foreach (var slope in figure.SlopeLabels)
             {
-                added += DrawCrossSectionSlopeTextAndDownArrow(
+                added += DrawCrossSectionSlopeTextAndHorizArrow(
                     transaction, ms, database, template.Id, slope, Map, s, txtH, slopeLayer,
-                    annotationStyle?.TextStyleId ?? ObjectId.Null, roadGapFig);
+                    annotationStyle?.TextStyleId ?? ObjectId.Null);
             }
 
-            // ---------------- 7. 标高：MLeader 避让盒
+            // ---------------- 8. 标高：MLeader 避让盒
             // 同 x 的多个标高 → 并成一条 MText（\P 叠行）+ 锚 y 用竖向中点（图2）
             // ----------------
             var mleaderTextBoxes = new List<MLeaderTextAabb>();
@@ -248,17 +271,35 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     transaction, ms, database, template.Id, g, Map, s, txtH, annotationStyle, mleaderTextBoxes);
             }
 
-            // ---------------- 8. 顶栏条带名（绿化带等）不绘于道路上方，略（预览仍可在 WPF 显示） ----------------
+            // ---------------- 9. 顶部竖排板块名（距平面带上侧 2.5m；样式/字高经 RcsTop 收口） ----------------
+            string topLabelLayer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
+            ResolveRcsTopStripStyle(annotationStyle, annotationStyle?.TextStyleId ?? ObjectId.Null, txtH,
+                out ObjectId topLabelTextStyle, out double topLabelTxtH);
+            const double rcsTopBandLabelOffsetM = 2.5;
+            double topLabelY = planStripTopY + rcsTopBandLabelOffsetM;
+            foreach (var top in figure.TopLabels)
+            {
+                added += AddText(
+                    transaction, ms, database, template.Id,
+                    new Point3d(origin.X + top.CenterX * s, origin.Y + topLabelY * s, 0),
+                    top.Text,
+                    topLabelLayer,
+                    topLabelTxtH,
+                    rotationDeg: 90,
+                    alignCenter: true,
+                    textStyleId: topLabelTextStyle);
+            }
 
-            // ---------------- 9. 方位箭头 ----------------
+            // ---------------- 10. 方位箭头（北南向线距平面带上侧 5m，与轴线字同高；字高/样式 RcsTop） ----------------
             if (!string.IsNullOrWhiteSpace(figure.Orientation.LeftLabel) ||
                 !string.IsNullOrWhiteSpace(figure.Orientation.RightLabel))
             {
+                double orientationYFig = planStripTopY + rcsTopAxisAndOrientationM;
                 added += DrawOrientation(transaction, ms, database, template.Id,
-                    origin, figure.Orientation, s, annotationStyle);
+                    origin, figure.Orientation, s, annotationStyle, orientationYFig, useRcsTopStripText: true);
             }
 
-            // ---------------- 10. 图题（规格化：双下划线 + 比例 + 可选左十字/方格） ----------------
+            // ---------------- 11. 图题（规格化：双下划线 + 比例 + 可选左十字/方格） ----------------
             if (!string.IsNullOrWhiteSpace(figure.Title.Text))
             {
                 // 图名相对 Figure 再下移 1cm（纸面，同 ActualTextHeight 换算）
@@ -303,7 +344,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     mainStyleId,
                     scaleStyleId,
                     scaleH,
-                    titleLayerOverride);
+                    titleLayerOverride,
+                    useWhiteColor: true);
             }
 
             return added;
@@ -383,7 +425,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             var ml = MLeaderExtensions.CreateMLeaderSinglePoint(
                 anchor, endPoint, content, annotationStyle?.MLeaderStyleId ?? ObjectId.Null);
             ml.Layer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
-            ml.ColorIndex = 256;
+            SetEntityMLeaderLightGreen(ml);
             ms.AppendEntity(ml);
             tr.AddNewlyCreatedDBObject(ml, true);
             TagEntity(tr, db, ml, templateId);
@@ -510,6 +552,299 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             return tst.Has(styleName) ? tst[styleName] : ObjectId.Null;
         }
 
+        /// <summary>顶部板块/轴线/北南字：优先 <see cref="CrossSectionAnnotationStyle.RcsTopStripTextStyleId"/> 与 Rcs 字高，否则用回退值。</summary>
+        private static void ResolveRcsTopStripStyle(
+            CrossSectionAnnotationStyle annotationStyle,
+            ObjectId fallbackStyleId,
+            double fallbackHeightModel,
+            out ObjectId styleId,
+            out double heightModel)
+        {
+            if (annotationStyle != null
+                && !annotationStyle.RcsTopStripTextStyleId.IsNull
+                && annotationStyle.RcsTopStripTextHeightModel > 1e-6)
+            {
+                styleId = annotationStyle.RcsTopStripTextStyleId;
+                heightModel = annotationStyle.RcsTopStripTextHeightModel;
+            }
+            else
+            {
+                styleId = fallbackStyleId;
+                heightModel = fallbackHeightModel;
+            }
+        }
+
+        private static double GetAxisLabelXOffsetMeters(FigureAxisMarker axis)
+        {
+            var label = axis.Label ?? string.Empty;
+            if (label.IndexOf("左红线", StringComparison.Ordinal) >= 0) return -0.3;
+            if (label.IndexOf("右红线", StringComparison.Ordinal) >= 0) return 0.3;
+            if (label.IndexOf("中心", StringComparison.Ordinal) >= 0) return 0.0;
+            if (axis.X < -1e-6) return -0.3;
+            if (axis.X > 1e-6) return 0.3;
+            return 0.0;
+        }
+
+        private static void SetEntityAciWhite(Entity e) =>
+            e.Color = Color.FromColorIndex(ColorMethod.ByAci, 7);
+
+        /// <summary>标高引线 MLeader 使用淡绿（与尺寸纯绿、其它白字区分）。</summary>
+        private static void SetEntityMLeaderLightGreen(Entity e) =>
+            e.Color = Color.FromRgb(170, 220, 170);
+
+        private int DrawStructureLayerFills(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Guid templateId,
+            CrossSectionFigure figure,
+            CrossSectionLayout layout,
+            Point2d origin,
+            double s)
+        {
+            int n = 0;
+            if (layout == null || figure == null) return 0;
+            foreach (var (panel, band) in EnumerateRoadPanelsWithBands(layout, figure))
+            {
+                if (band.StructureScheme?.Layers == null) continue;
+                int i0 = Math.Max(0, panel.StartVertexIndex);
+                int i1 = Math.Min(figure.Vertices.Count - 1, panel.EndVertexIndex);
+                if (i1 - i0 < 1) continue;
+                var vx0 = figure.Vertices[i0];
+                var vx1 = figure.Vertices[i1];
+                double x0 = vx0.X;
+                double y0s = vx0.Y;
+                double x1 = vx1.X;
+                double y1s = vx1.Y;
+                double depth = 0;
+                string layerName = PickPanelLayer(panel.Kind);
+                foreach (var sl in band.StructureScheme.Layers)
+                {
+                    if (sl == null) continue;
+                    sl.MigrateLegacyPatternName();
+                    double th = Math.Max(0, sl.ThicknessCm) / 100.0;
+                    if (th < 1e-7) continue;
+                    var sf = sl.SectionFill ?? new LayerFillSettings();
+                    double y0a = y0s - depth;
+                    double y1a = y1s - depth;
+                    double y0b = y0s - depth - th;
+                    double y1b = y1s - depth - th;
+                    var pl = new Polyline(4);
+                    pl.AddVertexAt(0, new Point2d(origin.X + x0 * s, origin.Y + y0a * s), 0, 0, 0);
+                    pl.AddVertexAt(1, new Point2d(origin.X + x1 * s, origin.Y + y1a * s), 0, 0, 0);
+                    pl.AddVertexAt(2, new Point2d(origin.X + x1 * s, origin.Y + y1b * s), 0, 0, 0);
+                    pl.AddVertexAt(3, new Point2d(origin.X + x0 * s, origin.Y + y0b * s), 0, 0, 0);
+                    pl.Closed = true;
+                    pl.Layer = layerName;
+                    pl.ColorIndex = 256;
+                    ms.AppendEntity(pl);
+                    tr.AddNewlyCreatedDBObject(pl, true);
+                    TagEntity(tr, db, pl, templateId);
+                    n++;
+                    n += LayerFillApplier.ApplyHatch(tr, ms, db, templateId, pl, sf, layerName);
+                    double cxM = 0.5 * (x0 + x1);
+                    double yTop = 0.5 * (y0a + y1a);
+                    double yBot = 0.5 * (y0b + y1b);
+                    double cY = 0.5 * (yTop + yBot);
+                    var c = new Point3d(origin.X + cxM * s, origin.Y + cY * s, 0);
+                    n += LayerFillApplier.ApplyBlock(tr, ms, db, templateId, c, sf, layerName);
+                    depth += th;
+                }
+            }
+            return n;
+        }
+
+        private static IEnumerable<(FigurePanel panel, CrossSectionBand band)> EnumerateRoadPanelsWithBands(
+            CrossSectionLayout layout, CrossSectionFigure figure)
+        {
+            if (layout == null || figure?.Panels == null) yield break;
+            var q = new Queue<CrossSectionBand>();
+            for (int s = layout.LeftBands.Count - 1; s >= 0; s--) q.Enqueue(layout.LeftBands[s]);
+            for (int s = 0; s < layout.RightBands.Count; s++) q.Enqueue(layout.RightBands[s]);
+
+            foreach (var p in figure.Panels)
+            {
+                if (p.Kind == TemplateComponentKind.MedianStrip) continue;
+                if (p.Kind == TemplateComponentKind.Kerb) continue;
+                if (q.Count == 0) yield break;
+                yield return (p, q.Dequeue());
+            }
+        }
+
+        private static LayerFillSettings ResolvePlanViewFillForBand(CrossSectionBand? band)
+        {
+            if (band is null)
+                return new LayerFillSettings { PatternEnabled = true, PatternName = "SOLID" };
+            var b = band.Value;
+            var scheme = b.StructureScheme;
+            if (scheme?.Layers == null)
+                return new LayerFillSettings { PatternEnabled = true, PatternName = "SOLID" };
+            foreach (var L in scheme.Layers)
+            {
+                if (L == null) continue;
+                L.MigrateLegacyPatternName();
+                if (L.LayerKind != StructureLayerKind.Surface) continue;
+                if (L.PlanFill == null) continue;
+                var p = L.PlanFill.Clone();
+                if (!p.PatternEnabled || string.IsNullOrWhiteSpace(p.PatternName))
+                {
+                    p.PatternEnabled = true;
+                    p.PatternName = "SOLID";
+                }
+                return p;
+            }
+            return new LayerFillSettings { PatternEnabled = true, PatternName = "SOLID" };
+        }
+
+        private int DrawPlanStrip(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Guid templateId,
+            CrossSectionLayout layout,
+            Point2d origin,
+            double s,
+            double bottomY,
+            double topY)
+        {
+            if (layout == null) return 0;
+            int added = 0;
+            foreach (var span in EnumeratePlanStripSpans(layout))
+            {
+                if (span.Kind == TemplateComponentKind.MedianStrip) continue;
+                var pl = new Polyline(4);
+                pl.AddVertexAt(0, new Point2d(origin.X + span.StartX * s, origin.Y + bottomY * s), 0, 0, 0);
+                pl.AddVertexAt(1, new Point2d(origin.X + span.EndX * s, origin.Y + bottomY * s), 0, 0, 0);
+                pl.AddVertexAt(2, new Point2d(origin.X + span.EndX * s, origin.Y + topY * s), 0, 0, 0);
+                pl.AddVertexAt(3, new Point2d(origin.X + span.StartX * s, origin.Y + topY * s), 0, 0, 0);
+                pl.Closed = true;
+                string plLayer = PickPanelLayer(span.Kind);
+                pl.Layer = plLayer;
+                pl.ColorIndex = 256;
+                ms.AppendEntity(pl);
+                tr.AddNewlyCreatedDBObject(pl, true);
+                added++;
+                TagEntity(tr, db, pl, templateId);
+
+                var planView = ResolvePlanViewFillForBand(span.RoadBand);
+                var hatchFill = planView.Clone();
+                if (!hatchFill.PatternEnabled || string.IsNullOrWhiteSpace(hatchFill.PatternName))
+                {
+                    hatchFill.PatternEnabled = true;
+                    hatchFill.PatternName = "SOLID";
+                }
+                added += LayerFillApplier.ApplyHatch(tr, ms, db, templateId, pl, hatchFill, plLayer);
+                double cx = 0.5 * (span.StartX + span.EndX) * s + origin.X;
+                double cy = 0.5 * (bottomY + topY) * s + origin.Y;
+                added += LayerFillApplier.ApplyBlock(tr, ms, db, templateId, new Point3d(cx, cy, 0), planView, plLayer);
+            }
+
+            return added;
+        }
+
+        private int DrawAxisMarkers(
+            Transaction tr,
+            BlockTableRecord ms,
+            Database db,
+            Guid templateId,
+            CrossSectionFigure figure,
+            Point2d origin,
+            double s,
+            double bottomY,
+            double lineTopY,
+            CrossSectionAnnotationStyle annotationStyle,
+            double fallbackTextHeight)
+        {
+            if (figure == null || figure.AxisMarkers == null || figure.AxisMarkers.Count == 0) return 0;
+            int added = 0;
+            string textLayer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
+            double baseH = annotationStyle != null && annotationStyle.TextHeightModel > 1e-6
+                ? annotationStyle.TextHeightModel
+                : Math.Max(0.3, fallbackTextHeight);
+            ResolveRcsTopStripStyle(annotationStyle, annotationStyle?.TextStyleId ?? ObjectId.Null, baseH,
+                out ObjectId textStyleId, out double textH);
+
+            // 竖线 x = 图面轴坐标（中心线 x=0 与分隔带几何中心一致，不再 +0.3m 偏移）。
+            // 注记 y：均在「bottomY～lineTopY」整段竖线的竖向中点，与左/右红线同列；左右红线 x 再 ±0.3m 见 GetAxisLabelXOffsetMeters。
+            double yTextFig = (bottomY + lineTopY) * 0.5;
+            foreach (var axis in figure.AxisMarkers)
+            {
+                bool isCenter = Math.Abs(axis.X) < 1e-9;
+                double xLineFig = axis.X;
+                string lineLayer = isCenter ? HyRoadLayers.CrossSectionCenterlineLayer : HyRoadLayers.PlanRedLineLayer;
+                var line = new Line(
+                    new Point3d(origin.X + xLineFig * s, origin.Y + bottomY * s, 0),
+                    new Point3d(origin.X + xLineFig * s, origin.Y + lineTopY * s, 0))
+                {
+                    Layer = lineLayer,
+                    ColorIndex = 256,
+                };
+                if (isCenter)
+                    TrySetLinetype(tr, db, line, "HIDDEN");
+                ms.AppendEntity(line);
+                tr.AddNewlyCreatedDBObject(line, true);
+                TagEntity(tr, db, line, templateId);
+                added++;
+
+                double xOffM = GetAxisLabelXOffsetMeters(axis);
+                double xTextFig = axis.X + xOffM;
+                added += AddText(
+                    tr, ms, db, templateId,
+                    new Point3d(origin.X + xTextFig * s, origin.Y + yTextFig * s, 0),
+                    axis.Label,
+                    textLayer,
+                    textH,
+                    rotationDeg: 90,
+                    alignCenter: true,
+                    textStyleId: textStyleId);
+            }
+
+            return added;
+        }
+
+        private static IEnumerable<PlanStripSpan> EnumeratePlanStripSpans(CrossSectionLayout layout)
+        {
+            double cursor = -layout.TotalWidth / 2.0;
+            for (int i = layout.LeftBands.Count - 1; i >= 0; i--)
+            {
+                var band = layout.LeftBands[i];
+                double end = cursor + band.Width;
+                yield return new PlanStripSpan(cursor, end, band.Kind, band);
+                cursor = end;
+            }
+
+            if (layout.CenterMedianWidth > 1e-9)
+            {
+                double end = cursor + layout.CenterMedianWidth;
+                yield return new PlanStripSpan(cursor, end, TemplateComponentKind.MedianStrip, null);
+                cursor = end;
+            }
+
+            for (int i = 0; i < layout.RightBands.Count; i++)
+            {
+                var band = layout.RightBands[i];
+                double end = cursor + band.Width;
+                yield return new PlanStripSpan(cursor, end, band.Kind, band);
+                cursor = end;
+            }
+        }
+
+        private readonly struct PlanStripSpan
+        {
+            public double StartX { get; }
+            public double EndX { get; }
+            public TemplateComponentKind Kind { get; }
+            public CrossSectionBand? RoadBand { get; }
+
+            public PlanStripSpan(double startX, double endX, TemplateComponentKind kind, CrossSectionBand? roadBand)
+            {
+                StartX = startX;
+                EndX = endX;
+                Kind = kind;
+                RoadBand = roadBand;
+            }
+        }
+
         private int DrawDimensionSegment(
             Transaction tr,
             BlockTableRecord ms,
@@ -517,20 +852,19 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Guid templateId,
             Point3d a,
             Point3d b,
-            bool above,
             CrossSectionAnnotationStyle annotationStyle,
-            double fallbackTextHeight)
+            double fallbackTextHeight,
+            double dimLineOffset)
         {
-            var dimLineOffset = Math.Max(fallbackTextHeight * 1.6, 0.24);
             var dimLinePoint = new Point3d(
                 (a.X + b.X) * 0.5,
-                a.Y + (above ? dimLineOffset : -dimLineOffset),
+                a.Y + dimLineOffset,
                 0);
             // 不写入「文字替代」：第四参用空，由两定义点得测量值，再经标注样式（如线性比例/测量单位）出字；特性中「文字替代」保持空
             var dim = new AlignedDimension(a, b, dimLinePoint, string.Empty, ObjectId.Null)
             {
                 Layer = annotationStyle?.DimensionLayerName ?? HyRoadLayers.CrossSectionDimensionLayer,
-                ColorIndex = 256,
+                Color = Color.FromColorIndex(ColorMethod.ByAci, 3),
             };
             if (annotationStyle != null && !annotationStyle.DimensionStyleId.IsNull)
             {
@@ -542,8 +876,11 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             return 1;
         }
 
-        /// <param name="roadGapFigure">路顶面至箭头端（尖端）的竖向图面间距（m），已含 2mm 纸面→模型换算 / s。</param>
-        private int DrawCrossSectionSlopeTextAndDownArrow(
+        /// <summary>
+        /// 横坡标注：文字居中位于 slope 位置下移 0.2m 处；在文字正下方再绘一个水平箭头，
+        /// 箭头方向由 <see cref="FigureSlopeLabel.DirectionSign"/> 给出（+1 向右 / -1 向左）。
+        /// </summary>
+        private int DrawCrossSectionSlopeTextAndHorizArrow(
             Transaction tr,
             BlockTableRecord ms,
             Database db,
@@ -553,35 +890,51 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             double s,
             double textH,
             string layer,
-            ObjectId textStyleId,
-            double roadGapFigure)
+            ObjectId textStyleId)
         {
             int n = 0;
-            n += AddText(tr, ms, db, templateId, map(slope.PositionX, slope.PositionY + 0.15), slope.Text,
-                layer, textH, 0, false, textStyleId);
-            // 竖向自「略低于文字行」向下面路顶，尖端距路 2mm（纸面）
-            double yTip = slope.PositionY + roadGapFigure;
-            double yStart = slope.PositionY + 0.10;
-            if (yTip > yStart - 1e-6)
-            {
-                yStart = yTip + 0.12;
-            }
-            var pHigh = map(slope.PositionX, yStart);
-            var pTip = map(slope.PositionX, yTip);
-            if (pHigh.Y - pTip.Y > 1e-9 * s)
-            {
-                var shaft = new Line(pHigh, pTip) { Layer = layer, ColorIndex = 256 };
-                ms.AppendEntity(shaft);
-                tr.AddNewlyCreatedDBObject(shaft, true);
-                TagEntity(tr, db, shaft, templateId);
-                n++;
-            }
-            var pTail = map(slope.PositionX, yTip + Math.Max(0.08, 0.2 * s));
-            n += AddSlopeArrowHead(tr, ms, db, templateId, pTip, pTail, layer, Math.Max(0.08, 0.12 * s));
+            // textH 是模型米；同一"图面米"尺度需除以 s。文字图面高约 textH/s。
+            double textHFig = textH / s;
+
+            // 原文字底 y（图面米）= slope.Y + 0.15；下移 0.2m → 新底 y = slope.Y - 0.05
+            // 改用居中对齐以方便与下方箭头同心：中心 y（图面）= 底 y + 0.5 × 图面字高
+            double textCenterYFig = -0.05 + 0.5 * textHFig;
+
+            n += AddText(
+                tr, ms, db, templateId,
+                map(slope.PositionX, slope.PositionY + textCenterYFig),
+                slope.Text, layer, textH, 0, alignCenter: true,
+                textStyleId: textStyleId, useWhiteText: true);
+
+            // 水平箭头：宽度 ≈ 4×textH（图面 m），方向由 DirectionSign 决定
+            int dir = slope.DirectionSign;
+            if (dir == 0) dir = 1; // 无坡向信息时兜底向右
+            double arrowHalfLenFig = 2.0 * textHFig;
+            double headLenFig = 0.8 * textHFig;
+            // 箭尖横向总宽 = 0.35×字高（原 0.7× 的一半）
+            double headHalfWModel = 0.175 * textH;
+
+            // 箭头中心 y（图面）= 文字底再下移 0.4 × 图面字高
+            double arrowCenterYFig = (-0.05) - 0.4 * textHFig;
+
+            var pTailHoriz = map(slope.PositionX - dir * arrowHalfLenFig, slope.PositionY + arrowCenterYFig);
+            var pHeadBase = map(slope.PositionX + dir * (arrowHalfLenFig - headLenFig), slope.PositionY + arrowCenterYFig);
+            var pTipHoriz = map(slope.PositionX + dir * arrowHalfLenFig, slope.PositionY + arrowCenterYFig);
+
+            // 尾线：从尾端到箭头根部（不画到尖端，避免与三角形叠加产生"双线"）
+            var shaft = new Line(pTailHoriz, pHeadBase) { Layer = layer, ColorIndex = 256 };
+            SetEntityAciWhite(shaft);
+            ms.AppendEntity(shaft);
+            tr.AddNewlyCreatedDBObject(shaft, true);
+            TagEntity(tr, db, shaft, templateId);
+            n++;
+
+            // 三角形箭头：以 pHeadBase 为底边中点，pTipHoriz 为尖端
+            n += AddSlopeArrowHead(tr, ms, db, templateId, pTipHoriz, pHeadBase, layer, headHalfWModel);
             return n;
         }
 
-        /// <summary>横坡用竖向小箭头，尖端在 <paramref name="head"/>（路侧），<paramref name="tail"/> 在上方沿坡向。</summary>
+        /// <summary>横坡箭头尖：<paramref name="head"/> 为尖端，<paramref name="tail"/> 为底边中点；<paramref name="wingMeters"/> 为底边半幅（模型米）。2D <see cref="Solid"/> 实体填充、ACI7 白。</summary>
         private int AddSlopeArrowHead(
             Transaction tr,
             BlockTableRecord ms,
@@ -592,24 +945,26 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             string layer,
             double wingMeters)
         {
-            var pl = new Polyline(3);
             var ddx = tail.X - head.X;
             var ddy = tail.Y - head.Y;
             var len = Math.Sqrt(ddx * ddx + ddy * ddy);
             if (len < 1e-12) return 0;
             var nx = -ddy / len * wingMeters;
             var ny = ddx / len * wingMeters;
-            var pa = new Point2d(tail.X + nx, tail.Y + ny);
-            var pb = new Point2d(tail.X - nx, tail.Y - ny);
-            pl.AddVertexAt(0, new Point2d(head.X, head.Y), 0, 0, 0);
-            pl.AddVertexAt(1, pa, 0, 0, 0);
-            pl.AddVertexAt(2, pb, 0, 0, 0);
-            pl.Closed = true;
-            pl.Layer = layer;
-            pl.ColorIndex = 256;
-            ms.AppendEntity(pl);
-            tr.AddNewlyCreatedDBObject(pl, true);
-            TagEntity(tr, db, pl, templateId);
+            double z = head.Z;
+            var pa = new Point3d(tail.X + nx, tail.Y + ny, z);
+            var pb = new Point3d(tail.X - nx, tail.Y - ny, z);
+            var h = new Point3d(head.X, head.Y, z);
+            // Solid 为四边形的三角退化：p3 与 p2 同点 → 画实心三角
+            var fill = new Solid(h, pa, pb, pb)
+            {
+                Layer = layer,
+                ColorIndex = 256,
+            };
+            SetEntityAciWhite(fill);
+            ms.AppendEntity(fill);
+            tr.AddNewlyCreatedDBObject(fill, true);
+            TagEntity(tr, db, fill, templateId);
             return 1;
         }
 
@@ -624,7 +979,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             double height,
             double rotationDeg = 0,
             bool alignCenter = false,
-            ObjectId textStyleId = default(ObjectId))
+            ObjectId textStyleId = default(ObjectId),
+            bool useWhiteText = true)
         {
             var dbt = new DBText
             {
@@ -635,6 +991,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 ColorIndex = 256,
                 Rotation = rotationDeg * Math.PI / 180.0,
             };
+            if (useWhiteText)
+                SetEntityAciWhite(dbt);
             if (!textStyleId.IsNull)
             {
                 dbt.TextStyleId = textStyleId;
@@ -659,21 +1017,34 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Point2d origin,
             FigureOrientation o,
             double s,
-            CrossSectionAnnotationStyle annotationStyle)
+            CrossSectionAnnotationStyle annotationStyle,
+            double? orientationYFigureMeters = null,
+            bool useRcsTopStripText = false)
         {
             int added = 0;
+            double fallbackH = Math.Max(0.3, 0.5 * s);
             ObjectId textStyleId = ObjectId.Null;
-            double h = Math.Max(0.3, 0.5 * s);
+            double h = fallbackH;
             if (annotationStyle != null)
             {
-                textStyleId = annotationStyle.TextStyleId;
-                if (annotationStyle.TextHeightModel > 1e-6)
+                if (useRcsTopStripText)
                 {
-                    h = annotationStyle.TextHeightModel;
+                    ResolveRcsTopStripStyle(
+                        annotationStyle, annotationStyle.TextStyleId, fallbackH, out textStyleId, out h);
+                }
+                else
+                {
+                    textStyleId = annotationStyle.TextStyleId;
+                    if (annotationStyle.TextHeightModel > 1e-6)
+                    {
+                        h = annotationStyle.TextHeightModel;
+                    }
                 }
             }
+            string textLayer = annotationStyle?.TextLayerName ?? HyRoadLayers.CrossSectionAnnotationLayer;
 
-            double y = o.Y * s;
+            double yFig = orientationYFigureMeters ?? o.Y;
+            double y = yFig * s;
             double leftX = o.LeftX * s;
             double rightX = o.RightX * s;
 
@@ -685,6 +1056,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 Layer = HyRoadLayers.CrossSectionOrientationLayer,
                 ColorIndex = 256,
             };
+            SetEntityAciWhite(left);
             ms.AppendEntity(left);
             tr.AddNewlyCreatedDBObject(left, true);
             TagEntity(tr, db, left, templateId);
@@ -695,16 +1067,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                 new Point3d(origin.X + leftX, origin.Y + y, 0),
                 new Point3d(origin.X + leftX + 0.8 * s, origin.Y + y, 0));
 
-            // 右箭头
-            var right = new Line(
-                new Point3d(origin.X + leftX, origin.Y + y, 0),
-                new Point3d(origin.X + rightX, origin.Y + y, 0))
-            {
-                Layer = HyRoadLayers.CrossSectionOrientationLayer,
-                ColorIndex = 256,
-            };
-            // 同一条线与 left 方向相反，忽略重复不直接添加 —— 上面已绘制
-            // 添加右箭头头
+            // 右箭头头（与左向共用一条水平向线，不再重复加 Line）
             added += AddArrow(tr, ms, db, templateId,
                 new Point3d(origin.X + rightX, origin.Y + y, 0),
                 new Point3d(origin.X + rightX - 0.8 * s, origin.Y + y, 0));
@@ -712,10 +1075,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             // 左右文字
             added += AddText(tr, ms, db, templateId,
                 new Point3d(origin.X + leftX - 1.4 * s, origin.Y + y, 0),
-                o.LeftLabel, HyRoadLayers.CrossSectionOrientationLayer, h, textStyleId: textStyleId);
+                o.LeftLabel, textLayer, h, textStyleId: textStyleId, useWhiteText: true);
             added += AddText(tr, ms, db, templateId,
                 new Point3d(origin.X + rightX + 0.4 * s, origin.Y + y, 0),
-                o.RightLabel, HyRoadLayers.CrossSectionOrientationLayer, h, textStyleId: textStyleId);
+                o.RightLabel, textLayer, h, textStyleId: textStyleId, useWhiteText: true);
 
             return added;
         }
@@ -734,6 +1097,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             pl.Closed = true;
             pl.Layer = HyRoadLayers.CrossSectionOrientationLayer;
             pl.ColorIndex = 256;
+            SetEntityAciWhite(pl);
             ms.AppendEntity(pl);
             tr.AddNewlyCreatedDBObject(pl, true);
             TagEntity(tr, db, pl, templateId);
@@ -779,6 +1143,36 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     lt.Add(ltr);
                     tr.AddNewlyCreatedDBObject(ltr, true);
                 }
+            }
+        }
+
+        private static void EnsureStyleLayersVisible(
+            Transaction tr,
+            Database db,
+            CrossSectionAnnotationStyle annotationStyle,
+            DrawingSheetTitleSpec titleSpec)
+        {
+            EnsureLayerExists(tr, db, annotationStyle?.TextLayerName, 7);
+            EnsureLayerExists(tr, db, annotationStyle?.DimensionLayerName, 3);
+            EnsureLayerExists(tr, db, annotationStyle?.TitleLayerName, 7);
+            EnsureLayerExists(tr, db, titleSpec?.TitleTextLayerName, 7);
+            EnsureLayerExists(tr, db, titleSpec?.TitleDecorationLayerName, 7);
+        }
+
+        private static void EnsureLayerExists(Transaction tr, Database db, string layerName, short aciColor)
+        {
+            if (string.IsNullOrWhiteSpace(layerName)) return;
+            var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+            if (lt.Has(layerName)) return;
+            if (!lt.IsWriteEnabled) lt.UpgradeOpen();
+            using (var ltr = new LayerTableRecord
+            {
+                Name = layerName,
+                Color = Color.FromColorIndex(ColorMethod.ByAci, aciColor),
+            })
+            {
+                lt.Add(ltr);
+                tr.AddNewlyCreatedDBObject(ltr, true);
             }
         }
 

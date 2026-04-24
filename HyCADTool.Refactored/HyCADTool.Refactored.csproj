@@ -58,6 +58,13 @@
     </None>
   </ItemGroup>
 
+  <!-- HyCAD 标准线型：随 DLL 部署到 Resources\，启动时注入当前图形线型表 -->
+  <ItemGroup>
+    <None Include="Resources\HyCAD-Linetypes.lin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <!-- P0 道路：_libraries 字典资源随 DLL 同级部署（v1 不读取，v2/P7 由 Blender Addon 消费） -->
   <ItemGroup>
     <None Include="_libraries\feature-catalog.json">

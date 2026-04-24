@@ -74,7 +74,7 @@ namespace HyCAD.BlenderUI.Samples
 
     /// <summary>
     /// 结构层数量约束。原型内部单点决定"新增是否可用 / 删除是否可用"。
-    /// 绿化带 / 分隔带 / 路牙 / 中分带 不承载结构层，UI 侧整个"结构层编辑"分组折叠。
+    /// 绿化带 / 分隔带 / 路牙 不承载结构层，UI 侧整个"结构层编辑"分组折叠。
     /// </summary>
     public static class V2StructureRules
     {

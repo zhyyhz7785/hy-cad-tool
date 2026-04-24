@@ -3,7 +3,10 @@ using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -457,12 +460,4 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cy += (p0.Y + p1.Y) * cross;
             }
             area *= 0.5;
-            if (Math.Abs(area) < 1e-10)
-            {
-                return pline.GetPoint3dAt(0);
-            }
-
-            return new Point3d(cx / (6 * area), cy / (6 * area), pline.Elevation);
-        }
-    }
-}
+            if (Math.Abs

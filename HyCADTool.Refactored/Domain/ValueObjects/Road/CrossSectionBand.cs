@@ -72,7 +72,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         /// <summary>
         /// 内侧路牙规格。绝大多数场景为 <see cref="KerbSpec.None"/>，
-        /// 仅当板块为机动车道与中分带相邻、需要在中分带侧加缘石时启用。
+        /// 仅当板块为机动车道与分隔带相邻、需要在分隔带侧加缘石时启用。
         /// </summary>
         public KerbSpec InnerKerb { get; }
 
@@ -103,7 +103,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// 路面结构层方案（可空）。承载"面层 / 基层 / 垫层"多层分层构造（M7+）。
         /// 运行时由上层 UI（`BandRowViewModel`）根据 <see cref="Kind"/> 自动注入默认方案；
         /// 当前 Phase 1 的 <c>CrossSectionLayoutBuilder</c> 不把本字段写入 <see cref="Models.Road.Template"/>
-        /// （Template JSON Schema 保持不变），Phase 2 再做持久化。绿化带 / 中分带 / 缘石不挂方案。
+        /// （Template JSON Schema 保持不变），Phase 2 再做持久化。绿化带 / 分隔带 / 缘石不挂方案。
         /// </summary>
         public StructureLayerScheme StructureScheme { get; }
 
@@ -240,7 +240,7 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         /// <summary>
         /// 返回相同字段、只改变 <see cref="StructureScheme"/> 的新条带。
-        /// 传 <c>null</c> 清除当前方案（例如切到绿化带 / 中分带时）。
+        /// 传 <c>null</c> 清除当前方案（例如切到绿化带 / 分隔带时）。
         /// </summary>
         public CrossSectionBand WithStructureScheme(StructureLayerScheme scheme)
             => new CrossSectionBand(Name, Kind, Width, CrossSlopePct, Side, OuterKerb, InnerKerb, SlopeType, CrownProfile, SurfaceLayer, LaneCount, scheme, ElevationDiff, InnerElevationDiff);

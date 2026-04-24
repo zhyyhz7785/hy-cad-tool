@@ -301,9 +301,10 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
                 erased = drawService.Clear(tr, doc.Database, template.Id);
+                double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
                 created = drawService.Draw(tr, doc.Database, result.Figure, template, origin,
                     modelUnitPerMeter: 1.0, mode: drawMode, layout: result.Layout, annotationStyle: null,
-                    sheetTitleSpec: titleSpec);
+                    sheetTitleSpec: titleSpec, planStripVerticalOffsetMeters: planOff);
                 tr.Commit();
             }
 

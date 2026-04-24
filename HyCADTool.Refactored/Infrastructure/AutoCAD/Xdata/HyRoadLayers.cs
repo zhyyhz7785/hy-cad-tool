@@ -1,4 +1,6 @@
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
@@ -6,162 +8,134 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata
     /// <summary>
     /// 道路模块使用的 AutoCAD 标准图层名（经 <see cref="UserLayerNameResolver"/> 解析，可在「设置—图层」中改名）+ 颜色索引常量。
     ///
-    /// 默认名与 LayerCatalogFactory 内置层表一致。
-    /// <see cref="GetAll"/> 返回默认名与颜色，供层表工厂与首次建层使用（不调用解析器，避免循环依赖）。
+    /// 默认名与 <see cref="LayerCatalogFactory"/> 内置层表一致。
+    /// <see cref="GetAll"/> 返回默认名与颜色、线型，供层表工厂与首次建层使用（不调用解析器，避免循环依赖）。
     /// </summary>
     public static class HyRoadLayers
     {
-        private const string _defAlignment = "05_hy_道路_平面线位";
-        private const string _defProfile = "05_hy_道路_纵断面";
-        private const string _defCorridor = "05_hy_道路_走廊";
-        private const string _defMarking = "05_hy_道路_标线";
-        private const string _defStation = "05_hy_道路_桩号";
-        private const string _defGeometryPoint = "05_hy_道路_几何点";
-        private const string _defOffset = "05_hy_道路_偏移线";
-        private const string _defUserPick = "用户拾取";
-        private const string _defRaw = "05_hy_道路_原线";
-        private const string _defLivePreview = "05_hy_道路_预览";
-        private const string _defIntersection = "05_hy_道路_交叉口";
-        private const string _defCurbRamp = "05_hy_道路_缘石坡道";
-        private const string _defTactile = "05_hy_道路_盲道";
-        private const string _defCrosswalk = "05_hy_道路_人行横道";
-        private const string _defStopLine = "05_hy_道路_停止线";
-        private const string _defCsOutline = "05_hy_道路_横断面_轮廓";
-        private const string _defCsCenter = "05_hy_道路_横断面_中心线";
-        private const string _defCsPavement = "05_hy_道路_横断面_车行道";
-        private const string _defCsSidewalk = "05_hy_道路_横断面_人行道";
-        private const string _defCsKerb = "05_hy_道路_横断面_路牙";
-        private const string _defCsGreen = "05_hy_道路_横断面_绿化带";
-        private const string _defCsDim = "05_hy_道路_横断面_尺寸链";
-        private const string _defCsAnno = "05_hy_道路_横断面_文字";
-        private const string _defCsTitle = "05_hy_道路_横断面_图题";
-        private const string _defCsTitleDeco = "05_hy_道路_横断面_图题_装饰";
-        private const string _defCsOrientation = "05_hy_道路_横断面_方位";
-        private const string _defPlanRed = "05_hy_道路_平面_红线";
-        private const string _defPlanBand = "05_hy_道路_平面_板块分界";
-        private const string _defPlanMarking = "05_hy_道路_平面_标线";
-
-        public static string AlignmentLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlaneAlignment, _defAlignment);
+        public static string AlignmentLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlaneAlignment, LayerBuiltinDefaults.RoadPlaneAlignment);
         public const short AlignmentColor = 6;
 
-        public static string ProfileLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadProfile, _defProfile);
+        public static string ProfileLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadProfile, LayerBuiltinDefaults.RoadProfile);
         public const short ProfileColor = 2;
 
-        public static string CorridorLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCorridor, _defCorridor);
+        public static string CorridorLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCorridor, LayerBuiltinDefaults.RoadCorridor);
         public const short CorridorColor = 8;
 
-        public static string MarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadMarking, _defMarking);
+        public static string MarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadMarking, LayerBuiltinDefaults.RoadMarking);
         public const short MarkingColor = 3;
 
-        public static string StationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadStation, _defStation);
+        public static string StationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadStation, LayerBuiltinDefaults.RoadStation);
         public const short StationColor = 7;
 
-        public static string GeometryPointLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadGeometryPoint, _defGeometryPoint);
+        public static string GeometryPointLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadGeometryPoint, LayerBuiltinDefaults.RoadGeometryPoint);
         public const short GeometryPointColor = 4;
 
-        public static string OffsetLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadOffset, _defOffset);
+        public static string OffsetLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadOffset, LayerBuiltinDefaults.RoadOffset);
         public const short OffsetColor = 30;
 
-        public static string UserPickPreviewLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadUserPickPreview, _defUserPick);
+        public static string UserPickPreviewLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadUserPickPreview, LayerBuiltinDefaults.RoadUserPickPreview);
         public const short UserPickPreviewLayerColor = 7;
 
-        public static string RawPolylineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadRawPolyline, _defRaw);
+        public static string RawPolylineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadRawPolyline, LayerBuiltinDefaults.RoadRawPolyline);
         public const short RawPolylineColor = 252;
 
-        public static string LivePreviewLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadLivePreview, _defLivePreview);
+        public static string LivePreviewLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadLivePreview, LayerBuiltinDefaults.RoadLivePreview);
         public const short LivePreviewColor = 2;
 
-        public static string IntersectionLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadIntersection, _defIntersection);
+        public static string IntersectionLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadIntersection, LayerBuiltinDefaults.RoadIntersection);
         public const short IntersectionColor = 1;
 
-        public static string CurbRampLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCurbRamp, _defCurbRamp);
+        public static string CurbRampLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCurbRamp, LayerBuiltinDefaults.RoadCurbRamp);
         public const short CurbRampColor = 11;
 
-        public static string TactilePavingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadTactilePaving, _defTactile);
+        public static string TactilePavingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadTactilePaving, LayerBuiltinDefaults.RoadTactilePaving);
         public const short TactilePavingColor = 42;
 
-        public static string CrosswalkLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrosswalk, _defCrosswalk);
+        public static string CrosswalkLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrosswalk, LayerBuiltinDefaults.RoadCrosswalk);
         public const short CrosswalkColor = 7;
 
-        public static string StopLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadStopLine, _defStopLine);
+        public static string StopLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadStopLine, LayerBuiltinDefaults.RoadStopLine);
         public const short StopLineColor = 7;
 
-        public static string CrossSectionOutlineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOutline, _defCsOutline);
+        public static string CrossSectionOutlineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOutline, LayerBuiltinDefaults.RoadCrossSectionOutline);
         public const short CrossSectionOutlineColor = 7;
 
-        public static string CrossSectionCenterlineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionCenterline, _defCsCenter);
+        public static string CrossSectionCenterlineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionCenterline, LayerBuiltinDefaults.RoadCrossSectionCenterline);
         public const short CrossSectionCenterlineColor = 1;
 
-        public static string CrossSectionPavementLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionPavement, _defCsPavement);
+        public static string CrossSectionPavementLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionPavement, LayerBuiltinDefaults.RoadCrossSectionPavement);
         public const short CrossSectionPavementColor = 5;
 
-        public static string CrossSectionSidewalkLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionSidewalk, _defCsSidewalk);
+        public static string CrossSectionSidewalkLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionSidewalk, LayerBuiltinDefaults.RoadCrossSectionSidewalk);
         public const short CrossSectionSidewalkColor = 52;
 
-        public static string CrossSectionKerbLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionKerb, _defCsKerb);
+        public static string CrossSectionKerbLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionKerb, LayerBuiltinDefaults.RoadCrossSectionKerb);
         public const short CrossSectionKerbColor = 8;
 
-        public static string CrossSectionGreenLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionGreen, _defCsGreen);
+        public static string CrossSectionGreenLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionGreen, LayerBuiltinDefaults.RoadCrossSectionGreen);
         public const short CrossSectionGreenColor = 92;
 
-        public static string CrossSectionDimensionLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionDimension, _defCsDim);
+        public static string CrossSectionDimensionLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionDimension, LayerBuiltinDefaults.RoadCrossSectionDimension);
         public const short CrossSectionDimensionColor = 4;
 
-        public static string CrossSectionAnnotationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionAnnotation, _defCsAnno);
+        public static string CrossSectionAnnotationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionAnnotation, LayerBuiltinDefaults.RoadCrossSectionAnnotation);
         public const short CrossSectionAnnotationColor = 7;
 
-        public static string CrossSectionTitleLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, _defCsTitle);
+        public static string CrossSectionTitleLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
         public const short CrossSectionTitleColor = 3;
 
-        public static string CrossSectionTitleDecorationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitleDecoration, _defCsTitleDeco);
+        public static string CrossSectionTitleDecorationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitleDecoration, LayerBuiltinDefaults.RoadCrossSectionTitleDecoration);
         public const short CrossSectionTitleDecorationColor = 3;
 
-        public static string CrossSectionOrientationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOrientation, _defCsOrientation);
+        public static string CrossSectionOrientationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOrientation, LayerBuiltinDefaults.RoadCrossSectionOrientation);
         public const short CrossSectionOrientationColor = 6;
 
-        public static string PlanRedLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanRedLine, _defPlanRed);
+        public static string PlanRedLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanRedLine, LayerBuiltinDefaults.RoadPlanRedLine);
         public const short PlanRedLineColor = 1;
 
-        public static string PlanBandDividerLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanBandDivider, _defPlanBand);
+        public static string PlanBandDividerLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanBandDivider, LayerBuiltinDefaults.RoadPlanBandDivider);
         public const short PlanBandDividerColor = 30;
 
-        public static string PlanMarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanMarking, _defPlanMarking);
+        public static string PlanMarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanMarking, LayerBuiltinDefaults.RoadPlanMarking);
         public const short PlanMarkingColor = 7;
 
-        /// <summary>默认名 + 色表（供层表工厂；不调用 <see cref="UserLayerNameResolver"/>）。</summary>
-        public static (string layerName, short colorIndex)[] GetAll()
+        /// <summary>默认名 + 色 + 线型（供层表工厂；不调用 <see cref="UserLayerNameResolver"/>）。</summary>
+        public static (string layerName, short colorIndex, string linetypeName)[] GetAll()
         {
+            var c = LayerBuiltinDefaults.LinetypeContinuous;
+            var hyCenter = HyLinetypeNames.Center;
             return new[]
             {
-                (_defAlignment, AlignmentColor),
-                (_defProfile, ProfileColor),
-                (_defCorridor, CorridorColor),
-                (_defMarking, MarkingColor),
-                (_defStation, StationColor),
-                (_defGeometryPoint, GeometryPointColor),
-                (_defOffset, OffsetColor),
-                (_defIntersection, IntersectionColor),
-                (_defCurbRamp, CurbRampColor),
-                (_defTactile, TactilePavingColor),
-                (_defCrosswalk, CrosswalkColor),
-                (_defStopLine, StopLineColor),
-                (_defCsOutline, CrossSectionOutlineColor),
-                (_defCsCenter, CrossSectionCenterlineColor),
-                (_defCsPavement, CrossSectionPavementColor),
-                (_defCsSidewalk, CrossSectionSidewalkColor),
-                (_defCsKerb, CrossSectionKerbColor),
-                (_defCsGreen, CrossSectionGreenColor),
-                (_defCsDim, CrossSectionDimensionColor),
-                (_defCsAnno, CrossSectionAnnotationColor),
-                (_defCsTitle, CrossSectionTitleColor),
-                (_defCsTitleDeco, CrossSectionTitleDecorationColor),
-                (_defCsOrientation, CrossSectionOrientationColor),
-                (_defPlanRed, PlanRedLineColor),
-                (_defPlanBand, PlanBandDividerColor),
-                (_defPlanMarking, PlanMarkingColor),
-                (_defUserPick, UserPickPreviewLayerColor),
-                (_defRaw, RawPolylineColor),
-                (_defLivePreview, LivePreviewColor),
+                (LayerBuiltinDefaults.RoadPlaneAlignment, AlignmentColor, c),
+                (LayerBuiltinDefaults.RoadProfile, ProfileColor, c),
+                (LayerBuiltinDefaults.RoadCorridor, CorridorColor, c),
+                (LayerBuiltinDefaults.RoadMarking, MarkingColor, c),
+                (LayerBuiltinDefaults.RoadStation, StationColor, c),
+                (LayerBuiltinDefaults.RoadGeometryPoint, GeometryPointColor, c),
+                (LayerBuiltinDefaults.RoadOffset, OffsetColor, c),
+                (LayerBuiltinDefaults.RoadIntersection, IntersectionColor, c),
+                (LayerBuiltinDefaults.RoadCurbRamp, CurbRampColor, c),
+                (LayerBuiltinDefaults.RoadTactilePaving, TactilePavingColor, c),
+                (LayerBuiltinDefaults.RoadCrosswalk, CrosswalkColor, c),
+                (LayerBuiltinDefaults.RoadStopLine, StopLineColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionOutline, CrossSectionOutlineColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionCenterline, CrossSectionCenterlineColor, hyCenter),
+                (LayerBuiltinDefaults.RoadCrossSectionPavement, CrossSectionPavementColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionSidewalk, CrossSectionSidewalkColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionKerb, CrossSectionKerbColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionGreen, CrossSectionGreenColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionDimension, CrossSectionDimensionColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionAnnotation, CrossSectionAnnotationColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionTitle, CrossSectionTitleColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionTitleDecoration, CrossSectionTitleDecorationColor, c),
+                (LayerBuiltinDefaults.RoadCrossSectionOrientation, CrossSectionOrientationColor, c),
+                (LayerBuiltinDefaults.RoadPlanRedLine, PlanRedLineColor, c),
+                (LayerBuiltinDefaults.RoadPlanBandDivider, PlanBandDividerColor, c),
+                (LayerBuiltinDefaults.RoadPlanMarking, PlanMarkingColor, c),
+                (LayerBuiltinDefaults.RoadUserPickPreview, UserPickPreviewLayerColor, c),
+                (LayerBuiltinDefaults.RoadRawPolyline, RawPolylineColor, c),
+                (LayerBuiltinDefaults.RoadLivePreview, LivePreviewColor, c),
             };
         }
     }

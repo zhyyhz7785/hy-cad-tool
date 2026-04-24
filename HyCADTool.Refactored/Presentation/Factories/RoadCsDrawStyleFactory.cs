@@ -3,7 +3,11 @@
 using System;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
+using HyCADTool.Refactored.Domain.Models.Drawing;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Presentation.ViewModels;
 
 namespace HyCADTool.Refactored.Presentation.Factories
@@ -13,6 +17,13 @@ namespace HyCADTool.Refactored.Presentation.Factories
     /// </summary>
     public sealed class RoadCsDrawStyleFactory
     {
+        /// <summary>rCs 顶部板块字与道路左/中/右轴线字、北南字统一使用的 TrueType 样式名。</summary>
+        private const string RcsTopStripTextStyleName = "0-hy-说明-T";
+        /// <summary>rCs 出图除图题外注记与顶部专项文字的纸面字高（mm）。</summary>
+        private const double RcsAnnotationPaperHeightMm = 2.5;
+        /// <summary>顶部 TrueType 样式与 <see cref="RcsAnnotationPaperHeightMm"/> 一致（纸面 2.5mm）。</summary>
+        private const double RcsTopStripPaperHeightMm = RcsAnnotationPaperHeightMm;
+
         public RoadCsDrawStyleFactory()
         {
         }
@@ -25,14 +36,29 @@ namespace HyCADTool.Refactored.Presentation.Factories
 
             if (settings == null)
             {
+                var ctx = ActiveScaleContextProvider.Current;
+                double bodyH = PaperMmToModelHeight(ctx, RcsAnnotationPaperHeightMm);
+                double rcsTopH = bodyH;
+                ObjectId rcsTopId = ObjectId.Null;
+                using (var tr = doc.TransactionManager.StartOpenCloseTransaction())
+                {
+                    rcsTopId = FindTextStyleId(tr, doc.Database, RcsTopStripTextStyleName) ?? ObjectId.Null;
+                    tr.Commit();
+                }
+
                 return new CrossSectionAnnotationStyle(
                     textStyleId: ObjectId.Null,
                     dimensionStyleId: ObjectId.Null,
                     mleaderStyleId: ObjectId.Null,
-                    textHeightModel: 0.3,
+                    textHeightModel: bodyH,
                     mleaderLandingGapModel: 0.05,
                     mleaderArrowSizeModel: 0.2,
-                    precision: 3);
+                    precision: 3,
+                    textLayerName: ResolveCommonTextLayerName(),
+                    dimensionLayerName: ResolveCommonDimensionLayerName(),
+                    titleLayerName: ResolveCommonTextLayerName(),
+                    rcsTopStripTextStyleId: rcsTopId,
+                    rcsTopStripTextHeightModel: rcsTopH);
             }
 
             settings.CommitTextAndMLeaderStylesToActiveDocument();
@@ -50,7 +76,8 @@ namespace HyCADTool.Refactored.Presentation.Factories
                 ? settings.BuildScaleContext().BuildMLeaderStyleName()
                 : settings.MLeaderStyleName.Trim();
 
-            var textH = GetActualTextHeightOr(settings, 0.3);
+            // rCs：尺寸/引线/横坡等「其它注记」固定纸面 2.5mm（不跟设置面板的 TextSize 走）
+            double textH = RcsAnnotationPaperHeightMm * settings.BuildScaleContext().UnitFactor * settings.Scale;
             var gap = GetActualMLeaderLandingOr(settings, 0.05);
             var arr = GetActualMLeaderArrowOr(settings, 0.2);
             // 与 BuildDimensionSegments / FormatWidthMeters 小数习惯一致，不随设置里的单位/精度切换
@@ -59,13 +86,17 @@ namespace HyCADTool.Refactored.Presentation.Factories
             ObjectId textId;
             ObjectId dimId;
             ObjectId mleaderId;
+            ObjectId rcsTopId;
             using (var tr = db.TransactionManager.StartOpenCloseTransaction())
             {
                 textId = FindTextStyleId(tr, db, textName) ?? ObjectId.Null;
                 dimId = db.Dimstyle;
                 mleaderId = (mleaderName == null) ? ObjectId.Null : (FindMLeaderStyleId(tr, db, mleaderName) ?? ObjectId.Null);
+                rcsTopId = FindTextStyleId(tr, db, RcsTopStripTextStyleName) ?? ObjectId.Null;
                 tr.Commit();
             }
+
+            double rcsTopH = RcsTopStripPaperHeightMm * settings.BuildScaleContext().UnitFactor * settings.Scale; // 同 textH
 
             return new CrossSectionAnnotationStyle(
                 textStyleId: textId,
@@ -74,17 +105,29 @@ namespace HyCADTool.Refactored.Presentation.Factories
                 textHeightModel: textH,
                 mleaderLandingGapModel: gap,
                 mleaderArrowSizeModel: arr,
-                precision: prec);
+                precision: prec,
+                textLayerName: ResolveCommonTextLayerName(settings),
+                dimensionLayerName: ResolveCommonDimensionLayerName(settings),
+                titleLayerName: ResolveCommonTextLayerName(settings),
+                rcsTopStripTextStyleId: rcsTopId,
+                rcsTopStripTextHeightModel: rcsTopH);
         }
 
-        private static double GetActualTextHeightOr(SettingsPanelViewModel s, double fallback)
+        private static double PaperMmToModelHeight(ScaleContext ctx, double paperMm) =>
+            paperMm * ctx.UnitFactor * ctx.MainScale;
+
+        private static string ResolveCommonTextLayerName(SettingsPanelViewModel? settings = null)
         {
-            try
-            {
-                if (s.ActualTextHeight > 0) return s.ActualTextHeight;
-            }
-            catch { }
-            return fallback;
+            if (settings != null)
+                return settings.TryResolveLayerName(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
+            return UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
+        }
+
+        private static string ResolveCommonDimensionLayerName(SettingsPanelViewModel? settings = null)
+        {
+            if (settings != null)
+                return settings.TryResolveLayerName(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
+            return UserLayerNameResolver.Get(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
         }
 
         private static double GetActualMLeaderLandingOr(SettingsPanelViewModel s, double fallback)

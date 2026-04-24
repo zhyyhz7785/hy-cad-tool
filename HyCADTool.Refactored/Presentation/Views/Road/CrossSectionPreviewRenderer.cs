@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using HyCADTool.Refactored.Domain.Models.Road;
@@ -43,6 +44,9 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
         public static readonly Brush TopLabelBrush     = new SolidColorBrush(Color.FromRgb(0xA3, 0xBE, 0x8C));
         public static readonly Brush AnnotationBrush   = new SolidColorBrush(Color.FromRgb(0xE6, 0xE6, 0xE6));
         public static readonly Brush BaseLineBrush     = new SolidColorBrush(Color.FromRgb(0x23, 0x23, 0x23));
+        /// <summary>与 rCs 方位指示层一致的浅紫，用于预览中北南箭线（工程图为白+图层色）。</summary>
+        public static readonly Brush OrientationLineBrush = new SolidColorBrush(Color.FromRgb(0xCE, 0x93, 0xD8));
+        public static readonly Brush RedAxisBrush       = new SolidColorBrush(Color.FromRgb(0xE5, 0x55, 0x55));
 
         /// <summary>七大条带类型在 Canvas 中的填色（半透明）。</summary>
         public static readonly IReadOnlyDictionary<TemplateComponentKind, Brush> DefaultPanelFills =
@@ -65,16 +69,22 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
         /// <param name="figure">待绘制的横断面图形对象，<c>null</c> 时仅 Clear 后返回。</param>
         /// <param name="scaleDenominator">右上角"比例 1:N"中的 N，用于信息标签；不影响实际投影。</param>
         /// <param name="panelFills">条带 Kind→Brush 的填色映射；<c>null</c> 时使用 <see cref="DefaultPanelFills"/>。</param>
+        /// <param name="layout">与出图 <c>DrawPlanStrip</c> 相同的布置；<c>null</c> 时不画平面分隔带示意，仍按 <paramref name="planStripVerticalOffsetM"/> 抬升尺寸/上排注记。</param>
+        /// <param name="planStripVerticalOffsetM">与 <c>RoadStandardSectionDrawService</c> 的 <c>planStripVerticalOffsetMeters</c> 同义（图面 m，相对路顶+1.2m）。</param>
         public static void Render(
             Canvas canvas,
             CrossSectionFigure figure,
             int? scaleDenominator,
             IReadOnlyDictionary<TemplateComponentKind, Brush> panelFills = null,
-            DrawingSheetTitleSpec titleSpec = null)
+            DrawingSheetTitleSpec titleSpec = null,
+            CrossSectionLayout layout = null,
+            double planStripVerticalOffsetM = 5.0,
+            Action onOrientationToggle = null)
         {
             if (canvas == null) return;
             canvas.Children.Clear();
             if (figure == null) return;
+            if (double.IsNaN(planStripVerticalOffsetM) || double.IsInfinity(planStripVerticalOffsetM)) return;
 
             double cw = canvas.ActualWidth;
             double ch = canvas.ActualHeight;
@@ -83,6 +93,9 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             const double padX = 40;
             const double padTop = 50;
             const double padBottom = 60;
+            const double rcsTopAxisAndOrientationM = 5.0;
+            // 与 RoadStandardSectionDrawService 中 axisBottomY / planStrip* 计算对齐
+            const double planGapAboveCrownM = 1.2;
 
             var vertices = figure.Vertices;
             var panels = figure.Panels;
@@ -93,17 +106,44 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             double ymin = vertices.Min(v => v.Y);
             double ymax = vertices.Max(v => v.Y);
 
+            double planStripBottomY = ymax + planGapAboveCrownM + planStripVerticalOffsetM;
+            double planStripTopY = planStripBottomY + Math.Max(0.5, figure.PlanStripLength);
+            double axisBottomY = ymin - 2.8;
+            double axisTopY = planStripTopY + rcsTopAxisAndOrientationM;
+            double orientationY = planStripTopY + rcsTopAxisAndOrientationM;
+            // 板块字改为"平面带竖向居中"（而非上方 2.5m），与用户要求一致。
+            double topLabelY = 0.5 * (planStripBottomY + planStripTopY);
+
+            double yMaxFit = Math.Max(ymax, axisTopY);
+            yMaxFit = Math.Max(yMaxFit, topLabelY + 0.2);
+            yMaxFit = Math.Max(yMaxFit, orientationY + 0.1);
+            if (!string.IsNullOrWhiteSpace(figure.Title.Text))
+                yMaxFit = Math.Max(yMaxFit, figure.Title.Y + 0.1);
+
             double spanX = Math.Max(1e-3, xmax - xmin);
-            double spanY = Math.Max(0.3, ymax - ymin);
+            double spanY = Math.Max(0.3, yMaxFit - ymin);
 
             double sx = (cw - padX * 2) / spanX;
             double sy = (ch - padTop - padBottom) / Math.Max(1.0, spanY);
-            double yExaggerate = 8.0;
-            double s = Math.Min(sx, sy * yExaggerate);
+            // 有 layout 时按 1:1 几何（Y 跨度含平面带/轴线/顶排注记，已经不小，不再做视觉放大）；
+            // 无 layout 的老路径（单条路面剖面）保持纵向放大看细节。
+            double yExaggerate = (layout != null) ? 1.0 : 8.0;
+            double s = Math.Min(sx, sy / yExaggerate);
             if (double.IsNaN(s) || double.IsInfinity(s) || s <= 0) return;
 
             double ox = cw / 2.0;
-            double oy = ch - padBottom;
+            // 画面基线（model y=0）放在画布下方；layout 模式下基线所占份额 = (|ymin|/spanY)，老路径保持固定 padBottom
+            double oy;
+            if (layout != null)
+            {
+                double yZeroFromTop = (yMaxFit - 0) * s;
+                oy = padTop + yZeroFromTop;
+                if (oy > ch - padBottom) oy = ch - padBottom;
+            }
+            else
+            {
+                oy = ch - padBottom;
+            }
 
             Func<double, double, Point> map = (x, y) => new Point(ox + x * s, oy - y * yExaggerate * s);
 
@@ -156,19 +196,89 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 canvas.Children.Add(top);
             }
 
-            // ============================== 3. 中心线 ==============================
-            var center = new Line
+            // ============================== 2b. 平面分隔带示意（分条与 rCs 一致；仅填色、无图案块） ==============================
+            if (layout != null)
             {
-                X1 = ox,
-                X2 = ox,
-                Y1 = oy + 8,
-                Y2 = padTop - 10,
-                Stroke = CenterLineBrush,
-                StrokeThickness = 0.8,
-                StrokeDashArray = new DoubleCollection(new[] { 4.0, 3.0, 1.0, 3.0 }),
-            };
-            canvas.Children.Add(center);
-            AddText(canvas, ox + 4, padTop - 18, "中心线", CenterLineBrush, 10);
+                foreach (var span in EnumeratePlanStripSpansForPreview(layout))
+                {
+                    if (span.Kind == TemplateComponentKind.MedianStrip) continue;
+                    var r = new Polygon
+                    {
+                        Stroke = OutlineBrush,
+                        StrokeThickness = 0.4,
+                        Fill = (fills.TryGetValue(span.Kind, out var f) ? f : Brushes.Transparent),
+                    };
+                    r.Points.Add(map(span.StartX, planStripBottomY));
+                    r.Points.Add(map(span.EndX, planStripBottomY));
+                    r.Points.Add(map(span.EndX, planStripTopY));
+                    r.Points.Add(map(span.StartX, planStripTopY));
+                    canvas.Children.Add(r);
+                }
+            }
+
+            // ============================== 3. 左/中/右轴线 + 轴线文字（中心竖线 x=0 无偏移；字在整段轴线的竖向中点，与 rCs 一致） ==============================
+            if (figure.AxisMarkers != null && figure.AxisMarkers.Count > 0)
+            {
+                double yLabelFig = 0.5 * (axisBottomY + axisTopY);
+                foreach (var axis in figure.AxisMarkers)
+                {
+                    bool isCenter = Math.Abs(axis.X) < 1e-9;
+                    double xLineFig = axis.X;
+                    var p0 = map(xLineFig, axisBottomY);
+                    var p1 = map(xLineFig, axisTopY);
+                    var brush = isCenter ? CenterLineBrush : RedAxisBrush;
+                    canvas.Children.Add(new Line
+                    {
+                        X1 = p0.X,
+                        Y1 = p0.Y,
+                        X2 = p1.X,
+                        Y2 = p1.Y,
+                        Stroke = brush,
+                        StrokeThickness = 0.9,
+                        StrokeDashArray = isCenter
+                            ? new DoubleCollection(new[] { 4.0, 3.0, 1.0, 3.0 })
+                            : null,
+                    });
+
+                    double xTextFig = axis.X;
+                    if (!isCenter)
+                    {
+                        bool isLeft = (axis.Label ?? string.Empty).IndexOf("左", StringComparison.Ordinal) >= 0
+                                      || axis.X < -1e-6;
+                        xTextFig = axis.X + (isLeft ? -0.3 : 0.3);
+                    }
+
+                    var pText = map(xTextFig, yLabelFig);
+                    string label = isCenter
+                        ? (string.IsNullOrWhiteSpace(axis.Label) ? "中心线" : axis.Label)
+                        : axis.Label;
+                    if (!string.IsNullOrWhiteSpace(label))
+                    {
+                        double totalLineH = label.Length * 11 * 1.05;
+                        double yStart = pText.Y - totalLineH * 0.5;
+                        AddVerticalText(canvas, pText.X, yStart, label, brush, 11);
+                    }
+                }
+            }
+            else
+            {
+                var p0 = map(0, axisBottomY);
+                var p1 = map(0, axisTopY);
+                canvas.Children.Add(new Line
+                {
+                    X1 = p0.X,
+                    Y1 = p0.Y,
+                    X2 = p1.X,
+                    Y2 = p1.Y,
+                    Stroke = CenterLineBrush,
+                    StrokeThickness = 0.8,
+                    StrokeDashArray = new DoubleCollection(new[] { 4.0, 3.0, 1.0, 3.0 }),
+                });
+                double yMid = 0.5 * (axisBottomY + axisTopY);
+                var pText = map(0, yMid);
+                double totalLineH = 3 * 11 * 1.05; // "中心线"
+                AddVerticalText(canvas, pText.X, pText.Y - totalLineH * 0.5, "中心线", CenterLineBrush, 11);
+            }
 
             // ============================== 4. Y=0 基线 ==============================
             var baseLine = new Line
@@ -190,46 +300,70 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 AddText(canvas, p.X - 15, p.Y - 16, slope.Text, SlopeBrush, 10);
             }
 
-            // ============================== 6. 主尺寸链 ==============================
-            double dimY = padTop - 2;
-            double dimTickY1 = padTop + 6;
-            double dimTickY2 = padTop - 4;
-            double dimTextY = padTop - 16;
-
-            var dimLine = new Line
-            {
-                X1 = padX * 0.7,
-                X2 = cw - padX * 0.7,
-                Y1 = dimY,
-                Y2 = dimY,
-                Stroke = DimensionBrush,
-                StrokeThickness = 0.7,
-            };
-            canvas.Children.Add(dimLine);
-
+            // ============================== 6. 主尺寸链（与 rCs 同公式 + 0.5m 图面下移） ==============================
+            // rCs 用：txtH ≈ 0.3 m（模型 m）；dimRowGap = max(0.45, txtH*1.9) = 0.57 m。
+            // 预览无 ActualTextHeight 语境，直接按同一常量铺。
+            const double previewTxtH = 0.3;
+            const double rcsDimensionChainDropFigureM = 0.5;
+            // 拉大 tier=0 与 tier=1 的间距，避免预览字体与邻近尺寸线相撞（3.2x vs 1.0x）。
+            double dimRowGap = Math.Max(0.45, previewTxtH * 1.9);
             foreach (var seg in figure.DimensionSegments)
             {
-                if (seg.Tier != 1) continue;
-                double x1 = ox + seg.StartX * s;
-                double x2 = ox + seg.EndX * s;
-                canvas.Children.Add(new Line { X1 = x1, X2 = x1, Y1 = dimTickY1, Y2 = dimTickY2, Stroke = DimensionBrush, StrokeThickness = 0.7 });
-                canvas.Children.Add(new Line { X1 = x2, X2 = x2, Y1 = dimTickY1, Y2 = dimTickY2, Stroke = DimensionBrush, StrokeThickness = 0.7 });
-                double midX = (x1 + x2) / 2;
-                AddText(canvas, midX - 15, dimTextY, seg.Text, DimensionBrush, 10);
+                double featureY;
+                double dimOffset;
+                if (seg.Track == FigureDimensionTrack.Top)
+                {
+                    featureY = planStripTopY - rcsDimensionChainDropFigureM;
+                    dimOffset = (seg.Tier == 0 ? dimRowGap * 3.2 : dimRowGap);
+                }
+                else
+                {
+                    featureY = 0.0 - rcsDimensionChainDropFigureM;
+                    dimOffset = (seg.Tier == 0 ? -dimRowGap * 3.2 : -dimRowGap);
+                }
+                double yModel = featureY + dimOffset;
+                if (seg.Track == FigureDimensionTrack.Top)
+                    yModel += dimRowGap; // 平面图上侧尺寸链整体上移一个标注间距
+                var p0 = map(seg.StartX, yModel);
+                var p1 = map(seg.EndX, yModel);
+                double yLine = 0.5 * (p0.Y + p1.Y);
+                double tExt = 4;
+                double x1 = p0.X;
+                double x2 = p1.X;
+                if (x1 > x2) (x1, x2) = (x2, x1);
+                canvas.Children.Add(new Line
+                {
+                    X1 = x1,
+                    X2 = x2,
+                    Y1 = yLine,
+                    Y2 = yLine,
+                    Stroke = DimensionBrush,
+                    StrokeThickness = 0.7,
+                });
+                canvas.Children.Add(new Line { X1 = p0.X, X2 = p0.X, Y1 = yLine - tExt, Y2 = yLine + tExt, Stroke = DimensionBrush, StrokeThickness = 0.7 });
+                canvas.Children.Add(new Line { X1 = p1.X, X2 = p1.X, Y1 = yLine - tExt, Y2 = yLine + tExt, Stroke = DimensionBrush, StrokeThickness = 0.7 });
+                double midX = 0.5 * (p0.X + p1.X);
+                // 字统一放到尺寸线「上方」（离路面/路顶一侧更远），避免下排字与上排尺寸线重叠；水平向按该段几何中点居中。
+                AddCenteredTextAbove(canvas, midX, yLine - 14, seg.Text, DimensionBrush, 10);
             }
 
-            // ============================== 7. 顶部条带名称 ==============================
+            // ============================== 7. 顶部条带名称（平面带竖向居中，竖排与 CAD 对齐） ==============================
+            const double topLabelFontSize = 11.0;
+            const double topLabelLineH = topLabelFontSize * 1.05;
             foreach (var top in figure.TopLabels)
             {
-                double x = ox + top.CenterX * s;
-                AddText(canvas, x - 20, padTop + 10, top.Text, TopLabelBrush, 10);
+                var p = map(top.CenterX, topLabelY);
+                int charCount = (top.Text ?? string.Empty).Length;
+                double totalH = charCount * topLabelLineH;
+                double yStart = p.Y - totalH * 0.5;
+                AddVerticalText(canvas, p.X, yStart, top.Text, TopLabelBrush, topLabelFontSize);
             }
 
-            // ============================== 8. 左/右方向箭头 ==============================
+            // ============================== 8. 左/右方向（紫线，与 rCs 同高 = 平面带上侧+5m） ==============================
             if (!string.IsNullOrWhiteSpace(figure.Orientation.LeftLabel)
                 || !string.IsNullOrWhiteSpace(figure.Orientation.RightLabel))
             {
-                DrawOrientation(canvas, figure.Orientation);
+                DrawOrientation(canvas, figure.Orientation, map, orientationY, onOrientationToggle);
             }
 
             // ============================== 9. 图题（与出图 + 设置规格一致） ==============================
@@ -238,15 +372,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
                 DrawingSheetTitleText.RemoveTrailingScaleInTitle(figure.Title.Text),
                 scaleDenominator ?? figure.ScaleDenominator);
 
-            // ============================== 10. 高度标签列 ==============================
-            double heightCursorY = padTop + 32;
-            foreach (var h in figure.HeightLabels)
-            {
-                AddText(canvas, 10, heightCursorY, h.Text, AnnotationBrush, 10);
-                heightCursorY += 14;
-            }
-
-            // ============================== 11. 路幅（比例已并入图题带） ==============================
+            // ============================== 10. 路幅（比例已并入图题带） ==============================
             var info = new TextBlock
             {
                 Text = string.Format(CultureInfo.InvariantCulture,
@@ -261,33 +387,113 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             canvas.Children.Add(info);
         }
 
-        private static void DrawOrientation(Canvas canvas, FigureOrientation orientation)
+        /// <param name="yModel">与 rCs <c>orientationYFig = planStripTopY + 5m</c> 一致（图面坐标 y）。</param>
+        /// <param name="onToggle">点击左右方位字时触发，交由窗口切换"北南 ↔ 西东"。</param>
+        private static void DrawOrientation(
+            Canvas canvas,
+            FigureOrientation orientation,
+            Func<double, double, Point> map,
+            double yModel,
+            Action onToggle = null)
         {
-            double cw = canvas.ActualWidth;
-            double ch = canvas.ActualHeight;
-            double y = ch - 22;
+            // 与 rCs 一致：一条水平线连接 LeftX~RightX，左端/右端小三角、外侧文字
+            var pL = map(orientation.LeftX, yModel);
+            var pR = map(orientation.RightX, yModel);
+            double y = 0.5 * (pL.Y + pR.Y);
+            pL = new Point(pL.X, y);
+            pR = new Point(pR.X, y);
 
-            AddText(canvas, 10, y - 10, orientation.LeftLabel, AnnotationBrush, 10);
-            var la = new Polyline { Stroke = AnnotationBrush, StrokeThickness = 0.9 };
-            la.Points.Add(new Point(40, y));
-            la.Points.Add(new Point(75, y));
-            canvas.Children.Add(la);
-            var lh = new Polygon { Fill = AnnotationBrush };
-            lh.Points.Add(new Point(40, y));
-            lh.Points.Add(new Point(48, y - 3));
-            lh.Points.Add(new Point(48, y + 3));
+            var main = new Line
+            {
+                X1 = pL.X,
+                Y1 = pL.Y,
+                X2 = pR.X,
+                Y2 = pR.Y,
+                Stroke = OrientationLineBrush,
+                StrokeThickness = 0.9,
+            };
+            canvas.Children.Add(main);
+            // 左端箭头：尖端朝左
+            var lh = new Polygon { Fill = OrientationLineBrush };
+            lh.Points.Add(pL);
+            lh.Points.Add(new Point(pL.X + 6, pL.Y - 3.5));
+            lh.Points.Add(new Point(pL.X + 6, pL.Y + 3.5));
             canvas.Children.Add(lh);
-
-            AddText(canvas, cw - 60, y - 10, orientation.RightLabel, AnnotationBrush, 10);
-            var ra = new Polyline { Stroke = AnnotationBrush, StrokeThickness = 0.9 };
-            ra.Points.Add(new Point(cw - 75, y));
-            ra.Points.Add(new Point(cw - 40, y));
-            canvas.Children.Add(ra);
-            var rh = new Polygon { Fill = AnnotationBrush };
-            rh.Points.Add(new Point(cw - 40, y));
-            rh.Points.Add(new Point(cw - 48, y - 3));
-            rh.Points.Add(new Point(cw - 48, y + 3));
+            // 右端箭头
+            var rh = new Polygon { Fill = OrientationLineBrush };
+            rh.Points.Add(pR);
+            rh.Points.Add(new Point(pR.X - 6, pR.Y - 3.5));
+            rh.Points.Add(new Point(pR.X - 6, pR.Y + 3.5));
             canvas.Children.Add(rh);
+            int approxLen = (orientation.LeftLabel != null) ? orientation.LeftLabel.Length : 0;
+            double leftTextX = pL.X - 8 - Math.Max(14, 6 * approxLen);
+            AddClickableText(canvas, leftTextX, pL.Y - 12, orientation.LeftLabel ?? string.Empty, AnnotationBrush, 10, onToggle);
+            AddClickableText(canvas, pR.X + 4, pR.Y - 12, orientation.RightLabel ?? string.Empty, AnnotationBrush, 10, onToggle);
+        }
+
+        /// <summary>可点击文字：单击触发 <paramref name="onClick"/>（用于北南 ↔ 西东 切换）。</summary>
+        private static void AddClickableText(Canvas canvas, double x, double y, string text, Brush brush, double size, Action onClick)
+        {
+            var tb = new TextBlock
+            {
+                Text = text,
+                Foreground = brush,
+                FontSize = size,
+                FontFamily = new FontFamily("Consolas"),
+                ToolTip = onClick != null ? "点击切换 北南 ↔ 西东" : null,
+                Cursor = onClick != null ? Cursors.Hand : Cursors.Arrow,
+                Background = Brushes.Transparent,
+            };
+            if (onClick != null)
+            {
+                tb.MouseLeftButtonUp += (s, e) =>
+                {
+                    try { onClick(); } catch { /* 预览点击吞异常，避免 UI 线程崩溃 */ }
+                    e.Handled = true;
+                };
+            }
+            Canvas.SetLeft(tb, x);
+            Canvas.SetTop(tb, y);
+            canvas.Children.Add(tb);
+        }
+
+        private readonly struct PlanStripSpanPreview
+        {
+            public double StartX { get; }
+            public double EndX { get; }
+            public TemplateComponentKind Kind { get; }
+            public PlanStripSpanPreview(double startX, double endX, TemplateComponentKind kind)
+            {
+                StartX = startX;
+                EndX = endX;
+                Kind = kind;
+            }
+        }
+
+        private static IEnumerable<PlanStripSpanPreview> EnumeratePlanStripSpansForPreview(CrossSectionLayout layout)
+        {
+            double cursor = -layout.TotalWidth / 2.0;
+            for (int i = layout.LeftBands.Count - 1; i >= 0; i--)
+            {
+                var band = layout.LeftBands[i];
+                double end = cursor + band.Width;
+                yield return new PlanStripSpanPreview(cursor, end, band.Kind);
+                cursor = end;
+            }
+
+            if (layout.CenterMedianWidth > 1e-9)
+            {
+                double end = cursor + layout.CenterMedianWidth;
+                cursor = end;
+            }
+
+            for (int i = 0; i < layout.RightBands.Count; i++)
+            {
+                var band = layout.RightBands[i];
+                double end = cursor + band.Width;
+                yield return new PlanStripSpanPreview(cursor, end, band.Kind);
+                cursor = end;
+            }
         }
 
         private static void AddText(Canvas canvas, double x, double y, string text, Brush brush, double size)
@@ -302,6 +508,47 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             Canvas.SetLeft(tb, x);
             Canvas.SetTop(tb, y);
             canvas.Children.Add(tb);
+        }
+
+        /// <summary>水平居中于 <paramref name="centerX"/>，顶边在 <paramref name="topY"/>（与旧版 AddText 的垂直偏移一致）。</summary>
+        private static void AddCenteredTextAbove(Canvas canvas, double centerX, double topY, string text, Brush brush, double size)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            var tb = new TextBlock
+            {
+                Text = text,
+                Foreground = brush,
+                FontSize = size,
+                FontFamily = new FontFamily("Consolas"),
+            };
+            tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(tb, centerX - tb.DesiredSize.Width * 0.5);
+            Canvas.SetTop(tb, topY);
+            canvas.Children.Add(tb);
+        }
+
+        /// <summary>竖排（逐字向下）显示，顶端以 <paramref name="xTop"/>,<paramref name="yTop"/> 为起点。</summary>
+        private static void AddVerticalText(Canvas canvas, double xTop, double yTop, string text, Brush brush, double size)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            double lineH = size * 1.05;
+            double y = yTop;
+            foreach (char c in text)
+            {
+                if (c == ' ') { y += lineH; continue; }
+                var tb = new TextBlock
+                {
+                    Text = c.ToString(),
+                    Foreground = brush,
+                    FontSize = size,
+                };
+                tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double w = tb.DesiredSize.Width;
+                Canvas.SetLeft(tb, xTop - w * 0.5);
+                Canvas.SetTop(tb, y);
+                canvas.Children.Add(tb);
+                y += lineH;
+            }
         }
     }
 }

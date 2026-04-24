@@ -1,10 +1,13 @@
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
 using Autofac;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -114,6 +117,9 @@ namespace HyCADTool.Refactored.Presentation
 
                 WriteMessage("\n✓ 配置已加载");
 
+                // HyCAD 标准线型（点划线 / 虚线）：须在图层落表前注入当前图形线型表
+                TryEnsureHyCadStandardLinetypesLoaded();
+
                 // 一次性初始化所有样式和图层
                 InitializeStylesAndLayers();
 
@@ -213,6 +219,65 @@ namespace HyCADTool.Refactored.Presentation
             catch (System.Exception ex)
             {
                 WriteMessage($"\n  ⚠ 配置加载警告：{ex.Message}（使用默认值）");
+            }
+        }
+
+        /// <summary>
+        /// 从程序集旁 <c>Resources/HyCAD-Linetypes.lin</c> 按需加载「点划线」「虚线」。
+        /// 无活动文档、文件缺失或加载失败时仅写命令行警告，不阻断初始化。
+        /// </summary>
+        private void TryEnsureHyCadStandardLinetypesLoaded()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+                return;
+
+            string asmPath = typeof(PluginInitializer).Assembly.Location;
+            if (string.IsNullOrEmpty(asmPath))
+            {
+                WriteMessage("\n  ⚠ [线型] 无法解析程序集路径，跳过 HyCAD 标准线型注入。");
+                return;
+            }
+
+            string linPath = Path.Combine(Path.GetDirectoryName(asmPath) ?? "", "Resources", "HyCAD-Linetypes.lin");
+            if (!File.Exists(linPath))
+            {
+                WriteMessage($"\n  ⚠ [线型] 未找到 {linPath}，跳过点划线/虚线注入。");
+                return;
+            }
+
+            Domain.Interfaces.IStyleService styleService;
+            try
+            {
+                styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ [线型] StyleService 不可用，跳过线型注入：{ex.Message}");
+                return;
+            }
+
+            try
+            {
+                bool needCenter;
+                bool needDashed;
+                using (doc.LockDocument())
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    var lt = (LinetypeTable)tr.GetObject(doc.Database.LinetypeTableId, OpenMode.ForRead);
+                    needCenter = !lt.Has(HyLinetypeNames.Center);
+                    needDashed = !lt.Has(HyLinetypeNames.Dashed);
+                    tr.Commit();
+                }
+
+                if (needCenter)
+                    styleService.LoadLinetype(linPath, HyLinetypeNames.Center);
+                if (needDashed)
+                    styleService.LoadLinetype(linPath, HyLinetypeNames.Dashed);
+            }
+            catch (System.Exception ex)
+            {
+                WriteMessage($"\n  ⚠ [线型] 注入 HyCAD 标准线型失败：{ex.Message}");
             }
         }
 
@@ -658,6 +723,8 @@ namespace HyCADTool.Refactored.Presentation
 
             try
             {
+                TryEnsureHyCadStandardLinetypesLoaded();
+
                 var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
                 var layerService = ServiceLocator.Resolve<Domain.Interfaces.ILayerService>();
 

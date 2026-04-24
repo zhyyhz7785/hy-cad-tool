@@ -3,6 +3,9 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using System.Collections.Generic;
 using System.Linq;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands
@@ -12,6 +15,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class CreateLayoutViewportsCommand
     {
+        private static string ViewportLayerName => UserLayerNameResolver.Get(LayerSemanticIds.PublicViewport, LayerBuiltinDefaults.PublicViewport);
+
         public void Execute()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -50,13 +55,13 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     foreach (ObjectId id in ms)
                     {
                         var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
-                        if (ent is Polyline pl && pl.Layer == "00_hy_2公共_视口" && pl.Closed)
+                        if (ent is Polyline pl && pl.Layer == ViewportLayerName && pl.Closed)
                             polylines.Add(pl);
                     }
 
                     if (polylines.Count == 0)
                     {
-                        ed.WriteMessage("\n未找到图层 00_hy_2公共_视口 上的闭合多段线");
+                        ed.WriteMessage($"\n未找到图层 {ViewportLayerName} 上的闭合多段线");
                         return;
                     }
 
@@ -94,7 +99,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                             ViewTarget = Point3d.Origin,
                             ViewHeight = hModel,
                             CustomScale = scale,
-                            Layer = "00_hy_2公共_视口"
+                            Layer = ViewportLayerName
                         };
 
                         ps.AppendEntity(vp);

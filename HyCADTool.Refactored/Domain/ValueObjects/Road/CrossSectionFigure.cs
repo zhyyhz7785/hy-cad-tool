@@ -23,10 +23,10 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>所有几何顶点（按绘制顺序），轮廓折线逐对相连构成。</summary>
         public IReadOnlyList<FigureVertex> Vertices { get; }
 
-        /// <summary>面板：逐段填色（沥青 / 人行道 / 绿化 / 中分带），按 Kind 路由到对应图层。</summary>
+        /// <summary>面板：逐段填色（沥青 / 人行道 / 绿化 / 分隔带），按 Kind 路由到对应图层。</summary>
         public IReadOnlyList<FigurePanel> Panels { get; }
 
-        /// <summary>底部尺寸链分段（Tier=0 总长；Tier=1 分段；Tier=2 顶部总长）。</summary>
+        /// <summary>底部尺寸链分段（Tier=0 下侧在中心线拆两条总长；上侧仍一条；Tier=1 分段）。</summary>
         public IReadOnlyList<FigureDimensionSegment> DimensionSegments { get; }
 
         /// <summary>横坡标注（每条带中央一个）。</summary>
@@ -37,6 +37,9 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
 
         /// <summary>顶部文字标签排（竖写，每条带一个；Y 在顶栏）。</summary>
         public IReadOnlyList<FigureTopLabel> TopLabels { get; }
+
+        /// <summary>左红线 / 中心线 / 右红线等竖向轴线标记。</summary>
+        public IReadOnlyList<FigureAxisMarker> AxisMarkers { get; }
 
         /// <summary>方位指示（例如左"北"右"南"）。</summary>
         public FigureOrientation Orientation { get; }
@@ -50,6 +53,9 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
         /// <summary>比例尺分母（1:100 → 100），仅为渲染端快速访问。</summary>
         public int ScaleDenominator { get; }
 
+        /// <summary>顶部平面带沿道路方向长度（m）。</summary>
+        public double PlanStripLength { get; }
+
         public CrossSectionFigure(
             IReadOnlyList<FigureVertex> vertices,
             IReadOnlyList<FigurePanel> panels,
@@ -57,10 +63,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             IReadOnlyList<FigureSlopeLabel> slopeLabels,
             IReadOnlyList<FigureHeightLabel> heightLabels,
             IReadOnlyList<FigureTopLabel> topLabels,
+            IReadOnlyList<FigureAxisMarker> axisMarkers,
             FigureOrientation orientation,
             FigureTitle title,
             double totalWidth,
-            int scaleDenominator)
+            int scaleDenominator,
+            double planStripLength)
         {
             Vertices = vertices ?? Array.Empty<FigureVertex>();
             Panels = panels ?? Array.Empty<FigurePanel>();
@@ -68,10 +76,12 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             SlopeLabels = slopeLabels ?? Array.Empty<FigureSlopeLabel>();
             HeightLabels = heightLabels ?? Array.Empty<FigureHeightLabel>();
             TopLabels = topLabels ?? Array.Empty<FigureTopLabel>();
+            AxisMarkers = axisMarkers ?? Array.Empty<FigureAxisMarker>();
             Orientation = orientation;
             Title = title;
             TotalWidth = totalWidth;
             ScaleDenominator = scaleDenominator;
+            PlanStripLength = planStripLength;
         }
     }
 
@@ -123,43 +133,60 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
     /// <summary>
     /// 尺寸链的一段。
     ///
-    /// 同一 <see cref="Tier"/> 的段集合在渲染时被视作一条连续尺寸线：
+    /// 同一 <see cref="Track"/> + <see cref="Tier"/> 的各段在渲染时各建一条尺寸线（<c>Bottom + Tier=0</c> 在中心线拆为两条）。
     /// <list type="bullet">
-    ///   <item><c>Tier=0</c> 底部 <b>总长链</b>（左半 / 中分带 / 右半 三段）。</item>
-    ///   <item><c>Tier=1</c> 底部 <b>分段链</b>（每条带一格）。</item>
-    ///   <item><c>Tier=2</c> 顶部 <b>总红线宽</b>（一行）。</item>
+    ///   <item><c>Tier=0</c>：总宽；下侧为左半、右半各一条。</item>
+    ///   <item><c>Tier=1</c>：分段链。</item>
+    ///   <item><see cref="Track"/>：顶部 / 底部分开。</item>
     /// </list>
     /// </summary>
+    public enum FigureDimensionTrack
+    {
+        Top = 0,
+        Bottom = 1,
+    }
+
     public readonly struct FigureDimensionSegment
     {
         public double StartX { get; }
         public double EndX { get; }
         public string Text { get; }
         public int Tier { get; }
+        public FigureDimensionTrack Track { get; }
 
-        public FigureDimensionSegment(double startX, double endX, string text, int tier)
+        public FigureDimensionSegment(double startX, double endX, string text, int tier, FigureDimensionTrack track = FigureDimensionTrack.Bottom)
         {
             StartX = startX;
             EndX = endX;
             Text = text ?? string.Empty;
             Tier = tier;
+            Track = track;
         }
 
         public double Length => Math.Abs(EndX - StartX);
     }
 
-    /// <summary>横坡标注：位置 + 文本（带"%"）。</summary>
+    /// <summary>横坡标注：位置 + 文本（带"%"）+ 水平箭头方向。</summary>
     public readonly struct FigureSlopeLabel
     {
         public double PositionX { get; }
         public double PositionY { get; }
         public string Text { get; }
 
+        /// <summary>水平箭头指向：+1 向右（下坡方向），-1 向左，0 无箭头。</summary>
+        public int DirectionSign { get; }
+
         public FigureSlopeLabel(double positionX, double positionY, string text)
+            : this(positionX, positionY, text, 0)
+        {
+        }
+
+        public FigureSlopeLabel(double positionX, double positionY, string text, int directionSign)
         {
             PositionX = positionX;
             PositionY = positionY;
             Text = text ?? string.Empty;
+            DirectionSign = directionSign == 0 ? 0 : (directionSign > 0 ? 1 : -1);
         }
     }
 
@@ -196,6 +223,19 @@ namespace HyCADTool.Refactored.Domain.ValueObjects.Road
             CenterY = centerY;
             Text = text ?? string.Empty;
             Vertical = vertical;
+        }
+    }
+
+    /// <summary>竖向轴线标记（如道路左红线 / 中心线 / 道路右红线）。</summary>
+    public readonly struct FigureAxisMarker
+    {
+        public double X { get; }
+        public string Label { get; }
+
+        public FigureAxisMarker(double x, string label)
+        {
+            X = x;
+            Label = label ?? string.Empty;
         }
     }
 

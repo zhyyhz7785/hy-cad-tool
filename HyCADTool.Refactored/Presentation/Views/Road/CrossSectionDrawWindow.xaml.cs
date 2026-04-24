@@ -83,11 +83,15 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             {
                 _currentFigure = viewModel.LastFigure;
                 ApplyPanelVisibility();
+                if (SettingsPanelViewModel.Current != null)
+                    SettingsPanelViewModel.Current.PropertyChanged += OnSettingsPropertyChanged;
                 RedrawPreview();
             };
 
             Closed += (_, __) =>
             {
+                if (SettingsPanelViewModel.Current != null)
+                    SettingsPanelViewModel.Current.PropertyChanged -= OnSettingsPropertyChanged;
                 viewModel.PreviewRequested -= OnPreviewRequested;
                 viewModel.CloseRequested -= OnCloseRequested;
                 viewModel.PropertyChanged -= OnVmPropertyChanged;
@@ -377,10 +381,36 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             RedrawPreview();
         }
 
+        private void OnSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SettingsPanelViewModel.RoadCrossSectionPlanStripVerticalOffsetM))
+            {
+                RedrawPreview();
+            }
+            else if (e.PropertyName == nameof(SettingsPanelViewModel.RoadCrossSectionOrientationUseWestEast))
+            {
+                // 方位字改变时必须重建 Figure（FigureOrientation.LeftLabel/RightLabel 是不可变的），
+                // 让 VM.Recalculate 按新设置重新生成，PreviewRequested 会回灌到 _currentFigure 再 RedrawPreview。
+                _vm?.Recalculate();
+            }
+        }
+
         private void RedrawPreview()
         {
+            double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
             CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator, null,
-                SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec());
+                SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec(),
+                layout: _vm?.LastLayout,
+                planStripVerticalOffsetM: planOff,
+                onOrientationToggle: OnOrientationLabelClicked);
+        }
+
+        /// <summary>预览中点击"北/南"或"西/东"时切换方位字组（持久化进 Settings 并广播给 VM）。</summary>
+        private static void OnOrientationLabelClicked()
+        {
+            var sp = SettingsPanelViewModel.Current;
+            if (sp == null) return;
+            sp.RoadCrossSectionOrientationUseWestEast = !sp.RoadCrossSectionOrientationUseWestEast;
         }
 
         private void OnPickGeometryRequested(object sender, BandRowViewModel row)

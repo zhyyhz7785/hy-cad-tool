@@ -3,6 +3,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Entities;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -21,9 +23,9 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         private const string LayerBoltOutline = "00_Hy_螺栓_轮廓";
         private const string LayerBoltPrefix = "00_Hy_螺栓";
         private const string LayerBoltNumber = "00_Hy_螺栓_轮廓_编号";
-        private const string LayerAxisLine = "00_hy_3公共_轴线_总";
-        private const string LayerAxisText = "00_hy_3公共_轴线_总_文字";
-        private const string LayerTable = "00_hy_4公共_表格";
+        private static string LayerAxisLine => UserLayerNameResolver.Get(LayerSemanticIds.PublicAxisMain, LayerBuiltinDefaults.PublicAxisMain);
+        private static string LayerAxisText => UserLayerNameResolver.Get(LayerSemanticIds.PublicAxisText, LayerBuiltinDefaults.PublicAxisText);
+        private static string LayerTable => UserLayerNameResolver.Get(LayerSemanticIds.PublicTableMain, LayerBuiltinDefaults.PublicTableMain);
 
         #endregion
 

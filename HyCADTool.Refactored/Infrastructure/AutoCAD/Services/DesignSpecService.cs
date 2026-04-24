@@ -3,6 +3,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using FontDescriptor = Autodesk.AutoCAD.GraphicsInterface.FontDescriptor;
 using HyCADTool.Refactored.Domain.Models.Text;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using Newtonsoft.Json;
 using System;
@@ -23,8 +25,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
     /// </summary>
     public class DesignSpecService
     {
-        private const string LAYER_TEXT = "00_hy_1公共_文字";
-        private const string LAYER_FRAME = "00_hy_1公共_图框";
+        private static string LayerText => UserLayerNameResolver.Get(LayerSemanticIds.PublicNoteGeneral, LayerBuiltinDefaults.NoteGeneral);
+        private static string LayerFrame => UserLayerNameResolver.Get(LayerSemanticIds.TitleBlock, LayerBuiltinDefaults.TitleBlock);
         private const string XREC_KEY_MD = "HyDesignSpec_MD";
         private const string XREC_KEY_CFG = "HyDesignSpec_CFG";
         private const string XREC_KEY_GROUP = "HyDesignSpec_Group";
@@ -425,7 +427,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 pendingTextBlocks.Clear();
 
                 var mtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, content);
-                SetLayer(db, tr, mtext, LAYER_TEXT);
+                SetLayer(db, tr, mtext, LayerText);
                 btr.AppendEntity(mtext);
                 tr.AddNewlyCreatedDBObject(mtext, true);
 
@@ -468,7 +470,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         if (string.IsNullOrWhiteSpace(partialContent)) continue;
 
                         var testMtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, partialContent);
-                        SetLayer(db, tr, testMtext, LAYER_TEXT);
+                        SetLayer(db, tr, testMtext, LayerText);
                         btr.AppendEntity(testMtext);
                         tr.AddNewlyCreatedDBObject(testMtext, true);
 
@@ -495,7 +497,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                         string firstLineMd = lines[0];
                         string firstLineContent = renderer.Convert(firstLineMd) ?? firstLineMd;
                         var firstLineMText = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, firstLineContent);
-                        SetLayer(db, tr, firstLineMText, LAYER_TEXT);
+                        SetLayer(db, tr, firstLineMText, LayerText);
                         btr.AppendEntity(firstLineMText);
                         tr.AddNewlyCreatedDBObject(firstLineMText, true);
                         double firstEstimate = EstimateMarkdownHeightFallback(firstLineMd, config, textWidth);
@@ -533,7 +535,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     if (string.IsNullOrWhiteSpace(partialContent)) continue;
 
                     var testMtext = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, partialContent);
-                    SetLayer(db, tr, testMtext, LAYER_TEXT);
+                    SetLayer(db, tr, testMtext, LayerText);
                     btr.AppendEntity(testMtext);
                     tr.AddNewlyCreatedDBObject(testMtext, true);
 
@@ -562,7 +564,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     if (!string.IsNullOrWhiteSpace(firstBlockContent))
                     {
                         var firstBlockMText = CreateMTextEntity(config, textStyleId, textLeftX, cursorTopY, z, textWidth, firstBlockContent);
-                        SetLayer(db, tr, firstBlockMText, LAYER_TEXT);
+                        SetLayer(db, tr, firstBlockMText, LayerText);
                         btr.AppendEntity(firstBlockMText);
                         tr.AddNewlyCreatedDBObject(firstBlockMText, true);
                         double firstEstimate = EstimateMarkdownHeightFallback(firstBlockMd, config, textWidth);
@@ -1360,7 +1362,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 table.Rows[r].Height = baseRowHeight * lc;
             }
 
-            SetLayer(db, tr, table, LAYER_TEXT);
+            SetLayer(db, tr, table, LayerText);
             btr.AppendEntity(table);
             tr.AddNewlyCreatedDBObject(table, true);
             if (anchorEntityId.IsNull)
@@ -1642,7 +1644,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             outerPoly.AddVertexAt(3, new Point2d(pageLeftX, pageTopY - h), 0, 0, 0);
             outerPoly.Closed = true;
             outerPoly.Elevation = z;
-            SetLayer(db, tr, outerPoly, LAYER_FRAME);
+            SetLayer(db, tr, outerPoly, LayerFrame);
             btr.AppendEntity(outerPoly);
             tr.AddNewlyCreatedDBObject(outerPoly, true);
             ExtensionDictionaryService.WriteLongString(tr, outerPoly, groupId, XREC_KEY_GROUP);
@@ -1660,7 +1662,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             innerPoly.AddVertexAt(3, new Point2d(pageLeftX + ml, pageTopY - h + mb), 0, 0, 0);
             innerPoly.Closed = true;
             innerPoly.Elevation = z;
-            SetLayer(db, tr, innerPoly, LAYER_FRAME);
+            SetLayer(db, tr, innerPoly, LayerFrame);
             btr.AppendEntity(innerPoly);
             tr.AddNewlyCreatedDBObject(innerPoly, true);
             ExtensionDictionaryService.WriteLongString(tr, innerPoly, groupId, XREC_KEY_GROUP);

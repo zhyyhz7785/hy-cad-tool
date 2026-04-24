@@ -242,6 +242,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
             public int DesignSpeed { get; set; }
             public int ScaleDenominator { get; set; }
             public string Title { get; set; }
+            public double PlanStripLength { get; set; } = 6.5;
             public double CenterlinePosition { get; set; } = double.NaN;
             public double ProfileElevationOffset { get; set; }
             public bool IsEmptyAssembly { get; set; }
@@ -267,6 +268,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     DesignSpeed = l.DesignSpeed,
                     ScaleDenominator = l.ScaleDenominator,
                     Title = l.Title,
+                    PlanStripLength = l.PlanStripLength,
                     CenterlinePosition = l.CenterlinePosition,
                     ProfileElevationOffset = l.ProfileElevationOffset,
                     IsEmptyAssembly = l.IsEmptyAssembly,
@@ -305,11 +307,12 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                     DesignSpeed > 0 ? DesignSpeed : 50,
                     ScaleDenominator > 0 ? ScaleDenominator : 100,
                     Title ?? "标准横断面图",
-                    CenterlinePosition,
-                    ProfileElevationOffset,
-                    IsEmptyAssembly,
-                    StationStart,
-                    StationEnd,
+                    planStripLength: PlanStripLength > 0 ? PlanStripLength : 6.5,
+                    centerlinePosition: CenterlinePosition,
+                    profileElevationOffset: ProfileElevationOffset,
+                    isEmptyAssembly: IsEmptyAssembly,
+                    stationStart: StationStart,
+                    stationEnd: StationEnd,
                     additionalStationRanges: extra,
                     medianLeftSubWidth: MedianLeftSubWidth,
                     medianLeftCrossSlopePct: MedianLeftCrossSlopePct,

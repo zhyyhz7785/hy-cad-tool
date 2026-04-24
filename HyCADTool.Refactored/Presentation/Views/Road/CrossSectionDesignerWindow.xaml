@@ -126,7 +126,7 @@
                                       Style="{StaticResource BlenderComboBox}"/>
                         </bui:PropertyRow>
 
-                        <bui:PropertyRow Label="中分带宽 (m)">
+                        <bui:PropertyRow Label="分隔带宽 (m)">
                             <bui:NumericSlider Value="{Binding CenterMedianWidth, Mode=TwoWay}"
                                                Minimum="0"
                                                Maximum="20"

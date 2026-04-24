@@ -1,6 +1,8 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +15,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class PackViewportsCommand
     {
+        private static string ViewportLayerName => UserLayerNameResolver.Get(LayerSemanticIds.PublicViewport, LayerBuiltinDefaults.PublicViewport);
+
         #region 内部类型
 
         private class VpInfo
@@ -95,7 +99,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         if (id.ObjectClass.Name != "AcDbViewport") continue;
                         var vp = tr.GetObject(id, OpenMode.ForRead) as Viewport;
                         if (vp == null || vp.IsErased || vp.Number == 1) continue;
-                        if (vp.Layer != "00_hy_2公共_视口") continue;
+                        if (vp.Layer != ViewportLayerName) continue;
 
                         vpList.Add(new VpInfo
                         {

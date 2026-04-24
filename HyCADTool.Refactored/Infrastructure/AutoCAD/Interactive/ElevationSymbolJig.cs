@@ -2,6 +2,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Enums;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -36,7 +38,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Interactive
         /// <summary>
         /// 标高图层名称
         /// </summary>
-        public const string ElevationLayerName = "00_hy_3公共_标注4_标高";
+        public static string ElevationLayerName => UserLayerNameResolver.Get(LayerSemanticIds.ElevationSymbol, LayerBuiltinDefaults.ElevationSymbol);
         public const short ElevationLayerColor = 140;
 
         /// <summary>

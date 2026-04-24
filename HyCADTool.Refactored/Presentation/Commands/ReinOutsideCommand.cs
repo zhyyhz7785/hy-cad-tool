@@ -1,8 +1,10 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
-
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -16,7 +18,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class ReinOutsideCommand
     {
-        private const string LayerLineRein = "01_hy_1钢筋_线钢筋_外部";
+        private static string LayerLineRein => UserLayerNameResolver.Get(LayerSemanticIds.ReinLineExternal, LayerBuiltinDefaults.ReinLineExternal);
 
         public void Execute()
         {

@@ -4,8 +4,10 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Services;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Reinforcement;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Converters;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using System;
@@ -29,10 +31,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         private const string DefaultMLeaderStyleName = "0_Hy_40_MLeader";
         private const string DefaultTableStyleName = "0_Hy_40_Table";
 
-        private const string LayerLineRein = "01_hy_1钢筋_线钢筋";
-        private const string LayerDotRein = "01_hy_1钢筋_点钢筋";
-        private const string LayerDimOutside = "00_hy_3公共_标注1_外";
-        private const string LayerLeader = "00_hy_3公共_标注3_引线";
+        private static string LayerLineRein => UserLayerNameResolver.Get(LayerSemanticIds.ReinLine, LayerBuiltinDefaults.ReinLine);
+        private static string LayerDotRein => UserLayerNameResolver.Get(LayerSemanticIds.ReinPoint, LayerBuiltinDefaults.ReinPoint);
+        private static string LayerDimOutside => UserLayerNameResolver.Get(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
+        private static string LayerLeader => UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
         public ReinService(ILayerService layerService, IStyleService styleService)
         {
             _layerService = layerService ?? throw new ArgumentNullException(nameof(layerService));

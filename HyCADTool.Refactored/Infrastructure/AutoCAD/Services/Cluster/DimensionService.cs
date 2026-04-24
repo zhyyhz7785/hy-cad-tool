@@ -3,7 +3,10 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Cluster;
 using HyCADTool.Refactored.Domain.Enums;
 using HyCADTool.Refactored.Domain.Models.Configuration;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Utilities;
 using System;
 using System.Collections.Generic;
@@ -26,11 +29,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
             ClusterConfig cfgX, ClusterConfig cfgY,
             ClusterDimOptions options,
             ClusterFactoryService clusterFactory,
-            string layerNameX = "00_hy_3公共_标注2_内x",
+            string layerNameX = null,
             short layerColorX = 93,
-            string layerNameY = "00_hy_3公共_标注2_内y",
+            string layerNameY = null,
             short layerColorY = 45)
         {
+            layerNameX = string.IsNullOrWhiteSpace(layerNameX)
+                ? UserLayerNameResolver.Get(LayerSemanticIds.CommonDimInsideHorizontal, LayerBuiltinDefaults.CommonDimInsideHorizontal)
+                : layerNameX;
+            layerNameY = string.IsNullOrWhiteSpace(layerNameY)
+                ? UserLayerNameResolver.Get(LayerSemanticIds.CommonDimInsideVertical, LayerBuiltinDefaults.CommonDimInsideVertical)
+                : layerNameY;
+
             var result = new DimensionResult();
             var comparer = new Point2DComparer(0.001);
 

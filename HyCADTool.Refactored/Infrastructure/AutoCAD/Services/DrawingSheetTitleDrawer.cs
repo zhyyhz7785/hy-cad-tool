@@ -2,6 +2,7 @@
 
 using System;
 using System.Globalization;
+using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
@@ -25,7 +26,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             ObjectId mainTextStyleId,
             ObjectId scaleTextStyleId,
             double scaleTextHeight,
-            string? titleTextLayerNameOverride)
+            string? titleTextLayerNameOverride,
+            bool useWhiteColor = false)
         {
             if (db == null) throw new ArgumentNullException(nameof(db));
             if (appendAndTag == null) throw new ArgumentNullException(nameof(appendAndTag));
@@ -54,6 +56,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 main.TextStyleId = mainTextStyleId;
             }
+            if (useWhiteColor)
+                SetAciWhite(main);
             main.AdjustAlignment(db);
             appendAndTag(main);
 
@@ -82,8 +86,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             double y2c = y1c - 0.5 * t1 - d12 - 0.5 * t2;
             int n = 1;
 
-            n += AddHLine(appendAndTag, decoLayer, minX, maxX, y1c, t1);
-            n += AddHLine(appendAndTag, decoLayer, minX, maxX, y2c, t2);
+            n += AddHLine(appendAndTag, decoLayer, minX, maxX, y1c, t1, useWhiteColor);
+            n += AddHLine(appendAndTag, decoLayer, minX, maxX, y2c, t2, useWhiteColor);
 
             if (spec.ShowScale && scaleDenominator > 0)
             {
@@ -106,6 +110,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                     AlignmentPoint = scalePt,
                 };
                 if (!scaleTextStyleId.IsNull) scale.TextStyleId = scaleTextStyleId;
+                if (useWhiteColor)
+                    SetAciWhite(scale);
                 scale.AdjustAlignment(db);
                 appendAndTag(scale);
                 n++;
@@ -113,7 +119,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             if (spec.ShowCrosshair)
             {
-                n += AddCrosshair(appendAndTag, decoLayer, spec, h, minX, midY);
+                n += AddCrosshair(appendAndTag, decoLayer, spec, h, minX, midY, useWhiteColor);
             }
 
             return n;
@@ -125,7 +131,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             double x0,
             double x1,
             double y,
-            double width)
+            double width,
+            bool useWhiteColor)
         {
             var pl = new Polyline(2);
             pl.AddVertexAt(0, new Point2d(x0, y), 0, 0, 0);
@@ -135,8 +142,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             pl.ColorIndex = 256;
             pl.ConstantWidth = Math.Max(1e-6, width);
             pl.Elevation = 0;
+            if (useWhiteColor) SetAciWhite(pl);
             append(pl);
             return 1;
+        }
+
+        private static void SetAciWhite(Entity e)
+        {
+            if (e == null) return;
+            e.Color = Color.FromColorIndex(ColorMethod.ByAci, 7);
         }
 
         private static int AddCrosshair(
@@ -145,7 +159,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             DrawingSheetTitleSpec spec,
             double h,
             double minX,
-            double textMidY)
+            double textMidY,
+            bool useWhiteColor)
         {
             int n = 0;
             double R = spec.CrosshairArmLengthFactor * h;
@@ -155,8 +170,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var v0 = new Point3d(minX, cy - R, 0);
             var v1 = new Point3d(minX, cy + R, 0);
-            n += AddLine(append, layer, v0, v1);
-            n += AddLine(append, layer, new Point3d(minX - 2.0 * R, cy, 0), new Point3d(minX, cy, 0));
+            n += AddLine(append, layer, v0, v1, useWhiteColor);
+            n += AddLine(append, layer, new Point3d(minX - 2.0 * R, cy, 0), new Point3d(minX, cy, 0), useWhiteColor);
 
             double s = 2.0 * core;
             if (s < 1e-8) s = 0.12 * h;
@@ -171,14 +186,18 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             sq.Layer = layer;
             sq.ColorIndex = 256;
             sq.ConstantWidth = 0.0;
+            if (useWhiteColor)
+                SetAciWhite(sq);
             append(sq);
             n++;
             return n;
         }
 
-        private static int AddLine(Action<Entity> append, string layer, Point3d a, Point3d b)
+        private static int AddLine(Action<Entity> append, string layer, Point3d a, Point3d b, bool useWhiteColor)
         {
             var ln = new Line(a, b) { Layer = layer, ColorIndex = 256 };
+            if (useWhiteColor)
+                SetAciWhite(ln);
             append(ln);
             return 1;
         }

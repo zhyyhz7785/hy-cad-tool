@@ -132,7 +132,7 @@ namespace HyCADTool.Refactored.Tests.Domain.Services.Road
 
             var svc = new CorridorSweepService();
             var plan = svc.Sweep(aln, layout);
-            // 中分带 4m 半宽 2m，加 Lane 3.5m → 总 5.5m 偏移
+            // 分隔带 4m 半宽 2m，加 Lane 3.5m → 总 5.5m 偏移
             plan.LeftRedLine.Vertices[0].Y.Should().BeApproximately(-5.5, 1e-6);
             plan.RightRedLine.Vertices[0].Y.Should().BeApproximately(5.5, 1e-6);
         }

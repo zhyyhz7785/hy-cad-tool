@@ -551,33 +551,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
 
             var db = doc.Database;
 
+            using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 try
                 {
+                    var items = LinetypeTableExporter.Collect(tr, db);
                     using (var writer = new StreamWriter(outputPath, false, System.Text.Encoding.UTF8))
-                    {
-                        var linetypeTable = (LinetypeTable)tr.GetObject(db.LinetypeTableId, OpenMode.ForRead);
-
-                        writer.WriteLine("; Exported from DWG");
-                        writer.WriteLine("; Generated on " + DateTime.Now);
-                        writer.WriteLine();
-
-                        foreach (ObjectId ltId in linetypeTable)
-                        {
-                            var ltRecord = (LinetypeTableRecord)tr.GetObject(ltId, OpenMode.ForRead);
-                            if (!ltRecord.IsErased && ltRecord.Name != "ByLayer" && ltRecord.Name != "ByBlock")
-                            {
-                                writer.WriteLine($"*{ltRecord.Name},{ltRecord.Comments}");
-                                // 这里可以添加更复杂的线型定义导出逻辑
-                                writer.WriteLine("A,1.0");
-                                writer.WriteLine();
-                            }
-                        }
-                    }
+                        LinetypeTableExporter.WriteLin(items, writer);
 
                     tr.Commit();
-                    doc.Editor.WriteMessage($"\n✓ 已导出线型到文件: {outputPath}");
+                    doc.Editor.WriteMessage($"\n✓ 已导出线型到文件: {outputPath}（{items.Count} 条）");
                 }
                 catch (System.Exception ex)
                 {

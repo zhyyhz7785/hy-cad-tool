@@ -22,14 +22,14 @@
     { "code": "gutter",             "label": "边沟",         "role": "edge",     "cn": "边沟" },
     { "code": "sidewalk",           "label": "人行道",       "role": "surface",  "cn": "人行道" },
     { "code": "shoulder",           "label": "路肩",         "role": "surface",  "cn": "路肩" },
-    { "code": "median",             "label": "中央分隔带",   "role": "surface",  "cn": "中分带" }
+    { "code": "median",             "label": "中央分隔带",   "role": "surface",  "cn": "分隔带" }
   ],
   "componentKinds": [
     { "code": "pavement",     "label": "路面结构",   "cn": "沥青/水泥" },
     { "code": "kerb",         "label": "缘石",       "cn": "立缘/平缘" },
     { "code": "sidewalkSlab", "label": "人行道板",   "cn": "步道板" },
     { "code": "shoulderSlab", "label": "路肩结构",   "cn": "路肩" },
-    { "code": "medianSlab",   "label": "中分带结构", "cn": "中分带" }
+    { "code": "medianSlab",   "label": "分隔带结构", "cn": "分隔带" }
   ],
   "targetMappingKinds": [
     { "code": "offset",     "label": "偏距目标",   "example": "车行道宽度" },

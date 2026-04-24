@@ -208,7 +208,7 @@ namespace HyCADTool.Refactored.Domain.Services.Road
         /// <summary>右红线（最外条带外缘）。</summary>
         public Polyline3D RightRedLine { get; set; }
 
-        /// <summary>左半各条带分界线（不含中分带中心、不含左红线）。</summary>
+        /// <summary>左半各条带分界线（不含分隔带中心、不含左红线）。</summary>
         public List<Polyline3D> LeftBandDividers { get; set; } = new List<Polyline3D>();
 
         /// <summary>右半各条带分界线。</summary>

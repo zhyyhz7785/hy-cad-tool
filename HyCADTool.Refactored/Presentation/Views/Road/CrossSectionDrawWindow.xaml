@@ -37,6 +37,34 @@
     <bui:BlenderWindow.Resources>
         <ResourceDictionary>
             <cv:DoublePrecisionMultiConverter x:Key="DoublePrecisionMultiConverter" />
+            <DataTemplate x:Key="RcsLayerFillEditorDataTemplate" DataType="{x:Type vm:LayerFillViewModel}">
+                <StackPanel>
+                    <bui:PropertyRow Label="图案">
+                        <CheckBox Content="启用" IsChecked="{Binding PatternEnabled, Mode=TwoWay}" Style="{StaticResource BlenderCheckBox}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="图案名">
+                        <ComboBox IsEditable="True" ItemsSource="{Binding DataContext.HatchPatternNameList, RelativeSource={RelativeSource AncestorType={x:Type bui:BlenderWindow}}}" StaysOpenOnEdit="True" Style="{StaticResource BlenderComboBox}" Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="比例/角度 (°)">
+                        <StackPanel>
+                            <bui:NumericSlider Decimals="2" Maximum="100" Minimum="0.01" Step="0.05" Unit="×" Value="{Binding PatternScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <bui:NumericSlider Decimals="1" Maximum="180" Minimum="-180" Step="0.5" Unit="°" Value="{Binding PatternAngle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="图块">
+                        <CheckBox Content="中心插入" IsChecked="{Binding BlockEnabled, Mode=TwoWay}" Style="{StaticResource BlenderCheckBox}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="图块名">
+                        <ComboBox IsEditable="True" ItemsSource="{Binding DataContext.DwgBlockNames, RelativeSource={RelativeSource AncestorType={x:Type bui:BlenderWindow}}}" StaysOpenOnEdit="True" Style="{StaticResource BlenderComboBox}" Text="{Binding BlockName, UpdateSourceTrigger=PropertyChanged}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="比例/旋转 (°)">
+                        <StackPanel>
+                            <bui:NumericSlider Decimals="2" Maximum="20" Minimum="0.01" Step="0.1" Unit="×" Value="{Binding BlockScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <bui:NumericSlider Decimals="1" Maximum="180" Minimum="-180" Step="0.5" Unit="°" Value="{Binding BlockRotation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </bui:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml" />
@@ -263,7 +291,7 @@
                                     <MenuItem Click="OutlinerAddMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
                                     <MenuItem Click="OutlinerAddMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
                                     <MenuItem Click="OutlinerAddMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
-                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="中分带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
@@ -287,7 +315,7 @@
                                     <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
                                     <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
                                     <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
-                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="中分带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
@@ -308,7 +336,7 @@
                                       Content="高差锁定"
                                       IsChecked="{Binding IsElevationDiffLocked, Mode=TwoWay}"
                                       Style="{StaticResource BlenderToggleButton}"
-                                      ToolTip="开启时内/外端高差仅允许人行道与条带中分带调整；中央隔离带左/右半行亦锁定。关闭后可编辑各条与中央隔离带行。" />
+                                      ToolTip="开启时内/外端高差仅允许人行道与分隔带行调整；中央隔离带左/右半行亦锁定。关闭后可编辑各条与中央隔离带行。" />
                     </StackPanel>
                     <Grid Margin="22,0,4,4">
                         <Grid.ColumnDefinitions>
@@ -451,7 +479,7 @@
                                                    Foreground="{DynamicResource Brush_TextPrimary}"
                                                    Text="{Binding DisplayTitle}" />
                                     </StackPanel>
-                                    <TextBox Grid.Column="1" Style="{StaticResource BlenderNumField}" ToolTip="中分带总宽 (m)">
+                                    <TextBox Grid.Column="1" Style="{StaticResource BlenderNumField}" ToolTip="分隔带总宽 (m)">
                                         <TextBox.Text>
                                             <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
                                                 <Binding Mode="TwoWay" Path="Width" />
@@ -497,7 +525,7 @@
                                                 <MenuItem Click="OutlinerAddMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
                                                 <MenuItem Click="OutlinerAddMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
                                                 <MenuItem Click="OutlinerAddMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
-                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="中分带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
                                             </MenuItem>
                                             <MenuItem Header="插入">
                                                 <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="机动车道" Tag="{x:Static road:TemplateComponentKind.Pavement}" />
@@ -505,7 +533,7 @@
                                                 <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
                                                 <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
                                                 <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
-                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="中分带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
                                             </MenuItem>
                                             <Separator />
                                             <MenuItem Command="{Binding RemoveBandCommand}" Header="删除" />
@@ -674,6 +702,26 @@
                             <bui:PropertyRow Label="设计时速 (km/h)">
                                 <ComboBox ItemsSource="{Binding AvailableSpeeds}" SelectedItem="{Binding DesignSpeed, Mode=TwoWay}" Style="{StaticResource BlenderComboBox}" />
                             </bui:PropertyRow>
+                            <bui:PropertyRow Label="填料候选">
+                                <Button Command="{Binding RestoreDefaultFillMaterialPresetsCommand}"
+                                        Content="恢复默认"
+                                        Style="{StaticResource BlenderButtonFlat}"
+                                        ToolTip="恢复系统内置的填料候选项，并清空用户新增/删除记录" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="图块名列表">
+                                <Button Command="{Binding RefreshDwgBlockNamesCommand}"
+                                        Content="刷新（当前 dwg）"
+                                        Style="{StaticResource BlenderButtonFlat}"
+                                        ToolTip="从当前图形 BlockTable 重新读取图块名，供结构层「插入图块」下拉使用" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="平面带长度 (m)">
+                                <bui:NumericSlider Decimals="2"
+                                                   Maximum="20"
+                                                   Minimum="0.5"
+                                                   Step="0.1"
+                                                   Unit="m"
+                                                   Value="{Binding PlanStripLength, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
                             <Expander Header="其它" IsExpanded="False" Style="{StaticResource BlenderExpander}">
                                 <StackPanel>
                                     <bui:PropertyRow Label="空装配">
@@ -761,15 +809,37 @@
                                                                                Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                         </bui:PropertyRow>
                                                         <bui:PropertyRow Label="填料">
-                                                            <ComboBox IsEditable="True"
-                                                                      ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Surface}}"
-                                                                      StaysOpenOnEdit="True"
-                                                                      Style="{StaticResource BlenderComboBox}"
-                                                                      Text="{Binding FillMaterial, UpdateSourceTrigger=LostFocus}" />
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ComboBox IsEditable="True"
+                                                                          ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Surface}}"
+                                                                          StaysOpenOnEdit="True"
+                                                                          Style="{StaticResource BlenderComboBox}"
+                                                                          Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <Button Grid.Column="1"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding AddFillMaterialPresetCommand}"
+                                                                        Content="＋"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="将当前填料加入面层候选" />
+                                                                <Button Grid.Column="2"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding RemoveFillMaterialPresetCommand}"
+                                                                        Content="－"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="从面层候选中删除当前填料" />
+                                                            </Grid>
                                                         </bui:PropertyRow>
-                                                        <bui:PropertyRow Label="填充符号">
-                                                            <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}" />
-                                                        </bui:PropertyRow>
+                                                        <Expander Header="平面图" IsExpanded="False" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                            <ContentControl Content="{Binding PlanFill, Mode=OneWay}" ContentTemplate="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                                                        </Expander>
+                                                        <Expander Header="坡面图" IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                            <ContentControl Content="{Binding SectionFill, Mode=OneWay}" ContentTemplate="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                                                        </Expander>
                                                     </StackPanel>
                                                 </Expander>
                                             </DataTemplate>
@@ -817,15 +887,37 @@
                                                                                Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                         </bui:PropertyRow>
                                                         <bui:PropertyRow Label="填料">
-                                                            <ComboBox IsEditable="True"
-                                                                      ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Base}}"
-                                                                      StaysOpenOnEdit="True"
-                                                                      Style="{StaticResource BlenderComboBox}"
-                                                                      Text="{Binding FillMaterial, UpdateSourceTrigger=LostFocus}" />
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ComboBox IsEditable="True"
+                                                                          ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Base}}"
+                                                                          StaysOpenOnEdit="True"
+                                                                          Style="{StaticResource BlenderComboBox}"
+                                                                          Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <Button Grid.Column="1"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding AddFillMaterialPresetCommand}"
+                                                                        Content="＋"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="将当前填料加入基层候选" />
+                                                                <Button Grid.Column="2"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding RemoveFillMaterialPresetCommand}"
+                                                                        Content="－"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="从基层候选中删除当前填料" />
+                                                            </Grid>
                                                         </bui:PropertyRow>
-                                                        <bui:PropertyRow Label="填充符号">
-                                                            <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}" />
-                                                        </bui:PropertyRow>
+                                                        <Expander Header="平面图" IsExpanded="False" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                            <ContentControl Content="{Binding PlanFill, Mode=OneWay}" ContentTemplate="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                                                        </Expander>
+                                                        <Expander Header="坡面图" IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                            <ContentControl Content="{Binding SectionFill, Mode=OneWay}" ContentTemplate="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                                                        </Expander>
                                                     </StackPanel>
                                                 </Expander>
                                             </DataTemplate>
@@ -873,15 +965,37 @@
                                                                                Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                         </bui:PropertyRow>
                                                         <bui:PropertyRow Label="填料">
-                                                            <ComboBox IsEditable="True"
-                                                                      ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Subbase}}"
-                                                                      StaysOpenOnEdit="True"
-                                                                      Style="{StaticResource BlenderComboBox}"
-                                                                      Text="{Binding FillMaterial, UpdateSourceTrigger=LostFocus}" />
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ComboBox IsEditable="True"
+                                                                          ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Subbase}}"
+                                                                          StaysOpenOnEdit="True"
+                                                                          Style="{StaticResource BlenderComboBox}"
+                                                                          Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <Button Grid.Column="1"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding AddFillMaterialPresetCommand}"
+                                                                        Content="＋"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="将当前填料加入垫层候选" />
+                                                                <Button Grid.Column="2"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding RemoveFillMaterialPresetCommand}"
+                                                                        Content="－"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="从垫层候选中删除当前填料" />
+                                                            </Grid>
                                                         </bui:PropertyRow>
-                                                        <bui:PropertyRow Label="填充符号">
-                                                            <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}" />
-                                                        </bui:PropertyRow>
+                                                        <Expander Header="平面图" IsExpanded="False" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                            <ContentControl Content="{Binding PlanFill, Mode=OneWay}" ContentTemplate="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                                                        </Expander>
+                                                        <Expander Header="坡面图" IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                            <ContentControl Content="{Binding SectionFill, Mode=OneWay}" ContentTemplate="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                                                        </Expander>
                                                     </StackPanel>
                                                 </Expander>
                                             </DataTemplate>

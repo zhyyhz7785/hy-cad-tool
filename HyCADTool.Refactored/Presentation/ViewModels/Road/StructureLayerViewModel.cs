@@ -7,6 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
+using HyCADTool.Refactored.Domain.ValueObjects.Road;
+using HyCADTool.Refactored.Presentation.ViewModels;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 {
@@ -230,7 +232,37 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     /// <summary>结构层节点（TreeView 二级）。</summary>
     public sealed class StructureLayerNode : INotifyPropertyChanged
     {
+        private readonly LayerFillSettings _planFill;
+        private readonly LayerFillSettings _sectionFill;
+
+        public StructureLayerNode()
+            : this(LayerFillSettings.Empty(), LayerFillSettings.Empty())
+        {
+        }
+
+        private StructureLayerNode(LayerFillSettings planFill, LayerFillSettings sectionFill)
+        {
+            _planFill = planFill ?? LayerFillSettings.Empty();
+            _sectionFill = sectionFill ?? LayerFillSettings.Empty();
+            PlanFill = new LayerFillViewModel(_planFill);
+            SectionFill = new LayerFillViewModel(_sectionFill);
+            AddFillMaterialPresetCommand = new RelayCommand(AddCurrentFillMaterialPreset);
+            RemoveFillMaterialPresetCommand = new RelayCommand(RemoveCurrentFillMaterialPreset);
+        }
+
+        /// <summary>道路平面图（俯视）填充。</summary>
+        public LayerFillViewModel PlanFill { get; }
+
+        /// <summary>横断面坡面图（侧视）填充。</summary>
+        public LayerFillViewModel SectionFill { get; }
+
         public Guid Id { get; set; } = Guid.NewGuid();
+
+        /// <summary>将当前填料加入本层类别的候选列表，并立即写回 hy-settings。</summary>
+        public ICommand AddFillMaterialPresetCommand { get; }
+
+        /// <summary>将当前填料从本层类别的候选列表移除，并立即写回 hy-settings。</summary>
+        public ICommand RemoveFillMaterialPresetCommand { get; }
 
         private string _name = string.Empty;
         public string Name
@@ -261,7 +293,15 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public string Description { get => _description; set { _description = value ?? string.Empty; OnPropertyChanged(); } }
 
         private StructureLayerKind _layerKind = StructureLayerKind.Custom;
-        public StructureLayerKind LayerKind { get => _layerKind; set { _layerKind = value; OnPropertyChanged(); } }
+        public StructureLayerKind LayerKind
+        {
+            get => _layerKind;
+            set
+            {
+                _layerKind = value;
+                OnPropertyChanged();
+            }
+        }
 
         private double _thicknessCm;
         public double ThicknessCm { get => _thicknessCm; set { _thicknessCm = value; OnPropertyChanged(); } }
@@ -289,16 +329,39 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 _fillMaterial = v;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(LayerHeaderDisplay));
-                RoadMaterialFillPresets.EnsureInList(_layerKind, _fillMaterial);
+                TryApplySuggestedSectionHatch();
             }
         }
 
-        private string _patternName = string.Empty;
-        public string PatternName { get => _patternName; set { _patternName = value ?? string.Empty; OnPropertyChanged(); } }
+        /// <summary>与 <see cref="StructureLayer.PatternName"/> 同步：读写到 <see cref="SectionFill"/> 的坡面图图案名。</summary>
+        public string PatternName
+        {
+            get => SectionFill.PatternName;
+            set
+            {
+                var v = value ?? string.Empty;
+                if (SectionFill.PatternName == v) return;
+                SectionFill.PatternName = v;
+                if (!string.IsNullOrWhiteSpace(v))
+                    SectionFill.PatternEnabled = true;
+            }
+        }
+
+        private void TryApplySuggestedSectionHatch()
+        {
+            if (!string.IsNullOrWhiteSpace(SectionFill.PatternName)) return;
+            var s = RoadMaterialFillPresets.SuggestHatchFor(LayerKind, FillMaterial);
+            SectionFill.PatternName = s;
+            SectionFill.PatternEnabled = true;
+        }
 
         public static StructureLayerNode From(StructureLayer m)
         {
-            return new StructureLayerNode
+            if (m == null) return new StructureLayerNode();
+            var plan = (m.PlanFill ?? LayerFillSettings.Empty()).Clone();
+            var sec = (m.SectionFill ?? LayerFillSettings.Empty()).Clone();
+            LayerFillSettings.MigrateFromLegacyPatternName(sec, m.PatternName);
+            var n = new StructureLayerNode(plan, sec)
             {
                 Id = m.Id,
                 Name = m.Name ?? string.Empty,
@@ -310,8 +373,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 LeftSlope = m.LeftSlope,
                 RightSlope = m.RightSlope,
                 FillMaterial = m.FillMaterial ?? string.Empty,
-                PatternName = m.PatternName ?? string.Empty,
             };
+            if (string.IsNullOrWhiteSpace(n.SectionFill.PatternName) && !string.IsNullOrWhiteSpace(n.FillMaterial))
+                n.TryApplySuggestedSectionHatch();
+            return n;
         }
 
         public StructureLayer ToModel()
@@ -328,13 +393,34 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 LeftSlope = LeftSlope,
                 RightSlope = RightSlope,
                 FillMaterial = FillMaterial,
-                PatternName = PatternName,
+                PatternName = SectionFill?.PatternName ?? string.Empty,
+                PlanFill = _planFill?.Clone() ?? LayerFillSettings.Empty(),
+                SectionFill = _sectionFill?.Clone() ?? LayerFillSettings.Empty(),
             };
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string p = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+
+        private void AddCurrentFillMaterialPreset()
+        {
+            if (!RoadMaterialFillPresets.TryAdd(LayerKind, FillMaterial)) return;
+            PersistFillMaterialPresetChanges();
+        }
+
+        private void RemoveCurrentFillMaterialPreset()
+        {
+            if (!RoadMaterialFillPresets.TryRemove(LayerKind, FillMaterial)) return;
+            PersistFillMaterialPresetChanges();
+        }
+
+        private static void PersistFillMaterialPresetChanges()
+        {
+            var settings = SettingsPanelViewModel.Current;
+            if (settings == null) return;
+            settings.SetRoadMaterialFillSettings(RoadMaterialFillPresets.ExportUserSettings(), saveImmediately: true);
+        }
 
         public override string ToString() => $"{Name}({LayerKind}) h={ThicknessCm}cm";
     }

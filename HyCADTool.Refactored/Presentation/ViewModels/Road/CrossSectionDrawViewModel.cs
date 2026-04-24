@@ -12,6 +12,7 @@ using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels.Road
@@ -21,7 +22,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
     ///
     /// <para>职责（在 <see cref="CrossSectionDesignerViewModel"/> 之上扩展）：</para>
     /// <list type="bullet">
-    ///   <item>底部 StatusBar：实时汇总左/中分带/右板块数 + 总宽 + 规范通过率。</item>
+    ///   <item>底部 StatusBar：实时汇总左/分隔带/右板块数 + 总宽 + 规范通过率。</item>
     ///   <item>左 Outliner / 右 PropertyEditor 折叠状态（<see cref="IsOutlinerVisible"/> /
     ///       <see cref="IsPropertyPaneVisible"/>）。</item>
     ///   <item>"复制选中条带"/"粘贴条带"命令（提升复用工作流效率）。</item>
@@ -54,6 +55,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             PickBandGeometryCommand = new RelayCommand(() => PickGeometryRequested?.Invoke(this, SelectedBand), () => SelectedBand != null);
             ToggleOutlinerCommand = new RelayCommand(() => IsOutlinerVisible = !IsOutlinerVisible);
             TogglePropertyPaneCommand = new RelayCommand(() => IsPropertyPaneVisible = !IsPropertyPaneVisible);
+            RestoreDefaultFillMaterialPresetsCommand = new RelayCommand(RestoreDefaultFillMaterialPresets);
+            RefreshDwgBlockNamesCommand = new RelayCommand(() => DwgBlockNameProvider.Refresh());
             DrawCommand = ConfirmCommand;
 
             // 三段 Outliner：中央隔离带 / 左侧 / 右侧
@@ -132,9 +135,30 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private void AfterCrossSectionShellReady()
         {
+            LoadRoadMaterialFillPresetsFromSettings();
+            DwgBlockNameProvider.Refresh();
             TryWireDrawingScaleToSettings();
             TryApplyDefaultStationRangeForActiveRoute();
             PropertyChanged += OnThisPropertyChanged;
+        }
+
+        private static void LoadRoadMaterialFillPresetsFromSettings()
+        {
+            var settings = ViewModels.SettingsPanelViewModel.Current;
+            if (settings == null)
+            {
+                RoadMaterialFillPresets.RestoreDefaults();
+                return;
+            }
+
+            RoadMaterialFillPresets.ApplyUserSettings(settings.GetRoadMaterialFillSettings());
+        }
+
+        private static void RestoreDefaultFillMaterialPresets()
+        {
+            RoadMaterialFillPresets.RestoreDefaults();
+            var settings = ViewModels.SettingsPanelViewModel.Current;
+            settings?.SetRoadMaterialFillSettings(null, saveImmediately: true);
         }
 
         private void OnThisPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -398,6 +422,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public ICommand PickBandGeometryCommand { get; }
         public ICommand ToggleOutlinerCommand { get; }
         public ICommand TogglePropertyPaneCommand { get; }
+        public ICommand RestoreDefaultFillMaterialPresetsCommand { get; }
+
+        /// <summary>与 <see cref="DwgBlockNameProvider"/> 同引用，供结构层图块名 ComboBox 绑定。</summary>
+        public System.Collections.ObjectModel.ReadOnlyObservableCollection<string> DwgBlockNames
+            => DwgBlockNameProvider.BlockNames;
+
+        public IReadOnlyList<string> HatchPatternNameList
+            => RoadMaterialFillPresets.HatchPatternNames;
+
+        public ICommand RefreshDwgBlockNamesCommand { get; }
 
         public event EventHandler<BandRowViewModel> PickGeometryRequested;
 
@@ -489,7 +523,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 case TemplateComponentKind.Kerb:
                     return CrossSectionBand.Kerb(0.15, side, "路牙");
                 case TemplateComponentKind.MedianStrip:
-                    return CrossSectionBand.Median(2.0, "中分带").WithSide(side);
+                    return CrossSectionBand.Median(2.0, "分隔带").WithSide(side);
                 default:
                     return CrossSectionBand.Lane(3.5, 1.5, side, "机动车道");
             }
@@ -599,7 +633,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             var sb = new StringBuilder();
             sb.Append("L=").Append(LeftBands.Count)
-              .Append(" / 中=").Append(CenterMedianWidth > 0 ? "1" : "0")
+              .Append(" / 分隔=").Append(CenterMedianWidth > 0 ? "1" : "0")
               .Append(" / R=").Append(RightBands.Count);
             sb.Append("  总宽 ").Append(TotalWidth.ToString("F2", CultureInfo.InvariantCulture)).Append(" m");
 
@@ -663,7 +697,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    /// <summary>中分带「左半 / 右半」大纲行。字段绑定到 <see cref="CrossSectionDrawViewModel"/> 的 Median* 系列属性。</summary>
+    /// <summary>分隔带「左半 / 右半」大纲行。字段绑定到 <see cref="CrossSectionDrawViewModel"/> 的 Median* 系列属性。</summary>
     public sealed class MedianHalfRowViewModel : INotifyPropertyChanged
     {
         private readonly CrossSectionDrawViewModel _vm;
@@ -678,7 +712,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         }
 
         public MedianOutlineNode ParentNode { get; }
-        public string RowTitle => _isLeft ? "中分(左半)" : "中分(右半)";
+        public string RowTitle => _isLeft ? "分隔带(左半)" : "分隔带(右半)";
 
         public bool IsSubWidthReadOnly => !_isLeft;
 

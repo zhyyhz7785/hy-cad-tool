@@ -9,7 +9,7 @@ namespace HyCADTool.ReCall
     ///
     /// 大多数 <c>[CommandMethod(key)]</c> 只做一件事：转发给 <see cref="ReCallClass.Invoke"/>，
     /// 由 <see cref="CommandTable"/>（commands.json）决定真实目标 Type.Method。
-    /// 少数命令（如 <c>hySeg3</c>/<c>HYSEG3</c>）挂在 <see cref="ReCallClass"/> 上，与 <c>C2</c> 同 DLL，重装 ReCall 后即注册。
+    /// 少数命令（如 <c>hySeg3</c>，命令行大小写不敏感故与 <c>HYSEG3</c> 等价）挂在 <see cref="ReCallClass"/> 上，与 <c>C2</c> 同 DLL，重装 ReCall 后即注册。
     ///
     /// 日常开发：
     /// - 改 Refactored 业务代码 → C2 热重载 → 立即生效（命令名不变）
@@ -121,6 +121,7 @@ namespace HyCADTool.ReCall
         #region 导出 (Export)
         [CommandMethod("hyex")]     public void Cmd_hyex()     => ReCallClass.Invoke("hyex");
         [CommandMethod("hyex_csv")] public void Cmd_hyex_csv() => ReCallClass.Invoke("hyex_csv");
+        [CommandMethod("hyLtCapture")] public void Cmd_hyLtCapture() => ReCallClass.Invoke("hyLtCapture");
         #endregion
 
         #region 其他工具 (Misc)
@@ -208,7 +209,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("HYOV")]      public void Cmd_HYOV()      => ReCallClass.Invoke("HYOV");
         [CommandMethod("HYOVSET")]   public void Cmd_HYOVSET()   => ReCallClass.Invoke("HYOVSET");
         [CommandMethod("HYBC")]      public void Cmd_HYBC()      => ReCallClass.Invoke("HYBC");
-        // hySeg3 / HYSEG3：注册在 ReCallClass（Recall.cs），与 C2 同程序集，避免仅 C2 热更后命令行仍「未知命令」。
+        // hySeg3：注册在 ReCallClass（Recall.cs），与 C2 同程序集；勿再写 HYSEG3 属性（与 hySeg3 全局名冲突 → eDuplicateKey）。
         #endregion
 
         #region 三维建模 (3D Modeling)

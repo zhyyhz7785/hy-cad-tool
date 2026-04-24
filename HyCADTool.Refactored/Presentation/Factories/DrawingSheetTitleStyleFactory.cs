@@ -1,6 +1,9 @@
 #nullable enable
 
 using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Presentation.ViewModels;
 
@@ -29,8 +32,8 @@ namespace HyCADTool.Refactored.Presentation.Factories
             return new DrawingSheetTitleSpec(
                 showCrosshair: settings.SheetTitleShowCrosshair,
                 showScale: settings.SheetTitleShowScale,
-                titleTextLayerName: HyRoadLayers.CrossSectionTitleLayer,
-                titleDecorationLayerName: HyRoadLayers.CrossSectionTitleDecorationLayer,
+                titleTextLayerName: ResolveTitleTextLayerName(settings),
+                titleDecorationLayerName: ResolveTitleDecorationLayerName(settings),
                 scaleFormat: ScaleFormat,
                 mainTextStyleName: settings.SheetTitleMainTextStyleName,
                 scaleTextStyleName: settings.SheetTitleScaleTextStyleName,
@@ -61,13 +64,13 @@ namespace HyCADTool.Refactored.Presentation.Factories
             return new DrawingSheetTitleSpec(
                 showCrosshair: showCrosshair,
                 showScale: showScale,
-                titleTextLayerName: HyRoadLayers.CrossSectionTitleLayer,
-                titleDecorationLayerName: HyRoadLayers.CrossSectionTitleDecorationLayer,
+                titleTextLayerName: ResolveTitleTextLayerName(),
+                titleDecorationLayerName: ResolveTitleDecorationLayerName(),
                 scaleFormat: ScaleFormat,
                 mainTextStyleName: "0-hy-说明-T",
                 scaleTextStyleName: "0-hy-说明-T",
-                mainTextHeightModel: 5.0,
-                scaleTextHeightModel: 3.0,
+                mainTextHeightModel: 4.0,
+                scaleTextHeightModel: 2.5,
                 textToUpperLineGapFactor: textToLine,
                 upperLineWidthFactor: topW,
                 doubleLineSpacingFactor: dblGap,
@@ -78,6 +81,20 @@ namespace HyCADTool.Refactored.Presentation.Factories
                 crosshairCoreHalfFactor: 0.06,
                 crosshairOffsetFromTextLeftFactor: 0.28,
                 crosshairCenterLiftFactor: 0.06);
+        }
+
+        private static string ResolveTitleTextLayerName(SettingsPanelViewModel? settings = null)
+        {
+            if (settings != null)
+                return settings.TryResolveLayerName(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
+            return UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
+        }
+
+        private static string ResolveTitleDecorationLayerName(SettingsPanelViewModel? settings = null)
+        {
+            if (settings != null)
+                return settings.TryResolveLayerName(LayerSemanticIds.RoadCrossSectionTitleDecoration, LayerBuiltinDefaults.RoadCrossSectionTitleDecoration);
+            return UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitleDecoration, LayerBuiltinDefaults.RoadCrossSectionTitleDecoration);
         }
     }
 }

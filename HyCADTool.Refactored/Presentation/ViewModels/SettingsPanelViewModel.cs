@@ -12,7 +12,9 @@ using System.Windows.Input;
 using HyCAD.BlenderUI.Theming;
 using HyCADTool.Refactored.Domain.Interfaces;
 using HyCADTool.Refactored.Domain.Models.Drawing;
+using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
@@ -40,6 +42,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         /// <summary>用户可编辑图层表（与 hy-settings.json 中 <see cref="UserLayerSettings"/> 同步）。</summary>
         public ObservableCollection<LayerDefinitionItem> LayerCatalogItems { get; }
             = new ObservableCollection<LayerDefinitionItem>();
+
+        /// <summary>
+        /// 横断面「填料」候选的用户增量设置（相对系统默认的新增/删除记录）。
+        /// 由横断面窗口在增删候选或恢复默认时写回 <c>hy-settings.json</c>。
+        /// </summary>
+        private RoadMaterialFillSettings _roadMaterialFillSettings = new RoadMaterialFillSettings();
+
+        /// <summary>最近一次 <c>hyLtCapture</c> 写入的线型目录快照（嵌入 hy-settings.json）。</summary>
+        private LinetypeCatalogSnapshot _linetypeCatalogSnapshot;
+
+        /// <summary>本次 LoadSettings 读到的层表版本；用于 <see cref="LayerCatalogFactory.CurrentCatalogVersion"/> 升级后自动写回 hy-settings。</summary>
+        private int _layerCatalogSchemaVersionBeforeLoad = int.MinValue;
 
         /// <summary>按当前层表在当前 DWG 中创建/更新图层属性。</summary>
         public ICommand ApplyLayerCatalogToDocumentCommand { get; }
@@ -677,6 +691,25 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         private double _roadStripeSpacing = 1.0;
         public double RoadStripeSpacing { get => _roadStripeSpacing; set => SetProperty(ref _roadStripeSpacing, value); }
 
+        /// <summary>标准横断面：平面带及上方标注（尺寸、顶字、北南向等）整体相对路顶在图面中上移的距离（m），与 rCs 出图一致，默认 5。</summary>
+        private double _roadCrossSectionPlanStripVerticalOffsetM = 5.0;
+        public double RoadCrossSectionPlanStripVerticalOffsetM
+        {
+            get => _roadCrossSectionPlanStripVerticalOffsetM;
+            set => SetProperty(ref _roadCrossSectionPlanStripVerticalOffsetM, value);
+        }
+
+        /// <summary>
+        /// 标准横断面方位箭头左右字组：false=北/南（默认），true=西/东。
+        /// 预览中点击"北/南"或"西/东"字即可切换；VM 监听本属性变化触发 Recalculate。
+        /// </summary>
+        private bool _roadCrossSectionOrientationUseWestEast;
+        public bool RoadCrossSectionOrientationUseWestEast
+        {
+            get => _roadCrossSectionOrientationUseWestEast;
+            set => SetProperty(ref _roadCrossSectionOrientationUseWestEast, value);
+        }
+
         // ── 横断面图题（DrawingSheetTitleSpec 持久化） ────────────────────────────
         private bool _sheetTitleShowCrosshair;
         public bool SheetTitleShowCrosshair { get => _sheetTitleShowCrosshair; set => SetProperty(ref _sheetTitleShowCrosshair, value); }
@@ -691,11 +724,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public string SheetTitleScaleTextStyleName { get => _sheetTitleScaleTextStyleName; set => SetProperty(ref _sheetTitleScaleTextStyleName, value ?? "0-hy-说明-T"); }
 
         /// <summary>横断面图题主字高（纸面 mm，出图时 × UnitFactor×Scale 同 <see cref="ActualTextHeight"/>）。</summary>
-        private double _sheetTitleMainTextHeight = 5.0;
+        private double _sheetTitleMainTextHeight = 4.0;
         public double SheetTitleMainTextHeight { get => _sheetTitleMainTextHeight; set => SetProperty(ref _sheetTitleMainTextHeight, value); }
 
         /// <summary>图题中比例「1:xxx」字高（纸面 mm）。</summary>
-        private double _sheetTitleScaleTextHeight = 3.0;
+        private double _sheetTitleScaleTextHeight = 2.5;
         public double SheetTitleScaleTextHeight { get => _sheetTitleScaleTextHeight; set => SetProperty(ref _sheetTitleScaleTextHeight, value); }
 
         private double _sheetTitleScaleTextHeightRatio = 0.55;
@@ -1206,6 +1239,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             try { BlenderMetricsScaleManager.Apply(1.0, 1.0, 1.0); } catch { /* 忽略 */ }
 
             LoadLayerCatalogFromSettingsData(null);
+            SetRoadMaterialFillSettings(null);
             SaveSettings();
             StatusMessage = "已恢复默认值";
         }
@@ -1257,6 +1291,28 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             };
         }
 
+        public RoadMaterialFillSettings GetRoadMaterialFillSettings()
+            => CloneRoadMaterialFillSettings(_roadMaterialFillSettings);
+
+        public void SetRoadMaterialFillSettings(RoadMaterialFillSettings settings, bool saveImmediately = false)
+        {
+            _roadMaterialFillSettings = CloneRoadMaterialFillSettings(settings) ?? new RoadMaterialFillSettings();
+            RoadMaterialFillPresets.ApplyUserSettings(_roadMaterialFillSettings);
+            if (saveImmediately && !_isLoading)
+                SaveSettings();
+        }
+
+        /// <summary>
+        /// 合并线型目录快照并立即保存 hy-settings.json（供 <c>hyLtCapture</c> 调用）。
+        /// </summary>
+        public void SetLinetypeCatalogSnapshot(LinetypeCatalogSnapshot snapshot)
+        {
+            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+            _linetypeCatalogSnapshot = snapshot;
+            if (!_isLoading)
+                SaveSettings();
+        }
+
         public void ApplyLayerCatalogToCurrentDocument()
         {
             try
@@ -1283,6 +1339,26 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             LoadLayerCatalogFromSettingsData(null);
             StatusMessage = "图层表已恢复为程序默认；若开启自动保存将写入 hy-settings。";
             if (_autoSaveEnabled && !_isLoading) SaveSettings();
+        }
+
+        private static RoadMaterialFillSettings CloneRoadMaterialFillSettings(RoadMaterialFillSettings settings)
+        {
+            return new RoadMaterialFillSettings
+            {
+                Version = Math.Max(1, settings?.Version ?? 1),
+                SurfaceAdded = settings?.SurfaceAdded?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).ToList()
+                               ?? new List<string>(),
+                SurfaceRemoved = settings?.SurfaceRemoved?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).ToList()
+                                 ?? new List<string>(),
+                BaseAdded = settings?.BaseAdded?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).ToList()
+                            ?? new List<string>(),
+                BaseRemoved = settings?.BaseRemoved?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).ToList()
+                              ?? new List<string>(),
+                SubbaseAdded = settings?.SubbaseAdded?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).ToList()
+                               ?? new List<string>(),
+                SubbaseRemoved = settings?.SubbaseRemoved?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).ToList()
+                                 ?? new List<string>(),
+            };
         }
 
         #endregion
@@ -1402,6 +1478,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     RoadCrosswalkWidth = RoadCrosswalkWidth,
                     RoadStopLineDistance = RoadStopLineDistance,
                     RoadStripeSpacing = RoadStripeSpacing,
+                    RoadCrossSectionPlanStripVerticalOffsetM = RoadCrossSectionPlanStripVerticalOffsetM,
+                    RoadCrossSectionOrientationUseWestEast = RoadCrossSectionOrientationUseWestEast,
                     SheetTitleShowCrosshair = SheetTitleShowCrosshair,
                     SheetTitleShowScale = SheetTitleShowScale,
                     SheetTitleMainTextStyleName = SheetTitleMainTextStyleName,
@@ -1435,7 +1513,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     UiInputWidthScale = UiInputWidthScale,
                     // 其他
                     EquipmentDataFilePath = EquipmentDataFilePath,
-                    UserLayerSettings = BuildUserLayerSettingsForSave()
+                    UserLayerSettings = BuildUserLayerSettingsForSave(),
+                    RoadMaterialFillSettings = GetRoadMaterialFillSettings(),
+                    LinetypeCatalog = _linetypeCatalogSnapshot
                 };
 
                 var json = JsonConvert.SerializeObject(data, Formatting.Indented);
@@ -1466,6 +1546,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
         public void LoadSettings(string explicitPath = null)
         {
             _isLoading = true;
+            _layerCatalogSchemaVersionBeforeLoad = int.MinValue;
             try
             {
                 string beforeStyleSignature = BuildStyleSignature();
@@ -1474,7 +1555,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 {
                     _isLoading = false;
                     if (explicitPath != null) throw new FileNotFoundException("设置文件不存在", path);
+                    _layerCatalogSchemaVersionBeforeLoad = 0;
                     LoadLayerCatalogFromSettingsData(null);
+                    SetRoadMaterialFillSettings(null);
+                    _linetypeCatalogSnapshot = null;
                     return;
                 }
 
@@ -1483,9 +1567,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 if (data == null)
                 {
                     _isLoading = false;
+                    _layerCatalogSchemaVersionBeforeLoad = 0;
                     LoadLayerCatalogFromSettingsData(null);
+                    SetRoadMaterialFillSettings(null);
+                    _linetypeCatalogSnapshot = null;
                     return;
                 }
+
+                _layerCatalogSchemaVersionBeforeLoad = data.UserLayerSettings?.Version ?? 0;
 
                 // Tab A: 样式 —— 先读比例相关字段（新 JSON 可能缺失，走向后兼容）
                 Scale = data.Scale > 0 ? data.Scale : 50.0;
@@ -1542,6 +1631,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 RoadCrosswalkWidth = data.RoadCrosswalkWidth;
                 RoadStopLineDistance = data.RoadStopLineDistance;
                 RoadStripeSpacing = data.RoadStripeSpacing;
+                if (data.RoadCrossSectionPlanStripVerticalOffsetM != null)
+                    RoadCrossSectionPlanStripVerticalOffsetM = data.RoadCrossSectionPlanStripVerticalOffsetM.Value;
+                if (data.RoadCrossSectionOrientationUseWestEast != null)
+                    RoadCrossSectionOrientationUseWestEast = data.RoadCrossSectionOrientationUseWestEast.Value;
                 SheetTitleShowCrosshair = data.SheetTitleShowCrosshair;
                 SheetTitleShowScale = data.SheetTitleShowScale;
                 if (!string.IsNullOrWhiteSpace(data.SheetTitleMainTextStyleName)) SheetTitleMainTextStyleName = data.SheetTitleMainTextStyleName;
@@ -1582,6 +1675,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                     EquipmentDataFilePath = data.EquipmentDataFilePath;
 
                 LoadLayerCatalogFromSettingsData(data.UserLayerSettings);
+                SetRoadMaterialFillSettings(data.RoadMaterialFillSettings);
+                _linetypeCatalogSnapshot = data.LinetypeCatalog;
 
                 // 只有样式相关参数实际变化时，才标记需要重新同步样式。
                 // 否则 gj/gb 等每次执行都会白白重建一轮样式，造成重复执行前的明显停顿。
@@ -1592,6 +1687,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"加载设置失败: {ex.Message}（使用默认值）");
+                SetRoadMaterialFillSettings(null);
+                _linetypeCatalogSnapshot = null;
             }
             finally
             {
@@ -1607,6 +1704,14 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
                 }
 
                 OnPropertyChanged(nameof(AppliedDimStyleName));
+
+                if (_layerCatalogSchemaVersionBeforeLoad != int.MinValue
+                    && _layerCatalogSchemaVersionBeforeLoad < LayerCatalogFactory.CurrentCatalogVersion)
+                {
+                    try { SaveSettings(); }
+                    catch { /* 首启/只读目录等：静默 */ }
+                }
+                _layerCatalogSchemaVersionBeforeLoad = int.MinValue;
             }
         }
 
@@ -1694,12 +1799,16 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             public double RoadCrosswalkWidth { get; set; } = 5.0;
             public double RoadStopLineDistance { get; set; } = 2.0;
             public double RoadStripeSpacing { get; set; } = 1.0;
+            /// <summary>缺省为 null 表示旧版 JSON 未带此字段，加载时用 VM 默认 5m。</summary>
+            public double? RoadCrossSectionPlanStripVerticalOffsetM { get; set; }
+            /// <summary>缺省为 null 表示旧版 JSON 未带此字段，加载时用 VM 默认 false（北/南）。</summary>
+            public bool? RoadCrossSectionOrientationUseWestEast { get; set; }
             public bool SheetTitleShowCrosshair { get; set; } = false;
             public bool SheetTitleShowScale { get; set; } = true;
             public string SheetTitleMainTextStyleName { get; set; } = "0-hy-说明-T";
             public string SheetTitleScaleTextStyleName { get; set; } = "0-hy-说明-T";
-            public double SheetTitleMainTextHeight { get; set; } = 5.0;
-            public double SheetTitleScaleTextHeight { get; set; } = 3.0;
+            public double SheetTitleMainTextHeight { get; set; } = 4.0;
+            public double SheetTitleScaleTextHeight { get; set; } = 2.5;
             public double SheetTitleScaleTextHeightRatio { get; set; } = 0.55;
             public double SheetTitleTopLineWidthFactor { get; set; } = 0.07;
             public double SheetTitleBottomLineWidthFactor { get; set; } = 0.02;
@@ -1734,6 +1843,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
 
             /// <summary>用户可编辑图层表（v1+）；旧 JSON 缺省则读盘后合并默认。</summary>
             public UserLayerSettings UserLayerSettings { get; set; }
+
+            /// <summary>横断面填料候选的用户增量设置（v1+）。</summary>
+            public RoadMaterialFillSettings RoadMaterialFillSettings { get; set; }
+
+            /// <summary>当前图纸线型目录快照（<c>hyLtCapture</c>）；旧 JSON 缺省则为 null。</summary>
+            public LinetypeCatalogSnapshot LinetypeCatalog { get; set; }
         }
 
         #endregion
