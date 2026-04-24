@@ -71,6 +71,8 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
         /// <param name="panelFills">条带 Kind→Brush 的填色映射；<c>null</c> 时使用 <see cref="DefaultPanelFills"/>。</param>
         /// <param name="layout">与出图 <c>DrawPlanStrip</c> 相同的布置；<c>null</c> 时不画平面分隔带示意，仍按 <paramref name="planStripVerticalOffsetM"/> 抬升尺寸/上排注记。</param>
         /// <param name="planStripVerticalOffsetM">与 <c>RoadStandardSectionDrawService</c> 的 <c>planStripVerticalOffsetMeters</c> 同义（图面 m，相对路顶+1.2m）。</param>
+        /// <param name="drawSheetTitleBand">为 <c>false</c> 时不绘顶栏图题带（仅影响 WPF 预览）。</param>
+        /// <param name="drawRoadWidthCornerBadge">为 <c>false</c> 时不绘右上角「路幅 … m」角标（仅影响 WPF 预览）。</param>
         public static void Render(
             Canvas canvas,
             CrossSectionFigure figure,
@@ -79,7 +81,9 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             DrawingSheetTitleSpec titleSpec = null,
             CrossSectionLayout layout = null,
             double planStripVerticalOffsetM = 5.0,
-            Action onOrientationToggle = null)
+            Action onOrientationToggle = null,
+            bool drawSheetTitleBand = true,
+            bool drawRoadWidthCornerBadge = true)
         {
             if (canvas == null) return;
             canvas.Children.Clear();
@@ -90,9 +94,12 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             double ch = canvas.ActualHeight;
             if (cw < 20 || ch < 20) return;
 
-            const double padX = 40;
-            const double padTop = 50;
-            const double padBottom = 60;
+            // 独立窗口预览保留较大边距与完整 rCs 竖向尺度；Palette 内嵌预览（无图题/无路幅角标）在「尽量充满」与「不裁切注记」之间折中：
+            // 底排尺寸字、坡度字、顶缘方位字会占用画布像素，边距过小会被 ClipToBounds 吃掉。
+            bool compactPreview = !drawSheetTitleBand && !drawRoadWidthCornerBadge;
+            double padX = compactPreview ? 14.0 : 40.0;
+            double padTop = compactPreview ? 16.0 : 50.0;
+            double padBottom = compactPreview ? 26.0 : 60.0;
             const double rcsTopAxisAndOrientationM = 5.0;
             // 与 RoadStandardSectionDrawService 中 axisBottomY / planStrip* 计算对齐
             const double planGapAboveCrownM = 1.2;
@@ -106,22 +113,76 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             double ymin = vertices.Min(v => v.Y);
             double ymax = vertices.Max(v => v.Y);
 
-            double planStripBottomY = ymax + planGapAboveCrownM + planStripVerticalOffsetM;
+            double planOffM = planStripVerticalOffsetM;
+            double axisRiseM = rcsTopAxisAndOrientationM;
+            if (compactPreview)
+            {
+                planOffM = Math.Max(1.0, planStripVerticalOffsetM * 0.52);
+                axisRiseM = 3.25;
+            }
+
+            double planStripBottomY = ymax + planGapAboveCrownM + planOffM;
             double planStripTopY = planStripBottomY + Math.Max(0.5, figure.PlanStripLength);
             double axisBottomY = ymin - 2.8;
-            double axisTopY = planStripTopY + rcsTopAxisAndOrientationM;
-            double orientationY = planStripTopY + rcsTopAxisAndOrientationM;
+            double axisTopY = planStripTopY + axisRiseM;
+            double orientationY = planStripTopY + axisRiseM;
             // 板块字改为"平面带竖向居中"（而非上方 2.5m），与用户要求一致。
             double topLabelY = 0.5 * (planStripBottomY + planStripTopY);
 
             double yMaxFit = Math.Max(ymax, axisTopY);
             yMaxFit = Math.Max(yMaxFit, topLabelY + 0.2);
             yMaxFit = Math.Max(yMaxFit, orientationY + 0.1);
-            if (!string.IsNullOrWhiteSpace(figure.Title.Text))
+            if (drawSheetTitleBand && !string.IsNullOrWhiteSpace(figure.Title.Text))
                 yMaxFit = Math.Max(yMaxFit, figure.Title.Y + 0.1);
 
             double spanX = Math.Max(1e-3, xmax - xmin);
-            double spanY = Math.Max(0.3, yMaxFit - ymin);
+
+            // layout 路径：竖向包络须含底排尺寸链（模型 y 常低于 ymin）、轴线底、横坡注记，否则 sy 偏大导致底/顶字被 ClipToBounds 裁切。
+            double yMinFit = ymin;
+            double yMaxForScale = yMaxFit;
+            if (layout != null)
+            {
+                yMinFit = Math.Min(ymin, axisBottomY);
+                const double fitBoxPreviewTxtH = 0.3;
+                const double fitBoxDimDropM = 0.5;
+                double fitBoxDimRowGap = Math.Max(0.45, fitBoxPreviewTxtH * 1.9);
+                foreach (var seg in figure.DimensionSegments)
+                {
+                    double featureY;
+                    double dimOffset;
+                    if (seg.Track == FigureDimensionTrack.Top)
+                    {
+                        featureY = planStripTopY - fitBoxDimDropM;
+                        dimOffset = (seg.Tier == 0 ? fitBoxDimRowGap * 3.2 : fitBoxDimRowGap);
+                    }
+                    else
+                    {
+                        featureY = 0.0 - fitBoxDimDropM;
+                        dimOffset = (seg.Tier == 0 ? -fitBoxDimRowGap * 3.2 : -fitBoxDimRowGap);
+                    }
+                    double yModel = featureY + dimOffset;
+                    if (seg.Track == FigureDimensionTrack.Top)
+                        yModel += fitBoxDimRowGap;
+                    yMinFit = Math.Min(yMinFit, yModel);
+                    yMaxForScale = Math.Max(yMaxForScale, yModel);
+                }
+
+                foreach (var sl in figure.SlopeLabels)
+                {
+                    yMinFit = Math.Min(yMinFit, sl.PositionY);
+                    yMaxForScale = Math.Max(yMaxForScale, sl.PositionY);
+                }
+
+                if (compactPreview)
+                {
+                    yMinFit -= 0.55;
+                    yMaxForScale += 0.42;
+                }
+            }
+
+            double spanY = layout != null
+                ? Math.Max(0.3, yMaxForScale - yMinFit)
+                : Math.Max(0.3, yMaxFit - ymin);
 
             double sx = (cw - padX * 2) / spanX;
             double sy = (ch - padTop - padBottom) / Math.Max(1.0, spanY);
@@ -136,8 +197,7 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             double oy;
             if (layout != null)
             {
-                double yZeroFromTop = (yMaxFit - 0) * s;
-                oy = padTop + yZeroFromTop;
+                oy = padTop + yMaxForScale * s;
                 if (oy > ch - padBottom) oy = ch - padBottom;
             }
             else
@@ -367,24 +427,30 @@ namespace HyCADTool.Refactored.Presentation.Views.Road
             }
 
             // ============================== 9. 图题（与出图 + 设置规格一致） ==============================
-            DrawingSheetTitleWpfRenderer.DrawTopBand(
-                canvas, cw, titleSpec,
-                DrawingSheetTitleText.RemoveTrailingScaleInTitle(figure.Title.Text),
-                scaleDenominator ?? figure.ScaleDenominator);
+            if (drawSheetTitleBand)
+            {
+                DrawingSheetTitleWpfRenderer.DrawTopBand(
+                    canvas, cw, titleSpec,
+                    DrawingSheetTitleText.RemoveTrailingScaleInTitle(figure.Title.Text),
+                    scaleDenominator ?? figure.ScaleDenominator);
+            }
 
             // ============================== 10. 路幅（比例已并入图题带） ==============================
-            var info = new TextBlock
+            if (drawRoadWidthCornerBadge)
             {
-                Text = string.Format(CultureInfo.InvariantCulture,
-                    "路幅 {0:F2} m",
-                    spanX),
-                Foreground = AnnotationBrush,
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 10,
-            };
-            Canvas.SetRight(info, 8);
-            Canvas.SetTop(info, 8);
-            canvas.Children.Add(info);
+                var info = new TextBlock
+                {
+                    Text = string.Format(CultureInfo.InvariantCulture,
+                        "路幅 {0:F2} m",
+                        spanX),
+                    Foreground = AnnotationBrush,
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 10,
+                };
+                Canvas.SetRight(info, 8);
+                Canvas.SetTop(info, 8);
+                canvas.Children.Add(info);
+            }
         }
 
         /// <param name="yModel">与 rCs <c>orientationYFig = planStripTopY + 5m</c> 一致（图面坐标 y）。</param>

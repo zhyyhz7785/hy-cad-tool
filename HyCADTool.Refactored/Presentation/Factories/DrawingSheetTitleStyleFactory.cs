@@ -4,7 +4,6 @@ using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
-using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
 using HyCADTool.Refactored.Presentation.ViewModels;
 
 namespace HyCADTool.Refactored.Presentation.Factories

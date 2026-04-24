@@ -9,7 +9,9 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Colors;
 using HyCADTool.Refactored.Domain.Services;
 using HyCADTool.Refactored.Domain.ValueObjects;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 
 namespace HyCADTool.Refactored.Presentation.Commands
@@ -107,7 +109,8 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 
                 // 步骤5: 生成3D Solid并添加到图纸
                 int wallCount = CreateAndAddWalls(doc, db, walls);
-                int raftCount = CreateAndAddSlabs(doc, db, rafts, "00_hy_筏板3D");
+                string raftLayer = UserLayerNameResolver.Get(LayerSemanticIds.RaftSolid3D, LayerBuiltinDefaults.RaftSolid3D);
+                int raftCount = CreateAndAddSlabs(doc, db, rafts, raftLayer);
                 
                 stopwatch.Stop();
                 
@@ -381,9 +384,10 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 var blockTable = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                 var modelSpace = tr.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
                 
-                // 确保图层存在
-                EnsureLayerExists(tr, db, "00_hy_墙体3D");
-                EnsureLayerExists(tr, db, "00_hy_挡土墙3D");
+                string wallMainLayer = UserLayerNameResolver.Get(LayerSemanticIds.WallMainSolid, LayerBuiltinDefaults.WallMainSolid);
+                string wallRetainLayer = UserLayerNameResolver.Get(LayerSemanticIds.WallRetainSolid, LayerBuiltinDefaults.WallRetainSolid);
+                EnsureLayerExists(tr, db, wallMainLayer);
+                EnsureLayerExists(tr, db, wallRetainLayer);
                 
                 foreach (var wall in walls)
                 {
@@ -396,7 +400,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         tr.AddNewlyCreatedDBObject(solid, true);
                         
                         // 然后设置图层（必须在添加到数据库之后）
-                        solid.Layer = wall.IsRetainingWall ? "00_hy_挡土墙3D" : "00_hy_墙体3D";
+                        solid.Layer = wall.IsRetainingWall ? wallRetainLayer : wallMainLayer;
                         
                         count++;
                     }

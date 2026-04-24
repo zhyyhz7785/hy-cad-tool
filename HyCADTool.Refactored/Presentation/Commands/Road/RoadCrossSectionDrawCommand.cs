@@ -1,18 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.Services.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
-using HyCADTool.Refactored.Domain.ValueObjects.Drawing;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road;
 using HyCADTool.Refactored.Infrastructure.Configuration;
-using HyCADTool.Refactored.Presentation.ViewModels;
+using HyCADTool.Refactored.Presentation;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
-using HyCADTool.Refactored.Presentation.Views.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation.Commands.Road
@@ -22,7 +19,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
     ///
     /// <para>
     /// 取代 <see cref="RoadTemplateCommand"/>（hyRoadT）。本命令继续承担同样的三入口职责，
-    /// 但 UI 走 BlenderUI workbench 风格的 <see cref="CrossSectionDrawWindow"/>，
+    /// 但 UI 走 <see cref="Autodesk.AutoCAD.Windows.PaletteSet"/> 宿主的 <see cref="Views.Road.CrossSectionDrawPanel"/>，
     /// 并以 <see cref="CrossSectionDrawViewModel"/> 暴露 v2 新增的路牙 / 坡型 / 路拱 / 路面结构 / 桩号字段。
     /// </para>
     ///
@@ -75,20 +72,10 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
         //  新建
         // =========================================================================
 
-        private static void ExecuteNew(Document doc)
+        private static void ExecuteNew(Document _)
         {
-            var vm = new CrossSectionDrawViewModel(
-                initialLayout: CrossSectionPresets.CreateCjj37UrbanArterial());
-
-            if (!TryRunDesigner(doc, vm, out var result)) return;
-
-            var origin = PromptInsertionPoint(doc.Editor);
-            if (origin == null) return;
-
-            var mode = vm.UseSingleLineMode
-                ? CrossSectionDrawMode.SingleLine
-                : CrossSectionDrawMode.WithStructureThickness;
-            DrawAndSave(doc, result, origin.Value, drawMode: mode);
+            var panels = ServiceLocator.Resolve<PanelManager>();
+            panels.ShowCrossSectionPanel(null, null);
         }
 
         // =========================================================================
@@ -118,16 +105,8 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 existing = CrossSectionPresets.CreateCjj37UrbanArterial();
             }
 
-            var vm = new CrossSectionDrawViewModel(existing, existingTemplateId: pick.Id);
-            if (!TryRunDesigner(doc, vm, out var result)) return;
-
-            var origin = PromptInsertionPoint(doc.Editor);
-            if (origin == null) return;
-
-            var mode = vm.UseSingleLineMode
-                ? CrossSectionDrawMode.SingleLine
-                : CrossSectionDrawMode.WithStructureThickness;
-            DrawAndSave(doc, result, origin.Value, replaceTemplateId: pick.Id, drawMode: mode);
+            var panels = ServiceLocator.Resolve<PanelManager>();
+            panels.ShowCrossSectionPanel(existing, pick.Id);
         }
 
         // =========================================================================
@@ -141,7 +120,7 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
 
             var layout = preset.Create();
 
-            var origin = PromptInsertionPoint(doc.Editor);
+            var origin = PromptInsertionPointForQuick(doc.Editor);
             if (origin == null) return;
 
             var result = new CrossSectionDesignerResult(
@@ -149,61 +128,14 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
                 figure: CrossSectionLayoutBuilder.ToFigure(layout),
                 layout: layout);
 
-            DrawAndSave(doc, result, origin.Value);
+            var commit = ServiceLocator.Resolve<CrossSectionCommitDrawService>();
+            var outcome = commit.Commit(doc, result, origin.Value, null, CrossSectionDrawMode.WithStructureThickness);
+            WriteCommitOutcomeMessages(doc, result, outcome);
         }
 
         // =========================================================================
         //  交互与持久化
         // =========================================================================
-
-        private static bool TryRunDesigner(Document doc, CrossSectionDrawViewModel vm, out CrossSectionDesignerResult result)
-        {
-            result = null;
-            CrossSectionDesignerResult captured = null;
-            vm.Confirmed += (_, r) => captured = r;
-
-            var window = new CrossSectionDrawWindow(vm);
-            // 把 AutoCAD 主窗口设为 owner，避免"浮窗被主窗口压到最下面"
-            var ownerHandle = AcApp.MainWindow?.Handle ?? IntPtr.Zero;
-            if (ownerHandle != IntPtr.Zero)
-            {
-                new System.Windows.Interop.WindowInteropHelper(window).Owner = ownerHandle;
-            }
-
-            bool? dlg;
-            try
-            {
-                dlg = AcApp.ShowModalWindow(window);
-            }
-            catch (InvalidOperationException)
-            {
-                // 极端场景（非 CAD 宿主 / 单元测试）兜底到原生 ShowDialog
-                dlg = window.ShowDialog();
-            }
-
-            if (captured == null || dlg != true)
-            {
-                doc.Editor.WriteMessage("\n[道路] 已取消。");
-                return false;
-            }
-            result = captured;
-            return true;
-        }
-
-        private static Point2d? PromptInsertionPoint(Editor ed)
-        {
-            var opt = new PromptPointOptions("\n[道路] 指定横断面图插入点：")
-            {
-                AllowNone = false,
-            };
-            var res = ed.GetPoint(opt);
-            if (res.Status != PromptStatus.OK)
-            {
-                ed.WriteMessage("\n[道路] 已取消。");
-                return null;
-            }
-            return new Point2d(res.Value.X, res.Value.Y);
-        }
 
         private static Template PromptTemplate(Editor ed, IReadOnlyList<Template> templates)
         {
@@ -258,69 +190,34 @@ namespace HyCADTool.Refactored.Presentation.Commands.Road
             return all[res.Value - 1];
         }
 
-        private static void DrawAndSave(
-            Document doc,
-            CrossSectionDesignerResult result,
-            Point2d origin,
-            Guid? replaceTemplateId = null,
-            CrossSectionDrawMode drawMode = CrossSectionDrawMode.WithStructureThickness)
+        private static Point2d? PromptInsertionPointForQuick(Editor ed)
         {
-            var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
-            var exporter = ServiceLocator.Resolve<RoadJsonExportService>();
-            var drawService = ServiceLocator.Resolve<RoadStandardSectionDrawService>();
-            DrawingSheetTitleSpec titleSpec = SettingsPanelViewModel.Current != null
-                ? SettingsPanelViewModel.Current.CreateDrawingSheetTitleSpec()
-                : DrawingSheetTitleSpec.RoadCrossSectionDefault;
+            var opt = new PromptPointOptions("\n[道路] 指定横断面图插入点：")
+            {
+                AllowNone = false,
+            };
+            var res = ed.GetPoint(opt);
+            if (res.Status != PromptStatus.OK)
+            {
+                ed.WriteMessage("\n[道路] 已取消。");
+                return null;
+            }
+            return new Point2d(res.Value.X, res.Value.Y);
+        }
 
-            var design = registry.GetOrCreate(doc.Name);
+        private static void WriteCommitOutcomeMessages(Document doc, CrossSectionDesignerResult result, CommitDrawOutcome outcome)
+        {
             var template = result.Template;
-
-            // 1) 替换或追加到 Domain
-            if (replaceTemplateId.HasValue)
-            {
-                int idx = design.Templates.FindIndex(t => t.Id == replaceTemplateId.Value);
-                if (idx >= 0) design.Templates[idx] = template;
-                else design.Templates.Add(template);
-            }
-            else
-            {
-                // 若 Id 已存在（理论上不应），覆盖；否则追加
-                var existing = design.Templates.FirstOrDefault(t => t.Id == template.Id);
-                if (existing != null)
-                {
-                    design.Templates.Remove(existing);
-                }
-                design.Templates.Add(template);
-            }
-            design.LastModifiedUtc = DateTime.UtcNow;
-
-            // 2) 清旧 + 出图
-            int erased = 0;
-            int created = 0;
-            using (doc.LockDocument())
-            using (var tr = doc.Database.TransactionManager.StartTransaction())
-            {
-                erased = drawService.Clear(tr, doc.Database, template.Id);
-                double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
-                created = drawService.Draw(tr, doc.Database, result.Figure, template, origin,
-                    modelUnitPerMeter: 1.0, mode: drawMode, layout: result.Layout, annotationStyle: null,
-                    sheetTitleSpec: titleSpec, planStripVerticalOffsetMeters: planOff);
-                tr.Commit();
-            }
-
-            // 3) JSON 落盘
-            string savedTo = exporter.SaveForDocument(design, doc.Name);
-
             doc.Editor.WriteMessage(
-                $"\n[道路] 已 {(replaceTemplateId.HasValue ? "更新" : "新增")} 模板 {template.Name}（Id={template.Id:N}）。");
+                $"\n[道路] 已 {(outcome.WasReplace ? "更新" : "新增")} 模板 {template.Name}（Id={template.Id:N}）。");
             doc.Editor.WriteMessage(
                 $"\n[道路] 路幅 {result.Layout.TotalWidth:F2} m，"
                 + $"左半 {result.Layout.LeftHalfWidth:F2} m / 右半 {result.Layout.RightHalfWidth:F2} m，"
                 + $"设计速度 V={result.Layout.DesignSpeed} km/h，比例 1:{result.Layout.ScaleDenominator}。");
-            doc.Editor.WriteMessage($"\n[道路] 实体变更：擦除 {erased} 个 / 生成 {created} 个。");
+            doc.Editor.WriteMessage($"\n[道路] 实体变更：擦除 {outcome.Erased} 个 / 生成 {outcome.Created} 个。");
 
-            if (!string.IsNullOrEmpty(savedTo))
-                doc.Editor.WriteMessage($"\n[道路] JSON 已同步落盘：{savedTo}");
+            if (!string.IsNullOrEmpty(outcome.JsonPath))
+                doc.Editor.WriteMessage($"\n[道路] JSON 已同步落盘：{outcome.JsonPath}");
             else
                 doc.Editor.WriteMessage(
                     "\n[道路] 未落盘（DWG 尚未保存）。先 QSAVE / SAVEAS，再跑 hyRoadSave 即可。");

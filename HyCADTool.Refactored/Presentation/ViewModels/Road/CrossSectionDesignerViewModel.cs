@@ -116,8 +116,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         private CrossSectionFigure _lastFigure;
         private CrossSectionLayout _lastLayout;
 
-        /// <summary>外部传入的已有模板 Guid（用于"编辑现有模板"场景）。null 表示新建。</summary>
-        public Guid? ExistingTemplateId { get; }
+        /// <summary>外部传入的已有模板 Guid（用于"编辑现有模板"场景）。null 表示新建；首次落盘后可由 <see cref="AdoptCommittedTemplateId"/> 回填。</summary>
+        public Guid? ExistingTemplateId { get; private set; }
 
         // =========================================================================
         //  构造
@@ -634,9 +634,22 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private void ExecuteDrawStructureLines()
         {
+            if (_lastReport != null && !_lastReport.AllPassed)
+            {
+                var summary = BuildNonCompliantSummary(_lastReport);
+                if (!NonCompliantConfirm(summary)) return;
+            }
+
             var result = BuildResult();
             if (result == null) return;
             DrawStructureLinesRequested?.Invoke(this, result);
+        }
+
+        /// <summary>首次 PaletteSet 落盘后，把 Registry 替换键回填为当前 <paramref name="templateId"/>。</summary>
+        public void AdoptCommittedTemplateId(Guid templateId)
+        {
+            if (templateId == Guid.Empty) return;
+            ExistingTemplateId = templateId;
         }
 
         /// <summary>桩号区间多行：首行与 <see cref="StationStart"/>/<see cref="StationEnd"/> 对应，后续为 <see cref="CrossSectionLayout.AdditionalStationRanges"/>。</summary>
@@ -649,17 +662,28 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         /// <summary>
         /// 重新构建 Layout / Figure / CheckReport，并触发 <see cref="PreviewRequested"/>。
         /// 批量更新时（例如 <see cref="LoadLayout"/>）会被 <see cref="_isBulkUpdating"/> 抑制。
+        /// <para>注：性能敏感的重绘路径（Canvas 子树重建）由 View 层
+        /// <c>CrossSectionDrawPanel.ScheduleRedrawPreview</c> 合并到单帧一次，本方法保持
+        /// 同步语义，保证调用方（含单测）立即读到 <see cref="LastLayout"/>/<see cref="LastFigure"/>。</para>
         /// </summary>
         public void Recalculate()
         {
             if (_isBulkUpdating) return;
             if (_isRefreshing) return;
+            RecalculateCore();
+        }
 
+        private void RecalculateCore()
+        {
             _isRefreshing = true;
             try
             {
                 _lastLayout = BuildLayout();
-                bool useWE = SettingsPanelViewModel.Current?.RoadCrossSectionOrientationUseWestEast == true;
+                // SettingsPanelViewModel.Current 在非 AutoCAD 宿主 / 单测环境下访问 DocumentManager
+                // 会抛 InvalidProgramException；此处做一次性保护，非核心信号降级为 false。
+                bool useWE = false;
+                try { useWE = SettingsPanelViewModel.Current?.RoadCrossSectionOrientationUseWestEast == true; }
+                catch { useWE = false; }
                 _lastFigure = CrossSectionLayoutBuilder.ToFigure(
                     _lastLayout,
                     orientationLeftLabel: useWE ? "西" : "北",
@@ -670,8 +694,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                 RightHalfWidth = _lastLayout.RightHalfWidth;
                 TotalWidth = _lastLayout.TotalWidth;
 
-                CheckItems.Clear();
-                foreach (var it in _lastReport.Items) CheckItems.Add(it);
+                UpdateCheckItemsIfChanged(_lastReport.Items);
                 AllChecksPassed = _lastReport.AllPassed;
 
                 PreviewRequested?.Invoke(this, _lastFigure);
@@ -683,6 +706,39 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
             RefreshBandElevationEditability();
             RaiseCommandsChanged();
+        }
+
+        /// <summary>
+        /// 规范检查项差分更新：仅在与现有集合不同时才 Clear+Add，避免每帧 N 次
+        /// CollectionChanged 导致右侧「规范检查」ItemsControl 反复重建。
+        /// </summary>
+        private void UpdateCheckItemsIfChanged(IReadOnlyList<CodeCheckItem> next)
+        {
+            if (next == null)
+            {
+                if (CheckItems.Count > 0) CheckItems.Clear();
+                return;
+            }
+            if (CheckItems.Count == next.Count)
+            {
+                bool allSame = true;
+                for (int i = 0; i < next.Count; i++)
+                {
+                    var a = CheckItems[i];
+                    var b = next[i];
+                    if (a.Passed != b.Passed
+                        || !string.Equals(a.Name, b.Name, StringComparison.Ordinal)
+                        || !string.Equals(a.Message, b.Message, StringComparison.Ordinal)
+                        || !string.Equals(a.Suggestion, b.Suggestion, StringComparison.Ordinal))
+                    {
+                        allSame = false;
+                        break;
+                    }
+                }
+                if (allSame) return;
+            }
+            CheckItems.Clear();
+            for (int i = 0; i < next.Count; i++) CheckItems.Add(next[i]);
         }
 
         /// <summary>

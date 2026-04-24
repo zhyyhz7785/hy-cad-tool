@@ -1,7 +1,8 @@
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using System;
 using System.Collections.Generic;
 
@@ -87,7 +88,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
         {
             // 图层已在 PluginInitializer 统一创建，此处只查找 ID
             var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-            var layerId = lt.Has("00_hy_图框") ? lt["00_hy_图框"] : db.LayerZero;
+            string titleLayerName = UserLayerNameResolver.Get(LayerSemanticIds.TitleBlock, LayerBuiltinDefaults.TitleBlock);
+            var layerId = lt.Has(titleLayerName) ? lt[titleLayerName] : db.LayerZero;
 
             // 外框
             var outer = CreateRect(
@@ -123,7 +125,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
                 HorizontalMode = TextHorizontalMode.TextCenter,
                 VerticalMode = TextVerticalMode.TextVerticalMid,
                 AlignmentPoint = new Point3d(sx + tb.SignWidth / 2, sy + tb.SignHeight / 2, 0),
-                Layer = "00_hy_图框"
+                Layer = titleLayerName
             };
             label.AdjustAlignment(db);
             btr.AppendEntity(label);

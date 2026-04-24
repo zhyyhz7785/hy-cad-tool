@@ -2,8 +2,11 @@ using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Models.Cluster;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,24 +22,46 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
     {
         #region 图层配置
 
-        private static readonly (string Name, short Color) LayerBP = ("00_hy_BP", 3);
-        private static readonly (string Name, short Color) LayerAAP = ("00_hy_AAP", 1);
-        private static readonly (string Name, short Color) LayerBAP = ("00_hy_BAP", 4);
-        private static readonly (string Name, short Color) LayerAB = ("00_hy_ABolt", 2);
-        private static readonly (string Name, short Color) LayerSteelPl = ("00_hy_SteelPlate", 5);
+        private static (string Name, short Color) L(string semanticId, string fallback, short color) =>
+            (UserLayerNameResolver.Get(semanticId, fallback), color);
 
-        private static readonly (string Name, short Color) LayerAxisCir = ("00_hy_AxisCircle", 7);
-        private static readonly (string Name, short Color) LayerAxisTxt = ("00_hy_AxisText", 7);
-        private static readonly (string Name, short Color) LayerRegFrame = ("00_hy_Region", 9);
-        private static readonly (string Name, short Color) LayerRegTxt = ("00_hy_RegionText", 9);
+        private static (string Name, short Color) LayerBP => L(LayerSemanticIds.ClusterBP, LayerBuiltinDefaults.ClusterMain, 3);
+        private static (string Name, short Color) LayerAAP => L(LayerSemanticIds.ClusterAAP, LayerBuiltinDefaults.ClusterMain, 1);
+        private static (string Name, short Color) LayerBAP => L(LayerSemanticIds.ClusterBAP, LayerBuiltinDefaults.ClusterMain, 4);
+        private static (string Name, short Color) LayerAB => L(LayerSemanticIds.ClusterABolt, LayerBuiltinDefaults.ClusterMain, 2);
+        private static (string Name, short Color) LayerSteelPl => L(LayerSemanticIds.ClusterSteelPlate, LayerBuiltinDefaults.ClusterMain, 5);
 
-        private static readonly (string Name, short Color) LayerDimX = ("00_hy_Dim_X", 7);
-        private static readonly (string Name, short Color) LayerDimY = ("00_hy_Dim_Y", 7);
+        private static (string Name, short Color) LayerAxisCir => L(LayerSemanticIds.ClusterAxisCircle, LayerBuiltinDefaults.ClusterAxis, 7);
+        private static (string Name, short Color) LayerAxisTxt => L(LayerSemanticIds.ClusterAxisText, LayerBuiltinDefaults.ClusterAxis, 7);
+        private static (string Name, short Color) LayerRegFrame => L(LayerSemanticIds.ClusterRegion, LayerBuiltinDefaults.ClusterRegion, 9);
+        private static (string Name, short Color) LayerRegTxt => L(LayerSemanticIds.ClusterRegionText, LayerBuiltinDefaults.ClusterRegion, 9);
 
-        private static readonly (string Name, short Color) LayerClEP = ("00_hy_ClusterEP", 8);
-        private static readonly (string Name, short Color) LayerClEEP = ("00_hy_ClusterEEP", 8);
-        private static readonly (string Name, short Color) LayerClHull = ("00_hy_ClusterHull", 6);
-        private static readonly (string Name, short Color) LayerClPts = ("00_hy_ClusterPts", 34);
+        private static (string Name, short Color) LayerDimX => L(LayerSemanticIds.ClusterDimX, LayerBuiltinDefaults.ClusterDim, 7);
+        private static (string Name, short Color) LayerDimY => L(LayerSemanticIds.ClusterDimY, LayerBuiltinDefaults.ClusterDim, 7);
+
+        private static (string Name, short Color) LayerClEP => L(LayerSemanticIds.ClusterEP, LayerBuiltinDefaults.ClusterAux, 8);
+        private static (string Name, short Color) LayerClEEP => L(LayerSemanticIds.ClusterEEP, LayerBuiltinDefaults.ClusterAux, 8);
+        private static (string Name, short Color) LayerClHull => L(LayerSemanticIds.ClusterHull, LayerBuiltinDefaults.ClusterAux, 6);
+        private static (string Name, short Color) LayerClPts => L(LayerSemanticIds.ClusterPts, LayerBuiltinDefaults.ClusterAux, 34);
+
+        private static IEnumerable<(string Name, short Color)> AllDrawLayers()
+        {
+            yield return LayerBP;
+            yield return LayerAAP;
+            yield return LayerBAP;
+            yield return LayerAB;
+            yield return LayerSteelPl;
+            yield return LayerAxisCir;
+            yield return LayerAxisTxt;
+            yield return LayerRegFrame;
+            yield return LayerRegTxt;
+            yield return LayerDimX;
+            yield return LayerDimY;
+            yield return LayerClEP;
+            yield return LayerClEEP;
+            yield return LayerClHull;
+            yield return LayerClPts;
+        }
 
         #endregion
 
@@ -71,20 +96,12 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
             if (doc == null) return;
             var db = doc.Database;
 
-            var allLayers = new[]
-            {
-                LayerBP, LayerAAP, LayerBAP, LayerAB, LayerSteelPl,
-                LayerAxisCir, LayerAxisTxt, LayerRegFrame, LayerRegTxt,
-                LayerDimX, LayerDimY,
-                LayerClEP, LayerClEEP, LayerClHull, LayerClPts
-            };
-
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 bool upgraded = false;
 
-                foreach (var (name, color) in allLayers)
+                foreach (var (name, color) in AllDrawLayers())
                 {
                     if (lt.Has(name)) continue;
                     if (!upgraded) { lt.UpgradeOpen(); upgraded = true; }

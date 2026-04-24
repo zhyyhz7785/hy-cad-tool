@@ -1,6 +1,9 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +17,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
     /// </summary>
     public class ClusterInputService
     {
+        private static bool IsPublicAxisMainLayer(string layerName) =>
+            string.Equals(layerName, UserLayerNameResolver.Get(LayerSemanticIds.PublicAxisMain, LayerBuiltinDefaults.PublicAxisMain), StringComparison.Ordinal)
+            || string.Equals(layerName, "00_hy_3公共_轴线_总", StringComparison.Ordinal);
+
         /// <summary>
         /// 从 CAD 选择集中采集输入数据
         /// </summary>
@@ -82,7 +89,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Cluster
                             }
                             break;
 
-                        case Line line when layerName == "00_hy_3公共_轴线_总":
+                        case Line line when IsPublicAxisMainLayer(layerName):
                             data.AxisLines.Add(line);
                             break;
 

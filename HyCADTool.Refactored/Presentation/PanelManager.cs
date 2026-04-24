@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.Windows;
 using Autofac;
 using System;
+using HyCADTool.Refactored.Domain.ValueObjects.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Presentation
@@ -24,6 +25,9 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>项目树 PaletteSet GUID（045 / M6）。</summary>
         private static readonly Guid RoadProjectTreePaletteGuid = new Guid("C3D4E5F6-0708-9012-CD34-56789012345A");
 
+        /// <summary>横断面绘制（RCS）PaletteSet GUID。</summary>
+        private static readonly Guid CrossSectionPaletteGuid = new Guid("D4E5F6A7-B8C9-0123-DE45-678901234567");
+
         private readonly IComponentContext _componentContext;
 
         private PaletteSet _blenderPaletteSet;
@@ -39,6 +43,11 @@ namespace HyCADTool.Refactored.Presentation
         private PaletteSet _projectTreePaletteSet;
         private Views.Road.RoadProjectTreePanel _projectTreePanel;
         private ViewModels.Road.RoadProjectTreeViewModel _projectTreeVm;
+
+        // ===== 横断面绘制 v2（PaletteSet + CrossSectionDrawPanel） =====
+        private PaletteSet _crossSectionPaletteSet;
+        private Views.Road.CrossSectionDrawPanel _crossSectionPanel;
+        private ViewModels.Road.CrossSectionDrawViewModel _crossSectionVm;
 
         /// <summary>
         /// 路线工作台 PaletteSet 上一次 <c>StateChanged</c> 观察到的 Visible 值，用于做边缘触发：
@@ -195,6 +204,85 @@ namespace HyCADTool.Refactored.Presentation
         /// <summary>项目树 PaletteSet 是否可见。</summary>
         public bool IsRoadProjectTreeVisible
             => _projectTreePaletteSet != null && _projectTreePaletteSet.Visible;
+
+        // ===== RCS：横断面绘制（hyRoadCs / hyRoadCsLoad） =====
+
+        /// <summary>
+        /// 显示横断面绘制 <see cref="PaletteSet"/>（底部停靠，与会话内路线工作台同区）。
+        /// 每次调用会新建 <see cref="ViewModels.Road.CrossSectionDrawViewModel"/> 并注入面板。
+        /// </summary>
+        public void ShowCrossSectionPanel(CrossSectionLayout initialLayout = null, Guid? existingTemplateId = null)
+        {
+            RegisterDocumentEvents();
+
+            if (_crossSectionPaletteSet == null)
+                CreateCrossSectionPalette();
+            else
+                _crossSectionPaletteSet.Visible = true;
+
+            if (_crossSectionPanel == null) return;
+
+            _crossSectionVm = new ViewModels.Road.CrossSectionDrawViewModel(initialLayout, existingTemplateId);
+            _crossSectionPanel.ViewModel = _crossSectionVm;
+            TryStripCrossSectionCaptionIfDocked();
+        }
+
+        /// <summary>隐藏横断面 PaletteSet（<c>Esc</c> 快捷键等）。</summary>
+        public void HideCrossSectionPanel()
+        {
+            if (_crossSectionPaletteSet != null)
+                _crossSectionPaletteSet.Visible = false;
+        }
+
+        /// <summary>横断面面板是否可见。</summary>
+        public bool IsCrossSectionPanelVisible
+            => _crossSectionPaletteSet != null && _crossSectionPaletteSet.Visible;
+
+        private void CreateCrossSectionPalette()
+        {
+            _crossSectionPanel = new Views.Road.CrossSectionDrawPanel();
+
+            _crossSectionPaletteSet = new PaletteSet("横断面绘制", CrossSectionPaletteGuid)
+            {
+                Size = new System.Drawing.Size(1340, 780),
+                MinimumSize = new System.Drawing.Size(1100, 640),
+                DockEnabled = (DockSides)((int)DockSides.Bottom | (int)DockSides.Top),
+                Style = PaletteSetStyles.ShowCloseButton |
+                        PaletteSetStyles.ShowAutoHideButton |
+                        PaletteSetStyles.Snappable
+            };
+
+            _crossSectionPaletteSet.AddVisual("横断面绘制", _crossSectionPanel);
+            _crossSectionPaletteSet.StateChanged += OnCrossSectionPaletteStateChanged;
+            _crossSectionPaletteSet.Dock = DockSides.Bottom;
+            _crossSectionPaletteSet.Visible = true;
+
+            TryStripCrossSectionCaptionIfDocked();
+        }
+
+        private void OnCrossSectionPaletteStateChanged(object sender, PaletteSetStateEventArgs e)
+        {
+            TryStripCrossSectionCaptionIfDocked();
+        }
+
+        private void TryStripCrossSectionCaptionIfDocked()
+        {
+            if (_crossSectionPaletteSet == null || _crossSectionPanel == null) return;
+            if (_crossSectionPaletteSet.Dock == DockSides.None) return;
+
+            _crossSectionPanel.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Loaded,
+                new Action(() =>
+                {
+                    try
+                    {
+                        Infrastructure.AutoCAD.UI.PaletteTitleBarStripper.TryStripCaption("横断面绘制");
+                    }
+                    catch
+                    {
+                    }
+                }));
+        }
 
         private void CreateRoadProjectTreePalette()
         {

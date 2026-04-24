@@ -183,18 +183,16 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration
                 case LayerBuiltinDefaults.RoadCrossSectionDimension:
                 case "05_hy_道路_横断面_尺寸链":
                     return LayerSemanticIds.RoadCrossSectionDimension;
-                case LayerBuiltinDefaults.RoadCrossSectionAnnotation:
-                case "05_hy_道路_横断面_文字":
-                    return LayerSemanticIds.RoadCrossSectionAnnotation;
-                case LayerBuiltinDefaults.RoadCrossSectionTitle:
-                case "05_hy_道路_横断面_图题":
-                    return LayerSemanticIds.RoadCrossSectionTitle;
-                case LayerBuiltinDefaults.RoadCrossSectionTitleDecoration:
                 case "05_hy_道路_横断面_图题_装饰":
                     return LayerSemanticIds.RoadCrossSectionTitleDecoration;
-                case LayerBuiltinDefaults.RoadCrossSectionOrientation:
                 case "05_hy_道路_横断面_方位":
                     return LayerSemanticIds.RoadCrossSectionOrientation;
+                case "02-hy-3横断-图题":
+                case "05_hy_道路_横断面_图题":
+                    return LayerSemanticIds.RoadCrossSectionTitle;
+                case "02-hy-3横断-注释-文":
+                case "05_hy_道路_横断面_文字":
+                    return LayerSemanticIds.RoadCrossSectionAnnotation;
                 case LayerBuiltinDefaults.RoadPlanRedLine:
                 case "05_hy_道路_平面_红线":
                     return LayerSemanticIds.RoadPlanRedLine;

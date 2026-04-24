@@ -2,6 +2,8 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Refactored.Domain.Enums;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Extensions;
 using HyCADTool.Refactored.Presentation.ViewModels;
 using NetTopologySuite.Geometries;
@@ -120,7 +122,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
                 var db = doc.Database;
-                var layerName = "00_hy_3公共_标注1_外";
+                var layerName = UserLayerNameResolver.Get(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
                     var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);

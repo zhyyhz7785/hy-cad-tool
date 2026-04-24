@@ -70,7 +70,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             Template template,
             Point2d origin,
             double modelUnitPerMeter = 1.0)
-            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null, null, null, planStripVerticalOffsetMeters: 5.0);
+            => Draw(transaction, database, figure, template, origin, modelUnitPerMeter, CrossSectionDrawMode.WithStructureThickness, null, null, null, planStripVerticalOffsetMeters: 5.0, drawSectionStructureFills: true);
 
         /// <summary>
         /// M7.4 重载：指定绘图模式。
@@ -89,7 +89,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             CrossSectionLayout layout = null,
             CrossSectionAnnotationStyle annotationStyle = null,
             DrawingSheetTitleSpec sheetTitleSpec = null,
-            double planStripVerticalOffsetMeters = 5.0)
+            double planStripVerticalOffsetMeters = 5.0,
+            bool drawSectionStructureFills = true)
         {
             if (transaction == null) throw new ArgumentNullException(nameof(transaction));
             if (database == null) throw new ArgumentNullException(nameof(database));
@@ -201,7 +202,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             if (mode == CrossSectionDrawMode.WithStructureThickness && layout != null)
             {
                 added += DrawStructureLayerFills(
-                    transaction, ms, database, template.Id, figure, layout, origin, s);
+                    transaction, ms, database, template.Id, figure, layout, origin, s, drawSectionStructureFills);
             }
 
             // ---------------- 3. 字高 / 标准图区域标高 ----------------
@@ -600,7 +601,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             CrossSectionFigure figure,
             CrossSectionLayout layout,
             Point2d origin,
-            double s)
+            double s,
+            bool drawSectionFillHatch = true)
         {
             int n = 0;
             if (layout == null || figure == null) return 0;
@@ -641,7 +643,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
                     tr.AddNewlyCreatedDBObject(pl, true);
                     TagEntity(tr, db, pl, templateId);
                     n++;
-                    n += LayerFillApplier.ApplyHatch(tr, ms, db, templateId, pl, sf, layerName);
+                    if (drawSectionFillHatch)
+                    {
+                        n += LayerFillApplier.ApplyHatch(tr, ms, db, templateId, pl, sf, layerName);
+                    }
                     double cxM = 0.5 * (x0 + x1);
                     double yTop = 0.5 * (y0a + y1a);
                     double yBot = 0.5 * (y0b + y1b);
@@ -1134,7 +1139,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
         {
             // 放到 LayerManager 更干净，但此服务作为独立模块，最小副作用：不改变现有图层状态，只确保存在。
             var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-            foreach (var (name, color) in HyRoadLayers.GetAll())
+            foreach (var (name, color, _) in HyRoadLayers.GetAll())
             {
                 if (lt.Has(name)) continue;
                 if (!lt.IsWriteEnabled) lt.UpgradeOpen();

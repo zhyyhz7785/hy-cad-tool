@@ -365,6 +365,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             set { if (value) UseSingleLineMode = false; }
         }
 
+        private bool _drawSectionStructureFills;
+        /// <summary>
+        /// 是否在「向 CAD 绘制横断面」时，为每层结构层生成坡面图 <c>SectionFill</c> 的 Hatch 填充。
+        /// 默认 false：结构层仍画闭合边界与图块（若启用），但不生成密集斜线 Hatch，避免图面过于拥挤。
+        /// 顶栏提供勾选开关，随时可打开重画；数据层 <c>SectionFill.PatternEnabled</c> 不变更。
+        /// </summary>
+        public bool DrawSectionStructureFills
+        {
+            get => _drawSectionStructureFills;
+            set => SetProperty(ref _drawSectionStructureFills, value);
+        }
+
         // ============================== UI 折叠状态 ==============================
 
         private bool _isOutlinerVisible = true;
@@ -389,6 +401,12 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         {
             get => _statusMessage;
             private set => SetProperty(ref _statusMessage, value ?? string.Empty);
+        }
+
+        /// <summary>横断面 PaletteSet 出图成功后写回摘要（供 <see cref="Views.Road.CrossSectionDrawPanel"/> 调用）。</summary>
+        public void SetCommitOutcomeStatus(string message)
+        {
+            SetProperty(ref _statusMessage, message ?? string.Empty, nameof(StatusMessage));
         }
 
         /// <summary>UI 显示用：当前选中条带所在侧别的中文标签。</summary>

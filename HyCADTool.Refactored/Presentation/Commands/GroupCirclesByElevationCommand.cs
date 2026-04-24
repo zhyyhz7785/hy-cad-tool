@@ -22,9 +22,9 @@ namespace HyCADTool.Refactored.Presentation.Commands
     /// </summary>
     public class GroupCirclesByElevationCommand
     {
-        private const string NoTextLayerName = "00_hy_Z_NoText";
-        private const string LeaderLayerName = "00_hy_3公共_标注3_引线";
-        private const string ElevationTextLayerName = "00_hy_3公共_标注4_标高";
+        private static string NoTextLayerName => UserLayerNameResolver.Get(LayerSemanticIds.ElevationNoText, LayerBuiltinDefaults.ElevationNoText);
+        private static string LeaderLayerName => UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
+        private static string ElevationTextLayerName => UserLayerNameResolver.Get(LayerSemanticIds.ElevationSymbol, LayerBuiltinDefaults.ElevationSymbol);
 
         private readonly Document _doc;
         private readonly Database _db;
@@ -185,7 +185,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
                     foreach (var g in orderedGroups)
                     {
-                        string layerName = $"00_hy_Z_{g.Code}";
+                        string layerName = $"{LayerBuiltinDefaults.ElevationGroupLayerPrefix}{g.Code}";
                         short aciColor = getColor(g.Elevation);
 
                         CreateLayerIfNotExists(tr, lt, layerName, aciColor);
@@ -203,7 +203,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                     // 9. 无文字对象：绘制红色警示圆（直径 = 原来 2 倍）+ 提示
                     if (noTextCircles.Any())
                     {
-                        const string warningLayerName = "00_hy_Z_Warning";
+                        string warningLayerName = UserLayerNameResolver.Get(LayerSemanticIds.ElevationWarning, LayerBuiltinDefaults.ElevationWarning);
                         CreateLayerIfNotExists(tr, lt, warningLayerName, 1); // 1 = 红色
                         foreach (var item in noTextCircles)
                         {
@@ -245,7 +245,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
                         tr.AddNewlyCreatedDBObject(mleader, true);
 
                         item.pile.Entity.UpgradeOpen();
-                        item.pile.Entity.Layer = $"00_hy_Z_{code}";
+                        item.pile.Entity.Layer = $"{LayerBuiltinDefaults.ElevationGroupLayerPrefix}{code}";
                     }
 
                     // 12. 创建统计表格
@@ -460,4 +460,12 @@ namespace HyCADTool.Refactored.Presentation.Commands
                 cy += (p0.Y + p1.Y) * cross;
             }
             area *= 0.5;
-            if (Math.Abs
+            if (Math.Abs(area) < 1e-10)
+            {
+                return pline.GetPoint3dAt(0);
+            }
+
+            return new Point3d(cx / (6 * area), cy / (6 * area), pline.Elevation);
+        }
+    }
+}

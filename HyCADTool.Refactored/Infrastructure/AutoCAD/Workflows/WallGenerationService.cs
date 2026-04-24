@@ -6,8 +6,11 @@ using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Refactored.Domain.Entities;
 using HyCADTool.Refactored.Domain.Services;
 using HyCADTool.Refactored.Domain.Services.Geometry;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
 {
@@ -143,7 +146,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
                     wallHeight: height,
                     offsetDirection: offsetDirection,
                     baseElevation: bottom,
-                    layerName: "00_hy_墙体3D_连接墙");
+                    layerName: UserLayerNameResolver.Get(LayerSemanticIds.WallConnectSolid, LayerBuiltinDefaults.WallConnectSolid));
                 
                 return wall != null ? 1 : 0;
             }
@@ -183,7 +186,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
                     wallHeight: height,
                     offsetDirection: offsetDirection,
                     baseElevation: bottom,
-                    layerName: "00_hy_墙体3D_挡土墙");
+                    layerName: UserLayerNameResolver.Get(LayerSemanticIds.WallRetainSolid, LayerBuiltinDefaults.WallRetainSolid));
                 
                 return wall != null ? 1 : 0;
             }
@@ -252,8 +255,8 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
                     db.CurrentSpaceId,
                     OpenMode.ForWrite);
                 
-                // 创建墙体图层
-                layerManager.EnsureLayer(tr, "00_hy_墙体3D_挡土墙", 2);
+                string retainWallLayer = UserLayerNameResolver.Get(LayerSemanticIds.WallRetainSolid, LayerBuiltinDefaults.WallRetainSolid);
+                layerManager.EnsureLayer(tr, retainWallLayer, 2);
                 
                 for (int modelIndex = 0; modelIndex < models.Count; modelIndex++)
                 {
@@ -310,7 +313,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
                             
                             modelSpace.AppendEntity(wallSolid);
                             tr.AddNewlyCreatedDBObject(wallSolid, true);
-                            wallSolid.Layer = "00_hy_墙体3D_挡土墙";
+                            wallSolid.Layer = retainWallLayer;
                             count++;
                         }
                         catch

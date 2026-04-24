@@ -67,7 +67,7 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
             var all = HyRoadLayers.GetAll();
             var csLayers = all.Where(t => t.layerName.Contains("横断面")).ToArray();
             csLayers.Should().HaveCount(11, "横断面相关图层含图题装饰等");
-            foreach (var (name, _) in csLayers)
+            foreach (var (name, _, _) in csLayers)
             {
                 name.Should().StartWith("05_hy_道路_横断面_");
             }
@@ -84,7 +84,7 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
         [Fact]
         public void LayerNames_UseRoadModulePrefix()
         {
-            foreach (var (name, _) in HyRoadLayers.GetAll())
+            foreach (var (name, _, _) in HyRoadLayers.GetAll())
             {
                 // 路线工作台「用户拾取」为历史图层名，无前缀，经设置可改名
                 if (name == "用户拾取") continue;
@@ -96,7 +96,7 @@ namespace HyCADTool.Refactored.Tests.Infrastructure.Road
         [Fact]
         public void ColorIndex_IsWithinValidAutoCADRange()
         {
-            foreach (var (_, color) in HyRoadLayers.GetAll())
+            foreach (var (_, color, _) in HyRoadLayers.GetAll())
             {
                 // 1..255 是 AutoCAD 可用色号（0 是 ByBlock，256 是 ByLayer）
                 color.Should().BeInRange((short)1, (short)255);

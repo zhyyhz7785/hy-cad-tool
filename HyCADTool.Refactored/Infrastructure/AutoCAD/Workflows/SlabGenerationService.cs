@@ -2,7 +2,10 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Refactored.Domain.Entities;
+using HyCADTool.Refactored.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Configuration;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Interfaces;
+using HyCADTool.Refactored.Infrastructure.AutoCAD.Services;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
 {
@@ -40,10 +43,10 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
                     OpenMode.ForWrite);
                 
                 // 创建必要的图层
-                _layerManager.EnsureLayers(tr,
-                    ("00_hy_基础3D_侧面", 1),
-                    ("00_hy_基础3D_顶面", 3),
-                    ("00_hy_基础3D_底面", 5));
+                string side = UserLayerNameResolver.Get(LayerSemanticIds.EquipFoundationSideSolid, LayerBuiltinDefaults.EquipSideSolid);
+                string top = UserLayerNameResolver.Get(LayerSemanticIds.EquipFoundationTopSolid, LayerBuiltinDefaults.EquipTopSolid);
+                string bottom = UserLayerNameResolver.Get(LayerSemanticIds.EquipFoundationBottomSolid, LayerBuiltinDefaults.EquipBottomSolid);
+                _layerManager.EnsureLayers(tr, (side, 1), (top, 3), (bottom, 5));
                 
                 foreach (var model in models)
                 {
@@ -60,7 +63,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Workflows
                         
                         modelSpace.AppendEntity(solid);
                         tr.AddNewlyCreatedDBObject(solid, true);
-                        solid.Layer = "00_hy_基础3D_侧面";
+                        solid.Layer = side;
                         count++;
                     }
                     catch
