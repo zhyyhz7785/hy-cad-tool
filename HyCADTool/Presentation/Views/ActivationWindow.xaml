@@ -1,0 +1,34 @@
+<Window x:Class="HyCADTool.Presentation.Views.ActivationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+        Title="HyCAD 许可与激活" Width="520" MinHeight="420"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        Background="{DynamicResource Brush_WindowBack}"
+        Foreground="{DynamicResource Brush_TextPrimary}"
+        btmetrics:BlenderMetricsOverlay.Attach="True">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="{DynamicResource Metric_ButtonHeight}" ResizeBorderThickness="0" GlassFrameThickness="0" CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/LibraryResources.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Border Padding="20">
+        <StackPanel>
+            <TextBlock Text="本机机器码（发给销售/代理商签发）" Foreground="#88c0d0" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBox x:Name="MachineCodeText" IsReadOnly="True" TextWrapping="Wrap" MinHeight="28"
+                     Foreground="#eceff4" Background="#1e1e1e" BorderBrush="#3b4252" Padding="6" />
+            <Button Content="复制机器码" Margin="0,8,0,12" Padding="10,4" Click="OnCopy" HorizontalAlignment="Left" />
+            <TextBlock Text="微信扫码（若二维码未显示，请用复制）" Foreground="#88c0d0" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <Image x:Name="QrImage" Width="200" Height="200" HorizontalAlignment="Left" />
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="#ebcb8b" Margin="0,12,0,8" />
+            <Button Content="从文件导入 license.lic" Padding="10,4" Click="OnImport" HorizontalAlignment="Left" />
+            <TextBlock Text="导入后写入: %ProgramData%\\HyCAD\\license.lic" FontSize="10" Foreground="#7a8295" Margin="0,4,0,0" />
+        </StackPanel>
+    </Border>
+</Window>

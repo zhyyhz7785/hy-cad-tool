@@ -24,7 +24,7 @@
         - 右：PropertyEditor + 三级 PropertyGroup（一级/二级/三级 Expander 样式），
                一级块按节点类型切换（断面总览 / 中央隔离带 / 侧别 / 条带 / 结构层）。
 
-      不引用 HyCADTool.Refactored / AutoCAD；所有数据住在本 sample 下的 V2CrossSectionSampleViewModel。
+      不引用 HyCADTool / AutoCAD；所有数据住在本 sample 下的 V2CrossSectionSampleViewModel。
     -->
 
     <bui:BlenderWindow.Resources>

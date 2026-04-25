@@ -1,0 +1,221 @@
+<UserControl x:Class="HyCADTool.Presentation.Views.PilePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:helper="clr-namespace:HyCADTool.Presentation.Views.Helpers"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             Background="{DynamicResource Brush_RegionBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}"
+             mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer Style="{StaticResource BlenderScrollViewer}" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="5,8,5,5">
+
+            <!-- ===== 当前比例（从设置面板读取） ===== -->
+            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}">
+                <Run Text="当前比例: " /><Run Text="{Binding CurrentScale, Mode=OneWay}" Foreground="{DynamicResource Brush_AccentBlueHover}" />
+                <Run Text="（在[设置]页修改）" />
+            </TextBlock>
+
+            <!-- ===== 命令按钮组 ===== -->
+            <TextBlock Text="命令" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}" Margin="0,0,0,2" />
+            <UniformGrid Columns="2" Margin="0,0,0,4">
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="绘制桩" Command="{Binding DrawPilesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="封闭图形分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="Voronoi优化" Command="{Binding PileVoronoiOptimizationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButtonFlat}" Content="优化(已有圆)" Command="{Binding PileVoronoiFromCirclesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+            </UniformGrid>
+
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40" />
+                    <ColumnDefinition  Width="80"/>
+                    <ColumnDefinition Width="65" />
+                    <ColumnDefinition Width="72" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="标高" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                         Text="{Binding MarkerElevation, UpdateSourceTrigger=PropertyChanged}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True" />
+                <TextBlock Grid.Column="2" Text="字高倍率" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
+                         Text="{Binding MarkerTextHeightScale, UpdateSourceTrigger=PropertyChanged}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True" />
+            </Grid>
+            <Button Style="{StaticResource BlenderButtonFlat}" Content="写入标高到圆心/形心" Command="{Binding MarkElevationAtCentroidsCommand}" Margin="1,0,1,4" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+
+            <Separator Style="{StaticResource BlenderSeparator}" Margin="0,2,0,4" />
+
+            <!-- ===== 布置选项 ===== -->
+            <Grid Margin="0,2,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" Style="{StaticResource BlenderCheckBox}" Content="矩形" IsChecked="{Binding IsRectangular}" />
+                <CheckBox Grid.Column="1" Style="{StaticResource BlenderCheckBox}" Content="梅花" IsChecked="{Binding IsCircular}" />
+                <CheckBox Grid.Column="2" Style="{StaticResource BlenderCheckBox}" Content="圆桩" IsChecked="{Binding IsCirclePile}" />
+                <CheckBox Grid.Column="3" Style="{StaticResource BlenderCheckBox}" Content="方桩" IsChecked="{Binding IsRectPile}" />
+            </Grid>
+
+            <!-- 手控行列 -->
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0"
+                          Style="{StaticResource BlenderCheckBox}"
+                          VerticalAlignment="Center"
+                          Content="手控行列"
+                          IsChecked="{Binding ManualControl}" />
+                <TextBlock Grid.Column="1"
+                           Foreground="{DynamicResource Brush_TextPrimary}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Text="行" />
+                <TextBox Grid.Column="2"
+                         Style="{StaticResource BlenderTextBox}"
+                         VerticalAlignment="Center"
+                         Text="{Binding NY, UpdateSourceTrigger=PropertyChanged}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True" />
+                <TextBlock Grid.Column="3"
+                           Foreground="{DynamicResource Brush_TextPrimary}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Text="列" />
+                <TextBox Grid.Column="4"
+                         Style="{StaticResource BlenderTextBox}"
+                         VerticalAlignment="Center"
+                         Text="{Binding NX, UpdateSourceTrigger=PropertyChanged}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True" />
+            </Grid>
+
+            <!-- ===== 桩参数 ===== -->
+            <Expander Style="{StaticResource BlenderExpander}" Margin="0,5,0,3" Header="桩参数" IsExpanded="True">
+                <StackPanel Margin="5,5,0,0">
+                    <!-- 桩直径或边长 -->
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="桩直径/边长" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding DiameterOrEdge, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                    <!-- 最小桩中心距 -->
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="最小桩中心距" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding MinPileCenterDistance, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                    <!-- 输入置换率 -->
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="输入置换率" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding InputDisplacementRate, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                    <!-- 桩布置比例 -->
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="桩布置比例" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileArrangeRate, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                </StackPanel>
+            </Expander>
+
+            <!-- ===== 边距参数 ===== -->
+            <Expander Style="{StaticResource BlenderExpander}" Margin="0,2,0,3" Header="边距参数" IsExpanded="False">
+                <StackPanel Margin="5,5,0,0">
+                    <!-- 整体轮廓距离 -->
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="整体轮廓距离" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding InputDistanceFromContour, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                    <TextBlock Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontMicro}" Margin="0,1,0,3" Text="修改整体轮廓距离将同步上下左右边距" />
+                    <!-- 上下左右边距 -->
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="45" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="45" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="上边距" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding MarginUp, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                        <TextBlock Grid.Column="2" Text="下边距" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding MarginDown, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="45" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="45" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="左边距" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                        <TextBlock Grid.Column="2" Text="右边距" Foreground="{DynamicResource Brush_TextPrimary}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True" />
+                    </Grid>
+                </StackPanel>
+            </Expander>
+
+            <!-- ===== 操作按钮 ===== -->
+            <Button Style="{StaticResource BlenderButtonFlat}" Content="恢复默认" Command="{Binding ResetCommand}" Margin="0,4,0,2" />
+
+            <!-- 状态信息 -->
+            <TextBlock Text="{Binding StatusMessage}"
+                       Foreground="{DynamicResource Brush_Success}" FontSize="{DynamicResource Metric_FontCaption}"
+                       Margin="0,4,0,0" TextWrapping="Wrap" />
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -13,8 +13,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$refactored = Join-Path $RepoRoot "HyCADTool.Refactored\HyCADTool.Refactored.csproj"
-$outDir = Join-Path $RepoRoot "HyCADTool.Refactored\bin\Production"
+$refactored = Join-Path $RepoRoot "HyCADTool\HyCADTool.csproj"
+$outDir = Join-Path $RepoRoot "HyCADTool\bin\Production"
 $distRoot = Join-Path $RepoRoot "dist"
 $bundleName = "HyCAD.bundle"
 $bundlePath = Join-Path $distRoot $bundleName
@@ -25,8 +25,8 @@ Write-Host "==> dotnet build -c Production" -ForegroundColor Cyan
 & dotnet build $refactored -c Production --nologo
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-if (-not (Test-Path (Join-Path $outDir "HyCADTool.Refactored.dll"))) {
-    Write-Error "Missing $outDir\HyCADTool.Refactored.dll"
+if (-not (Test-Path (Join-Path $outDir "HyCADTool.dll"))) {
+    Write-Error "Missing $outDir\HyCADTool.dll"
 }
 
 if (-not (Test-Path $packageSrc)) { Write-Error "Missing $packageSrc" }
@@ -40,7 +40,7 @@ $pkg = $pkg -replace 'Version="1\.0\.0"', "Version=`"$Version`""
 $destPkg = Join-Path $bundlePath "PackageContents.xml"
 [System.IO.File]::WriteAllText($destPkg, $pkg, (New-Object System.Text.UTF8Encoding $false))
 
-$allowedDlls = "HyCADTool.Refactored.dll", "HyCAD.BlenderUI.dll", "HyCADTool.TextLayout.dll", "HyCADTool.Licensing.dll", "Newtonsoft.Json.dll", "Autofac.dll", "Clipper2Lib.dll", "Markdig.dll", "NetTopologySuite.dll", "QRCoder.dll", "DocumentFormat.OpenXml.dll", "DocumentFormat.OpenXml.Framework.dll", "Microsoft.Bcl.AsyncInterfaces.dll", "System.Buffers.dll", "System.Diagnostics.DiagnosticSource.dll", "System.Memory.dll", "System.Numerics.Vectors.dll", "System.Runtime.CompilerServices.Unsafe.dll", "System.Threading.Tasks.Extensions.dll"
+$allowedDlls = "HyCADTool.dll", "HyCAD.BlenderUI.dll", "HyCADTool.TextLayout.dll", "HyCADTool.Licensing.dll", "Newtonsoft.Json.dll", "Autofac.dll", "Clipper2Lib.dll", "Markdig.dll", "NetTopologySuite.dll", "QRCoder.dll", "DocumentFormat.OpenXml.dll", "DocumentFormat.OpenXml.Framework.dll", "Microsoft.Bcl.AsyncInterfaces.dll", "System.Buffers.dll", "System.Diagnostics.DiagnosticSource.dll", "System.Memory.dll", "System.Numerics.Vectors.dll", "System.Runtime.CompilerServices.Unsafe.dll", "System.Threading.Tasks.Extensions.dll"
 foreach ($n in $allowedDlls) {
     $f = Join-Path $outDir $n
     if (Test-Path $f) { Copy-Item $f -Destination $win64 -Force }

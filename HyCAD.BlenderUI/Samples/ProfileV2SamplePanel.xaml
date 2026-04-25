@@ -26,7 +26,7 @@
               与 Profile View 之间用横向 GridSplitter 隔开；
         - 右：三级 PropertyEditor，按五路选中互斥切换内容 + BandSet 9 勾选。
 
-      不引用 HyCADTool.Refactored / AutoCAD，数据全部在 V2ProfileSampleViewModel。
+      不引用 HyCADTool / AutoCAD，数据全部在 V2ProfileSampleViewModel。
     -->
 
     <bui:BlenderWindow.Resources>

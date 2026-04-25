@@ -1,0 +1,96 @@
+<UserControl x:Class="HyCADTool.Presentation.Views.Preferences.PileSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="420"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="PilePropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="120"/>
+            </Style>
+
+            <!-- 桩基：桩参数 -->
+            <DataTemplate x:Key="Section_PileParams">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="直径/边长 (mm)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.DiameterOrEdge, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="最小中距 (mm)" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MinPileCenterDistance, UpdateSourceTrigger=LostFocus, FallbackValue=1200}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="输入位移率" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.InputDisplacementRate, UpdateSourceTrigger=LostFocus, FallbackValue=0.02}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="布桩率" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.PileArrangeRate, UpdateSourceTrigger=LostFocus, FallbackValue=0.5}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="列数 NX" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.NX, UpdateSourceTrigger=LostFocus, FallbackValue=2}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="行数 NY" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.NY, UpdateSourceTrigger=LostFocus, FallbackValue=2}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="手动控制" Style="{StaticResource PilePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding PileVm.ManualControl}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 桩基：边距参数 -->
+            <DataTemplate x:Key="Section_PileMargin">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="到轮廓距离" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.InputDistanceFromContour, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="上边距" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MarginUp, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="下边距" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MarginDown, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="左边距" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MarginLeft, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="右边距" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MarginRight, UpdateSourceTrigger=LostFocus, FallbackValue=400}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="标注高程" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MarkerElevation, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="标注字高系数" Style="{StaticResource PilePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding PileVm.MarkerTextHeightScale, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="Host"/>
+</UserControl>

@@ -16,7 +16,7 @@ namespace HyCAD.BlenderUI.Samples
     ///
     /// <para>
     /// 四区布局：左 Outliner | 中上 Profile View（Canvas）| 中下 Band Set（Canvas）| 右 PropertyEditor。
-    /// 不引用 HyCADTool.Refactored / AutoCAD；几何仅骨架（折线直连 PVI，不画抛物线）。
+    /// 不引用 HyCADTool / AutoCAD；几何仅骨架（折线直连 PVI，不画抛物线）。
     /// </para>
     ///
     /// <para>命名 / 层级对齐 Profile / ProfileVertex / ProfileEditorViewModel，便于后续平移回真窗口。</para>

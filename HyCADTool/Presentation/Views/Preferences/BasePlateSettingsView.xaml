@@ -1,0 +1,139 @@
+<UserControl x:Class="HyCADTool.Presentation.Views.Preferences.BasePlateSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="420"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--
+              Preferences 样板（Blender 风）：
+              - 统一标签列宽 = 120（Metric_LabelWidth_PrefsNarrow），DR 不能把 double 塞给 GridLength，字面量同步。
+              - 标签仅中文产品文案；移除开发味的 API 后缀（如 "(PlateThickness)"）。
+              - 输入控件宽度 Stretch，靠输入区列填满剩余空间，贴近 Blender 属性面板。
+            -->
+            <Style x:Key="BasePlatePropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="120"/>
+            </Style>
+
+            <Style x:Key="BasePlateInputBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource BlenderTextBox}">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="MinWidth" Value="{DynamicResource Metric_InputWidth_S}"/>
+            </Style>
+
+            <!-- 底板：配筋参数 -->
+            <DataTemplate x:Key="Section_BasePlateRein">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="板厚" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.PlateThickness, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="钢筋直径" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.RebarDiameter, UpdateSourceTrigger=LostFocus, FallbackValue=14}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="钢筋间距" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.RebarSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="附加钢筋最小直径" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.MinAdditionalDiameter, UpdateSourceTrigger=LostFocus, FallbackValue=10}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="附加钢筋间距" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.AdditionalSpacing, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋安全系数" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.ReinforceSafety, UpdateSourceTrigger=LostFocus, FallbackValue=1.1}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="锚固系数" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.AnchorFactor, UpdateSourceTrigger=LostFocus, FallbackValue=35}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="邻近阈值" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.ProximityThreshold, UpdateSourceTrigger=LostFocus, FallbackValue=100}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="追加锚固长度" Style="{StaticResource BasePlatePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding BaseReinVm.AddAnchorLength}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="已存在钢筋" Style="{StaticResource BasePlatePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding BaseReinVm.ExistingRebar}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 底板：绘制参数 -->
+            <DataTemplate x:Key="Section_BasePlateDraw">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="钩长" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.HookLength, UpdateSourceTrigger=LostFocus, FallbackValue=12.5}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="多段线宽" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.PolylineWidth, UpdateSourceTrigger=LostFocus, FallbackValue=0.4}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋距离" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.ReinforceDistance, UpdateSourceTrigger=LostFocus, FallbackValue=100}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="文字距线" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.TextToLineDistance, UpdateSourceTrigger=LostFocus, FallbackValue=3}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋文字 X 距离" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.ReinforceTextDistanceX, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="配筋文字 Y 距离" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.ReinforceTextDistanceY, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="带标注距离" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.DimensionDistanceWithDim, UpdateSourceTrigger=LostFocus, FallbackValue=6}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 底板：高级设置 -->
+            <DataTemplate x:Key="Section_BasePlateAdvanced">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="轴线外扩" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.AxisExtend, UpdateSourceTrigger=LostFocus, FallbackValue=0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="间隔" Style="{StaticResource BasePlatePropertyRow}">
+                        <TextBox Style="{StaticResource BasePlateInputBox}"
+                                 Text="{Binding BaseReinVm.Interval, UpdateSourceTrigger=LostFocus, FallbackValue=200}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="全方向标注" Style="{StaticResource BasePlatePropertyRow}">
+                        <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding BaseReinVm.DimAll}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="Host"/>
+</UserControl>

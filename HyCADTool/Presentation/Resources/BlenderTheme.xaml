@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      BlenderTheme shim — 实际实现已迁移到 HyCAD.BlenderUI 控件库。
+      保留此路径仅为向后兼容：现有面板 XAML 继续引用
+          pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml
+      不需要修改。
+    -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+</ResourceDictionary>

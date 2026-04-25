@@ -11,7 +11,7 @@
   <Components>
     <ComponentEntry AppName="HyCADTool"
                     Version="1.0.1"
-                    ModuleName="./Contents/Win64/HyCADTool.Refactored.dll"
+                    ModuleName="./Contents/Win64/HyCADTool.dll"
                     AppDescription="HyCAD 主程序集 (ExtensionApplication + CommandClass)"
                     AppType=".Net"
                     LoadOnAutoCADStartup="True">

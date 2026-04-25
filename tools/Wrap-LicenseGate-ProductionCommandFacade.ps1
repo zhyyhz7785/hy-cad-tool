@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$p = Join-Path $PSScriptRoot "..\HyCADTool.Refactored\Production\ProductionCommandFacade.cs"
+$p = Join-Path $PSScriptRoot "..\HyCADTool\Production\ProductionCommandFacade.cs"
 $t = [IO.File]::ReadAllText($p)
 $re = 'public void (Cmd_[A-Za-z0-9_]+)\(\)\s*=>\s*ProductionDispatcher\.Invoke\("([^"]+)"\);'
 $n = [regex]::Replace($t, $re, {

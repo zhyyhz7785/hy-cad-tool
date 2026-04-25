@@ -11,7 +11,7 @@ using System.Windows.Input;
 namespace HyCAD.BlenderUI.Samples
 {
     // =========================================================================
-    //  rCs 面板 v2 原型 — 节点模型 + ViewModel（独立于 HyCADTool.Refactored）
+    //  rCs 面板 v2 原型 — 节点模型 + ViewModel（独立于 HyCADTool）
     //
     //  设计目标：
     //  - 交互/层级/字段命名对齐 `CrossSectionBand` / `CrossSectionDesignerViewModel`
@@ -23,7 +23,7 @@ namespace HyCAD.BlenderUI.Samples
     //  后续平移时可直接把节点/属性布局对到 Refactored 的 Outliner 与 PropertyEditor。
     // =========================================================================
 
-    /// <summary>条带侧别；语义对齐 <c>HyCADTool.Refactored.Domain.ValueObjects.Road.BandSide</c>。</summary>
+    /// <summary>条带侧别；语义对齐 <c>HyCADTool.Domain.ValueObjects.Road.BandSide</c>。</summary>
     public enum V2BandSide
     {
         Left = -1,

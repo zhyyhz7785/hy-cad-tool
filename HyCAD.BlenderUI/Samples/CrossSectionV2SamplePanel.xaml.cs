@@ -20,7 +20,7 @@ namespace HyCAD.BlenderUI.Samples
     /// </para>
     ///
     /// <para>
-    /// 本 sample 不引用 HyCADTool.Refactored / AutoCAD，命名与层级对齐
+    /// 本 sample 不引用 HyCADTool / AutoCAD，命名与层级对齐
     /// <c>CrossSectionBand</c> / <c>CrossSectionDrawViewModel</c>，便于后续平移回 rCs 真窗口。
     /// </para>
     /// </summary>

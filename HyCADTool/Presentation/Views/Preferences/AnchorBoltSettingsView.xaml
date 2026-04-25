@@ -1,0 +1,44 @@
+<UserControl x:Class="HyCADTool.Presentation.Views.Preferences.AnchorBoltSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="420"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="AnchorBoltPropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="120"/>
+            </Style>
+
+            <!-- 地脚螺栓：螺栓参数（短期内无专属字段，暂只读展示通用缩放/说明） -->
+            <DataTemplate x:Key="Section_AnchorBoltParams">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <TextBlock Text="（地脚螺栓参数随绘图交互逐次录入，无全局默认；此处预留未来默认间距、锚固深度、垫片直径等字段。）"
+                               Foreground="{DynamicResource Brush_TextDisabled}"
+                               FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <bc:PropertyRow Label="比例 Scale（只读）" Style="{StaticResource AnchorBoltPropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 IsReadOnly="True"
+                                 Text="{Binding Settings.Scale, Mode=OneWay, FallbackValue=40}"/>
+                    </bc:PropertyRow>
+                    <TextBlock Text="TODO: 接入螺栓直径 / 锚固深度 / 垫片直径 / 默认间距 等字段"
+                               Foreground="{DynamicResource Brush_TextDisabled}"
+                               FontSize="{DynamicResource Metric_FontSmall}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="Host"/>
+</UserControl>

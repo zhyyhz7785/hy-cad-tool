@@ -9,7 +9,7 @@ using System.Linq;
 namespace HyCAD.BlenderUI.Samples
 {
     // =========================================================================
-    //  纵断面 v2 面板原型 — 节点模型 + ViewModel（独立于 HyCADTool.Refactored）
+    //  纵断面 v2 面板原型 — 节点模型 + ViewModel（独立于 HyCADTool）
     //
     //  设计目标：
     //  - 交互 / 层级 / 字段命名对齐 `Profile` / `ProfileVertex` / `ProfileEditorViewModel`，
@@ -107,7 +107,7 @@ namespace HyCAD.BlenderUI.Samples
 
     /// <summary>
     /// 路线节点（仅作 UI 展示，原型值为假数据 L = 1698m）。
-    /// 真实项目对应 <c>HyCADTool.Refactored.Domain.Models.Road.Alignment</c>。
+    /// 真实项目对应 <c>HyCADTool.Domain.Models.Road.Alignment</c>。
     /// </summary>
     public sealed class V2ProfileAlignmentNode : V2ProfileOutlineNodeBase
     {

@@ -81,7 +81,7 @@ namespace HyCADTool.ReCall
                     // 没文档（极少见，例如批处理模式）就放弃自动加载，让用户手动 C2。
                     return;
                 }
-                doc.Editor.WriteMessage("\nReCall: 自动加载 HyCADTool.Refactored …");
+                doc.Editor.WriteMessage("\nReCall: 自动加载 HyCADTool …");
                 new ReCallClass().Reload();
             }
             catch (System.Exception ex)
@@ -119,29 +119,29 @@ namespace HyCADTool.ReCall
     {
         #region ========== 配置 ==========
 
-        private const string TARGET_PROJECT_NAME = "HyCADTool.Refactored";
-        private const string TARGET_DLL_NAME = "HyCADTool.Refactored.dll";
+        private const string TARGET_PROJECT_NAME = "HyCADTool";
+        private const string TARGET_DLL_NAME = "HyCADTool.dll";
         private const string BUILD_CONFIGURATION = "Debug";
         /// <summary>ReCall.dll 到解决方案根的层级：Debug→bin→ReCall→根 = 3</summary>
         private const int DIRECTORY_LEVELS_UP = 3;
 
         /// <summary>C1 固定调用 TestCommand.Run()，要测谁请改 Refactored/Test/TestCommand.cs</summary>
-        private const string TEST_ENTRY_TYPE = "HyCADTool.Refactored.Test.TestCommand";
+        private const string TEST_ENTRY_TYPE = "HyCADTool.Test.TestCommand";
         private const string TEST_ENTRY_METHOD = "Run";
 
         /// <summary>PluginInitializer 全名（C2 每次反射调用 Initialize / 旧实例 Terminate）</summary>
-        private const string PLUGIN_INIT_TYPE = "HyCADTool.Refactored.Presentation.PluginInitializer";
+        private const string PLUGIN_INIT_TYPE = "HyCADTool.Shared.Bootstrap.PluginInitializer";
         private const string PLUGIN_INIT_METHOD_INITIALIZE = "Initialize";
         private const string PLUGIN_INIT_METHOD_TERMINATE = "Terminate";
 
         /// <summary>SettingsPanelViewModel 前置钩子（每个业务命令调用前反射触发一次）</summary>
-        private const string VM_TYPE = "HyCADTool.Refactored.Presentation.ViewModels.SettingsPanelViewModel";
+        private const string VM_TYPE = "HyCADTool.Presentation.ViewModels.SettingsPanelViewModel";
 
         /// <summary>临时目录副本保留数量（按 mtime 最新优先），超过则删除多余的</summary>
         private const int TEMP_COPY_RETAIN = 15;
 
         /// <summary>临时目录基名（在 %TEMP% 下）</summary>
-        private const string TEMP_BASE_NAME = "HyCADToolRefactored";
+        private const string TEMP_BASE_NAME = "HyCADTool";
 
         /// <summary>_HyExec 特殊 key 的 type 字段标记（JSON 里写此值，Invoke 识别后走面板 Pending 路径）</summary>
         internal const string PANEL_PENDING_TYPE_MARKER = "__PANEL_PENDING__";
@@ -206,7 +206,7 @@ namespace HyCADTool.ReCall
         }
 
         /// <summary>C2 - 重新加载 Refactored.dll，反射执行 PluginInitializer.Initialize，刷新命令表。
-        /// （生产性能对标请改用 HyCADTool.Refactored 的 Production 构建配置，由 NETLOAD 直加载，零 ReCall 壳。）</summary>
+        /// （生产性能对标请改用 HyCADTool 的 Production 构建配置，由 NETLOAD 直加载，零 ReCall 壳。）</summary>
         [CommandMethod("C2")]
         public void Reload()
         {
@@ -395,7 +395,7 @@ namespace HyCADTool.ReCall
                 if (_c2Count == 1)
                 {
                     ed.WriteMessage("\n提示: 新命令只需改 commands.json 并用 N1~N50 占位符；改 CommandFacade.cs 才需关 CAD 重 NETLOAD ReCall。");
-                    ed.WriteMessage("\n      生产性能对标：dotnet build HyCADTool.Refactored -c Production，AutoCAD NETLOAD bin\\Production\\HyCADTool.Refactored.dll（无 ReCall 壳层）。");
+                    ed.WriteMessage("\n      生产性能对标：dotnet build HyCADTool\\HyCADTool.csproj -c Production，AutoCAD NETLOAD bin\\Production\\HyCADTool.dll（无 ReCall 壳层）。");
                 }
             }
             catch (System.Exception ex)
@@ -982,7 +982,7 @@ namespace HyCADTool.ReCall
             if (refactored == null) return "ServiceLocator: <Refactored 未加载>";
             try
             {
-                var slType = refactored.GetType("HyCADTool.Refactored.Infrastructure.Configuration.ServiceLocator");
+                var slType = refactored.GetType("HyCADTool.Shared.Bootstrap.ServiceLocator");
                 if (slType == null) return "ServiceLocator: <类型未找到>";
                 var containerProp = slType.GetProperty("Container", BindingFlags.Public | BindingFlags.Static);
                 object container = null;
@@ -1187,7 +1187,7 @@ namespace HyCADTool.ReCall
             }
             if (type == null)
             {
-                ed?.WriteMessage("\n⚠ 未找到类型: " + typeName + "（请重新生成 HyCADTool.Refactored）");
+                ed?.WriteMessage("\n⚠ 未找到类型: " + typeName + "（请重新生成 HyCADTool）");
                 return null;
             }
             var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);

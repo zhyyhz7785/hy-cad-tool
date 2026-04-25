@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <PlatformTarget>x64</PlatformTarget>
     <!-- 输出到 Refactored 的 bin 子目录 net8，ReCall 会一并复制 -->
-    <OutputPath>..\HyCADTool.Refactored\bin\$(Configuration)\net8\</OutputPath>
+    <OutputPath>..\HyCADTool\bin\$(Configuration)\net8\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

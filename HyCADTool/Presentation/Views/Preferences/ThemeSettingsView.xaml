@@ -1,0 +1,174 @@
+<UserControl x:Class="HyCADTool.Presentation.Views.Preferences.ThemeSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:local="clr-namespace:HyCADTool.Presentation.Views.Preferences"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             mc:Ignorable="d"
+             d:DesignHeight="300" d:DesignWidth="500"
+             btmetrics:BlenderMetricsOverlay.Attach="True">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--
+              主题预览卡片数据：与 BlenderThemeManager.BlenderThemeName 一一对应。
+              色块取自 Themes/Palettes/*.xaml 中具有代表性的 4 个 Brush_：
+                C1 = Brush_WindowBack（窗口底）
+                C2 = Brush_PanelBack（面板底）
+                C3 = Brush_AccentBlue（强调色）
+                C4 = Brush_TextPrimary（主文字色）
+            -->
+            <x:Array x:Key="ThemeOptions" Type="{x:Type local:ThemePresetVm}">
+                <local:ThemePresetVm Key="BlenderDark"
+                                     Name="Blender Dark"
+                                     Subtitle="Blender 4.5 官方默认 — 深灰 + Blender Blue (#4772B3)"
+                                     C1="#303030" C2="#303030" C3="#4772B3" C4="#E6E6E6"/>
+                <local:ThemePresetVm Key="BlenderLight"
+                                     Name="Blender Light"
+                                     Subtitle="Blender Light 官方同款 — 中灰底 + Blender Blue"
+                                     C1="#A8A8A8" C2="#A8A8A8" C3="#4772B3" C4="#1A1A1A"/>
+                <local:ThemePresetVm Key="AcadLight"
+                                     Name="AutoCAD Light"
+                                     Subtitle="AutoCAD 2024+ Light Ribbon — 白底 + AutoCAD focus 蓝"
+                                     C1="#E5E5E5" C2="#F5F5F5" C3="#3070C0" C4="#1E1E1E"/>
+                <local:ThemePresetVm Key="AcadDark"
+                                     Name="AutoCAD Dark"
+                                     Subtitle="AutoCAD 2024+ Dark Ribbon — 深灰 + AutoCAD focus 蓝"
+                                     C1="#303030" C2="#373737" C3="#3070C0" C4="#F1F1F1"/>
+            </x:Array>
+
+            <!-- ListBoxItem 模板：自带选中蓝色边框 + 4 色块预览 + 名称/副标题 -->
+            <Style x:Key="ThemeListItem" TargetType="{x:Type ListBoxItem}">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                            <Border x:Name="Root"
+                                    Background="{DynamicResource Brush_PanelBack}"
+                                    BorderBrush="{DynamicResource Brush_BorderDark}"
+                                    BorderThickness="1"
+                                    Padding="{DynamicResource Metric_ThemeCardPadding}"
+                                    SnapsToDevicePixels="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 4 色块预览 -->
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="{DynamicResource Metric_ThemeSwatchSize}" Height="{DynamicResource Metric_ThemeSwatchSize}" Background="{Binding C1}"
+                                                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="1" Margin="0,0,2,0"/>
+                                        <Border Width="{DynamicResource Metric_ThemeSwatchSize}" Height="{DynamicResource Metric_ThemeSwatchSize}" Background="{Binding C2}"
+                                                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="1" Margin="0,0,2,0"/>
+                                        <Border Width="{DynamicResource Metric_ThemeSwatchSize}" Height="{DynamicResource Metric_ThemeSwatchSize}" Background="{Binding C3}"
+                                                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="1" Margin="0,0,2,0"/>
+                                        <Border Width="{DynamicResource Metric_ThemeSwatchSize}" Height="{DynamicResource Metric_ThemeSwatchSize}" Background="{Binding C4}"
+                                                BorderBrush="{DynamicResource Brush_BorderDark}" BorderThickness="1"/>
+                                    </StackPanel>
+
+                                    <!-- 名称 + 副标题 -->
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="{DynamicResource Metric_FontHeader}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush_TextPrimary}"/>
+                                        <TextBlock Text="{Binding Subtitle}"
+                                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                                   Margin="0,1,0,0"
+                                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                                   TextWrapping="NoWrap"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+
+                                    <!-- 选中圆点指示器 -->
+                                    <Border Grid.Column="2" Width="{DynamicResource Metric_SelectionIndicatorSize}" Height="{DynamicResource Metric_SelectionIndicatorSize}" Margin="8,0,2,0"
+                                            VerticalAlignment="Center"
+                                            CornerRadius="7"
+                                            BorderThickness="2">
+                                        <Border.Style>
+                                            <Style TargetType="{x:Type Border}">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderMid}"/>
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush_AccentBlue}"/>
+                                                        <Setter Property="Background" Value="{DynamicResource Brush_AccentBlue}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush_AccentBlueHover}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush_AccentBlue}"/>
+                                    <Setter TargetName="Root" Property="BorderThickness" Value="2"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="{DynamicResource Metric_SectionInset}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="选择界面颜色主题（实时生效，自动保存到 hy-settings.json）"
+                   FontSize="{DynamicResource Metric_FontSmall}"
+                   Margin="0,0,0,6"
+                   Foreground="{DynamicResource Brush_TextSecondary}"/>
+
+        <!--
+            注意：SelectedValue 不再用 {Binding Settings.Theme, Mode=TwoWay}。
+            原因：本 View 在 HyPreferencesView 的 ContentControl 模板里被实例化时，
+            初始 DataContext 是 SettingsGroupVm（没有 Settings 属性），binding 一旦建立
+            就进入 PathError sticky 状态；后续 code-behind 把 DataContext 改为
+            HySettingsViewModel 也无法让 PathError binding 重新解析。
+            改由 ThemeSettingsView.xaml.cs 的 Loaded / SelectionChanged 直接读写
+            SettingsPanelViewModel.Current.Theme，绕开 binding 路径解析问题。
+        -->
+        <ListBox Grid.Row="1"
+                 x:Name="ThemeList"
+                 ItemsSource="{StaticResource ThemeOptions}"
+                 ItemContainerStyle="{StaticResource ThemeListItem}"
+                 SelectedValuePath="Key"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 HorizontalContentAlignment="Stretch"/>
+
+        <TextBlock Grid.Row="2"
+                   FontSize="{DynamicResource Metric_FontCaption}"
+                   Margin="0,6,0,0"
+                   Foreground="{DynamicResource Brush_TextDisabled}"
+                   TextWrapping="Wrap">
+            提示：颜色主题切换通过 BlenderThemeManager 在 Application 顶层 Merge 调色板字典实现，所有 DynamicResource Brush_* 引用自动刷新；当前选中将随 hy-settings.json 持久化，下次启动恢复。
+        </TextBlock>
+    </Grid>
+</UserControl>

@@ -1,0 +1,984 @@
+<UserControl x:Class="HyCADTool.Presentation.Views.Road.CrossSectionDrawPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:HyCADTool.Presentation.Behaviors"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:cv="clr-namespace:HyCADTool.Presentation.Views.Converters"
+             xmlns:local="clr-namespace:HyCADTool.Presentation.Views.Road"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ms="clr-namespace:HyCADTool.Domain.Services.Road;assembly=HyCADTool"
+             xmlns:road="clr-namespace:HyCADTool.Domain.Models.Road;assembly=HyCADTool"
+             xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels.Road"
+             d:DesignHeight="780"
+             d:DesignWidth="1340"
+             Background="{DynamicResource Brush_WindowBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}"
+             FontFamily="{DynamicResource Font_Main}"
+             FontSize="{DynamicResource Metric_FontMain}"
+             btmetrics:BlenderMetricsOverlay.Attach="True"
+             mc:Ignorable="d">
+
+    <!--
+        v2 BlenderUI workbench 风格四区布局，替代 v1 的 CrossSectionDesignerWindow：
+        Row 0  顶部 EditorHeader  - 主操作链（存为预设/预设下拉/镜像/向 CAD 绘制）+ 右侧路幅摘要
+        Row 1  主体 5 列：
+        | Outliner (大纲) | V-Splitter | ViewportArea (Canvas 预览) | V-Splitter | PropertyEditor (属性) |
+        
+        该窗口与旧 CrossSectionDesignerWindow 共用：
+        - CrossSectionDesignerViewModel（基类）业务逻辑；
+        - CrossSectionPreviewRenderer 绘制规则。
+        区别仅在 UI 拓扑与可显隐侧栏，确保 Stage 1 的 v2 路牙凸起与 Domain 模型在新窗口里直接落地。
+    -->
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <cv:DoublePrecisionMultiConverter x:Key="DoublePrecisionMultiConverter" />
+            <!-- 显式 ContentTemplate 绑定，无需 DataType；避免 VS 设计器解析 vm 类型失败（XDG0006）。 -->
+            <DataTemplate x:Key="RcsLayerFillEditorDataTemplate">
+                <StackPanel>
+                    <bui:PropertyRow Label="图案">
+                        <CheckBox Content="启用" IsChecked="{Binding PatternEnabled, Mode=TwoWay}" Style="{StaticResource BlenderCheckBox}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="图案名">
+                        <ComboBox IsEditable="True" ItemsSource="{Binding DataContext.HatchPatternNameList, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Style="{StaticResource BlenderComboBox}" Text="{Binding PatternName, UpdateSourceTrigger=PropertyChanged}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="比例/角度 (°)">
+                        <StackPanel>
+                            <bui:NumericSlider Decimals="2" Maximum="100" Minimum="0.01" Step="0.05" Unit="×" Value="{Binding PatternScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <bui:NumericSlider Decimals="1" Maximum="180" Minimum="-180" Step="0.5" Unit="°" Value="{Binding PatternAngle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="图块">
+                        <CheckBox Content="中心插入" IsChecked="{Binding BlockEnabled, Mode=TwoWay}" Style="{StaticResource BlenderCheckBox}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="图块名">
+                        <ComboBox IsEditable="True" ItemsSource="{Binding DataContext.DwgBlockNames, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" Style="{StaticResource BlenderComboBox}" Text="{Binding BlockName, UpdateSourceTrigger=PropertyChanged}" />
+                    </bui:PropertyRow>
+                    <bui:PropertyRow Label="比例/旋转 (°)">
+                        <StackPanel>
+                            <bui:NumericSlider Decimals="2" Maximum="20" Minimum="0.01" Step="0.1" Unit="×" Value="{Binding BlockScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <bui:NumericSlider Decimals="1" Maximum="180" Minimum="-180" Step="0.5" Unit="°" Value="{Binding BlockRotation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </bui:PropertyRow>
+                </StackPanel>
+            </DataTemplate>
+            <!--
+                平面图 / 坡面图 懒加载 Expander 样式：
+                  ContentTemplate 默认 null（即便已经 Inflate，ContentPresenter 也不会实例化子视觉树），
+                  仅在用户手动 IsExpanded=True 时才把 RcsLayerFillEditorDataTemplate 应用上去。
+                作用：切换 SelectedBand 时，面层/基层/垫层每项的 2 个 Fill 编辑器不再强制重建，
+                      极大降低「点击大纲节点」的响应时延。
+            -->
+            <Style x:Key="LazyFillEditorExpanderStyle" BasedOn="{StaticResource BlenderPropertyGroupLevel3}" TargetType="Expander">
+                <Setter Property="ContentTemplate" Value="{x:Null}" />
+                <Style.Triggers>
+                    <Trigger Property="IsExpanded" Value="True">
+                        <Setter Property="ContentTemplate" Value="{StaticResource RcsLayerFillEditorDataTemplate}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <!-- 必须在 XAML 中合并：InitializeComponent 解析 StaticResource 时就要能解析到 Blender* 样式；后置合并会导致 XamlParseException。 -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/RoadDesignerStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <!--  ============================================================  -->
+    <!--  主体 Grid：2 行（顶栏 / 主体）— 无底部 StatusBar、无顶栏下 StatusMessage 条  -->
+    <!--  ============================================================  -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--  ======================================================  -->
+        <!--  Row 0：EditorHeader  -->
+        <!--  ======================================================  -->
+        <bui:EditorHeader Grid.Row="0">
+            <bui:EditorHeader.LeftContent>
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                    <Button Margin="2,0"
+                            Padding="{DynamicResource Metric_Padding_8_2}"
+                            Click="NewMenu_Click"
+                            Content="存为预设（Alt+N）"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            ToolTip="将当前横断面布局保存为用户预设（JSON）" />
+
+                    <TextBlock Margin="8,0,4,0"
+                               VerticalAlignment="Center"
+                               FontSize="{DynamicResource Metric_FontSmall}"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               Text="预设：" />
+                    <ComboBox x:Name="PresetCombo"
+                              MinWidth="{DynamicResource Metric_HeaderComboMinWidth}"
+                              DisplayMemberPath="DisplayName"
+                              ItemsSource="{Binding Presets}"
+                              SelectionChanged="PresetCombo_SelectionChanged"
+                              Style="{StaticResource BlenderComboBox}" />
+                    <Button Margin="6,0,0,0"
+                            Padding="{DynamicResource Metric_Padding_8_2}"
+                            Click="DeletePresetButton_Click"
+                            Content="删除预设"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            ToolTip="删除当前选中的用户预设（内置预设不可删）" />
+
+                    <Separator Margin="6,2" />
+
+                    <CheckBox Margin="2,0,8,0"
+                              VerticalAlignment="Center"
+                              Content="左右镜像"
+                              IsChecked="{Binding IsMirror}"
+                              Style="{StaticResource BlenderCheckBox}" />
+
+                    <CheckBox Margin="2,0,8,0"
+                              VerticalAlignment="Center"
+                              Content="绘制结构填充"
+                              IsChecked="{Binding DrawSectionStructureFills}"
+                              Style="{StaticResource BlenderCheckBox}"
+                              ToolTip="勾选后，向 CAD 绘制横断面时为每层结构层生成坡面图 Hatch；未勾选则跳过 Hatch（保留结构层边界与图块）。默认不勾选，避免图面拥挤。" />
+
+                    <Button Margin="8,0,0,0"
+                            Padding="{DynamicResource Metric_Padding_8_2}"
+                            Command="{Binding DrawStructureLinesCommand}"
+                            Content="向 CAD 绘制横断面"
+                            Style="{StaticResource BlenderButton}"
+                            ToolTip="落盘模板到当前 DWG 道路档案并绘制横断面（厚度轮廓模式）。首次需在命令行指定插入点，本会话内复用同一点；反复点击按 Template.Id 清旧重绘。样式取自 Hy 设置。" />
+                </StackPanel>
+            </bui:EditorHeader.LeftContent>
+
+            <bui:EditorHeader.RightContent>
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center"
+                               FontFamily="Consolas"
+                               FontSize="{DynamicResource Metric_FontSmall}"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               ToolTip="左半 / 右半 / 总路幅（m）">
+                        <Run Text="左半" />
+                        <Run>
+                            <Run.Text>
+                                <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="OneWay">
+                                    <Binding Path="LeftHalfWidth" />
+                                    <Binding Path="DisplayPrecision" />
+                                </MultiBinding>
+                            </Run.Text>
+                        </Run>
+                        <Run Text="m · 右半" />
+                        <Run>
+                            <Run.Text>
+                                <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="OneWay">
+                                    <Binding Path="RightHalfWidth" />
+                                    <Binding Path="DisplayPrecision" />
+                                </MultiBinding>
+                            </Run.Text>
+                        </Run>
+                        <Run Text="m · 路幅" />
+                        <Run>
+                            <Run.Text>
+                                <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="OneWay">
+                                    <Binding Path="TotalWidth" />
+                                    <Binding Path="DisplayPrecision" />
+                                </MultiBinding>
+                            </Run.Text>
+                        </Run>
+                        <Run Text="m" />
+                    </TextBlock>
+                    <TextBlock Margin="14,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="{DynamicResource Metric_FontSmall}"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               Text="{Binding SelectedSideLabel}" />
+                </StackPanel>
+            </bui:EditorHeader.RightContent>
+        </bui:EditorHeader>
+
+        <!--  ======================================================  -->
+        <!--  Row 1：主体 5 列  -->
+        <!--  ======================================================  -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="OutlinerColumn" Width="400" MinWidth="350" />
+                <ColumnDefinition x:Name="OutlinerSplitterColumn" Width="4" />
+                <ColumnDefinition Width="*" MinWidth="320" />
+                <ColumnDefinition x:Name="PropertySplitterColumn" Width="4" />
+                <ColumnDefinition x:Name="PropertyColumn" Width="340" MinWidth="280" />
+            </Grid.ColumnDefinitions>
+
+            <!--  ============================== Col 0：Outliner (TreeView 三段) ==============================  -->
+            <bui:PropertyEditor x:Name="OutlinerPanel"
+                                Title="大纲"
+                                Grid.Column="0"
+                                ShowIconBar="False"
+                                ShowPin="False"
+                                ShowSearch="False">
+                <StackPanel>
+                    <StackPanel Margin="0,0,0,4" HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Padding="{DynamicResource Metric_Padding_8_2}"
+                                Click="OutlinerAddButton_Click"
+                                Content="＋ 添加"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                ToolTip="在选中行后插入新条带（右键点单种类型）">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="机动车道" Tag="{x:Static road:TemplateComponentKind.Pavement}" />
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="非机动车道" Tag="{x:Static road:TemplateComponentKind.NonMotorized}" />
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
+                                    <MenuItem Click="OutlinerAddMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <Button Margin="4,0,0,0"
+                                Padding="{DynamicResource Metric_Padding_8_2}"
+                                Command="{Binding RemoveBandCommand}"
+                                Content="− 删除"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                ToolTip="删除当前选中条带（Del）" />
+                        <Button x:Name="OutlinerInsertBeforeButton"
+                                Margin="4,0,0,0"
+                                Padding="{DynamicResource Metric_Padding_8_2}"
+                                Click="OutlinerInsertBeforeButton_Click"
+                                Content="插入"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                ToolTip="在选中行之前插入（子菜单选类型；未选中时插入到该侧行首）">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="机动车道" Tag="{x:Static road:TemplateComponentKind.Pavement}" />
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="非机动车道" Tag="{x:Static road:TemplateComponentKind.NonMotorized}" />
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
+                                    <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <Button Margin="2,0,0,0"
+                                Padding="{DynamicResource Metric_Padding_8_2}"
+                                Command="{Binding MoveUpCommand}"
+                                Content="↑ 上移"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                ToolTip="将选中条带在该侧内上移" />
+                        <Button Margin="2,0,0,0"
+                                Padding="{DynamicResource Metric_Padding_8_2}"
+                                Command="{Binding MoveDownCommand}"
+                                Content="↓ 下移"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                ToolTip="将选中条带在该侧内下移" />
+                        <ToggleButton Margin="8,0,0,0"
+                                      Padding="{DynamicResource Metric_Padding_8_2}"
+                                      Content="高差锁定"
+                                      IsChecked="{Binding IsElevationDiffLocked, Mode=TwoWay}"
+                                      Style="{StaticResource BlenderToggleButton}"
+                                      ToolTip="开启时内/外端高差仅允许人行道与分隔带行调整；中央隔离带左/右半行亦锁定。关闭后可编辑各条与中央隔离带行。" />
+                    </StackPanel>
+                    <Grid Margin="22,0,4,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="56" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="板块" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Center"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="宽度" />
+                        <TextBlock Grid.Column="2"
+                                   HorizontalAlignment="Center"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="横坡" />
+                        <TextBlock Grid.Column="3"
+                                   HorizontalAlignment="Center"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="内端"
+                                   ToolTip="内端高差(m)：本行与上一行共享边的 Y 跳变，正值 = 本行内缘更高" />
+                        <TextBlock Grid.Column="4"
+                                   HorizontalAlignment="Center"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="外端"
+                                   ToolTip="外端高差(m)：本行与下一行共享边的 Y 跳变，正值 = 本行外缘更高" />
+                    </Grid>
+                    <TreeView x:Name="OutlinerTree"
+                              behaviors:OutlinerDragDropBehavior.Enabled="True"
+                              AllowDrop="True"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              ItemsSource="{Binding OutlineRoot}"
+                              SelectedItemChanged="OutlinerTree_SelectedItemChanged"
+                              Style="{StaticResource BlenderOutliner}">
+                        <TreeView.ItemContainerStyle>
+                            <!--
+                                基于 BlenderOutlinerItem，追加 IsSelected / IsExpanded 两向绑定到节点 VM，
+                                使得 VM-侧（Add/Paste 等）改 SelectedBand 时 TreeView 可视化跟随。
+                            -->
+                            <Style BasedOn="{StaticResource BlenderOutlinerItem}" TargetType="TreeViewItem">
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+
+                        <TreeView.Resources>
+                            <!--  中央隔离带：根行（总宽）+ 子行 左半/右半（宽、横坡、内端、外端）  -->
+                            <HierarchicalDataTemplate DataType="{x:Type vm:MedianOutlineNode}" ItemsSource="{Binding ChildRows}">
+                                <HierarchicalDataTemplate.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:MedianHalfRowViewModel}">
+                                        <Grid Margin="12,1,0,1"
+                                              Background="Transparent"
+                                              PreviewMouseLeftButtonDown="OutlinerBandRow_PreviewMouseButtonSelect"
+                                              PreviewMouseRightButtonDown="OutlinerBandRow_PreviewMouseButtonSelect">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="56" />
+                                                <ColumnDefinition Width="56" />
+                                                <ColumnDefinition Width="56" />
+                                                <ColumnDefinition Width="56" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{DynamicResource Metric_FontMain}"
+                                                       Foreground="{DynamicResource Brush_TextPrimary}"
+                                                       Text="{Binding RowTitle}" />
+                                            <TextBox Grid.Column="1"
+                                                     IsEnabled="{Binding IsSubWidthEditable}"
+                                                     Style="{StaticResource BlenderNumField}"
+                                                     ToolTip="该半幅宽度 (m)">
+                                                <TextBox.Text>
+                                                    <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                        <Binding Mode="TwoWay" Path="SubWidth" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                                    </MultiBinding>
+                                                </TextBox.Text>
+                                            </TextBox>
+                                            <TextBox Grid.Column="2" Style="{StaticResource BlenderNumField}" ToolTip="横坡(%)">
+                                                <TextBox.Text>
+                                                    <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                        <Binding Mode="TwoWay" Path="CrossSlopePct" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                                    </MultiBinding>
+                                                </TextBox.Text>
+                                            </TextBox>
+                                            <TextBox Grid.Column="3"
+                                                     IsEnabled="{Binding IsDiffFieldsEnabled}"
+                                                     Style="{StaticResource BlenderNumField}"
+                                                     ToolTip="内端高差(m)（向中心线一侧缝）">
+                                                <TextBox.Text>
+                                                    <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                        <Binding Mode="TwoWay" Path="InnerElevationDiff" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                                    </MultiBinding>
+                                                </TextBox.Text>
+                                            </TextBox>
+                                            <TextBox Grid.Column="4"
+                                                     IsEnabled="{Binding IsDiffFieldsEnabled}"
+                                                     Style="{StaticResource BlenderNumField}"
+                                                     ToolTip="外端高差(m)（向半幅车行道一侧）">
+                                                <TextBox.Text>
+                                                    <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                        <Binding Mode="TwoWay" Path="OuterElevationDiff" />
+                                                        <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                                    </MultiBinding>
+                                                </TextBox.Text>
+                                            </TextBox>
+                                        </Grid>
+                                    </DataTemplate>
+                                </HierarchicalDataTemplate.ItemTemplate>
+                                <Grid Margin="0,1"
+                                      Background="Transparent"
+                                      PreviewMouseLeftButtonDown="OutlinerNode_PreviewMouseSelect"
+                                      PreviewMouseRightButtonDown="OutlinerNode_PreviewMouseSelect">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="56" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                        <CheckBox Margin="0,0,6,0"
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                                  Style="{StaticResource BlenderCheckBox}"
+                                                  ToolTip="启用 / 取消中央隔离带" />
+                                        <TextBlock VerticalAlignment="Center"
+                                                   FontSize="{DynamicResource Metric_FontMain}"
+                                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                                   Text="{Binding DisplayTitle}" />
+                                    </StackPanel>
+                                    <TextBox Grid.Column="1" Style="{StaticResource BlenderNumField}" ToolTip="分隔带总宽 (m)">
+                                        <TextBox.Text>
+                                            <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                <Binding Mode="TwoWay" Path="Width" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                            </MultiBinding>
+                                        </TextBox.Text>
+                                    </TextBox>
+                                    <TextBlock Grid.Column="2"
+                                               Grid.ColumnSpan="3"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="{DynamicResource Metric_FontSmall}"
+                                               Foreground="{DynamicResource Brush_TextSecondary}"
+                                               Text="左/右 半幅 ↓" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+
+                            <!--  左/右侧根节点：展开显示子条带  -->
+                            <HierarchicalDataTemplate DataType="{x:Type vm:SideOutlineNode}" ItemsSource="{Binding Children}">
+                                <Border Padding="0,1"
+                                        Background="Transparent"
+                                        PreviewMouseLeftButtonDown="OutlinerNode_PreviewMouseSelect"
+                                        PreviewMouseRightButtonDown="OutlinerNode_PreviewMouseSelect">
+                                    <TextBlock FontSize="{DynamicResource Metric_FontMain}"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush_TextSecondary}"
+                                               Text="{Binding DisplayTitle}" />
+                                </Border>
+                            </HierarchicalDataTemplate>
+
+                            <!--  条带节点：板块 / 宽度 / 横坡 / 内端高差 / 外端高差  -->
+                            <DataTemplate DataType="{x:Type vm:BandRowViewModel}">
+                                <Grid Margin="0,1"
+                                      Background="Transparent"
+                                      ContextMenuOpening="OutlinerBandRow_ContextMenuOpening"
+                                      PreviewMouseLeftButtonDown="OutlinerBandRow_PreviewMouseButtonSelect"
+                                      PreviewMouseRightButtonDown="OutlinerBandRow_PreviewMouseButtonSelect">
+                                    <Grid.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="添加">
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="机动车道" Tag="{x:Static road:TemplateComponentKind.Pavement}" />
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="非机动车道" Tag="{x:Static road:TemplateComponentKind.NonMotorized}" />
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
+                                                <MenuItem Click="OutlinerAddMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                            </MenuItem>
+                                            <MenuItem Header="插入">
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="机动车道" Tag="{x:Static road:TemplateComponentKind.Pavement}" />
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="非机动车道" Tag="{x:Static road:TemplateComponentKind.NonMotorized}" />
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="人行道" Tag="{x:Static road:TemplateComponentKind.Sidewalk}" />
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="绿化带" Tag="{x:Static road:TemplateComponentKind.GreenStrip}" />
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="路牙" Tag="{x:Static road:TemplateComponentKind.Kerb}" />
+                                                <MenuItem Click="OutlinerInsertBeforeMenuItem_Click" Header="分隔带" Tag="{x:Static road:TemplateComponentKind.MedianStrip}" />
+                                            </MenuItem>
+                                            <Separator />
+                                            <MenuItem Command="{Binding RemoveBandCommand}" Header="删除" />
+                                            <MenuItem Command="{Binding MoveUpCommand}" Header="上移" />
+                                            <MenuItem Command="{Binding MoveDownCommand}" Header="下移" />
+                                        </ContextMenu>
+                                    </Grid.ContextMenu>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="56" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0"
+                                                  Margin="0,0,4,0"
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                                  Style="{StaticResource BlenderCheckBox}"
+                                                  ToolTip="是否启用此条带" />
+                                        <Border Grid.Column="1"
+                                                Width="4"
+                                                Margin="0,2,4,2"
+                                                Background="{Binding Kind, Converter={StaticResource KindToColorBrushConverter}}"
+                                                CornerRadius="1" />
+                                        <TextBlock Grid.Column="2"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="{DynamicResource Metric_FontMain}"
+                                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                                   Text="{Binding Name}" />
+                                    </Grid>
+                                    <TextBox Grid.Column="1" Style="{StaticResource BlenderNumField}" ToolTip="宽度(m)">
+                                        <TextBox.Text>
+                                            <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                <Binding Mode="TwoWay" Path="Width" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                            </MultiBinding>
+                                        </TextBox.Text>
+                                    </TextBox>
+                                    <TextBox Grid.Column="2" Style="{StaticResource BlenderNumField}" ToolTip="横坡(%)">
+                                        <TextBox.Text>
+                                            <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                <Binding Mode="TwoWay" Path="CrossSlopePct" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                            </MultiBinding>
+                                        </TextBox.Text>
+                                    </TextBox>
+                                    <TextBox Grid.Column="3"
+                                             IsEnabled="{Binding IsInnerOuterElevationEnabled}"
+                                             Style="{StaticResource BlenderNumField}"
+                                             ToolTip="内端高差(m)：本行与上一行共享边的 Y 跳变，正值=本行内缘更高；相邻两行共享边只应一行填值">
+                                        <TextBox.Text>
+                                            <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                <Binding Mode="TwoWay" Path="InnerElevationDiff" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                            </MultiBinding>
+                                        </TextBox.Text>
+                                    </TextBox>
+                                    <TextBox Grid.Column="4"
+                                             IsEnabled="{Binding IsInnerOuterElevationEnabled}"
+                                             Style="{StaticResource BlenderNumField}"
+                                             ToolTip="外端高差(m)：本行与下一行共享边的 Y 跳变，正值=本行外缘更高">
+                                        <TextBox.Text>
+                                            <MultiBinding Converter="{StaticResource DoublePrecisionMultiConverter}" Mode="TwoWay" UpdateSourceTrigger="LostFocus">
+                                                <Binding Mode="TwoWay" Path="ElevationDiff" />
+                                                <Binding Mode="OneWay" Path="DataContext.OutlineInlineDecimalPlaces" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                            </MultiBinding>
+                                        </TextBox.Text>
+                                    </TextBox>
+                                </Grid>
+                            </DataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                </StackPanel>
+            </bui:PropertyEditor>
+
+            <!--  ============================== Col 1：左侧 Splitter ==============================  -->
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="{DynamicResource Brush_BorderDark}"
+                          ShowsPreview="False" />
+
+            <!--  ============================== Col 2：ViewportArea ==============================  -->
+            <Grid Grid.Column="2">
+                <!--  Canvas 预览（无 PropertyEditor 顶栏，绘制入口在 EditorHeader「左右镜像」右侧）  -->
+                <Border Background="{DynamicResource Brush_RegionBack}" Padding="4">
+                    <Canvas x:Name="PreviewCanvas"
+                            Background="Transparent"
+                            ClipToBounds="True"
+                            SizeChanged="PreviewCanvas_SizeChanged" />
+                </Border>
+            </Grid>
+
+            <!--  ============================== Col 3：右侧 Splitter ==============================  -->
+            <GridSplitter Grid.Column="3"
+                          Width="4"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="{DynamicResource Brush_BorderDark}"
+                          ShowsPreview="False" />
+
+            <!--  ============================== Col 4：PropertyEditor ==============================  -->
+            <bui:PropertyEditor x:Name="PropertyPanel"
+                                Title="属性"
+                                Grid.Column="4"
+                                ShowIconBar="False"
+                                ShowPin="False"
+                                ShowSearch="False">
+                <StackPanel>
+                    <!--  ============================== 公共属性（与 Hy 主面板同级的全局项，总在最上） ==============================  -->
+                    <Expander Header="公共属性" IsExpanded="True" Style="{StaticResource BlenderExpander}">
+                        <StackPanel>
+                            <bui:PropertyRow Label="横断面名称">
+                                <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="设计时速 (km/h)">
+                                <ComboBox ItemsSource="{Binding AvailableSpeeds}" SelectedItem="{Binding DesignSpeed, Mode=TwoWay}" Style="{StaticResource BlenderComboBox}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="填料候选">
+                                <Button Command="{Binding RestoreDefaultFillMaterialPresetsCommand}"
+                                        Content="恢复默认"
+                                        Style="{StaticResource BlenderButtonFlat}"
+                                        ToolTip="恢复系统内置的填料候选项，并清空用户新增/删除记录" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="图块名列表">
+                                <Button Command="{Binding RefreshDwgBlockNamesCommand}"
+                                        Content="刷新（当前 dwg）"
+                                        Style="{StaticResource BlenderButtonFlat}"
+                                        ToolTip="从当前图形 BlockTable 重新读取图块名，供结构层「插入图块」下拉使用" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="平面带长度 (m)">
+                                <bui:NumericSlider Decimals="2"
+                                                   Maximum="20"
+                                                   Minimum="0.5"
+                                                   Step="0.1"
+                                                   Unit="m"
+                                                   Value="{Binding PlanStripLength, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                            <Expander Header="其它" IsExpanded="False" Style="{StaticResource BlenderExpander}">
+                                <StackPanel>
+                                    <bui:PropertyRow Label="空装配">
+                                        <CheckBox VerticalAlignment="Center"
+                                                  Content="标记为占位（不出图）"
+                                                  IsChecked="{Binding IsEmptyAssembly}"
+                                                  Style="{StaticResource BlenderCheckBox}" />
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="几何拾取">
+                                        <Button Command="{Binding PickBandGeometryCommand}"
+                                                Content="从图形拾取..."
+                                                IsEnabled="{Binding HasSelectedBand}"
+                                                Style="{StaticResource BlenderButton}" />
+                                    </bui:PropertyRow>
+                                    <bui:PropertyRow Label="拾取对象图层">
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                                   Text="{Binding LastPickedEntityLayer, TargetNullValue=—, FallbackValue=—}"
+                                                   TextWrapping="Wrap" />
+                                    </bui:PropertyRow>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Expander>
+
+                    <!--  ============================== 中央隔离带（选中 Median 时显示） ==============================  -->
+                    <Expander Header="中央隔离带"
+                              IsExpanded="True"
+                              Style="{StaticResource BlenderExpander}"
+                              Visibility="{Binding SelectedMedianNode, Converter={StaticResource NullToVisibilityConverter}}">
+                        <StackPanel DataContext="{Binding MedianNode}">
+                            <bui:PropertyRow Label="启用">
+                                <CheckBox VerticalAlignment="Center"
+                                          Content="启用中央隔离带"
+                                          IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                          Style="{StaticResource BlenderCheckBox}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="宽度 (m)">
+                                <bui:NumericSlider Decimals="2"
+                                                   Maximum="20"
+                                                   Minimum="0"
+                                                   Step="0.1"
+                                                   Unit="m"
+                                                   Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander Header="路面结构"
+                              IsExpanded="True"
+                              Style="{StaticResource BlenderPropertyGroupLevel1}"
+                              Visibility="{Binding SelectedBand.HasStructureLayers, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+                        <StackPanel DataContext="{Binding SelectedBand}">
+                            <Expander Header="面层" IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding SurfaceLayersView}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Expander IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                    <Expander.Header>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="24" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock VerticalAlignment="Center"
+                                                                       Text="{Binding LayerHeaderDisplay}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding LayerHeaderDisplay}" />
+                                                            <Button Grid.Column="1"
+                                                                    Command="{Binding DataContext.RemoveStructureLayerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, Mode=FindAncestor, AncestorLevel=1}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="✕"
+                                                                    Style="{StaticResource BlenderButtonFlat}"
+                                                                    ToolTip="删除本层" />
+                                                        </Grid>
+                                                    </Expander.Header>
+                                                    <StackPanel>
+                                                        <bui:PropertyRow Label="厚度(cm)">
+                                                            <bui:NumericSlider Decimals="1"
+                                                                               Maximum="80"
+                                                                               Minimum="0"
+                                                                               Step="0.5"
+                                                                               Unit="cm"
+                                                                               Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </bui:PropertyRow>
+                                                        <bui:PropertyRow Label="填料">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ComboBox IsEditable="True"
+                                                                          ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Surface}}"
+                                                                          Style="{StaticResource BlenderComboBox}"
+                                                                          Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <Button Grid.Column="1"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding AddFillMaterialPresetCommand}"
+                                                                        Content="＋"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="将当前填料加入面层候选" />
+                                                                <Button Grid.Column="2"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding RemoveFillMaterialPresetCommand}"
+                                                                        Content="－"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="从面层候选中删除当前填料" />
+                                                            </Grid>
+                                                        </bui:PropertyRow>
+                                                        <Expander Header="平面图"
+                                                                  Content="{Binding PlanFill, Mode=OneWay}"
+                                                                  IsExpanded="False"
+                                                                  Style="{StaticResource LazyFillEditorExpanderStyle}" />
+                                                        <Expander Header="坡面图"
+                                                                  Content="{Binding SectionFill, Mode=OneWay}"
+                                                                  IsExpanded="True"
+                                                                  Style="{StaticResource LazyFillEditorExpanderStyle}" />
+                                                    </StackPanel>
+                                                </Expander>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Margin="0,4,0,0"
+                                            Command="{Binding AddSurfaceLayerCommand}"
+                                            Content="＋添加面层"
+                                            IsEnabled="{Binding CanAddSurfaceLayer}"
+                                            Style="{StaticResource BlenderButton}" />
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Header="基层" IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding BaseLayersView}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Expander IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                    <Expander.Header>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="24" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock VerticalAlignment="Center"
+                                                                       Text="{Binding LayerHeaderDisplay}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding LayerHeaderDisplay}" />
+                                                            <Button Grid.Column="1"
+                                                                    Command="{Binding DataContext.RemoveStructureLayerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, Mode=FindAncestor, AncestorLevel=1}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="✕"
+                                                                    Style="{StaticResource BlenderButtonFlat}"
+                                                                    ToolTip="删除本层" />
+                                                        </Grid>
+                                                    </Expander.Header>
+                                                    <StackPanel>
+                                                        <bui:PropertyRow Label="厚度(cm)">
+                                                            <bui:NumericSlider Decimals="1"
+                                                                               Maximum="80"
+                                                                               Minimum="0"
+                                                                               Step="0.5"
+                                                                               Unit="cm"
+                                                                               Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </bui:PropertyRow>
+                                                        <bui:PropertyRow Label="填料">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ComboBox IsEditable="True"
+                                                                          ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Base}}"
+                                                                          Style="{StaticResource BlenderComboBox}"
+                                                                          Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <Button Grid.Column="1"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding AddFillMaterialPresetCommand}"
+                                                                        Content="＋"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="将当前填料加入基层候选" />
+                                                                <Button Grid.Column="2"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding RemoveFillMaterialPresetCommand}"
+                                                                        Content="－"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="从基层候选中删除当前填料" />
+                                                            </Grid>
+                                                        </bui:PropertyRow>
+                                                        <Expander Header="平面图"
+                                                                  Content="{Binding PlanFill, Mode=OneWay}"
+                                                                  IsExpanded="False"
+                                                                  Style="{StaticResource LazyFillEditorExpanderStyle}" />
+                                                        <Expander Header="坡面图"
+                                                                  Content="{Binding SectionFill, Mode=OneWay}"
+                                                                  IsExpanded="True"
+                                                                  Style="{StaticResource LazyFillEditorExpanderStyle}" />
+                                                    </StackPanel>
+                                                </Expander>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Margin="0,4,0,0"
+                                            Command="{Binding AddBaseLayerCommand}"
+                                            Content="＋添加基层"
+                                            IsEnabled="{Binding CanAddBaseLayer}"
+                                            Style="{StaticResource BlenderButton}" />
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Header="垫层" IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel2}">
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding SubbaseLayersView}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Expander IsExpanded="True" Style="{StaticResource BlenderPropertyGroupLevel3}">
+                                                    <Expander.Header>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="24" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock VerticalAlignment="Center"
+                                                                       Text="{Binding LayerHeaderDisplay}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding LayerHeaderDisplay}" />
+                                                            <Button Grid.Column="1"
+                                                                    Command="{Binding DataContext.RemoveStructureLayerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, Mode=FindAncestor, AncestorLevel=1}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="✕"
+                                                                    Style="{StaticResource BlenderButtonFlat}"
+                                                                    ToolTip="删除本层" />
+                                                        </Grid>
+                                                    </Expander.Header>
+                                                    <StackPanel>
+                                                        <bui:PropertyRow Label="厚度(cm)">
+                                                            <bui:NumericSlider Decimals="1"
+                                                                               Maximum="80"
+                                                                               Minimum="0"
+                                                                               Step="0.5"
+                                                                               Unit="cm"
+                                                                               Value="{Binding ThicknessCm, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </bui:PropertyRow>
+                                                        <bui:PropertyRow Label="填料">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                    <ColumnDefinition Width="26" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <ComboBox IsEditable="True"
+                                                                          ItemsSource="{Binding Source={x:Static ms:RoadMaterialFillPresets.Subbase}}"
+                                                                          Style="{StaticResource BlenderComboBox}"
+                                                                          Text="{Binding FillMaterial, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <Button Grid.Column="1"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding AddFillMaterialPresetCommand}"
+                                                                        Content="＋"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="将当前填料加入垫层候选" />
+                                                                <Button Grid.Column="2"
+                                                                        Margin="4,0,0,0"
+                                                                        Command="{Binding RemoveFillMaterialPresetCommand}"
+                                                                        Content="－"
+                                                                        Style="{StaticResource BlenderButtonFlat}"
+                                                                        ToolTip="从垫层候选中删除当前填料" />
+                                                            </Grid>
+                                                        </bui:PropertyRow>
+                                                        <Expander Header="平面图"
+                                                                  Content="{Binding PlanFill, Mode=OneWay}"
+                                                                  IsExpanded="False"
+                                                                  Style="{StaticResource LazyFillEditorExpanderStyle}" />
+                                                        <Expander Header="坡面图"
+                                                                  Content="{Binding SectionFill, Mode=OneWay}"
+                                                                  IsExpanded="True"
+                                                                  Style="{StaticResource LazyFillEditorExpanderStyle}" />
+                                                    </StackPanel>
+                                                </Expander>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Margin="0,4,0,0"
+                                            Command="{Binding AddSubbaseLayerCommand}"
+                                            Content="＋添加垫层"
+                                            IsEnabled="{Binding CanAddSubbaseLayer}"
+                                            Style="{StaticResource BlenderButton}" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Expander>
+
+                    <!--  ============================== 外侧路牙 ==============================  -->
+                    <Expander Header="外侧路牙"
+                              IsExpanded="True"
+                              Style="{StaticResource BlenderExpander}"
+                              Visibility="{Binding ShowNonGreenSelectedBandContent, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel DataContext="{Binding SelectedBand}">
+                            <bui:PropertyRow Label="类型">
+                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableKerbTypes}" SelectedItem="{Binding OuterKerbType, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource BlenderComboBox}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="型号">
+                                <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding OuterKerbModel, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="高 (m)">
+                                <bui:NumericSlider Decimals="3"
+                                                   Maximum="0.5"
+                                                   Minimum="0"
+                                                   Step="0.01"
+                                                   Unit="m"
+                                                   Value="{Binding OuterKerbHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="宽 (m)">
+                                <bui:NumericSlider Decimals="3"
+                                                   Maximum="0.5"
+                                                   Minimum="0"
+                                                   Step="0.01"
+                                                   Unit="m"
+                                                   Value="{Binding OuterKerbWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                        </StackPanel>
+                    </Expander>
+
+                    <!--  ============================== 内侧路牙 ==============================  -->
+                    <Expander Header="内侧路牙"
+                              IsExpanded="False"
+                              Style="{StaticResource BlenderExpander}"
+                              Visibility="{Binding ShowNonGreenSelectedBandContent, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel DataContext="{Binding SelectedBand}">
+                            <bui:PropertyRow Label="类型">
+                                <ComboBox ItemsSource="{x:Static vm:CrossSectionDesignerViewModel.AvailableKerbTypes}" SelectedItem="{Binding InnerKerbType, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource BlenderComboBox}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="型号">
+                                <TextBox Style="{StaticResource BlenderTextBox}" Text="{Binding InnerKerbModel, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="高 (m)">
+                                <bui:NumericSlider Decimals="3"
+                                                   Maximum="0.5"
+                                                   Minimum="0"
+                                                   Step="0.01"
+                                                   Unit="m"
+                                                   Value="{Binding InnerKerbHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                            <bui:PropertyRow Label="宽 (m)">
+                                <bui:NumericSlider Decimals="3"
+                                                   Maximum="0.5"
+                                                   Minimum="0"
+                                                   Step="0.01"
+                                                   Unit="m"
+                                                   Value="{Binding InnerKerbWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </bui:PropertyRow>
+                        </StackPanel>
+                    </Expander>
+
+                    <!--  ============================== 规范检查 ==============================  -->
+                    <Expander Header="规范检查 (CJJ 37)" IsExpanded="True" Style="{StaticResource BlenderExpander}">
+                        <ItemsControl ItemTemplate="{StaticResource RoadCheckItemTemplate}" ItemsSource="{Binding CheckItems}" />
+                    </Expander>
+                </StackPanel>
+            </bui:PropertyEditor>
+        </Grid>
+    </Grid>
+</UserControl>
