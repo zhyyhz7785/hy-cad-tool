@@ -14,6 +14,10 @@ namespace HyCADTool.ReCall
             {
                 ["hyRoad"] = "rCx",
                 ["hyRoadA"] = "rLa",
+                ["hyRoadAName"] = "rAn",
+                ["hyRoadAlnAssign"] = "rAsg",
+                ["hyRoadAlnPlan"] = "rPlp",
+                ["hyRoadAutoIntersection"] = "rIa",
                 ["hyRoadAw"] = "rLaw",
                 ["hyRoadAlnByPi"] = "rPi",
                 ["hyRoadAlnEditPi"] = "rWk",

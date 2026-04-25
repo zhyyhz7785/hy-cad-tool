@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Domain.ValueObjects.Geometry;
 using HyCADTool.Refactored.Domain.ValueObjects.Road;
@@ -100,6 +101,140 @@ namespace HyCADTool.Refactored.Domain.Services.Road
                 LeftBandDividers = MakePolyList(leftDividers),
                 RightBandDividers = MakePolyList(rightDividers),
             };
+        }
+
+        /// <summary>
+        /// 按桩号区间为每条采样点选择不同 <see cref="CrossSectionLayout"/> 扫掠，硬切于区段边界。
+        /// 若各区段条带数不一致，仅输出中心线 + 左右红线，板块分界线置空（避免多模板条带数不一致难以拼接）。
+        /// </summary>
+        /// <returns>扫掠结果 + 是否输出了板块分界线（多模板条带数不一致时仅有红线+中心线）。</returns>
+        public (CorridorPlanPolylines Plan, bool UsedBandDividers) SweepWithAssignments(
+            Alignment alignment,
+            IReadOnlyList<Template> allTemplates,
+            IReadOnlyList<CrossSectionAssignment> assignments,
+            double samplingStepM = 5.0)
+        {
+            bool usedBandDividers = false;
+            if (alignment == null) throw new ArgumentNullException(nameof(alignment));
+            if (allTemplates == null) throw new ArgumentNullException(nameof(allTemplates));
+            if (assignments == null || assignments.Count == 0)
+                throw new ArgumentException("assignments 不能为空。", nameof(assignments));
+            if (alignment.Centerline == null || alignment.Centerline.VertexCount < 2)
+                throw new ArgumentException("Alignment.Centerline 顶点数不足 2，无法扫掠。", nameof(alignment));
+            if (samplingStepM <= 0) throw new ArgumentOutOfRangeException(nameof(samplingStepM));
+
+            var totalLen = alignment.Centerline.GetPlanarLength();
+            var segs = new List<(double lo, double hi, CrossSectionLayout L)>();
+            foreach (var a in assignments
+                         .OrderBy(x => System.Math.Min(x.StartStation, x.EndStation))
+                         .ToList())
+            {
+                if (a == null) continue;
+                var (ok, err) = a.Validate(totalLen);
+                if (!ok) throw new InvalidOperationException("CrossSectionAssignment 非法：" + err);
+                var tpl = allTemplates.FirstOrDefault(t => t != null && t.Id == a.TemplateId);
+                if (tpl == null) throw new InvalidOperationException("找不到 TemplateId=" + a.TemplateId);
+                var lo = System.Math.Min(a.StartStation, a.EndStation);
+                var hi = System.Math.Max(a.StartStation, a.EndStation);
+                var layout = CrossSectionLayoutBuilder.FromTemplate(tpl);
+                if (layout == null) throw new InvalidOperationException("Template 无法反解 CrossSectionLayout。");
+                segs.Add((lo, hi, layout));
+            }
+
+            if (segs.Count == 0) throw new InvalidOperationException("无有效区段。");
+
+            bool sameBands = segs.All(s =>
+                s.L.LeftBands.Count == segs[0].L.LeftBands.Count
+                && s.L.RightBands.Count == segs[0].L.RightBands.Count);
+            if (!sameBands) { /* 仅红 + 中 */ }
+            else usedBandDividers = true;
+
+            var defaultL = segs[0].L;
+            var samples = SampleAlignmentUniformly(alignment.Centerline, samplingStepM);
+            if (samples.Count < 2)
+                throw new InvalidOperationException("采样点不足 2。");
+
+            int leftLanes = sameBands ? System.Math.Max(0, segs[0].L.LeftBands.Count - 1) : 0;
+            int rightLanes = sameBands ? System.Math.Max(0, segs[0].L.RightBands.Count - 1) : 0;
+
+            var centerline = new List<Point3D>(samples.Count);
+            var leftEdge = new List<Point3D>(samples.Count);
+            var rightEdge = new List<Point3D>(samples.Count);
+            var leftDividers = new List<Point3D>[leftLanes];
+            for (int i = 0; i < leftLanes; i++) leftDividers[i] = new List<Point3D>(samples.Count);
+            var rightDividers = new List<Point3D>[rightLanes];
+            for (int i = 0; i < rightLanes; i++) rightDividers[i] = new List<Point3D>(samples.Count);
+
+            for (int s = 0; s < samples.Count; s++)
+            {
+                var sample = samples[s];
+                var layout = PickLayoutForStation(sample.StationM, segs, defaultL, totalLen);
+                double nx = -sample.Tangent.Y;
+                double ny = sample.Tangent.X;
+                centerline.Add(sample.Point);
+
+                double halfMedian = layout.CenterMedianWidth / 2.0;
+
+                double leftOffset = halfMedian;
+                for (int i = 0; i < layout.LeftBands.Count; i++)
+                {
+                    leftOffset += layout.LeftBands[i].Width;
+                    var pt = new Point3D(
+                        sample.Point.X - nx * leftOffset,
+                        sample.Point.Y - ny * leftOffset,
+                        sample.Point.Z);
+                    if (i == layout.LeftBands.Count - 1)
+                        leftEdge.Add(pt);
+                    else if (sameBands)
+                        leftDividers[i].Add(pt);
+                }
+
+                double rightOffset = halfMedian;
+                for (int i = 0; i < layout.RightBands.Count; i++)
+                {
+                    rightOffset += layout.RightBands[i].Width;
+                    var pt = new Point3D(
+                        sample.Point.X + nx * rightOffset,
+                        sample.Point.Y + ny * rightOffset,
+                        sample.Point.Z);
+                    if (i == layout.RightBands.Count - 1)
+                        rightEdge.Add(pt);
+                    else if (sameBands)
+                        rightDividers[i].Add(pt);
+                }
+            }
+
+            return (new CorridorPlanPolylines
+            {
+                AlignmentId = alignment.Id,
+                CenterLine = MakePoly(centerline),
+                LeftRedLine = MakePoly(leftEdge),
+                RightRedLine = MakePoly(rightEdge),
+                LeftBandDividers = sameBands ? MakePolyList(leftDividers) : new List<Polyline3D>(),
+                RightBandDividers = sameBands ? MakePolyList(rightDividers) : new List<Polyline3D>(),
+            }, usedBandDividers);
+        }
+
+        private static CrossSectionLayout PickLayoutForStation(
+            double st,
+            List<(double lo, double hi, CrossSectionLayout L)> segs,
+            CrossSectionLayout defaultL,
+            double totalLen)
+        {
+            const double eps = 1e-3;
+            foreach (var seg in segs)
+            {
+                if (st + eps >= seg.lo && st - eps <= seg.hi) return seg.L;
+            }
+
+            if (st <= segs[0].lo + eps) return segs[0].L;
+            if (st >= segs[segs.Count - 1].hi - eps) return segs[segs.Count - 1].L;
+            for (int i = 0; i < segs.Count - 1; i++)
+            {
+                if (st > segs[i].hi && st < segs[i + 1].lo) return segs[i].L;
+            }
+
+            return defaultL ?? segs[0].L;
         }
 
         /// <summary>沿 <paramref name="polyline"/> 均匀采样，返回点 + 切向。</summary>

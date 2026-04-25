@@ -7,6 +7,7 @@ using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Domain.ValueObjects.Configuration.Global;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -41,6 +42,8 @@ namespace HyCADTool.Refactored.Presentation
         /// </summary>
         public void Initialize()
         {
+            var swTotal = Stopwatch.StartNew();
+
             // 【根因修复 H6】Application.Current 在 AutoCAD 进程内为 null（AutoCAD 是 WinForms+WPF
             // 混合宿主，从未实例化 WPF Application 单例）。这直接导致：
             //   1. Application.LoadComponent(relativeUri) → IOException("Assembly.GetEntryAssembly() 返回 null")
@@ -48,6 +51,7 @@ namespace HyCADTool.Refactored.Presentation
             //      → 在某个 idle tick 内升级为 0xE0434352 native fatal（AutoCAD "致命错误"弹窗）
             // 修复：在最早阶段 ensure Application 单例存在（仅创建对象，不调 .Run() 不启动消息循环），
             // 这样后续所有 WPF LoadComponent / ResourceAssembly / Dispatcher 引用都有 host 对象可用。
+            var swWpf = Stopwatch.StartNew();
             try
             {
                 if (System.Windows.Application.Current == null)
@@ -77,6 +81,7 @@ namespace HyCADTool.Refactored.Presentation
                 // 创建 Application stub 失败时降级运行：后续 WPF 相关路径自有兜底，
                 // 但 LoadComponent 大概率会跟着挂；不在此处吞错的更深处再抛更利于诊断。
             }
+            long msWpfStub = swWpf.ElapsedMilliseconds;
 
             try
             {
@@ -86,7 +91,7 @@ namespace HyCADTool.Refactored.Presentation
 
                 // 必装：WPF Dispatcher / Binding 异常兜底。PaletteSet 宿主默认会吞掉所有
                 // UI 线程异常，导致面板控件首次实例化失败时表现为 AutoCAD 原生崩溃，无任何线索。
-                InstallWpfExceptionTraps();
+                long msWpfTraps = RunTimed(InstallWpfExceptionTraps);
 
                 // 【关键】在任何 WPF XAML/控件被触发前，同步 warmup 跨程序集 BlenderTheme.xaml。
                 // 原因：HyCAD.BlenderUI 标记了 [assembly: ThemeInfo(SourceAssembly)]，
@@ -94,7 +99,7 @@ namespace HyCADTool.Refactored.Presentation
                 // 此时若 pack URI 解析失败，异常会在 PresentationFramework native 层
                 // 以 0xE0434352 抛出，表现为 AutoCAD "致命错误" 弹窗（无托管堆栈可捕获）。
                 // 同步 warmup 把这条路径从"异步 native"变成"同步托管异常"，必崩时可见。
-                WarmupBlenderTheme();
+                long msWarmup = RunTimed(WarmupBlenderTheme);
 
                 // 注意：不再 WarmupSubViews()。SubView 都是 UserControl，首次 new 时
                 // InitializeComponent 自动 LoadComponent；BlenderTheme 已驻留缓存即可命中。
@@ -103,46 +108,55 @@ namespace HyCADTool.Refactored.Presentation
                 // 见 doc/RoadDesign/00.md。
 
                 // 构建 Autofac 容器
-                var builder = new ContainerBuilder();
-                builder.RegisterModule<AutofacModule>();
-                var container = builder.Build();
-
-                // 注册到服务定位器
-                ServiceLocator.Initialize(container);
+                long msAutofac = RunTimed(() =>
+                {
+                    var builder = new ContainerBuilder();
+                    builder.RegisterModule<AutofacModule>();
+                    var container = builder.Build();
+                    ServiceLocator.Initialize(container);
+                });
 
                 WriteMessage("\n✓ 依赖注入容器已初始化");
 
                 // 加载配置
-                LoadConfigurations();
+                long msLoadCfg = RunTimed(LoadConfigurations);
 
                 WriteMessage("\n✓ 配置已加载");
 
                 // HyCAD 标准线型（点划线 / 虚线）：须在图层落表前注入当前图形线型表
-                TryEnsureHyCadStandardLinetypesLoaded();
+                long msLinetypes = RunTimed(TryEnsureHyCadStandardLinetypesLoaded);
 
                 // 一次性初始化所有样式和图层
-                InitializeStylesAndLayers();
+                long msStylesLayers = RunTimed(InitializeStylesAndLayers);
 
                 // 注册文档事件（可选）
-                RegisterDocumentEvents();
+                long msDocEvents = RunTimed(RegisterDocumentEvents);
 
                 // 道路子系统启动（P0 落地：事件总线 + JSON 持久化）
-                InitializeRoadSubsystem();
+                long msRoad = RunTimed(InitializeRoadSubsystem);
 
                 // 三入口 UI：AutoCAD Ribbon 选项卡（Ribbon 未启用时会静默跳过，不影响其他入口）
-                InitializeRibbonAndMenus();
+                long msRibbonMenus = RunTimed(InitializeRibbonAndMenus);
 
                 // 把 CommandTable 里的命令批量注册为 BlenderUI Operator（Id = hy.cmd.{key}），
                 // 为后续 KeyMap / SearchMenu 统一走 WM/Operators 链路做准备。幂等，commands.json 异常静默失败。
+                long msOperators = 0;
                 try
                 {
-                    Input.OperatorBootstrapper.RegisterAllCommands();
+                    msOperators = RunTimed(Input.OperatorBootstrapper.RegisterAllCommands);
                     WriteMessage($"\n✓ 命令 Operator 已注册：{Input.OperatorBootstrapper.RegisteredCommandCount} 条");
                 }
                 catch (System.Exception ex)
                 {
                     WriteMessage($"\n  ⚠ 命令 Operator 注册警告：{ex.Message}");
                 }
+
+                swTotal.Stop();
+                WriteMessage("\n  ⏱ PluginInitializer 阶段耗时(ms): " +
+                    $"WpfStub={msWpfStub} WpfTraps={msWpfTraps} Warmup={msWarmup} " +
+                    $"Autofac+SL={msAutofac} LoadCfg={msLoadCfg} Linetypes={msLinetypes} " +
+                    $"StylesLayers={msStylesLayers} DocEvents={msDocEvents} Road={msRoad} " +
+                    $"RibbonMenus={msRibbonMenus} Operators={msOperators} | Total={swTotal.ElapsedMilliseconds}");
 
                 WriteMessage("\n========================================");
                 WriteMessage("\n✓ HyCADTool.Refactored 插件初始化完成！");
@@ -155,6 +169,14 @@ namespace HyCADTool.Refactored.Presentation
                 WriteMessage($"\n✗ [错误] 插件初始化失败：{ex.Message}");
                 WriteMessage($"\n堆栈跟踪：{ex.StackTrace}");
             }
+        }
+
+        /// <summary>Layer 4：单阶段耗时（毫秒），吞异常由被测方法自行处理。</summary>
+        private static long RunTimed(Action action)
+        {
+            var sw = Stopwatch.StartNew();
+            action();
+            return sw.ElapsedMilliseconds;
         }
 
         /// <summary>

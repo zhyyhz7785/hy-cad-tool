@@ -4,7 +4,9 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Refactored.Domain.Models.Road;
 using HyCADTool.Refactored.Infrastructure.AutoCAD.Xdata;
+using HyCADTool.Refactored.Infrastructure.Configuration;
 using HyCADTool.Refactored.Presentation.ViewModels.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -119,13 +121,75 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             }
         }
 
-        /// <summary>重命名（M4 仅占位）。</summary>
+        /// <summary>重命名：项目根 <see cref="RoadProject.Name"/> 或 <see cref="Alignment.Name"/> 并落盘 JSON。</summary>
         public void Rename(RoadTreeNode node)
         {
             if (node == null) return;
             var doc = AcApp.DocumentManager?.MdiActiveDocument;
             if (doc == null) return;
-            Tell(doc, $"[项目树] 重命名 '{node.Header}'（Kind={node.Kind}）—— 该命令等 M6 接入。");
+            var ed = doc.Editor;
+
+            try
+            {
+                if (node.Kind == RoadTreeNodeKind.Project && node.Tag is RoadProject prj)
+                {
+                    var so = new PromptStringOptions($"\n[项目树] 新项目名称 <{prj.Name}>：")
+                    {
+                        AllowSpaces = true,
+                    };
+                    var r = ed.GetString(so);
+                    if (r.Status != PromptStatus.OK || string.IsNullOrWhiteSpace(r.StringResult)) return;
+                    prj.Name = r.StringResult.Trim();
+                    var primary = prj.GetPrimaryDesign();
+                    if (primary != null) primary.ProjectName = prj.Name;
+                    prj.LastModifiedUtc = DateTime.UtcNow;
+                    if (primary != null) primary.LastModifiedUtc = prj.LastModifiedUtc;
+
+                    var ex = ServiceLocator.Resolve<RoadJsonExportService>();
+                    var pathP = ex.SaveProjectForDocument(prj, doc.Name);
+                    var reg = ServiceLocator.Resolve<RoadDesignRegistry>();
+                    if (reg.TryGet(doc.Name, out var d) && d != null)
+                    {
+                        var pathD = ex.SaveForDocument(d, doc.Name);
+                        if (pathD != null) Tell(doc, $"[项目树] 已重命名项目，已落盘：{pathD}");
+                    }
+                    else if (pathP != null)
+                    {
+                        Tell(doc, $"[项目树] 已重命名项目，已落盘：{pathP}");
+                    }
+                    else
+                    {
+                        ex.SaveProject(prj, RoadJsonExportService.GetDefaultProjectJsonPath(doc.Name));
+                        Tell(doc, "[项目树] 项目名称已更新（.roadproject.json）。");
+                    }
+                    return;
+                }
+
+                if (node.Kind == RoadTreeNodeKind.Alignment && node.Tag is Alignment aln)
+                {
+                    var so = new PromptStringOptions($"\n[项目树] 新路线名称 <{aln.Name}>：")
+                    {
+                        AllowSpaces = true,
+                    };
+                    var r = ed.GetString(so);
+                    if (r.Status != PromptStatus.OK || string.IsNullOrWhiteSpace(r.StringResult)) return;
+                    aln.Name = r.StringResult.Trim();
+                    var reg = ServiceLocator.Resolve<RoadDesignRegistry>();
+                    if (!reg.TryGet(doc.Name, out var design) || design == null) return;
+                    design.LastModifiedUtc = DateTime.UtcNow;
+                    var ex = ServiceLocator.Resolve<RoadJsonExportService>();
+                    var path = ex.SaveForDocument(design, doc.Name);
+                    if (path != null) Tell(doc, $"[项目树] 已重命名路线，已落盘：{path}");
+                    else Tell(doc, "[项目树] 路线名称已更新（未写盘，请先保存 DWG）。");
+                    return;
+                }
+
+                Tell(doc, $"[项目树] 此节点类型暂不支持重命名（Kind={node.Kind}）。");
+            }
+            catch (Exception ex)
+            {
+                Tell(doc, "[项目树] 重命名失败：" + ex.Message);
+            }
         }
 
         /// <summary>删除（M4 仅占位）。</summary>
@@ -152,6 +216,26 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road
             }
 
             Tell(doc, $"[项目树] 暂不支持此类节点的 LandXML 导出（Kind={node.Kind}）。");
+        }
+
+        public void NewAlignment() => RunCmd("hyRoadAName");
+
+        public void AssignCrossSection(RoadTreeNode contextNode) => RunCmd("hyRoadAlnAssign");
+
+        public void GeneratePlanFromTree(RoadTreeNode contextNode) => RunCmd("hyRoadAlnPlan");
+
+        public void DetectIntersections() => RunCmd("hyRoadAutoIntersection");
+
+        private static void RunCmd(string cmd)
+        {
+            var doc = AcApp.DocumentManager?.MdiActiveDocument;
+            if (doc == null) return;
+            try
+            {
+                doc.SendStringToExecute($"_{cmd} ", true, false, true);
+            }
+            catch
+            { /* 忽略 */ }
         }
 
         // =============================================================

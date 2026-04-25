@@ -317,6 +317,11 @@ namespace HyCADTool.Refactored.Infrastructure.Configuration
                 .AsSelf()
                 .SingleInstance();
 
+            // 四步联动：多路线平面交点两两求交 + 容差聚类（纯域服务，无状态，单例）。
+            builder.RegisterType<HyCADTool.Refactored.Domain.Services.Road.IntersectionDetector>()
+                .AsSelf()
+                .SingleInstance();
+
             // M10：平面分段扫掠落图服务。
             builder.RegisterType<HyCADTool.Refactored.Infrastructure.AutoCAD.Services.Road.RoadPlanDrawService>()
                 .AsSelf()

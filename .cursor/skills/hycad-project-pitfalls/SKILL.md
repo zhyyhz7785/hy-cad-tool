@@ -16,25 +16,34 @@ description: |
   AutoCAD 锁着 ReCall.dll 时致 MSB3027/MSB3021 整个方案构建中断、Refactored.dll 无产出，
   C2 热重载机制失效。修复改为 Reference+HintPath 单向二进制引用断开 MSBuild 项目依赖链
   + EnsureReCallDllExists cold-start 兜底（C1 落地）；
+  csproj `<PlatformTarget>x64</PlatformTarget>` 致 dll 编译为 PE32+ x64-only，
+  而 .NET Framework WPF 项目的 VS XAML 设计器宿主（XDesProc.exe / WpfSurface.exe）
+  永远以 32 位运行且没有 64 位开关，加载 x64 dll 抛 BadImageFormatException
+  → 错误列表表现为 XDG0023/XDG0003「未能加载 HyCADTool.Refactored 或它的某一个依赖项」+
+  XDG-0001 跨程序集 pack URI 全员阵亡 + XDG0010 BlenderButton/Splitter 全部找不到（连带）。
+  修复改 PlatformTarget=AnyCPU + Prefer32Bit=false（设计时 32 位能 LoadFrom，
+  运行时在 64 位 AutoCAD 进程里 JIT 成 64 位行为等同 x64）。ReCall.csproj 不动，
+  设计器从不引用它（C2 落地）；
   Debug 方法论：调试类与调用点同步删除 / session ID 不入生产代码 /
   Dispatcher.UnhandledException handler shutdown 流程 NRE 升级原生致命 /
   PresentationTraceSources Binding 错误同步阻塞 UI 线程 / VS 错误清单按编译阻塞性分类。
   使用场景：写 AutoCAD 命令 / 新建 WPF 面板 / 改资源字典 / 迁移命令到 Refactored / 多文档联调 / 建 Table /
   Cursor Debug 模式收尾撤埋点 / 处理 AutoCAD 关闭崩溃 / 处理统一面板点击卡顿 /
-  增删跨项目引用 / 处理 AutoCAD 锁文件致 Build 失败。
+  增删跨项目引用 / 处理 AutoCAD 锁文件致 Build 失败 /
+  处理 VS XAML 设计器报 XDG0023/XDG0003/XDG-0001 全员加载失败 / 改 csproj 平台目标。
   本 skill 替代：wpf-paletteset-avoid-implicit-styles / wpf-blender-panel-guideline /
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.10.0
-date: 2026-04-21
+version: 1.11.0
+date: 2026-04-25
 ---
 
 # HyCAD 项目级闭坑清单
 
 > 本 skill 收录本仓库**已踩过且已在关键路径落实缓解或修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
 >
-> **§ 验证状态与残留风险**（2026-04-20 对照 `HyCADTool.Refactored` / `ReCall` / `HyCAD.BlenderUI` 代码核对）见文末 **§ 验证状态与残留风险** 一节；**不要**把本 skill 当成「永不再现」的数学保证——宿主为 AutoCAD + 多程序集 WPF，仍有版本差与环境差。
+> **§ 验证状态与残留风险**（2026-04-25 对照 `HyCADTool.Refactored` / `ReCall` / `HyCAD.BlenderUI` 代码核对）见文末 **§ 验证状态与残留风险** 一节；**不要**把本 skill 当成「永不再现」的数学保证——宿主为 AutoCAD + 多程序集 WPF，仍有版本差与环境差。
 >
 > 四大域：
 >
@@ -919,6 +928,128 @@ XamlReader.Load(info.Stream);  // 抛 XmlException 0x0C
 
 ---
 
+### C2【新 2026-04-25】csproj `<PlatformTarget>x64</PlatformTarget>` 致 VS XAML 设计器（永远 32 位）全员 XDG-0001/XDG0023
+
+**现象**
+
+- 编译/运行/AutoCAD NETLOAD 全部完全正常，业务面板在 PaletteSet 里渲染零异常。
+- 唯独 VS 错误列表里 `HyCADTool.Refactored` 项目下任意一个 panel xaml 都集中报：
+  - `XDG0023` 或 `XDG0003`：「未能加载文件或程序集 HyCADTool.Refactored, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null 或它的某一个依赖项。系统找不到指定的文件。」（指向 xaml 里 `xmlns:vm` 引用的那一行）
+  - `XDG-0001`：「查找资源字典 `pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml` 时出错」、`...BlenderTheme.xaml` 同样失败
+  - `XDG0010`：BlenderButton / BlenderSplitter / BlenderTextBox / BlenderExpander / BlenderComboBox / BlenderCheckBox / BlenderButtonFlat / BlenderScrollViewer / EnumToIndexConverter 等**所有跨程序集资源**全员"未找到"
+- 把同一 xaml 里 `pack://application:,,,/HyCADTool.Refactored;component/Presentation/Resources/RoadDesignerStyles.xaml`（指向**当前项目自己**的 pack URI）这一行**不报错**——这是关键不对称信号。
+- 多个 panel xaml（`RoadAlignmentWorkbenchPanel.xaml` / `BaseReinPanel.xaml` / `PilePanel.xaml` 等）都同时报相同模式 → 是全局问题不是单文件问题。
+- 用户感受："命令、面板、运行时全 OK，但设计器一直爆红，没法看预览，也没法在 XAML 里靠 IntelliSense 自动补全 `BlenderXxx` 资源。"
+
+**触发条件**
+
+1. `HyCADTool.Refactored.csproj` 与 `HyCAD.BlenderUI.csproj` 都显式声明 `<PlatformTarget>x64</PlatformTarget>`（项目祖辈版本里曾因配合 AutoCAD 64-bit 进程"显得严谨"加上去的）。
+2. VS 2022 17.x 打开任一 panel `.xaml` 进入 XAML 设计器视图（拆分视图、设计视图、IntelliSense 弹出）。
+
+**根因（双层叠加）**
+
+第一层 — **dll 编译为 PE32+ x64-only**：`<PlatformTarget>x64</PlatformTarget>` 让 csc 在 PE 头里写 `0x20b` (PE32+) + machine `0x8664` (AMD64)，CLR header 标 ILONLY=1 但要求 64-bit。可用 PowerShell 校验：
+
+```powershell
+$bytes = [System.IO.File]::ReadAllBytes('HyCADTool.Refactored\bin\Debug\HyCADTool.Refactored.dll')
+$peOff = [System.BitConverter]::ToInt32($bytes, 0x3C)
+$magic = [System.BitConverter]::ToUInt16($bytes, $peOff + 0x18)
+if ($magic -eq 0x20b) { 'PE32+ (64-bit only) — 32 位进程加载会 BadImageFormatException' }
+elseif ($magic -eq 0x10b) { 'PE32 (AnyCPU/32-bit) — 32 位进程能加载' }
+```
+
+第二层 — **.NET Framework WPF 项目的 VS XAML 设计器宿主进程永远 32 位**：
+
+- VS 2022 的 XAML 设计器宿主是独立进程：`XDesProc.exe` / `WpfSurface.exe` / `DesignToolsServer.exe`。
+- "**Run the XAML Designer in a 64-bit process**" 这个开关**只对 .NET (Core) 5+ WPF 项目可见**。本仓库 `<TargetFramework>net48</TargetFramework>` → 选项页里**没有这一项**，且**永远没有**——这是 VS 的设计决定，不是 bug。
+- 32 位宿主进程加载 PE32+ x64 dll 抛 `System.BadImageFormatException`，VS 错误列表把它包装成 `XDG0023` "未能加载文件或程序集... 系统找不到指定的文件"（误导性措辞，实质是位数错配）。
+- 由此连锁：跨程序集 pack URI `pack://application:,,,/HyCAD.BlenderUI;component/...` 解析需要先 LoadFrom `HyCAD.BlenderUI.dll` → 同样 BadImageFormat → 资源字典加载失败 → `BlenderButton` 等键全员"未找到"。
+- 同程序集 pack URI（`pack://application:,,,/HyCADTool.Refactored;component/...`）**不报错**是因为设计器对当前项目的 BAML 走 markup-compile 旁路，直接读 `obj\Debug` 下的 `g.resources`，根本不需要 LoadFrom 程序集 — 这就是上述"不对称信号"的原因。
+
+**100% 验证方法**（避免猜测）
+
+```powershell
+# 用与 VS 设计器宿主同位数的 32-bit PowerShell 模拟它
+& "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command {
+    $bui = [System.Reflection.Assembly]::LoadFrom('HyCADTool.Refactored\bin\Debug\HyCAD.BlenderUI.dll')
+    $bui.GetTypes().Length
+    $ref = [System.Reflection.Assembly]::LoadFrom('HyCADTool.Refactored\bin\Debug\HyCADTool.Refactored.dll')
+    $ref.GetTypes().Length
+}
+# 修复前：BlenderUI LoadFrom 抛 BadImageFormatException
+# 修复后：BlenderUI 210 个类型、Refactored 1249 个类型，都能 LoadFrom + GetTypes
+```
+
+**真正修复**
+
+```xml
+<!-- HyCADTool.Refactored.csproj：旧 -->
+<PlatformTarget>x64</PlatformTarget>
+
+<!-- HyCADTool.Refactored.csproj：新 -->
+<PlatformTarget>AnyCPU</PlatformTarget>
+<Prefer32Bit>false</Prefer32Bit>
+
+<!-- HyCAD.BlenderUI.csproj 同样改（这是 pack URI 所指向的程序集，必须能被 32 位设计器加载） -->
+```
+
+**为什么这个改动安全**
+
+1. **运行时行为完全等同 x64**：AnyCPU + Prefer32Bit=false 在 64 位 AutoCAD 进程里 JIT 成 64 位，`IntPtr.Size==8`、native interop 走 64-bit 调用约定，与原 `PlatformTarget=x64` 字节级等价。AutoCAD .NET API 自带的 `AcMgd.dll` / `AcDbMgd.dll` 本身就是 AnyCPU（Autodesk 出厂如此），不存在"必须 x64"的硬约束。
+2. **设计时 32 位能加载**：32 位 XDesProc / WpfSurface 现在能 LoadFrom 这两个 dll，跨程序集 pack URI 全部恢复，BlenderTheme/BlenderDark/BlenderButton 全部能解析。
+3. **ReCall.csproj 故意保持 x64 不动**：设计器从不引用 ReCall（C1 的 `<Reference HintPath><Private>false</Private>` 让 ReCall.dll 既不在 Refactored 输出目录也不在设计器探测路径），所以 ReCall 维持 x64 对设计器零影响；运行时由 AutoCAD NETLOAD 加载，64 位 AutoCAD 进程加载 x64 ReCall.dll 完全正常。
+4. **AcSeamless.dll 仍是 PE32+ x64 native 不影响**：它是 native 库，由 AcDbMgd 在 type init 阶段 P/Invoke 调用。设计器只对 Refactored.dll 做 LoadFrom + 反射 markup compile，**不**触发 AutoCAD type init 链路，所以 AcSeamless 的位数对设计器无关。
+
+**修复完成后必须做的"硬重启"**（很关键，不做的话错误列表会残留）
+
+VS 设计器宿主进程在 File→Exit 后会以 ServiceHub 的形式继续在后台跑一段时间复用，光重启 VS 主进程**不够**，必须把宿主进程一并杀掉、缓存目录一并删掉：
+
+1. 关闭 VS。
+2. Task Manager → Details，结束以下进程（如有）：`devenv.exe` / `XDesProc.exe` / `WpfSurface.exe` / `DesignToolsServer.exe` / `ServiceHub.Host.*.exe` / `MSBuild.exe`，等到一个都不剩。
+3. 删除工作区下 `.vs\<解决方案名>` 整个文件夹（设计器本地缓存）。
+4. 重新启动 VS，重开 XAML 设计器。
+
+**反例（已撤销，绝不复活）**
+
+```xml
+<!-- 反例 1：保留 PlatformTarget=x64 + 期待 VS 出新版本支持 .NET Framework 64 位设计器
+     真相：VS 2022 17.x 永远不会给 .NET Framework WPF 加 64 位设计器开关
+          （已确认是 VS 设计决定，不是优先级问题），等不到 -->
+<PlatformTarget>x64</PlatformTarget>
+
+<!-- 反例 2：用 PostBuild Target 复制 ReCall.dll 进 Refactored\bin\Debug 期望解决 XDG0023
+     真相：ReCall 是 x64 dll，复制进去也是 x64，设计器加载它仍然 BadImageFormat，
+          且打破了 C1 "ReCall.dll 不出现在 Refactored\bin\Debug" 的设计承诺
+          （会触发 AutoCAD 锁文件 + MSBuild 复制冲突）-->
+<Target Name="CopyReCallDll" AfterTargets="Build">
+    <Copy SourceFiles="..\ReCall\bin\$(Configuration)\ReCall.dll" DestinationFolder="bin\$(Configuration)" />
+</Target>
+
+<!-- 反例 3：Tools→Options→XAML 设计器→关闭 XAML 设计器
+     真相：能消除错误，但同时失去整个 XAML 设计时支持（IntelliSense / 预览 / 资源补全），
+          属于"砍头治痛"，绝不能这样做 -->
+```
+
+**改 csproj PlatformTarget 的强制清单**
+
+1. ✅ `HyCADTool.Refactored.csproj` 与 `HyCAD.BlenderUI.csproj` 都用 `<PlatformTarget>AnyCPU</PlatformTarget>` + `<Prefer32Bit>false</Prefer32Bit>`。审 PR 时 `grep` 一下，出现 `<PlatformTarget>x64</PlatformTarget>` 直接打回。
+2. ✅ 新加入解决方案的 WPF 类项目（任何会被 panel xaml 通过 `xmlns:` 或 pack URI 引用的项目）—— 必须 AnyCPU。
+3. ✅ ReCall.csproj 保持 x64（设计器不会碰它，运行时由 AutoCAD 加载）。
+4. ✅ 修改 PlatformTarget 后，必须按"硬重启"步骤清掉 VS 设计器宿主进程 + `.vs` 缓存，否则错误列表残留。
+5. ❌ **绝不**用关闭 XAML 设计器、复制 dll 等"治标"手段——位数错配是结构性问题，必须从编译目标上修。
+
+**已修复文件**
+
+- `HyCADTool.Refactored/HyCADTool.Refactored.csproj`（2026-04-25）：`<PlatformTarget>x64</PlatformTarget>` → `<PlatformTarget>AnyCPU</PlatformTarget>` + 新增 `<Prefer32Bit>false</Prefer32Bit>`。
+- `HyCAD.BlenderUI/HyCAD.BlenderUI.csproj`（2026-04-25）：同上修改。
+- `ReCall/ReCall.csproj`：保持 x64 不动。
+
+**同类宿主风险提示**
+
+任何"宿主进程位数与目标程序集位数不匹配 + 反射加载"组合都有这个症状家族：VS XAML 设计器（永远 32 位 for .NET FX）、Office VSTO 加载 64-bit only 程序集、IIS 32-bit 应用池加载 64-bit 程序集。判定标准统一：把 dll 拖进 [CorFlags](https://learn.microsoft.com/en-us/dotnet/framework/tools/corflags-exe-corflags-conversion-tool) 看 `PE = PE32+` 与 `32BIT = 0` 组合即 64-bit only。
+
+---
+
 ## D 域：Debug 与诊断方法论
 
 > 本域记录 Cursor Debug 模式 / 临时埋点 / WPF 异常兜底 三类常踩坑。
@@ -1139,7 +1270,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 
 ---
 
-## § 验证状态与残留风险（2026-04-20）
+## § 验证状态与残留风险（2026-04-25）
 
 以下为**对照仓库代码**的结论，用于回答「skill 里写的是否已落实」。
 
@@ -1156,6 +1287,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 | **D3 / D4** | `PluginInitializer.InstallWpfExceptionTraps`：`MdiActiveDocument` 空防御；`BindingErrorListener` 白名单 + `Debug.WriteLine`，避免命令行刷爆卡死。 |
 | **Badge 真修复（B11）** | `ReCall/Recall.cs::ResolveAssembly` 增加 `AutoCadHostAssemblyNames` 黑名单，宿主程序集（`AdWindows` / `AcMr` / ...）一律走 `AppDomain` 已加载查表，绝不从 deps 目录 byte[] 加载，杜绝 5.0.1.2 与 5.1.1.1 双载入；见 **B11** 全文。 |
 | **C1** | `HyCADTool.Refactored.csproj` 已移除 `<ProjectReference Include="..\ReCall\ReCall.csproj">`，改用 `<Reference Include="ReCall"><HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath></Reference>` + `EnsureReCallDllExists` cold-start Target（约 222–252 行）。`grep -n 'ReCall.csproj' HyCADTool.Refactored.csproj` 应 0 命中。AutoCAD 开着 dotnet build Refactored 实测 0 error。 |
+| **C2** | `HyCADTool.Refactored.csproj` 与 `HyCAD.BlenderUI.csproj` 都已 `<PlatformTarget>AnyCPU</PlatformTarget>` + `<Prefer32Bit>false</Prefer32Bit>`。校验：用 32-bit PowerShell 跑 `[System.Reflection.Assembly]::LoadFrom('HyCADTool.Refactored\bin\Debug\HyCAD.BlenderUI.dll').GetTypes().Length` 应返回 210；同样测 Refactored.dll 应返回 1249。VS 重启后错误列表 0 个 XDG-0001/XDG0023/XDG0010。`ReCall.csproj` 故意保持 x64 不变（设计器不引用它）。 |
 
 ### 仍为环境型 / 缓解型风险（不是单靠改一行就能封死）
 
@@ -1165,6 +1297,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 | **B10 同类** | 未来若有新的 `Freezable` 写入 Theme 字典且未做 freeze 阻断，仍可能再引入异常链。 |
 | **A1** | 依赖持续 Code Review：`SingleInstance` 服务不得长期缓存 `Database`。 |
 | **C1 同类** | 未来若新建解决方案项目（如 `HyCADTool.Plugins.X`）想引用 ReCall，必须用 `<Reference HintPath>` 而非 `<ProjectReference>`；同样必须保持 ReCall 不反向引用任何业务项目。审 PR 时 `grep` 一下 `ReCall\.csproj"` 看是否被任何 csproj 用 ProjectReference。 |
+| **C2 同类** | 任何新加入解决方案的"会被 panel xaml 通过 `xmlns:` 或 pack URI 引用"的 WPF 类项目 — 必须 AnyCPU + Prefer32Bit=false，绝不能 `<PlatformTarget>x64</PlatformTarget>`。审 PR 时 `grep -n '<PlatformTarget>x64' *.csproj` 应只命中 `ReCall/ReCall.csproj` 一行。改完 PlatformTarget 后必须按 C2 "硬重启"步骤清掉 VS 设计器宿主进程 + `.vs` 缓存，否则错误列表残留。 |
 
 ### 与「Verification」自检表的关系
 
@@ -1197,6 +1330,9 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 - 构建后 `HyCADTool.Refactored.dll` 时间戳更新，`ReCall.dll` 时间戳保持不变（C1）
 - `grep -n 'ReCall\.csproj' HyCADTool.Refactored.csproj` 0 命中，`grep -n '<Reference Include="ReCall"' HyCADTool.Refactored.csproj` 命中 1 次（C1）
 - 全新 checkout（删 `ReCall/bin/Debug` 后）首次 Build Refactored，`EnsureReCallDllExists` Target 触发一次 ReCall 自动构建（C1 cold-start）
+- VS 重启后打开 `RoadAlignmentWorkbenchPanel.xaml` / `BaseReinPanel.xaml` 设计器，错误列表里 0 个 `XDG-0001` / `XDG0023` / `XDG0003` / `XDG0010`（C2）
+- `grep -n '<PlatformTarget>x64' HyCADTool.Refactored.csproj HyCAD.BlenderUI.csproj` 0 命中（应都是 AnyCPU；C2）
+- 在 32-bit PowerShell `& "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"` 里 `LoadFrom HyCAD.BlenderUI.dll` + `GetTypes().Length` 返回 210；`LoadFrom HyCADTool.Refactored.dll` + `GetTypes().Length` 返回 1249（C2）
 
 **D 域验证**
 

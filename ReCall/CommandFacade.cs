@@ -148,6 +148,10 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadTree")][CommandMethod("rTree")]       public void Cmd_hyRoadTree()         => ReCallClass.Invoke("hyRoadTree");
         [CommandMethod("hyRoad")][CommandMethod("rCx")]             public void Cmd_hyRoad()             => ReCallClass.Invoke("hyRoad");
         [CommandMethod("hyRoadA")][CommandMethod("rLa")]            public void Cmd_hyRoadA()            => ReCallClass.Invoke("hyRoadA");
+        [CommandMethod("hyRoadAName")][CommandMethod("rAn")]         public void Cmd_hyRoadAName()         => ReCallClass.Invoke("hyRoadAName");
+        [CommandMethod("hyRoadAlnAssign")][CommandMethod("rAsg")]   public void Cmd_hyRoadAlnAssign()   => ReCallClass.Invoke("hyRoadAlnAssign");
+        [CommandMethod("hyRoadAlnPlan")][CommandMethod("rPlp")]     public void Cmd_hyRoadAlnPlan()     => ReCallClass.Invoke("hyRoadAlnPlan");
+        [CommandMethod("hyRoadAutoIntersection")][CommandMethod("rIa")] public void Cmd_hyRoadAutoIntersection() => ReCallClass.Invoke("hyRoadAutoIntersection");
         [CommandMethod("hyRoadAw")][CommandMethod("rLaw")]          public void Cmd_hyRoadAw()           => ReCallClass.Invoke("hyRoadAw");
         [CommandMethod("hyRoadAlnByPi")][CommandMethod("rPi")]      public void Cmd_hyRoadAlnByPi()      => ReCallClass.Invoke("hyRoadAlnByPi");
         [CommandMethod("hyRoadAlnEditPi")][CommandMethod("rWk")]    public void Cmd_hyRoadAlnEditPi()    => ReCallClass.Invoke("hyRoadAlnEditPi");

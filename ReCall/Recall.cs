@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -32,11 +33,30 @@ namespace HyCADTool.ReCall
     /// </summary>
     public sealed class ReCallExtension : Autodesk.AutoCAD.Runtime.IExtensionApplication
     {
+        /// <summary>
+        /// 性能诊断 Layer 3：设为 true 或设置环境变量 <c>HYCAD_RECALL_NO_AUTO_RELOAD=1</c> 时，
+        /// 不在首个 Idle 自动执行 C2；仅 NETLOAD ReCall.dll 后需手动输 <c>C2</c> 加载 Refactored。
+        /// </summary>
+        public static bool DisableAutoReloadForDiagnostics { get; set; }
+
+        private static bool IsAutoReloadDisabled()
+        {
+            try
+            {
+                if (DisableAutoReloadForDiagnostics) return true;
+                var v = Environment.GetEnvironmentVariable("HYCAD_RECALL_NO_AUTO_RELOAD");
+                return string.Equals(v, "1", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
         public void Initialize()
         {
             try
             {
-                Application.Idle += OnIdleAutoReload;
+                if (!IsAutoReloadDisabled())
+                    Application.Idle += OnIdleAutoReload;
             }
             catch
             {
@@ -150,6 +170,41 @@ namespace HyCADTool.ReCall
 
         #region ========== C2 ==========
 
+        /// <summary>环境变量 <c>HYCAD_RECALL_C2_PERF=0|off</c> 时关闭 C2 分段时间戳行（仍保留首行与摘要）。默认开启便于性能分析。</summary>
+        private static bool C2PerfPhasesEnabled()
+        {
+            var s = Environment.GetEnvironmentVariable("HYCAD_RECALL_C2_PERF");
+            if (string.IsNullOrEmpty(s)) return true;
+            if (string.Equals(s, "0", StringComparison.Ordinal)) return false;
+            if (string.Equals(s, "off", StringComparison.OrdinalIgnoreCase)) return false;
+            if (string.Equals(s, "false", StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
+        }
+
+        private static void C2LogPhase(Editor ed, ref long accMs, long phaseMs, string label, bool log)
+        {
+            if (!log || ed == null) return;
+            accMs = checked(accMs + phaseMs);
+            ed.WriteMessage(
+                $"\n  [{DateTime.Now:HH:mm:ss.fff}]  +{phaseMs,4}ms  {label}  (累计 {accMs,5}ms)");
+        }
+
+        private static void C2LogSummary(Editor ed, long totalMs, long tCleanup, long tCopy, long tPre, long tRead, long tAsm, long tTerm, long tInit, long tC1, long tJson, long tVal)
+        {
+            if (ed == null) return;
+            // Init 内明细：Refactored 的「⏱ PluginInitializer」行（RibbonMenus / Autofac+SL 等）。
+            ed.WriteMessage(
+                $"\nC2 摘要(毫秒):  总{totalMs}  |  清理{tCleanup}  复制{tCopy}  预载{tPre}  读盘{tRead}  CLR.Load{tAsm}  "
+                + $"Terminate{tTerm}  Init(反射){tInit}  绑C1{tC1}  json{tJson}  校验{tVal}");
+            if (totalMs > 0)
+            {
+                int pctInit = (int)(100L * tInit / totalMs);
+                int pctRest = 100 - pctInit;
+                ed.WriteMessage(
+                    $"\n  占比(近似): PluginInitializer ≈{pctInit}%  |  其余(C2 壳+命令表等) ≈{pctRest}%");
+            }
+        }
+
         /// <summary>C2 - 重新加载 Refactored.dll，反射执行 PluginInitializer.Initialize，刷新命令表。</summary>
         [CommandMethod("C2")]
         public void Reload()
@@ -158,9 +213,18 @@ namespace HyCADTool.ReCall
             if (ed == null) return;
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
+            var t0 = DateTime.Now;
+            var logPhases = C2PerfPhasesEnabled();
+            long accMs = 0;
+
+            if (logPhases)
+                ed.WriteMessage($"\n── C2 开始  {t0:HH:mm:ss.fff}  local ──");
+
+            long tCleanup = 0, tCopy = 0, tPre = 0, tRead = 0, tAsm = 0, tTerm = 0, tInit = 0, tC1 = 0, tJson = 0, tVal = 0;
 
             try
             {
+                var swPath = System.Diagnostics.Stopwatch.StartNew();
                 var adapterDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 if (string.IsNullOrEmpty(adapterDir))
                     throw new InvalidOperationException("无法获取当前程序集目录。");
@@ -169,22 +233,34 @@ namespace HyCADTool.ReCall
                 string pluginPath = Path.Combine(root, TARGET_PROJECT_NAME, "bin", BUILD_CONFIGURATION, TARGET_DLL_NAME);
                 string depsPath = Path.Combine(root, TARGET_PROJECT_NAME, "bin", BUILD_CONFIGURATION);
                 string nugetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+                swPath.Stop();
+                C2LogPhase(ed, ref accMs, swPath.ElapsedMilliseconds, "定位 bin 路径与 .nuget", logPhases);
 
                 if (!File.Exists(pluginPath))
                 {
                     ed.WriteMessage("\n✗ 未找到: " + pluginPath);
                     ed.WriteMessage("\n  期望路径: " + pluginPath);
                     ed.WriteMessage("\n  请先在 Visual Studio 中编译 " + TARGET_PROJECT_NAME + "（配置: " + BUILD_CONFIGURATION + "）");
+                    if (logPhases) ed.WriteMessage($"\n── C2 中止  {DateTime.Now:HH:mm:ss.fff} ──");
                     return;
                 }
 
+                var swClean = System.Diagnostics.Stopwatch.StartNew();
                 try { CleanupOldTempCopies(TEMP_COPY_RETAIN); } catch { }
+                swClean.Stop();
+                tCleanup = swClean.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tCleanup, "清理旧 %TEMP% 副本 (retain " + TEMP_COPY_RETAIN + ")", logPhases);
 
-                var swCopy = System.Diagnostics.Stopwatch.StartNew();
-                string loadPath = CopyToTempAndGetLoadPath(depsPath, pluginPath, ed);
-                if (loadPath == null) return;
+                var swCopyW = System.Diagnostics.Stopwatch.StartNew();
+                if (!CopyToTempAndGetLoadPath(depsPath, pluginPath, ed, out var copyInnerMs, out var loadPath) || loadPath == null)
+                {
+                    if (logPhases) ed.WriteMessage($"\n── C2 中止(复制失败)  {DateTime.Now:HH:mm:ss.fff} ──");
+                    return;
+                }
                 string loadDepsPath = Path.GetDirectoryName(loadPath);
-                swCopy.Stop();
+                swCopyW.Stop();
+                tCopy = swCopyW.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tCopy, $"复制 bin → %TEMP% (递归{copyInnerMs}ms)", logPhases);
 
                 _currentDependenciesPath = loadDepsPath;
                 _currentNugetPackagesPath = nugetPath;
@@ -218,12 +294,31 @@ namespace HyCADTool.ReCall
                 // WPF 解析时不会触发 AssemblyResolve，只会遍历 AppDomain.GetAssemblies()
                 // 按 short name 查找，找不到则读空 baml 流 → PresentationFramework native 崩溃
                 // → AutoCAD 原生崩溃（无托管异常）。必须在 Load Refactored 前就位。
+                var swPre = System.Diagnostics.Stopwatch.StartNew();
                 PreloadCompanionAssemblies(loadDepsPath, ed);
+                swPre.Stop();
+                tPre = swPre.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tPre, "预加载伙伴 HyCAD*.dll（WPF / PackUri 必需）", logPhases);
+
+                byte[] mainBytes;
+                var swRead = System.Diagnostics.Stopwatch.StartNew();
+                try
+                {
+                    mainBytes = File.ReadAllBytes(loadPath);
+                }
+                finally
+                {
+                    swRead.Stop();
+                }
+                tRead = swRead.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tRead, "读 Refactored.dll 到内存", logPhases);
 
                 var swLoad = System.Diagnostics.Stopwatch.StartNew();
-                Assembly asm = Assembly.Load(File.ReadAllBytes(loadPath));
+                Assembly asm = Assembly.Load(mainBytes);
                 _refactoredAssembly = asm;
                 swLoad.Stop();
+                tAsm = swLoad.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tAsm, "Assembly.Load(byte[])", logPhases);
 
                 ResourceManager.ResourceAssembly = asm;
 
@@ -231,28 +326,51 @@ namespace HyCADTool.ReCall
                 var swTerm = System.Diagnostics.Stopwatch.StartNew();
                 InvokeLegacyTerminate(ed);
                 swTerm.Stop();
+                tTerm = swTerm.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tTerm, "旧 PluginInitializer.Terminate", logPhases);
 
                 // 反射执行新实例的 Initialize —— 这等价于"首次 NETLOAD 后 AutoCAD 调 IExtensionApplication.Initialize"。
                 // Autofac 容器、图层、道路子系统、文档事件订阅全在这里完成。
                 var swInit = System.Diagnostics.Stopwatch.StartNew();
                 InvokePluginInitialize(asm, ed);
                 swInit.Stop();
+                tInit = swInit.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tInit, "新 PluginInitializer.Initialize（细分见上）", logPhases);
 
                 // 绑定 C1 → Refactored.TestCommand.Run
+                var swC1 = System.Diagnostics.Stopwatch.StartNew();
                 _c1Action = CreateStaticMethodDelegate(asm, TEST_ENTRY_TYPE, TEST_ENTRY_METHOD, ed);
+                swC1.Stop();
+                tC1 = swC1.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tC1, "反射绑定 C1 (TestCommand.Run)", logPhases);
 
                 // 刷新命令表并校验
-                var swTbl = System.Diagnostics.Stopwatch.StartNew();
+                var swJson = System.Diagnostics.Stopwatch.StartNew();
                 CommandTable.ForceReload();
+                swJson.Stop();
+                tJson = swJson.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tJson, "CommandTable.ForceReload (commands.json 解析)", logPhases);
+
+                var swVal = System.Diagnostics.Stopwatch.StartNew();
                 var validation = CommandTable.ValidateAll(asm);
-                swTbl.Stop();
+                swVal.Stop();
+                tVal = swVal.ElapsedMilliseconds;
+                C2LogPhase(ed, ref accMs, tVal, "CommandTable.ValidateAll (反射各命令类型/方法)", logPhases);
 
                 sw.Stop();
                 _c2Count++;
                 _lastC2Utc = DateTime.UtcNow;
 
-                ed.WriteMessage($"\nC2 #{_c2Count} 完成 {sw.ElapsedMilliseconds}ms "
-                    + $"(复制{swCopy.ElapsedMilliseconds} + 加载{swLoad.ElapsedMilliseconds} + Terminate{swTerm.ElapsedMilliseconds} + Initialize{swInit.ElapsedMilliseconds} + 表{swTbl.ElapsedMilliseconds})");
+                if (logPhases)
+                {
+                    ed.WriteMessage(
+                        $"\n  [{DateTime.Now:HH:mm:ss.fff}]  C2 墙钟结束  总{sw.ElapsedMilliseconds}ms  自起点累计打印≈{accMs}ms（与总时长允许有几 ms 取整差）");
+                }
+
+                C2LogSummary(ed, sw.ElapsedMilliseconds, tCleanup, tCopy, tPre, tRead, tAsm, tTerm, tInit, tC1, tJson, tVal);
+
+                ed.WriteMessage(
+                    $"\nC2 #{_c2Count} 完成 {sw.ElapsedMilliseconds}ms  (复制{tCopy} + 读盘{tRead}+CLR.Load{tAsm} + 预载{tPre} + Terminate{tTerm} + Initialize{tInit} + 绑C1{tC1} + 表{tJson + tVal})");
 
                 int failed = validation.Count(v => v.Entry != null && !(v.TypeFound && v.MethodFound) && v.Note != "<特殊：面板待执行命令>");
                 int placeholders = validation.Count(v => v.Entry == null);
@@ -274,7 +392,8 @@ namespace HyCADTool.ReCall
             }
             catch (System.Exception ex)
             {
-                ed.WriteMessage("\n✗ 加载失败: " + ex.GetType().Name + ": " + ex.Message);
+                ed.WriteMessage(
+                    $"\n✗ 加载失败 @ {DateTime.Now:HH:mm:ss.fff}  已耗时{sw.ElapsedMilliseconds}ms: {ex.GetType().Name}: {ex.Message}");
                 if (ex.InnerException != null)
                     ed.WriteMessage("\n  Inner: " + ex.InnerException.GetType().Name + ": " + ex.InnerException.Message);
             }
@@ -402,6 +521,21 @@ namespace HyCADTool.ReCall
         #region ========== Invoke（命令表调度） ==========
 
         /// <summary>
+        /// Layer 5：命令调度性能日志。设置 <c>HYCAD_PERF_INVOKE=1</c> 后，每次 <see cref="Invoke"/> 成功路径在命令行输出
+        /// <c>preHooks</c> / <c>reflect+invoke</c> / <c>wall</c> 毫秒（面板 <c>_HyExec</c> 输出 <c>panelPath</c>）。
+        /// </summary>
+        private static bool IsInvokePerfEnabled()
+        {
+            try
+            {
+                var v = Environment.GetEnvironmentVariable("HYCAD_PERF_INVOKE");
+                return string.Equals(v, "1", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
         /// 被 <see cref="CommandFacade"/> 与 <see cref="ReCallClass"/> 上各 <c>[CommandMethod]</c> 转发的统一入口。
         /// 1) 确保 Refactored 已加载（未加载提示 C2）
         /// 2) 处理 <c>_HyExec</c> 特殊分支（面板按钮待执行命令）
@@ -413,6 +547,9 @@ namespace HyCADTool.ReCall
         {
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
             if (ed == null) return;
+
+            var perf = IsInvokePerfEnabled();
+            var swAll = Stopwatch.StartNew();
 
             try
             {
@@ -426,7 +563,16 @@ namespace HyCADTool.ReCall
                 // _HyExec 特殊分支：直接从面板 VM 取待执行 Action 并调用
                 if (string.Equals(key, "_HyExec", StringComparison.Ordinal))
                 {
-                    InvokePanelPendingCommand(refactored, ed);
+                    var swPanel = Stopwatch.StartNew();
+                    try
+                    {
+                        InvokePanelPendingCommand(refactored, ed);
+                    }
+                    finally
+                    {
+                        if (perf)
+                            ed.WriteMessage($"\n[HyCAD perf] Invoke key=_HyExec panelPath={swPanel.ElapsedMilliseconds}ms wall={swAll.ElapsedMilliseconds}ms");
+                    }
                     return;
                 }
 
@@ -443,12 +589,25 @@ namespace HyCADTool.ReCall
                     return;
                 }
 
-                InvokePreHooks(refactored);
+                long msPre = 0;
+                if (perf)
+                {
+                    var swPre = Stopwatch.StartNew();
+                    InvokePreHooks(refactored);
+                    msPre = swPre.ElapsedMilliseconds;
+                }
+                else
+                {
+                    InvokePreHooks(refactored);
+                }
 
+                var swBody = Stopwatch.StartNew();
                 var targetType = refactored.GetType(entry.Type);
                 if (targetType == null)
                 {
                     ed.WriteMessage("\n✗ 类型未找到: " + entry.Type);
+                    if (perf)
+                        ed.WriteMessage($"\n[HyCAD perf] Invoke key={key} preHooks={msPre}ms reflect+invoke={swBody.ElapsedMilliseconds}ms (early) wall={swAll.ElapsedMilliseconds}ms");
                     return;
                 }
 
@@ -464,10 +623,15 @@ namespace HyCADTool.ReCall
                 if (method == null)
                 {
                     ed.WriteMessage("\n✗ 方法未找到: " + entry.Type + "." + entry.Method);
+                    if (perf)
+                        ed.WriteMessage($"\n[HyCAD perf] Invoke key={key} preHooks={msPre}ms reflect+invoke={swBody.ElapsedMilliseconds}ms (early) wall={swAll.ElapsedMilliseconds}ms");
                     return;
                 }
 
                 method.Invoke(instance, null);
+                swBody.Stop();
+                if (perf)
+                    ed.WriteMessage($"\n[HyCAD perf] Invoke key={key} preHooks={msPre}ms reflect+invoke={swBody.ElapsedMilliseconds}ms wall={swAll.ElapsedMilliseconds}ms");
             }
             catch (TargetInvocationException tie)
             {
@@ -475,10 +639,14 @@ namespace HyCADTool.ReCall
                 ed.WriteMessage("\n✗ 命令执行失败 [" + key + "]: " + inner.GetType().Name + ": " + inner.Message);
                 if (inner.StackTrace != null)
                     ed.WriteMessage("\n  " + inner.StackTrace.Split('\n').FirstOrDefault());
+                if (perf)
+                    ed.WriteMessage($"\n[HyCAD perf] Invoke key={key} failed wall={swAll.ElapsedMilliseconds}ms");
             }
             catch (System.Exception ex)
             {
                 ed.WriteMessage("\n✗ 命令调度失败 [" + key + "]: " + ex.GetType().Name + ": " + ex.Message);
+                if (perf)
+                    ed.WriteMessage($"\n[HyCAD perf] Invoke key={key} failed wall={swAll.ElapsedMilliseconds}ms");
             }
         }
 
@@ -648,6 +816,13 @@ namespace HyCADTool.ReCall
                 lines.Add($"UnhandledException 已注册 = {_unhandledExceptionRegistered}");
                 lines.Add($"当前依赖目录              = {_currentDependenciesPath ?? "<空>"}");
                 lines.Add($"当前 NuGet 目录           = {_currentNugetPackagesPath ?? "<空>"}");
+
+                lines.Add("");
+                lines.Add("-------- 性能诊断环境变量（启动 CAD 前设置） --------");
+                lines.Add($"HYCAD_RECALL_NO_AUTO_RELOAD = {SafeEnv("HYCAD_RECALL_NO_AUTO_RELOAD")} （1=禁止 Idle 自动 C2，见 doc/performance/059）");
+                lines.Add($"HYCAD_RECALL_C2_PERF        = {SafeEnv("HYCAD_RECALL_C2_PERF")} （0=关闭 C2 分段时间行；空=显示各段+摘要）");
+                lines.Add($"HYCAD_PERF_INVOKE           = {SafeEnv("HYCAD_PERF_INVOKE")} （1=Invoke 输出 [HyCAD perf]，见 doc/performance/059）");
+                lines.Add($"ReCallExtension.DisableAutoReloadForDiagnostics = {ReCallExtension.DisableAutoReloadForDiagnostics}");
 
                 lines.Add("");
                 lines.Add("-------- Refactored 主程序集 --------");
@@ -853,6 +1028,19 @@ namespace HyCADTool.ReCall
             return size;
         }
 
+        private static string SafeEnv(string name)
+        {
+            try
+            {
+                var v = Environment.GetEnvironmentVariable(name);
+                return string.IsNullOrEmpty(v) ? "<未设置>" : v;
+            }
+            catch
+            {
+                return "<读失败>";
+            }
+        }
+
         private static string FormatBytes(long bytes)
         {
             if (bytes < 1024) return bytes + " B";
@@ -898,21 +1086,34 @@ namespace HyCADTool.ReCall
             return dir?.FullName ?? throw new InvalidOperationException("无法解析根目录。");
         }
 
-        /// <summary>复制 bin\Debug 到新的临时子目录并返回副本中主 DLL 的路径。每次用新目录避免覆盖已加载的副本。</summary>
-        private static string CopyToTempAndGetLoadPath(string sourceDir, string mainDllPath, Editor ed)
+        /// <summary>复制 bin\Debug 到新的临时子目录。每次用新目录避免覆盖已加载的副本。</summary>
+        /// <param name="copyRecursiveMs">仅 <see cref="CopyDirectoryRecursive"/> 耗时。</param>
+        private static bool CopyToTempAndGetLoadPath(
+            string sourceDir,
+            string mainDllPath,
+            Editor ed,
+            out long copyRecursiveMs,
+            out string loadPath)
         {
+            copyRecursiveMs = 0;
+            loadPath = null;
             string tempBase = Path.Combine(Path.GetTempPath(), TEMP_BASE_NAME);
             string tempDir = Path.Combine(tempBase, DateTime.UtcNow.Ticks.ToString());
             try
             {
+                var swDir = System.Diagnostics.Stopwatch.StartNew();
                 CopyDirectoryRecursive(sourceDir, tempDir);
-                string loadPath = Path.Combine(tempDir, Path.GetFileName(mainDllPath));
-                return File.Exists(loadPath) ? loadPath : null;
+                swDir.Stop();
+                copyRecursiveMs = swDir.ElapsedMilliseconds;
+
+                loadPath = Path.Combine(tempDir, Path.GetFileName(mainDllPath));
+                if (!File.Exists(loadPath)) loadPath = null;
+                return loadPath != null;
             }
             catch (System.Exception ex)
             {
                 ed?.WriteMessage("\n✗ 复制到临时目录失败: " + ex.Message);
-                return null;
+                return false;
             }
         }
 

@@ -83,6 +83,12 @@ namespace HyCADTool.Refactored.Domain.Models.Road
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<StationEquation> StationEquations { get; set; } = new List<StationEquation>();
 
+        /// <summary>
+        /// 按桩号区间挂接标准横断面模板（Template 仍在 <see cref="RoadDesign.Templates"/> 中）。
+        /// </summary>
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<CrossSectionAssignment> CrossSectionAssignments { get; set; } = new List<CrossSectionAssignment>();
+
         public override string ToString() => $"Alignment[{Name}, Id={Id:N}, Points={Centerline.VertexCount}]";
 
         /// <summary>

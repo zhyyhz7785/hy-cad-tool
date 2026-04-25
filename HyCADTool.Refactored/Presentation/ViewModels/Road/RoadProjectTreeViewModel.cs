@@ -44,6 +44,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
             RenameCommand = new RelayCommand<RoadTreeNode>(n => _handler.Rename(n), n => n != null && CanRename(n));
             DeleteCommand = new RelayCommand<RoadTreeNode>(n => _handler.Delete(n), n => n != null && CanDelete(n));
             ExportLandXmlCommand = new RelayCommand<RoadTreeNode>(n => _handler.ExportLandXml(n), n => n != null && CanExportLandXml(n));
+
+            NewAlignmentCommand = new RelayCommand(() => _handler.NewAlignment(), () => _project != null);
+            AssignCrossSectionCommand = new RelayCommand(
+                () => _handler.AssignCrossSection(SelectedNode), () => _project != null);
+            GeneratePlanCommand = new RelayCommand(
+                () => _handler.GeneratePlanFromTree(SelectedNode), () => _project != null);
+            DetectIntersectionsCommand = new RelayCommand(() => _handler.DetectIntersections(), () => _project != null);
         }
 
         /// <summary>双击 / 回车：调用对应编辑器（ICommand 绑定 ContextMenu / KeyBinding）。</summary>
@@ -61,6 +68,11 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         /// <summary>右键「导出 LandXML」。</summary>
         public RelayCommand<RoadTreeNode> ExportLandXmlCommand { get; }
 
+        public RelayCommand NewAlignmentCommand { get; }
+        public RelayCommand AssignCrossSectionCommand { get; }
+        public RelayCommand GeneratePlanCommand { get; }
+        public RelayCommand DetectIntersectionsCommand { get; }
+
         /// <summary>当前绑定的项目；赋值后自动 <see cref="Rebuild"/>。</summary>
         public RoadProject Project
         {
@@ -72,6 +84,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                     _project = value;
                     OnPropertyChanged();
                     Rebuild();
+                    NewAlignmentCommand?.RaiseCanExecuteChanged();
+                    AssignCrossSectionCommand?.RaiseCanExecuteChanged();
+                    GeneratePlanCommand?.RaiseCanExecuteChanged();
+                    DetectIntersectionsCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -98,6 +114,8 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
                     RenameCommand.RaiseCanExecuteChanged();
                     DeleteCommand.RaiseCanExecuteChanged();
                     ExportLandXmlCommand.RaiseCanExecuteChanged();
+                    AssignCrossSectionCommand.RaiseCanExecuteChanged();
+                    GeneratePlanCommand.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -338,16 +356,41 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         private RoadTreeNode BuildCrossSectionGroup(RoadDesign design, Alignment aln)
         {
+            int n = 0;
             var group = new RoadTreeNode(
                 RoadTreeNodeKind.CrossSectionsGroup,
                 "横断面",
-                detail: $"{design.Templates.Count}");
-            // Template v1.x 未记录归属 Alignment，这里以「全量可引用」列出；M4 可在命令层按用户选择收敛。
-            foreach (var t in design.Templates)
+                detail: null);
+
+            if (aln.CrossSectionAssignments != null && aln.CrossSectionAssignments.Count > 0)
             {
-                if (t == null) continue;
-                group.Add(new RoadTreeNode(RoadTreeNodeKind.CrossSection, SafeName(t.Name, "模板"), detail: null, tag: t) { TargetId = t.Id });
+                foreach (var a in aln.CrossSectionAssignments)
+                {
+                    if (a == null) continue;
+                    var tpl = design.Templates.FirstOrDefault(t => t != null && t.Id == a.TemplateId);
+                    string tplName = tpl != null ? SafeName(tpl.Name, "模板") : "(未找到模板)";
+                    double lo = System.Math.Min(a.StartStation, a.EndStation);
+                    double hi = System.Math.Max(a.StartStation, a.EndStation);
+                    group.Add(new RoadTreeNode(
+                        RoadTreeNodeKind.CrossSection,
+                        $"{lo:F0}~{hi:F0} m → {tplName}",
+                        detail: a.Note,
+                        tag: tpl ?? (object)a)
+                    { TargetId = tpl?.Id ?? a.Id });
+                    n++;
+                }
             }
+            else
+            {
+                foreach (var t in design.Templates)
+                {
+                    if (t == null) continue;
+                    group.Add(new RoadTreeNode(RoadTreeNodeKind.CrossSection, SafeName(t.Name, "模板"), detail: "可引用", tag: t) { TargetId = t.Id });
+                    n++;
+                }
+            }
+
+            group.Detail = n.ToString();
             return group;
         }
 

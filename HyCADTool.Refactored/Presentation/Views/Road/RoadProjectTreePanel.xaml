@@ -101,23 +101,31 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶栏：搜索框 + 刷新 -->
+        <!-- 顶栏：工作流 + 搜索 + 刷新 -->
         <Border Grid.Row="0"
                 Background="{DynamicResource Brush_HeaderBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}"
                 BorderThickness="0,0,0,1"
                 Padding="{DynamicResource Metric_ButtonPaddingSmall}">
-            <DockPanel LastChildFill="True">
-                <Button DockPanel.Dock="Right"
-                        Content="刷新"
-                        Margin="4,0,0,0"
-                        MinWidth="48"
-                        Click="OnRefreshClick"
-                        ToolTip="从当前 AutoCAD 文档重新加载项目数据"/>
-                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
-                         VerticalContentAlignment="Center"
-                         ToolTip="按节点名搜索（Ctrl+F）"/>
-            </DockPanel>
+            <StackPanel>
+                <UniformGrid Rows="1" Columns="4" Margin="0,0,0,4">
+                    <Button Content="新建路线" Command="{Binding NewAlignmentCommand}" ToolTip="hyRoadAName：拾取线位并命名" Margin="0,0,2,0" FontSize="{DynamicResource Metric_FontSmall}"/>
+                    <Button Content="配置横断面" Command="{Binding AssignCrossSectionCommand}" ToolTip="hyRoadAlnAssign：桩号区段挂模板" Margin="2,0" FontSize="{DynamicResource Metric_FontSmall}"/>
+                    <Button Content="生成平面图" Command="{Binding GeneratePlanCommand}" ToolTip="hyRoadAlnPlan：按区段出平面" Margin="2,0" FontSize="{DynamicResource Metric_FontSmall}"/>
+                    <Button Content="检测相交" Command="{Binding DetectIntersectionsCommand}" ToolTip="hyRoadAutoIntersection" Margin="2,0,0,0" FontSize="{DynamicResource Metric_FontSmall}"/>
+                </UniformGrid>
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right"
+                            Content="刷新"
+                            Margin="4,0,0,0"
+                            MinWidth="48"
+                            Click="OnRefreshClick"
+                            ToolTip="从当前 AutoCAD 文档重新加载项目数据"/>
+                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                             VerticalContentAlignment="Center"
+                             ToolTip="按节点名搜索（Ctrl+F）"/>
+                </DockPanel>
+            </StackPanel>
         </Border>
 
         <!-- 主体：项目树 -->

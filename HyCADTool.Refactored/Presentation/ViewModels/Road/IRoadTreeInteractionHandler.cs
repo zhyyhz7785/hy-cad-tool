@@ -33,6 +33,18 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
 
         /// <summary>选中节点：在 AutoCAD 内高亮对应实体（不改视图）。</summary>
         void Highlight(RoadTreeNode node);
+
+        /// <summary>工作流：新建路线并命名（<c>hyRoadAName</c>）。</summary>
+        void NewAlignment();
+
+        /// <summary>工作流：为路线挂接横断面区段（<c>hyRoadAlnAssign</c>）。</summary>
+        void AssignCrossSection(RoadTreeNode contextNode);
+
+        /// <summary>工作流：按区段/模板出平面（<c>hyRoadAlnPlan</c>）。</summary>
+        void GeneratePlanFromTree(RoadTreeNode contextNode);
+
+        /// <summary>工作流：自动检测并生成交叉口（<c>hyRoadAutoIntersection</c>）。</summary>
+        void DetectIntersections();
     }
 
     /// <summary>
@@ -50,6 +62,10 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public void Delete(RoadTreeNode node) { if (node != null) Calls.Delete++; }
         public void ExportLandXml(RoadTreeNode node) { if (node != null) Calls.ExportLandXml++; }
         public void Highlight(RoadTreeNode node) { if (node != null) Calls.Highlight++; }
+        public void NewAlignment() { Calls.NewAlignment++; }
+        public void AssignCrossSection(RoadTreeNode contextNode) { Calls.AssignCrossSection++; }
+        public void GeneratePlanFromTree(RoadTreeNode contextNode) { Calls.GeneratePlan++; }
+        public void DetectIntersections() { Calls.DetectIntersections++; }
     }
 
     /// <summary>测试辅助：各方法命中次数。</summary>
@@ -61,5 +77,9 @@ namespace HyCADTool.Refactored.Presentation.ViewModels.Road
         public int Delete { get; set; }
         public int ExportLandXml { get; set; }
         public int Highlight { get; set; }
+        public int NewAlignment { get; set; }
+        public int AssignCrossSection { get; set; }
+        public int GeneratePlan { get; set; }
+        public int DetectIntersections { get; set; }
     }
 }

@@ -6,7 +6,8 @@
     <AssemblyName>HyCADTool.Refactored</AssemblyName>
     <RootNamespace>HyCADTool.Refactored</RootNamespace>
     <LangVersion>8.0</LangVersion>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
