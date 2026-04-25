@@ -18,7 +18,7 @@ namespace HyCADTool.Refactored.Presentation.Commands
 
             try
             {
-                var groups = HyCADTool.ReCall.CommandTable.GroupByCategory();
+                var groups = HyCADTool.Refactored.Infrastructure.Commands.CommandCatalog.GroupByCategory();
                 int total = 0;
 
                 ed.WriteMessage("\n========================================");

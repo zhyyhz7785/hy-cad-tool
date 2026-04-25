@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage SchemaVersion="1.0"
+                    AppVersion="1.0.0"
+                    Name="HyCAD"
+                    Description="鸿业道路/钢筋/结构辅助工具集 (HyCADTool Refactored)"
+                    Author="HyCAD"
+                    ProductCode="{A7E4D2B1-3C5F-4E6A-9B8C-0D1E2F3A4B5C}"
+                    ProductType="Application"
+                    AutodeskProduct="AutoCAD">
+  <CompanyDetails Name="HyCAD" Url="https://example.com" Email="support@example.com" />
+  <Components>
+    <ComponentEntry AppName="HyCADTool"
+                    Version="1.0.0"
+                    ModuleName="./Contents/Win64/HyCADTool.Refactored.dll"
+                    AppDescription="HyCAD 主程序集 (ExtensionApplication + CommandClass)"
+                    AppType=".Net"
+                    LoadOnAutoCADStartup="True">
+      <RuntimeRequirements OS="Win64" Platform="AutoCAD" SeriesMin="R24.0" SeriesMax="R27.0" />
+    </ComponentEntry>
+  </Components>
+</ApplicationPackage>

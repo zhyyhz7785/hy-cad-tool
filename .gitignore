@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# HyCAD: 开发机私钥（公钥在 EmbeddedPublicKey；勿提交私钥）
+tools/rsa-priv.xml
+HyCADTool.LicenseSigner/PrivateKey.xml
+
 # User-specific files
 *.rsuser
 *.suo

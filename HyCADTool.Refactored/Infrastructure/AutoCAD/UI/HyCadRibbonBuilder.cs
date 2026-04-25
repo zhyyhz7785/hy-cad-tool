@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Windows.Controls;
 using Autodesk.Windows;
-using HyCADTool.ReCall;
+using HyCADTool.Refactored.Infrastructure.Commands;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
 {
@@ -23,6 +23,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
         public const string TabTitle = "HyCAD";
 
         /// <summary>
+        /// 跨 C2 复用：进程级环境变量记录"上一次构建对应的 commands.json mtime ticks"。
+        /// C2 后 Refactored 类型重建，但 AutoCAD 进程不变；环境变量随进程存活，
+        /// 未来 C2 可凭此跳过 144+ 个 RibbonButton/RibbonToolTip 的 WPF 重建。
+        /// </summary>
+        private const string EnvLastInstalledMtimeTicks = "HYCAD_RIBBON_INSTALLED_MTIME_TICKS";
+        /// <summary>关闭跨 C2 跳过策略（强制每次 C2 重挂 Ribbon）。默认 0。</summary>
+        private const string EnvDisableSkip = "HYCAD_RIBBON_NO_SKIP";
+
+        /// <summary>
         /// 自愈订阅句柄。Ribbon 在以下场景会被 AutoCAD 重建（旧 Tab 全部失效）：
         /// - 用户输 RIBBONCLOSE 后再开 RIBBON
         /// - 切换工作区（WSCURRENT）
@@ -33,6 +42,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
 
         /// <summary>
         /// 构建并挂载 Ribbon 选项卡。可重复调用（重入时先清理旧标签），C2 热重载友好。
+        /// 性能优化：commands.json mtime 未变 + Tab 已存在 → 立即返回（≈0ms）。
         /// </summary>
         public static void Build()
         {
@@ -41,10 +51,45 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
             var ribbon = ComponentManager.Ribbon;
             if (ribbon == null) return;
 
+            if (CanSkipBecauseAlreadyInstalled(ribbon))
+                return;
+
             BuildOnto(ribbon);
+            RememberInstalledMtime();
         }
 
-        /// <summary>从 Ribbon 上移除 HyCAD 选项卡，并解绑自愈事件。PluginInitializer.Terminate / C2 重载前调用。</summary>
+        /// <summary>当前 Tab 已挂载且 commands.json mtime 与上次记录一致 → C2 重挂可省略。</summary>
+        private static bool CanSkipBecauseAlreadyInstalled(RibbonControl ribbon)
+        {
+            var disable = Environment.GetEnvironmentVariable(EnvDisableSkip);
+            if (string.Equals(disable, "1", StringComparison.Ordinal)) return false;
+
+            if (!ribbon.Tabs.Any(t => t.Id == TabId)) return false;
+
+            var curMtime = CommandCatalog.GetFileMtimeUtc();
+            if (!curMtime.HasValue) return true; // 没有 json mtime，沿用既有 Tab 即可
+
+            var raw = Environment.GetEnvironmentVariable(EnvLastInstalledMtimeTicks);
+            if (string.IsNullOrEmpty(raw)) return false;
+            if (!long.TryParse(raw, out var ticks)) return false;
+            return ticks == curMtime.Value.Ticks;
+        }
+
+        private static void RememberInstalledMtime()
+        {
+            var curMtime = CommandCatalog.GetFileMtimeUtc();
+            if (!curMtime.HasValue) return;
+            try
+            {
+                Environment.SetEnvironmentVariable(EnvLastInstalledMtimeTicks, curMtime.Value.Ticks.ToString());
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 从 Ribbon 上移除 HyCAD 选项卡，并解绑自愈事件。**仅 AutoCAD 进程退出**前调用；
+        /// C2 热重载请改用 <see cref="UnsubscribeSelfHealOnly"/>，保留 Tab 以省下重挂开销。
+        /// </summary>
         public static void Teardown()
         {
             UnsubscribeSelfHeal();
@@ -52,6 +97,14 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
             var ribbon = ComponentManager.Ribbon;
             if (ribbon == null) return;
             Teardown(ribbon);
+
+            try { Environment.SetEnvironmentVariable(EnvLastInstalledMtimeTicks, null); } catch { }
+        }
+
+        /// <summary>仅解绑自愈事件（避免 C2 累积 N 份 ItemInitialized handler），保留 Ribbon Tab 给下次 C2 直接复用。</summary>
+        public static void UnsubscribeSelfHealOnly()
+        {
+            UnsubscribeSelfHeal();
         }
 
         private static void Teardown(RibbonControl ribbon)
@@ -72,7 +125,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
 
             try
             {
-                var groups = CommandTable.GroupByCategory();
+                var groups = CommandCatalog.GroupByCategory();
                 foreach (var g in groups)
                 {
                     var panel = BuildCategoryPanel(g);

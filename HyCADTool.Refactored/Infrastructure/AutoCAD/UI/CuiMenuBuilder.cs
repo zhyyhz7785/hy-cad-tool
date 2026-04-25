@@ -2,7 +2,7 @@ using System;
 using System.Collections.Specialized;
 using System.IO;
 using Autodesk.AutoCAD.Customization;
-using HyCADTool.ReCall;
+using HyCADTool.Refactored.Infrastructure.Commands;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
@@ -31,6 +31,15 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
     {
         private const string MenuGroupName = "HYCAD";
         private const string RootPopElementId = "HYCAD_MENU_ROOT";
+
+        /// <summary>
+        /// 跨 C2 复用：进程级环境变量记录"上次 LoadPartialMenu 成功的 cuix 路径 + commands.json mtime"。
+        /// C2 重新进入时若两者均一致 → 跳过 LoadPartialMenu（AutoCAD 内部已挂的菜单组继续生效）。
+        /// </summary>
+        private const string EnvLoadedCuixPath = "HYCAD_CUIX_LOADED_PATH";
+        private const string EnvLoadedCuixMtimeTicks = "HYCAD_CUIX_LOADED_MTIME_TICKS";
+        /// <summary>关闭跨 C2 跳过策略（强制每次 C2 重新 Load）。默认 0。</summary>
+        private const string EnvDisableSkip = "HYCAD_CUIX_NO_SKIP";
 
         private static string _lastLoadedCuixPath;
 
@@ -68,9 +77,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
                 }
             }
 
+            // C2 跨进程复用：若上次已成功 LoadPartialMenu 且 commands.json mtime 未变 → 跳过 Unload+Load
+            if (CanSkipBecauseAlreadyLoaded(target))
+            {
+                _lastLoadedCuixPath = target;
+                return true;
+            }
+
             try
             {
                 LoadPartialMenu(target);
+                RememberLoadedMtime(target);
                 return true;
             }
             catch
@@ -79,6 +96,30 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
                 SafeDeleteCorruptCuix(target);
                 return false;
             }
+        }
+
+        private static bool CanSkipBecauseAlreadyLoaded(string target)
+        {
+            if (string.Equals(Environment.GetEnvironmentVariable(EnvDisableSkip), "1", StringComparison.Ordinal))
+                return false;
+
+            var loadedPath = Environment.GetEnvironmentVariable(EnvLoadedCuixPath);
+            if (!string.Equals(loadedPath, target, StringComparison.OrdinalIgnoreCase)) return false;
+
+            var jsonMtime = CommandCatalog.GetFileMtimeUtc();
+            if (!jsonMtime.HasValue) return true;
+
+            var raw = Environment.GetEnvironmentVariable(EnvLoadedCuixMtimeTicks);
+            if (string.IsNullOrEmpty(raw)) return false;
+            return long.TryParse(raw, out var ticks) && ticks == jsonMtime.Value.Ticks;
+        }
+
+        private static void RememberLoadedMtime(string target)
+        {
+            try { Environment.SetEnvironmentVariable(EnvLoadedCuixPath, target); } catch { }
+            var jsonMtime = CommandCatalog.GetFileMtimeUtc();
+            if (!jsonMtime.HasValue) return;
+            try { Environment.SetEnvironmentVariable(EnvLoadedCuixMtimeTicks, jsonMtime.Value.Ticks.ToString()); } catch { }
         }
 
         /// <summary>当前 MENUBAR 系统变量是否处于隐藏状态（0=隐藏，1=显示）。</summary>
@@ -110,7 +151,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
             catch { }
         }
 
-        /// <summary>卸载 HyCAD 菜单组（幂等）。</summary>
+        /// <summary>卸载 HyCAD 菜单组（幂等）。**仅 AutoCAD 进程退出**前调用；C2 热重载请用 <see cref="UnloadOnExitOnly"/> 选择是否真卸。</summary>
         public static void Unload()
         {
             if (string.IsNullOrEmpty(_lastLoadedCuixPath)) return;
@@ -125,6 +166,17 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
             finally
             {
                 _lastLoadedCuixPath = null;
+                try { Environment.SetEnvironmentVariable(EnvLoadedCuixPath, null); } catch { }
+                try { Environment.SetEnvironmentVariable(EnvLoadedCuixMtimeTicks, null); } catch { }
+            }
+        }
+
+        /// <summary>C2 用：默认不卸载，下次 C2 直接复用 AutoCAD 已挂的菜单组（极值优化）。仅在调试场景手动开启 <c>HYCAD_CUIX_FORCE_UNLOAD=1</c> 才执行真卸。</summary>
+        public static void UnloadOnExitOnly()
+        {
+            if (string.Equals(Environment.GetEnvironmentVariable("HYCAD_CUIX_FORCE_UNLOAD"), "1", StringComparison.Ordinal))
+            {
+                Unload();
             }
         }
 
@@ -145,7 +197,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
             }
             catch { return true; }
 
-            var jsonMtime = CommandTable.GetFileMtimeUtc();
+            var jsonMtime = CommandCatalog.GetFileMtimeUtc();
             if (!jsonMtime.HasValue) return false;
 
             var cuixMtime = File.GetLastWriteTimeUtc(target);
@@ -165,7 +217,7 @@ namespace HyCADTool.Refactored.Infrastructure.AutoCAD.UI
                 try { File.Delete(target); } catch { }
             }
 
-            var groups = CommandTable.GroupByCategory();
+            var groups = CommandCatalog.GroupByCategory();
 
             var cs = new CustomizationSection(target, MenuGroupName);
             var mg = cs.MenuGroup;

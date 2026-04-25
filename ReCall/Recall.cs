@@ -205,7 +205,8 @@ namespace HyCADTool.ReCall
             }
         }
 
-        /// <summary>C2 - 重新加载 Refactored.dll，反射执行 PluginInitializer.Initialize，刷新命令表。</summary>
+        /// <summary>C2 - 重新加载 Refactored.dll，反射执行 PluginInitializer.Initialize，刷新命令表。
+        /// （生产性能对标请改用 HyCADTool.Refactored 的 Production 构建配置，由 NETLOAD 直加载，零 ReCall 壳。）</summary>
         [CommandMethod("C2")]
         public void Reload()
         {
@@ -218,7 +219,9 @@ namespace HyCADTool.ReCall
             long accMs = 0;
 
             if (logPhases)
+            {
                 ed.WriteMessage($"\n── C2 开始  {t0:HH:mm:ss.fff}  local ──");
+            }
 
             long tCleanup = 0, tCopy = 0, tPre = 0, tRead = 0, tAsm = 0, tTerm = 0, tInit = 0, tC1 = 0, tJson = 0, tVal = 0;
 
@@ -245,6 +248,9 @@ namespace HyCADTool.ReCall
                     return;
                 }
 
+                string loadPath;
+                string loadDepsPath;
+
                 var swClean = System.Diagnostics.Stopwatch.StartNew();
                 try { CleanupOldTempCopies(TEMP_COPY_RETAIN); } catch { }
                 swClean.Stop();
@@ -252,12 +258,13 @@ namespace HyCADTool.ReCall
                 C2LogPhase(ed, ref accMs, tCleanup, "清理旧 %TEMP% 副本 (retain " + TEMP_COPY_RETAIN + ")", logPhases);
 
                 var swCopyW = System.Diagnostics.Stopwatch.StartNew();
-                if (!CopyToTempAndGetLoadPath(depsPath, pluginPath, ed, out var copyInnerMs, out var loadPath) || loadPath == null)
+                if (!CopyToTempAndGetLoadPath(depsPath, pluginPath, ed, out var copyInnerMs, out var copiedPath) || copiedPath == null)
                 {
                     if (logPhases) ed.WriteMessage($"\n── C2 中止(复制失败)  {DateTime.Now:HH:mm:ss.fff} ──");
                     return;
                 }
-                string loadDepsPath = Path.GetDirectoryName(loadPath);
+                loadPath = copiedPath;
+                loadDepsPath = Path.GetDirectoryName(copiedPath);
                 swCopyW.Stop();
                 tCopy = swCopyW.ElapsedMilliseconds;
                 C2LogPhase(ed, ref accMs, tCopy, $"复制 bin → %TEMP% (递归{copyInnerMs}ms)", logPhases);
@@ -388,6 +395,7 @@ namespace HyCADTool.ReCall
                 if (_c2Count == 1)
                 {
                     ed.WriteMessage("\n提示: 新命令只需改 commands.json 并用 N1~N50 占位符；改 CommandFacade.cs 才需关 CAD 重 NETLOAD ReCall。");
+                    ed.WriteMessage("\n      生产性能对标：dotnet build HyCADTool.Refactored -c Production，AutoCAD NETLOAD bin\\Production\\HyCADTool.Refactored.dll（无 ReCall 壳层）。");
                 }
             }
             catch (System.Exception ex)

@@ -29,6 +29,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("hy")]      public void Cmd_hy()       => ReCallClass.Invoke("hy");
         [CommandMethod("HyB")]     public void Cmd_HyB()      => ReCallClass.Invoke("HyB");
         [CommandMethod("_HyExec")] public void Cmd__HyExec()  => ReCallClass.Invoke("_HyExec");
+        [CommandMethod("hyLicense")] public void Cmd_hyLicense() => ReCallClass.Invoke("hyLicense");
         #endregion
 
         #region 钢筋绘制 (Reinforcement - Draw)

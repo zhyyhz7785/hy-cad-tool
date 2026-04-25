@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>HyCADTool.LicenseSigner</RootNamespace>
+    <AssemblyName>HyCADTool.LicenseSigner</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="PrivateKey.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Condition="Exists('$(MSBuildThisFileDirectory)..\tools\rsa-priv.xml')" Include="..\tools\rsa-priv.xml" Link="PrivateKey.xml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

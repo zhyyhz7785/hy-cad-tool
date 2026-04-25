@@ -83,6 +83,16 @@ namespace HyCADTool.Refactored.Presentation
             }
             long msWpfStub = swWpf.ElapsedMilliseconds;
 
+#if HYCAD_PRODUCTION
+            try
+            {
+                HyCADTool.Licensing.LicenseService.Instance.Refresh();
+            }
+            catch
+            {
+            }
+#endif
+
             try
             {
                 WriteMessage("\n========================================");
@@ -660,25 +670,44 @@ namespace HyCADTool.Refactored.Presentation
         /// 构建 AutoCAD Ribbon 选项卡 + CUIX 菜单栏。数据源与 Blender 面板同一份 commands.json。
         /// 对 Ribbon 未就绪场景（ComponentManager.Ribbon == null）做静默兜底，不影响其他入口。
         /// </summary>
+        private long _msRibbonBuild;
+        private long _msCuixEnsure;
+
         private void InitializeRibbonAndMenus()
         {
+            _msRibbonBuild = 0;
+            _msCuixEnsure = 0;
             // 这两个状态供 WriteEntryGuide 末尾的提示文案使用，避免重复尝试。
             _ribbonReady = false;
             _cuixLoaded = false;
 
-            try
+            var swR = Stopwatch.StartNew();
+            // 用户级开关：HYCAD_RIBBON_DISABLED=1 → 完全跳过 Ribbon 构建（CUIX 菜单仍走原流程）。
+            // 适合"只用菜单栏 + 命令面板入口"的轻量配置，省下 RibbonBuild 段和 144 个 RibbonButton/RibbonToolTip 常驻 WPF 对象。
+            bool ribbonDisabled = string.Equals(
+                Environment.GetEnvironmentVariable("HYCAD_RIBBON_DISABLED"), "1", StringComparison.Ordinal);
+            if (ribbonDisabled)
             {
-                Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Build();
-                _ribbonReady = Autodesk.Windows.ComponentManager.Ribbon != null;
-                WriteMessage(_ribbonReady
-                    ? "\n  ✓ Ribbon 选项卡 HyCAD 已挂载"
-                    : "\n  ⚠ Ribbon 未启用（ComponentManager.Ribbon == null），输 _RIBBON 打开后会自动重挂");
+                WriteMessage("\n  ⚙ Ribbon 已按 HYCAD_RIBBON_DISABLED=1 关闭（仅保留菜单栏 + 命令面板入口）");
             }
-            catch (System.Exception ex)
+            else
             {
-                WriteMessage($"\n  ⚠ Ribbon 构建失败（跳过，不影响 Blender 面板）：{ex.Message}");
+                try
+                {
+                    Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Build();
+                    _ribbonReady = Autodesk.Windows.ComponentManager.Ribbon != null;
+                    WriteMessage(_ribbonReady
+                        ? "\n  ✓ Ribbon 选项卡 HyCAD 已挂载"
+                        : "\n  ⚠ Ribbon 未启用（ComponentManager.Ribbon == null），输 _RIBBON 打开后会自动重挂");
+                }
+                catch (System.Exception ex)
+                {
+                    WriteMessage($"\n  ⚠ Ribbon 构建失败（跳过，不影响 Blender 面板）：{ex.Message}");
+                }
             }
+            _msRibbonBuild = swR.ElapsedMilliseconds;
 
+            var swC = Stopwatch.StartNew();
             try
             {
                 _cuixLoaded = Infrastructure.AutoCAD.UI.CuiMenuBuilder.EnsureLoaded();
@@ -690,6 +719,9 @@ namespace HyCADTool.Refactored.Presentation
             {
                 WriteMessage($"\n  ⚠ CUIX 菜单加载失败（跳过，不影响其他入口）：{ex.Message}");
             }
+            _msCuixEnsure = swC.ElapsedMilliseconds;
+
+            WriteMessage($"\n  ⏱ RibbonMenus 子阶段(ms): RibbonBuild={_msRibbonBuild} CuixEnsure={_msCuixEnsure}");
         }
 
         /// <summary>状态位：用于 WriteEntryGuide 末尾输出针对性的引导。</summary>
@@ -706,7 +738,11 @@ namespace HyCADTool.Refactored.Presentation
             WriteMessage("\n│ 1) 命令面板（推荐）：在 AutoCAD 命令行输 Hy 打开统一面板");
             WriteMessage("\n│                       或 HyB 打开 Blender 风格命令检索");
 
-            if (_ribbonReady)
+            bool ribbonDisabled = string.Equals(
+                Environment.GetEnvironmentVariable("HYCAD_RIBBON_DISABLED"), "1", StringComparison.Ordinal);
+            if (ribbonDisabled)
+                WriteMessage("\n│ 2) Ribbon 选项卡：已按 HYCAD_RIBBON_DISABLED=1 关闭（节省启动 ~300ms）");
+            else if (_ribbonReady)
                 WriteMessage("\n│ 2) Ribbon 选项卡：顶部切到 \"HyCAD\" 选项卡（看不见？输 _RIBBON）");
             else
                 WriteMessage("\n│ 2) Ribbon 选项卡：当前 Ribbon 未启用，输 _RIBBON 打开后会自动重挂");
@@ -727,11 +763,24 @@ namespace HyCADTool.Refactored.Presentation
             WriteMessage("\n└──────────────────────────────────────────\n");
         }
 
-        /// <summary>卸载 Ribbon 选项卡 + CUIX 菜单（Terminate 时调用，防 C2 热重载累积）。</summary>
+        /// <summary>
+        /// C2 热重载收尾：默认 **保留** 已挂的 Ribbon Tab 与 CUIX，仅解绑自愈事件订阅，
+        /// 让下次 C2 的 <see cref="InitializeRibbonAndMenus"/> 命中 mtime 跳过分支（≈0ms）。
+        /// 仅当环境变量 <c>HYCAD_RIBBON_FORCE_TEARDOWN=1</c>（或 <c>HYCAD_CUIX_FORCE_UNLOAD=1</c>）
+        /// 才执行真正的 Teardown/Unload，留给完全卸载场景使用。
+        /// </summary>
         private void TerminateRibbonAndMenus()
         {
-            try { Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Teardown(); } catch { }
-            try { Infrastructure.AutoCAD.UI.CuiMenuBuilder.Unload(); } catch { }
+            try
+            {
+                if (string.Equals(Environment.GetEnvironmentVariable("HYCAD_RIBBON_FORCE_TEARDOWN"), "1", StringComparison.Ordinal))
+                    Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.Teardown();
+                else
+                    Infrastructure.AutoCAD.UI.HyCadRibbonBuilder.UnsubscribeSelfHealOnly();
+            }
+            catch { }
+
+            try { Infrastructure.AutoCAD.UI.CuiMenuBuilder.UnloadOnExitOnly(); } catch { }
         }
 
         private void EnsureCurrentDocumentResourcesInitialized(bool force)

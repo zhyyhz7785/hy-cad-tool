@@ -7,7 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows.Threading;
-using HyCADTool.ReCall;
+using HyCADTool.Refactored.Infrastructure.Commands;
 using HyCADTool.Refactored.Presentation.Services;
 
 namespace HyCADTool.Refactored.Presentation.ViewModels
@@ -15,7 +15,7 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
     /// <summary>
     /// Blender 面板的总 ViewModel（唯一 PaletteSet，承载设置 / 过滤 / 命令分类 Tab）。
     /// 负责：
-    /// - 从 <see cref="CommandTable.GroupByCategory"/> 拉分组数据，转成 <see cref="CategoryTabVm"/>。
+    /// - 从 <see cref="CommandCatalog.GroupByCategory"/> 拉分组数据，转成 <see cref="CategoryTabVm"/>。
     /// - 维护当前选中的分类（左侧 Tab）。
     /// - 维护搜索框文字，用关键词 + 简易拼音首字母过滤命令。
     /// </summary>
@@ -139,13 +139,13 @@ namespace HyCADTool.Refactored.Presentation.ViewModels
             SelectedTab = t ?? Tabs.FirstOrDefault();
         }
 
-        /// <summary>从 ReCall.CommandTable 重新拉分组（可供外部在 JSON 变化后触发刷新）。</summary>
+        /// <summary>从 CommandCatalog 重新拉分组（可供外部在 JSON 变化后触发刷新）。</summary>
         public void LoadFromCommandTable()
         {
             Tabs.Clear();
             try
             {
-                var groups = CommandTable.GroupByCategory();
+                var groups = CommandCatalog.GroupByCategory();
                 Tabs.Add(new CategoryTabVm
                 {
                     Key  = PreferencesTabKey,

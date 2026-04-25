@@ -1,14 +1,14 @@
 using System;
 using HyCAD.BlenderUI.WM.Operators;
-using HyCADTool.ReCall;
+using HyCADTool.Refactored.Infrastructure.Commands;
 
 namespace HyCADTool.Refactored.Presentation.Input
 {
     /// <summary>
-    /// 启动时把 <see cref="CommandTable"/> 里的每条命令批量注册为 Operator（Id = "hy.cmd.{key}"）。
+    /// 启动时把 <see cref="CommandCatalog"/> 里的每条命令批量注册为 Operator（Id = "hy.cmd.{key}"）。
     /// 约束：
     ///   - 进程级幂等：重复调用只真正注册一次；
-    ///   - 不触发 CommandTable.EnsureLoaded 以外的副作用；
+    ///   - 不触发 CommandCatalog.EnsureLoaded 以外的副作用；
     ///   - 失败（commands.json 读取异常）时吞掉并记录状态，不阻塞 UI；
     ///   - 只产出对应工厂（闭包捕获 key），不会预先实例化 Operator 对象。
     /// </summary>
@@ -28,7 +28,7 @@ namespace HyCADTool.Refactored.Presentation.Input
                 if (_registered) return;
                 try
                 {
-                    var groups = CommandTable.GroupByCategory();
+                    var groups = CommandCatalog.GroupByCategory();
                     int count = 0;
                     foreach (var g in groups)
                     {
