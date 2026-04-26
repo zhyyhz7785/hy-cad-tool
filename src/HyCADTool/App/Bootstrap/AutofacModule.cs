@@ -114,7 +114,7 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<HyCADTool.Features.BaseRein.BaseReinPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Presentation.ViewModels.PilePanelViewModel>()
+            builder.RegisterType<HyCADTool.Features.Pile.ViewModels.PilePanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Presentation.ViewModels.ClusterPanelViewModel>()
@@ -125,7 +125,7 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<HyCADTool.Features.BaseRein.BaseReinPanel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Presentation.Views.PilePanel>()
+            builder.RegisterType<HyCADTool.Features.Pile.Views.PilePanel>()
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Presentation.Views.ClusterPanel>()
