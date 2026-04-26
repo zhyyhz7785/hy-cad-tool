@@ -4,6 +4,11 @@ using HyCADTool.Domain.Services;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Domain.Services.MathAlgorithms;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Features.BaseRein.Services;
+using HyCADTool.Features.DCEL.Services;
+using HyCADTool.Features.Elevation.Services;
+using HyCADTool.Features.Pile.Services;
+using HyCADTool.Features.Reinforcement.Services;
 using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.Shared.AutoCAD.Repositories;
 using HyCADTool.Shared.AutoCAD.Selection;
@@ -138,7 +143,7 @@ namespace HyCADTool.App.Bootstrap
             // ===== 钢筋服务 =====
 
             // 基础配筋服务（单例）
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.BaseReinforcementService>()
+            builder.RegisterType<BaseReinforcementService>()
                 .As<IBaseReinforcementService>()
                 .SingleInstance();
 
@@ -261,7 +266,7 @@ namespace HyCADTool.App.Bootstrap
                 .SingleInstance();
 
             // 桩绘制服务（Infrastructure）
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.PileDrawingService>()
+            builder.RegisterType<PileDrawingService>()
                 .AsSelf()
                 .SingleInstance();
 
