@@ -3,7 +3,8 @@ using System.Linq;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.Geometry;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.PlanProfile.Domain;
+using HyCADTool.Features.Road.PlanProfile.ViewModels;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.ViewModels.Road
@@ -386,8 +387,7 @@ namespace HyCADTool.Tests.Presentation.ViewModels.Road
         {
             var vm = new ProfileEditorViewModel(BuildAlignment(), BuildAllPassProfile());
 
-            vm.AvailableSpeeds.Should().BeEquivalentTo(
-                HyCADTool.Domain.Services.Road.ProfileCodeChecker.SupportedSpeeds);
+            vm.AvailableSpeeds.Should().BeEquivalentTo(ProfileCodeChecker.SupportedSpeeds);
         }
 
         [Fact]

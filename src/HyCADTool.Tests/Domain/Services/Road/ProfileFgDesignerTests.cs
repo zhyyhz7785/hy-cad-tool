@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Domain.Services.Road;
+using HyCADTool.Features.Road.PlanProfile.Domain;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Services.Road

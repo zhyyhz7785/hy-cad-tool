@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Features.Cluster.Domain.Services
 {
     /// <summary>
     /// 聚类算法服务接口（平台无关）

@@ -1,7 +1,7 @@
 using System.Linq;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.CrossSection.ViewModels;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.ViewModels.Road

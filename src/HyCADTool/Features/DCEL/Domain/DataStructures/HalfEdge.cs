@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System;
 
-namespace HyCADTool.Domain.DataStructures.DCEL
+namespace HyCADTool.Features.DCEL.Domain.DataStructures
 {
     /// <summary>
     /// DCEL 半边（Doubly Connected Edge List - Half-Edge）

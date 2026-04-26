@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HyCADTool.Features.Settlement;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Settlement.Domain.Services
 {
     /// <summary>
     /// 承载力验算计算引擎（纯数学，平台无关）

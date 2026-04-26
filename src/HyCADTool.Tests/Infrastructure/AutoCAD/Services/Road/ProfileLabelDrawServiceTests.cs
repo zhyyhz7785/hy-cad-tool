@@ -2,6 +2,7 @@ using System;
 using Autodesk.AutoCAD.Geometry;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
+using HyCADTool.Features.Road.PlanProfile.Services;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using Xunit;
 

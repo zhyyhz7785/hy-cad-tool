@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System;
 
-namespace HyCADTool.Domain.Entities.Pile
+namespace HyCADTool.Features.Pile.Domain.Entities
 {
     /// <summary>
     /// 桩实体（Pile Entity）

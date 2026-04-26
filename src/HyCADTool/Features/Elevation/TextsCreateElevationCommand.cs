@@ -2,7 +2,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Enums;
+using HyCADTool.Features.Elevation.Domain.Enums;
 using HyCADTool.Presentation.ViewModels;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Interactive;
@@ -54,14 +54,14 @@ namespace HyCADTool.Features.Elevation
                         if (text == null) continue;
 
                         string elevationText = text.TextString.Trim().Replace("%%P", "");
-                        double elevation;
-                        if (!double.TryParse(elevationText, out elevation))
+                        double ElevationValue;
+                        if (!double.TryParse(elevationText, out ElevationValue))
                         {
                             ed.WriteMessage($"\n跳过无效的标高值: {text.TextString}");
                             continue;
                         }
 
-                        bool isBasePoint = Math.Abs(elevation) <= 0.001;
+                        bool isBasePoint = Math.Abs(ElevationValue) <= 0.001;
 
                         // 反算 _currentPoint 使 Label 位置对齐原文字
                         Point3d calculatedPoint = ElevationService.CalculateCurrentPointFromText(
@@ -72,7 +72,7 @@ namespace HyCADTool.Features.Elevation
                             calculatedPoint, scale, d, ed, textStyleId, layerId,
                             ElevationSymbolState.Normal, angleDegrees);
 
-                        symbol.UpdateSymbol(elevation, isBasePoint);
+                        symbol.UpdateSymbol(ElevationValue, isBasePoint);
                         symbol.AddToDatabase(tr, btr);
                     }
 

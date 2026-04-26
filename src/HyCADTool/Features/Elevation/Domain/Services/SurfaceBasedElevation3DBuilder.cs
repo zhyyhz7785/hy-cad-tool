@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Domain.Entities;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.Entities;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 基于表面的三维建模服务（新方法）
@@ -32,16 +32,16 @@ namespace HyCADTool.Domain.Services
         /// <summary>
         /// 根据多边形和标高生成三维模型
         /// </summary>
-        public SurfaceBasedModel BuildModel(Polygon2D polygon, Elevation elevation)
+        public SurfaceBasedModel BuildModel(Polygon2D polygon, ElevationValue ElevationValue)
         {
             if (polygon == null)
                 throw new ArgumentNullException(nameof(polygon));
-            if (elevation == null)
-                throw new ArgumentNullException(nameof(elevation));
+            if (ElevationValue == null)
+                throw new ArgumentNullException(nameof(ElevationValue));
             
             // 1. 计算上表面和下表面标高
-            var topElevation = elevation;  // 上表面 = 原始标高（正确）
-            var bottomElevation = CalculateBottomElevation(elevation);  // 下表面 = 根据规则计算
+            var topElevation = ElevationValue;  // 上表面 = 原始标高（正确）
+            var bottomElevation = CalculateBottomElevation(ElevationValue);  // 下表面 = 根据规则计算
             
             // 2. 创建上表面
             var topSurface = Surface3D.Create(polygon, topElevation, "上表面");
@@ -106,17 +106,17 @@ namespace HyCADTool.Domain.Services
         /// - 负值标高（< 0）：从标高位置向下板厚 → 底标高 = 标高 - 板厚
         ///   示例：-5000mm → 下表面 = -5400mm（高度 = 400mm）
         /// </summary>
-        private Elevation CalculateBottomElevation(Elevation topElevation)
+        private ElevationValue CalculateBottomElevation(ElevationValue topElevation)
         {
             if (topElevation.Value > 0)
             {
                 // 正值：延伸到 0.000，再向下板厚
-                return Elevation.FromMillimeters(-_defaultSlabThickness);
+                return ElevationValue.FromMillimeters(-_defaultSlabThickness);
             }
             else
             {
                 // 零值或负值：从标高位置直接向下板厚
-                return Elevation.FromMillimeters(topElevation.Value - _defaultSlabThickness);
+                return ElevationValue.FromMillimeters(topElevation.Value - _defaultSlabThickness);
             }
         }
         
@@ -124,13 +124,13 @@ namespace HyCADTool.Domain.Services
         /// 批量生成模型
         /// </summary>
         public List<SurfaceBasedModel> BuildModels(
-            IEnumerable<(Polygon2D polygon, Elevation elevation)> geometryData)
+            IEnumerable<(Polygon2D polygon, ElevationValue ElevationValue)> geometryData)
         {
             var models = new List<SurfaceBasedModel>();
             
-            foreach (var (polygon, elevation) in geometryData)
+            foreach (var (polygon, ElevationValue) in geometryData)
             {
-                var model = BuildModel(polygon, elevation);
+                var model = BuildModel(polygon, ElevationValue);
                 models.Add(model);
             }
             
@@ -168,7 +168,7 @@ namespace HyCADTool.Domain.Services
             var outerPolygon = model.WallSolid.OuterPolygon;
             
             // 只取 0.000 以下部分
-            var groundElevation = Elevation.Ground;
+            var groundElevation = ElevationValue.Ground;
             var bottomElevation = model.BottomSurface.Elevation;
             
             // 如果顶标高 > 0，则墙体外表面只到 0.000

@@ -1,12 +1,10 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.Services;
-using HyCADTool.Domain.ValueObjects;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.Geometry;
-using HyCADTool.Domain.ValueObjects.Reinforcement;
+using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.Shared.AutoCAD.Extensions;

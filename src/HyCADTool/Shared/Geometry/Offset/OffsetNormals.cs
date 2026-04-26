@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System;
 
-namespace HyCADTool.Domain.Services.OffsetAlgorithms
+namespace HyCADTool.Shared.Geometry.Offset
 {
     /// <summary>
     /// 偏移法线计算
@@ -53,7 +53,7 @@ namespace HyCADTool.Domain.Services.OffsetAlgorithms
             
             // 角平分线 = 两个法线的和（归一化）
             var bisector = new Point2D(normal1.X + normal2.X, normal1.Y + normal2.Y);
-            double bisectorLength = Math.Sqrt(bisector.X * bisector.X + bisector.Y * bisector.Y);
+            double bisectorLength = System.Math.Sqrt(bisector.X * bisector.X + bisector.Y * bisector.Y);
             
             // 处理共线情况（180度）
             if (bisectorLength < 1e-10)
@@ -74,7 +74,7 @@ namespace HyCADTool.Domain.Services.OffsetAlgorithms
             double cosAngle = OffsetMath.DotProduct(edge1, edge2);
             
             // Clipper2 公式：sin(θ/2) = sqrt((1 - cos(θ)) / 2)
-            double sinHalfAngle = Math.Sqrt((1.0 - cosAngle) / 2.0);
+            double sinHalfAngle = System.Math.Sqrt((1.0 - cosAngle) / 2.0);
             
             // 防止除以零
             if (sinHalfAngle < 1e-6)
@@ -84,9 +84,9 @@ namespace HyCADTool.Domain.Services.OffsetAlgorithms
             double factor = distance / sinHalfAngle;
             
             // 限制最大偏移（防止尖角过度偏移）
-            double maxFactor = Math.Abs(distance) * 10.0;
-            if (Math.Abs(factor) > maxFactor)
-                factor = Math.Sign(factor) * maxFactor;
+            double maxFactor = System.Math.Abs(distance) * 10.0;
+            if (System.Math.Abs(factor) > maxFactor)
+                factor = System.Math.Sign(factor) * maxFactor;
             
             return (bisector, factor);
         }

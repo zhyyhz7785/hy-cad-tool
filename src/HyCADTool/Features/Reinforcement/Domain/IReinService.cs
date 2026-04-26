@@ -1,7 +1,4 @@
-using HyCADTool.Domain.ValueObjects;
-using HyCADTool.Domain.ValueObjects.Reinforcement;
-
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Reinforcement.Domain
 {
     /// <summary>
     /// 钢筋服务接口

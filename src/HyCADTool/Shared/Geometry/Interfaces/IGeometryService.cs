@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Shared.Geometry.Interfaces
 {
     /// <summary>
     /// 几何服务接口（平台无关）

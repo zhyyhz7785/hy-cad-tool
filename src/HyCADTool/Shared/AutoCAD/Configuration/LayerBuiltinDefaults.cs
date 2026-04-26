@@ -1,4 +1,4 @@
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Shell.Configuration.Global;
 
 namespace HyCADTool.Shared.AutoCAD.Configuration
 {

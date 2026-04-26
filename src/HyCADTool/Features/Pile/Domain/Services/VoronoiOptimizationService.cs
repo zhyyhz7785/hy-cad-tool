@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using NtsGeometry = NetTopologySuite.Geometries.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Pile.Domain.Services
 {
     /// <summary>
     /// Voronoi 图与 Lloyd 优化服务（纯 Domain，平台无关）

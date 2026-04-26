@@ -2,7 +2,7 @@ using Markdig;
 using System;
 using System.Text;
 
-namespace HyCADTool.Domain.Models.Text
+namespace HyCADTool.Features.DesignSpec.Domain.Models
 {
     /// <summary>
     /// Markdown → 交互式分栏 HTML 预览

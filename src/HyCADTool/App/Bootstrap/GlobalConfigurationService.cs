@@ -1,5 +1,5 @@
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Shell.Configuration.Global;
 using System;
 using System.IO;
 

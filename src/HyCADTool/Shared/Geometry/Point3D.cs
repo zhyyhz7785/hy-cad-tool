@@ -60,7 +60,7 @@ namespace HyCADTool.Shared.Geometry
             double dx = X - other.X;
             double dy = Y - other.Y;
             double dz = Z - other.Z;
-            return Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            return System.Math.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
         /// <summary>
@@ -68,9 +68,9 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public bool IsEqualTo(Point3D other, double tolerance = 1e-6)
         {
-            return Math.Abs(X - other.X) < tolerance &&
-                   Math.Abs(Y - other.Y) < tolerance &&
-                   Math.Abs(Z - other.Z) < tolerance;
+            return System.Math.Abs(X - other.X) < tolerance &&
+                   System.Math.Abs(Y - other.Y) < tolerance &&
+                   System.Math.Abs(Z - other.Z) < tolerance;
         }
 
         /// <summary>

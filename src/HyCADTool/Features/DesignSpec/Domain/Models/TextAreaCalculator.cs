@@ -1,6 +1,6 @@
 using System;
 
-namespace HyCADTool.Domain.Models.Text
+namespace HyCADTool.Features.DesignSpec.Domain.Models
 {
     /// <summary>
     /// 根据配置计算文字排版区域（纯算法，平台无关）

@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Shell.Configuration.User;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;

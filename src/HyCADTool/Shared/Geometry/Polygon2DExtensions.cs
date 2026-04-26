@@ -73,7 +73,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         private static Point2D Normalize(Point2D vector)
         {
-            double length = Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
+            double length = System.Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
             
             if (length < 1e-10)
                 return new Point2D(0, 0);

@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using HyCADTool.Domain.Services;
+using HyCADTool.Features.DCEL.Domain.Services;
 using System;
 
 namespace HyCADTool.Features.Misc

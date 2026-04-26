@@ -45,8 +45,8 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public static Vector2D RotateBy(this Vector2D vector, double angleRadians)
         {
-            double cos = Math.Cos(angleRadians);
-            double sin = Math.Sin(angleRadians);
+            double cos = System.Math.Cos(angleRadians);
+            double sin = System.Math.Sin(angleRadians);
             return new Vector2D(
                 vector.X * cos - vector.Y * sin,
                 vector.X * sin + vector.Y * cos);

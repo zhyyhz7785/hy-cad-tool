@@ -1,5 +1,5 @@
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 

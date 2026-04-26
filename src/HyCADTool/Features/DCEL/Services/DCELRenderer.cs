@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.DataStructures.DCEL;
+using HyCADTool.Features.DCEL.Domain.DataStructures;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Shared.AutoCAD.Services;
@@ -176,7 +176,7 @@ namespace HyCADTool.Features.DCEL.Services
         /// 尝试构建包含曲线的 Polyline
         /// </summary>
         private Polyline TryBuildPolylineWithCurves(
-            Domain.DataStructures.DCEL.Face face,
+            HyCADTool.Features.DCEL.Domain.DataStructures.Face face,
             List<CurveSegment2D> curveSegments,
             out List<CurveSegment2D> failedSegments)
         {

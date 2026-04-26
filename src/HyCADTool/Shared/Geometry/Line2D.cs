@@ -63,10 +63,10 @@ namespace HyCADTool.Shared.Geometry
                 return false;
 
             // 检查点是否在线段范围内
-            double minX = Math.Min(StartPoint.X, EndPoint.X) - tolerance;
-            double maxX = Math.Max(StartPoint.X, EndPoint.X) + tolerance;
-            double minY = Math.Min(StartPoint.Y, EndPoint.Y) - tolerance;
-            double maxY = Math.Max(StartPoint.Y, EndPoint.Y) + tolerance;
+            double minX = System.Math.Min(StartPoint.X, EndPoint.X) - tolerance;
+            double maxX = System.Math.Max(StartPoint.X, EndPoint.X) + tolerance;
+            double minY = System.Math.Min(StartPoint.Y, EndPoint.Y) - tolerance;
+            double maxY = System.Math.Max(StartPoint.Y, EndPoint.Y) + tolerance;
 
             return point.X >= minX && point.X <= maxX && 
                    point.Y >= minY && point.Y <= maxY;
@@ -143,7 +143,7 @@ namespace HyCADTool.Shared.Geometry
             Vector2D v2 = other.Direction;
             
             // 叉积接近0表示平行
-            double cross = Math.Abs(v1.Cross(v2));
+            double cross = System.Math.Abs(v1.Cross(v2));
             return cross < tolerance;
         }
 
@@ -160,7 +160,7 @@ namespace HyCADTool.Shared.Geometry
             Vector2D v1 = this.Direction;
             Vector2D v2 = this.StartPoint.VectorTo(other.StartPoint);
             
-            double cross = Math.Abs(v1.Cross(v2));
+            double cross = System.Math.Abs(v1.Cross(v2));
             return cross < tolerance;
         }
 
@@ -178,7 +178,7 @@ namespace HyCADTool.Shared.Geometry
             double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
             // 平行或重合
-            if (Math.Abs(denom) < tolerance)
+            if (System.Math.Abs(denom) < tolerance)
                 return default;
 
             double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
@@ -217,7 +217,7 @@ namespace HyCADTool.Shared.Geometry
             // 向量叉积判断平行
             double cross = d1.X * d2.Y - d1.Y * d2.X;
             
-            if (Math.Abs(cross) < tolerance)
+            if (System.Math.Abs(cross) < tolerance)
                 return default;  // 平行或共线
             
             // 求解参数 t

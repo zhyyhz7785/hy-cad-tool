@@ -1,4 +1,4 @@
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Presentation.ViewModels;
 
 namespace HyCADTool.Shared.AutoCAD.Services

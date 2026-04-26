@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
-using HyCADTool.Domain.ValueObjects.Configuration.Modules;
-using HyCADTool.Domain.Entities.Pile;
-using HyCADTool.Domain.Enums;
-
+using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shell.Configuration.Modules;
+using HyCADTool.Features.Pile.Domain.Entities;
 // LayerConfig 位于 Global 命名空间
-using LayerConfig = HyCADTool.Domain.ValueObjects.Configuration.Global.LayerConfig;
+using LayerConfig = HyCADTool.Shell.Configuration.Global.LayerConfig;
 
 namespace HyCADTool.App.Bootstrap
 {

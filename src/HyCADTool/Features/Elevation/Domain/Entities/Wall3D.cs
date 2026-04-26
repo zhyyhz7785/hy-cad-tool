@@ -1,8 +1,8 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Entities
+namespace HyCADTool.Features.Elevation.Domain.Entities
 {
     /// <summary>
     /// 3D墙体实体
@@ -23,12 +23,12 @@ namespace HyCADTool.Domain.Entities
         /// <summary>
         /// 内侧标高（基础内部）
         /// </summary>
-        public Elevation InnerElevation { get; private set; }
+        public ElevationValue InnerElevation { get; private set; }
         
         /// <summary>
         /// 外侧标高（土壤或相邻基础）
         /// </summary>
-        public Elevation OuterElevation { get; private set; }
+        public ElevationValue OuterElevation { get; private set; }
         
         /// <summary>
         /// 是否为挡土墙
@@ -45,8 +45,8 @@ namespace HyCADTool.Domain.Entities
             string layerName,
             Polygon2D bufferRegion,
             WallThickness thickness,
-            Elevation innerElevation,
-            Elevation outerElevation,
+            ElevationValue innerElevation,
+            ElevationValue outerElevation,
             bool isRetainingWall,
             SlabThickness slabThickness = null)
             : base(name, layerName, 
@@ -64,9 +64,9 @@ namespace HyCADTool.Domain.Entities
         /// 计算墙体底标高
         /// 逻辑：从墙体两侧标高中选择较低的那个，再减去筏板厚度
         /// </summary>
-        private static Elevation CalculateWallBottomElevation(
-            Elevation innerElevation, 
-            Elevation outerElevation, 
+        private static ElevationValue CalculateWallBottomElevation(
+            ElevationValue innerElevation, 
+            ElevationValue outerElevation, 
             SlabThickness slabThickness)
         {
             // 选择较低的标高
@@ -75,16 +75,16 @@ namespace HyCADTool.Domain.Entities
             // 减去筏板厚度（默认400mm）
             double raftThickness = slabThickness?.Value ?? 400.0;
             
-            return Elevation.FromMillimeters(lowerElevation - raftThickness);
+            return ElevationValue.FromMillimeters(lowerElevation - raftThickness);
         }
         
         /// <summary>
         /// 计算墙体顶标高
         /// 逻辑：从墙体两侧标高中选择较高的那个
         /// </summary>
-        private static Elevation CalculateWallTopElevation(
-            Elevation innerElevation, 
-            Elevation outerElevation)
+        private static ElevationValue CalculateWallTopElevation(
+            ElevationValue innerElevation, 
+            ElevationValue outerElevation)
         {
             // 选择较高的标高
             return innerElevation.Value >= outerElevation.Value ? innerElevation : outerElevation;
@@ -96,8 +96,8 @@ namespace HyCADTool.Domain.Entities
         public static Wall3D CreateNormalWall(
             Polygon2D bufferRegion,
             WallThickness thickness,
-            Elevation innerElevation,
-            Elevation outerElevation,
+            ElevationValue innerElevation,
+            ElevationValue outerElevation,
             string layerName = "Bufferid_Wall",
             SlabThickness slabThickness = null)
         {
@@ -118,7 +118,7 @@ namespace HyCADTool.Domain.Entities
         public static Wall3D CreateRetainingWall(
             Polygon2D bufferRegion,
             WallThickness thickness,
-            Elevation innerElevation,
+            ElevationValue innerElevation,
             string layerName = "Bufferid_Wall",
             SlabThickness slabThickness = null)
         {
@@ -129,7 +129,7 @@ namespace HyCADTool.Domain.Entities
                 bufferRegion,
                 thickness,
                 innerElevation,
-                Elevation.Ground,
+                ElevationValue.Ground,
                 true,
                 slabThickness);
         }

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 多边形算法服务实现（平台无关）
@@ -130,7 +130,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 area += points[i].X * points[next].Y - points[next].X * points[i].Y;
             }
 
-            return Math.Abs(area) / 2.0;
+            return System.Math.Abs(area) / 2.0;
         }
 
         public double CalculatePerimeter(Polygon2D polygon)
@@ -162,7 +162,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 return polygon.Vertices[0];
 
             double area = CalculateArea(polygon);
-            if (Math.Abs(area) < 1e-10)
+            if (System.Math.Abs(area) < 1e-10)
             {
                 // 面积为0，返回顶点的平均位置
                 double avgX = polygon.Vertices.Average(p => p.X);
@@ -289,10 +289,10 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 var bbox1 = CalculateBoundingBox(polygon1);
                 var bbox2 = CalculateBoundingBox(polygon2);
                 
-                var minX = Math.Min(bbox1.MinPoint.X, bbox2.MinPoint.X);
-                var minY = Math.Min(bbox1.MinPoint.Y, bbox2.MinPoint.Y);
-                var maxX = Math.Max(bbox1.MaxPoint.X, bbox2.MaxPoint.X);
-                var maxY = Math.Max(bbox1.MaxPoint.Y, bbox2.MaxPoint.Y);
+                var minX = System.Math.Min(bbox1.MinPoint.X, bbox2.MinPoint.X);
+                var minY = System.Math.Min(bbox1.MinPoint.Y, bbox2.MinPoint.Y);
+                var maxX = System.Math.Max(bbox1.MaxPoint.X, bbox2.MaxPoint.X);
+                var maxY = System.Math.Max(bbox1.MaxPoint.Y, bbox2.MaxPoint.Y);
                 
                 result.Add(CreateRectangle(new Point2D(minX, minY), new Point2D(maxX, maxY)));
             }
@@ -316,8 +316,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (polygon?.Vertices == default || center == default)
                 return polygon;
 
-            double cos = Math.Cos(angle);
-            double sin = Math.Sin(angle);
+            double cos = System.Math.Cos(angle);
+            double sin = System.Math.Sin(angle);
 
             var rotatedPoints = polygon.Vertices.Select(p =>
             {
@@ -400,13 +400,13 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 return null;
 
             var points = new List<Point2D>();
-            double angleStep = 2 * Math.PI / segments;
+            double angleStep = 2 * System.Math.PI / segments;
 
             for (int i = 0; i < segments; i++)
             {
                 double angle = i * angleStep;
-                double x = center.X + radius * Math.Cos(angle);
-                double y = center.Y + radius * Math.Sin(angle);
+                double x = center.X + radius * System.Math.Cos(angle);
+                double y = center.Y + radius * System.Math.Sin(angle);
                 points.Add(new Point2D(x, y));
             }
 
@@ -472,7 +472,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                     points[i].X - points[prev].X, points[i].Y - points[prev].Y,
                     points[next].X - points[i].X, points[next].Y - points[i].Y);
 
-                if (Math.Abs(crossProduct) > tolerance.Value)
+                if (System.Math.Abs(crossProduct) > tolerance.Value)
                 {
                     bool currentPositive = crossProduct > 0;
                     if (isPositive == default)
@@ -555,8 +555,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (point1 == default || point2 == default)
                 return false;
 
-            return Math.Abs(point1.X - point2.X) <= tolerance.Value &&
-                   Math.Abs(point1.Y - point2.Y) <= tolerance.Value;
+            return System.Math.Abs(point1.X - point2.X) <= tolerance.Value &&
+                   System.Math.Abs(point1.Y - point2.Y) <= tolerance.Value;
         }
 
         private double CalculateDistance(Point2D point1, Point2D point2)
@@ -566,21 +566,21 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double dx = point2.X - point1.X;
             double dy = point2.Y - point1.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         private bool DoesRayIntersectSegment(Point2D rayStart, Point2D segmentStart, Point2D segmentEnd)
         {
             // 检查射线（从点向右的水平射线）是否与线段相交
-            double minY = Math.Min(segmentStart.Y, segmentEnd.Y);
-            double maxY = Math.Max(segmentStart.Y, segmentEnd.Y);
+            double minY = System.Math.Min(segmentStart.Y, segmentEnd.Y);
+            double maxY = System.Math.Max(segmentStart.Y, segmentEnd.Y);
 
             // 射线的Y坐标不在线段的Y范围内
             if (rayStart.Y < minY || rayStart.Y > maxY)
                 return false;
 
             // 线段是水平的
-            if (Math.Abs(segmentStart.Y - segmentEnd.Y) < 1e-10)
+            if (System.Math.Abs(segmentStart.Y - segmentEnd.Y) < 1e-10)
                 return false;
 
             // 计算射线与线段的交点的X坐标

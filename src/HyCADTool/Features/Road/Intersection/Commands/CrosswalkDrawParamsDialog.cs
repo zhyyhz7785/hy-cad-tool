@@ -1,9 +1,13 @@
 using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Features.Road.Intersections.ViewModels;
+using HyCADTool.Features.Road.Intersections.Views;
 using HyCADTool.Presentation.ViewModels;
-using HyCADTool.Presentation.ViewModels.Road;
-using HyCADTool.Presentation.Views.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
+using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Features.Road.PlanAlignment.Commands;
+using HyCADTool.Features.Road.CrossSection.Commands;
 namespace HyCADTool.Features.Road
 {
     /// <summary>

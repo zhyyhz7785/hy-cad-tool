@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Entities.Pile
+namespace HyCADTool.Features.Pile.Domain.Entities
 {
     /// <summary>
     /// 桩截面类型（Pile Section Type）

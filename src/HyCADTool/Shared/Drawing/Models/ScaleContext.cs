@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-namespace HyCADTool.Domain.Models.Drawing
+namespace HyCADTool.Shared.Drawing.Models
 {
     /// <summary>
     /// 绘图单位（影响标注样式 paper→model 换算与 AutoCAD INSUNITS 同步）

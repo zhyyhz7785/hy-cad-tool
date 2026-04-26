@@ -2,10 +2,10 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Entities;
+using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using HyCADTool.Presentation.ViewModels;
 using Newtonsoft.Json;
-using AnchorBoltEntity = HyCADTool.Domain.Entities.AnchorBolt;
+using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
 using System.Collections.Generic;
 using System.Linq;
 

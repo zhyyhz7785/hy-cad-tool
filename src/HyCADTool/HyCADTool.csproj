@@ -149,11 +149,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Features\BaseRein\BaseReinPanel.xaml">
+    <Page Include="Features\BaseRein\Views\BaseReinPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Features\Settlement\SettlementPanel.xaml">
+    <Page Include="Features\Settlement\Views\SettlementPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -221,63 +221,63 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Shell\Markdown\MarkdownEditorDialog.xaml">
+    <Page Include="Features\DesignSpec\Views\MarkdownEditorDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Features\Settlement\SettlementWindow.xaml">
+    <Page Include="Features\Settlement\Views\SettlementWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\PiThreeUnitWindow.xaml">
+    <Page Include="Features\Road\Alignment\Views\PiThreeUnitWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\CrossSectionDesignerWindow.xaml">
+    <Page Include="Features\Road\CrossSection\Views\CrossSectionDesignerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\CrossSectionDrawWindow.xaml">
+    <Page Include="Features\Road\CrossSection\Views\CrossSectionDrawWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\CrossSectionDrawPanel.xaml">
+    <Page Include="Features\Road\CrossSection\Views\CrossSectionDrawPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\ProfileEditorWindow.xaml">
+    <Page Include="Features\Road\Profile\Views\ProfileEditorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\AlignmentTableWindow.xaml">
+    <Page Include="Features\Road\Alignment\Views\AlignmentTableWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\AlignmentDefaultsWindow.xaml">
+    <Page Include="Features\Road\Alignment\Views\AlignmentDefaultsWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\CrosswalkDrawParamsWindow.xaml">
+    <Page Include="Features\Road\Intersection\Views\CrosswalkDrawParamsWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\StationLabelConfigWindow.xaml">
+    <Page Include="Features\Road\Alignment\Views\StationLabelConfigWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\RoadAlignmentWorkbenchPanel.xaml">
+    <Page Include="Features\Road\Alignment\Views\RoadAlignmentWorkbenchPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\RoadProjectTreePanel.xaml">
+    <Page Include="Features\Road\Plan\Views\RoadProjectTreePanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\RoadHistoryWindow.xaml">
+    <Page Include="Features\Road\Plan\Views\RoadHistoryWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Presentation\Views\Road\StructureLayerWindow.xaml">
+    <Page Include="Features\Road\CrossSection\Views\StructureLayerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -1,9 +1,9 @@
 using System;
 using System.Windows;
 using HyCAD.BlenderUI.Controls;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.Plan.ViewModels;
 
-namespace HyCADTool.Presentation.Views.Road
+namespace HyCADTool.Features.Road.Plan.Views
 {
     /// <summary>
     /// 历史还原窗口（hyRoadHistory，M6.3）。

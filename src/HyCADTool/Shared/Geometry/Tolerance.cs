@@ -41,7 +41,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public bool AreEqual(double a, double b)
         {
-            return Math.Abs(a - b) < Value;
+            return System.Math.Abs(a - b) < Value;
         }
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public bool IsZero(double value)
         {
-            return Math.Abs(value) < Value;
+            return System.Math.Abs(value) < Value;
         }
 
         /// <summary>

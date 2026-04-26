@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 线段算法服务（平台无关）
@@ -24,23 +24,23 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             // 检查重叠
             // 将线段投影到主方向上
             Vector2D dir = line1.Direction;
-            bool isHorizontal = Math.Abs(dir.Y) < Math.Abs(dir.X);
+            bool isHorizontal = System.Math.Abs(dir.Y) < System.Math.Abs(dir.X);
 
             if (isHorizontal)
             {
                 // 水平方向，比较 X 坐标
-                double min1 = Math.Min(line1.StartPoint.X, line1.EndPoint.X);
-                double max1 = Math.Max(line1.StartPoint.X, line1.EndPoint.X);
-                double min2 = Math.Min(line2.StartPoint.X, line2.EndPoint.X);
-                double max2 = Math.Max(line2.StartPoint.X, line2.EndPoint.X);
+                double min1 = System.Math.Min(line1.StartPoint.X, line1.EndPoint.X);
+                double max1 = System.Math.Max(line1.StartPoint.X, line1.EndPoint.X);
+                double min2 = System.Math.Min(line2.StartPoint.X, line2.EndPoint.X);
+                double max2 = System.Math.Max(line2.StartPoint.X, line2.EndPoint.X);
 
                 // 检查是否有重叠
                 if (max1 < min2 - tolerance || max2 < min1 - tolerance)
                     return default;
 
                 // 计算重叠区域
-                double overlapMin = Math.Max(min1, min2);
-                double overlapMax = Math.Min(max1, max2);
+                double overlapMin = System.Math.Max(min1, min2);
+                double overlapMax = System.Math.Min(max1, max2);
 
                 if (overlapMax - overlapMin < tolerance)
                     return default;
@@ -54,16 +54,16 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             else
             {
                 // 垂直方向，比较 Y 坐标
-                double min1 = Math.Min(line1.StartPoint.Y, line1.EndPoint.Y);
-                double max1 = Math.Max(line1.StartPoint.Y, line1.EndPoint.Y);
-                double min2 = Math.Min(line2.StartPoint.Y, line2.EndPoint.Y);
-                double max2 = Math.Max(line2.StartPoint.Y, line2.EndPoint.Y);
+                double min1 = System.Math.Min(line1.StartPoint.Y, line1.EndPoint.Y);
+                double max1 = System.Math.Max(line1.StartPoint.Y, line1.EndPoint.Y);
+                double min2 = System.Math.Min(line2.StartPoint.Y, line2.EndPoint.Y);
+                double max2 = System.Math.Max(line2.StartPoint.Y, line2.EndPoint.Y);
 
                 if (max1 < min2 - tolerance || max2 < min1 - tolerance)
                     return default;
 
-                double overlapMin = Math.Max(min1, min2);
-                double overlapMax = Math.Min(max1, max2);
+                double overlapMin = System.Math.Max(min1, min2);
+                double overlapMax = System.Math.Min(max1, max2);
 
                 if (overlapMax - overlapMin < tolerance)
                     return default;
@@ -122,7 +122,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
                             // 根据主方向排序
                             Vector2D dir = current.Direction;
-                            bool isHorizontal = Math.Abs(dir.Y) < Math.Abs(dir.X);
+                            bool isHorizontal = System.Math.Abs(dir.Y) < System.Math.Abs(dir.X);
 
                             Point2D start, end;
                             if (isHorizontal)
@@ -251,7 +251,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             // 叉积为零表示平行
             // Cross product equals zero means parallel
             double cross = dir1.X * dir2.Y - dir1.Y * dir2.X;
-            return Math.Abs(cross) < tolerance;
+            return System.Math.Abs(cross) < tolerance;
         }
 
         /// <summary>
@@ -270,7 +270,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             // 点积为零表示垂直
             // Dot product equals zero means perpendicular
             double dot = dir1.X * dir2.X + dir1.Y * dir2.Y;
-            return Math.Abs(dot) < tolerance;
+            return System.Math.Abs(dot) < tolerance;
         }
 
         /// <summary>
@@ -296,7 +296,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             
             double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
             
-            if (Math.Abs(denom) < tolerance)
+            if (System.Math.Abs(denom) < tolerance)
                 return null; // 平行或重合 Parallel or coincident
             
             double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
@@ -326,7 +326,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             // TODO: Replace with IPointAlgorithmService
             var dx = line.EndPoint.X - line.StartPoint.X;
             var dy = line.EndPoint.Y - line.StartPoint.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>
@@ -353,7 +353,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         public static double GetAngle(Line2D line)
         {
             var dir = line.Direction;
-            return Math.Atan2(dir.Y, dir.X);
+            return System.Math.Atan2(dir.Y, dir.X);
         }
 
         /// <summary>
@@ -408,7 +408,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         public static Line2D Offset(Line2D line, double distance)
         {
             var dir = line.Direction;
-            double length = Math.Sqrt(dir.X * dir.X + dir.Y * dir.Y);
+            double length = System.Math.Sqrt(dir.X * dir.X + dir.Y * dir.Y);
             
             if (length < 1e-10)
                 return line;
@@ -450,18 +450,18 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             // 计算点到直线的垂直距离
             var p1 = line.StartPoint;
             var p2 = line.EndPoint;
-            var numerator = Math.Abs((p2.Y - p1.Y) * point.X - (p2.X - p1.X) * point.Y + p2.X * p1.Y - p2.Y * p1.X);
-            var denominator = Math.Sqrt(Math.Pow(p2.Y - p1.Y, 2) + Math.Pow(p2.X - p1.X, 2));
+            var numerator = System.Math.Abs((p2.Y - p1.Y) * point.X - (p2.X - p1.X) * point.Y + p2.X * p1.Y - p2.Y * p1.X);
+            var denominator = System.Math.Sqrt(System.Math.Pow(p2.Y - p1.Y, 2) + System.Math.Pow(p2.X - p1.X, 2));
             double distToLine = denominator > 1e-10 ? numerator / denominator : 0;
             
             if (distToLine > tolerance)
                 return false;
             
             // 检查是否在线段范围内
-            double minX = Math.Min(line.StartPoint.X, line.EndPoint.X) - tolerance;
-            double maxX = Math.Max(line.StartPoint.X, line.EndPoint.X) + tolerance;
-            double minY = Math.Min(line.StartPoint.Y, line.EndPoint.Y) - tolerance;
-            double maxY = Math.Max(line.StartPoint.Y, line.EndPoint.Y) + tolerance;
+            double minX = System.Math.Min(line.StartPoint.X, line.EndPoint.X) - tolerance;
+            double maxX = System.Math.Max(line.StartPoint.X, line.EndPoint.X) + tolerance;
+            double minY = System.Math.Min(line.StartPoint.Y, line.EndPoint.Y) - tolerance;
+            double maxY = System.Math.Max(line.StartPoint.Y, line.EndPoint.Y) + tolerance;
             
             return point.X >= minX && point.X <= maxX && point.Y >= minY && point.Y <= maxY;
         }
@@ -477,7 +477,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         {
             // TODO: Replace with IPointAlgorithmService.Lerp
             // 线性插值计算分割点
-            parameter = Math.Max(0, Math.Min(1, parameter)); // 限制在[0,1]
+            parameter = System.Math.Max(0, System.Math.Min(1, parameter)); // 限制在[0,1]
             var splitPoint = new Point2D(
                 line.StartPoint.X + parameter * (line.EndPoint.X - line.StartPoint.X),
                 line.StartPoint.Y + parameter * (line.EndPoint.Y - line.StartPoint.Y)
@@ -498,7 +498,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         /// <returns>是否水平 True if horizontal</returns>
         public static bool IsHorizontal(Line2D line, double tolerance = 1e-10)
         {
-            return Math.Abs(line.EndPoint.Y - line.StartPoint.Y) < tolerance;
+            return System.Math.Abs(line.EndPoint.Y - line.StartPoint.Y) < tolerance;
         }
 
         /// <summary>
@@ -510,7 +510,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         /// <returns>是否垂直 True if vertical</returns>
         public static bool IsVertical(Line2D line, double tolerance = 1e-10)
         {
-            return Math.Abs(line.EndPoint.X - line.StartPoint.X) < tolerance;
+            return System.Math.Abs(line.EndPoint.X - line.StartPoint.X) < tolerance;
         }
     }
 }

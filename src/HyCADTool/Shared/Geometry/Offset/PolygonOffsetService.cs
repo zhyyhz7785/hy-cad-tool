@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.OffsetAlgorithms
+namespace HyCADTool.Shared.Geometry.Offset
 {
     /// <summary>
     /// 多边形偏移服务（公共接口）

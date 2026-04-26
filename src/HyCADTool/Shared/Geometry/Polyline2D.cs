@@ -170,8 +170,8 @@ namespace HyCADTool.Shared.Geometry
                 // normal = (0,0,1) 时等价于 Atan2(cross, dot)，映射到 [0, 2*PI)
                 double cross = v1.Cross(v2); // v1.X * v2.Y - v1.Y * v2.X
                 double dot = v1.Dot(v2);
-                double angle = Math.Atan2(cross, dot); // [-PI, PI]
-                if (angle < 0) angle += 2.0 * Math.PI;  // 映射到 [0, 2*PI)
+                double angle = System.Math.Atan2(cross, dot); // [-PI, PI]
+                if (angle < 0) angle += 2.0 * System.Math.PI;  // 映射到 [0, 2*PI)
                 angles[i] = angle;
             }
             return angles;
@@ -268,7 +268,7 @@ namespace HyCADTool.Shared.Geometry
         /// 角度 >= threshold 的顶点处断开
         /// 对应旧代码 GetSubReinforcements 的核心逻辑
         /// </summary>
-        public Polyline2D[] SplitByAngleThreshold(double threshold = Math.PI)
+        public Polyline2D[] SplitByAngleThreshold(double threshold = System.Math.PI)
         {
             if (VertexCount < 3 || SegmentCount < 2)
                 return new[] { Clone() };
@@ -292,7 +292,7 @@ namespace HyCADTool.Shared.Geometry
                 // 添加最后一段终点
                 if (poly.VertexCount > 0)
                 {
-                    int lastSegIdx = Math.Min(i - 1, SegmentCount - 1);
+                    int lastSegIdx = System.Math.Min(i - 1, SegmentCount - 1);
                     if (lastSegIdx >= 0)
                         poly.AddVertex(GetSegmentAt(lastSegIdx).EndPoint);
                 }
@@ -347,7 +347,7 @@ namespace HyCADTool.Shared.Geometry
                     {
                         double distanceV = ParallelLineDistance(segStart, segEnd);
                         double distance = pointS.DistanceTo(pointE);
-                        double distanceH = Math.Sqrt(Math.Max(0, distance * distance - distanceV * distanceV));
+                        double distanceH = System.Math.Sqrt(System.Math.Max(0, distance * distance - distanceV * distanceV));
 
                         double rate = distanceV > tolerance ? distanceV / distanceH : 0;
 
@@ -396,7 +396,7 @@ namespace HyCADTool.Shared.Geometry
             if (len < 1e-10) return 0;
             Vector2D normal = new Vector2D(-dir.Y, dir.X) / len;
             Vector2D diff = seg1.StartPoint.VectorTo(seg2.StartPoint);
-            return Math.Abs(normal.Dot(diff));
+            return System.Math.Abs(normal.Dot(diff));
         }
 
         #endregion

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using FluentAssertions;
-using HyCADTool.Domain.Services.Road;
+using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Domain.ValueObjects.Road;
 using Xunit;
 

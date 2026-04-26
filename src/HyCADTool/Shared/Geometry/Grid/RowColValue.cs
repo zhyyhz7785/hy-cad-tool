@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.ValueObjects.Grid
+namespace HyCADTool.Shared.Geometry.Grid
 {
     /// <summary>
     /// 行列值对象（Row Column Value Object）

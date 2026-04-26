@@ -5,7 +5,7 @@ using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Models.Road.Civil;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.Plan.ViewModels;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.Road

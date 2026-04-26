@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 多边形算法服务（平台无关）
@@ -216,7 +216,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 area -= points[j].X * points[i].Y;
             }
             
-            return Math.Abs(area / 2.0);
+            return System.Math.Abs(area / 2.0);
         }
 
         /// <summary>
@@ -238,7 +238,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 // TODO: Replace with IPointAlgorithmService
                 var dx = points[j].X - points[i].X;
                 var dy = points[j].Y - points[i].Y;
-                perimeter += Math.Sqrt(dx * dx + dy * dy);
+                perimeter += System.Math.Sqrt(dx * dx + dy * dy);
             }
             
             return perimeter;
@@ -283,7 +283,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (p1.Y == p2.Y)
                 return false;
             
-            if (point.Y < Math.Min(p1.Y, p2.Y) || point.Y >= Math.Max(p1.Y, p2.Y))
+            if (point.Y < System.Math.Min(p1.Y, p2.Y) || point.Y >= System.Math.Max(p1.Y, p2.Y))
                 return false;
             
             double xIntersect = p1.X + (point.Y - p1.Y) * (p2.X - p1.X) / (p2.Y - p1.Y);
@@ -313,7 +313,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 
                 double cross = (p2.X - p1.X) * (p3.Y - p2.Y) - (p2.Y - p1.Y) * (p3.X - p2.X);
                 
-                if (Math.Abs(cross) < 1e-10)
+                if (System.Math.Abs(cross) < 1e-10)
                     continue;
                 
                 if (isPositive == null)
@@ -368,7 +368,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             
             signedArea *= 0.5;
             
-            if (Math.Abs(signedArea) < 1e-10)
+            if (System.Math.Abs(signedArea) < 1e-10)
             {
                 // 退化情况，使用简单平均
                 double sumX = 0, sumY = 0;
@@ -425,8 +425,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 var p = points[i];
                 var p1 = line.StartPoint;
                 var p2 = line.EndPoint;
-                var numerator = Math.Abs((p2.Y - p1.Y) * p.X - (p2.X - p1.X) * p.Y + p2.X * p1.Y - p2.Y * p1.X);
-                var denominator = Math.Sqrt(Math.Pow(p2.Y - p1.Y, 2) + Math.Pow(p2.X - p1.X, 2));
+                var numerator = System.Math.Abs((p2.Y - p1.Y) * p.X - (p2.X - p1.X) * p.Y + p2.X * p1.Y - p2.Y * p1.X);
+                var denominator = System.Math.Sqrt(System.Math.Pow(p2.Y - p1.Y, 2) + System.Math.Pow(p2.X - p1.X, 2));
                 double distance = numerator / denominator;
                 
                 if (distance > maxDistance)
@@ -488,7 +488,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                     (normal2.Y + normal2.Y) / 2
                 );
                 
-                double length = Math.Sqrt(avgNormal.X * avgNormal.X + avgNormal.Y * avgNormal.Y);
+                double length = System.Math.Sqrt(avgNormal.X * avgNormal.X + avgNormal.Y * avgNormal.Y);
                 if (length > 1e-10)
                 {
                     avgNormal = new Vector2D(avgNormal.X / length, avgNormal.Y / length);
@@ -513,7 +513,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         private static Vector2D GetLeftNormal(Line2D line)
         {
             var dir = line.Direction;
-            double length = Math.Sqrt(dir.X * dir.X + dir.Y * dir.Y);
+            double length = System.Math.Sqrt(dir.X * dir.X + dir.Y * dir.Y);
             
             if (length < 1e-10)
                 return new Vector2D(0, 0);

@@ -6,7 +6,7 @@
              xmlns:sub="clr-namespace:HyCADTool.Presentation.Views.Preferences"
              xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels"
              xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
-             xmlns:drawing="clr-namespace:HyCADTool.Domain.Models.Drawing"
+             xmlns:drawing="clr-namespace:HyCADTool.Shared.Drawing.Models"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
@@ -19,7 +19,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml"/>
                 <!--
                   BlenderDark 在前：设计器可解析 Brush_*。BlenderTheme（ColorsHost）在后，查找优先 → 运行时仍用可变画刷主题切换。
                 -->

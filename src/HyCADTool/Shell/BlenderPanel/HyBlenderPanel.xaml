@@ -18,7 +18,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- 左侧图标 Tab 容器样式：把 CategoryTabVm 的 Icon/Name 映射到 IconTabItem -->

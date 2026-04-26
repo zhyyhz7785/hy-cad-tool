@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Models.Configuration
+namespace HyCADTool.Features.Cluster.Domain.Models
 {
     /// <summary>
     /// 聚类标注参数配置（平台无关）

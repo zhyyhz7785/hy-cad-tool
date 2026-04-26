@@ -4,11 +4,11 @@ using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Services;
-using HyCADTool.Domain.Services.Geometry;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.Services;
+using HyCADTool.Shared.Geometry.Algorithms;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
-using ElevationVo = HyCADTool.Domain.ValueObjects.Elevation;
+using ElevationVo = HyCADTool.Features.Elevation.Domain.ValueObjects.ElevationValue;
 
 namespace HyCADTool.Features.Elevation.Services
 {
@@ -33,7 +33,7 @@ namespace HyCADTool.Features.Elevation.Services
         /// <param name="tr">事务</param>
         /// <param name="polygons">多边形列表</param>
         /// <param name="textObjectIds">文本对象ID列表</param>
-        /// <returns>字典：Polyline → Elevation</returns>
+        /// <returns>字典：Polyline → ElevationValue</returns>
         public Dictionary<Polyline, ElevationVo> ExtractElevationData(
             Transaction tr,
             List<Polyline> polygons,
@@ -140,12 +140,12 @@ namespace HyCADTool.Features.Elevation.Services
                 if (bestMatch != null)
                 {
                     // 解析标高（ElevationParser 已经处理单位转换）
-                    if (ElevationParser.TryParse(textEntity.text, out ElevationVo elevation))
+                    if (ElevationParser.TryParse(textEntity.text, out var el))
                     {
-                        result[bestMatch] = elevation;
+                        result[bestMatch] = el;
                         
                         if (!_silentMode)
-                            _editor?.WriteMessage($"\n  ✓ 匹配到多边形（顶点数={bestVertexCount}, 面积={minArea:F0}），标高={elevation.Value / 1000.0:F3}m");
+                            _editor?.WriteMessage($"\n  ✓ 匹配到多边形（顶点数={bestVertexCount}, 面积={minArea:F0}），标高={el.Value / 1000.0:F3}m");
                     }
                     else if (!_silentMode)
                     {

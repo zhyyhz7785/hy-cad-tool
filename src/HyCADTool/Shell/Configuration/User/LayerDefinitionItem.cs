@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.ValueObjects.Configuration.User
+namespace HyCADTool.Shell.Configuration.User
 {
     public class LayerDefinitionItem
     {

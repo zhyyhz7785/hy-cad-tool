@@ -32,7 +32,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public string FormatStation()
         {
-            double abs = Math.Round(Math.Abs(Station), 3, MidpointRounding.AwayFromZero);
+            double abs = System.Math.Round(System.Math.Abs(Station), 3, MidpointRounding.AwayFromZero);
             int km = (int)(abs / 1000);
             double remainder = abs - km * 1000;
             string sign = Station < 0 ? "-" : string.Empty;
@@ -41,7 +41,7 @@ namespace HyCADTool.Shared.Geometry
 
         public bool Equals(StationSample other)
         {
-            return Math.Abs(Station - other.Station) < 1e-9
+            return System.Math.Abs(Station - other.Station) < 1e-9
                 && Point.Equals(other.Point)
                 && Tangent.Equals(other.Tangent);
         }

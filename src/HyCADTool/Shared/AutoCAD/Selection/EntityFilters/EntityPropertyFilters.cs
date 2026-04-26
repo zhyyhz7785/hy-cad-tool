@@ -23,7 +23,7 @@ namespace HyCADTool.Shared.AutoCAD.Selection.EntityFilters
 
         public static SelectionFilter FromColorIndex(Entity entity)
         {
-            if (entity == null) return null;
+            if (entity == null || entity.Color.IsByLayer || entity.Color.IsByBlock) return null;
             var values = new TypedValue[]
             {
                 new TypedValue((int)DxfCode.Color, entity.ColorIndex)
@@ -33,7 +33,13 @@ namespace HyCADTool.Shared.AutoCAD.Selection.EntityFilters
 
         public static SelectionFilter FromLinetype(Entity entity)
         {
-            if (entity == null || string.IsNullOrEmpty(entity.Linetype)) return null;
+            if (entity == null
+                || string.IsNullOrEmpty(entity.Linetype)
+                || entity.Linetype.Equals("ByLayer", StringComparison.OrdinalIgnoreCase)
+                || entity.Linetype.Equals("ByBlock", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
             var values = new TypedValue[]
             {
                 new TypedValue((int)DxfCode.LinetypeName, entity.Linetype)
@@ -43,7 +49,7 @@ namespace HyCADTool.Shared.AutoCAD.Selection.EntityFilters
 
         public static SelectionFilter FromLineWeight(Entity entity)
         {
-            if (entity == null) return null;
+            if (entity == null || entity.LineWeight == LineWeight.ByLayer || entity.LineWeight == LineWeight.ByBlock) return null;
             var values = new TypedValue[]
             {
                 new TypedValue((int)DxfCode.LineWeight, (int)entity.LineWeight)

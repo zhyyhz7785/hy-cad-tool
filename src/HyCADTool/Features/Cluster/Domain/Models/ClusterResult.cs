@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Models.Cluster
+namespace HyCADTool.Features.Cluster.Domain.Models
 {
     /// <summary>
     /// 聚类结果，包含聚类相关所有图形与分析数据（平台无关）

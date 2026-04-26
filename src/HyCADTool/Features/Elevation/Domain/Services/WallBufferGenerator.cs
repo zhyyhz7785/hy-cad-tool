@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 墙体缓冲区生成服务

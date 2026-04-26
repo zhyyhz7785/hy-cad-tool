@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HyCADTool.Domain.Events.Road;
+using HyCADTool.Features.Road.Events;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Events.Road

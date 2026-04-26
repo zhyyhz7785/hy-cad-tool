@@ -14,6 +14,8 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
         /// </summary>
         public static List<PropertyMetadata> GetMetadataList()
         {
+            return RulePropertyCatalog.GetMetadataList();
+#pragma warning disable CS0162
             return new List<PropertyMetadata>
             {
                 // ===== 样式类属性 =====
@@ -178,6 +180,7 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
                 new PropertyMetadata { EntityType = "Wipeout", PropertyName = "Rotation", PropertyType = "double", DisplayName = "旋转角度", Category = "几何属性" },
                 new PropertyMetadata { EntityType = "Wipeout", PropertyName = "Width", PropertyType = "double", DisplayName = "宽度", Category = "几何属性" }
             };
+#pragma warning restore CS0162
         }
     }
 }

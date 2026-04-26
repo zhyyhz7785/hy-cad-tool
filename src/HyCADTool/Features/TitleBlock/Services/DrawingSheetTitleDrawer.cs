@@ -5,7 +5,7 @@ using System.Globalization;
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.ValueObjects.Drawing;
+using HyCADTool.Shared.Drawing.ValueObjects;
 
 namespace HyCADTool.Features.TitleBlock.Services
 {

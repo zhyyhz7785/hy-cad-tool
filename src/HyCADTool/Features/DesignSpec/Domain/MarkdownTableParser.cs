@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using HyCADTool.Features.Settlement;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.DesignSpec.Domain
 {
     /// <summary>
     /// 解析结果：包含土层列表和从文本中提取的元数据

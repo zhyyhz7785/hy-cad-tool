@@ -3,11 +3,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.Road;
+using HyCADTool.Features.Road.CrossSection.Commands;
+using HyCADTool.Features.Road.PlanAlignment.Commands;
+using HyCADTool.Features.Road.PlanProfile.Commands;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-namespace HyCADTool.Presentation.ViewModels
+using HyCADTool.Presentation.ViewModels;
+
+namespace HyCADTool.Features.Road.Plan.ViewModels
 {
     /// <summary>
     /// 道路设计 ViewModel（P0 占位）。

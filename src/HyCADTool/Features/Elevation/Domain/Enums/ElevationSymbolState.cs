@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Enums
+namespace HyCADTool.Features.Elevation.Domain.Enums
 {
     /// <summary>
     /// 标高符号翻转状态

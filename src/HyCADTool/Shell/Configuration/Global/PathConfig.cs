@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace HyCADTool.Domain.ValueObjects.Configuration.Global
+namespace HyCADTool.Shell.Configuration.Global
 {
     public class PathConfig
     {

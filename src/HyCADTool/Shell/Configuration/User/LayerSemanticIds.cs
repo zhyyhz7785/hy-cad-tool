@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.ValueObjects.Configuration.User
+namespace HyCADTool.Shell.Configuration.User
 {
     /// <summary>
     /// 图层语义 ID（写入层表 JSON，与 <see cref="LayerCatalogFactory"/> 第一列一致）。

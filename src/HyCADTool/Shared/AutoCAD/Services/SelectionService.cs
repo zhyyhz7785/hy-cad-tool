@@ -1,5 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Colors;
+using HyCADTool.Shared.AutoCAD.Entities;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -204,24 +206,8 @@ namespace HyCADTool.Shared.AutoCAD.Services
                 return new ObjectId[0];
 
             var doc = AcApp.DocumentManager.MdiActiveDocument;
-            var db = doc.Database;
-
-            var filtered = new List<ObjectId>();
-
-            using (var tr = db.TransactionManager.StartTransaction())
-            {
-                foreach (var id in baseIds)
-                {
-                    var entity = tr.GetObject(id, OpenMode.ForRead) as Entity;
-                    if (entity != null && entity.ColorIndex == colorIndex)
-                    {
-                        filtered.Add(id);
-                    }
-                }
-                tr.Commit();
-            }
-
-            return filtered.ToArray();
+            var color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex);
+            return EntityAppearanceResolver.FilterByColor(doc, color, baseIds);
         }
 
         /// <summary>
@@ -235,22 +221,16 @@ namespace HyCADTool.Shared.AutoCAD.Services
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
 
-            var filtered = new List<ObjectId>();
-
             using (var tr = db.TransactionManager.StartTransaction())
             {
-                foreach (var id in baseIds)
-                {
-                    var entity = tr.GetObject(id, OpenMode.ForRead) as Entity;
-                    if (entity != null && entity.Linetype.Equals(lineTypeName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        filtered.Add(id);
-                    }
-                }
-                tr.Commit();
-            }
+                var linetypeTable = (LinetypeTable)tr.GetObject(db.LinetypeTableId, OpenMode.ForRead);
+                if (!linetypeTable.Has(lineTypeName))
+                    return new ObjectId[0];
 
-            return filtered.ToArray();
+                var linetypeId = linetypeTable[lineTypeName];
+                tr.Commit();
+                return EntityAppearanceResolver.FilterByLinetype(doc, linetypeId, baseIds);
+            }
         }
 
         /// <summary>
@@ -262,24 +242,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
                 return new ObjectId[0];
 
             var doc = AcApp.DocumentManager.MdiActiveDocument;
-            var db = doc.Database;
-
-            var filtered = new List<ObjectId>();
-
-            using (var tr = db.TransactionManager.StartTransaction())
-            {
-                foreach (var id in baseIds)
-                {
-                    var entity = tr.GetObject(id, OpenMode.ForRead) as Entity;
-                    if (entity != null && entity.LineWeight == lineWeight)
-                    {
-                        filtered.Add(id);
-                    }
-                }
-                tr.Commit();
-            }
-
-            return filtered.ToArray();
+            return EntityAppearanceResolver.FilterByLineWeight(doc, (int)lineWeight, baseIds);
         }
 
         /// <summary>

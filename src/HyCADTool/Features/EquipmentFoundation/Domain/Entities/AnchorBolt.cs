@@ -1,6 +1,6 @@
 using System;
 
-namespace HyCADTool.Domain.Entities
+namespace HyCADTool.Features.EquipmentFoundation.Domain.Entities
 {
     /// <summary>
     /// 地脚螺栓实体

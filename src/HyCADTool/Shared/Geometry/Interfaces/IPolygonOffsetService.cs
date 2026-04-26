@@ -1,6 +1,6 @@
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Shared.Geometry.Interfaces
 {
     /// <summary>
     /// 多边形/多段线偏移服务接口（平台无关）

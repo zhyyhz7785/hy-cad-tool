@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
+using HyCADTool.Features.BaseRein.Domain.Services;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 墙体连接处理服务

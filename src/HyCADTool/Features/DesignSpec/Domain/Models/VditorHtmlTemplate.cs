@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Models.Text
+namespace HyCADTool.Features.DesignSpec.Domain.Models
 {
     /// <summary>
     /// 生成嵌入 Vditor 编辑器的 HTML 页面（IR 即时渲染模式 / 暗色主题）

@@ -72,7 +72,7 @@ namespace HyCADTool.Shared.Geometry
         /// <summary>
         /// 是否为完整椭圆
         /// </summary>
-        public bool IsFullEllipse => Math.Abs(EndParam - StartParam - 2 * Math.PI) < 1e-10;
+        public bool IsFullEllipse => System.Math.Abs(EndParam - StartParam - 2 * System.Math.PI) < 1e-10;
 
         /// <summary>
         /// 根据参数获取椭圆上的点
@@ -80,12 +80,12 @@ namespace HyCADTool.Shared.Geometry
         private Point2D GetPointAtParameter(double param)
         {
             // 椭圆参数方程
-            double x = MajorRadius * Math.Cos(param);
-            double y = MinorRadius * Math.Sin(param);
+            double x = MajorRadius * System.Math.Cos(param);
+            double y = MinorRadius * System.Math.Sin(param);
 
             // 旋转变换
-            double cosR = Math.Cos(Rotation);
-            double sinR = Math.Sin(Rotation);
+            double cosR = System.Math.Cos(Rotation);
+            double sinR = System.Math.Sin(Rotation);
 
             double rotatedX = x * cosR - y * sinR;
             double rotatedY = x * sinR + y * cosR;
@@ -100,11 +100,11 @@ namespace HyCADTool.Shared.Geometry
         public bool Equals(Ellipse2D other)
         {
             return Center.Equals(other.Center) &&
-                   Math.Abs(MajorRadius - other.MajorRadius) < 1e-10 &&
-                   Math.Abs(MinorRadius - other.MinorRadius) < 1e-10 &&
-                   Math.Abs(Rotation - other.Rotation) < 1e-10 &&
-                   Math.Abs(StartParam - other.StartParam) < 1e-10 &&
-                   Math.Abs(EndParam - other.EndParam) < 1e-10;
+                   System.Math.Abs(MajorRadius - other.MajorRadius) < 1e-10 &&
+                   System.Math.Abs(MinorRadius - other.MinorRadius) < 1e-10 &&
+                   System.Math.Abs(Rotation - other.Rotation) < 1e-10 &&
+                   System.Math.Abs(StartParam - other.StartParam) < 1e-10 &&
+                   System.Math.Abs(EndParam - other.EndParam) < 1e-10;
         }
 
         public override bool Equals(object obj)

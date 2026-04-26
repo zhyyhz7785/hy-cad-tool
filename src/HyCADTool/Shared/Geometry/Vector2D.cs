@@ -19,7 +19,7 @@ namespace HyCADTool.Shared.Geometry
         /// <summary>
         /// 向量长度（模）
         /// </summary>
-        public double Length => Math.Sqrt(X * X + Y * Y);
+        public double Length => System.Math.Sqrt(X * X + Y * Y);
 
         /// <summary>
         /// 向量长度的平方（避免开方运算）
@@ -88,7 +88,7 @@ namespace HyCADTool.Shared.Geometry
         {
             double dot = Dot(other);
             double cross = Cross(other);
-            return Math.Atan2(cross, dot);
+            return System.Math.Atan2(cross, dot);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public static Vector2D operator /(Vector2D v, double scalar)
         {
-            if (Math.Abs(scalar) < 1e-10)
+            if (System.Math.Abs(scalar) < 1e-10)
                 throw new DivideByZeroException("Cannot divide vector by zero");
             return new Vector2D(v.X / scalar, v.Y / scalar);
         }
@@ -145,7 +145,7 @@ namespace HyCADTool.Shared.Geometry
 
         public bool Equals(Vector2D other)
         {
-            return Math.Abs(X - other.X) < 1e-9 && Math.Abs(Y - other.Y) < 1e-9;
+            return System.Math.Abs(X - other.X) < 1e-9 && System.Math.Abs(Y - other.Y) < 1e-9;
         }
 
         public override bool Equals(object obj)
@@ -198,8 +198,8 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public Vector2D Rotate(double angle)
         {
-            double cos = Math.Cos(angle);
-            double sin = Math.Sin(angle);
+            double cos = System.Math.Cos(angle);
+            double sin = System.Math.Sin(angle);
             return new Vector2D(X * cos - Y * sin, X * sin + Y * cos);
         }
 

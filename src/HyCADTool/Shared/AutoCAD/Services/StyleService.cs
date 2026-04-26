@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.GraphicsInterface;
-using HyCADTool.Domain.Interfaces;
+using HyCADTool.Shell.Contracts;
 using HyCADTool.Features.Export.Services;
 using System;
 using System.IO;

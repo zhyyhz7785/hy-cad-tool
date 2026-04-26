@@ -1,5 +1,5 @@
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Domain.Entities;
+using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

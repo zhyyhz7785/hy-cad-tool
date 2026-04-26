@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 几何转换服务实现（平台无关）
@@ -147,7 +147,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             var start = line.StartPoint;
             var end = line.EndPoint;
 
-            if (start.X > end.X || (Math.Abs(start.X - end.X) < 1e-10 && start.Y > end.Y))
+            if (start.X > end.X || (System.Math.Abs(start.X - end.X) < 1e-10 && start.Y > end.Y))
             {
                 return new Line2D(end, start);
             }
@@ -160,9 +160,9 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (point == default)
                 return default;
 
-            double factor = Math.Pow(10, precision);
-            double x = Math.Round(point.X * factor) / factor;
-            double y = Math.Round(point.Y * factor) / factor;
+            double factor = System.Math.Pow(10, precision);
+            double x = System.Math.Round(point.X * factor) / factor;
+            double y = System.Math.Round(point.Y * factor) / factor;
 
             return new Point2D(x, y);
         }
@@ -197,7 +197,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 return points;
 
             double length = _lineAlgorithms.CalculateLength(line);
-            int segments = (int)Math.Ceiling(length / interval);
+            int segments = (int)System.Math.Ceiling(length / interval);
 
             return DivideLineBySegments(line, segments);
         }
@@ -268,10 +268,10 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                         var bbox1 = _polygonAlgorithms.CalculateBoundingBox(current);
                         var bbox2 = _polygonAlgorithms.CalculateBoundingBox(polygons[j]);
 
-                        var minX = Math.Min(bbox1.MinPoint.X, bbox2.MinPoint.X);
-                        var minY = Math.Min(bbox1.MinPoint.Y, bbox2.MinPoint.Y);
-                        var maxX = Math.Max(bbox1.MaxPoint.X, bbox2.MaxPoint.X);
-                        var maxY = Math.Max(bbox1.MaxPoint.Y, bbox2.MaxPoint.Y);
+                        var minX = System.Math.Min(bbox1.MinPoint.X, bbox2.MinPoint.X);
+                        var minY = System.Math.Min(bbox1.MinPoint.Y, bbox2.MinPoint.Y);
+                        var maxX = System.Math.Max(bbox1.MaxPoint.X, bbox2.MaxPoint.X);
+                        var maxY = System.Math.Max(bbox1.MaxPoint.Y, bbox2.MaxPoint.Y);
 
                         current = _polygonAlgorithms.CreateRectangle(
                             new Point2D(minX, minY), 
@@ -446,7 +446,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 double angle = _pointAlgorithms.CalculateAngleAt(points[prev], points[i], points[next]);
                 
                 // 如果转角显著（非直线），则为特征点
-                if (Math.Abs(angle - Math.PI) > tolerance.Value)
+                if (System.Math.Abs(angle - System.Math.PI) > tolerance.Value)
                 {
                     featurePoints.Add(points[i]);
                 }

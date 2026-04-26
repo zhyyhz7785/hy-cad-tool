@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Domain.Services.Road;
 using HyCADTool.Shared.Geometry;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.PlanAlignment.Domain;
+using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.ViewModels.Road

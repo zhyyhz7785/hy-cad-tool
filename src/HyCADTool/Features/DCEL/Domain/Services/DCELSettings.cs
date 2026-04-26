@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.DCEL.Domain.Services
 {
     /// <summary>
     /// DCEL处理配置

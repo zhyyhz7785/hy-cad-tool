@@ -1,6 +1,6 @@
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Shell.Configuration.Global;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Shell.Contracts
 {
     /// <summary>
     /// 配置服务总接口

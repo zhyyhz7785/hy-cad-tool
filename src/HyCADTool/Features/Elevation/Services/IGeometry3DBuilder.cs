@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Entities;
+using HyCADTool.Features.Elevation.Domain.Entities;
 using HyCADTool.Shared.Geometry;
 
 namespace HyCADTool.Features.Elevation.Services

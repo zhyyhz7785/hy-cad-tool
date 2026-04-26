@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 曲线简化服务 - 将复杂曲线简化为连续线段
     /// </summary>
     public class CurveSimplificationService
     {
-        private const double FifteenDegreesInRadians = Math.PI / 12.0;
+        private const double FifteenDegreesInRadians = System.Math.PI / 12.0;
 
         /// <summary>
         /// 简化Arc为连续线段
@@ -22,7 +22,7 @@ namespace HyCADTool.Domain.Services
             var segments = new List<Line2D>();
             
             // Arc2D 使用弧度制，这里统一按 15° 对应的弧度计算。
-            int count = segmentCount ?? Math.Max(4, (int)Math.Ceiling(Math.Abs(arc.SweepAngle) / FifteenDegreesInRadians));
+            int count = segmentCount ?? System.Math.Max(4, (int)System.Math.Ceiling(System.Math.Abs(arc.SweepAngle) / FifteenDegreesInRadians));
             
             var startAngle = arc.StartAngle;
             var endAngle = arc.EndAngle;
@@ -41,8 +41,8 @@ namespace HyCADTool.Domain.Services
                 {
                     var angle1 = startAngle + angleStep * i;
                     p1 = new Point2D(
-                        arc.Center.X + arc.Radius * Math.Cos(angle1),
-                        arc.Center.Y + arc.Radius * Math.Sin(angle1));
+                        arc.Center.X + arc.Radius * System.Math.Cos(angle1),
+                        arc.Center.Y + arc.Radius * System.Math.Sin(angle1));
                 }
                 
                 if (i == count - 1)
@@ -53,8 +53,8 @@ namespace HyCADTool.Domain.Services
                 {
                     var angle2 = startAngle + angleStep * (i + 1);
                     p2 = new Point2D(
-                        arc.Center.X + arc.Radius * Math.Cos(angle2),
-                        arc.Center.Y + arc.Radius * Math.Sin(angle2));
+                        arc.Center.X + arc.Radius * System.Math.Cos(angle2),
+                        arc.Center.Y + arc.Radius * System.Math.Sin(angle2));
                 }
                 
                 segments.Add(new Line2D(p1, p2));
@@ -74,8 +74,8 @@ namespace HyCADTool.Domain.Services
             var segments = new List<Line2D>();
             
             // 自动计算分段数：根据椭圆周长，最少16段
-            int count = segmentCount ?? Math.Max(16, (int)Math.Ceiling(
-                Math.PI * (ellipse.MajorRadius + ellipse.MinorRadius) / 50.0));
+            int count = segmentCount ?? System.Math.Max(16, (int)System.Math.Ceiling(
+                System.Math.PI * (ellipse.MajorRadius + ellipse.MinorRadius) / 50.0));
             
             var startParam = ellipse.StartParam;
             var endParam = ellipse.EndParam;
@@ -106,7 +106,7 @@ namespace HyCADTool.Domain.Services
             var segments = new List<Line2D>();
             
             // 自动计算分段数：每个控制点区间8段，最少16段
-            int count = segmentCount ?? Math.Max(16, (spline.ControlPoints?.Length ?? 2) * 8);
+            int count = segmentCount ?? System.Math.Max(16, (spline.ControlPoints?.Length ?? 2) * 8);
             
             var points = SampleSpline(spline, count);
             
@@ -124,12 +124,12 @@ namespace HyCADTool.Domain.Services
         private Point2D GetEllipsePoint(Ellipse2D ellipse, double parameter)
         {
             // 椭圆参数方程
-            double x = ellipse.MajorRadius * Math.Cos(parameter);
-            double y = ellipse.MinorRadius * Math.Sin(parameter);
+            double x = ellipse.MajorRadius * System.Math.Cos(parameter);
+            double y = ellipse.MinorRadius * System.Math.Sin(parameter);
             
             // 旋转变换
-            double cosR = Math.Cos(ellipse.Rotation);
-            double sinR = Math.Sin(ellipse.Rotation);
+            double cosR = System.Math.Cos(ellipse.Rotation);
+            double sinR = System.Math.Sin(ellipse.Rotation);
             
             double rotatedX = x * cosR - y * sinR;
             double rotatedY = x * sinR + y * cosR;
@@ -163,7 +163,7 @@ namespace HyCADTool.Domain.Services
             for (int i = 0; i < sampleCount; i++)
             {
                 var t = i * step;
-                var index = (int)Math.Floor(t);
+                var index = (int)System.Math.Floor(t);
                 var fraction = t - index;
                 
                 if (index >= spline.ControlPoints.Length - 1)

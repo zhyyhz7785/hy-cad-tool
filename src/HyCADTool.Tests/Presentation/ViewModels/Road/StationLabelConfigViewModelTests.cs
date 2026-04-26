@@ -1,6 +1,7 @@
 using FluentAssertions;
 using HyCADTool.Shared.AutoCAD.Services.Road;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.ViewModels.Road

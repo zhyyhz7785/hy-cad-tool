@@ -1,8 +1,7 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
-using HyCADTool.Domain.Services;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 墙体几何计算服务（Domain 层 - 平台无关）
@@ -25,8 +24,8 @@ namespace HyCADTool.Domain.Services
         /// <param name="adjacentElevation">相邻多边形标高</param>
         /// <returns>(底标高, 顶标高, 偏移方向)</returns>
         public (double bottom, double top, int offsetDirection) CalculateConnectingWall(
-            Elevation currentElevation,
-            Elevation adjacentElevation)
+            ElevationValue currentElevation,
+            ElevationValue adjacentElevation)
         {
             double currentValue = currentElevation.Value;
             double adjacentValue = adjacentElevation.Value;
@@ -53,7 +52,7 @@ namespace HyCADTool.Domain.Services
         /// <param name="bottomElevation">基础底标高</param>
         /// <returns>(底标高, 顶标高, 偏移方向)</returns>
         public (double bottom, double top, int offsetDirection) CalculateRetainingWall(
-            Elevation baseElevation,
+            ElevationValue baseElevation,
             double bottomElevation)
         {
             // 底标高：基础底面
@@ -80,9 +79,9 @@ namespace HyCADTool.Domain.Services
         /// 判断是否需要生成挡土墙
         /// 只有标高低于0的基础才需要挡土墙
         /// </summary>
-        public bool NeedsRetainingWall(Elevation elevation)
+        public bool NeedsRetainingWall(ElevationValue value)
         {
-            return elevation.Value < 0;
+            return value.Value < 0;
         }
     }
 }

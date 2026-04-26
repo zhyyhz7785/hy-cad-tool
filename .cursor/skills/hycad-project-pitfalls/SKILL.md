@@ -1050,6 +1050,45 @@ VS 设计器宿主进程在 File→Exit 后会以 ServiceHub 的形式继续在�
 
 ---
 
+### C3【新 2026-04-26】功能目录名变 namespace 后遮蔽领域类型 → `CS0118: "X" 是命名空间，但此处被当做类型来使用`
+
+**触发**
+
+整理 `Features/Road/Intersection` 时，把 UI 文件 namespace 改成：
+
+```csharp
+namespace HyCADTool.Features.Road.Intersection.Views
+namespace HyCADTool.Features.Road.Intersection.ViewModels
+```
+
+随后构建报：
+
+```text
+CS0118: "Intersection" 是 命名空间，但此处被当做 类型 来使用
+```
+
+错误点在道路命令里原本合法的领域模型类型 `Intersection`（例如 `RoadCurbRampCommand` / `RoadIntersectionEditCommand`）。
+
+**根因**
+
+C# 在 `HyCADTool.Features.Road` 作用域下解析未限定标识符 `Intersection` 时，会优先看到同一父 namespace 下新增的子命名空间 `HyCADTool.Features.Road.Intersection`，于是把领域模型类型 `HyCADTool.Domain.Models.Road.Intersection` 遮蔽掉。
+
+**修复**
+
+- 不要把会与领域模型类型同名的目录名直接升成 namespace 段。
+- 本次落地：物理目录仍是 `Features/Road/Intersection/...`，但 UI namespace 改为复数：
+
+```csharp
+namespace HyCADTool.Features.Road.Intersections.Views
+namespace HyCADTool.Features.Road.Intersections.ViewModels
+```
+
+**迁移检查**
+
+迁移 feature 子目录时，若目录名是领域模型名（如 `Intersection` / `Dimension` / `Alignment` / `Profile`），先搜索是否存在同名类型；若存在，优先使用不会遮蔽类型的 namespace（如复数或更具体后缀），不要等构建时再批量修。
+
+---
+
 ## D 域：Debug 与诊断方法论
 
 > 本域记录 Cursor Debug 模式 / 临时埋点 / WPF 异常兜底 三类常踩坑。

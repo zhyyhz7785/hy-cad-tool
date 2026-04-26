@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 曲线交点计算服务 - Domain 层（平台无关）

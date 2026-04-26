@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.DataStructures.DCEL
+namespace HyCADTool.Features.DCEL.Domain.DataStructures
 {
     /// <summary>
     /// DCEL 顶点（Doubly Connected Edge List - Vertex）

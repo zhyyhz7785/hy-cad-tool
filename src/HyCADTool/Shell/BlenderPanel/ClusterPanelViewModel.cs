@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Domain.Models.Configuration;
+using HyCADTool.Features.Cluster.Domain.Models;
 using HyCADTool.Features.Cluster.Services;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

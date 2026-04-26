@@ -42,15 +42,15 @@ namespace HyCADTool.Shared.Geometry
         /// 圆弧起点
         /// </summary>
         public Point2D StartPoint => new Point2D(
-            Center.X + Radius * Math.Cos(StartAngle),
-            Center.Y + Radius * Math.Sin(StartAngle));
+            Center.X + Radius * System.Math.Cos(StartAngle),
+            Center.Y + Radius * System.Math.Sin(StartAngle));
 
         /// <summary>
         /// 圆弧终点
         /// </summary>
         public Point2D EndPoint => new Point2D(
-            Center.X + Radius * Math.Cos(EndAngle),
-            Center.Y + Radius * Math.Sin(EndAngle));
+            Center.X + Radius * System.Math.Cos(EndAngle),
+            Center.Y + Radius * System.Math.Sin(EndAngle));
 
         /// <summary>
         /// 圆弧长度
@@ -61,7 +61,7 @@ namespace HyCADTool.Shared.Geometry
             {
                 double sweepAngle = EndAngle - StartAngle;
                 if (sweepAngle < 0)
-                    sweepAngle += 2 * Math.PI;
+                    sweepAngle += 2 * System.Math.PI;
                 return Radius * sweepAngle;
             }
         }
@@ -75,7 +75,7 @@ namespace HyCADTool.Shared.Geometry
             {
                 double sweep = EndAngle - StartAngle;
                 if (sweep < 0)
-                    sweep += 2 * Math.PI;
+                    sweep += 2 * System.Math.PI;
                 return sweep;
             }
         }
@@ -89,8 +89,8 @@ namespace HyCADTool.Shared.Geometry
             {
                 double midAngle = StartAngle + SweepAngle / 2.0;
                 return new Point2D(
-                    Center.X + Radius * Math.Cos(midAngle),
-                    Center.Y + Radius * Math.Sin(midAngle));
+                    Center.X + Radius * System.Math.Cos(midAngle),
+                    Center.Y + Radius * System.Math.Sin(midAngle));
             }
         }
 
@@ -99,9 +99,9 @@ namespace HyCADTool.Shared.Geometry
         public bool Equals(Arc2D other)
         {
             return Center.Equals(other.Center) &&
-                   Math.Abs(Radius - other.Radius) < 1e-10 &&
-                   Math.Abs(StartAngle - other.StartAngle) < 1e-10 &&
-                   Math.Abs(EndAngle - other.EndAngle) < 1e-10;
+                   System.Math.Abs(Radius - other.Radius) < 1e-10 &&
+                   System.Math.Abs(StartAngle - other.StartAngle) < 1e-10 &&
+                   System.Math.Abs(EndAngle - other.EndAngle) < 1e-10;
         }
 
         public override bool Equals(object obj)

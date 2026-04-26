@@ -7,7 +7,7 @@
 
       引用方：
         在窗口 Window.Resources 中 Merge：
-          <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
+          <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/RoadDesignerStyles.xaml"/>
 
       原则：
         - 仅命名样式（x:Key），不放隐式 Style，避免污染 BlenderUI 主题（pitfall B1 / B2）；

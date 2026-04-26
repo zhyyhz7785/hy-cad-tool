@@ -1,16 +1,14 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.Utilities;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Shared.AutoCAD.Converters;
-using HyCADTool.Domain.ValueObjects.Reinforcement;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;
 using System.Collections.Generic;
-using HyCADTool.Domain.Services;
+using HyCADTool.Shared.Geometry.Interfaces;
 
 namespace HyCADTool.Features.Reinforcement
 {

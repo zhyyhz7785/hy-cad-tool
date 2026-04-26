@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 曲线打断服务 - 处理各种曲线类型的交点打断
@@ -89,7 +89,7 @@ namespace HyCADTool.Domain.Services
                         double param1 = sortedParams[j];
                         double param2 = sortedParams[j + 1];
 
-                        if (Math.Abs(param2 - param1) > TOLERANCE)
+                        if (System.Math.Abs(param2 - param1) > TOLERANCE)
                         {
                             var segment = CreateSegment(line, param1, param2);
                             if (segment != null && segment.Length >= minLength)

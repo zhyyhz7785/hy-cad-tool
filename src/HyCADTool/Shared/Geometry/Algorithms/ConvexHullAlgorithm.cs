@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 凸包算法服务（平台无关）
@@ -80,7 +80,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
                 double cross = CrossProduct(p1, p2, p3);
 
-                if (Math.Abs(cross) < tolerance)
+                if (System.Math.Abs(cross) < tolerance)
                     continue; // 共线点，跳过
 
                 if (isPositive == null)
@@ -134,7 +134,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         {
             double dx = point.X - pivot.X;
             double dy = point.Y - pivot.Y;
-            return Math.Atan2(dy, dx);
+            return System.Math.Atan2(dy, dx);
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         /// </summary>
         private static double DistanceToLine(Point2D point, Point2D lineStart, Point2D lineEnd)
         {
-            double area = Math.Abs(CrossProduct(lineStart, lineEnd, point));
+            double area = System.Math.Abs(CrossProduct(lineStart, lineEnd, point));
             double baseLength = lineStart.DistanceTo(lineEnd);
             return baseLength > 1e-10 ? area / baseLength : 0;
         }

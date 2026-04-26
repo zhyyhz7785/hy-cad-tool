@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Interfaces;
+using HyCADTool.Shared.Geometry.Interfaces;
 using HyCADTool.Shared.Geometry;
 using System;
 using System.Collections.Generic;

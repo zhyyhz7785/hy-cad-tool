@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.ValueObjects.Reinforcement
+namespace HyCADTool.Features.Reinforcement.Domain
 {
     /// <summary>
     /// 配筋生成的完整结果（平台无关）

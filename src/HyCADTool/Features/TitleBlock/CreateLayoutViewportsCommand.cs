@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;

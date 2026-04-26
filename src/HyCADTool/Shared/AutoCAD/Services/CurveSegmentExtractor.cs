@@ -438,7 +438,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
         /// <returns>简化后的线段列表 + 映射字典</returns>
         public (List<Line2D> segments, List<SimplifiedCurveMapping> mappings) ExtractAndSimplify(
             IEnumerable<ObjectId> curveIds,
-            Domain.Services.CurveSimplificationService simplificationService,
+            HyCADTool.Shared.Geometry.Algorithms.CurveSimplificationService simplificationService,
             double tolerance,
             int? arcSegmentCount = null,
             int? ellipseSegmentCount = null,
@@ -554,7 +554,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
         /// </summary>
         private void ProcessPolylineWithSimplification(
             Polyline polyline,
-            Domain.Services.CurveSimplificationService simplificationService,
+            HyCADTool.Shared.Geometry.Algorithms.CurveSimplificationService simplificationService,
             int? arcSegmentCount,
             List<Line2D> allSegments,
             List<SimplifiedCurveMapping> mappings)

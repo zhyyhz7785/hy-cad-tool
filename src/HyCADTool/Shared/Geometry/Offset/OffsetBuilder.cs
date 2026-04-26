@@ -2,7 +2,7 @@ using HyCADTool.Shared.Geometry;
 using System;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services.OffsetAlgorithms
+namespace HyCADTool.Shared.Geometry.Offset
 {
     /// <summary>
     /// 多边形偏移核心构建器

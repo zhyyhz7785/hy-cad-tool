@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services.Geometry
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 空间索引服务 - 提供高效的空间查询功能
@@ -30,10 +30,10 @@ namespace HyCADTool.Domain.Services.Geometry
                 var bounds = getBounds(items[i]);
 
                 // 计算对象占据的网格范围
-                long gridMinX = (long)Math.Floor(bounds.minX / gridSize);
-                long gridMinY = (long)Math.Floor(bounds.minY / gridSize);
-                long gridMaxX = (long)Math.Floor(bounds.maxX / gridSize);
-                long gridMaxY = (long)Math.Floor(bounds.maxY / gridSize);
+                long gridMinX = (long)System.Math.Floor(bounds.minX / gridSize);
+                long gridMinY = (long)System.Math.Floor(bounds.minY / gridSize);
+                long gridMaxX = (long)System.Math.Floor(bounds.maxX / gridSize);
+                long gridMaxY = (long)System.Math.Floor(bounds.maxY / gridSize);
 
                 // 将对象添加到所有相关网格
                 for (long gx = gridMinX; gx <= gridMaxX; gx++)
@@ -76,10 +76,10 @@ namespace HyCADTool.Domain.Services.Geometry
             double maxY = bounds.maxY + searchRadius;
 
             // 计算搜索范围的网格坐标
-            long gridMinX = (long)Math.Floor(minX / gridSize);
-            long gridMaxX = (long)Math.Floor(maxX / gridSize);
-            long gridMinY = (long)Math.Floor(minY / gridSize);
-            long gridMaxY = (long)Math.Floor(maxY / gridSize);
+            long gridMinX = (long)System.Math.Floor(minX / gridSize);
+            long gridMaxX = (long)System.Math.Floor(maxX / gridSize);
+            long gridMinY = (long)System.Math.Floor(minY / gridSize);
+            long gridMaxY = (long)System.Math.Floor(maxY / gridSize);
 
             // 收集所有相关网格中的对象
             for (long gx = gridMinX; gx <= gridMaxX; gx++)

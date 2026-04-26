@@ -1,8 +1,9 @@
-using HyCADTool.Domain.Enums;
-using HyCADTool.Domain.Models.Configuration;
+using HyCADTool.Features.Reinforcement.Domain.Enums;
+using HyCADTool.Features.DCEL.Domain.Enums;
+using HyCADTool.Features.BaseRein.Domain;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Features.BaseRein.Domain
 {
     /// <summary>
     /// 基础钢筋配置服务接口

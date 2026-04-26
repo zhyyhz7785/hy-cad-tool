@@ -7,14 +7,15 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Colors;
-using HyCADTool.Domain.Services;
-using HyCADTool.Domain.ValueObjects;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
-using ElevationValue = HyCADTool.Domain.ValueObjects.Elevation;
+using HyCADTool.Features.Elevation.Domain.Services;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
+using HyCADTool.Shell.Configuration.User;
+using ElevationValue = HyCADTool.Features.Elevation.Domain.ValueObjects.ElevationValue;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Elevation.Services;
+using HyCADTool.Features.BaseRein.Domain.Services;
 
 namespace HyCADTool.Features.Elevation
 {
@@ -205,7 +206,7 @@ namespace HyCADTool.Features.Elevation
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 // 提取所有文本的标高值
-                var elevationTexts = new List<(DBText text, ElevationValue elevation)>();
+                var elevationTexts = new List<(DBText text, ElevationValue el)>();
                 
                 foreach (SelectedObject selectedObj in textSelection.Value)
                 {
@@ -214,9 +215,9 @@ namespace HyCADTool.Features.Elevation
                         var text = tr.GetObject(selectedObj.ObjectId, OpenMode.ForRead) as DBText;
                         if (text != null)
                         {
-                            if (ElevationValue.TryParse(text.TextString, out var elevation))
+                            if (ElevationValue.TryParse(text.TextString, out var el))
                             {
-                                elevationTexts.Add((text, elevation));
+                                elevationTexts.Add((text, el));
                             }
                         }
                     }
@@ -237,7 +238,7 @@ namespace HyCADTool.Features.Elevation
                     
                     if (nearestText != default)
                     {
-                        elevationDict[polyline] = nearestText.elevation;
+                        elevationDict[polyline] = nearestText.el;
                     }
                 }
                 

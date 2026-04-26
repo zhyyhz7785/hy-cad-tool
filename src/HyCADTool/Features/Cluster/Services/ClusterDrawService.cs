@@ -1,8 +1,8 @@
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Models.Cluster;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Features.Cluster.Domain.Models;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;

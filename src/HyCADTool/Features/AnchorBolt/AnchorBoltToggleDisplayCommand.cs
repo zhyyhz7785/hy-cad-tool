@@ -1,8 +1,8 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using AnchorBoltEntity = HyCADTool.Domain.Entities.AnchorBolt;
+using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Domain.Entities;
+using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Xdata;
 

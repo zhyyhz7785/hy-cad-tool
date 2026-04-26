@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Services.OffsetAlgorithms
+namespace HyCADTool.Shared.Geometry.Offset
 {
     /// <summary>
     /// 多边形偏移时的转角连接类型

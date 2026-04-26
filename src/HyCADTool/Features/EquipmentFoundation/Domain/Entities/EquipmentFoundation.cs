@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace HyCADTool.Domain.Entities
+namespace HyCADTool.Features.EquipmentFoundation.Domain.Entities
 {
     /// <summary>
     /// 设备基础底座数据

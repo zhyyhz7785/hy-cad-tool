@@ -1,7 +1,7 @@
 using System;
 using HyCADTool.Features.Settlement;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Settlement.Domain.Services
 {
     /// <summary>
     /// 桩身结构验算计算引擎（纯数学，平台无关）

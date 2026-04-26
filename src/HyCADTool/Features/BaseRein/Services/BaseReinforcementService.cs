@@ -2,9 +2,10 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Enums;
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.Models.Configuration;
+using HyCADTool.Features.Reinforcement.Domain.Enums;
+using HyCADTool.Features.DCEL.Domain.Enums;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Features.BaseRein.Domain;
 using HyCADTool.Shared.AutoCAD.Extensions;
 
 using System;

@@ -39,15 +39,26 @@ namespace HyCADTool.Shared.AutoCAD.Selection
             }
             if (byColor)
             {
-                builder.ByColorIndex((short)prototype.ColorIndex);
+                // SelectionFilter compares stored DXF color only. ByLayer/ByBlock visible color
+                // must be handled by EntityAppearanceResolver and an entity iteration filter.
+                if (!prototype.Color.IsByLayer && !prototype.Color.IsByBlock)
+                    builder.ByColorIndex((short)prototype.ColorIndex);
             }
             if (byLinetype)
             {
-                if (!string.IsNullOrEmpty(prototype.Linetype)) builder.ByLinetype(prototype.Linetype);
+                if (!string.IsNullOrEmpty(prototype.Linetype)
+                    && !prototype.Linetype.Equals("ByLayer", System.StringComparison.OrdinalIgnoreCase)
+                    && !prototype.Linetype.Equals("ByBlock", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    builder.ByLinetype(prototype.Linetype);
+                }
             }
             if (byLineWeight)
             {
-                builder.ByLineWeight(prototype.LineWeight);
+                // ByLayer/ByBlock lineweight is stored as a sentinel and cannot be matched by
+                // DxfCode.LineWeight. Use EntityAppearanceResolver for effective lineweight.
+                if (prototype.LineWeight != LineWeight.ByLayer && prototype.LineWeight != LineWeight.ByBlock)
+                    builder.ByLineWeight(prototype.LineWeight);
             }
 
             return builder.BuildFilter();

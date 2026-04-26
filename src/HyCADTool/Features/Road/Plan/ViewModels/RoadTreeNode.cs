@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace HyCADTool.Presentation.ViewModels.Road
+namespace HyCADTool.Features.Road.Plan.ViewModels
 {
     /// <summary>
     /// 项目树节点种类（045 / M3）。

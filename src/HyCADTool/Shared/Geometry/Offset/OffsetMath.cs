@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System;
 
-namespace HyCADTool.Domain.Services.OffsetAlgorithms
+namespace HyCADTool.Shared.Geometry.Offset
 {
     /// <summary>
     /// 偏移算法数学工具类
@@ -31,7 +31,7 @@ namespace HyCADTool.Domain.Services.OffsetAlgorithms
         /// </summary>
         public static Point2D Normalize(Point2D vector)
         {
-            double length = Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
+            double length = System.Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
             if (length < 1e-10)
                 return new Point2D(0, 0);
             return new Point2D(vector.X / length, vector.Y / length);

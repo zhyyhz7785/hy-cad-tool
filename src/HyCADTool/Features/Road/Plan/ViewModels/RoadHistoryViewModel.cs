@@ -7,8 +7,9 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
+using HyCADTool.Presentation.ViewModels;
 
-namespace HyCADTool.Presentation.ViewModels.Road
+namespace HyCADTool.Features.Road.Plan.ViewModels
 {
     /// <summary>
     /// 历史还原窗口（hyRoadHistory）的 ViewModel（M6.3）。

@@ -1,9 +1,9 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Domain.Entities;
+using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using Newtonsoft.Json;
-using AnchorBoltEntity = HyCADTool.Domain.Entities.AnchorBolt;
+using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
 
 namespace HyCADTool.Features.AnchorBolt
 {

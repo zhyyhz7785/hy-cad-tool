@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Utilities
+namespace HyCADTool.Features.DCEL.Domain.Utilities
 {
     /// <summary>
     /// 实体类型映射（Entity Type Mapping）

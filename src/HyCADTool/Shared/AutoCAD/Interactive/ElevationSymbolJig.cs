@@ -1,8 +1,8 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Enums;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Features.Elevation.Domain.Enums;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Services;

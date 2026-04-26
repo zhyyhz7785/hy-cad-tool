@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Features.Elevation.Domain.Interfaces
 {
     /// <summary>
     /// 地理空间服务接口

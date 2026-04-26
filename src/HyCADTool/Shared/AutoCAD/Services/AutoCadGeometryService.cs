@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Domain.Interfaces;
+using HyCADTool.Shared.Geometry.Interfaces;
 using HyCADTool.Shared.Geometry;
-using HyCADTool.Domain.Services.GeometryAlgorithms;
+using HyCADTool.Shared.Geometry.Algorithms;
 using HyCADTool.Shared.AutoCAD.Converters;
 using Clipper2Lib;
 using System.Collections.Generic;

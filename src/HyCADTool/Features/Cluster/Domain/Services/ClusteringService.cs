@@ -2,7 +2,7 @@ using HyCADTool.Shared.Geometry;
 using System;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Features.Cluster.Domain.Services
 {
     /// <summary>
     /// 聚类算法服务实现（平台无关）

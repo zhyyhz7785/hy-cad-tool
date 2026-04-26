@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Models.Text
+namespace HyCADTool.Features.DesignSpec.Domain.Models
 {
     /// <summary>
     /// 按预览返回的列索引拆分 Markdown。

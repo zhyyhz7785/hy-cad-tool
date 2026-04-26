@@ -1,8 +1,8 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Entities
+namespace HyCADTool.Features.Elevation.Domain.Entities
 {
     /// <summary>
     /// 建筑元素基类
@@ -28,12 +28,12 @@ namespace HyCADTool.Domain.Entities
         /// <summary>
         /// 底部标高
         /// </summary>
-        public Elevation BottomElevation { get; protected set; }
+        public ElevationValue BottomElevation { get; protected set; }
         
         /// <summary>
         /// 顶部标高
         /// </summary>
-        public Elevation TopElevation { get; protected set; }
+        public ElevationValue TopElevation { get; protected set; }
         
         /// <summary>
         /// 元素高度（mm）
@@ -48,8 +48,8 @@ namespace HyCADTool.Domain.Entities
         protected BuildingElement(
             string name,
             string layerName,
-            Elevation bottomElevation,
-            Elevation topElevation)
+            ElevationValue bottomElevation,
+            ElevationValue topElevation)
         {
             Id = Guid.NewGuid();
             Name = name ?? throw new ArgumentNullException(nameof(name));

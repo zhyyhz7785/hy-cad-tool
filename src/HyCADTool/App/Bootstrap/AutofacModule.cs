@@ -1,8 +1,8 @@
 using Autofac;
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.Services;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Geometry.Interfaces;
 using HyCADTool.Shared.AutoCAD.Interfaces;
-using HyCADTool.Domain.Services.MathAlgorithms;
+using HyCADTool.Shared.Geometry.Math;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.BaseRein.Services;
 using HyCADTool.Features.DCEL.Services;
@@ -13,8 +13,15 @@ using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.Shared.AutoCAD.Repositories;
 using HyCADTool.Shared.AutoCAD.Selection;
 using HyCADTool.Presentation;
-using HyCADTool.Features.OverKill;
-using HyCADTool.Domain.Services.GeometryAlgorithms;
+using HyCADTool.Features.OverKill.Commands;
+using HyCADTool.Features.OverKill.Services;
+using HyCADTool.Shared.Geometry.Algorithms;
+using HyCADTool.Features.Cluster.Domain.Services;
+using HyCADTool.Features.DCEL.Domain.Services;
+using HyCADTool.Features.Elevation.Domain.Services;
+using HyCADTool.Features.Pile.Domain.Services;
+using HyCADTool.Features.Reinforcement.Domain;
+using HyCADTool.Features.BaseRein.Domain;
 using System;
 
 namespace HyCADTool.App.Bootstrap
@@ -116,7 +123,7 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<HyCADTool.Presentation.ViewModels.FilterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Features.BaseRein.BaseReinPanelViewModel>()
+            builder.RegisterType<HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Features.Pile.ViewModels.PilePanelViewModel>()
@@ -127,7 +134,7 @@ namespace HyCADTool.App.Bootstrap
                 .InstancePerDependency();
 
             // 子面板注册（独立使用或嵌入 HyBlenderPanel 的过滤 Tab 等）
-            builder.RegisterType<HyCADTool.Features.BaseRein.BaseReinPanel>()
+            builder.RegisterType<HyCADTool.Features.BaseRein.Views.BaseReinPanel>()
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Features.Pile.Views.PilePanel>()
@@ -194,9 +201,6 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<GeometryConverterService>().As<IGeometryConverterService>().SingleInstance();
             
             // === Phase 2.2: 选择服务重构 ===
-            // 注册过滤器管理服务
-            builder.RegisterType<FilterManagerService>().As<IFilterManagerService>().SingleInstance();
-            
             // 注册高级选择服务
             builder.RegisterType<AdvancedSelectionService>().As<IAdvancedSelectionService>().SingleInstance();
 
@@ -246,13 +250,13 @@ namespace HyCADTool.App.Bootstrap
                 .AsSelf()
                 .SingleInstance();
             
-            builder.RegisterGeneric(typeof(HyCADTool.Domain.Services.Geometry.SpatialIndexService<>))
+            builder.RegisterGeneric(typeof(SpatialIndexService<>))
                 .AsSelf()
                 .SingleInstance();
 
             // === 地理空间服务 ===
-            builder.RegisterType<HyCADTool.Domain.Services.GeospatialService>()
-                .As<HyCADTool.Domain.Interfaces.IGeospatialService>()
+            builder.RegisterType<GeospatialService>()
+                .As<HyCADTool.Features.Elevation.Domain.Interfaces.IGeospatialService>()
                 .SingleInstance();
 
             // === 阶段 14: 桩布置与 Voronoi 优化服务 ===
@@ -273,8 +277,8 @@ namespace HyCADTool.App.Bootstrap
             // ===== P0 道路设计（市政道路）=====
 
             // 事件总线（单例，全插件共享；对应决策 3 - 真实发布订阅）
-            builder.RegisterType<HyCADTool.Domain.Events.Road.RoadEventBus>()
-                .As<HyCADTool.Domain.Events.Road.IRoadEventBus>()
+            builder.RegisterType<HyCADTool.Features.Road.Events.RoadEventBus>()
+                .As<HyCADTool.Features.Road.Events.IRoadEventBus>()
                 .SingleInstance();
 
             // Corridor Mesh Builder（v1 占位，v2 替换）
@@ -304,11 +308,11 @@ namespace HyCADTool.App.Bootstrap
 
             // 045 / M4：项目树交互 handler（AutoCAD 实现）
             builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.AutoCadRoadTreeInteractionHandler>()
-                .As<HyCADTool.Presentation.ViewModels.Road.IRoadTreeInteractionHandler>()
+                .As<HyCADTool.Features.Road.Plan.ViewModels.IRoadTreeInteractionHandler>()
                 .SingleInstance();
 
             // 045 / M3：项目树 ViewModel（每次 Resolve 新建一个；面板单例持有一次即可）
-            builder.RegisterType<HyCADTool.Presentation.ViewModels.Road.RoadProjectTreeViewModel>()
+            builder.RegisterType<HyCADTool.Features.Road.Plan.ViewModels.RoadProjectTreeViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
 
@@ -318,7 +322,7 @@ namespace HyCADTool.App.Bootstrap
                 .SingleInstance();
 
             // M7：横断面预设服务（内置 + 用户预设，写 %AppData%/HyCAD/presets/crosssection/）。
-            builder.RegisterType<HyCADTool.Domain.Services.Road.CrossSectionPresetService>()
+            builder.RegisterType<HyCADTool.Features.Road.CrossSection.Domain.CrossSectionPresetService>()
                 .AsSelf()
                 .SingleInstance();
 
@@ -333,36 +337,36 @@ namespace HyCADTool.App.Bootstrap
                 .SingleInstance();
 
             // 道路服务骨架
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadAlignmentService>()
+            builder.RegisterType<HyCADTool.Features.Road.PlanAlignment.Services.RoadAlignmentService>()
                 .AsSelf()
                 .SingleInstance();
             // 路线工作台「拾取登记」服务（UserPicked 源）
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadAlignmentUserPickRegisterService>()
+            builder.RegisterType<HyCADTool.Features.Road.PlanAlignment.Services.RoadAlignmentUserPickRegisterService>()
                 .AsSelf()
                 .SingleInstance();
             // 路线工作台「提交为平面线位」服务（UserPicked → HY_ROAD Alignment）
             // 保留用于向后兼容老命令 hyRoadAlnCommit；工作台 UI 不再绑定，改走 RoadAlignmentApplyService。
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadAlignmentCommitService>()
+            builder.RegisterType<HyCADTool.Features.Road.PlanAlignment.Services.RoadAlignmentCommitService>()
                 .AsSelf()
                 .SingleInstance();
             // 路线工作台「一键定稿」服务（新工作流）：合并 Commit 与 RebuildCenterline 的两段流水
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadAlignmentApplyService>()
+            builder.RegisterType<HyCADTool.Features.Road.PlanAlignment.Services.RoadAlignmentApplyService>()
                 .AsSelf()
                 .SingleInstance();
             // 路线工作台「删除线位」服务：删 DWG 正式线 / 原线 / 快照并同步删 JSON 中的 Alignment
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadAlignmentDeleteService>()
+            builder.RegisterType<HyCADTool.Features.Road.PlanAlignment.Services.RoadAlignmentDeleteService>()
                 .AsSelf()
                 .SingleInstance();
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadProfileService>()
+            builder.RegisterType<HyCADTool.Features.Road.PlanProfile.Services.RoadProfileService>()
                 .AsSelf()
                 .SingleInstance();
             builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadTemplateService>()
                 .AsSelf()
                 .SingleInstance();
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadStandardSectionDrawService>()
+            builder.RegisterType<HyCADTool.Features.Road.CrossSection.Services.RoadStandardSectionDrawService>()
                 .AsSelf()
                 .SingleInstance();
-            builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.CrossSectionCommitDrawService>()
+            builder.RegisterType<HyCADTool.Features.Road.CrossSection.Services.CrossSectionCommitDrawService>()
                 .AsSelf()
                 .SingleInstance();
             builder.RegisterType<HyCADTool.Shared.AutoCAD.Services.Road.RoadCorridorService>()
@@ -397,7 +401,7 @@ namespace HyCADTool.App.Bootstrap
                 .SingleInstance();
 
             // 道路设计 ViewModel（P0 占位，P1 起接入 HyBlenderPanel 的道路 Tab）
-            builder.RegisterType<HyCADTool.Presentation.ViewModels.RoadDesignViewModel>()
+            builder.RegisterType<HyCADTool.Features.Road.Plan.ViewModels.RoadDesignViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
 

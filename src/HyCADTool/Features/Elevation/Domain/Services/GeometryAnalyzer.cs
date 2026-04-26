@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 几何分析服务
@@ -25,9 +25,9 @@ namespace HyCADTool.Domain.Services
         /// <returns>边界条件列表</returns>
         public List<BoundaryCondition> AnalyzeBoundaryConditions(
             Polygon2D polygon,
-            Elevation polygonElevation,
+            ElevationValue polygonElevation,
             List<Polygon2D> outerContours,
-            Dictionary<Polygon2D, Elevation> elevationMap)
+            Dictionary<Polygon2D, ElevationValue> elevationMap)
         {
             var conditions = new List<BoundaryCondition>();
             var tolerance = ToleranceSettings.Instance.EdgeCoincidenceTolerance;
@@ -37,7 +37,7 @@ namespace HyCADTool.Domain.Services
             {
                 bool isSoilBoundary = false;
                 Polygon2D adjacentPolygon = null;
-                Elevation adjacentElevation = null;
+                ElevationValue adjacentElevation = null;
                 Line2D? coincidentEdge = null;
                 
                 // 步骤1：检查是否为土壤边界
@@ -123,9 +123,9 @@ namespace HyCADTool.Domain.Services
         /// 3. 土壤边界 + 标高 ≥ 0 → 非墙体
         /// </summary>
         private bool DetermineIsWall(
-            Elevation polygonElevation,
+            ElevationValue polygonElevation,
             bool isSoilBoundary,
-            Elevation adjacentElevation)
+            ElevationValue adjacentElevation)
         {
             var tolerance = ToleranceSettings.Instance.ElevationTolerance;
             

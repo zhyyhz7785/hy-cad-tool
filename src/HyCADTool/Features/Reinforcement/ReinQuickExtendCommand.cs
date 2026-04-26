@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Interfaces;
+using HyCADTool.Shell.Contracts;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;

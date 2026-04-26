@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-using HyCADTool.Domain.Models.Text;
+using HyCADTool.Features.DesignSpec.Domain.Models;
 
 namespace HyCADTool.App.Test
 {

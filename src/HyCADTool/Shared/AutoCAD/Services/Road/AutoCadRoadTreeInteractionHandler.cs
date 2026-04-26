@@ -7,7 +7,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.Plan.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Shared.AutoCAD.Services.Road

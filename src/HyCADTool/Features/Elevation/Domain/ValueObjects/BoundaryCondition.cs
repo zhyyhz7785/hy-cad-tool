@@ -1,6 +1,6 @@
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.ValueObjects
+namespace HyCADTool.Features.Elevation.Domain.ValueObjects
 {
     /// <summary>
     /// 边界条件值对象
@@ -26,7 +26,7 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 相邻多边形的标高（如果有）
         /// </summary>
-        public Elevation AdjacentElevation { get; }
+        public ElevationValue AdjacentElevation { get; }
         
         /// <summary>
         /// 是否为墙体边
@@ -42,7 +42,7 @@ namespace HyCADTool.Domain.ValueObjects
             Line2D edge,
             bool isSoilBoundary,
             Polygon2D adjacentPolygon,
-            Elevation adjacentElevation,
+            ElevationValue adjacentElevation,
             bool isWall,
             Line2D? coincidentEdge)
         {
@@ -74,7 +74,7 @@ namespace HyCADTool.Domain.ValueObjects
         public static BoundaryCondition CreateAdjacentBoundary(
             Line2D edge,
             Polygon2D adjacentPolygon,
-            Elevation adjacentElevation,
+            ElevationValue adjacentElevation,
             bool isWall,
             Line2D? coincidentEdge)
         {

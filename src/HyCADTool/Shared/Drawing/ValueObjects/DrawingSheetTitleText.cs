@@ -3,7 +3,7 @@
 using System;
 using System.Text.RegularExpressions;
 
-namespace HyCADTool.Domain.ValueObjects.Drawing
+namespace HyCADTool.Shared.Drawing.ValueObjects
 {
     /// <summary>图题主串清理：去掉历史上拼在 <c>Title.Text</c> 末尾的 " 1:N"（出图时比例改由 <see cref="DrawingSheetTitleDrawer"/> 单独写）。</summary>
     public static class DrawingSheetTitleText

@@ -13,7 +13,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="PilePropertyRow" TargetType="{x:Type bc:PropertyRow}">

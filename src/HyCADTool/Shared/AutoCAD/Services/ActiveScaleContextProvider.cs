@@ -1,5 +1,5 @@
 using System;
-using HyCADTool.Domain.Models.Drawing;
+using HyCADTool.Shared.Drawing.Models;
 
 namespace HyCADTool.Shared.AutoCAD.Services
 {

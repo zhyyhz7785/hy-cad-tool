@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using HyCADTool.Shared.Geometry;
-using HyCADTool.Domain.Entities;
+using HyCADTool.Features.Elevation.Domain.Entities;
 
-namespace HyCADTool.Domain.Services.Geometry
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 相邻边检测器 (性能优化版)

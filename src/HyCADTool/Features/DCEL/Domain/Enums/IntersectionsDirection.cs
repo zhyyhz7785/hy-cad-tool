@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Enums
+namespace HyCADTool.Features.DCEL.Domain.Enums
 {
     /// <summary>
     /// 交叉方向（用于标注方向选择）

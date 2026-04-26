@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Models.Configuration
+namespace HyCADTool.Features.Cluster.Domain.Models
 {
     /// <summary>
     /// 聚类配置（平台无关），控制 DBSCAN 聚类过程

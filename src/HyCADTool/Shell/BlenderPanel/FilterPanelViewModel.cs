@@ -11,6 +11,7 @@ using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Metadata;
 using HyCADTool.Shared.AutoCAD.Selection;
+using HyCADTool.Shared.AutoCAD.Selection.Rules;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using TypeNameConverter = HyCADTool.Shared.AutoCAD.Extensions.TypeNameConverter;
 
@@ -123,6 +124,65 @@ namespace HyCADTool.Presentation.ViewModels
         public ObservableCollection<string> PropertyFields { get; } = new ObservableCollection<string>();
         public ObservableCollection<string> Operators { get; } = new ObservableCollection<string> { "==", "!=", ">", "<", ">=", "<=" };
         public ObservableCollection<string> ExpressionFilters { get; } = new ObservableCollection<string>();
+        public ObservableCollection<string> RuleQueryModes { get; } = new ObservableCollection<string> { "条件树", "表达式", "类 SQL" };
+        public ObservableCollection<RuleCompletionItem> RuleCompletionItems { get; } = new ObservableCollection<RuleCompletionItem>();
+        public ObservableCollection<string> RuleQuickSnippets { get; } = new ObservableCollection<string>
+        {
+            "同图层",
+            "同类型",
+            "长度 >",
+            "半径区间",
+            "文字包含",
+            "图层通配",
+            "块名 =",
+            "有 XData"
+        };
+
+        private string _selectedRuleQueryMode = "表达式";
+        public string SelectedRuleQueryMode
+        {
+            get => _selectedRuleQueryMode;
+            set
+            {
+                _selectedRuleQueryMode = value;
+                OnPropertyChanged();
+                RefreshRuleDiagnostics();
+            }
+        }
+
+        private string _ruleQueryText;
+        public string RuleQueryText
+        {
+            get => _ruleQueryText;
+            set
+            {
+                _ruleQueryText = value;
+                OnPropertyChanged();
+                RefreshRuleCompletion();
+                RefreshRuleDiagnostics();
+            }
+        }
+
+        private string _ruleDiagnosticText = "选择样例后可使用快速输入和字段提示。";
+        public string RuleDiagnosticText
+        {
+            get => _ruleDiagnosticText;
+            set { _ruleDiagnosticText = value; OnPropertyChanged(); }
+        }
+
+        private string _ruleAstPreview = "(尚未生成 Predicate)";
+        public string RuleAstPreview
+        {
+            get => _ruleAstPreview;
+            set { _ruleAstPreview = value; OnPropertyChanged(); }
+        }
+
+        private string _ruleExportPreview = "点击导出按钮生成 C# / WHERE / 伪 Python 对照。";
+        public string RuleExportPreview
+        {
+            get => _ruleExportPreview;
+            set { _ruleExportPreview = value; OnPropertyChanged(); }
+        }
 
         #endregion
 
@@ -133,6 +193,11 @@ namespace HyCADTool.Presentation.ViewModels
         public ICommand ResetCommand { get; }
         public ICommand AddExpressionFilterCommand { get; }
         public ICommand RemoveExpressionFilterCommand { get; }
+        public ICommand InsertRuleSnippetCommand { get; }
+        public ICommand ApplyRuleQueryCommand { get; }
+        public ICommand RefreshRuleCompletionCommand { get; }
+        public ICommand ExportRuleQueryCommand { get; }
+        public ICommand InsertRuleCompletionCommand { get; }
 
         #endregion
 
@@ -145,6 +210,11 @@ namespace HyCADTool.Presentation.ViewModels
             ResetCommand = new RelayCommand(ResetFilters);
             AddExpressionFilterCommand = new RelayCommand(AddExpressionFilter);
             RemoveExpressionFilterCommand = new RelayCommand(RemoveExpressionFilter);
+            InsertRuleSnippetCommand = new RelayCommand<string>(InsertRuleSnippet);
+            ApplyRuleQueryCommand = new RelayCommand(ApplyRuleQuery);
+            RefreshRuleCompletionCommand = new RelayCommand(RefreshRuleCompletion);
+            ExportRuleQueryCommand = new RelayCommand<string>(ExportRuleQuery);
+            InsertRuleCompletionCommand = new RelayCommand<RuleCompletionItem>(InsertRuleCompletion);
         }
 
         #endregion
@@ -162,13 +232,14 @@ namespace HyCADTool.Presentation.ViewModels
 
                 // 绑定可筛选属性列表（DisplayName 中文名）
                 PropertyFields.Clear();
-                var typeName = _selectedEntity.GetType().Name;
-                var props = FilterablePropertyMetadataProvider.GetMetadataList()
-                                .Where(p => p.EntityType == typeName)
+                var props = RulePropertyCatalog.GetDescriptors(_selectedEntity)
                                 .Select(p => $"{p.DisplayName} ({p.PropertyName})");
 
                 foreach (var item in props)
                     PropertyFields.Add(item);
+
+                RefreshRuleCompletion();
+                RefreshRuleDiagnostics();
             }
         }
 
@@ -209,14 +280,7 @@ namespace HyCADTool.Presentation.ViewModels
             // 应用表达式筛选器
             foreach (var exp in ExpressionFilters)
             {
-                var parts = exp.Split(' ');
-                if (parts.Length != 3) continue;
-
-                string field = parts[0];
-                string op = parts[1];
-                string valStr = parts[2];
-
-                ids = ids.Intersect(FilterEntitiesByExpression(_userSelectedIds, field, op, valStr));
+                ids = ids.Intersect(FilterEntitiesByRule(ids.ToArray(), exp));
             }
 
             // 设置最终的选择结果
@@ -236,6 +300,11 @@ namespace HyCADTool.Presentation.ViewModels
             LineTypeChecked = false;
             TransparencyChecked = false;
             ExpressionFilters.Clear();
+            RuleQueryText = string.Empty;
+            RuleCompletionItems.Clear();
+            RuleAstPreview = "(尚未生成 Predicate)";
+            RuleDiagnosticText = "选择样例后可使用快速输入和字段提示。";
+            RuleExportPreview = "点击导出按钮生成 C# / WHERE / 伪 Python 对照。";
             SelectedType = string.Empty;
             SelectedPropertyValue = string.Empty;
             SelectedPropertyField = null;
@@ -274,6 +343,59 @@ namespace HyCADTool.Presentation.ViewModels
             }
         }
 
+        private void InsertRuleSnippet(string snippet)
+        {
+            if (string.IsNullOrWhiteSpace(snippet))
+                return;
+
+            RuleQueryText = BuildSnippet(snippet);
+            RefreshRuleDiagnostics();
+        }
+
+        private void InsertRuleCompletion(RuleCompletionItem item)
+        {
+            RuleQueryText = RuleCompletionProvider.ApplyCompletion(RuleQueryText, item);
+            RefreshRuleDiagnostics();
+        }
+
+        private void ApplyRuleQuery()
+        {
+            if (string.IsNullOrWhiteSpace(RuleQueryText))
+            {
+                RuleDiagnosticText = "规则查询为空。";
+                return;
+            }
+
+            if (!RuleQueryEvaluator.CanParse(RuleQueryText))
+            {
+                RuleDiagnosticText = "当前规则暂不能解析，请检查字段名、操作符和值。";
+                return;
+            }
+
+            var expression = RuleQueryText.Trim();
+            ExpressionFilters.Add(expression);
+            RuleAstPreview = RuleQueryEvaluator.Preview(expression);
+            RuleDiagnosticText = $"已添加规则：{expression}";
+            Editor?.WriteMessage($"\n[FilterPanel] 已添加规则查询：{expression}\n");
+        }
+
+        private void ExportRuleQuery(string exportKind)
+        {
+            if (string.IsNullOrWhiteSpace(RuleQueryText))
+            {
+                RuleExportPreview = "规则查询为空，无法导出。";
+                return;
+            }
+
+            if (!RuleQueryEvaluator.CanParse(RuleQueryText))
+            {
+                RuleExportPreview = "当前规则暂不能解析，修正后再导出。";
+                return;
+            }
+
+            RuleExportPreview = RuleQueryExporter.Export(RuleQueryText, exportKind);
+        }
+
         #endregion
 
         #region 辅助方法
@@ -289,10 +411,11 @@ namespace HyCADTool.Presentation.ViewModels
             try
             {
                 string propertyName = ExtractPropertyName(SelectedPropertyField);
-                var prop = _selectedEntity.GetType().GetProperty(propertyName);
-                if (prop != null)
+                var descriptor = RulePropertyCatalog.GetDescriptors(_selectedEntity, includeAdvanced: true)
+                    .FirstOrDefault(p => string.Equals(p.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
+                if (descriptor != null)
                 {
-                    var value = prop.GetValue(_selectedEntity);
+                    var value = descriptor.GetValue(_selectedEntity);
                     SelectedPropertyValue = value?.ToString() ?? "(null)";
                 }
                 else
@@ -317,33 +440,133 @@ namespace HyCADTool.Presentation.ViewModels
             return field;
         }
 
-        private IEnumerable<ObjectId> FilterEntitiesByExpression(ObjectId[] ids, string field, string op, string valStr)
+        private void RefreshRuleCompletion()
         {
-            return CurrentDocument.FilterEntitiesBy(e =>
+            RuleCompletionItems.Clear();
+
+            foreach (var item in RuleCompletionProvider.GetCompletions(_selectedEntity, RuleQueryText, includeAdvanced: true))
+                RuleCompletionItems.Add(item);
+        }
+
+        private void RefreshRuleDiagnostics()
+        {
+            if (RuleCompletionItems.Count == 0)
+                RefreshRuleCompletion();
+
+            if (string.IsNullOrWhiteSpace(RuleQueryText))
             {
-                var props = e.GetFilterableProperties();
-                if (!props.ContainsKey(field)) return false;
-                var (value, type) = props[field];
-                try
-                {
-                    switch (type)
-                    {
-                        case "Int32":
-                            int iv = int.Parse(valStr);
-                            return FilterExtensions.Compare(Convert.ToInt32(value), iv, op);
-                        case "Double":
-                            double dv = double.Parse(valStr);
-                            return FilterExtensions.Compare(Convert.ToDouble(value), dv, op);
-                        case "Boolean":
-                            bool bv = bool.Parse(valStr);
-                            return FilterExtensions.Compare(Convert.ToBoolean(value), bv, op);
-                        case "String":
-                            return FilterExtensions.Compare(value?.ToString(), valStr, op);
-                    }
-                }
-                catch { }
-                return false;
-            }, ids);
+                RuleDiagnosticText = _selectedEntity == null
+                    ? "选择样例后可使用快速输入和字段提示。"
+                    : "可输入字段名，或点击快速输入片段。";
+                RuleAstPreview = "(尚未生成 Predicate)";
+                return;
+            }
+
+            RuleAstPreview = BuildAstPreview(RuleQueryText);
+            RuleDiagnosticText = DiagnoseRuleText(RuleQueryText);
+        }
+
+        private string BuildSnippet(string snippet)
+        {
+            var layer = _selectedEntity?.Layer ?? "0";
+            var dxf = _selectedEntity?.GetRXClass()?.DxfName ?? "LINE";
+            var typeName = _selectedEntity?.GetType().Name ?? string.Empty;
+
+            switch (snippet)
+            {
+                case "同图层":
+                    return SelectedRuleQueryMode == "类 SQL" ? $"Layer = '{layer}'" : $"Layer == \"{layer}\"";
+                case "同类型":
+                    return SelectedRuleQueryMode == "类 SQL" ? $"DxfType = '{dxf}'" : $"DxfType == \"{dxf}\"";
+                case "长度 >":
+                    return "Length > 100";
+                case "半径区间":
+                    return SelectedRuleQueryMode == "类 SQL" ? "Radius BETWEEN 100 AND 300" : "Radius between 100 and 300";
+                case "文字包含":
+                    return SelectedRuleQueryMode == "类 SQL" ? "TextString LIKE '%说明%'" : "TextString contains \"说明\"";
+                case "图层通配":
+                    return SelectedRuleQueryMode == "类 SQL" ? "Layer LIKE '*-road-*'" : "Layer like \"*-road-*\"";
+                case "块名 =":
+                    return SelectedRuleQueryMode == "类 SQL" ? "BlockName = 'A1'" : "BlockName == \"A1\"";
+                case "有 XData":
+                    return "HasXData(\"HYROAD\")";
+                default:
+                    return typeName == "Circle" ? "Radius > 100" : "Layer == \"0\"";
+            }
+        }
+
+        private string NormalizeRuleQueryToLegacyExpression(string query)
+        {
+            var text = (query ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(text) || text.Contains("&&") || text.Contains("||") || text.Contains("("))
+                return null;
+
+            if (SelectedRuleQueryMode == "类 SQL")
+            {
+                text = text.Replace(" = ", " == ");
+                var andIndex = text.IndexOf(" AND ", StringComparison.OrdinalIgnoreCase);
+                if (andIndex >= 0)
+                    text = text.Substring(0, andIndex).Trim();
+            }
+
+            var normalized = text
+                .Replace(" contains ", " contains ")
+                .Replace(" like ", " contains ");
+
+            var parts = normalized.Split(new[] { ' ' }, 3, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 3)
+                return null;
+
+            var fieldExists = _selectedEntity != null && RulePropertyCatalog.GetDescriptors(_selectedEntity, includeAdvanced: true)
+                .Any(p => string.Equals(p.PropertyName, parts[0], StringComparison.OrdinalIgnoreCase));
+
+            if (!fieldExists)
+                return null;
+
+            return $"{parts[0]} {parts[1]} {TrimQuotes(parts[2])}";
+        }
+
+        private string BuildAstPreview(string query)
+        {
+            return RuleQueryEvaluator.Preview(query);
+        }
+
+        private string DiagnoseRuleText(string query)
+        {
+            if (_selectedEntity == null)
+                return "请先选择样例对象，才能提供字段提示。";
+
+            if (query.TrimStart().StartsWith("Has", StringComparison.OrdinalIgnoreCase))
+                return "函数/组合规则将在 Predicate 引擎中执行；当前可预览。";
+
+            var descriptors = RulePropertyCatalog.GetDescriptors(_selectedEntity, includeAdvanced: true);
+            var fields = RuleQueryEvaluator.GetFieldNames(query);
+            if (fields.Count == 0)
+                return "暂未识别出字段条件，请使用：Layer == \"0\"、Length > 100、Radius between 100 and 300。";
+
+            var unknownField = fields.FirstOrDefault(field =>
+                !descriptors.Any(p => string.Equals(p.PropertyName, field, StringComparison.OrdinalIgnoreCase)));
+            if (!string.IsNullOrWhiteSpace(unknownField))
+            {
+                var suggestion = descriptors.FirstOrDefault(p => p.PropertyName.StartsWith(unknownField, StringComparison.OrdinalIgnoreCase));
+                return suggestion != null
+                    ? $"字段不存在，是否为 {suggestion.PropertyName}？"
+                    : $"字段不存在：{unknownField}";
+            }
+
+            return RuleQueryEvaluator.CanParse(query)
+                ? "规则语法可识别；可添加到过滤器并参与筛选。"
+                : "字段可识别，但操作符或值暂不能解析。";
+        }
+
+        private string TrimQuotes(string value)
+        {
+            return value?.Trim().Trim('"', '\'') ?? string.Empty;
+        }
+
+        private IEnumerable<ObjectId> FilterEntitiesByRule(ObjectId[] ids, string query)
+        {
+            return RuleQueryEvaluator.Filter(CurrentDocument?.Database, ids, query);
         }
 
         private IEnumerable<ObjectId> GetTypeFilteredIds()
@@ -365,7 +588,7 @@ namespace HyCADTool.Presentation.ViewModels
             ?? Enumerable.Empty<ObjectId>();
 
         private IEnumerable<ObjectId> GetLineWeightFilteredIds() => 
-            _selectedEntity?.GetTrueLineWeight().GetLineWeightFilter().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds) 
+            _selectedEntity?.GetTrueLineWeight().GetEntitiesWithMatchingLineWeight(CurrentDocument, _userSelectedIds) 
             ?? Enumerable.Empty<ObjectId>();
 
         private IEnumerable<ObjectId> GetLineTypeFilteredIds() => 

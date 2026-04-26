@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shell.Configuration.User;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Shell.Contracts
 {
     /// <summary>
     /// 图层服务接口（平台无关）

@@ -1,6 +1,5 @@
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Domain.Models.Text;
-using HyCADTool.Shell.Commands;
+using HyCADTool.Features.DesignSpec.Domain.Models;
 using HyCADTool.Features.DesignSpec.Services;
 using HyCADTool.Shared.AutoCAD.Services;
 using Autodesk.AutoCAD.DatabaseServices;

@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using HyCADTool.Shared.AutoCAD.Entities;
+using HyCADTool.Shared.AutoCAD.Metadata;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Shared.AutoCAD.Extensions
@@ -112,95 +113,25 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
         /// 获取实体的实际颜色（处理 ByLayer 和 ByBlock）
         /// </summary>
         public static Color GetTrueColor(this Entity ent)
-        {
-            if (ent.Color.IsByLayer)
-            {
-                using (var tr = ent.Database.TransactionManager.StartTransaction())
-                {
-                    var layer = (LayerTableRecord)tr.GetObject(ent.LayerId, OpenMode.ForRead);
-                    tr.Commit();
-                    return layer.Color;
-                }
-            }
-            else if (ent.Color.IsByBlock && ent is BlockReference br)
-            {
-                return br.Color;
-            }
-            return ent.Color;
-        }
+            => EntityAppearanceResolver.GetTrueColor(ent);
 
         /// <summary>
         /// 获取实体的实际线宽（处理 ByLayer 和 ByBlock）
         /// </summary>
         public static int GetTrueLineWeight(this Entity ent)
-        {
-            if (ent.LineWeight == LineWeight.ByLayer)
-            {
-                using (var tr = ent.Database.TransactionManager.StartTransaction())
-                {
-                    var layer = (LayerTableRecord)tr.GetObject(ent.LayerId, OpenMode.ForRead);
-                    tr.Commit();
-                    return (int)layer.LineWeight;
-                }
-            }
-            else if (ent.LineWeight == LineWeight.ByBlock && ent is BlockReference br)
-            {
-                return (int)br.LineWeight;
-            }
-            return (int)ent.LineWeight;
-        }
+            => EntityAppearanceResolver.GetTrueLineWeight(ent);
 
         /// <summary>
         /// 获取实体的实际线型（处理 ByLayer 和 ByBlock）
         /// </summary>
         public static ObjectId GetTrueLinetype(this Entity ent)
-        {
-            if (ent.Linetype == "ByLayer")
-            {
-                using (var tr = ent.Database.TransactionManager.StartTransaction())
-                {
-                    var layer = (LayerTableRecord)tr.GetObject(ent.LayerId, OpenMode.ForRead);
-                    tr.Commit();
-                    return layer.LinetypeObjectId;
-                }
-            }
-            else if (ent.Linetype == "ByBlock" && ent is BlockReference br)
-            {
-                return br.LinetypeId;
-            }
-            return ent.LinetypeId;
-        }
+            => EntityAppearanceResolver.GetTrueLinetype(ent);
 
         /// <summary>
         /// 获取实体的实际透明度（处理 ByLayer 和 ByBlock）
         /// </summary>
         public static int GetTrueTransparency(this Entity ent)
-        {
-            try
-            {
-                if (ent.Transparency.IsByAlpha)
-                    return ent.Transparency.Alpha;
-
-                if (ent.Transparency.IsByLayer)
-                {
-                    using (var tr = ent.Database.TransactionManager.StartTransaction())
-                    {
-                        var layer = (LayerTableRecord)tr.GetObject(ent.LayerId, OpenMode.ForRead);
-                        tr.Commit();
-                        return layer.Transparency.IsByAlpha ? layer.Transparency.Alpha : 255;
-                    }
-                }
-                if (ent.Transparency.IsByBlock && ent is BlockReference br)
-                {
-                    return br.Transparency.Alpha;
-                }
-            }
-            catch
-            {
-                return 255;
-            }
-            return 255;
-        }
+            => EntityAppearanceResolver.GetTrueTransparency(ent);
 
         #endregion
 
@@ -289,6 +220,12 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
             doc.FilterByLinetype(targetLinetype, ids);
 
         /// <summary>
+        /// 根据线宽筛选实体
+        /// </summary>
+        public static ObjectId[] GetEntitiesWithMatchingLineWeight(this int targetLineWeight, Document doc, ObjectId[] ids = null) =>
+            doc.FilterByLineWeight(targetLineWeight, ids);
+
+        /// <summary>
         /// 根据透明度筛选实体
         /// </summary>
         public static ObjectId[] GetEntitiesWithMatchingTransparency(this int alpha, Document doc, ObjectId[] ids = null) =>
@@ -298,19 +235,25 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
         /// 按颜色筛选（内部方法）
         /// </summary>
         public static ObjectId[] FilterByColor(this Document doc, Color color, ObjectId[] ids = null) =>
-            doc.FilterEntitiesBy(ids, e => e.GetTrueColor().ColorValue, color.ColorValue);
+            EntityAppearanceResolver.FilterByColor(doc, color, ids);
+
+        /// <summary>
+        /// 按线宽筛选（内部方法）
+        /// </summary>
+        public static ObjectId[] FilterByLineWeight(this Document doc, int lineWeight, ObjectId[] ids = null) =>
+            EntityAppearanceResolver.FilterByLineWeight(doc, lineWeight, ids);
 
         /// <summary>
         /// 按线型筛选（内部方法）
         /// </summary>
         public static ObjectId[] FilterByLinetype(this Document doc, ObjectId linetype, ObjectId[] ids = null) =>
-            doc.FilterEntitiesBy(ids, e => e.GetTrueLinetype(), linetype);
+            EntityAppearanceResolver.FilterByLinetype(doc, linetype, ids);
 
         /// <summary>
         /// 按透明度筛选（内部方法）
         /// </summary>
         public static ObjectId[] FilterByTransparency(this Document doc, int alpha, ObjectId[] ids = null) =>
-            doc.FilterEntitiesBy(ids, e => e.GetTrueTransparency(), alpha);
+            EntityAppearanceResolver.FilterByTransparency(doc, alpha, ids);
 
         #endregion
 
@@ -321,23 +264,7 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
         /// </summary>
         public static Dictionary<string, (object Value, string Type)> GetFilterableProperties(this Entity entity)
         {
-            var props = new Dictionary<string, (object, string)>();
-            var type = entity.GetType();
-            foreach (var prop in type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
-            {
-                var t = prop.PropertyType;
-                if (t == typeof(int) || t == typeof(double))
-                {
-                    try
-                    {
-                        var val = prop.GetValue(entity);
-                        if (val != null)
-                            props[prop.Name] = (val, t.Name);
-                    }
-                    catch { }
-                }
-            }
-            return props;
+            return RulePropertyCatalog.GetFilterableProperties(entity);
         }
 
         #endregion

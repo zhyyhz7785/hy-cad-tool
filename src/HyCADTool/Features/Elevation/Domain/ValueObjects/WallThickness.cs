@@ -1,6 +1,6 @@
 using System;
 
-namespace HyCADTool.Domain.ValueObjects
+namespace HyCADTool.Features.Elevation.Domain.ValueObjects
 {
     /// <summary>
     /// 墙体厚度值对象

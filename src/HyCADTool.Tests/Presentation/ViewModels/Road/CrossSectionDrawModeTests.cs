@@ -1,7 +1,8 @@
 using FluentAssertions;
-using HyCADTool.Domain.Services.Road;
+using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Features.Road.CrossSection.Services;
+using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Shared.AutoCAD.Services.Road;
-using HyCADTool.Presentation.ViewModels.Road;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.ViewModels.Road

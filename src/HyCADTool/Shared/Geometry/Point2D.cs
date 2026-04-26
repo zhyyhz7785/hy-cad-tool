@@ -38,7 +38,7 @@ namespace HyCADTool.Shared.Geometry
         {
             double dx = X - other.X;
             double dy = Y - other.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>
@@ -49,8 +49,8 @@ namespace HyCADTool.Shared.Geometry
         /// <returns>如果距离小于容差返回 true</returns>
         public bool IsEqualTo(Point2D other, double tolerance = 1e-6)
         {
-            return Math.Abs(X - other.X) < tolerance && 
-                   Math.Abs(Y - other.Y) < tolerance;
+            return System.Math.Abs(X - other.X) < tolerance && 
+                   System.Math.Abs(Y - other.Y) < tolerance;
         }
 
         /// <summary>

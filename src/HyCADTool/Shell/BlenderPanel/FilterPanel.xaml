@@ -14,7 +14,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/BlenderTheme.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
@@ -160,6 +160,159 @@
                              Margin="5,0,5,5"
                              ItemsSource="{Binding ExpressionFilters}"
                              SelectedItem="{Binding SelectedExpressionFilter}" />
+                </StackPanel>
+            </Expander>
+
+            <!-- 规则查询（M2.1 MVP） -->
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Margin="0,2,0,5" Header="规则查询（快速输入 / 代码提示）" IsExpanded="True">
+                <StackPanel Margin="5,5,0,0">
+
+                    <!-- 模式 -->
+                    <Grid Margin="0,5,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="70" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Margin="5,5,5,5"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                   Text="输入模式" />
+                        <ComboBox Grid.Column="1"
+                                  Style="{StaticResource BlenderComboBox}"
+                                  Margin="5,0,5,0"
+                                  ItemsSource="{Binding RuleQueryModes}"
+                                  SelectedItem="{Binding SelectedRuleQueryMode}" />
+                    </Grid>
+
+                    <!-- 快速输入 -->
+                    <TextBlock Margin="5,2,5,2"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               Text="快速输入" />
+                    <ItemsControl Margin="5,0,5,5"
+                                  ItemsSource="{Binding RuleQuickSnippets}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource BlenderButtonFlat}"
+                                        Margin="0,0,4,4"
+                                        Command="{Binding DataContext.InsertRuleSnippetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"
+                                        Content="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- 编辑器 -->
+                    <TextBox Style="{StaticResource BlenderTextBox}"
+                             Margin="5,0,5,5"
+                             MinHeight="60"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Text="{Binding RuleQueryText, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <!-- 补全候选 -->
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="90" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Margin="5,5,5,5"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="字段 / 操作符 / 值候选（MVP）" />
+                        <Button Grid.Column="1"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                Margin="2,0,5,0"
+                                Command="{Binding RefreshRuleCompletionCommand}"
+                                Content="刷新提示" />
+                    </Grid>
+                    <ListBox Style="{StaticResource BlenderListBox}"
+                             ItemContainerStyle="{StaticResource BlenderListBoxItem}"
+                             Height="95"
+                             Margin="5,0,5,5"
+                             ItemsSource="{Binding RuleCompletionItems}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource BlenderButtonFlat}"
+                                        HorizontalAlignment="Stretch"
+                                        Command="{Binding DataContext.InsertRuleCompletionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        CommandParameter="{Binding}"
+                                        Content="{Binding DisplayText}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- 诊断与 AST 预览 -->
+                    <TextBlock Margin="5,2,5,2"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               Text="诊断" />
+                    <TextBox Style="{StaticResource BlenderTextBox}"
+                             Margin="5,0,5,5"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             Text="{Binding RuleDiagnosticText}" />
+
+                    <TextBlock Margin="5,2,5,2"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               Text="AST 预览" />
+                    <TextBox Style="{StaticResource BlenderTextBox}"
+                             Margin="5,0,5,5"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             Text="{Binding RuleAstPreview}" />
+
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                Margin="5,0,2,0"
+                                Command="{Binding ApplyRuleQueryCommand}"
+                                Content="添加规则到过滤器" />
+                        <Button Grid.Column="1"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                Margin="2,0,5,0"
+                                Command="{Binding ExportRuleQueryCommand}"
+                                CommandParameter="C#"
+                                Content="导出 C#" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                Margin="5,0,2,0"
+                                Command="{Binding ExportRuleQueryCommand}"
+                                CommandParameter="WHERE"
+                                Content="导出 WHERE" />
+                        <Button Grid.Column="1"
+                                Style="{StaticResource BlenderButtonFlat}"
+                                Margin="2,0,5,0"
+                                Command="{Binding ExportRuleQueryCommand}"
+                                CommandParameter="Python"
+                                Content="导出伪 Python" />
+                    </Grid>
+
+                    <TextBlock Margin="5,2,5,2"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               Text="导出预览" />
+                    <TextBox Style="{StaticResource BlenderTextBox}"
+                             Margin="5,0,5,5"
+                             MinHeight="55"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             Text="{Binding RuleExportPreview}" />
                 </StackPanel>
             </Expander>
 

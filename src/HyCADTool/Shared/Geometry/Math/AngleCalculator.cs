@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System;
 
-namespace HyCADTool.Domain.Services.MathAlgorithms
+namespace HyCADTool.Shared.Geometry.Math
 {
     /// <summary>
     /// 角度计算器 - 纯数学计算，平台无关
@@ -17,7 +17,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>角度 Degrees</returns>
         public static double RadiansToDegrees(double radians)
         {
-            return radians * 180.0 / Math.PI;
+            return radians * 180.0 / System.Math.PI;
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>弧度 Radians</returns>
         public static double DegreesToRadians(double degrees)
         {
-            return degrees * Math.PI / 180.0;
+            return degrees * System.Math.PI / 180.0;
         }
 
         /// <summary>
@@ -40,9 +40,9 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         public static double NormalizeAngle(double angle)
         {
             while (angle < 0)
-                angle += 2 * Math.PI;
-            while (angle >= 2 * Math.PI)
-                angle -= 2 * Math.PI;
+                angle += 2 * System.Math.PI;
+            while (angle >= 2 * System.Math.PI)
+                angle -= 2 * System.Math.PI;
             return angle;
         }
 
@@ -55,8 +55,8 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         public static double NormalizeAngleSymmetric(double angle)
         {
             angle = NormalizeAngle(angle);
-            if (angle > Math.PI)
-                angle -= 2 * Math.PI;
+            if (angle > System.Math.PI)
+                angle -= 2 * System.Math.PI;
             return angle;
         }
 
@@ -77,9 +77,9 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
                 return 0;
             
             double cos = dot / (mag1 * mag2);
-            cos = Math.Max(-1, Math.Min(1, cos)); // Clamp to [-1, 1]
+            cos = System.Math.Max(-1, System.Math.Min(1, cos)); // Clamp to [-1, 1]
             
-            return Math.Acos(cos);
+            return System.Math.Acos(cos);
         }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>角度（弧度）[-π, π] Angle in radians [-π, π]</returns>
         public static double VectorAngle(Vector2D vector)
         {
-            return Math.Atan2(vector.Y, vector.X);
+            return System.Math.Atan2(vector.Y, vector.X);
         }
 
         /// <summary>
@@ -123,11 +123,11 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
             angle1 = NormalizeAngleSymmetric(angle1);
             angle2 = NormalizeAngleSymmetric(angle2);
             
-            double diff = Math.Abs(angle1 - angle2);
+            double diff = System.Math.Abs(angle1 - angle2);
             
             // 考虑 π 和 -π 的情况
-            if (diff > Math.PI)
-                diff = 2 * Math.PI - diff;
+            if (diff > System.Math.PI)
+                diff = 2 * System.Math.PI - diff;
             
             return diff < tolerance;
         }
@@ -224,9 +224,9 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>是否为直角 True if right angle</returns>
         public static bool IsRightAngle(double angle, double tolerance = 1e-10)
         {
-            angle = Math.Abs(NormalizeAngle(angle));
-            return Math.Abs(angle - Math.PI / 2) < tolerance || 
-                   Math.Abs(angle - 3 * Math.PI / 2) < tolerance;
+            angle = System.Math.Abs(NormalizeAngle(angle));
+            return System.Math.Abs(angle - System.Math.PI / 2) < tolerance || 
+                   System.Math.Abs(angle - 3 * System.Math.PI / 2) < tolerance;
         }
 
         /// <summary>
@@ -238,8 +238,8 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>是否为平角 True if straight angle</returns>
         public static bool IsStraightAngle(double angle, double tolerance = 1e-10)
         {
-            angle = Math.Abs(NormalizeAngle(angle));
-            return Math.Abs(angle - Math.PI) < tolerance;
+            angle = System.Math.Abs(NormalizeAngle(angle));
+            return System.Math.Abs(angle - System.Math.PI) < tolerance;
         }
 
         /// <summary>
@@ -250,8 +250,8 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>是否为锐角 True if acute</returns>
         public static bool IsAcuteAngle(double angle)
         {
-            angle = Math.Abs(NormalizeAngle(angle));
-            return angle > 0 && angle < Math.PI / 2;
+            angle = System.Math.Abs(NormalizeAngle(angle));
+            return angle > 0 && angle < System.Math.PI / 2;
         }
 
         /// <summary>
@@ -262,8 +262,8 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>是否为钝角 True if obtuse</returns>
         public static bool IsObtuseAngle(double angle)
         {
-            angle = Math.Abs(NormalizeAngle(angle));
-            return angle > Math.PI / 2 && angle < Math.PI;
+            angle = System.Math.Abs(NormalizeAngle(angle));
+            return angle > System.Math.PI / 2 && angle < System.Math.PI;
         }
     }
 }

@@ -1,6 +1,6 @@
-using HyCADTool.Domain.Entities.Pile;
+using HyCADTool.Features.Pile.Domain.Entities;
 
-namespace HyCADTool.Domain.ValueObjects.Configuration.Modules
+namespace HyCADTool.Shell.Configuration.Modules
 {
     public sealed class PileConfiguration
     {

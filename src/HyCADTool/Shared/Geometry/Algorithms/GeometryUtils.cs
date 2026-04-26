@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services.Geometry
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 几何计算工具类 (性能优化版)
@@ -143,7 +143,7 @@ namespace HyCADTool.Domain.Services.Geometry
                 edge.EndPoint.X - edge.StartPoint.X, 
                 edge.EndPoint.Y - edge.StartPoint.Y);
             
-            double length = Math.Sqrt(edgeVec.X * edgeVec.X + edgeVec.Y * edgeVec.Y);
+            double length = System.Math.Sqrt(edgeVec.X * edgeVec.X + edgeVec.Y * edgeVec.Y);
             
             if (length < 1e-10)
                 return new Vector2D(0, 0);
@@ -166,7 +166,7 @@ namespace HyCADTool.Domain.Services.Geometry
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double VectorLength(Vector2D vector)
         {
-            return Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
+            return System.Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
         }
         
         /// <summary>
@@ -189,7 +189,7 @@ namespace HyCADTool.Domain.Services.Geometry
             if (lengthSq < 1e-20) // 使用平方比较
                 return new Vector2D(0, 0);
             
-            double invLength = 1.0 / Math.Sqrt(lengthSq);
+            double invLength = 1.0 / System.Math.Sqrt(lengthSq);
             return new Vector2D(vector.X * invLength, vector.Y * invLength);
         }
         
@@ -201,7 +201,7 @@ namespace HyCADTool.Domain.Services.Geometry
         {
             double dx = p2.X - p1.X;
             double dy = p2.Y - p1.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
         
         /// <summary>

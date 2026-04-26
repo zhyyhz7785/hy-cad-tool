@@ -1,7 +1,7 @@
 using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 几何转换服务接口（平台无关）

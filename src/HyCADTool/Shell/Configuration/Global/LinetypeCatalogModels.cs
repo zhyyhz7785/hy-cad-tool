@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.ValueObjects.Configuration.Global
+namespace HyCADTool.Shell.Configuration.Global
 {
     /// <summary>单条线型记录（目录 JSON + .lin 导出）。</summary>
     public class LinetypeCatalogItem

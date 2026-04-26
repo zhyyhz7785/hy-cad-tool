@@ -1,9 +1,9 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Entities.Pile;
-using HyCADTool.Domain.Services;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Features.Pile.Domain.Entities;
+using HyCADTool.Features.Pile.Domain.Services;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;

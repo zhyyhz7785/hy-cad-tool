@@ -9,7 +9,7 @@ using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Models.Road.Civil;
 using HyCADTool.Presentation.ViewModels;
 
-namespace HyCADTool.Presentation.ViewModels.Road
+namespace HyCADTool.Features.Road.Plan.ViewModels
 {
     /// <summary>
     /// 项目树根 ViewModel（045 / M3）。

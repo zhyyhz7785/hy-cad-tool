@@ -2,6 +2,12 @@ using Autodesk.AutoCAD.Windows;
 using Autofac;
 using System;
 using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Features.Road.PlanAlignment.Views;
+using HyCADTool.Features.Road.PlanAlignment.ViewModels;
+using HyCADTool.Features.Road.CrossSection.Views;
+using HyCADTool.Features.Road.CrossSection.ViewModels;
+using HyCADTool.Features.Road.Plan.ViewModels;
+using HyCADTool.Features.Road.Plan.Views;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Presentation
@@ -36,18 +42,18 @@ namespace HyCADTool.Presentation
 
         // ===== 路线工作台（PaletteSet 宿主，默认停靠在 AutoCAD 底部 = editor 上方 / 命令行上方） =====
         private PaletteSet _alignmentPaletteSet;
-        private Views.Road.RoadAlignmentWorkbenchPanel _alignmentPanel;
-        private ViewModels.Road.RoadAlignmentWorkbenchViewModel _alignmentVm;
+        private RoadAlignmentWorkbenchPanel _alignmentPanel;
+        private RoadAlignmentWorkbenchViewModel _alignmentVm;
 
         // ===== 项目树（045 / M6，独立 PaletteSet，默认停靠在左侧） =====
         private PaletteSet _projectTreePaletteSet;
-        private Views.Road.RoadProjectTreePanel _projectTreePanel;
-        private ViewModels.Road.RoadProjectTreeViewModel _projectTreeVm;
+        private RoadProjectTreePanel _projectTreePanel;
+        private RoadProjectTreeViewModel _projectTreeVm;
 
         // ===== 横断面绘制 v2（PaletteSet + CrossSectionDrawPanel） =====
         private PaletteSet _crossSectionPaletteSet;
-        private Views.Road.CrossSectionDrawPanel _crossSectionPanel;
-        private ViewModels.Road.CrossSectionDrawViewModel _crossSectionVm;
+        private CrossSectionDrawPanel _crossSectionPanel;
+        private CrossSectionDrawViewModel _crossSectionVm;
 
         /// <summary>
         /// 路线工作台 PaletteSet 上一次 <c>StateChanged</c> 观察到的 Visible 值，用于做边缘触发：
@@ -209,7 +215,7 @@ namespace HyCADTool.Presentation
 
         /// <summary>
         /// 显示横断面绘制 <see cref="PaletteSet"/>（底部停靠，与会话内路线工作台同区）。
-        /// 每次调用会新建 <see cref="ViewModels.Road.CrossSectionDrawViewModel"/> 并注入面板。
+        /// 每次调用会新建 <see cref="CrossSectionDrawViewModel"/> 并注入面板。
         /// </summary>
         public void ShowCrossSectionPanel(CrossSectionLayout initialLayout = null, Guid? existingTemplateId = null)
         {
@@ -222,7 +228,7 @@ namespace HyCADTool.Presentation
 
             if (_crossSectionPanel == null) return;
 
-            _crossSectionVm = new ViewModels.Road.CrossSectionDrawViewModel(initialLayout, existingTemplateId);
+            _crossSectionVm = new CrossSectionDrawViewModel(initialLayout, existingTemplateId);
             _crossSectionPanel.ViewModel = _crossSectionVm;
             TryStripCrossSectionCaptionIfDocked();
         }
@@ -240,7 +246,7 @@ namespace HyCADTool.Presentation
 
         private void CreateCrossSectionPalette()
         {
-            _crossSectionPanel = new Views.Road.CrossSectionDrawPanel();
+            _crossSectionPanel = new CrossSectionDrawPanel();
 
             _crossSectionPaletteSet = new PaletteSet("横断面绘制", CrossSectionPaletteGuid)
             {
@@ -289,14 +295,14 @@ namespace HyCADTool.Presentation
             // 从 DI 取 VM（含注入的 handler）；若 DI 未注册则退回默认 Null handler
             try
             {
-                _projectTreeVm = _componentContext.Resolve<ViewModels.Road.RoadProjectTreeViewModel>();
+                _projectTreeVm = _componentContext.Resolve<RoadProjectTreeViewModel>();
             }
             catch
             {
-                _projectTreeVm = new ViewModels.Road.RoadProjectTreeViewModel();
+                _projectTreeVm = new RoadProjectTreeViewModel();
             }
 
-            _projectTreePanel = new Views.Road.RoadProjectTreePanel { ViewModel = _projectTreeVm };
+            _projectTreePanel = new RoadProjectTreePanel { ViewModel = _projectTreeVm };
 
             _projectTreePaletteSet = new PaletteSet("项目树", RoadProjectTreePaletteGuid)
             {
@@ -369,8 +375,8 @@ namespace HyCADTool.Presentation
         /// </summary>
         private void CreateAlignmentWorkbenchPalette()
         {
-            _alignmentVm = new ViewModels.Road.RoadAlignmentWorkbenchViewModel();
-            _alignmentPanel = new Views.Road.RoadAlignmentWorkbenchPanel { ViewModel = _alignmentVm };
+            _alignmentVm = new RoadAlignmentWorkbenchViewModel();
+            _alignmentPanel = new RoadAlignmentWorkbenchPanel { ViewModel = _alignmentVm };
 
             _alignmentPaletteSet = new PaletteSet("路线工作台", AlignmentWorkbenchPaletteGuid)
             {
@@ -396,7 +402,7 @@ namespace HyCADTool.Presentation
         /// 监听 Dock/Float/显示切换：
         /// - Dock 时抹掉原生标题栏（对齐 <see cref="CreateHyBlenderPanel"/>）；
         /// - Visible 由 true → false（点 X / AutoHide 收起 / 程序 Visible=false）时调
-        ///   <see cref="ViewModels.Road.RoadAlignmentWorkbenchViewModel.HideAllWorkbenchArtifacts"/>
+        ///   <see cref="RoadAlignmentWorkbenchViewModel.HideAllWorkbenchArtifacts"/>
         ///   把工作台产生的所有临时图形一次清零，解决"关了面板预览黄线赖在图上删不掉"的问题；
         /// - Visible 由 false → true 时调 <c>RestoreWorkbenchArtifacts</c> 按原选中线位重画主预览。
         ///

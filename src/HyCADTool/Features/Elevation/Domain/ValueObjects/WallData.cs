@@ -1,6 +1,6 @@
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.ValueObjects
+namespace HyCADTool.Features.Elevation.Domain.ValueObjects
 {
     /// <summary>
     /// 墙体数据值对象
@@ -16,12 +16,12 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 内侧标高（基础内部）
         /// </summary>
-        public Elevation InnerElevation { get; }
+        public ElevationValue InnerElevation { get; }
         
         /// <summary>
         /// 外侧标高（土壤或相邻基础）
         /// </summary>
-        public Elevation OuterElevation { get; }
+        public ElevationValue OuterElevation { get; }
         
         /// <summary>
         /// 墙体厚度
@@ -55,8 +55,8 @@ namespace HyCADTool.Domain.ValueObjects
         
         private WallData(
             Line2D edge,
-            Elevation innerElevation,
-            Elevation outerElevation,
+            ElevationValue innerElevation,
+            ElevationValue outerElevation,
             WallThickness thickness,
             BoundaryCondition boundary,
             EndType endType)
@@ -74,8 +74,8 @@ namespace HyCADTool.Domain.ValueObjects
         /// </summary>
         public static WallData Create(
             Line2D edge,
-            Elevation innerElevation,
-            Elevation outerElevation,
+            ElevationValue innerElevation,
+            ElevationValue outerElevation,
             WallThickness thickness,
             BoundaryCondition boundary,
             EndType endType = EndType.Polygon)
@@ -94,7 +94,7 @@ namespace HyCADTool.Domain.ValueObjects
         /// </summary>
         public static WallData CreateRetainingWall(
             Line2D edge,
-            Elevation innerElevation,
+            ElevationValue innerElevation,
             WallThickness thickness,
             BoundaryCondition boundary,
             EndType endType = EndType.Polygon)
@@ -102,7 +102,7 @@ namespace HyCADTool.Domain.ValueObjects
             return new WallData(
                 edge,
                 innerElevation,
-                Elevation.Ground, // 挡土墙外侧标高固定为0.0m
+                ElevationValue.Ground, // 挡土墙外侧标高固定为0.0m
                 thickness,
                 boundary,
                 endType);

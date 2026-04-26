@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using HyCADTool.TextLayout;
 
-namespace HyCADTool.Domain.Models.Text
+namespace HyCADTool.Features.DesignSpec.Domain.Models
 {
     /// <summary>
     /// 设计说明排版配置（平台无关）

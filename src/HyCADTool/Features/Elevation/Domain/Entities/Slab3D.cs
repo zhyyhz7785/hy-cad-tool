@@ -1,8 +1,8 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Entities
+namespace HyCADTool.Features.Elevation.Domain.Entities
 {
     /// <summary>
     /// 3D筏板实体
@@ -24,7 +24,7 @@ namespace HyCADTool.Domain.Entities
         /// <summary>
         /// 基础标高（筏板顶部）
         /// </summary>
-        public Elevation BaseElevation { get; private set; }
+        public ElevationValue BaseElevation { get; private set; }
         
         /// <summary>
         /// 筏板面积（mm²）
@@ -36,11 +36,11 @@ namespace HyCADTool.Domain.Entities
             string layerName,
             Polygon2D region,
             SlabThickness thickness,
-            Elevation baseElevation)
+            ElevationValue baseElevation)
             : base(
                 name,
                 layerName,
-                Elevation.FromMillimeters(baseElevation.Value - thickness.Value), // 底部标高
+                ElevationValue.FromMillimeters(baseElevation.Value - thickness.Value), // 底部标高
                 baseElevation) // 顶部标高
         {
             Region = region ?? throw new ArgumentNullException(nameof(region));
@@ -58,7 +58,7 @@ namespace HyCADTool.Domain.Entities
         public static Slab3D Create(
             Polygon2D region,
             SlabThickness thickness,
-            Elevation baseElevation,
+            ElevationValue baseElevation,
             string layerName = "Bufferid_Slab")
         {
             return new Slab3D(

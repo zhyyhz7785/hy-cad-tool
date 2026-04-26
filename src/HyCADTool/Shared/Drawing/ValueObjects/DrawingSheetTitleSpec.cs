@@ -2,7 +2,7 @@
 
 using System;
 
-namespace HyCADTool.Domain.ValueObjects.Drawing
+namespace HyCADTool.Shared.Drawing.ValueObjects
 {
     /// <summary>
     /// 图题/图纸名称 的几何与图层规则（与 AutoCAD / WPF 无关的快照，由

@@ -1,5 +1,5 @@
 using FluentAssertions;
-using HyCADTool.Domain.Models.Drawing;
+using HyCADTool.Shared.Drawing.Models;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Models.Drawing

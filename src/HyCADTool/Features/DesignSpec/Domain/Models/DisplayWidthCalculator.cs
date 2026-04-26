@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.Models.Text
+namespace HyCADTool.Features.DesignSpec.Domain.Models
 {
     /// <summary>
     /// 统一文本显示宽度口径：ASCII=1，CJK/全角=2。

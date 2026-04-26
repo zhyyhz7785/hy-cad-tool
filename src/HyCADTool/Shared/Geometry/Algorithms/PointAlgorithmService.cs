@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 点算法服务实现（平台无关）
@@ -20,7 +20,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double dx = point2.X - point1.X;
             double dy = point2.Y - point1.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         public double CalculateDistanceFromOrigin(Point2D point)
@@ -28,7 +28,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (point == default)
                 return double.MaxValue;
 
-            return Math.Sqrt(point.X * point.X + point.Y * point.Y);
+            return System.Math.Sqrt(point.X * point.X + point.Y * point.Y);
         }
 
         public double FindMinimumDistance(List<Point2D> points)
@@ -140,8 +140,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
         public bool IsPointsEqual(Point2D point1, Point2D point2, Tolerance tolerance)
         {
-            return Math.Abs(point1.X - point2.X) <= tolerance.Value &&
-                   Math.Abs(point1.Y - point2.Y) <= tolerance.Value;
+            return System.Math.Abs(point1.X - point2.X) <= tolerance.Value &&
+                   System.Math.Abs(point1.Y - point2.Y) <= tolerance.Value;
         }
 
         public bool IsPointInRectangle(Point2D point, Point2D minPoint, Point2D maxPoint)
@@ -161,7 +161,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
         public bool AreCollinear(Point2D point1, Point2D point2, Point2D point3, Tolerance tolerance)
         {
             double crossProduct = CalculateCrossProduct(point1, point2, point3);
-            return Math.Abs(crossProduct) <= tolerance.Value;
+            return System.Math.Abs(crossProduct) <= tolerance.Value;
         }
 
         // === 角度和方向计算 ===
@@ -173,7 +173,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double dx = toPoint.X - fromPoint.X;
             double dy = toPoint.Y - fromPoint.Y;
-            return Math.Atan2(dy, dx);
+            return System.Math.Atan2(dy, dx);
         }
 
         public double CalculateAngleAt(Point2D point1, Point2D vertex, Point2D point2)
@@ -186,8 +186,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             double angle = angle2 - angle1;
 
             // 规范化角度到 [0, 2π]
-            while (angle < 0) angle += 2 * Math.PI;
-            while (angle > 2 * Math.PI) angle -= 2 * Math.PI;
+            while (angle < 0) angle += 2 * System.Math.PI;
+            while (angle > 2 * System.Math.PI) angle -= 2 * System.Math.PI;
 
             return angle;
         }
@@ -215,8 +215,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (point == default || center == default)
                 return point;
 
-            double cos = Math.Cos(angle);
-            double sin = Math.Sin(angle);
+            double cos = System.Math.Cos(angle);
+            double sin = System.Math.Sin(angle);
 
             double dx = point.X - center.X;
             double dy = point.Y - center.Y;
@@ -249,7 +249,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             double dx = line.EndPoint.X - line.StartPoint.X;
             double dy = line.EndPoint.Y - line.StartPoint.Y;
 
-            if (Math.Abs(dx) < 1e-10 && Math.Abs(dy) < 1e-10)
+            if (System.Math.Abs(dx) < 1e-10 && System.Math.Abs(dy) < 1e-10)
                 return line.StartPoint; // 线段长度为0
 
             double t = ((point.X - line.StartPoint.X) * dx + (point.Y - line.StartPoint.Y) * dy) / (dx * dx + dy * dy);
@@ -376,7 +376,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (point1 == default || point2 == default)
                 return null;
 
-            ratio = Math.Max(0, Math.Min(1, ratio)); // 限制在[0,1]范围内
+            ratio = System.Math.Max(0, System.Math.Min(1, ratio)); // 限制在[0,1]范围内
 
             double x = point1.X + ratio * (point2.X - point1.X);
             double y = point1.Y + ratio * (point2.Y - point1.Y);
@@ -399,7 +399,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
             
-            if (Math.Abs(d) < 1e-10)
+            if (System.Math.Abs(d) < 1e-10)
                 return null; // 三点共线
 
             double ux = ((ax * ax + ay * ay) * (by - cy) + 
@@ -452,8 +452,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (x == default && y == default) return true;
             if (x == default || y == default) return false;
 
-            return Math.Abs(x.X - y.X) <= _tolerance.Value &&
-                   Math.Abs(x.Y - y.Y) <= _tolerance.Value;
+            return System.Math.Abs(x.X - y.X) <= _tolerance.Value &&
+                   System.Math.Abs(x.Y - y.Y) <= _tolerance.Value;
         }
 
         public int GetHashCode(Point2D obj)

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
 namespace HyCADTool.Shared.AutoCAD.Services
@@ -70,20 +70,20 @@ namespace HyCADTool.Shared.AutoCAD.Services
         /// <summary>
         /// 从AutoCAD Polyline提取标高信息
         /// </summary>
-        public Elevation ExtractElevation(Polyline polyline)
+        public ElevationValue ExtractElevation(Polyline polyline)
         {
             if (polyline == null)
                 throw new ArgumentNullException(nameof(polyline));
             
             // AutoCAD Polyline的Elevation属性是2D多段线的Z坐标（单位：mm）
             double elevation = polyline.Elevation * _scale;
-            return Elevation.FromMillimeters(elevation);
+            return ElevationValue.FromMillimeters(elevation);
         }
         
         /// <summary>
         /// 将标高应用到AutoCAD Polyline
         /// </summary>
-        public void ApplyElevation(Polyline polyline, Elevation elevation)
+        public void ApplyElevation(Polyline polyline, ElevationValue elevation)
         {
             if (polyline == null)
                 throw new ArgumentNullException(nameof(polyline));

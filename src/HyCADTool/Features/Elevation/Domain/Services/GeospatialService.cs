@@ -1,9 +1,9 @@
-using HyCADTool.Domain.Interfaces;
+using HyCADTool.Features.Elevation.Domain.Interfaces;
 using HyCADTool.Shared.Geometry;
 using System;
 using System.IO;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 地理空间服务实现

@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.ValueObjects
+namespace HyCADTool.Features.Reinforcement.Domain
 {
     /// <summary>
     /// 钢筋参数值对象

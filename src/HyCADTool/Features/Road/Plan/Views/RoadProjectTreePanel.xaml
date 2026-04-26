@@ -1,11 +1,11 @@
-<UserControl x:Class="HyCADTool.Presentation.Views.Road.RoadProjectTreePanel"
+<UserControl x:Class="HyCADTool.Features.Road.Plan.Views.RoadProjectTreePanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
-             xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels.Road"
+             xmlns:vm="clr-namespace:HyCADTool.Features.Road.Plan.ViewModels"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="320"
@@ -32,7 +32,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Presentation/Resources/RoadDesignerStyles.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/RoadDesignerStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!--

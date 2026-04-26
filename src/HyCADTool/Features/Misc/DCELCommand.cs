@@ -2,9 +2,10 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using HyCADTool.Domain.Services.GeometryAlgorithms;
+using HyCADTool.Shared.Geometry.Algorithms;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Features.DCEL.Services;
+using HyCADTool.Features.DCEL.Domain.Services;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
@@ -94,7 +95,7 @@ namespace HyCADTool.Features.Misc
                 ed.WriteMessage("\n[HYDCEL v4.2 - 多文档数据库修复 2026-03-15]");
                 
                 // 显示当前配置
-                var settings = Domain.Services.DCELSettings.Current;
+                var settings = HyCADTool.Features.DCEL.Domain.Services.DCELSettings.Current;
                 ed.WriteMessage($"\n配置: Arc={settings.ArcSegmentCount?.ToString() ?? "自动"}, " +
                                $"Ellipse={settings.EllipseSegmentCount?.ToString() ?? "自动"}, " +
                                $"Spline={settings.SplineSegmentCount?.ToString() ?? "自动"}, " +
@@ -125,7 +126,7 @@ namespace HyCADTool.Features.Misc
                 // 3. 提取并简化所有曲线（使用全局配置）
                 var tolerance = 0.01;
                 var sw1 = Stopwatch.StartNew();
-                var simplificationService = new Domain.Services.CurveSimplificationService();
+                var simplificationService = new HyCADTool.Shared.Geometry.Algorithms.CurveSimplificationService();
                 var (segments, mappings) = _curveExtractor.ExtractAndSimplify(
                     curveIds, 
                     simplificationService, 

@@ -1,7 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Features.Road.CrossSection.ViewModels;
 
 namespace HyCADTool.Shell.Behaviors
 {
@@ -67,7 +68,7 @@ namespace HyCADTool.Shell.Behaviors
             if (ReferenceEquals(source, target)) return;
             if (source.Side != target.Side) return;
 
-            var owner = source.Side == Domain.ValueObjects.Road.BandSide.Right
+            var owner = source.Side == BandSide.Right
                 ? FindOwnerCollection(tree, true)
                 : FindOwnerCollection(tree, false);
             if (owner == null) return;

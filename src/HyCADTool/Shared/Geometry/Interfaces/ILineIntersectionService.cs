@@ -1,6 +1,6 @@
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Interfaces
+namespace HyCADTool.Shared.Geometry.Interfaces
 {
     /// <summary>
     /// 线段与多段线交点计算服务接口（平台无关）

@@ -1,9 +1,9 @@
-using HyCADTool.Domain.Entities.Pile;
+using HyCADTool.Features.Pile.Domain.Entities;
 using HyCADTool.Shared.Geometry;
 using System;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Pile.Domain.Services
 {
     /// <summary>
     /// 桩布置算法服务（纯 Domain，平台无关）

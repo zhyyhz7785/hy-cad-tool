@@ -2,7 +2,7 @@ using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.DataStructures.DCEL
+namespace HyCADTool.Features.DCEL.Domain.DataStructures
 {
     /// <summary>
     /// DCEL 图（Doubly Connected Edge List Graph）

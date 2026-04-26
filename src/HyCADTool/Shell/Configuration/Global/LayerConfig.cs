@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.ValueObjects.Configuration.Global
+namespace HyCADTool.Shell.Configuration.Global
 {
     /// <summary>CSV/旧格式中的单层描述。</summary>
     public class LayerConfig

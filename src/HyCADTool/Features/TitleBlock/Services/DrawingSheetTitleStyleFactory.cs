@@ -1,7 +1,7 @@
 #nullable enable
 
-using HyCADTool.Domain.ValueObjects.Drawing;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Shared.Drawing.ValueObjects;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Presentation.ViewModels;

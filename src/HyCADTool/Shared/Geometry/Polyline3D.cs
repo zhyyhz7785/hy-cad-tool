@@ -47,21 +47,21 @@ namespace HyCADTool.Shared.Geometry
             radiusAbs = 0;
             if (segmentIndex < 0 || segmentIndex >= SegmentCount) return false;
             double bulge = _bulges[segmentIndex];
-            if (Math.Abs(bulge) < BulgeEpsilon) return false;
+            if (System.Math.Abs(bulge) < BulgeEpsilon) return false;
 
             var seg = GetSegmentAt(segmentIndex);
             ComputeArcGeometry(seg.Start, seg.End, bulge,
                 out _, out _, out double radius,
                 out double startAngle, out double sweep);
 
-            radiusAbs = Math.Abs(radius);
+            radiusAbs = System.Math.Abs(radius);
             if (radiusAbs < BulgeEpsilon) return false;
 
             // 与 TangentOnSegment(segmentIndex, t) 一致：切向 = 半径方向按 sweep 旋转 90°。
             double a0 = startAngle;
             double a1 = startAngle + sweep;
-            var radial0 = new Vector2D(Math.Cos(a0), Math.Sin(a0));
-            var radial1 = new Vector2D(Math.Cos(a1), Math.Sin(a1));
+            var radial0 = new Vector2D(System.Math.Cos(a0), System.Math.Sin(a0));
+            var radial1 = new Vector2D(System.Math.Cos(a1), System.Math.Sin(a1));
             var t0 = sweep >= 0 ? radial0.Perpendicular() : -radial0.Perpendicular();
             var t1 = sweep >= 0 ? radial1.Perpendicular() : -radial1.Perpendicular();
             if (!t0.TryNormalize(out var d0) || !t1.TryNormalize(out var d1))
@@ -81,7 +81,7 @@ namespace HyCADTool.Shared.Geometry
             {
                 for (int i = 0; i < _bulges.Count; i++)
                 {
-                    if (Math.Abs(_bulges[i]) > BulgeEpsilon) return true;
+                    if (System.Math.Abs(_bulges[i]) > BulgeEpsilon) return true;
                 }
                 return false;
             }
@@ -167,9 +167,9 @@ namespace HyCADTool.Shared.Geometry
                 double dx = seg.End.X - seg.Start.X;
                 double dy = seg.End.Y - seg.Start.Y;
                 double dz = seg.End.Z - seg.Start.Z;
-                double chordXY = Math.Sqrt(dx * dx + dy * dy);
+                double chordXY = System.Math.Sqrt(dx * dx + dy * dy);
                 double arcXY = ArcLengthFromChord(chordXY, _bulges[i]);
-                total += Math.Sqrt(arcXY * arcXY + dz * dz);
+                total += System.Math.Sqrt(arcXY * arcXY + dz * dz);
             }
             return total;
         }
@@ -191,7 +191,7 @@ namespace HyCADTool.Shared.Geometry
                 var seg = GetSegmentAt(i);
                 double dx = seg.End.X - seg.Start.X;
                 double dy = seg.End.Y - seg.Start.Y;
-                double chord = Math.Sqrt(dx * dx + dy * dy);
+                double chord = System.Math.Sqrt(dx * dx + dy * dy);
                 total += ArcLengthFromChord(chord, _bulges[i]);
             }
             return total;
@@ -249,17 +249,17 @@ namespace HyCADTool.Shared.Geometry
             if (total <= BulgeEpsilon) yield break;
 
             // startOffset < 0 的负偏移视为 0；允许 startOffset > total 时直接不产出。
-            double s = Math.Max(0, startOffset);
+            double s = System.Math.Max(0, startOffset);
             const double eps = 1e-9;
             bool emittedEnd = false;
             while (s <= total + eps)
             {
-                double clamped = Math.Min(s, total);
+                double clamped = System.Math.Min(s, total);
                 yield return new StationSample(
                     clamped,
                     PointAtPlanarStation(clamped),
                     TangentAtPlanarStation(clamped));
-                if (Math.Abs(clamped - total) < eps) emittedEnd = true;
+                if (System.Math.Abs(clamped - total) < eps) emittedEnd = true;
                 s += interval;
             }
             if (includeEnd && !emittedEnd)
@@ -285,7 +285,7 @@ namespace HyCADTool.Shared.Geometry
             if (segCount == 0)
                 throw new InvalidOperationException("Polyline3D 顶点不足，无法按桩号定位。");
 
-            double remaining = Math.Max(0, station);
+            double remaining = System.Math.Max(0, station);
             for (int i = 0; i < segCount; i++)
             {
                 double len = GetPlanarSegmentLength(i);
@@ -294,7 +294,7 @@ namespace HyCADTool.Shared.Geometry
                 if (remaining <= len || i == segCount - 1)
                 {
                     segIndex = i;
-                    t = Math.Min(1.0, remaining / len);
+                    t = System.Math.Min(1.0, remaining / len);
                     segPlanarLength = len;
                     return;
                 }
@@ -312,7 +312,7 @@ namespace HyCADTool.Shared.Geometry
             var seg = GetSegmentAt(segIndex);
             double dx = seg.End.X - seg.Start.X;
             double dy = seg.End.Y - seg.Start.Y;
-            double chord = Math.Sqrt(dx * dx + dy * dy);
+            double chord = System.Math.Sqrt(dx * dx + dy * dy);
             return ArcLengthFromChord(chord, _bulges[segIndex]);
         }
 
@@ -323,7 +323,7 @@ namespace HyCADTool.Shared.Geometry
             double bulge = _bulges[segIndex];
             double z = seg.Start.Z + (seg.End.Z - seg.Start.Z) * t;
 
-            if (Math.Abs(bulge) < BulgeEpsilon)
+            if (System.Math.Abs(bulge) < BulgeEpsilon)
             {
                 double x = seg.Start.X + (seg.End.X - seg.Start.X) * t;
                 double y = seg.Start.Y + (seg.End.Y - seg.Start.Y) * t;
@@ -335,8 +335,8 @@ namespace HyCADTool.Shared.Geometry
                 out double startAngle, out double sweep);
 
             double angle = startAngle + sweep * t;
-            double ax = cx + radius * Math.Cos(angle);
-            double ay = cy + radius * Math.Sin(angle);
+            double ax = cx + radius * System.Math.Cos(angle);
+            double ay = cy + radius * System.Math.Sin(angle);
             return new Point3D(ax, ay, z);
         }
 
@@ -346,7 +346,7 @@ namespace HyCADTool.Shared.Geometry
             var seg = GetSegmentAt(segIndex);
             double bulge = _bulges[segIndex];
 
-            if (Math.Abs(bulge) < BulgeEpsilon)
+            if (System.Math.Abs(bulge) < BulgeEpsilon)
             {
                 var chord = new Vector2D(seg.End.X - seg.Start.X, seg.End.Y - seg.Start.Y);
                 return chord.TryNormalize(out var unit) ? unit : Vector2D.UnitX;
@@ -358,7 +358,7 @@ namespace HyCADTool.Shared.Geometry
 
             double angle = startAngle + sweep * t;
             // 半径方向（中心 → 当前点）
-            var radial = new Vector2D(Math.Cos(angle), Math.Sin(angle));
+            var radial = new Vector2D(System.Math.Cos(angle), System.Math.Sin(angle));
             // 切线 = 半径方向按 sweep 方向旋转 90°：sweep>0 逆时针行进 → 切线 = Perpendicular()；
             // sweep<0 顺时针 → 切线 = -Perpendicular()。
             var tangent = sweep >= 0 ? radial.Perpendicular() : -radial.Perpendicular();
@@ -385,17 +385,17 @@ namespace HyCADTool.Shared.Geometry
             out double startAngle,
             out double sweep)
         {
-            double theta = 4.0 * Math.Atan(bulge); // 带符号
+            double theta = 4.0 * System.Math.Atan(bulge); // 带符号
             sweep = theta;
 
             double dx = end.X - start.X;
             double dy = end.Y - start.Y;
-            double chord = Math.Sqrt(dx * dx + dy * dy);
-            double sinHalf = Math.Sin(theta / 2.0);
+            double chord = System.Math.Sqrt(dx * dx + dy * dy);
+            double sinHalf = System.Math.Sin(theta / 2.0);
 
             // bulge != 0 时 sinHalf 不会接近 0；退化场景在上游已按直线处理。
             radius = (chord / 2.0) / sinHalf; // 带符号的 radius，下面用 Abs 即可
-            double absR = Math.Abs(radius);
+            double absR = System.Math.Abs(radius);
 
             double mx = (start.X + end.X) / 2.0;
             double my = (start.Y + end.Y) / 2.0;
@@ -407,12 +407,12 @@ namespace HyCADTool.Shared.Geometry
 
             // 圆心到弦中点的距离 d = R·cos(θ/2)（带符号）
             // 按 bulge 符号决定方向：bulge>0（逆时针）→ 中心在弦左侧，d 为正；bulge<0 → 中心在右侧。
-            double d = absR * Math.Cos(theta / 2.0) * Math.Sign(bulge);
+            double d = absR * System.Math.Cos(theta / 2.0) * System.Math.Sign(bulge);
             cx = mx + nx * d;
             cy = my + ny * d;
 
             radius = absR;
-            startAngle = Math.Atan2(start.Y - cy, start.X - cx);
+            startAngle = System.Math.Atan2(start.Y - cy, start.X - cx);
         }
 
         /// <summary>
@@ -451,7 +451,7 @@ namespace HyCADTool.Shared.Geometry
             hit = default;
             var w = p0.VectorTo(p1);
             double det = d0.Cross(d1);
-            if (Math.Abs(det) < 1e-12) return false;
+            if (System.Math.Abs(det) < 1e-12) return false;
             double s = w.Cross(d1) / det;
             hit = p0.Add(d0 * s);
             return true;
@@ -464,9 +464,9 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         private static double ArcLengthFromChord(double chord, double bulge)
         {
-            if (Math.Abs(bulge) < BulgeEpsilon) return chord;
-            double theta = 4.0 * Math.Atan(Math.Abs(bulge));
-            double sinHalf = Math.Sin(theta / 2.0);
+            if (System.Math.Abs(bulge) < BulgeEpsilon) return chord;
+            double theta = 4.0 * System.Math.Atan(System.Math.Abs(bulge));
+            double sinHalf = System.Math.Sin(theta / 2.0);
             if (sinHalf < BulgeEpsilon) return chord;
             double radius = (chord / 2.0) / sinHalf;
             return radius * theta;

@@ -1,7 +1,8 @@
-using HyCADTool.Domain.Enums;
+using HyCADTool.Features.Reinforcement.Domain.Enums;
+using HyCADTool.Features.DCEL.Domain.Enums;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Models.Configuration
+namespace HyCADTool.Features.BaseRein.Domain
 {
     /// <summary>
     /// 基础底板配筋配置

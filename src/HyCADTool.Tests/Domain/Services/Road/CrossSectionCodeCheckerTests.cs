@@ -1,6 +1,6 @@
 using System.Linq;
 using FluentAssertions;
-using HyCADTool.Domain.Services.Road;
+using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Domain.ValueObjects.Road;
 using Xunit;
 

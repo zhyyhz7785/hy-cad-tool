@@ -1,6 +1,6 @@
 using System;
 
-namespace HyCADTool.Domain.ValueObjects
+namespace HyCADTool.Features.Elevation.Domain.ValueObjects
 {
     /// <summary>
     /// 标高值对象
@@ -9,7 +9,7 @@ namespace HyCADTool.Domain.ValueObjects
     /// 负值：地面以下
     /// 零值：地面标高（±0.000）
     /// </summary>
-    public class Elevation : IEquatable<Elevation>, IComparable<Elevation>
+    public class ElevationValue : IEquatable<ElevationValue>, IComparable<ElevationValue>
     {
         /// <summary>
         /// 标高值（mm）
@@ -19,7 +19,7 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 是否为地面标高（±0.000）
         /// </summary>
-        public bool IsGroundLevel => Math.Abs(Value) < ToleranceSettings.Instance.ElevationTolerance;
+        public bool IsGroundLevel => System.Math.Abs(Value) < ToleranceSettings.Instance.ElevationTolerance;
         
         /// <summary>
         /// 是否为地下结构（标高 < 0）
@@ -34,9 +34,9 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 地面标高（±0.000）
         /// </summary>
-        public static readonly Elevation Ground = new Elevation(0.0);
+        public static readonly ElevationValue Ground = new ElevationValue(0.0);
         
-        private Elevation(double value)
+        private ElevationValue(double value)
         {
             Value = value;
         }
@@ -44,17 +44,17 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 从毫米创建标高
         /// </summary>
-        public static Elevation FromMillimeters(double millimeters)
+        public static ElevationValue FromMillimeters(double millimeters)
         {
-            return new Elevation(millimeters);
+            return new ElevationValue(millimeters);
         }
         
         /// <summary>
         /// 从米创建标高
         /// </summary>
-        public static Elevation FromMeters(double meters)
+        public static ElevationValue FromMeters(double meters)
         {
-            return new Elevation(meters * 1000.0);
+            return new ElevationValue(meters * 1000.0);
         }
         
         /// <summary>
@@ -75,7 +75,7 @@ namespace HyCADTool.Domain.ValueObjects
             
             if (IsGroundLevel)
             {
-                return $"±{Math.Abs(meters).ToString($"F{decimalPlaces}")}";
+                return $"±{System.Math.Abs(meters).ToString($"F{decimalPlaces}")}";
             }
             else if (meters >= 0)
             {
@@ -91,7 +91,7 @@ namespace HyCADTool.Domain.ValueObjects
         /// 从标高文本解析
         /// 支持格式：-1.200, +0.500, ±0.000, 1.200
         /// </summary>
-        public static bool TryParse(string text, out Elevation elevation)
+        public static bool TryParse(string text, out ElevationValue elevation)
         {
             elevation = null;
             
@@ -114,44 +114,44 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 计算两个标高之间的高度差（mm）
         /// </summary>
-        public double HeightDifference(Elevation other)
+        public double HeightDifference(ElevationValue other)
         {
-            return Math.Abs(Value - other.Value);
+            return System.Math.Abs(Value - other.Value);
         }
         
         /// <summary>
         /// 判断两个标高是否在容差范围内相等
         /// </summary>
-        public bool EqualsWithTolerance(Elevation other)
+        public bool EqualsWithTolerance(ElevationValue other)
         {
             if (other == null) return false;
             
             var tolerance = ToleranceSettings.Instance.ElevationTolerance;
-            return Math.Abs(Value - other.Value) < tolerance;
+            return System.Math.Abs(Value - other.Value) < tolerance;
         }
         
         /// <summary>
         /// 判断两个标高是否有显著差异（用于判断是否为墙体）
         /// </summary>
-        public bool HasSignificantDifference(Elevation other)
+        public bool HasSignificantDifference(ElevationValue other)
         {
             if (other == null) return false;
             
             var tolerance = ToleranceSettings.Instance.ElevationTolerance;
-            return Math.Abs(Value - other.Value) > tolerance;
+            return System.Math.Abs(Value - other.Value) > tolerance;
         }
         
         #region Equality
         
-        public bool Equals(Elevation other)
+        public bool Equals(ElevationValue other)
         {
             if (other == null) return false;
-            return Math.Abs(Value - other.Value) < double.Epsilon;
+            return System.Math.Abs(Value - other.Value) < double.Epsilon;
         }
         
         public override bool Equals(object obj)
         {
-            return obj is Elevation other && Equals(other);
+            return obj is ElevationValue other && Equals(other);
         }
         
         public override int GetHashCode()
@@ -159,14 +159,14 @@ namespace HyCADTool.Domain.ValueObjects
             return Value.GetHashCode();
         }
         
-        public static bool operator ==(Elevation left, Elevation right)
+        public static bool operator ==(ElevationValue left, ElevationValue right)
         {
             if (ReferenceEquals(left, null))
                 return ReferenceEquals(right, null);
             return left.Equals(right);
         }
         
-        public static bool operator !=(Elevation left, Elevation right)
+        public static bool operator !=(ElevationValue left, ElevationValue right)
         {
             return !(left == right);
         }
@@ -175,28 +175,28 @@ namespace HyCADTool.Domain.ValueObjects
         
         #region Comparison
         
-        public int CompareTo(Elevation other)
+        public int CompareTo(ElevationValue other)
         {
             if (other == null) return 1;
             return Value.CompareTo(other.Value);
         }
         
-        public static bool operator <(Elevation left, Elevation right)
+        public static bool operator <(ElevationValue left, ElevationValue right)
         {
             return left.CompareTo(right) < 0;
         }
         
-        public static bool operator >(Elevation left, Elevation right)
+        public static bool operator >(ElevationValue left, ElevationValue right)
         {
             return left.CompareTo(right) > 0;
         }
         
-        public static bool operator <=(Elevation left, Elevation right)
+        public static bool operator <=(ElevationValue left, ElevationValue right)
         {
             return left.CompareTo(right) <= 0;
         }
         
-        public static bool operator >=(Elevation left, Elevation right)
+        public static bool operator >=(ElevationValue left, ElevationValue right)
         {
             return left.CompareTo(right) >= 0;
         }
@@ -205,34 +205,34 @@ namespace HyCADTool.Domain.ValueObjects
         
         #region Operators
         
-        public static Elevation operator +(Elevation left, Elevation right)
+        public static ElevationValue operator +(ElevationValue left, ElevationValue right)
         {
-            return new Elevation(left.Value + right.Value);
+            return new ElevationValue(left.Value + right.Value);
         }
         
-        public static Elevation operator -(Elevation left, Elevation right)
+        public static ElevationValue operator -(ElevationValue left, ElevationValue right)
         {
-            return new Elevation(left.Value - right.Value);
+            return new ElevationValue(left.Value - right.Value);
         }
         
-        public static Elevation operator *(Elevation elevation, double multiplier)
+        public static ElevationValue operator *(ElevationValue e, double multiplier)
         {
-            return new Elevation(elevation.Value * multiplier);
+            return new ElevationValue(e.Value * multiplier);
         }
         
-        public static Elevation operator /(Elevation elevation, double divisor)
+        public static ElevationValue operator /(ElevationValue e, double divisor)
         {
-            if (Math.Abs(divisor) < double.Epsilon)
+            if (System.Math.Abs(divisor) < double.Epsilon)
                 throw new DivideByZeroException("除数不能为零");
-            return new Elevation(elevation.Value / divisor);
+            return new ElevationValue(e.Value / divisor);
         }
         
         /// <summary>
         /// 一元负号运算符（反转标高）
         /// </summary>
-        public static Elevation operator -(Elevation elevation)
+        public static ElevationValue operator -(ElevationValue e)
         {
-            return new Elevation(-elevation.Value);
+            return new ElevationValue(-e.Value);
         }
         
         #endregion

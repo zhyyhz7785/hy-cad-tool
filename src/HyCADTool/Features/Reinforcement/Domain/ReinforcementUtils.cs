@@ -1,12 +1,11 @@
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
-using HyCADTool.Domain.ValueObjects.Reinforcement;
+using HyCADTool.Shared.Geometry.Interfaces;
+using HyCADTool.Features.Reinforcement.Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Utilities
+namespace HyCADTool.Features.Reinforcement.Domain
 {
     /// <summary>
     /// 钢筋生成静态工具类（平台无关）

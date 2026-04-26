@@ -85,12 +85,12 @@ namespace HyCADTool.Features.Elevation.Services
         /// <summary>
         /// 从边创建多段线
         /// </summary>
-        private Polyline CreatePolylineFromEdge(Line2D edge, double elevation)
+        private Polyline CreatePolylineFromEdge(Line2D edge, double ElevationValue)
         {
             var polyline = new Polyline();
             polyline.AddVertexAt(0, new Point2d(edge.StartPoint.X, edge.StartPoint.Y), 0, 0, 0);
             polyline.AddVertexAt(1, new Point2d(edge.EndPoint.X, edge.EndPoint.Y), 0, 0, 0);
-            polyline.Elevation = elevation;
+            polyline.Elevation = ElevationValue;
             
             return polyline;
         }

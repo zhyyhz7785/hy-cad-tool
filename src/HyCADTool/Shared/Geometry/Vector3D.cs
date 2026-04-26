@@ -21,7 +21,7 @@ namespace HyCADTool.Shared.Geometry
         /// <summary>
         /// 向量长度（模）
         /// </summary>
-        public double Length => Math.Sqrt(X * X + Y * Y + Z * Z);
+        public double Length => System.Math.Sqrt(X * X + Y * Y + Z * Z);
 
         /// <summary>
         /// 向量长度的平方
@@ -68,7 +68,7 @@ namespace HyCADTool.Shared.Geometry
             double lenProduct = Length * other.Length;
             if (lenProduct < 1e-10)
                 return 0;
-            return Math.Acos(Math.Max(-1, Math.Min(1, dot / lenProduct)));
+            return System.Math.Acos(System.Math.Max(-1, System.Math.Min(1, dot / lenProduct)));
         }
 
         /// <summary>
@@ -115,9 +115,9 @@ namespace HyCADTool.Shared.Geometry
 
         public bool Equals(Vector3D other)
         {
-            return Math.Abs(X - other.X) < 1e-9 &&
-                   Math.Abs(Y - other.Y) < 1e-9 &&
-                   Math.Abs(Z - other.Z) < 1e-9;
+            return System.Math.Abs(X - other.X) < 1e-9 &&
+                   System.Math.Abs(Y - other.Y) < 1e-9 &&
+                   System.Math.Abs(Z - other.Z) < 1e-9;
         }
 
         public override bool Equals(object obj)

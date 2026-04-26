@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.ValueObjects
+namespace HyCADTool.Features.Elevation.Domain.ValueObjects
 {
     /// <summary>
     /// 几何数据值对象 - 数据中心枢纽
@@ -26,7 +26,7 @@ namespace HyCADTool.Domain.ValueObjects
         /// <summary>
         /// 多边形标高
         /// </summary>
-        public Elevation Elevation { get; }
+        public ElevationValue Elevation { get; }
         
         /// <summary>
         /// 所有墙体边（包括墙体和非墙体）
@@ -81,7 +81,7 @@ namespace HyCADTool.Domain.ValueObjects
         
         private GeometryData(
             Polygon2D polygon,
-            Elevation elevation,
+            ElevationValue elevation,
             IReadOnlyList<WallData> allWalls,
             SlabThickness slabThickness)
         {
@@ -119,7 +119,7 @@ namespace HyCADTool.Domain.ValueObjects
         /// </summary>
         public static GeometryData Create(
             Polygon2D polygon,
-            Elevation elevation,
+            ElevationValue elevation,
             IReadOnlyList<WallData> allWalls,
             SlabThickness slabThickness)
         {

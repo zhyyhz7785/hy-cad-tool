@@ -1,6 +1,6 @@
 using FluentAssertions;
-using HyCADTool.Domain.Services.Road;
 using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Features.Road.CrossSection.Domain;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Services.Road

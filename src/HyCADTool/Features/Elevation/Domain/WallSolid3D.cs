@@ -1,7 +1,8 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
+using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Shared.Geometry
+namespace HyCADTool.Features.Elevation.Domain
 {
     /// <summary>
     /// 墙体实体（值对象）
@@ -11,15 +12,15 @@ namespace HyCADTool.Shared.Geometry
     {
         public Polygon2D OuterPolygon { get; }
         public Polygon2D InnerPolygon { get; }
-        public Elevation BottomElevation { get; }
-        public Elevation TopElevation { get; }
+        public ElevationValue BottomElevation { get; }
+        public ElevationValue TopElevation { get; }
         public bool ContactsWithSoil { get; }
         
         private WallSolid3D(
             Polygon2D outerPolygon,
             Polygon2D innerPolygon,
-            Elevation bottomElevation,
-            Elevation topElevation,
+            ElevationValue bottomElevation,
+            ElevationValue topElevation,
             bool contactsWithSoil)
         {
             OuterPolygon = outerPolygon ?? throw new ArgumentNullException(nameof(outerPolygon));
@@ -35,8 +36,8 @@ namespace HyCADTool.Shared.Geometry
         public static WallSolid3D Create(
             Polygon2D outerPolygon,
             Polygon2D innerPolygon,
-            Elevation bottomElevation,
-            Elevation topElevation,
+            ElevationValue bottomElevation,
+            ElevationValue topElevation,
             bool contactsWithSoil)
         {
             return new WallSolid3D(

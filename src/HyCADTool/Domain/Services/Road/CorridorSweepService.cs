@@ -4,6 +4,7 @@ using System.Linq;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Features.Road.CrossSection.Domain;
 
 namespace HyCADTool.Domain.Services.Road
 {

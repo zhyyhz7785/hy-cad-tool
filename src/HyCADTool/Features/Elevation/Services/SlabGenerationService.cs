@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Domain.Entities;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Features.Elevation.Domain.Entities;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Shared.AutoCAD.Services;

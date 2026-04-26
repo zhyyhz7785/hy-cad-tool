@@ -1,8 +1,8 @@
 using System;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Domain.Services.Road;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Shell.Configuration.User;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Services.Road

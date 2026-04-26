@@ -1,13 +1,11 @@
 using System;
-using HyCADTool.Domain.Events.Road;
+using HyCADTool.Features.Road.Events;
 using HyCADTool.Domain.Models.Road;
 
 namespace HyCADTool.Shared.AutoCAD.Services.Road
 {
     /// <summary>
-    /// 横断面模板服务（P0 占位 / P2 实现）。
-    /// P2 阶段提供 TemplateEditor UI（可视化横截面），支持 MaterialKey / BlenderExtrudeHint 配置。
-    /// </summary>
+    /// 横断面模板服务（P0 占位 / P2 实现）�?    /// P2 阶段提供 TemplateEditor UI（可视化横截面），支�?MaterialKey / BlenderExtrudeHint 配置�?    /// </summary>
     public sealed class RoadTemplateService
     {
         private readonly RoadDesignRegistry _registry;

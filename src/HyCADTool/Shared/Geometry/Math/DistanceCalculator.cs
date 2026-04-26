@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.MathAlgorithms
+namespace HyCADTool.Shared.Geometry.Math
 {
     /// <summary>
     /// 距离计算器 - 纯数学计算，平台无关
@@ -22,7 +22,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         {
             double dx = p2.X - p1.X;
             double dy = p2.Y - p1.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>距离 Distance</returns>
         public static double ManhattanDistance(Point2D p1, Point2D p2)
         {
-            return Math.Abs(p2.X - p1.X) + Math.Abs(p2.Y - p1.Y);
+            return System.Math.Abs(p2.X - p1.X) + System.Math.Abs(p2.Y - p1.Y);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         /// <returns>距离 Distance</returns>
         public static double ChebyshevDistance(Point2D p1, Point2D p2)
         {
-            return Math.Max(Math.Abs(p2.X - p1.X), Math.Abs(p2.Y - p1.Y));
+            return System.Math.Max(System.Math.Abs(p2.X - p1.X), System.Math.Abs(p2.Y - p1.Y));
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
             double t = ((point.X - lineStart.X) * dx + (point.Y - lineStart.Y) * dy) / lineLengthSquared;
             
             // 限制 t 在 [0, 1] 范围内
-            t = Math.Max(0, Math.Min(1, t));
+            t = System.Math.Max(0, System.Math.Min(1, t));
             
             // 计算最近点
             var closestPoint = new Point2D(
@@ -98,13 +98,13 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
             double dx = lineEnd.X - lineStart.X;
             double dy = lineEnd.Y - lineStart.Y;
             
-            double numerator = Math.Abs(
+            double numerator = System.Math.Abs(
                 dy * point.X - dx * point.Y + 
                 lineEnd.X * lineStart.Y - 
                 lineEnd.Y * lineStart.X
             );
             
-            double denominator = Math.Sqrt(dx * dx + dy * dy);
+            double denominator = System.Math.Sqrt(dx * dx + dy * dy);
             
             if (denominator < 1e-10)
                 return EuclideanDistance(point, lineStart);
@@ -138,7 +138,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
             double d3 = PointToLineSegmentDistance(line2Start, line1Start, line1End);
             double d4 = PointToLineSegmentDistance(line2End, line1Start, line1End);
             
-            return Math.Min(Math.Min(d1, d2), Math.Min(d3, d4));
+            return System.Math.Min(System.Math.Min(d1, d2), System.Math.Min(d3, d4));
         }
 
         /// <summary>
@@ -160,7 +160,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
             {
                 int j = (i + 1) % vertices.Count;
                 double distance = PointToLineSegmentDistance(point, vertices[i], vertices[j]);
-                minDistance = Math.Min(minDistance, distance);
+                minDistance = System.Math.Min(minDistance, distance);
             }
             
             return minDistance;
@@ -176,7 +176,7 @@ namespace HyCADTool.Domain.Services.MathAlgorithms
         public static double PointToPolygonSignedDistance(Point2D point, IEnumerable<Point2D> polygonVertices)
         {
             var vertices = polygonVertices.ToList();
-            bool isInside = GeometryAlgorithms.PolygonAlgorithms.ContainsPoint(vertices, point);
+            bool isInside = HyCADTool.Shared.Geometry.Algorithms.PolygonAlgorithms.ContainsPoint(vertices, point);
             
             double distance = PointToPolygonBoundaryDistance(point, vertices);
             

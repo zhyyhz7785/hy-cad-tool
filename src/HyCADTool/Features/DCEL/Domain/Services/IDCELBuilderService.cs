@@ -1,8 +1,8 @@
-using HyCADTool.Domain.DataStructures.DCEL;
+using HyCADTool.Features.DCEL.Domain.DataStructures;
 using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Features.DCEL.Domain.Services
 {
     /// <summary>
     /// DCEL 构建服务接口（DCEL Builder Service Interface）

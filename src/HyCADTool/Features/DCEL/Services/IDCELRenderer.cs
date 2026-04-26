@@ -1,4 +1,4 @@
-using HyCADTool.Domain.DataStructures.DCEL;
+using HyCADTool.Features.DCEL.Domain.DataStructures;
 using HyCADTool.Shared.Geometry;
 using System.Collections.Generic;
 

@@ -3,7 +3,9 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autofac;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shell.Configuration.Modules;
+using HyCADTool.Shell.Contracts;
 using HyCADTool.Shell.Input;
 using HyCADTool.Presentation.ViewModels;
 using System;
@@ -236,7 +238,7 @@ namespace HyCADTool.App.Bootstrap
         {
             try
             {
-                var configService = ServiceLocator.Resolve<Domain.Interfaces.IConfigurationService>();
+                var configService = ServiceLocator.Resolve<IConfigurationService>();
                 configService.LoadAll();
 
                 // 显示配置信息
@@ -245,7 +247,7 @@ namespace HyCADTool.App.Bootstrap
                 WriteMessage($"\n  - ElevationLength: {globalConfig.ElevationLength}");
                 WriteMessage($"\n  - Tolerance: {globalConfig.Tolerance.Double}");
 
-                var pileConfig = configService.GetModuleConfig<Domain.ValueObjects.Configuration.Modules.PileConfiguration>("Pile");
+                var pileConfig = configService.GetModuleConfig<PileConfiguration>("Pile");
                 WriteMessage($"\n  - Pile Diameter: {pileConfig.DiameterOrEdge}mm");
                 WriteMessage($"\n  - Pile Section: {pileConfig.Section}");
             }
@@ -279,10 +281,10 @@ namespace HyCADTool.App.Bootstrap
                 return;
             }
 
-            Domain.Interfaces.IStyleService styleService;
+            IStyleService styleService;
             try
             {
-                styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
+                styleService = ServiceLocator.Resolve<IStyleService>();
             }
             catch (System.Exception ex)
             {
@@ -430,7 +432,7 @@ namespace HyCADTool.App.Bootstrap
 
             try
             {
-                var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
+                var styleService = ServiceLocator.Resolve<IStyleService>();
                 SettingsPanelViewModel.GetOrCreate(e.Document.Name, styleService);
             }
             catch
@@ -797,8 +799,8 @@ namespace HyCADTool.App.Bootstrap
             {
                 TryEnsureHyCadStandardLinetypesLoaded();
 
-                var styleService = ServiceLocator.Resolve<Domain.Interfaces.IStyleService>();
-                var layerService = ServiceLocator.Resolve<Domain.Interfaces.ILayerService>();
+                var styleService = ServiceLocator.Resolve<IStyleService>();
+                var layerService = ServiceLocator.Resolve<ILayerService>();
 
                 var vm = SettingsPanelViewModel.GetOrCreate(documentName, styleService);
                 vm.LoadSettings();

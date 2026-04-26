@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Domain.Entities;
-using HyCADTool.Domain.Services;
-using HyCADTool.Domain.Services.Geometry;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
+using HyCADTool.Features.Elevation.Domain.Entities;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.Services;
+using HyCADTool.Shared.Geometry.Algorithms;
+using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Interfaces;
@@ -119,8 +120,8 @@ namespace HyCADTool.Features.Elevation.Services
         private int CreateConnectingWall(
             Transaction tr,
             Line2D edge,
-            Domain.ValueObjects.Elevation currentElevation,
-            Domain.ValueObjects.Elevation adjacentElevation,
+            ElevationValue currentElevation,
+            ElevationValue adjacentElevation,
             double currentBottomElevation,
             IWallBuilder wallBuilder)
         {
@@ -162,7 +163,7 @@ namespace HyCADTool.Features.Elevation.Services
         private int CreateRetainingWall(
             Transaction tr,
             Line2D edge,
-            Domain.ValueObjects.Elevation baseElevation,
+            ElevationValue baseElevation,
             double bottomElevation,
             IWallBuilder wallBuilder)
         {

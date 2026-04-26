@@ -1,6 +1,6 @@
 using System;
 using FluentAssertions;
-using HyCADTool.Domain.Events.Road;
+using HyCADTool.Features.Road.Events;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using Xunit;

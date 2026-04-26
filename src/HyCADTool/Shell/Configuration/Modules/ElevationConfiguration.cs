@@ -1,4 +1,4 @@
-namespace HyCADTool.Domain.ValueObjects.Configuration.Modules
+namespace HyCADTool.Shell.Configuration.Modules
 {
     public sealed class ElevationConfiguration
     {

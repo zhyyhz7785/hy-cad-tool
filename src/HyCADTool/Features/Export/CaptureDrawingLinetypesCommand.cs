@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Export.Services;
 using HyCADTool.Presentation.ViewModels;

@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
+using HyCADTool.Shell.Configuration.Global;
 using AcRuntime = Autodesk.AutoCAD.Runtime;
 
 namespace HyCADTool.Features.Export.Services

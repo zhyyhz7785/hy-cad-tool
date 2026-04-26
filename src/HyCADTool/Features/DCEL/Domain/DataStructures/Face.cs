@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.DataStructures.DCEL
+namespace HyCADTool.Features.DCEL.Domain.DataStructures
 {
     /// <summary>
     /// DCEL 面（Doubly Connected Edge List - Face）

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Domain.Entities;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.Entities;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 三维标高计算服务
@@ -214,7 +214,7 @@ namespace HyCADTool.Domain.Services
             Polygon2D raftRegion = CalculateRaftRegion(geometryData);
             
             // 计算筏板的顶标高和实际厚度
-            Elevation topElevation = geometryData.Elevation;
+            ElevationValue topElevation = geometryData.Elevation;
             SlabThickness actualThickness;
             
             if (geometryData.Elevation.Value > 0)

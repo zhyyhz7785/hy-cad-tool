@@ -26,7 +26,7 @@ namespace HyCADTool.App.Test
 
             SimpleLogger.LogElapsedTime("命令执行", () =>
             {
-                ShowPanelCommand.ShowHyBlenderPanel();
+                ShowPanelCommand.ShowFilterPanel();
             });
         }
     }

@@ -1,7 +1,7 @@
 using System;
 using FluentAssertions;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Presentation.ViewModels.Road;
+using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using Xunit;
 
 namespace HyCADTool.Tests.Presentation.ViewModels.Road

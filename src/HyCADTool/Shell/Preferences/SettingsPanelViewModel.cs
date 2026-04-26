@@ -10,13 +10,16 @@ using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Theming;
-using HyCADTool.Domain.Interfaces;
-using HyCADTool.Domain.Models.Drawing;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Drawing.Models;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Domain.ValueObjects;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
-using HyCADTool.Domain.ValueObjects.Configuration.User;
-using HyCADTool.Domain.ValueObjects.Drawing;
+using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Features.Road.Plan.ViewModels;
+using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Features.Reinforcement.Domain;
+using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
@@ -796,15 +799,16 @@ namespace HyCADTool.Presentation.ViewModels
         public string StationTextSide { get => _stationTextSide; set => SetProperty(ref _stationTextSide, value ?? "Left"); }
 
         /// <summary>
-        /// 把当前桩号标注配置快照为 <see cref="HyCADTool.Shared.AutoCAD.Services.Road.RoadStationLabelOptions"/>。
+        /// 把当前桩号标注配置快照为 <see cref="HyCADTool.Features.Road.PlanAlignment.Services.RoadStationLabelOptions"/>。
         /// 非法字符串 TextSide 会退化为 Left。
         /// </summary>
-        public HyCADTool.Shared.AutoCAD.Services.Road.RoadStationLabelOptions CreateStationLabelOptions()
+        public HyCADTool.Features.Road.PlanAlignment.Services.RoadStationLabelOptions CreateStationLabelOptions()
         {
-            var side = HyCADTool.Shared.AutoCAD.Services.Road.StationTextSide.Left;
+            HyCADTool.Features.Road.PlanAlignment.Services.StationTextSide side =
+                HyCADTool.Features.Road.PlanAlignment.Services.StationTextSide.Left;
             if (string.Equals(StationTextSide, "Right", System.StringComparison.OrdinalIgnoreCase))
-                side = HyCADTool.Shared.AutoCAD.Services.Road.StationTextSide.Right;
-            return new HyCADTool.Shared.AutoCAD.Services.Road.RoadStationLabelOptions
+                side = HyCADTool.Features.Road.PlanAlignment.Services.StationTextSide.Right;
+            return new HyCADTool.Features.Road.PlanAlignment.Services.RoadStationLabelOptions
             {
                 MainInterval = StationMainInterval,
                 SubInterval = StationSubInterval,
@@ -818,7 +822,7 @@ namespace HyCADTool.Presentation.ViewModels
         }
 
         /// <summary>把桩号标注配置写回当前 ViewModel（触发自动保存）。</summary>
-        public void ApplyStationLabelOptions(HyCADTool.Shared.AutoCAD.Services.Road.RoadStationLabelOptions opt)
+        public void ApplyStationLabelOptions(HyCADTool.Features.Road.PlanAlignment.Services.RoadStationLabelOptions opt)
         {
             if (opt == null) return;
             opt.Validate();

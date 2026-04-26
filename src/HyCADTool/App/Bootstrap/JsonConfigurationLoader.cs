@@ -1,9 +1,8 @@
 using System;
 using System.IO;
-using HyCADTool.Domain.ValueObjects.Configuration.Global;
-using HyCADTool.Domain.ValueObjects.Configuration.Modules;
-using HyCADTool.Domain.Entities.Pile;
-using HyCADTool.Domain.Enums;
+using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shell.Configuration.Modules;
+using HyCADTool.Features.Pile.Domain.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 

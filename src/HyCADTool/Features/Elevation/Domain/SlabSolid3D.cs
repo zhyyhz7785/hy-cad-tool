@@ -1,7 +1,8 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
+using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Shared.Geometry
+namespace HyCADTool.Features.Elevation.Domain
 {
     /// <summary>
     /// 底板实体（值对象）
@@ -10,25 +11,25 @@ namespace HyCADTool.Shared.Geometry
     public class SlabSolid3D
     {
         public Polygon2D Polygon { get; }
-        public Elevation TopElevation { get; }
+        public ElevationValue TopElevation { get; }
         public SlabThickness Thickness { get; }
-        public Elevation BottomElevation { get; }
+        public ElevationValue BottomElevation { get; }
         
         private SlabSolid3D(
             Polygon2D polygon,
-            Elevation topElevation,
+            ElevationValue topElevation,
             SlabThickness thickness)
         {
             Polygon = polygon ?? throw new ArgumentNullException(nameof(polygon));
             TopElevation = topElevation ?? throw new ArgumentNullException(nameof(topElevation));
             Thickness = thickness ?? throw new ArgumentNullException(nameof(thickness));
             
-            BottomElevation = Elevation.FromMillimeters(topElevation.Value - thickness.Value);
+            BottomElevation = ElevationValue.FromMillimeters(topElevation.Value - thickness.Value);
         }
         
         public static SlabSolid3D Create(
             Polygon2D polygon,
-            Elevation topElevation,
+            ElevationValue topElevation,
             SlabThickness thickness)
         {
             return new SlabSolid3D(polygon, topElevation, thickness);

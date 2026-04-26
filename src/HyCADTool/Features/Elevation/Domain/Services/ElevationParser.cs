@@ -1,7 +1,7 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
 
-namespace HyCADTool.Domain.Services
+namespace HyCADTool.Features.Elevation.Domain.Services
 {
     /// <summary>
     /// 标高文本解析器
@@ -21,9 +21,9 @@ namespace HyCADTool.Domain.Services
         /// <param name="text">标高文本</param>
         /// <param name="elevation">解析后的标高对象</param>
         /// <returns>true 表示解析成功</returns>
-        public static bool TryParse(string text, out Elevation elevation)
+        public static bool TryParse(string text, out ElevationValue elevation)
         {
-            elevation = Elevation.FromMeters(0);
+            elevation = ElevationValue.FromMeters(0);
             
             if (string.IsNullOrWhiteSpace(text))
                 return false;
@@ -33,7 +33,7 @@ namespace HyCADTool.Domain.Services
             // 特殊处理：±0.000 视为 0
             if (IsZeroElevation(text))
             {
-                elevation = Elevation.FromMeters(0.0);
+                elevation = ElevationValue.FromMeters(0.0);
                 return true;
             }
             
@@ -43,7 +43,7 @@ namespace HyCADTool.Domain.Services
             
             if (match.Success && double.TryParse(match.Value, out double value))
             {
-                elevation = Elevation.FromMeters(value);
+                elevation = ElevationValue.FromMeters(value);
                 return true;
             }
             

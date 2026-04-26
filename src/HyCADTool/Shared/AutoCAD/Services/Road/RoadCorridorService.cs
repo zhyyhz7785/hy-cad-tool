@@ -1,14 +1,12 @@
 using System;
-using HyCADTool.Domain.Events.Road;
+using HyCADTool.Features.Road.Events;
 using HyCADTool.Domain.Models.Road;
 
 namespace HyCADTool.Shared.AutoCAD.Services.Road
 {
     /// <summary>
-    /// 走廊服务（P0 占位 / P4 实现）。
-    /// P4 阶段将整合 Alignment + DesignProfile + Template，按 SamplingStep 离散化；
-    /// P7 阶段借助 <c>ICorridorMeshBuilder</c> 输出 <c>Mesh3D</c> 到 Blender。
-    /// </summary>
+    /// 走廊服务（P0 占位 / P4 实现）�?    /// P4 阶段将整�?Alignment + DesignProfile + Template，按 SamplingStep 离散化；
+    /// P7 阶段借助 <c>ICorridorMeshBuilder</c> 输出 <c>Mesh3D</c> �?Blender�?    /// </summary>
     public sealed class RoadCorridorService
     {
         private readonly RoadDesignRegistry _registry;

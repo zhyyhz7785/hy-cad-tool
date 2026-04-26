@@ -1,7 +1,7 @@
 using System;
 using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Domain.Entities
+namespace HyCADTool.Features.Elevation.Domain.Entities
 {
     /// <summary>
     /// 基于表面的三维模型（实体）

@@ -1,7 +1,8 @@
 using System;
-using HyCADTool.Domain.ValueObjects;
+using HyCADTool.Features.Elevation.Domain.ValueObjects;
+using HyCADTool.Shared.Geometry;
 
-namespace HyCADTool.Shared.Geometry
+namespace HyCADTool.Features.Elevation.Domain
 {
     /// <summary>
     /// 三维表面（值对象）
@@ -10,17 +11,17 @@ namespace HyCADTool.Shared.Geometry
     public class Surface3D
     {
         public Polygon2D Polygon { get; }
-        public Elevation Elevation { get; }
+        public ElevationValue Elevation { get; }
         public string Name { get; }
         
-        private Surface3D(Polygon2D polygon, Elevation elevation, string name)
+        private Surface3D(Polygon2D polygon, ElevationValue elevation, string name)
         {
             Polygon = polygon ?? throw new ArgumentNullException(nameof(polygon));
             Elevation = elevation ?? throw new ArgumentNullException(nameof(elevation));
             Name = name ?? "未命名表面";
         }
         
-        public static Surface3D Create(Polygon2D polygon, Elevation elevation, string name)
+        public static Surface3D Create(Polygon2D polygon, ElevationValue elevation, string name)
         {
             return new Surface3D(polygon, elevation, name);
         }

@@ -31,7 +31,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public double GetArea()
         {
-            return Math.PI * Radius * Radius;
+            return System.Math.PI * Radius * Radius;
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public double GetCircumference()
         {
-            return 2.0 * Math.PI * Radius;
+            return 2.0 * System.Math.PI * Radius;
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace HyCADTool.Shared.Geometry
         public bool IsPointOnCircle(Point2D point, double tolerance = 1e-6)
         {
             double distance = Center.DistanceTo(point);
-            return Math.Abs(distance - Radius) < tolerance;
+            return System.Math.Abs(distance - Radius) < tolerance;
         }
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace HyCADTool.Shared.Geometry
         {
             double distance = Center.DistanceTo(other.Center);
             double radiusSum = Radius + other.Radius;
-            double radiusDiff = Math.Abs(Radius - other.Radius);
+            double radiusDiff = System.Math.Abs(Radius - other.Radius);
 
             // 相交条件：圆心距离在 (|r1-r2|, r1+r2) 之间
             return distance < radiusSum && distance > radiusDiff;
@@ -107,7 +107,7 @@ namespace HyCADTool.Shared.Geometry
         public bool Equals(Circle2D other)
         {
             return Center.Equals(other.Center) && 
-                   Math.Abs(Radius - other.Radius) < 1e-10;
+                   System.Math.Abs(Radius - other.Radius) < 1e-10;
         }
 
         public override bool Equals(object obj)

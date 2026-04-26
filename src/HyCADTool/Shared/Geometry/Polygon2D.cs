@@ -69,7 +69,7 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public double GetArea()
         {
-            return Math.Abs(GetSignedArea());
+            return System.Math.Abs(GetSignedArea());
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace HyCADTool.Shared.Geometry
             }
 
             signedArea /= 2.0;
-            double area = Math.Abs(signedArea);
+            double area = System.Math.Abs(signedArea);
 
             if (area < 1e-10)
             {
@@ -236,7 +236,7 @@ namespace HyCADTool.Shared.Geometry
                 Vector2D v1 = prev.VectorTo(curr);
                 Vector2D v2 = curr.VectorTo(next);
 
-                double cross = Math.Abs(v1.Cross(v2));
+                double cross = System.Math.Abs(v1.Cross(v2));
 
                 // 如果不共线，保留当前点
                 if (cross > tolerance)

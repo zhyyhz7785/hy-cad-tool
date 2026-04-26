@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Features.BaseRein;
+using HyCADTool.Features.BaseRein.ViewModels;
 using HyCADTool.Features.Pile.ViewModels;
 using HyCADTool.App.Bootstrap;
 

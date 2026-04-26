@@ -32,10 +32,10 @@ namespace HyCADTool.Shared.Geometry
         /// </summary>
         public static BoundingBox FromPoints(Point2D p1, Point2D p2)
         {
-            double minX = Math.Min(p1.X, p2.X);
-            double minY = Math.Min(p1.Y, p2.Y);
-            double maxX = Math.Max(p1.X, p2.X);
-            double maxY = Math.Max(p1.Y, p2.Y);
+            double minX = System.Math.Min(p1.X, p2.X);
+            double minY = System.Math.Min(p1.Y, p2.Y);
+            double maxX = System.Math.Max(p1.X, p2.X);
+            double maxY = System.Math.Max(p1.Y, p2.Y);
 
             return new BoundingBox(
                 new Point2D(minX, minY),
@@ -116,8 +116,8 @@ namespace HyCADTool.Shared.Geometry
         public BoundingBox Expand(Point2D point)
         {
             return new BoundingBox(
-                new Point2D(Math.Min(MinPoint.X, point.X), Math.Min(MinPoint.Y, point.Y)),
-                new Point2D(Math.Max(MaxPoint.X, point.X), Math.Max(MaxPoint.Y, point.Y))
+                new Point2D(System.Math.Min(MinPoint.X, point.X), System.Math.Min(MinPoint.Y, point.Y)),
+                new Point2D(System.Math.Max(MaxPoint.X, point.X), System.Math.Max(MaxPoint.Y, point.Y))
             );
         }
 
@@ -127,8 +127,8 @@ namespace HyCADTool.Shared.Geometry
         public BoundingBox Union(BoundingBox other)
         {
             return new BoundingBox(
-                new Point2D(Math.Min(MinPoint.X, other.MinPoint.X), Math.Min(MinPoint.Y, other.MinPoint.Y)),
-                new Point2D(Math.Max(MaxPoint.X, other.MaxPoint.X), Math.Max(MaxPoint.Y, other.MaxPoint.Y))
+                new Point2D(System.Math.Min(MinPoint.X, other.MinPoint.X), System.Math.Min(MinPoint.Y, other.MinPoint.Y)),
+                new Point2D(System.Math.Max(MaxPoint.X, other.MaxPoint.X), System.Math.Max(MaxPoint.Y, other.MaxPoint.Y))
             );
         }
 
@@ -142,8 +142,8 @@ namespace HyCADTool.Shared.Geometry
                 return default;
 
             return new BoundingBox(
-                new Point2D(Math.Max(MinPoint.X, other.MinPoint.X), Math.Max(MinPoint.Y, other.MinPoint.Y)),
-                new Point2D(Math.Min(MaxPoint.X, other.MaxPoint.X), Math.Min(MaxPoint.Y, other.MaxPoint.Y))
+                new Point2D(System.Math.Max(MinPoint.X, other.MinPoint.X), System.Math.Max(MinPoint.Y, other.MinPoint.Y)),
+                new Point2D(System.Math.Min(MaxPoint.X, other.MaxPoint.X), System.Math.Min(MaxPoint.Y, other.MaxPoint.Y))
             );
         }
 
@@ -154,9 +154,9 @@ namespace HyCADTool.Shared.Geometry
         /// <returns>最小距离（相交返回0）</returns>
         public double DistanceTo(BoundingBox other)
         {
-            double dx = Math.Max(0, Math.Max(MinPoint.X - other.MaxPoint.X, other.MinPoint.X - MaxPoint.X));
-            double dy = Math.Max(0, Math.Max(MinPoint.Y - other.MaxPoint.Y, other.MinPoint.Y - MaxPoint.Y));
-            return Math.Sqrt(dx * dx + dy * dy);
+            double dx = System.Math.Max(0, System.Math.Max(MinPoint.X - other.MaxPoint.X, other.MinPoint.X - MaxPoint.X));
+            double dy = System.Math.Max(0, System.Math.Max(MinPoint.Y - other.MaxPoint.Y, other.MinPoint.Y - MaxPoint.Y));
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>

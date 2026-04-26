@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 线段算法服务实现（平台无关）
@@ -76,13 +76,13 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             // 检查方向是否平行（叉积接近零）
             double crossProduct = dir1.X * dir2.Y - dir1.Y * dir2.X;
-            if (Math.Abs(crossProduct) > tolerance.Value)
+            if (System.Math.Abs(crossProduct) > tolerance.Value)
                 return false;
 
             // 检查点是否在同一直线上
             var vec = new Vector2D(line2.StartPoint.X - line1.StartPoint.X, line2.StartPoint.Y - line1.StartPoint.Y);
             double cross = vec.X * dir1.Y - vec.Y * dir1.X;
-            return Math.Abs(cross) <= tolerance.Value;
+            return System.Math.Abs(cross) <= tolerance.Value;
         }
 
         public List<List<Line2D>> FindCollinearGroups(List<Line2D> lines, Tolerance tolerance)
@@ -136,7 +136,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
             
             // 线段平行
-            if (Math.Abs(denom) < tolerance.Value)
+            if (System.Math.Abs(denom) < tolerance.Value)
                 return false;
 
             double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
@@ -183,7 +183,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             double B = line.StartPoint.X - line.EndPoint.X;
             double C = line.EndPoint.X * line.StartPoint.Y - line.StartPoint.X * line.EndPoint.Y;
 
-            return Math.Abs(A * point.X + B * point.Y + C) / Math.Sqrt(A * A + B * B);
+            return System.Math.Abs(A * point.X + B * point.Y + C) / System.Math.Sqrt(A * A + B * B);
         }
 
         public double CalculateDistanceBetweenLines(Line2D line1, Line2D line2)
@@ -292,7 +292,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double dx = line.EndPoint.X - line.StartPoint.X;
             double dy = line.EndPoint.Y - line.StartPoint.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
 
         public Point2D? CalculateMidpoint(Line2D line)
@@ -312,7 +312,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double dx = line.EndPoint.X - line.StartPoint.X;
             double dy = line.EndPoint.Y - line.StartPoint.Y;
-            return Math.Atan2(dy, dx);
+            return System.Math.Atan2(dy, dx);
         }
 
         // === 线段分类 ===
@@ -322,7 +322,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (line == default)
                 return false;
 
-            return Math.Abs(line.EndPoint.Y - line.StartPoint.Y) <= tolerance.Value;
+            return System.Math.Abs(line.EndPoint.Y - line.StartPoint.Y) <= tolerance.Value;
         }
 
         public bool IsVertical(Line2D line, Tolerance tolerance)
@@ -330,7 +330,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (line == default)
                 return false;
 
-            return Math.Abs(line.EndPoint.X - line.StartPoint.X) <= tolerance.Value;
+            return System.Math.Abs(line.EndPoint.X - line.StartPoint.X) <= tolerance.Value;
         }
 
         public bool AreParallel(Line2D line1, Line2D line2, Tolerance tolerance)
@@ -342,7 +342,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             var dir2 = new Vector2D(line2.EndPoint.X - line2.StartPoint.X, line2.EndPoint.Y - line2.StartPoint.Y);
 
             double crossProduct = dir1.X * dir2.Y - dir1.Y * dir2.X;
-            return Math.Abs(crossProduct) <= tolerance.Value;
+            return System.Math.Abs(crossProduct) <= tolerance.Value;
         }
 
         public bool ArePerpendicular(Line2D line1, Line2D line2, Tolerance tolerance)
@@ -354,7 +354,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             var dir2 = new Vector2D(line2.EndPoint.X - line2.StartPoint.X, line2.EndPoint.Y - line2.StartPoint.Y);
 
             double dotProduct = dir1.X * dir2.X + dir1.Y * dir2.Y;
-            return Math.Abs(dotProduct) <= tolerance.Value;
+            return System.Math.Abs(dotProduct) <= tolerance.Value;
         }
 
         // === 私有辅助方法 ===
@@ -364,22 +364,22 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             mergedLine = null;
 
             // 检查Y坐标是否在容差范围内
-            if (Math.Abs(line1.StartPoint.Y - line2.StartPoint.Y) > tolerance.Value)
+            if (System.Math.Abs(line1.StartPoint.Y - line2.StartPoint.Y) > tolerance.Value)
                 return false;
 
             // 计算X方向的范围
-            double line1MinX = Math.Min(line1.StartPoint.X, line1.EndPoint.X);
-            double line1MaxX = Math.Max(line1.StartPoint.X, line1.EndPoint.X);
-            double line2MinX = Math.Min(line2.StartPoint.X, line2.EndPoint.X);
-            double line2MaxX = Math.Max(line2.StartPoint.X, line2.EndPoint.X);
+            double line1MinX = System.Math.Min(line1.StartPoint.X, line1.EndPoint.X);
+            double line1MaxX = System.Math.Max(line1.StartPoint.X, line1.EndPoint.X);
+            double line2MinX = System.Math.Min(line2.StartPoint.X, line2.EndPoint.X);
+            double line2MaxX = System.Math.Max(line2.StartPoint.X, line2.EndPoint.X);
 
             // 检查X方向是否有重叠
             if (line1MinX > line2MaxX + tolerance.Value || line2MinX > line1MaxX + tolerance.Value)
                 return false;
 
             // 计算合并后的范围
-            double minX = Math.Min(line1MinX, line2MinX);
-            double maxX = Math.Max(line1MaxX, line2MaxX);
+            double minX = System.Math.Min(line1MinX, line2MinX);
+            double maxX = System.Math.Max(line1MaxX, line2MaxX);
             double y = line1.StartPoint.Y;
 
             mergedLine = new Line2D(new Point2D(minX, y), new Point2D(maxX, y));
@@ -391,22 +391,22 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             mergedLine = null;
 
             // 检查X坐标是否在容差范围内
-            if (Math.Abs(line1.StartPoint.X - line2.StartPoint.X) > tolerance.Value)
+            if (System.Math.Abs(line1.StartPoint.X - line2.StartPoint.X) > tolerance.Value)
                 return false;
 
             // 计算Y方向的范围
-            double line1MinY = Math.Min(line1.StartPoint.Y, line1.EndPoint.Y);
-            double line1MaxY = Math.Max(line1.StartPoint.Y, line1.EndPoint.Y);
-            double line2MinY = Math.Min(line2.StartPoint.Y, line2.EndPoint.Y);
-            double line2MaxY = Math.Max(line2.StartPoint.Y, line2.EndPoint.Y);
+            double line1MinY = System.Math.Min(line1.StartPoint.Y, line1.EndPoint.Y);
+            double line1MaxY = System.Math.Max(line1.StartPoint.Y, line1.EndPoint.Y);
+            double line2MinY = System.Math.Min(line2.StartPoint.Y, line2.EndPoint.Y);
+            double line2MaxY = System.Math.Max(line2.StartPoint.Y, line2.EndPoint.Y);
 
             // 检查Y方向是否有重叠
             if (line1MinY > line2MaxY + tolerance.Value || line2MinY > line1MaxY + tolerance.Value)
                 return false;
 
             // 计算合并后的范围
-            double minY = Math.Min(line1MinY, line2MinY);
-            double maxY = Math.Max(line1MaxY, line2MaxY);
+            double minY = System.Math.Min(line1MinY, line2MinY);
+            double maxY = System.Math.Max(line1MaxY, line2MaxY);
             double x = line1.StartPoint.X;
 
             mergedLine = new Line2D(new Point2D(x, minY), new Point2D(x, maxY));
@@ -454,8 +454,8 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             if (point1 == default || point2 == default)
                 return false;
 
-            return Math.Abs(point1.X - point2.X) <= tolerance.Value &&
-                   Math.Abs(point1.Y - point2.Y) <= tolerance.Value;
+            return System.Math.Abs(point1.X - point2.X) <= tolerance.Value &&
+                   System.Math.Abs(point1.Y - point2.Y) <= tolerance.Value;
         }
 
         private double CalculateDistance(Point2D point1, Point2D point2)
@@ -465,7 +465,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
 
             double dx = point2.X - point1.X;
             double dy = point2.Y - point1.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(dx * dx + dy * dy);
         }
     }
 

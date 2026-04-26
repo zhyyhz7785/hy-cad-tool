@@ -1,7 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Domain.Models.Cluster;
-using HyCADTool.Domain.Models.Configuration;
+using HyCADTool.Features.Cluster.Domain.Models;
 using HyCADTool.Shared.Geometry;
 using System;
 using System.Collections.Generic;

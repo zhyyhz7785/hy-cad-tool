@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HyCADTool.Domain.Services.GeometryAlgorithms
+namespace HyCADTool.Shared.Geometry.Algorithms
 {
     /// <summary>
     /// 交点算法服务（平台无关）
@@ -121,7 +121,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 return intersections;
             }
 
-            if (Math.Abs(discriminant) < tolerance)
+            if (System.Math.Abs(discriminant) < tolerance)
             {
                 // 一个交点（切线）
                 double t = -b;
@@ -134,7 +134,7 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
             else
             {
                 // 两个交点
-                double sqrtDisc = Math.Sqrt(discriminant);
+                double sqrtDisc = System.Math.Sqrt(discriminant);
                 double t1 = -b - sqrtDisc;
                 double t2 = -b + sqrtDisc;
 
@@ -170,12 +170,12 @@ namespace HyCADTool.Domain.Services.GeometryAlgorithms
                 return intersections;
 
             // 相离或内含
-            if (d > r1 + r2 + tolerance || d < Math.Abs(r1 - r2) - tolerance)
+            if (d > r1 + r2 + tolerance || d < System.Math.Abs(r1 - r2) - tolerance)
                 return intersections;
 
             // 计算交点
             double a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
-            double h = Math.Sqrt(Math.Max(0, r1 * r1 - a * a));
+            double h = System.Math.Sqrt(System.Math.Max(0, r1 * r1 - a * a));
 
             // 从 circle1.Center 到 circle2.Center 的单位向量
             Vector2D dir = circle1.Center.VectorTo(circle2.Center) / d;
