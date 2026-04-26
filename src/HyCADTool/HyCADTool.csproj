@@ -8,6 +8,8 @@
     <LangVersion>8.0</LangVersion>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
+    <!-- AnyCPU 供 VS WPF 设计器（32 位）加载；AutoCAD 与 AcSeamless 等为 AMD64 → MSB3270。运行时由 64 位 CAD 进程加载，架构一致。 -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>

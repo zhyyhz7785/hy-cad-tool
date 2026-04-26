@@ -30,20 +30,21 @@ description: |
   使用场景：写 AutoCAD 命令 / 新建 WPF 面板 / 改资源字典 / 迁移命令到 Refactored / 多文档联调 / 建 Table /
   Cursor Debug 模式收尾撤埋点 / 处理 AutoCAD 关闭崩溃 / 处理统一面板点击卡顿 /
   增删跨项目引用 / 处理 AutoCAD 锁文件致 Build 失败 /
-  处理 VS XAML 设计器报 XDG0023/XDG0003/XDG-0001 全员加载失败 / 改 csproj 平台目标。
+  处理 VS XAML 设计器报 XDG0023/XDG0003/XDG-0001 全员加载失败 / 改 csproj 平台目标；
+  首选项 Shell/Preferences：空 Host + 代码套 DataTemplate 时 VS 设计器全白（B12）——`Dispatcher.BeginInvoke(Loaded)` + `d:ContentTemplate`/`d:Content`。
   本 skill 替代：wpf-paletteset-avoid-implicit-styles / wpf-blender-panel-guideline /
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.11.0
-date: 2026-04-25
+version: 1.12.0
+date: 2026-04-26
 ---
 
 # HyCAD 项目级闭坑清单
 
 > 本 skill 收录本仓库**已踩过且已在关键路径落实缓解或修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
 >
-> **§ 验证状态与残留风险**（2026-04-25 对照 `HyCADTool.Refactored` / `ReCall` / `HyCAD.BlenderUI` 代码核对）见文末 **§ 验证状态与残留风险** 一节；**不要**把本 skill 当成「永不再现」的数学保证——宿主为 AutoCAD + 多程序集 WPF，仍有版本差与环境差。
+> **§ 验证状态与残留风险**（2026-04-26 起含 B12；`HyCADTool` / `ReCall` / `HyCAD.BlenderUI` 代码核对）见文末 **§ 验证状态与残留风险** 一节；**不要**把本 skill 当成「永不再现」的数学保证——宿主为 AutoCAD + 多程序集 WPF，仍有版本差与环境差。
 >
 > 四大域：
 >
@@ -806,6 +807,54 @@ XamlReader.Load(info.Stream);  // 抛 XmlException 0x0C
 
 ---
 
+### B12【新 2026-04-26】`Shell/Preferences`：空 `Host` + 代码套 `DataTemplate` → VS XAML 设计器全白
+
+**现象**
+
+- 打开 `HyCADTool/Shell/Preferences/Preferences/*SettingsView.xaml`，设计面只有 `UserControl` 外框，里层**完全空白**（或仅见空 `ContentControl` 边界）。
+- 同一控件在 AutoCAD 里或独立宿主运行时**正常**。
+
+**触发条件**
+
+- 真实 UI 写在 `UserControl.Resources` 里带 `x:Key="Section_xxx"` 的 `DataTemplate` 中。
+- 视图中只声明 `<ContentControl x:Name="Host"/>`，在代码里 `ApplySection()` 给 `Host.ContentTemplate` 赋值、并设 `Content` 触发模板（常见 `new object()`，`StyleSettingsView` 另设 `DataContext`）。
+- 仅依赖 `Loaded`（或 `DesignerProperties.GetIsInDesignMode` 分支在 ctor 里 `ApplySection`）在**设计器**中不可靠。
+
+**根因（叠加）**
+
+1. **WPF/VS 设计面经常不执行 `Loaded`** 或时序与运行时不同，仅靠 `Loaded` 则 `Host` 永远不套模板 → 全白。
+2. **`GetIsInDesignMode(DependencyObject)` 在部分 VS/宿主下对当前控件为 false**，单独靠它分支会在设计器里仍走"只等 Loaded"路径 → 仍全白。
+3. 即便 ctor 里调用 `ApplySection()`，**合并字典 / `pack://` 解析**有时尚未就绪，`Resources["Section_xxx"]` 为 null → 不生效；需再延迟一拍到 **`DispatcherPriority.Loaded`** 队列重试（与 B5「设计器跨字典」不同，这里是**时序+生命周期**问题）。
+4. 若**错误列表**已有 `pack://…HyCAD.BlenderUI` 或主程序集加载失败（XDG 系列），则任何代码/延迟都帮不上——先治 **B 域 B5/平台/AnyCPU** 那条链，否则设计进程根本解析不了资源。
+
+**正确做法（仓库 2026-04-26 已落地，10 个 `*SettingsView` 同构）**
+
+1. 构造函数在 `InitializeComponent()` 后：
+   - `Loaded += (_, __) => ApplySection();`（真运行时照常）。
+   - `Dispatcher.BeginInvoke(new Action(ApplySection), DispatcherPriority.Loaded);`（设计器/早帧合并字典的兜底，**不依赖** `GetIsInDesignMode`）。
+2. `StyleSettingsView` 保留 `DataContextChanged` → `ApplySection()`（`Host` 的 `DataContext` 需对齐 `HySettingsViewModel`）。
+3. 在 `ContentControl` 上增加**仅设计面**的声明式预览（`xmlns:d` 已存在、`mc:Ignorable` 含 `d` 时）：
+   - `d:ContentTemplate="{StaticResource Section_<默认区段键>}"`
+   - `d:Content=" "`（非 null，否则 `DataTemplate` 不展开）
+4. 运行时以代码 `ApplySection` 为准；`d:` 属性不替代 CAD 里真实 `Section` 切换，仅给 VS/Blend 一条不跑 ctor 后逻辑的可见路径。
+
+**反例（已证伪/不足）**
+
+- ❌ 仅 `Loaded += ApplySection` 指望设计器。
+- ❌ 仅 `if (DesignerProperties.GetIsInDesignMode(this)) ApplySection(); else Loaded += …` 覆盖不全。
+- ❌ 只在 ctor 同步 `ApplySection()`，无 `BeginInvoke(Loaded)`，仍可能抢在合并资源之前。
+
+**已修复/参考位置**
+
+- `src/HyCADTool/Shell/Preferences/Preferences/*SettingsView.xaml`（`Host` 的 `d:ContentTemplate` / `d:Content`）
+- 同上 `*SettingsView.xaml.cs`（`Dispatcher.BeginInvoke(ApplySection, DispatcherPriority.Loaded)`）
+
+**回归提示**
+
+- 若仍白屏：先查 **XAML 设计器错误列表** 是否有程序集/StaticResource/跨程序集 pack 失败；再对照本 skill **B5** 与头描述里 **XDG/AnyCPU** 条目。
+
+---
+
 ## C 域：构建系统 / MSBuild 项目依赖
 
 > 公共背景：本仓库 ReCall 设计为"AutoCAD 唯一直接 NETLOAD 的入口程序集"——`bin\Debug\ReCall.dll` 只要 AutoCAD 进程在跑就被锁，**这是常态、不是异常**。日常业务代码改动只在 Refactored，由 C2 命令 byte[] 热重载，永远不需要更新 ReCall.dll。任何把 ReCall 列入"每次构建都被检查/复制"链路的依赖关系，都会在 AutoCAD 开着时直接打断 Refactored 的构建。
@@ -1309,7 +1358,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 
 ---
 
-## § 验证状态与残留风险（2026-04-25）
+## § 验证状态与残留风险（2026-04-26）
 
 以下为**对照仓库代码**的结论，用于回答「skill 里写的是否已落实」。
 
@@ -1327,6 +1376,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 | **Badge 真修复（B11）** | `ReCall/Recall.cs::ResolveAssembly` 增加 `AutoCadHostAssemblyNames` 黑名单，宿主程序集（`AdWindows` / `AcMr` / ...）一律走 `AppDomain` 已加载查表，绝不从 deps 目录 byte[] 加载，杜绝 5.0.1.2 与 5.1.1.1 双载入；见 **B11** 全文。 |
 | **C1** | `HyCADTool.Refactored.csproj` 已移除 `<ProjectReference Include="..\ReCall\ReCall.csproj">`，改用 `<Reference Include="ReCall"><HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath></Reference>` + `EnsureReCallDllExists` cold-start Target（约 222–252 行）。`grep -n 'ReCall.csproj' HyCADTool.Refactored.csproj` 应 0 命中。AutoCAD 开着 dotnet build Refactored 实测 0 error。 |
 | **C2** | `HyCADTool.Refactored.csproj` 与 `HyCAD.BlenderUI.csproj` 都已 `<PlatformTarget>AnyCPU</PlatformTarget>` + `<Prefer32Bit>false</Prefer32Bit>`。校验：用 32-bit PowerShell 跑 `[System.Reflection.Assembly]::LoadFrom('HyCADTool.Refactored\bin\Debug\HyCAD.BlenderUI.dll').GetTypes().Length` 应返回 210；同样测 Refactored.dll 应返回 1249。VS 重启后错误列表 0 个 XDG-0001/XDG0023/XDG0010。`ReCall.csproj` 故意保持 x64 不变（设计器不引用它）。 |
+| **B12** | `HyCADTool/Shell/Preferences/Preferences/*SettingsView.xaml.cs`：`Loaded` + `Dispatcher.BeginInvoke(ApplySection, DispatcherPriority.Loaded)`；对应 `.xaml` 中 `Host` 含 `d:ContentTemplate`（`Section_<默认键>`）与 `d:Content=" "`。若设计器仍白屏，先查 XAML 错误列表与 **B5/C2**（pack/平台），见 **B12** 全文。 |
 
 ### 仍为环境型 / 缓解型风险（不是单靠改一行就能封死）
 
@@ -1362,6 +1412,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 - 编译无 `MC3015` / `MC4111`（B7/B8）
 - `ColumnDefinition.Width` / `Margin` 类属性加载不报异常（B4）
 - 面板 Dock 到 AutoCAD 侧边不消失（B9）
+- `Shell/Preferences/Preferences/*SettingsView.xaml` 设计器可见默认区块，非仅空框（B12）
 
 **C 域验证**
 

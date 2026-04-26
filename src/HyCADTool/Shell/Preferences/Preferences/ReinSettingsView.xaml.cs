@@ -1,5 +1,7 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace HyCADTool.Presentation.Views.Preferences
 {
@@ -23,6 +25,7 @@ namespace HyCADTool.Presentation.Views.Preferences
         {
             InitializeComponent();
             Loaded += (_, __) => ApplySection();
+            Dispatcher.BeginInvoke(new Action(ApplySection), DispatcherPriority.Loaded);
         }
 
         private static void OnSectionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

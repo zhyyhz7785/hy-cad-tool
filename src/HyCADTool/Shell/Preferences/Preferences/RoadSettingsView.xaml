@@ -112,5 +112,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ContentControl x:Name="Host"/>
+    <ContentControl x:Name="Host"
+                    d:ContentTemplate="{StaticResource Section_RoadCrosswalk}"
+                    d:Content=" " />
 </UserControl>
