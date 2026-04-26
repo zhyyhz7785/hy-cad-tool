@@ -3,27 +3,27 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34902.65
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReCall", "ReCall\ReCall.csproj", "{7E0D133E-AAA0-4869-A27D-589D293BE20D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReCall", "src\ReCall\ReCall.csproj", "{7E0D133E-AAA0-4869-A27D-589D293BE20D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool", "HyCADTool\HyCADTool.csproj", "{8A9F5C3E-2B4D-4F6E-9C8A-1D7E3F5B6C9A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool", "src\HyCADTool\HyCADTool.csproj", "{8A9F5C3E-2B4D-4F6E-9C8A-1D7E3F5B6C9A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor", "HyCADTool.MarkdownEditor\HyCADTool.MarkdownEditor.csproj", "{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor", "src\HyCADTool.MarkdownEditor\HyCADTool.MarkdownEditor.csproj", "{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor.TestHost", "HyCADTool.MarkdownEditor.TestHost\HyCADTool.MarkdownEditor.TestHost.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor.TestHost", "src\HyCADTool.MarkdownEditor.TestHost\HyCADTool.MarkdownEditor.TestHost.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.TextLayout", "HyCADTool.TextLayout\HyCADTool.TextLayout.csproj", "{3FCA9908-BA84-44AA-B3CE-79E64DE0A46C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.TextLayout", "src\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj", "{3FCA9908-BA84-44AA-B3CE-79E64DE0A46C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.Tests", "HyCADTool.Tests\HyCADTool.Tests.csproj", "{1AF60BBB-4E81-4847-9584-B39F7D41FD5E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.Tests", "src\HyCADTool.Tests\HyCADTool.Tests.csproj", "{1AF60BBB-4E81-4847-9584-B39F7D41FD5E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI", "HyCAD.BlenderUI\HyCAD.BlenderUI.csproj", "{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI", "src\HyCAD.BlenderUI\HyCAD.BlenderUI.csproj", "{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI.TestHost", "HyCAD.BlenderUI.TestHost\HyCAD.BlenderUI.TestHost.csproj", "{C99DD15C-BCAF-496C-9B9E-B8D1FA1F33C2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI.TestHost", "src\HyCAD.BlenderUI.TestHost\HyCAD.BlenderUI.TestHost.csproj", "{C99DD15C-BCAF-496C-9B9E-B8D1FA1F33C2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI.PaletteSetDemo", "HyCAD.BlenderUI.PaletteSetDemo\HyCAD.BlenderUI.PaletteSetDemo.csproj", "{31EC8500-8A49-4928-A94D-D38DFD6B8F22}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.BlenderUI.PaletteSetDemo", "src\HyCAD.BlenderUI.PaletteSetDemo\HyCAD.BlenderUI.PaletteSetDemo.csproj", "{31EC8500-8A49-4928-A94D-D38DFD6B8F22}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.Licensing", "HyCADTool.Licensing\HyCADTool.Licensing.csproj", "{D7EDE4F4-DB7B-42ED-B905-0E7B70A5B43F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.Licensing", "src\HyCADTool.Licensing\HyCADTool.Licensing.csproj", "{D7EDE4F4-DB7B-42ED-B905-0E7B70A5B43F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.LicenseSigner", "HyCADTool.LicenseSigner\HyCADTool.LicenseSigner.csproj", "{12139725-3AA2-46F8-8A63-C163382547FB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.LicenseSigner", "src\HyCADTool.LicenseSigner\HyCADTool.LicenseSigner.csproj", "{12139725-3AA2-46F8-8A63-C163382547FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

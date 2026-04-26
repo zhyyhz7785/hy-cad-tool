@@ -92,7 +92,7 @@ if (AutoCadHostAssemblyNames.Contains(shortName, StringComparer.OrdinalIgnoreCas
 | 内容 | 位置 |
 |------|------|
 | ReCall 宿主程序集黑名单（真修复） | `ReCall/Recall.cs::ResolveAssembly` + `AutoCadHostAssemblyNames` |
-| Application stub、BlenderTheme 预热 | `HyCADTool.Refactored/Presentation/PluginInitializer.cs::Initialize / WarmupBlenderTheme` |
+| Application stub、BlenderTheme 预热 | `src/HyCADTool/App/Bootstrap/PluginInitializer.cs`（`Initialize` / `WarmupBlenderTheme`） |
 | Brush 防 Freeze | `HyCAD.BlenderUI/Theming/BlenderThemeManager.cs` |
 | 深度根因 + 取证日志 + 反例 | `doc/RoadDesign/00.md` |
 | 完整条目与症状链 | `.cursor/skills/hycad-project-pitfalls/SKILL.md` **B10、B11** |
