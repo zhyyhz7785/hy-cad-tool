@@ -1,7 +1,7 @@
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-namespace HyCADTool.Features.Shell
+namespace HyCADTool.Shell.Commands
 {
     /// <summary>
     /// 命令：hyCmdList
@@ -18,7 +18,7 @@ namespace HyCADTool.Features.Shell
 
             try
             {
-                var groups = HyCADTool.Shell.Commands.CommandCatalog.GroupByCategory();
+                var groups = CommandCatalog.GroupByCategory();
                 int total = 0;
 
                 ed.WriteMessage("\n========================================");
