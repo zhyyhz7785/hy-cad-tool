@@ -1834,7 +1834,7 @@ namespace HyCADTool.Presentation.ViewModels
             public bool StationRotateTextAlongTangent { get; set; } = true;
             public string StationTextSide { get; set; } = "Left";
             // 界面外观：HyCAD.BlenderUI.Theming.BlenderThemeManager 主题枚举名
-            // 取值：BlenderDark / BlenderLight / AcadLight / AcadDark
+            // 取值：BlenderDark / BlenderLight / AcadLight / AcadDark / AcadBlue
             public string Theme { get; set; } = "BlenderDark";
             /// <summary>界面字号 Metric_Font* 缩放，默认 1.0。</summary>
             public double UiFontScale { get; set; } = 1.0;

@@ -42,6 +42,10 @@
                                      Name="AutoCAD Dark"
                                      Subtitle="AutoCAD 2024+ Dark Ribbon — 深灰 + AutoCAD focus 蓝"
                                      C1="#303030" C2="#373737" C3="#3070C0" C4="#F1F1F1"/>
+                <local:ThemePresetVm Key="AcadBlue"
+                                     Name="AutoCAD 蓝色"
+                                     Subtitle="HyCAD 蓝灰冷调 — 凸起按钮 + 深蓝底 + AutoCAD 焦点蓝"
+                                     C1="#1F242E" C2="#3B4453" C3="#3070C0" C4="#E5EAF0"/>
             </x:Array>
 
             <!-- ListBoxItem 模板：自带选中蓝色边框 + 4 色块预览 + 名称/副标题 -->

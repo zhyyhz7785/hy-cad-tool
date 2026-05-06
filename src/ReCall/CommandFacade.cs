@@ -144,6 +144,24 @@ namespace HyCADTool.ReCall
         [CommandMethod("hySC")] public void Cmd_hySC() => ReCallClass.Invoke("hySC");
         #endregion
 
+        #region hyob 几何对象库 (HyCAD Object Base) — 与 DWG 平行的版本化二进制存储
+        // 设计：docs/DataExchange/02..04 三篇。落地：M0 stub → M1 全黑盒最小回路 → ... → M13。
+        // 一次性把 12 条命令名注册到 ReCall（关 CAD 重 NETLOAD ReCall.dll 一次），
+        // 之后 M1~M13 的实现全走 C2 热重载，零关 CAD。
+        [CommandMethod("hyobI")]  public void Cmd_hyobI()  => ReCallClass.Invoke("hyobI");
+        [CommandMethod("hyobS")]  public void Cmd_hyobS()  => ReCallClass.Invoke("hyobS");
+        [CommandMethod("hyobC")]  public void Cmd_hyobC()  => ReCallClass.Invoke("hyobC");
+        [CommandMethod("hyobL")]  public void Cmd_hyobL()  => ReCallClass.Invoke("hyobL");
+        [CommandMethod("hyobCo")] public void Cmd_hyobCo() => ReCallClass.Invoke("hyobCo");
+        [CommandMethod("hyobD")]  public void Cmd_hyobD()  => ReCallClass.Invoke("hyobD");
+        [CommandMethod("hyobR")]  public void Cmd_hyobR()  => ReCallClass.Invoke("hyobR");
+        [CommandMethod("hyobG")]  public void Cmd_hyobG()  => ReCallClass.Invoke("hyobG");
+        [CommandMethod("hyobB")]  public void Cmd_hyobB()  => ReCallClass.Invoke("hyobB");
+        [CommandMethod("hyobM")]  public void Cmd_hyobM()  => ReCallClass.Invoke("hyobM");
+        [CommandMethod("hyobP")]  public void Cmd_hyobP()  => ReCallClass.Invoke("hyobP");
+        [CommandMethod("hyobES")] public void Cmd_hyobES() => ReCallClass.Invoke("hyobES");
+        #endregion
+
         #region 道路 (Road) — hyRoad* + r* 短别名
         // 045 / M6：项目树命令
         [CommandMethod("hyRoadTree")][CommandMethod("rTree")]       public void Cmd_hyRoadTree()         => ReCallClass.Invoke("hyRoadTree");

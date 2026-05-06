@@ -1,0 +1,897 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
+using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.EditorInput;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Codec;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Models;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Objects.Opaque;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Objects.Typed;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Repository;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Schemas;
+using HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror;
+using HyCADTool.Features.DataExchange.Hyob.Infrastructure.RoundTrip;
+
+namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
+{
+    // hyob 子系统命令实现。设计：docs/DataExchange/04-hyob实施总计划-2026-05-07-011100.md。
+    //
+    // M5 状态：
+    //   - M2 白名单 4 种几何（Line / Polyline / Arc / Circle）✓
+    //   - M3 白名单 3 种文字与块（DBText / MText / BlockReference 内联 Attr）✓
+    //   - M4-A 标注 9 种 subtype 统一 schema ✓
+    //   - M4-B 引线 MLeader（语义级）+ 填充 Hatch（模式参数级）+ Wipeout 类型预留 ✓
+    //   - M5 XData / ExtensionDictionary 作为独立 hyob object，并入 by-handle 兄弟 entry ✓
+    //   - hyobI / hyobS / hyobC / hyobL / hyobR 全部真正落地
+    //   - 其余命令（hyobD / hyobCo / hyobB / hyobM / hyobG / hyobP / hyobES）仍为 stub
+
+    // ---------- 共用辅助 ----------
+
+    internal static class HyobContext
+    {
+        /// <summary>定位当前 DWG 的路径与 .hyob/ 布局；DWG 未保存时报错并返回 null。</summary>
+        public static HyobLayoutPaths TryResolveLayout(Editor ed, Document doc)
+        {
+            if (doc == null)
+            {
+                ed?.WriteMessage("\n[hyob] 当前没有打开的文档。");
+                return null;
+            }
+            var dwgPath = doc.Database.Filename;
+            if (string.IsNullOrEmpty(dwgPath) || !File.Exists(dwgPath))
+            {
+                ed?.WriteMessage("\n[hyob] 当前 DWG 尚未保存到磁盘，无法定位 .hyob/ 路径。请先 SAVEAS 后再用 hyob* 命令。");
+                return null;
+            }
+            return new HyobLayoutPaths(dwgPath);
+        }
+
+        public static (HyobObjectStore Objects, HyobRefStore Refs) OpenStores(HyobLayoutPaths paths)
+        {
+            return (new HyobObjectStore(paths.ObjectsDir), new HyobRefStore(paths.HyobRoot));
+        }
+    }
+
+    // ---------- 报告辅助 ----------
+
+    internal static class HyobReporting
+    {
+        /// <summary>把 type_id 翻译成可读名（白名单 4 种 + Opaque）。</summary>
+        public static string KindName(HyobObjectKind kind)
+        {
+            switch (kind)
+            {
+                case HyobObjectKind.Line:           return "Line";
+                case HyobObjectKind.Polyline:       return "Polyline";
+                case HyobObjectKind.Arc:            return "Arc";
+                case HyobObjectKind.Circle:         return "Circle";
+                case HyobObjectKind.DBText:         return "DBText";
+                case HyobObjectKind.MText:          return "MText";
+                case HyobObjectKind.BlockReference: return "BlockRef";
+                case HyobObjectKind.Dimension:      return "Dim";
+                case HyobObjectKind.MLeader:        return "MLeader";
+                case HyobObjectKind.HatchBoundary:  return "Hatch";
+                case HyobObjectKind.Wipeout:        return "Wipeout";
+                case HyobObjectKind.XDataAttachment:    return "XData";
+                case HyobObjectKind.ExtensionDictionary: return "ExtDict";
+                case HyobObjectKind.Opaque:         return "Opaque";
+                default: return $"0x{(ushort)kind:X4}";
+            }
+        }
+
+        public static void WriteMirrorBreakdown(Editor ed, MirrorStats stats)
+        {
+            if (ed == null || stats.ByTypeId == null || stats.ByTypeId.Count == 0) return;
+            var ordered = stats.ByTypeId
+                .OrderByDescending(kv => kv.Value)
+                .ThenBy(kv => (ushort)kv.Key);
+            var parts = ordered.Select(kv => $"{KindName(kv.Key)}={kv.Value}");
+            ed.WriteMessage($"\n  分类   : {string.Join(", ", parts)}");
+        }
+
+        public static void WriteAttachmentCounts(Editor ed, MirrorStats stats)
+        {
+            if (ed == null) return;
+            if (stats.XDataCount == 0 && stats.ExtDictCount == 0) return;
+            ed.WriteMessage($"\n  附加   : XData={stats.XDataCount}, ExtDict={stats.ExtDictCount}");
+        }
+    }
+
+    // ---------- 自检 (M1 12 项 + M2 4 项 Typed) ----------
+
+    internal static class HyobSelfCheck
+    {
+        public static (int Pass, int Fail) Run(Editor ed)
+        {
+            int passed = 0, failed = 0;
+            void Report(string name, bool ok, string detail = null)
+            {
+                if (ok) { passed++; ed?.WriteMessage($"\n  ✓ {name}"); }
+                else   { failed++; ed?.WriteMessage($"\n  ✗ {name}{(detail != null ? "：" + detail : "")}"); }
+            }
+
+            try
+            {
+                uint crc = Crc32.Compute(Encoding.ASCII.GetBytes("123456789"));
+                Report("CRC32(\"123456789\") == 0xCBF43926", crc == 0xCBF43926u, $"实际 0x{crc:X8}");
+            }
+            catch (Exception ex) { Report("CRC32 标准向量", false, ex.Message); }
+
+            try
+            {
+                var h1 = Hash.OfPayload(Encoding.UTF8.GetBytes("hyob"));
+                var h2 = Hash.OfPayload(Encoding.UTF8.GetBytes("hyob"));
+                var h3 = Hash.OfPayload(Encoding.UTF8.GetBytes("hyo"));
+                Report("Hash 自一致 + 异输入异哈希", h1 == h2 && h1 != h3);
+            }
+            catch (Exception ex) { Report("Hash 自一致", false, ex.Message); }
+
+            try
+            {
+                var h = Hash.OfPayload(Encoding.UTF8.GetBytes("round-trip"));
+                Report("Hash Hex round-trip", h == Hash.FromHex(h.ToHex()));
+            }
+            catch (Exception ex) { Report("Hash Hex round-trip", false, ex.Message); }
+
+            try
+            {
+                byte[] payload = Encoding.UTF8.GetBytes("HelloHyobOpaquePayload");
+                var hdr = new HyobObjectHeader(HyobObjectKind.Opaque, 1, payload.Length, 0x42);
+                byte[] blob = hdr.Encode(payload);
+                var (h2, p2) = HyobObjectHeader.Decode(blob);
+                bool ok = h2.TypeId == HyobObjectKind.Opaque && h2.SchemaVersion == 1 && h2.Flags == 0x42
+                       && h2.PayloadLength == payload.Length && BytesEqual(payload, p2);
+                Report("HyobObjectHeader Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobObjectHeader", false, ex.Message); }
+
+            try
+            {
+                var hdr = new HyobObjectHeader(HyobObjectKind.Opaque, 1, 4);
+                byte[] blob = hdr.Encode(new byte[] { 1, 2, 3, 4 });
+                blob[blob.Length - 1] ^= 0xFF;
+                bool threw = false;
+                try { HyobObjectHeader.Decode(blob); }
+                catch (InvalidDataException) { threw = true; }
+                Report("CRC 损坏时 Decode 抛 InvalidDataException", threw);
+            }
+            catch (Exception ex) { Report("CRC 损坏检测", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobOpaqueObject("AcDbLine", "ACAD", "3F2A",
+                    new byte[] { 0x4C, 0x49, 0x4E, 0x45 });
+                var dec = HyobOpaqueObject.Decode(src.EncodeBlob());
+                bool ok = dec.DwgClassName == "AcDbLine" && dec.HandleHex == "3F2A"
+                       && BytesEqual(dec.RawDxf, src.RawDxf);
+                Report("HyobOpaqueObject Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobOpaqueObject", false, ex.Message); }
+
+            try
+            {
+                var a = new HyobOpaqueObject("AcDbCircle", "ACAD", "ABCD", new byte[] { 1, 2, 3 });
+                var b = new HyobOpaqueObject("AcDbCircle", "ACAD", "ABCD", new byte[] { 1, 2, 3 });
+                Report("OpaqueObject content-addressable", Hash.OfPayload(a.EncodeBlob()) == Hash.OfPayload(b.EncodeBlob()));
+            }
+            catch (Exception ex) { Report("OpaqueObject 内容寻址", false, ex.Message); }
+
+            string tmp1 = null;
+            try
+            {
+                tmp1 = Path.Combine(Path.GetTempPath(), "hyob-selfcheck-" + Guid.NewGuid().ToString("N"));
+                var store = new HyobObjectStore(tmp1);
+                var obj = new HyobOpaqueObject("AcDbArc", "ACAD", "DEAD", new byte[] { 0xCA, 0xFE });
+                byte[] blob = obj.EncodeBlob();
+                Hash h1 = store.Write(blob);
+                Hash h2 = store.Write(blob);
+                bool ok = h1 == h2 && BytesEqual(blob, store.Read(h1)) && store.EnumerateAll().Any(x => x == h1);
+                Report("HyobObjectStore 写/读/幂等/枚举", ok);
+            }
+            catch (Exception ex) { Report("HyobObjectStore", false, ex.Message); }
+            finally { TryDelete(tmp1); }
+
+            try
+            {
+                var hL = Hash.OfPayload(Encoding.UTF8.GetBytes("E001"));
+                var hP = Hash.OfPayload(Encoding.UTF8.GetBytes("E002"));
+                var t1 = new HyobTree(new[] {
+                    new HyobTreeEntry("E002", HyobTreeEntryKind.Object, hP),
+                    new HyobTreeEntry("E001", HyobTreeEntryKind.Object, hL) });
+                var t2 = new HyobTree(new[] {
+                    new HyobTreeEntry("E001", HyobTreeEntryKind.Object, hL),
+                    new HyobTreeEntry("E002", HyobTreeEntryKind.Object, hP) });
+                bool same = Hash.OfPayload(t1.EncodeBlob()) == Hash.OfPayload(t2.EncodeBlob());
+                bool dec = HyobTree.Decode(t1.EncodeBlob()).Entries[0].Name == "E001";
+                bool dup = false;
+                try { new HyobTree(new[] {
+                    new HyobTreeEntry("dup", HyobTreeEntryKind.Object, hL),
+                    new HyobTreeEntry("dup", HyobTreeEntryKind.Object, hP) }); }
+                catch (ArgumentException) { dup = true; }
+                Report("HyobTree 顺序无关 + 同名拒绝", same && dec && dup);
+            }
+            catch (Exception ex) { Report("HyobTree", false, ex.Message); }
+
+            try
+            {
+                var tree = Hash.OfPayload(Encoding.UTF8.GetBytes("tree"));
+                var fixedTime = DateTimeOffset.FromUnixTimeSeconds(1714000000);
+                var meta1 = new Dictionary<string, string> { { "z", "v2" }, { "a", "v1" } };
+                var meta2 = new Dictionary<string, string> { { "a", "v1" }, { "z", "v2" } };
+                var c1 = new HyobCommit(tree, "t", "m", time: fixedTime, meta: meta1);
+                var c2 = new HyobCommit(tree, "t", "m", time: fixedTime, meta: meta2);
+                Report("HyobCommit meta 顺序无关", Hash.OfPayload(c1.EncodeBlob()) == Hash.OfPayload(c2.EncodeBlob()));
+            }
+            catch (Exception ex) { Report("HyobCommit", false, ex.Message); }
+
+            string tmp2 = null;
+            try
+            {
+                tmp2 = Path.Combine(Path.GetTempPath(), "hyob-selfcheck-" + Guid.NewGuid().ToString("N"));
+                var store = new HyobObjectStore(Path.Combine(tmp2, "objects"));
+                var refs = new HyobRefStore(tmp2);
+                refs.WriteHeadBranch("main");
+                var obj = new HyobOpaqueObject("AcDbLine", "ACAD", "100", new byte[] { 1, 2, 3 });
+                Hash oh = store.Write(obj.EncodeBlob());
+                var t = new HyobTree(new[] { new HyobTreeEntry("E001", HyobTreeEntryKind.Object, oh) });
+                Hash th = store.Write(t.EncodeBlob());
+                var c = new HyobCommit(th, "t", "init", time: DateTimeOffset.FromUnixTimeSeconds(1714000000));
+                Hash ch = store.Write(c.EncodeBlob());
+                refs.WriteBranchTip("main", ch);
+                bool head = refs.TryReadHead(out var b, out _);
+                bool tip = refs.TryReadBranchTip("main", out var t2);
+                Report("端到端 mini-DAG", head && b == "main" && tip && t2 == ch);
+            }
+            catch (Exception ex) { Report("端到端 mini-DAG", false, ex.Message); }
+            finally { TryDelete(tmp2); }
+
+            // ---- M2 Typed 编解码自检 ----
+            try
+            {
+                var src = new HyobLine("L0", "100", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+                var dec = HyobLine.Decode(src.EncodeBlob());
+                bool ok = dec.Layer == "L0" && dec.HandleHex == "100"
+                       && dec.StartX == 1.0 && dec.EndZ == 6.0;
+                Report("HyobLine Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobLine", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobCircle("L1", "200", 10, 20, 30, 5.5, 0, 0, 1);
+                var dec = HyobCircle.Decode(src.EncodeBlob());
+                bool ok = dec.Layer == "L1" && dec.Radius == 5.5 && dec.NormalZ == 1;
+                Report("HyobCircle Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobCircle", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobArc("L2", "300", 0, 0, 0, 10, 0.0, Math.PI, 0, 0, 1);
+                var dec = HyobArc.Decode(src.EncodeBlob());
+                bool ok = dec.Radius == 10 && Math.Abs(dec.EndAngleRad - Math.PI) < 1e-12;
+                Report("HyobArc Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobArc", false, ex.Message); }
+
+            try
+            {
+                var verts = new List<HyobPolylineVertex>
+                {
+                    new HyobPolylineVertex(0, 0, 0),
+                    new HyobPolylineVertex(10, 0, 0.5),
+                    new HyobPolylineVertex(10, 10, 0),
+                };
+                var src = new HyobPolyline("L3", "400", closed: true,
+                                           elevation: 1.0, nx: 0, ny: 0, nz: 1,
+                                           constantWidth: 0.0, vertices: verts);
+                var dec = HyobPolyline.Decode(src.EncodeBlob());
+                bool ok = dec.Closed && dec.Vertices.Count == 3
+                       && dec.Vertices[1].Bulge == 0.5 && dec.Elevation == 1.0;
+                Report("HyobPolyline Encode→Decode (3 vertex + bulge + closed)", ok);
+            }
+            catch (Exception ex) { Report("HyobPolyline", false, ex.Message); }
+
+            // ---- M3 文字与块自检 ----
+            try
+            {
+                var src = new HyobDBText("L4", "500", "标高 ±0.000", "STANDARD",
+                    1, 2, 3, 250.0, 0.0, 1.0, 0.0, 0.0,
+                    0, 0, 1, horizontalMode: 0, verticalMode: 0,
+                    ax: 0, ay: 0, az: 0, flags: 0);
+                var dec = HyobDBText.Decode(src.EncodeBlob());
+                bool ok = dec.TextString == "标高 ±0.000" && dec.TextStyleName == "STANDARD"
+                       && dec.Height == 250.0 && dec.PosX == 1;
+                Report("HyobDBText Encode→Decode (中文 + 特殊字符)", ok);
+            }
+            catch (Exception ex) { Report("HyobDBText", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobMText("L5", "600",
+                    "{\\fSimSun|b0|i0|c134|p2;多行\\P测试}", "STANDARD",
+                    0, 0, 0, 350.0, 1000.0, 0.0,
+                    0, 0, 1, 1, 0, 0,
+                    attachment: 1, drawDirection: 1, lineSpacingStyle: 1,
+                    lineSpacingFactor: 1.0, backgroundFill: 0, backgroundColorArgb: 0xFFFFFFFF,
+                    backgroundScaleFactor: 1.5);
+                var dec = HyobMText.Decode(src.EncodeBlob());
+                bool ok = dec.Contents.Contains("多行") && dec.TextHeight == 350.0
+                       && dec.BackgroundColorArgb == 0xFFFFFFFF;
+                Report("HyobMText Encode→Decode (RTF 控制码 + 中文)", ok);
+            }
+            catch (Exception ex) { Report("HyobMText", false, ex.Message); }
+
+            try
+            {
+                var attrs = new List<HyobBlockAttribute>
+                {
+                    new HyobBlockAttribute("TAG1", "Value-1"),
+                    new HyobBlockAttribute("LEVEL", "+5.000"),
+                };
+                var src = new HyobBlockReference("L6", "700", "BLK_TITLE",
+                    100, 200, 0, 1, 1, 1, 0,
+                    0, 0, 1, attrs);
+                var dec = HyobBlockReference.Decode(src.EncodeBlob());
+                bool ok = dec.BlockName == "BLK_TITLE" && dec.Attributes.Count == 2
+                       && dec.Attributes[1].Tag == "LEVEL"
+                       && dec.Attributes[1].TextString == "+5.000";
+                Report("HyobBlockReference Encode→Decode (含 2 属性)", ok);
+            }
+            catch (Exception ex) { Report("HyobBlockReference", false, ex.Message); }
+
+            // ---- M4-A 标注自检：覆盖 Aligned / Rotated / Radial 三种 subtype + 边界 ----
+            try
+            {
+                var pts = new List<HyobPoint3d>
+                {
+                    new HyobPoint3d(0, 0, 0),
+                    new HyobPoint3d(1000, 0, 0),
+                    new HyobPoint3d(500, 200, 0),
+                };
+                var extras = new List<double> { 0.0 };  // Aligned: oblique
+                var src = new HyobDimension(HyobDimension.Subtype.Aligned,
+                    "L7", "800", "*D2", "<>", "STANDARD",
+                    500, 200, 0, 1000.0, 0, 0, 1, pts, extras);
+                var dec = HyobDimension.Decode(src.EncodeBlob());
+                bool ok = dec.DimType == HyobDimension.Subtype.Aligned
+                       && dec.DefiningPoints.Count == 3
+                       && dec.DefiningPoints[1].X == 1000
+                       && dec.Extras.Count == 1
+                       && dec.Measurement == 1000.0
+                       && dec.DimensionText == "<>";
+                Report("HyobDimension(Aligned) Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobDimension Aligned", false, ex.Message); }
+
+            try
+            {
+                var pts = new List<HyobPoint3d>
+                {
+                    new HyobPoint3d(0, 0, 0),
+                    new HyobPoint3d(0, 100, 0),
+                    new HyobPoint3d(50, 50, 0),
+                };
+                var extras = new List<double> { Math.PI / 4, 0.0 };  // Rotation, Oblique
+                var src = new HyobDimension(HyobDimension.Subtype.Rotated,
+                    "L8", "801", "", "", "STANDARD",
+                    50, 50, 0, 100.0, 0, 0, 1, pts, extras);
+                var dec = HyobDimension.Decode(src.EncodeBlob());
+                bool ok = dec.DimType == HyobDimension.Subtype.Rotated
+                       && Math.Abs(dec.Extras[0] - Math.PI / 4) < 1e-12;
+                Report("HyobDimension(Rotated) Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobDimension Rotated", false, ex.Message); }
+
+            try
+            {
+                var pts = new List<HyobPoint3d>
+                {
+                    new HyobPoint3d(50, 50, 0),
+                    new HyobPoint3d(100, 50, 0),
+                };
+                var extras = new List<double> { 25.0 };  // LeaderLength
+                var src = new HyobDimension(HyobDimension.Subtype.Radial,
+                    "L9", "802", "", "R<>", "STANDARD",
+                    150, 50, 0, 50.0, 0, 0, 1, pts, extras);
+                var dec = HyobDimension.Decode(src.EncodeBlob());
+                bool ok = dec.DimType == HyobDimension.Subtype.Radial
+                       && dec.DefiningPoints.Count == 2
+                       && dec.Extras[0] == 25.0;
+                Report("HyobDimension(Radial) Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobDimension Radial", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobDimension(HyobDimension.Subtype.Other,
+                    "L10", "803", "", "", "",
+                    0, 0, 0, 0, 0, 0, 1,
+                    new List<HyobPoint3d>(), new List<double>());
+                var dec = HyobDimension.Decode(src.EncodeBlob());
+                bool ok = dec.DimType == HyobDimension.Subtype.Other
+                       && dec.DefiningPoints.Count == 0 && dec.Extras.Count == 0;
+                Report("HyobDimension(Other) 0-point/0-extra 边界", ok);
+            }
+            catch (Exception ex) { Report("HyobDimension Other", false, ex.Message); }
+
+            // ---- M4-B 引线与填充自检 ----
+            try
+            {
+                var src = new HyobMLeader("L11", "900",
+                    contentType: HyobMLeader.ContentMText,
+                    mtextContents: "标注 \\P 多行",
+                    blockName: "",
+                    mleaderStyleName: "Standard",
+                    tx: 100, ty: 200, tz: 0,
+                    textHeight: 250.0, arrowSize: 80.0,
+                    doglegLength: 100.0, landingGap: 25.0,
+                    scale: 1.0, blockRotation: 0.0,
+                    leaderCount: 1, leaderLineCount: 2);
+                var dec = HyobMLeader.Decode(src.EncodeBlob());
+                bool ok = dec.ContentType == HyobMLeader.ContentMText
+                       && dec.MTextContents == "标注 \\P 多行"
+                       && dec.MLeaderStyleName == "Standard"
+                       && dec.LeaderLineCount == 2;
+                Report("HyobMLeader(MText) Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobMLeader", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobMLeader("L12", "901",
+                    contentType: HyobMLeader.ContentBlock,
+                    mtextContents: "",
+                    blockName: "BLK_NOTE",
+                    mleaderStyleName: "Standard",
+                    tx: 0, ty: 0, tz: 0,
+                    textHeight: 0, arrowSize: 0,
+                    doglegLength: 0, landingGap: 0,
+                    scale: 1.0, blockRotation: 0.5,
+                    leaderCount: 0, leaderLineCount: 0);
+                var dec = HyobMLeader.Decode(src.EncodeBlob());
+                bool ok = dec.ContentType == HyobMLeader.ContentBlock
+                       && dec.BlockName == "BLK_NOTE"
+                       && dec.BlockRotation == 0.5;
+                Report("HyobMLeader(Block) 边界 (无 leader line)", ok);
+            }
+            catch (Exception ex) { Report("HyobMLeader Block", false, ex.Message); }
+
+            try
+            {
+                var src = new HyobHatch("L13", "A00",
+                    patternType: 0, patternName: "ANSI31",
+                    patternScale: 100.0, patternAngleRad: 0.0, patternSpace: 50.0,
+                    hatchStyle: 0, elevation: 0.0,
+                    nx: 0, ny: 0, nz: 1,
+                    numberOfLoops: 1, numberOfPatternDefinitions: 1,
+                    area: 12500.0, associative: 1);
+                var dec = HyobHatch.Decode(src.EncodeBlob());
+                bool ok = dec.PatternName == "ANSI31"
+                       && dec.PatternScale == 100.0
+                       && dec.NumberOfLoops == 1
+                       && dec.Associative == 1;
+                Report("HyobHatch Encode→Decode", ok);
+            }
+            catch (Exception ex) { Report("HyobHatch", false, ex.Message); }
+
+            try
+            {
+                var boundary = new List<HyobPoint2d>
+                {
+                    new HyobPoint2d(0, 0), new HyobPoint2d(100, 0),
+                    new HyobPoint2d(100, 50), new HyobPoint2d(0, 50),
+                };
+                var src = new HyobWipeout("L14", "B00", 0, 0, 0, 100.0, 50.0, 0.0, 256, boundary);
+                var dec = HyobWipeout.Decode(src.EncodeBlob());
+                bool ok = dec.Boundary.Count == 4 && dec.Boundary[2].Y == 50;
+                Report("HyobWipeout (4-顶点矩形边界)", ok);
+            }
+            catch (Exception ex) { Report("HyobWipeout", false, ex.Message); }
+
+            // ---- M5 XData / ExtDict 自检 ----
+            try
+            {
+                var g1 = new HyobXDataAppGroup("HYREIN", new List<HyobXDataEntry>
+                {
+                    new HyobXDataEntry(1000, "钢筋数据"),
+                    new HyobXDataEntry(1040, "3.14"),
+                    new HyobXDataEntry(1071, "42"),
+                });
+                var g2 = new HyobXDataAppGroup("HYAXIS", new List<HyobXDataEntry>
+                {
+                    new HyobXDataEntry(1000, "AXIS-1"),
+                });
+                var src = new HyobXDataAttachment(new List<HyobXDataAppGroup> { g1, g2 });
+                var dec = HyobXDataAttachment.Decode(src.EncodeBlob());
+                bool ok = dec.Groups.Count == 2
+                       && dec.Groups[0].AppName == "HYREIN"
+                       && dec.Groups[0].Entries.Count == 3
+                       && dec.Groups[0].Entries[0].ValueStr == "钢筋数据"
+                       && dec.Groups[1].AppName == "HYAXIS";
+                Report("HyobXDataAttachment Encode→Decode (2 RegApp)", ok);
+            }
+            catch (Exception ex) { Report("HyobXDataAttachment", false, ex.Message); }
+
+            try
+            {
+                var entries = new List<HyobExtDictEntry>
+                {
+                    new HyobExtDictEntry("HyBoltData", HyobExtDictEntry.KindXrecord, "(1000,bolts)(40,16.0)"),
+                    new HyobExtDictEntry("HySubDict",  HyobExtDictEntry.KindDictionary, "<5>"),
+                    new HyobExtDictEntry("HyOther",    HyobExtDictEntry.KindOther, "AcDbXrecord"),
+                };
+                var src = new HyobExtensionDictionary(entries);
+                var dec = HyobExtensionDictionary.Decode(src.EncodeBlob());
+                bool ok = dec.Entries.Count == 3
+                       && dec.Entries[0].KeyName == "HyBoltData"
+                       && dec.Entries[0].Kind == HyobExtDictEntry.KindXrecord
+                       && dec.Entries[1].Kind == HyobExtDictEntry.KindDictionary;
+                Report("HyobExtensionDictionary Encode→Decode (3 entry)", ok);
+            }
+            catch (Exception ex) { Report("HyobExtensionDictionary", false, ex.Message); }
+
+            try
+            {
+                var emptyXData = new HyobXDataAttachment(new List<HyobXDataAppGroup>());
+                var emptyExt = new HyobExtensionDictionary(new List<HyobExtDictEntry>());
+                var d1 = HyobXDataAttachment.Decode(emptyXData.EncodeBlob());
+                var d2 = HyobExtensionDictionary.Decode(emptyExt.EncodeBlob());
+                bool ok = d1.Groups.Count == 0 && d2.Entries.Count == 0;
+                Report("XData / ExtDict 空集合边界", ok);
+            }
+            catch (Exception ex) { Report("XData/ExtDict 空边界", false, ex.Message); }
+
+            return (passed, failed);
+        }
+
+        private static bool BytesEqual(byte[] a, byte[] b)
+        {
+            if (a == null || b == null) return a == b;
+            if (a.Length != b.Length) return false;
+            for (int i = 0; i < a.Length; i++) if (a[i] != b[i]) return false;
+            return true;
+        }
+
+        private static void TryDelete(string dir)
+        {
+            try { if (dir != null && Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
+            catch { }
+        }
+    }
+
+    // ---------- hyobI ----------
+
+    /// <summary>
+    /// hyobI - 在当前 DWG 旁初始化 .hyob/ 目录：先跑 12 项 Domain 自检，再创建仓库并写第一次 commit。
+    /// </summary>
+    public class HyobInitCommand
+    {
+        public void Execute()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed  = doc?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobI: 启动 —— 先跑 Domain 自检");
+
+            var (pass, fail) = HyobSelfCheck.Run(ed);
+            ed?.WriteMessage($"\n[hyob] 自检：PASS {pass} / FAIL {fail}");
+            if (fail > 0)
+            {
+                ed?.WriteMessage("\n[hyob] 自检失败，已中止 init。请修复 Domain 后重试。");
+                return;
+            }
+
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+
+            bool freshInit = !paths.Exists();
+            paths.EnsureCreated();
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            if (freshInit) refs.WriteHeadBranch("main");
+
+            var mirror = new AutoCadDatabaseMirror(objects, refs);
+            string msg = freshInit ? "init: 首次镜像" : "init: 重复 init，追加快照";
+            var (commitHash, stats) = mirror.MirrorDatabaseIntoHyob(
+                doc.Database, author: Environment.UserName ?? "hyob", message: msg, command: "hyobI");
+
+            ed?.WriteMessage($"\n[hyob] hyobI: 完成");
+            ed?.WriteMessage($"\n  路径   : {paths.HyobRoot}");
+            ed?.WriteMessage($"\n  分支   : main");
+            ed?.WriteMessage($"\n  对象   : {stats.TotalCount} 个 (Typed={stats.TypedCount}, Opaque={stats.OpaqueCount})");
+            HyobReporting.WriteMirrorBreakdown(ed, stats);
+            HyobReporting.WriteAttachmentCounts(ed, stats);
+            ed?.WriteMessage($"\n  commit : {commitHash.ToHex().Substring(0, 12)}…");
+        }
+    }
+
+    // ---------- hyobS ----------
+
+    /// <summary>hyobS - 显示当前 .hyob/ 仓库状态：路径、分支、HEAD、最新 commit 元信息。</summary>
+    public class HyobStatusCommand
+    {
+        public void Execute()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed  = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage($"\n[hyob] 仓库未初始化（{paths.HyobRoot} 不存在）。请先执行 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            ed?.WriteMessage($"\n[hyob] 仓库：{paths.HyobRoot}");
+
+            if (!refs.TryReadHead(out var branch, out var detached))
+            {
+                ed?.WriteMessage("\n  HEAD : (未设置)");
+                return;
+            }
+            if (branch != null)
+            {
+                ed?.WriteMessage($"\n  HEAD : ref → refs/heads/{branch}");
+                if (refs.TryReadBranchTip(branch, out var tip))
+                {
+                    ed?.WriteMessage($"\n  tip  : {tip.ToHex().Substring(0, 12)}…");
+                    if (objects.TryRead(tip, out var blob))
+                    {
+                        try
+                        {
+                            var c = HyobCommit.Decode(blob);
+                            ed?.WriteMessage($"\n  msg  : {c.Message}");
+                            ed?.WriteMessage($"\n  cmd  : {c.Command}");
+                            ed?.WriteMessage($"\n  by   : {c.Author}  @ {c.Time.ToLocalTime():yyyy-MM-dd HH:mm:ss}");
+                            if (c.Meta.TryGetValue("entityCount", out var ec))
+                                ed?.WriteMessage($"\n  ents : {ec}");
+                            ed?.WriteMessage($"\n  parents: {c.Parents.Count}");
+                        }
+                        catch (Exception ex) { ed?.WriteMessage($"\n  (commit 解码失败：{ex.Message})"); }
+                    }
+                }
+                else
+                {
+                    ed?.WriteMessage($"\n  tip  : (空 — branch '{branch}' 尚无 commit)");
+                }
+            }
+            else
+            {
+                ed?.WriteMessage($"\n  HEAD : detached → {detached.ToHex().Substring(0, 12)}…");
+            }
+        }
+    }
+
+    // ---------- hyobC ----------
+
+    /// <summary>hyobC - 把当前 Database 同步状态 commit 到 hyob，自动接到当前分支 tip 上。</summary>
+    public class HyobCommitCommand
+    {
+        public void Execute()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed  = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage($"\n[hyob] 仓库未初始化。请先执行 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            var mirror = new AutoCadDatabaseMirror(objects, refs);
+
+            var (commitHash, stats) = mirror.MirrorDatabaseIntoHyob(
+                doc.Database,
+                author: Environment.UserName ?? "hyob",
+                message: $"manual commit @ {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                command: "hyobC");
+
+            ed?.WriteMessage($"\n[hyob] hyobC: 已提交");
+            ed?.WriteMessage($"\n  commit : {commitHash.ToHex().Substring(0, 12)}…");
+            ed?.WriteMessage($"\n  对象   : {stats.TotalCount} 个 (Typed={stats.TypedCount}, Opaque={stats.OpaqueCount})");
+            HyobReporting.WriteMirrorBreakdown(ed, stats);
+            HyobReporting.WriteAttachmentCounts(ed, stats);
+        }
+    }
+
+    // ---------- hyobL ----------
+
+    /// <summary>hyobL - 沿 parent 链打印 commit 历史（git log 风格，最多 50 条）。</summary>
+    public class HyobLogCommand
+    {
+        private const int MaxCommits = 50;
+
+        public void Execute()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed  = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage($"\n[hyob] 仓库未初始化。请先执行 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            if (!refs.TryReadHead(out var branch, out var detached))
+            {
+                ed?.WriteMessage("\n[hyob] HEAD 未设置。");
+                return;
+            }
+
+            Hash startHash;
+            if (branch != null)
+            {
+                if (!refs.TryReadBranchTip(branch, out startHash))
+                {
+                    ed?.WriteMessage($"\n[hyob] 分支 '{branch}' 尚无 commit。");
+                    return;
+                }
+            }
+            else startHash = detached;
+
+            var mirror = new AutoCadDatabaseMirror(objects, refs);
+            ed?.WriteMessage($"\n[hyob] hyobL: HEAD → {(branch ?? "(detached)")}");
+            int n = 0;
+            foreach (var (hash, commit) in mirror.WalkHistory(startHash, MaxCommits))
+            {
+                n++;
+                string ec = commit.Meta.TryGetValue("entityCount", out var v) ? v : "-";
+                ed?.WriteMessage(
+                    $"\n  {hash.ToHex().Substring(0, 10)}  " +
+                    $"{commit.Time.ToLocalTime():yyyy-MM-dd HH:mm:ss}  " +
+                    $"[{commit.Command,-7}]  ents={ec,-5}  {commit.Message}");
+            }
+            ed?.WriteMessage($"\n[hyob] 共 {n} 条 commit{(n == MaxCommits ? "（已截断）" : "")}");
+        }
+    }
+
+    // ---------- 其余命令仍为 stub（按计划在后续里程碑落地） ----------
+
+    /// <summary>hyobD - 比较两个 commit 或 Database 与 HEAD 的差异（M2+ 起逐步增强）。</summary>
+    public class HyobDiffCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobD: stub —— 将在 M2+ 落地（hash 级 → 字段级 diff）。");
+        }
+    }
+
+    /// <summary>hyobB - 创建 / 列出 / 切换 layer（M8 落地）。</summary>
+    public class HyobBranchCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobB: stub —— 将在 M8 落地（USD 风格多 layer 合成）。");
+        }
+    }
+
+    /// <summary>hyobCo - 切换 HEAD 到指定 commit / layer（M1-E 落地，含 Database 反向 patch）。</summary>
+    public class HyobCheckoutCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobCo: stub —— 将在 M1-E 落地（含 Database 反向 patch）。");
+        }
+    }
+
+    /// <summary>hyobM - 三路合并（M8/M10 落地）。</summary>
+    public class HyobMergeCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobM: stub —— 将在 M8/M10 落地。");
+        }
+    }
+
+    /// <summary>hyobES - 从当前 hyob commit 导出 hygeom JSON（M12 落地）。</summary>
+    public class HyobExportHygeomCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobES: stub —— 将在 M12 落地（hyob commit → hygeom JSON）。");
+        }
+    }
+
+    /// <summary>
+    /// hyobR - 强制跑一次 round-trip 自检：从 HEAD 沿 parent 链遍历整个 commit DAG，
+    /// 校验所有 commit / tree / object 的链路完整性、解码正确性。
+    /// </summary>
+    public class HyobRoundTripCommand
+    {
+        private const int MaxIssuesShown = 10;
+
+        public void Execute()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed  = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage($"\n[hyob] 仓库未初始化。请先执行 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            var validator = new RoundTripValidator(objects, refs);
+            var report = validator.Validate();
+
+            ed?.WriteMessage($"\n[hyob] hyobR: round-trip 自检完成");
+            ed?.WriteMessage($"\n  commits : {report.CommitCount}");
+            ed?.WriteMessage($"\n  trees   : {report.TreeCount}");
+            ed?.WriteMessage($"\n  objects : {report.ObjectCount}  (Opaque={report.OpaqueCount}, Typed={report.TypedCount})");
+
+            if (report.TypedByKind.Count > 0)
+            {
+                var parts = report.TypedByKind
+                    .OrderByDescending(kv => kv.Value)
+                    .ThenBy(kv => (ushort)kv.Key)
+                    .Select(kv => $"{HyobReporting.KindName(kv.Key)}={kv.Value}");
+                ed?.WriteMessage($"\n  typed   : {string.Join(", ", parts)}");
+            }
+
+            if (report.Warnings.Count > 0)
+            {
+                ed?.WriteMessage($"\n  warnings: {report.Warnings.Count}");
+                int i = 0;
+                foreach (var w in report.Warnings)
+                {
+                    if (i++ >= MaxIssuesShown) { ed?.WriteMessage("\n    ... (已截断)"); break; }
+                    ed?.WriteMessage($"\n    ! {w}");
+                }
+            }
+
+            if (report.Errors.Count > 0)
+            {
+                ed?.WriteMessage($"\n  errors  : {report.Errors.Count}");
+                int i = 0;
+                foreach (var e in report.Errors)
+                {
+                    if (i++ >= MaxIssuesShown) { ed?.WriteMessage("\n    ... (已截断)"); break; }
+                    ed?.WriteMessage($"\n    ✗ {e}");
+                }
+            }
+            else
+            {
+                ed?.WriteMessage($"\n  status  : ✓ 无错误，仓库链路完整");
+            }
+        }
+    }
+
+    /// <summary>hyobG - loose objects 打包 + 删孤儿（M7 落地）。</summary>
+    public class HyobGcCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobG: stub —— 将在 M7 落地。");
+        }
+    }
+
+    /// <summary>hyobP - 弹出历史面板（M10 落地）。</summary>
+    public class HyobShowHistoryPanelCommand
+    {
+        public void Execute()
+        {
+            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+            ed?.WriteMessage("\n[hyob] hyobP: stub —— 将在 M10 落地。");
+        }
+    }
+}

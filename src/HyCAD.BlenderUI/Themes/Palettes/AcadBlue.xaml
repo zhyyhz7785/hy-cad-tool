@@ -1,0 +1,106 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+     主题 5：AutoCAD 蓝色（AcadBlue）
+     ───────────────────────────────────────────────────────────────
+     色值来源：用户提供 HyBlenderPanel 实际截图（钢筋 / 过滤器 Tab）逐区域吸色：
+       主面板体 / 区域底色 = #3B4453  → Brush_PanelBack / PropertyPanelBody /
+                                     Brush_RegionBack / CheckboxBack
+       标题条 / 窗口头   = #1F242E  → Brush_WindowBack
+       Sub-header         = #252B36  → Brush_HeaderBack
+       数值框 / 输入底   = #1B202A  → Brush_InputBack / NumFieldBack / WellBack
+       分组头 raised 带  = #3D4350  → Brush_PanelHeaderBack / ExpanderHeader
+       按钮顶端高光      = #6E7588  → Brush_Shadetop_Idle / EmbossHighlight
+       按钮底端暗影      = #3A4050  → Brush_Shadedown_Idle
+       按钮外描边        = #1A1F28  → Brush_BorderDark / ButtonBorder / EmbossShadow
+       主文字            = #E5EAF0  → Brush_TextPrimary
+       AutoCAD focus 蓝  = #3070C0  → Brush_AccentBlue（沿用 AutoCAD 标志色）
+       按钮 idle / 滚动条拇指 = #2E3440  → Brush_ButtonIdle / ScrollThumb
+
+     按钮 / 分组头的 Blender 风「raised」凸起感由 widget_draw_backdrop 的
+     Shadetop / Shadedown 渐变端点 + EmbossHighlight / EmbossShadow 浮雕实现。
+    -->
+
+    <!-- 窗口 / 编辑器 / 侧边栏 / 分组面板 -->
+    <SolidColorBrush x:Key="Brush_WindowBack"           Color="#1F242E"/>
+    <SolidColorBrush x:Key="Brush_HeaderBack"           Color="#252B36"/>
+    <SolidColorBrush x:Key="Brush_RegionBack"           Color="#3B4453"/>
+    <SolidColorBrush x:Key="Brush_PanelBack"            Color="#3B4453"/>
+    <SolidColorBrush x:Key="Brush_PanelSubBack"         Color="#2A2F3A"/>
+    <SolidColorBrush x:Key="Brush_PanelHeaderBack"      Color="#3D4350"/>
+    <SolidColorBrush x:Key="Brush_BorderDark"           Color="#1A1F28"/>
+    <SolidColorBrush x:Key="Brush_BorderMid"            Color="#404655"/>
+
+    <!-- 属性侧栏层级（HyCAD 蓝灰冷调：分组头凸起 + 主体平 + 值字段凹陷） -->
+    <SolidColorBrush x:Key="Brush_PropertyPanelBody"        Color="#3B4453"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeader"      Color="#3D4350"/>
+    <SolidColorBrush x:Key="Brush_PropertyPanelHeaderHover" Color="#474D5C"/>
+    <SolidColorBrush x:Key="Brush_PropertyGroupHeaderHover" Color="#404655"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellBack"         Color="#1B202A"/>
+    <SolidColorBrush x:Key="Brush_PropertyWellOutline"      Color="#404655"/>
+    <SolidColorBrush x:Key="Brush_NumFieldBack"             Color="#1B202A"/>
+
+    <!-- 标签 / 选中高亮（AutoCAD focus 蓝 #3070C0） -->
+    <SolidColorBrush x:Key="Brush_TabInactive"          Color="#2A2F3A"/>
+    <SolidColorBrush x:Key="Brush_AccentBlue"           Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_AccentBlueHover"      Color="#4585D9"/>
+
+    <!-- 按钮（中性 idle，但实际渲染按 Shadetop/Shadedown 渐变） -->
+    <SolidColorBrush x:Key="Brush_ButtonIdle"            Color="#2E3440"/>
+    <SolidColorBrush x:Key="Brush_ButtonHover"           Color="#555C6E"/>
+    <SolidColorBrush x:Key="Brush_ButtonPressed"         Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_ButtonBorder"          Color="#1A1F28"/>
+
+    <!-- 输入 / 复选 -->
+    <SolidColorBrush x:Key="Brush_InputBack"             Color="#1B202A"/>
+    <SolidColorBrush x:Key="Brush_InputBorder"           Color="#404655"/>
+    <SolidColorBrush x:Key="Brush_InputFocusBorder"      Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_CheckboxBack"          Color="#3B4453"/>
+    <SolidColorBrush x:Key="Brush_CheckboxChecked"       Color="#3070C0"/>
+
+    <!-- 文字（亮灰带冷蓝调） -->
+    <SolidColorBrush x:Key="Brush_TextPrimary"           Color="#E5EAF0"/>
+    <SolidColorBrush x:Key="Brush_TextSecondary"         Color="#B0B6C0"/>
+    <SolidColorBrush x:Key="Brush_TextDisabled"          Color="#6F7682"/>
+    <SolidColorBrush x:Key="Brush_TextOnAccent"          Color="#FFFFFF"/>
+
+    <!-- 强调色 -->
+    <SolidColorBrush x:Key="Brush_Warning"               Color="#E5734E"/>
+    <SolidColorBrush x:Key="Brush_Success"               Color="#A3BE8C"/>
+
+    <!-- 滚动条 -->
+    <SolidColorBrush x:Key="Brush_ScrollThumb"           Color="#2E3440"/>
+    <SolidColorBrush x:Key="Brush_ScrollThumbHover"      Color="#5C6376"/>
+    <SolidColorBrush x:Key="Brush_ScrollTrack"           Color="#1B202A"/>
+
+    <!-- Expander 头条（与分组头条统一，凸起感靠 shadetop/down） -->
+    <SolidColorBrush x:Key="Brush_ExpanderHeader"        Color="#3D4350"/>
+    <SolidColorBrush x:Key="Brush_ExpanderHeaderHover"   Color="#474D5C"/>
+
+    <!-- ListBox / Selector 高亮 -->
+    <SolidColorBrush x:Key="Brush_ItemHover"             Color="#353B47"/>
+    <SolidColorBrush x:Key="Brush_ItemSelected"          Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_ItemSelectedText"      Color="#FFFFFF"/>
+
+    <!-- NumericSlider 专用 -->
+    <SolidColorBrush x:Key="Brush_SliderBack"            Color="#404655"/>
+    <SolidColorBrush x:Key="Brush_SliderFill"            Color="#3070C0"/>
+    <SolidColorBrush x:Key="Brush_SliderFillHover"       Color="#4585D9"/>
+
+    <!-- widget_draw_backdrop：shadetop / shadedown 渐变端点 + 浮雕 + 轮廓
+         （按钮凸起感：top #6E7588 高光 → bottom #3A4050 暗影；外描边 #1A1F28 1px 黑） -->
+    <SolidColorBrush x:Key="Brush_Shadetop_Idle"         Color="#6E7588"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Idle"        Color="#3A4050"/>
+    <SolidColorBrush x:Key="Brush_Shadetop_Hover"        Color="#7B8294"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Hover"       Color="#454C60"/>
+    <SolidColorBrush x:Key="Brush_Shadetop_Pressed"      Color="#4585D9"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Pressed"     Color="#2860A8"/>
+    <SolidColorBrush x:Key="Brush_Shadetop_Selected"     Color="#4585D9"/>
+    <SolidColorBrush x:Key="Brush_Shadedown_Selected"    Color="#2860A8"/>
+    <SolidColorBrush x:Key="Brush_EmbossHighlight"       Color="#7B8294"/>
+    <SolidColorBrush x:Key="Brush_EmbossShadow"          Color="#1A1F28"/>
+    <SolidColorBrush x:Key="Brush_WidgetOutlineLight"    Color="#5C6376"/>
+    <SolidColorBrush x:Key="Brush_WidgetOutlineDark"     Color="#2A2F3A"/>
+
+</ResourceDictionary>

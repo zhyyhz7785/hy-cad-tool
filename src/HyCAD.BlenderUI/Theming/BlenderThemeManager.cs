@@ -50,13 +50,14 @@ namespace HyCAD.BlenderUI.Theming
     /// </summary>
     public static class BlenderThemeManager
     {
-        /// <summary>4 个内置主题。和 SettingsPanelViewModel.Theme 字符串值一一对应。</summary>
+        /// <summary>5 个内置主题。和 SettingsPanelViewModel.Theme 字符串值一一对应。</summary>
         public enum BlenderThemeName
         {
             BlenderDark = 0,
             BlenderLight = 1,
             AcadLight = 2,
             AcadDark = 3,
+            AcadBlue = 4,
         }
 
         private static readonly Dictionary<BlenderThemeName, Uri> _paletteUris =
@@ -66,6 +67,7 @@ namespace HyCAD.BlenderUI.Theming
                 { BlenderThemeName.BlenderLight, new Uri("pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderLight.xaml", UriKind.Absolute) },
                 { BlenderThemeName.AcadLight,    new Uri("pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/AcadLight.xaml",    UriKind.Absolute) },
                 { BlenderThemeName.AcadDark,     new Uri("pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/AcadDark.xaml",     UriKind.Absolute) },
+                { BlenderThemeName.AcadBlue,     new Uri("pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/AcadBlue.xaml",     UriKind.Absolute) },
             };
 
         /// <summary>主题→颜色映射缓存。第一次读取主题时从 XAML 解析，之后复用。</summary>
@@ -123,6 +125,11 @@ namespace HyCAD.BlenderUI.Theming
                 case "autocaddark":
                 case "3":
                     return BlenderThemeName.AcadDark;
+                case "acadblue":
+                case "autocadblue":
+                case "blue":
+                case "4":
+                    return BlenderThemeName.AcadBlue;
                 default:
                     return BlenderThemeName.BlenderDark;
             }

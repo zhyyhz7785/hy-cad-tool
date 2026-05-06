@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("命令执行", () =>
+            SimpleLogger.LogElapsedTime("NewDDS Phase 0 占位", () =>
             {
-                ShowPanelCommand.ShowFilterPanel();
+                new HyCADTool.Features.AcadDimension.Commands.NewDdsCommand().Execute();
             });
         }
     }
