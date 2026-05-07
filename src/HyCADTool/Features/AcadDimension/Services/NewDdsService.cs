@@ -16,11 +16,11 @@ namespace HyCADTool.Features.AcadDimension.Services
 {
     /// <summary>
     /// NewDDS 编排服务（无状态——所有 per-run 状态进 NewDdsContext，修 06 §7 #10）。
-    /// 链路：拾取（外层 Command） → ConfigAdapter → Bulge tessellate → Context.Init
-    ///       → SweepLineFeatureExtractor → Composite(Outside + Inside)
-    ///       → EqualExtensionLengthPostProcessor → QualityFunction → AcadDimensionRenderer。
-    /// 当前阶段：Phase 3b——外部 4 方向 + 总尺寸 + 内部凸起局部尺寸全部落地。
-    ///           近距平行去重 / Q 函数待 Phase 4 / 6。
+    /// 链路：拾取 → ConfigAdapter → Bulge tessellate → Context.Init
+    ///       → SweepLine → Composite(Outside + Inside)
+    ///       → Composite(NearbyParallelMerge + EqualExtensionLength) → Q → AcadRenderer。
+    /// 当前阶段：Phase 4——外部/内部派生 + 0 标注根因消除（见 OutsideDimensionDeriver.CollapseSamePrimary）
+    ///           + 同尺寸近距合并（DimDistanceTolerance 控制）+ ExtensionLine 等长。
     /// </summary>
     public sealed class NewDdsService
     {
@@ -41,7 +41,9 @@ namespace HyCADTool.Features.AcadDimension.Services
             _deriver = deriver ?? new CompositeDimensionDeriver(
                 new OutsideDimensionDeriver(),
                 new InsideDimensionDeriver());
-            _postProcessor = postProcessor ?? new EqualExtensionLengthPostProcessor();
+            _postProcessor = postProcessor ?? new CompositeDimensionPostProcessor(
+                new NearbyParallelMergePostProcessor(),
+                new EqualExtensionLengthPostProcessor());
             _qualityFunction = qualityFunction ?? new NoOpQualityFunction();
             _renderer = renderer ?? new AcadDimensionRenderer();
         }
@@ -106,7 +108,7 @@ namespace HyCADTool.Features.AcadDimension.Services
                     int hEdges = SumEdges(features.HorizontalSecantColumns);
                     int vEdges = SumEdges(features.VerticalSecantColumns);
                     ed.WriteMessage(
-                        $"\n[NewDDS] Phase 3b 链路：" +
+                        $"\n[NewDDS] Phase 4 链路：" +
                         $"Polyline(原顶点={acadPolyline.NumberOfVertices} 闭={acadPolyline.Closed}) " +
                         $"→ tessellated(顶点={polyline2D.VertexCount}) " +
                         $"| 配置(内={config.DimensionDistanceInside:F0} 外={config.DimensionDistanceOutside:F0} " +

@@ -16,13 +16,14 @@ using HyCADTool.Features.DataExchange.Hyob.Domain.Schemas;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Diff;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom;
+using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Pack;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.RoundTrip;
 
 namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
 {
     // hyob 子系统命令实现。设计：docs/DataExchange/04-hyob实施总计划-2026-05-07-011100.md。
     //
-    // M6 状态：
+    // M7 状态：
     //   - M2 白名单 4 种几何（Line / Polyline / Arc / Circle）✓
     //   - M3 白名单 3 种文字与块（DBText / MText / BlockReference 内联 Attr）✓
     //   - M4-A 标注 9 种 subtype 统一 schema ✓
@@ -33,8 +34,10 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
     //   - M9 V1：hyobD 支持 WIP 关键字（HEAD → 当前 Database 未提交状态预览） ✓
     //   - M11-B：hyobD 字段级 diff（Modified 条目展开 schema 字段 old → new） ✓
     //   - M12：hyobES 导出 hygeom JSON（hyob commit → AI 友好结构化文本） ✓
-    //   - hyobI / hyobS / hyobC / hyobL / hyobR / hyobD / hyobES 全部真正落地
-    //   - 其余命令（hyobCo / hyobB / hyobM / hyobG / hyobP）仍为 stub
+    //   - G/C/H 段 1：hyobL stat 摘要 + hyobD 智能折叠 + hyobES 过滤 ✓
+    //   - M7：loose objects → Deflate 压缩 pack 文件（hyobG 落地）✓
+    //   - hyobI / hyobS / hyobC / hyobL / hyobR / hyobD / hyobES / hyobG 全部真正落地
+    //   - 其余命令（hyobCo / hyobB / hyobM / hyobP）仍为 stub
 
     // ---------- 共用辅助 ----------
 
@@ -646,6 +649,71 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
                 Report("HyobBlockDef Encode→Decode (含 entity 计数)", ok);
             }
             catch (Exception ex) { Report("HyobBlockDef", false, ex.Message); }
+
+            // ---- M7 Pack 文件自检 ----
+            string tmp7 = null;
+            try
+            {
+                tmp7 = Path.Combine(Path.GetTempPath(), "hyob-pack-selfcheck-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(tmp7);
+                string packPath = Path.Combine(tmp7, "test.pack");
+
+                var blobs = new List<KeyValuePair<Hash, byte[]>>();
+                var origs = new Dictionary<string, byte[]>();
+                for (int i = 0; i < 5; i++)
+                {
+                    var obj = new HyobOpaqueObject("AcDbLine", "ACAD", "00" + i,
+                        Encoding.UTF8.GetBytes("payload-" + i + "-" + new string('x', 200)));
+                    byte[] blob = obj.EncodeBlob();
+                    var h = Hash.OfPayload(blob);
+                    blobs.Add(new KeyValuePair<Hash, byte[]>(h, blob));
+                    origs[h.ToHex()] = blob;
+                }
+                int written = HyobPackFile.Write(packPath, blobs);
+
+                var reader = HyobPackReader.Open(packPath);
+                bool allRead = reader.Count == written;
+                foreach (var kv in origs)
+                {
+                    if (!reader.TryRead(Hash.FromHex(kv.Key), out var read)) { allRead = false; break; }
+                    if (!BytesEqual(read, kv.Value)) { allRead = false; break; }
+                }
+                Report("HyobPackFile Write/Read round-trip (5 obj × 200B Deflate)", allRead);
+            }
+            catch (Exception ex) { Report("HyobPackFile round-trip", false, ex.Message); }
+
+            try
+            {
+                string tmpRoot = Path.Combine(Path.GetTempPath(), "hyob-pack-store-" + Guid.NewGuid().ToString("N"));
+                var store = new HyobObjectStore(tmpRoot);
+                var obj1 = new HyobOpaqueObject("AcDbLine", "ACAD", "AAA1", Encoding.UTF8.GetBytes("loose-1"));
+                var obj2 = new HyobOpaqueObject("AcDbLine", "ACAD", "AAA2", Encoding.UTF8.GetBytes("loose-2"));
+                Hash h1 = store.Write(obj1.EncodeBlob());
+                Hash h2 = store.Write(obj2.EncodeBlob());
+
+                var packer = new HyobPacker();
+                var result = packer.Pack(store);
+
+                bool ok = result.PackedCount == 2
+                       && result.DeletedLoose == 2
+                       && store.PackCount == 1
+                       && store.EnumerateLoose().Count() == 0
+                       && store.Exists(h1) && store.Exists(h2)
+                       && BytesEqual(store.Read(h1), obj1.EncodeBlob())
+                       && BytesEqual(store.Read(h2), obj2.EncodeBlob());
+
+                var obj3 = new HyobOpaqueObject("AcDbLine", "ACAD", "AAA3", Encoding.UTF8.GetBytes("loose-after-pack"));
+                Hash h3 = store.Write(obj3.EncodeBlob());
+                ok = ok
+                  && store.Exists(h3)
+                  && BytesEqual(store.Read(h3), obj3.EncodeBlob())
+                  && store.EnumerateLoose().Count() == 1;
+
+                Report("HyobPacker pack→read→add-loose 共存", ok);
+                try { Directory.Delete(tmpRoot, recursive: true); } catch { }
+            }
+            catch (Exception ex) { Report("HyobPacker pack→read→add-loose", false, ex.Message); }
+            finally { TryDelete(tmp7); }
 
             return (passed, failed);
         }
@@ -1259,30 +1327,37 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
             var (objects, refs) = HyobContext.OpenStores(paths);
             var resolver = new RefResolver(objects, refs);
 
-            var refExpr = PromptRef(ed, "HEAD");
+            var refExpr = PromptString(ed, "commit", "HEAD", allowSpaces: false);
             if (refExpr == null) return;
 
             Hash commitHash;
             try { commitHash = resolver.Resolve(refExpr); }
             catch (Exception ex) { ed?.WriteMessage($"\n[hyob] hyobES: 解析失败：{ex.Message}"); return; }
 
+            // 可选过滤器（空表达式 = 全部）
+            var filter = PromptFilter(ed);
+
             var shortHash = commitHash.ToHex().Substring(0, 10);
-            var outPath = Path.Combine(paths.ExportsDir, shortHash + ".hygeom.json");
+            string suffix = filter.IsEmpty ? string.Empty
+                : "." + SanitizeFileName(filter.LayerName ?? filter.TypeName ?? filter.HandlePrefix);
+            var outPath = Path.Combine(paths.ExportsDir, shortHash + suffix + ".hygeom.json");
 
             ed?.WriteMessage($"\n[hyob] hyobES: 导出 commit {shortHash} → {outPath}");
+            if (!filter.IsEmpty) ed?.WriteMessage($"\n  过滤   : {filter.Describe()}");
 
             HygeomExporter.ExportStats stats;
             try
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 var exporter = new HygeomExporter(objects);
-                stats = exporter.Export(commitHash, outPath);
+                stats = exporter.Export(commitHash, outPath, filter);
                 sw.Stop();
                 ed?.WriteMessage($"\n  耗时   : {sw.ElapsedMilliseconds} ms");
             }
             catch (Exception ex) { ed?.WriteMessage($"\n[hyob] hyobES: 导出失败：{ex.Message}"); return; }
 
-            ed?.WriteMessage($"\n  实体   : {stats.EntityCount} 条");
+            ed?.WriteMessage($"\n  实体   : {stats.EntityCount} 条" +
+                (stats.EntitiesFiltered > 0 ? $" (过滤掉 {stats.EntitiesFiltered} 条)" : ""));
             if (stats.XDataCount > 0 || stats.ExtDictCount > 0)
                 ed?.WriteMessage($"\n  附加   : XData={stats.XDataCount}, ExtDict={stats.ExtDictCount}");
             ed?.WriteMessage(
@@ -1292,12 +1367,60 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
             ed?.WriteMessage($"\n  ✓ 完成");
         }
 
-        private static string PromptRef(Editor ed, string defaultExpr)
+        /// <summary>
+        /// 提示用户输入过滤表达式。支持：
+        /// 空 / *  → 不过滤（全部）；
+        /// "layer:钢筋" / "type:Dimension" / "handle:174E" → 单条件；
+        /// 多条件用空格分隔："layer:钢筋 type:Dimension"。
+        /// </summary>
+        private static ExportFilter PromptFilter(Editor ed)
+        {
+            var f = new ExportFilter();
+            if (ed == null) return f;
+            var opts = new PromptStringOptions("\n[hyob] hyobES filter (回车=全部, 例: layer:钢筋 / type:Dimension / handle:174E)")
+            {
+                AllowSpaces = true,
+                DefaultValue = string.Empty,
+                UseDefaultValue = true,
+            };
+            var res = ed.GetString(opts);
+            if (res.Status != PromptStatus.OK) return f;
+            var s = (res.StringResult ?? string.Empty).Trim();
+            if (s.Length == 0 || s == "*") return f;
+
+            foreach (var token in s.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int colon = token.IndexOf(':');
+                if (colon <= 0) continue;
+                var key = token.Substring(0, colon).Trim().ToLowerInvariant();
+                var val = token.Substring(colon + 1).Trim();
+                if (val.Length == 0) continue;
+                switch (key)
+                {
+                    case "layer":  f.LayerName = val; break;
+                    case "type":   f.TypeName = val; break;
+                    case "handle": f.HandlePrefix = val; break;
+                }
+            }
+            return f;
+        }
+
+        private static string SanitizeFileName(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "filtered";
+            var invalid = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(s.Length);
+            foreach (var ch in s)
+                sb.Append(Array.IndexOf(invalid, ch) >= 0 ? '_' : ch);
+            return sb.ToString();
+        }
+
+        private static string PromptString(Editor ed, string label, string defaultExpr, bool allowSpaces)
         {
             if (ed == null) return defaultExpr;
-            var opts = new PromptStringOptions($"\n[hyob] hyobES commit (回车=默认 '{defaultExpr}')")
+            var opts = new PromptStringOptions($"\n[hyob] hyobES {label} (回车=默认 '{defaultExpr}')")
             {
-                AllowSpaces = false,
+                AllowSpaces = allowSpaces,
                 DefaultValue = defaultExpr,
                 UseDefaultValue = true,
             };
@@ -1381,13 +1504,90 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
         }
     }
 
-    /// <summary>hyobG - loose objects 打包 + 删孤儿（M7 落地）。</summary>
+    /// <summary>
+    /// hyobG - 把所有 loose objects 打包成压缩 .pack（M7）。打包后 loose 文件被删除，
+    /// pack 与 loose 共存读时优先 loose（向后兼容）。
+    /// </summary>
     public class HyobGcCommand
     {
         public void Execute()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage("\n[hyob] hyobG: stub —— 将在 M7 落地。");
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage("\n[hyob] hyobG: 当前 DWG 未初始化 .hyob/，请先 hyobI。");
+                return;
+            }
+
+            var store = new HyobObjectStore(paths.ObjectsDir);
+
+            int looseBefore = store.EnumerateLoose().Count();
+            int packsBefore = store.PackCount;
+            ed?.WriteMessage(
+                $"\n[hyob] hyobG: 开始打包 —— 当前 loose={looseBefore}, pack={packsBefore}");
+
+            if (looseBefore == 0)
+            {
+                ed?.WriteMessage("\n[hyob] hyobG: 没有 loose 对象需要打包。");
+                return;
+            }
+
+            var packer = new HyobPacker();
+            HyobPacker.PackResult result;
+            try
+            {
+                result = packer.Pack(store);
+            }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobG: 打包失败：{ex.Message}");
+                return;
+            }
+
+            double ratio = result.LooseBytesBefore > 0
+                ? (double)result.PackBytes / result.LooseBytesBefore
+                : 0.0;
+            string ratioStr = $"{ratio * 100.0:F1}%";
+
+            ed?.WriteMessage($"\n[hyob] hyobG: 打包完成");
+            ed?.WriteMessage($"\n  pack    : {Path.GetFileName(result.PackPath ?? "(none)")}");
+            ed?.WriteMessage($"\n  对象    : {result.PackedCount} 个");
+            ed?.WriteMessage(
+                $"\n  尺寸    : {FormatBytes(result.LooseBytesBefore)} → {FormatBytes(result.PackBytes)}  (压缩 {ratioStr})");
+            ed?.WriteMessage($"\n  已删 loose : {result.DeletedLoose}");
+            ed?.WriteMessage($"\n  pack 总数 : {store.PackCount}");
+
+            try
+            {
+                var (validateStore, refs) = HyobContext.OpenStores(paths);
+                var validator = new RoundTripValidator(validateStore, refs);
+                var report = validator.Validate();
+                if (report.Errors.Count == 0)
+                {
+                    ed?.WriteMessage(
+                        $"\n  自检    : ✓ commits={report.CommitCount} trees={report.TreeCount} objs={report.ObjectCount}");
+                }
+                else
+                {
+                    ed?.WriteMessage($"\n  自检    : ✗ {report.Errors.Count} 个错误");
+                    foreach (var e in report.Errors.Take(5)) ed?.WriteMessage("\n    " + e);
+                }
+            }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n  自检    : 跳过（{ex.Message}）");
+            }
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes < 1024) return bytes + " B";
+            if (bytes < 1024 * 1024) return (bytes / 1024.0).ToString("F1") + " KB";
+            if (bytes < 1024L * 1024 * 1024) return (bytes / (1024.0 * 1024)).ToString("F1") + " MB";
+            return (bytes / (1024.0 * 1024 * 1024)).ToString("F1") + " GB";
         }
     }
 

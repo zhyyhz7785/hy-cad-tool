@@ -20,6 +20,35 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
     /// 输出 schema：<c>hyob.snapshot/v4 → hygeom.export/v1</c>
     /// 流式 JsonTextWriter，5800 entity ≈ 5MB JSON，10 万 entity 也不会 OOM。
     /// </summary>
+    /// <summary>
+    /// hygeom 导出过滤器（M12 v2）。所有字段 null/empty 视为不过滤。
+    /// 多字段同时设置时取交集（AND）。
+    /// </summary>
+    public sealed class ExportFilter
+    {
+        /// <summary>仅导出 layer 等于此名（精确匹配）的 entity。null = 不过滤。</summary>
+        public string LayerName { get; set; }
+        /// <summary>仅导出 type 名（"Line" / "Dimension" / ...）匹配的 entity。null = 不过滤。</summary>
+        public string TypeName { get; set; }
+        /// <summary>仅导出 handle 前缀匹配（hex，大小写不敏感）的 entity。null = 不过滤。</summary>
+        public string HandlePrefix { get; set; }
+
+        public bool IsEmpty =>
+            string.IsNullOrEmpty(LayerName) &&
+            string.IsNullOrEmpty(TypeName) &&
+            string.IsNullOrEmpty(HandlePrefix);
+
+        public string Describe()
+        {
+            if (IsEmpty) return "(全部)";
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(LayerName))    parts.Add($"layer={LayerName}");
+            if (!string.IsNullOrEmpty(TypeName))     parts.Add($"type={TypeName}");
+            if (!string.IsNullOrEmpty(HandlePrefix)) parts.Add($"handle^={HandlePrefix}");
+            return string.Join(" & ", parts);
+        }
+    }
+
     public sealed class HygeomExporter
     {
         public sealed class ExportStats
@@ -31,6 +60,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
             public int TextStyleCount { get; internal set; }
             public int DimStyleCount { get; internal set; }
             public int BlockDefCount { get; internal set; }
+            public int EntitiesFiltered { get; internal set; }
             public long FileBytes { get; internal set; }
         }
 
@@ -43,8 +73,8 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
             _objects = objects ?? throw new ArgumentNullException(nameof(objects));
         }
 
-        /// <summary>把 commitHash 整个快照导出到 outputPath。返回统计。</summary>
-        public ExportStats Export(Hash commitHash, string outputPath)
+        /// <summary>把 commitHash 整个快照导出到 outputPath。可选 filter 限定 entity 范围（不影响 tables）。</summary>
+        public ExportStats Export(Hash commitHash, string outputPath, ExportFilter filter = null)
         {
             if (outputPath == null) throw new ArgumentNullException(nameof(outputPath));
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
@@ -67,6 +97,16 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
                 w.WritePropertyName("exported_at");
                 w.WriteValue(DateTime.UtcNow.ToString("o"));
 
+                if (filter != null && !filter.IsEmpty)
+                {
+                    w.WritePropertyName("filter");
+                    w.WriteStartObject();
+                    if (!string.IsNullOrEmpty(filter.LayerName))    { w.WritePropertyName("layer");  w.WriteValue(filter.LayerName); }
+                    if (!string.IsNullOrEmpty(filter.TypeName))     { w.WritePropertyName("type");   w.WriteValue(filter.TypeName); }
+                    if (!string.IsNullOrEmpty(filter.HandlePrefix)) { w.WritePropertyName("handle_prefix"); w.WriteValue(filter.HandlePrefix); }
+                    w.WriteEndObject();
+                }
+
                 if (!_objects.TryRead(commitHash, out var commitBlob))
                     throw new InvalidOperationException($"commit 不存在：{commitHash.ToHex().Substring(0, 12)}");
                 var commit = HyobCommit.Decode(commitBlob);
@@ -82,7 +122,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
                 WriteTablesSection(w, rootTree, stats);
 
                 w.WritePropertyName("entities");
-                WriteEntitiesSection(w, rootTree, stats);
+                WriteEntitiesSection(w, rootTree, stats, filter);
 
                 w.WriteEndObject();
                 w.Flush();
@@ -179,7 +219,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
         // entities
         // ============================================================
 
-        private void WriteEntitiesSection(JsonWriter w, HyobTree rootTree, ExportStats stats)
+        private void WriteEntitiesSection(JsonWriter w, HyobTree rootTree, ExportStats stats, ExportFilter filter)
         {
             w.WriteStartArray();
 
@@ -203,6 +243,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
 
             string currentBase = null;
             bool entityOpen = false;
+            bool currentSkipped = false;
 
             foreach (var entry in byHandleTree.Entries)
             {
@@ -227,24 +268,35 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
                 if (suffix.Length == 0)
                 {
                     if (entityOpen) { w.WriteEndObject(); entityOpen = false; }
-                    if (!_objects.TryRead(entry.Hash, out var blob)) continue;
+                    currentBase = baseHandle;
+                    currentSkipped = false;
+
+                    if (!_objects.TryRead(entry.Hash, out var blob)) { currentSkipped = true; continue; }
                     HyobObjectHeader header;
                     try { var (h, _) = HyobObjectHeader.Decode(blob); header = h; }
-                    catch { continue; }
+                    catch { currentSkipped = true; continue; }
+
+                    string typeName = TypeName(header.TypeId);
+                    if (!PassFilter(filter, baseHandle, typeName, blob, header.TypeId))
+                    {
+                        currentSkipped = true;
+                        stats.EntitiesFiltered++;
+                        continue;
+                    }
 
                     w.WriteStartObject();
                     w.WritePropertyName("handle"); w.WriteValue(baseHandle);
-                    w.WritePropertyName("type");   w.WriteValue(TypeName(header.TypeId));
+                    w.WritePropertyName("type");   w.WriteValue(typeName);
                     w.WritePropertyName("fields");
                     WriteFieldsByType(w, header.TypeId, blob);
 
-                    currentBase = baseHandle;
                     entityOpen = true;
                     stats.EntityCount++;
                 }
                 else if (suffix == ".x")
                 {
-                    if (!entityOpen || !string.Equals(currentBase, baseHandle, StringComparison.Ordinal)) continue;
+                    if (!entityOpen || currentSkipped ||
+                        !string.Equals(currentBase, baseHandle, StringComparison.Ordinal)) continue;
                     if (!_objects.TryRead(entry.Hash, out var blob)) continue;
                     w.WritePropertyName("xdata");
                     WriteFieldsByType(w, HyobObjectKind.XDataAttachment, blob);
@@ -252,7 +304,8 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
                 }
                 else if (suffix == ".d")
                 {
-                    if (!entityOpen || !string.Equals(currentBase, baseHandle, StringComparison.Ordinal)) continue;
+                    if (!entityOpen || currentSkipped ||
+                        !string.Equals(currentBase, baseHandle, StringComparison.Ordinal)) continue;
                     if (!_objects.TryRead(entry.Hash, out var blob)) continue;
                     w.WritePropertyName("extdict");
                     WriteFieldsByType(w, HyobObjectKind.ExtensionDictionary, blob);
@@ -262,6 +315,55 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
             if (entityOpen) { w.WriteEndObject(); entityOpen = false; }
 
             w.WriteEndArray();
+        }
+
+        /// <summary>
+        /// 应用过滤器：handle_prefix → type → layer，AND 取交集。layer 提取走 FieldExtractor 第一项的 "layer" 字段。
+        /// 任一规则不命中即返回 false。
+        /// </summary>
+        private static bool PassFilter(ExportFilter f, string handle, string typeName, byte[] blob, HyobObjectKind kind)
+        {
+            if (f == null || f.IsEmpty) return true;
+
+            if (!string.IsNullOrEmpty(f.HandlePrefix))
+            {
+                if (!handle.StartsWith(f.HandlePrefix, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            if (!string.IsNullOrEmpty(f.TypeName))
+            {
+                if (!string.Equals(typeName, f.TypeName, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            if (!string.IsNullOrEmpty(f.LayerName))
+            {
+                string layer = ExtractLayerSafe(blob);
+                if (layer == null) return false;
+                if (!string.Equals(layer, f.LayerName, StringComparison.Ordinal))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>从 entity blob 提取 layer 字段；非 entity 类型（XData / 表）返回 null。</summary>
+        private static string ExtractLayerSafe(byte[] blob)
+        {
+            try
+            {
+                var fields = Diff.HyobFieldExtractor.Extract(blob);
+                foreach (var kv in fields)
+                {
+                    if (string.Equals(kv.Key, "layer", StringComparison.Ordinal))
+                    {
+                        var v = kv.Value;
+                        if (v != null && v.Length >= 2 && v[0] == '"' && v[v.Length - 1] == '"')
+                            return v.Substring(1, v.Length - 2);
+                        return v;
+                    }
+                }
+            }
+            catch { }
+            return null;
         }
 
         // ============================================================
