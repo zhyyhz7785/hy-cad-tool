@@ -17,9 +17,10 @@ namespace HyCADTool.Features.AcadDimension.Services
     /// <summary>
     /// NewDDS 编排服务（无状态——所有 per-run 状态进 NewDdsContext，修 06 §7 #10）。
     /// 链路：拾取（外层 Command） → ConfigAdapter → Bulge tessellate → Context.Init
-    ///       → SweepLineFeatureExtractor → Deriver → PostProcessor → QualityFunction → Renderer。
-    /// 当前阶段：Phase 2——SweepLine 已落地（Domain 纯几何 + 自适应步长 + Bulge 离散）；
-    ///           Deriver / PostProcessor / Renderer / QualityFunction 仍为 NoOp，待 Phase 3~6。
+    ///       → SweepLineFeatureExtractor → Composite(Outside + Inside)
+    ///       → EqualExtensionLengthPostProcessor → QualityFunction → AcadDimensionRenderer。
+    /// 当前阶段：Phase 3b——外部 4 方向 + 总尺寸 + 内部凸起局部尺寸全部落地。
+    ///           近距平行去重 / Q 函数待 Phase 4 / 6。
     /// </summary>
     public sealed class NewDdsService
     {
@@ -37,10 +38,12 @@ namespace HyCADTool.Features.AcadDimension.Services
             INewDdsRenderer renderer = null)
         {
             _extractor = extractor ?? new SweepLineFeatureExtractor();
-            _deriver = deriver ?? new NoOpDeriver();
-            _postProcessor = postProcessor ?? new NoOpPostProcessor();
+            _deriver = deriver ?? new CompositeDimensionDeriver(
+                new OutsideDimensionDeriver(),
+                new InsideDimensionDeriver());
+            _postProcessor = postProcessor ?? new EqualExtensionLengthPostProcessor();
             _qualityFunction = qualityFunction ?? new NoOpQualityFunction();
-            _renderer = renderer ?? new NoOpRenderer();
+            _renderer = renderer ?? new AcadDimensionRenderer();
         }
 
         /// <summary>
@@ -96,14 +99,14 @@ namespace HyCADTool.Features.AcadDimension.Services
                         .Concat(features.Diagnostics)
                         .ToList();
 
-                    int written = _renderer.Render(result);
+                    int written = _renderer.Render(result, doc, tr);
 
                     int hCols = features.HorizontalSecantColumns?.Count ?? 0;
                     int vCols = features.VerticalSecantColumns?.Count ?? 0;
                     int hEdges = SumEdges(features.HorizontalSecantColumns);
                     int vEdges = SumEdges(features.VerticalSecantColumns);
                     ed.WriteMessage(
-                        $"\n[NewDDS] Phase 2 链路：" +
+                        $"\n[NewDDS] Phase 3b 链路：" +
                         $"Polyline(原顶点={acadPolyline.NumberOfVertices} 闭={acadPolyline.Closed}) " +
                         $"→ tessellated(顶点={polyline2D.VertexCount}) " +
                         $"| 配置(内={config.DimensionDistanceInside:F0} 外={config.DimensionDistanceOutside:F0} " +
@@ -137,29 +140,12 @@ namespace HyCADTool.Features.AcadDimension.Services
             return total;
         }
 
-        #region NoOp 默认实现 —— Phase 3~6 逐阶段替换
-
-        private sealed class NoOpDeriver : IDimensionDeriver
-        {
-            public IReadOnlyList<DerivedDimension> Derive(BoundaryFeatures features, NewDdsConfig config)
-                => new List<DerivedDimension>();
-        }
-
-        private sealed class NoOpPostProcessor : IDimensionPostProcessor
-        {
-            public IReadOnlyList<DerivedDimension> Process(IReadOnlyList<DerivedDimension> input, NewDdsConfig config)
-                => input ?? new List<DerivedDimension>();
-        }
+        #region NoOp 默认实现 —— Phase 3b / 4 / 6 逐阶段替换
 
         private sealed class NoOpQualityFunction : IQualityFunction
         {
             public QualityScoreCard Evaluate(NewDdsResult result, BoundaryFeatures features)
                 => new QualityScoreCard();
-        }
-
-        private sealed class NoOpRenderer : INewDdsRenderer
-        {
-            public int Render(NewDdsResult result) => 0;
         }
 
         #endregion

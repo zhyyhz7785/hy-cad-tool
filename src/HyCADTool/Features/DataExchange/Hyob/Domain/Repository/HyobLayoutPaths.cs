@@ -24,6 +24,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Domain.Repository
         public string ObjectsDir => Path.Combine(HyobRoot, "objects");
         public string RefsDir    => Path.Combine(HyobRoot, "refs");
         public string LogDir     => Path.Combine(HyobRoot, "log");
+        public string ExportsDir => Path.Combine(HyobRoot, "exports");
         public string OperationsLogPath => Path.Combine(LogDir, "operations.jsonl");
 
         public HyobLayoutPaths(string dwgPath)

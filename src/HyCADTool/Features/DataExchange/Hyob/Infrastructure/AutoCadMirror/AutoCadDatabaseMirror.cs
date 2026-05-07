@@ -8,7 +8,7 @@ using HyCADTool.Features.DataExchange.Hyob.Domain.Schemas;
 
 namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
 {
-    /// <summary>镜像统计：Typed/Opaque 命中数 + XData/ExtDict 计数。</summary>
+    /// <summary>镜像统计：Typed/Opaque 命中数 + XData/ExtDict 计数 + 表/字典计数。</summary>
     public readonly struct MirrorStats
     {
         public int TotalCount { get; }
@@ -16,10 +16,16 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
         public int OpaqueCount { get; }
         public int XDataCount { get; }
         public int ExtDictCount { get; }
+        public int LayerCount { get; }
+        public int TextStyleCount { get; }
+        public int DimStyleCount { get; }
+        public int BlockDefCount { get; }
         public IReadOnlyDictionary<HyobObjectKind, int> ByTypeId { get; }
 
         public MirrorStats(int total, int typed, int opaque,
                            int xdataCount, int extDictCount,
+                           int layerCount, int textStyleCount,
+                           int dimStyleCount, int blockDefCount,
                            IReadOnlyDictionary<HyobObjectKind, int> byTypeId)
         {
             TotalCount = total;
@@ -27,22 +33,31 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
             OpaqueCount = opaque;
             XDataCount = xdataCount;
             ExtDictCount = extDictCount;
+            LayerCount = layerCount;
+            TextStyleCount = textStyleCount;
+            DimStyleCount = dimStyleCount;
+            BlockDefCount = blockDefCount;
             ByTypeId = byTypeId;
         }
     }
 
     /// <summary>
-    /// AutoCAD <c>Database</c> ↔ hyob 镜像核心。设计：02 §3 / 03 §3 / 04 §1。
+    /// AutoCAD <c>Database</c> ↔ hyob 镜像核心。设计：02 §3 / 03 §3 / 04 §1 / 04 §6。
     ///
-    /// M5 by-handle 树布局（每 entity 0-3 个 entry）：
+    /// M6 root tree 布局（schema = "hyob.snapshot/v4"）：
     ///   <code>
-    ///     by-handle/
-    ///       &lt;handle&gt;        → entity object hash         必有
-    ///       &lt;handle&gt;.x      → XData object hash           可选（M5 起）
-    ///       &lt;handle&gt;.d      → ExtensionDictionary 对象 hash 可选（M5 起）
+    ///     root/
+    ///       entities/
+    ///         by-handle/
+    ///           &lt;handle&gt;        → entity object hash         必有
+    ///           &lt;handle&gt;.x      → XData object hash           可选
+    ///           &lt;handle&gt;.d      → ExtensionDictionary hash    可选
+    ///       tables/
+    ///         layers/      &lt;name&gt; → HyobLayerDef
+    ///         text_styles/ &lt;name&gt; → HyobTextStyleDef
+    ///         dim_styles/  &lt;name&gt; → HyobDimStyleDef
+    ///         blocks/      &lt;name&gt; → HyobBlockDef（含 Layout / 用户 block / 匿名 block）
     ///   </code>
-    /// 这种扁平布局保持 entity hash 不变（schema 不动），但 XData/ExtDict 任何变化
-    /// 都会让 by-handle tree 的 hash 改变（兄弟 entry 集合变了）→ commit hash 变。
     /// </summary>
     public sealed class AutoCadDatabaseMirror
     {
@@ -61,12 +76,26 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
         /// <summary>
         /// 把当前 <paramref name="db"/> 的 ModelSpace 快照写一个 commit 到 main 分支。
         /// 返回 (commitHash, stats)。
+        /// 内部 = <see cref="BuildSnapshot"/> + <see cref="WriteCommit"/>。
         /// </summary>
         public (Hash CommitHash, MirrorStats Stats) MirrorDatabaseIntoHyob(
             Database db,
             string author,
             string message,
             string command)
+        {
+            var (rootTreeHash, stats) = BuildSnapshot(db);
+            var commitHash = WriteCommit(rootTreeHash, stats, author, message, command);
+            return (commitHash, stats);
+        }
+
+        /// <summary>
+        /// 仅构建快照（写 hyob objects + trees），返回 root tree hash + stats，**不写 commit、不动 ref**。
+        /// 用途：hyobD HEAD WIP 模式（未提交变更预览）—— 算出当前 Database 的 root tree hash
+        /// 后立即与 HEAD.tree 对比，再决定是否 hyobC。
+        /// 因为 hyob 是 content-addressable 仓库，反复 BuildSnapshot 不会产生重复对象（写入幂等）。
+        /// </summary>
+        public (Hash RootTreeHash, MirrorStats Stats) BuildSnapshot(Database db)
         {
             if (db == null) throw new ArgumentNullException(nameof(db));
 
@@ -76,10 +105,13 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
             int opaqueCount = 0;
             int xdataCount = 0;
             int extDictCount = 0;
+            TablesMirror.Result tablesResult;
 
             using (var tx = db.TransactionManager.StartOpenCloseTransaction())
             {
                 EntityToHyobConverter.ObjectReader reader = (oid, mode) => tx.GetObject(oid, mode);
+
+                tablesResult = new TablesMirror(_objects).Mirror(db, tx);
 
                 var bt = (BlockTable)tx.GetObject(db.BlockTableId, OpenMode.ForRead);
                 var ms = (BlockTableRecord)tx.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
@@ -131,23 +163,49 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
 
             var rootTree = new HyobTree(new[]
             {
-                new HyobTreeEntry("entities", HyobTreeEntryKind.Tree, entitiesTreeHash)
+                new HyobTreeEntry("entities", HyobTreeEntryKind.Tree, entitiesTreeHash),
+                new HyobTreeEntry("tables",   HyobTreeEntryKind.Tree, tablesResult.TablesTreeHash),
             });
             Hash rootTreeHash = _objects.Write(rootTree.EncodeBlob());
 
+            var stats = new MirrorStats(
+                total, typedCount, opaqueCount,
+                xdataCount, extDictCount,
+                tablesResult.LayerCount, tablesResult.TextStyleCount,
+                tablesResult.DimStyleCount, tablesResult.BlockDefCount,
+                byTypeId);
+
+            return (rootTreeHash, stats);
+        }
+
+        /// <summary>
+        /// 把已构建的快照 root tree 包成 commit，写入 objects 并把 main 分支 ref 推进到新 commit。
+        /// 与 <see cref="BuildSnapshot"/> 配合使用。
+        /// </summary>
+        public Hash WriteCommit(
+            Hash rootTreeHash,
+            MirrorStats stats,
+            string author,
+            string message,
+            string command)
+        {
             var parents = new List<Hash>();
             if (_refs.TryReadBranchTip(DefaultBranch, out var tip))
                 parents.Add(tip);
 
             var meta = new Dictionary<string, string>
             {
-                { "entityCount", total.ToString(CultureInfo.InvariantCulture) },
-                { "typedCount",  typedCount.ToString(CultureInfo.InvariantCulture) },
-                { "opaqueCount", opaqueCount.ToString(CultureInfo.InvariantCulture) },
-                { "xdataCount",  xdataCount.ToString(CultureInfo.InvariantCulture) },
-                { "extDictCount", extDictCount.ToString(CultureInfo.InvariantCulture) },
+                { "entityCount",    stats.TotalCount.ToString(CultureInfo.InvariantCulture) },
+                { "typedCount",     stats.TypedCount.ToString(CultureInfo.InvariantCulture) },
+                { "opaqueCount",    stats.OpaqueCount.ToString(CultureInfo.InvariantCulture) },
+                { "xdataCount",     stats.XDataCount.ToString(CultureInfo.InvariantCulture) },
+                { "extDictCount",   stats.ExtDictCount.ToString(CultureInfo.InvariantCulture) },
+                { "layerCount",     stats.LayerCount.ToString(CultureInfo.InvariantCulture) },
+                { "textStyleCount", stats.TextStyleCount.ToString(CultureInfo.InvariantCulture) },
+                { "dimStyleCount",  stats.DimStyleCount.ToString(CultureInfo.InvariantCulture) },
+                { "blockDefCount",  stats.BlockDefCount.ToString(CultureInfo.InvariantCulture) },
                 { "namespace", ModelSpaceEntityNamespace },
-                { "schema", "hyob.snapshot/v3" },
+                { "schema", "hyob.snapshot/v4" },
             };
 
             var commit = new HyobCommit(
@@ -160,8 +218,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
 
             Hash commitHash = _objects.Write(commit.EncodeBlob());
             _refs.WriteBranchTip(DefaultBranch, commitHash);
-
-            return (commitHash, new MirrorStats(total, typedCount, opaqueCount, xdataCount, extDictCount, byTypeId));
+            return commitHash;
         }
 
         /// <summary>沿 parents 链遍历 commit 历史（从 startHash 开始，最多 limit 条）。</summary>

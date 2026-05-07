@@ -81,7 +81,9 @@ namespace HyCADTool.Features.AcadDimension.Domain.Boundary
         }
 
         // === 水平扫描（y = 常数）===================================================
-        // 推进策略与老 dds 一致：若拓扑稳定（最短边 EndPoint.Y 决定区间）则跳过。
+        // 推进策略：每 step 一步，仅在边索引集合变化时记录新一列。
+        // 比老 dds 用 IntersectWith 数量更严格（避免不同集合相同 count 漏判），
+        // 且不跳过中间区段——保证非凸/含多凸起 polyline 也能完整捕捉所有拓扑列。
         private static IReadOnlyList<IReadOnlyList<Line2D>> ScanHorizontal(
             Polyline2D boundary, BoundingBox bounds, double step,
             NewDdsConfig config, BoundaryFeatures features)
@@ -91,33 +93,40 @@ namespace HyCADTool.Features.AcadDimension.Domain.Boundary
             double yHi = bounds.MaxPoint.Y;
             double y = yLo + step / 2.0;
             int safety = 0;
+            int maxIter = ResolveScanIterationCap(yHi - yLo, step, config);
+            HashSet<int> prevSegSet = null;
+            int recorded = 0;
+            int skippedSameTopo = 0;
 
-            while (y < yHi - Tolerance && safety < config.SafetyIterationLimit)
+            while (y < yHi - Tolerance && safety < maxIter)
             {
                 var crossings = HorizontalCrossings(boundary, y);
                 if (crossings.Count >= 2)
                 {
-                    var lines = BuildEdgeLinesAt(boundary, crossings);
-                    SortByMidX(lines);
-                    NormalizeDirectionY(lines);
-                    columns.Add(lines);
+                    var segSet = new HashSet<int>();
+                    for (int i = 0; i < crossings.Count; i++) segSet.Add(crossings[i].SegIndex);
 
-                    double topMin = double.MaxValue;
-                    foreach (var l in lines)
-                        if (l.EndPoint.Y < topMin) topMin = l.EndPoint.Y;
-
-                    y = Math.Max(y + step, topMin + step / 2.0);
+                    if (prevSegSet == null || !segSet.SetEquals(prevSegSet))
+                    {
+                        var lines = BuildEdgeLinesAt(boundary, crossings);
+                        SortByMidX(lines);
+                        NormalizeDirectionY(lines);
+                        columns.Add(lines);
+                        prevSegSet = segSet;
+                        recorded++;
+                    }
+                    else
+                    {
+                        skippedSameTopo++;
+                    }
                 }
-                else
-                {
-                    y += step / 5.0;
-                }
+                y += step;
                 safety++;
             }
 
-            if (safety >= config.SafetyIterationLimit)
-                features.Diagnostics.Add($"[Sweep-H] safetyCounter 命中 {safety}（请检查步长配置）");
-            features.Diagnostics.Add($"[Sweep-H] 列数={columns.Count} step={step:F2}");
+            if (safety >= maxIter)
+                features.Diagnostics.Add($"[Sweep-H] 迭代上限命中 {safety} 次（区间过大或步长过小）");
+            features.Diagnostics.Add($"[Sweep-H] 列={recorded} 同拓扑跳过={skippedSameTopo} step={step:F2}");
             return columns;
         }
 
@@ -131,34 +140,49 @@ namespace HyCADTool.Features.AcadDimension.Domain.Boundary
             double xHi = bounds.MaxPoint.X;
             double x = xLo + step / 2.0;
             int safety = 0;
+            int maxIter = ResolveScanIterationCap(xHi - xLo, step, config);
+            HashSet<int> prevSegSet = null;
+            int recorded = 0;
+            int skippedSameTopo = 0;
 
-            while (x < xHi - Tolerance && safety < config.SafetyIterationLimit)
+            while (x < xHi - Tolerance && safety < maxIter)
             {
                 var crossings = VerticalCrossings(boundary, x);
                 if (crossings.Count >= 2)
                 {
-                    var lines = BuildEdgeLinesAt(boundary, crossings);
-                    SortByMidY(lines);
-                    NormalizeDirectionX(lines);
-                    columns.Add(lines);
+                    var segSet = new HashSet<int>();
+                    for (int i = 0; i < crossings.Count; i++) segSet.Add(crossings[i].SegIndex);
 
-                    double rightMin = double.MaxValue;
-                    foreach (var l in lines)
-                        if (l.EndPoint.X < rightMin) rightMin = l.EndPoint.X;
-
-                    x = Math.Max(x + step, rightMin + step / 2.0);
+                    if (prevSegSet == null || !segSet.SetEquals(prevSegSet))
+                    {
+                        var lines = BuildEdgeLinesAt(boundary, crossings);
+                        SortByMidY(lines);
+                        NormalizeDirectionX(lines);
+                        columns.Add(lines);
+                        prevSegSet = segSet;
+                        recorded++;
+                    }
+                    else
+                    {
+                        skippedSameTopo++;
+                    }
                 }
-                else
-                {
-                    x += step / 5.0;
-                }
+                x += step;
                 safety++;
             }
 
-            if (safety >= config.SafetyIterationLimit)
-                features.Diagnostics.Add($"[Sweep-V] safetyCounter 命中 {safety}（请检查步长配置）");
-            features.Diagnostics.Add($"[Sweep-V] 列数={columns.Count} step={step:F2}");
+            if (safety >= maxIter)
+                features.Diagnostics.Add($"[Sweep-V] 迭代上限命中 {safety} 次（区间过大或步长过小）");
+            features.Diagnostics.Add($"[Sweep-V] 列={recorded} 同拓扑跳过={skippedSameTopo} step={step:F2}");
             return columns;
+        }
+
+        // 迭代上限自动按区间长度算（避免 SafetyIterationLimit=1000 对大图不够）。
+        private static int ResolveScanIterationCap(double range, double step, NewDdsConfig config)
+        {
+            if (step <= 1e-3) return config.SafetyIterationLimit;
+            int byRange = (int)Math.Ceiling(range / step) + 16;
+            return Math.Max(byRange, config.SafetyIterationLimit);
         }
 
         // === 水平交点：y=Y 与 polyline 各边的交点 ==================================

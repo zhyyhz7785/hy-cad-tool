@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Codec;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Models;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Objects.Opaque;
+using HyCADTool.Features.DataExchange.Hyob.Domain.Objects.Tables;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Objects.Typed;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Repository;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Schemas;
@@ -214,6 +215,22 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.RoundTrip
                     case HyobObjectKind.ExtensionDictionary:
                         HyobExtensionDictionary.Decode(blob);
                         IncTyped(report, HyobObjectKind.ExtensionDictionary);
+                        break;
+                    case HyobObjectKind.LayerDef:
+                        HyobLayerDef.Decode(blob);
+                        IncTyped(report, HyobObjectKind.LayerDef);
+                        break;
+                    case HyobObjectKind.TextStyleDef:
+                        HyobTextStyleDef.Decode(blob);
+                        IncTyped(report, HyobObjectKind.TextStyleDef);
+                        break;
+                    case HyobObjectKind.DimStyleDef:
+                        HyobDimStyleDef.Decode(blob);
+                        IncTyped(report, HyobObjectKind.DimStyleDef);
+                        break;
+                    case HyobObjectKind.BlockDef:
+                        HyobBlockDef.Decode(blob);
+                        IncTyped(report, HyobObjectKind.BlockDef);
                         break;
                     default:
                         report.TypedCount++;
