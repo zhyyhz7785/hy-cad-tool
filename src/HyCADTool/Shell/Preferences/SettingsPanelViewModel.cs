@@ -884,6 +884,57 @@ namespace HyCADTool.Presentation.ViewModels
         }
 
         // ----------------------------------------------------------------
+        //  hyed 双击编辑开关（替代 AutoCAD 原生 TEXTEDIT/MTEDIT/DDEDIT，绕开 IPE/TTF 扫描）
+        //  setter 联动 HyEdDoubleClickInterceptor.Install/Uninstall，立即生效。
+        // ----------------------------------------------------------------
+        private bool _enableHyEdDoubleClick = true;
+        public bool EnableHyEdDoubleClick
+        {
+            get => _enableHyEdDoubleClick;
+            set
+            {
+                if (_enableHyEdDoubleClick == value) return;
+                _enableHyEdDoubleClick = value;
+                OnPropertyChanged();
+
+                try
+                {
+                    if (_enableHyEdDoubleClick)
+                        HyCADTool.Features.TextEdit.Services.HyEdDoubleClickInterceptor.Install();
+                    else
+                        HyCADTool.Features.TextEdit.Services.HyEdDoubleClickInterceptor.Uninstall();
+                }
+                catch
+                {
+                    /* AutoCAD 未就绪等场景静默；Initialize 仍会按当前值挂钩 */
+                }
+
+                if (!_isLoading && _autoSaveEnabled) SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// hyed 编辑框相对原文字上移的"文字高度倍数"。默认 <b>0</b>：与原生 IPE 行为对齐——
+        /// 编辑时原文字会被隐藏（<see cref="HyEdLauncher"/> 中 entity.Visible=false），编辑框直接覆盖原位置。
+        /// 1.2 = 上方一行；2 = 上方两行；适合不想让原文字位置被遮挡时使用。
+        /// </summary>
+        private double _hyEdAboveOffsetFactor = 0.0;
+        public double HyEdAboveOffsetFactor
+        {
+            get => _hyEdAboveOffsetFactor;
+            set
+            {
+                double v = double.IsNaN(value) || double.IsInfinity(value) ? 0.0 : value;
+                if (v < 0) v = 0;
+                if (v > 20) v = 20;
+                if (Math.Abs(_hyEdAboveOffsetFactor - v) < 1e-9) return;
+                _hyEdAboveOffsetFactor = v;
+                OnPropertyChanged();
+                if (!_isLoading && _autoSaveEnabled) SaveSettings();
+            }
+        }
+
+        // ----------------------------------------------------------------
         //  界面主题（HyCAD.BlenderUI 调色板）
         //  字符串来源 / 取值：BlenderThemeManager.Parse(...) 容忍大小写与简写
         //  setter 内调 BlenderThemeManager.Apply 实现实时切换；
@@ -1510,6 +1561,8 @@ namespace HyCADTool.Presentation.ViewModels
                     StationTextMargin = StationTextMargin,
                     StationRotateTextAlongTangent = StationRotateTextAlongTangent,
                     StationTextSide = StationTextSide,
+                    EnableHyEdDoubleClick = EnableHyEdDoubleClick,
+                    HyEdAboveOffsetFactor = HyEdAboveOffsetFactor,
                     // 界面外观
                     Theme = Theme,
                     UiFontScale = UiFontScale,
@@ -1665,6 +1718,8 @@ namespace HyCADTool.Presentation.ViewModels
                 StationTextMargin = data.StationTextMargin;
                 StationRotateTextAlongTangent = data.StationRotateTextAlongTangent;
                 if (!string.IsNullOrWhiteSpace(data.StationTextSide)) StationTextSide = data.StationTextSide;
+                EnableHyEdDoubleClick = data.EnableHyEdDoubleClick;
+                HyEdAboveOffsetFactor = data.HyEdAboveOffsetFactor;
                 // 界面外观（_isLoading 期间 setter 仍会调 BlenderThemeManager.Apply，刷新所有 DynamicResource）
                 if (!string.IsNullOrWhiteSpace(data.Theme))
                     Theme = data.Theme;
@@ -1833,6 +1888,10 @@ namespace HyCADTool.Presentation.ViewModels
             public double StationTextMargin { get; set; } = 0.5;
             public bool StationRotateTextAlongTangent { get; set; } = true;
             public string StationTextSide { get; set; } = "Left";
+            /// <summary>hyed 双击编辑开关（默认开）</summary>
+            public bool EnableHyEdDoubleClick { get; set; } = true;
+            /// <summary>hyed 编辑框相对原文字的上移系数（×文字高度，默认 0 表示原位重叠+隐藏原字）</summary>
+            public double HyEdAboveOffsetFactor { get; set; } = 0.0;
             // 界面外观：HyCAD.BlenderUI.Theming.BlenderThemeManager 主题枚举名
             // 取值：BlenderDark / BlenderLight / AcadLight / AcadDark / AcadBlue
             public string Theme { get; set; } = "BlenderDark";

@@ -63,9 +63,15 @@ namespace HyCADTool.ReCall
         #region 尺寸标注 (Dimension)
         [CommandMethod("dds")]    public void Cmd_dds()    => ReCallClass.Invoke("dds");
         [CommandMethod("ddss")]   public void Cmd_ddss()   => ReCallClass.Invoke("ddss");
+        [CommandMethod("ndds")]   public void Cmd_ndds()   => ReCallClass.Invoke("ndds");
+        [CommandMethod("nddss")]  public void Cmd_nddss()  => ReCallClass.Invoke("nddss");
+        [CommandMethod("nddsR")]  public void Cmd_nddsR()  => ReCallClass.Invoke("nddsR");
+        [CommandMethod("nddsT")]  public void Cmd_nddsT()  => ReCallClass.Invoke("nddsT");
         [CommandMethod("sd")]     public void Cmd_sd()     => ReCallClass.Invoke("sd");
         [CommandMethod("ddaa")]   public void Cmd_ddaa()   => ReCallClass.Invoke("ddaa");
         [CommandMethod("hydimA")] public void Cmd_hydimA() => ReCallClass.Invoke("hydimA");
+        [CommandMethod("hyed")] public void Cmd_hyed() => ReCallClass.Invoke("hyed");
+        [CommandMethod("_HYED_INTERNAL")] public void Cmd__HYED_INTERNAL() => ReCallClass.Invoke("_HYED_INTERNAL");
         #endregion
 
         #region 地脚螺栓 (Anchor Bolt)
@@ -160,6 +166,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyobM")]  public void Cmd_hyobM()  => ReCallClass.Invoke("hyobM");
         [CommandMethod("hyobP")]  public void Cmd_hyobP()  => ReCallClass.Invoke("hyobP");
         [CommandMethod("hyobES")] public void Cmd_hyobES() => ReCallClass.Invoke("hyobES");
+        [CommandMethod("hyobAp")] public void Cmd_hyobAp() => ReCallClass.Invoke("hyobAp");
         #endregion
 
         #region 道路 (Road) — hyRoad* + r* 短别名

@@ -8,6 +8,8 @@ using HyCADTool.Features.Road.CrossSection.Views;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Features.Road.Plan.ViewModels;
 using HyCADTool.Features.Road.Plan.Views;
+using HyCADTool.Features.DataExchange.Hyob.Presentation.Views;
+using HyCADTool.Features.DataExchange.Hyob.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Presentation
@@ -34,6 +36,9 @@ namespace HyCADTool.Presentation
         /// <summary>横断面绘制（RCS）PaletteSet GUID。</summary>
         private static readonly Guid CrossSectionPaletteGuid = new Guid("D4E5F6A7-B8C9-0123-DE45-678901234567");
 
+        /// <summary>hyob 历史面板（M10）PaletteSet GUID。</summary>
+        private static readonly Guid HyobHistoryPaletteGuid = new Guid("E5F6A7B8-C9D0-1234-EF56-789012345678");
+
         private readonly IComponentContext _componentContext;
 
         private PaletteSet _blenderPaletteSet;
@@ -54,6 +59,11 @@ namespace HyCADTool.Presentation
         private PaletteSet _crossSectionPaletteSet;
         private CrossSectionDrawPanel _crossSectionPanel;
         private CrossSectionDrawViewModel _crossSectionVm;
+
+        // ===== hyob 历史面板（M10，独立 PaletteSet） =====
+        private PaletteSet _hyobHistoryPaletteSet;
+        private HyobHistoryPanel _hyobHistoryPanel;
+        private HyobHistoryPanelViewModel _hyobHistoryVm;
 
         /// <summary>
         /// 路线工作台 PaletteSet 上一次 <c>StateChanged</c> 观察到的 Visible 值，用于做边缘触发：
@@ -210,6 +220,85 @@ namespace HyCADTool.Presentation
         /// <summary>项目树 PaletteSet 是否可见。</summary>
         public bool IsRoadProjectTreeVisible
             => _projectTreePaletteSet != null && _projectTreePaletteSet.Visible;
+
+        // ===== hyob 历史面板（M10：hyobP 命令入口） =====
+
+        /// <summary>
+        /// 显示 hyob 历史 PaletteSet（M10）。每次调用都把面板内容刷新到当前活动 DWG 旁的 .hyob/ 仓库。
+        /// 默认停靠左侧，宽 420，可拖浮动。
+        /// </summary>
+        public void ShowHyobHistoryPanel()
+        {
+            RegisterDocumentEvents();
+
+            if (_hyobHistoryPaletteSet == null)
+                CreateHyobHistoryPalette();
+            else
+                _hyobHistoryPaletteSet.Visible = true;
+
+            RefreshHyobHistoryFromCurrentDocument();
+        }
+
+        /// <summary>hyob 历史面板是否可见。</summary>
+        public bool IsHyobHistoryVisible
+            => _hyobHistoryPaletteSet != null && _hyobHistoryPaletteSet.Visible;
+
+        private void CreateHyobHistoryPalette()
+        {
+            _hyobHistoryVm = new HyobHistoryPanelViewModel();
+            _hyobHistoryPanel = new HyobHistoryPanel { ViewModel = _hyobHistoryVm };
+
+            _hyobHistoryPaletteSet = new PaletteSet("hyob 历史", HyobHistoryPaletteGuid)
+            {
+                Size = new System.Drawing.Size(420, 720),
+                MinimumSize = new System.Drawing.Size(320, 360),
+                DockEnabled = (DockSides)((int)DockSides.Left | (int)DockSides.Right),
+                Style = PaletteSetStyles.ShowCloseButton |
+                        PaletteSetStyles.ShowAutoHideButton |
+                        PaletteSetStyles.Snappable
+            };
+
+            _hyobHistoryPaletteSet.AddVisual("hyob 历史", _hyobHistoryPanel);
+            _hyobHistoryPaletteSet.StateChanged += OnHyobHistoryPaletteStateChanged;
+            _hyobHistoryPaletteSet.Visible = true;
+
+            TryStripHyobHistoryCaptionIfDocked();
+        }
+
+        private void OnHyobHistoryPaletteStateChanged(object sender, PaletteSetStateEventArgs e)
+        {
+            TryStripHyobHistoryCaptionIfDocked();
+        }
+
+        private void TryStripHyobHistoryCaptionIfDocked()
+        {
+            if (_hyobHistoryPaletteSet == null || _hyobHistoryPanel == null) return;
+            if (_hyobHistoryPaletteSet.Dock == DockSides.None) return;
+
+            _hyobHistoryPanel.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Loaded,
+                new Action(() =>
+                {
+                    try { HyCADTool.Shell.Ribbon.PaletteTitleBarStripper.TryStripCaption("hyob 历史"); }
+                    catch { }
+                }));
+        }
+
+        /// <summary>把面板切换到当前文档的 .hyob/ 仓库（DocumentActivated 时由 PanelManager 调用）。</summary>
+        public void RefreshHyobHistoryFromCurrentDocument()
+        {
+            if (_hyobHistoryVm == null) return;
+            try
+            {
+                var doc = AcApp.DocumentManager?.MdiActiveDocument;
+                string dwgPath = doc?.Name;
+                var disp = _hyobHistoryPanel?.Dispatcher;
+                void Apply() => _hyobHistoryVm.LoadFor(dwgPath);
+                if (disp == null || disp.CheckAccess()) Apply();
+                else disp.Invoke(Apply);
+            }
+            catch { /* 静默 */ }
+        }
 
         // ===== RCS：横断面绘制（hyRoadCs / hyRoadCsLoad） =====
 
@@ -558,6 +647,16 @@ namespace HyCADTool.Presentation
                 if (_projectTreeVm != null && _projectTreePaletteSet != null && _projectTreePanel != null && _projectTreePaletteSet.Visible)
                 {
                     RefreshProjectTreeFromCurrentDocument();
+                }
+            }
+            catch { }
+
+            // M10：hyob 历史
+            try
+            {
+                if (_hyobHistoryVm != null && _hyobHistoryPaletteSet != null && _hyobHistoryPanel != null && _hyobHistoryPaletteSet.Visible)
+                {
+                    RefreshHyobHistoryFromCurrentDocument();
                 }
             }
             catch { }

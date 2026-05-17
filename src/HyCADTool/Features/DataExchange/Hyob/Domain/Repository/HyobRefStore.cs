@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace HyCADTool.Features.DataExchange.Hyob.Domain.Repository
 {
@@ -103,6 +104,9 @@ namespace HyCADTool.Features.DataExchange.Hyob.Domain.Repository
             if (string.IsNullOrEmpty(branchName))
                 throw new ArgumentException("branchName 不能为空", nameof(branchName));
             var path = Path.Combine(HeadsDirPath, branchName);
+            // 分支名允许 '/'（如 'feat/x'）→ 文件系统映射成子目录，必须先建好。
+            var parentDir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(parentDir)) Directory.CreateDirectory(parentDir);
             File.WriteAllText(path, hash.ToHex() + "\n");
         }
 
@@ -115,11 +119,71 @@ namespace HyCADTool.Features.DataExchange.Hyob.Domain.Repository
         public IEnumerable<string> EnumerateBranches()
         {
             if (!Directory.Exists(HeadsDirPath)) yield break;
-            foreach (var f in Directory.EnumerateFiles(HeadsDirPath))
+            // 分支名允许 '/'（git 风格），文件系统中是嵌套子目录。递归扫，并把分隔符规一化为 '/'。
+            int prefixLen = HeadsDirPath.Length + 1;
+            foreach (var f in Directory.EnumerateFiles(HeadsDirPath, "*", SearchOption.AllDirectories))
             {
-                var name = Path.GetFileName(f);
-                if (!string.IsNullOrEmpty(name)) yield return name;
+                if (f.Length <= prefixLen) continue;
+                var rel = f.Substring(prefixLen).Replace(Path.DirectorySeparatorChar, '/');
+                if (!string.IsNullOrEmpty(rel)) yield return rel;
             }
+        }
+
+        /// <summary>
+        /// 删除分支文件。返回 false：分支不存在。
+        /// 业务约束（不在此处强制）：调用方须保证不删 HEAD 当前指向的分支。
+        /// </summary>
+        public bool DeleteBranch(string branchName)
+        {
+            if (string.IsNullOrEmpty(branchName)) return false;
+            var path = Path.Combine(HeadsDirPath, branchName);
+            if (!File.Exists(path)) return false;
+            File.Delete(path);
+            // 顺手清空 'feat/' 这种留下来的空中间目录，停在 refs/heads 处。
+            try
+            {
+                var dir = Path.GetDirectoryName(path);
+                while (!string.IsNullOrEmpty(dir)
+                       && !string.Equals(Path.GetFullPath(dir), Path.GetFullPath(HeadsDirPath), StringComparison.OrdinalIgnoreCase)
+                       && Directory.Exists(dir)
+                       && !Directory.EnumerateFileSystemEntries(dir).Any())
+                {
+                    Directory.Delete(dir);
+                    dir = Path.GetDirectoryName(dir);
+                }
+            }
+            catch { /* 清空目录失败不影响删除语义 */ }
+            return true;
+        }
+
+        /// <summary>
+        /// 分支名合法性。规则（M8）：
+        ///   · 长度 1..64
+        ///   · 仅 ASCII 字母 / 数字 / '-' / '_' / '/'
+        ///   · 不以 '-' 或 '/' 开头，不以 '/' 结尾
+        ///   · 不含连续 '/'
+        /// 不接受任何空白字符或路径分隔符 '\\'，避免跨平台 / 文件系统注入。
+        /// </summary>
+        public static bool IsValidBranchName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            if (name.Length > 64) return false;
+            if (name[0] == '-' || name[0] == '/') return false;
+            if (name[name.Length - 1] == '/') return false;
+
+            char prev = '\0';
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                bool ok = (c >= 'a' && c <= 'z')
+                       || (c >= 'A' && c <= 'Z')
+                       || (c >= '0' && c <= '9')
+                       || c == '-' || c == '_' || c == '/';
+                if (!ok) return false;
+                if (c == '/' && prev == '/') return false;
+                prev = c;
+            }
+            return true;
         }
     }
 }

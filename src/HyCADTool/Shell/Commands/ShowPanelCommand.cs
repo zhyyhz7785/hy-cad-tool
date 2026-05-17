@@ -52,6 +52,17 @@ namespace HyCADTool.Shell.Commands
         /// <summary>显示块引线分类 Tab（原聚类面板入口）。</summary>
         public static void ShowClusterPanel()   => OpenTab("块引线", "显示聚类面板失败");
 
+        /// <summary>hyobP 入口：拉起 hyob 历史 PaletteSet（独立面板，不在 HyBlenderPanel 内）。</summary>
+        public static void ShowHyobHistoryPanel()
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            try { ServiceLocator.Container.Resolve<PanelManager>().ShowHyobHistoryPanel(); }
+            catch (System.Exception ex)
+            {
+                ed?.WriteMessage($"\n显示 hyob 历史面板失败: {ex.Message}");
+            }
+        }
+
         private static void OpenTab(string tabKey, string errorPrefix)
         {
             var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;

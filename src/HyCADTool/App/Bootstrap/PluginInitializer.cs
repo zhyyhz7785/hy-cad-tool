@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autofac;
+using HyCADTool.Features.TextEdit.Services;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
 using HyCADTool.Shell.Contracts;
@@ -392,6 +393,7 @@ namespace HyCADTool.App.Bootstrap
             {
                 AcApp.DocumentManager.DocumentActivated += OnDocumentActivated;
                 AcApp.DocumentManager.DocumentCreated += OnDocumentCreated;
+                HyEdDoubleClickInterceptor.Install();
             }
             catch (System.Exception ex)
             {
@@ -406,6 +408,8 @@ namespace HyCADTool.App.Bootstrap
         {
             try
             {
+                HyEdDoubleClickInterceptor.Uninstall();
+
                 AcApp.DocumentManager.DocumentActivated -= OnDocumentActivated;
                 AcApp.DocumentManager.DocumentCreated -= OnDocumentCreated;
             }

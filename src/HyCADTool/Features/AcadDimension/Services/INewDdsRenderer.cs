@@ -14,6 +14,11 @@ namespace HyCADTool.Features.AcadDimension.Services
     /// </summary>
     public interface INewDdsRenderer
     {
-        int Render(NewDdsResult result, Document document, Transaction transaction);
+        /// <param name="bindingContext">Phase 5：非 null 且 <see cref="NewDdsRenderBindingContext.IsBindingEnabled"/> 时为每条标注写入扩展字典。</param>
+        int Render(
+            NewDdsResult result,
+            Document document,
+            Transaction transaction,
+            NewDdsRenderBindingContext bindingContext = null);
     }
 }

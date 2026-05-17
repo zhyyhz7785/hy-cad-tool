@@ -248,6 +248,29 @@
                                       ItemsSource="{Binding Settings.AllowedPrecisions}"
                                       SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
                         </StackPanel>
+                        <!-- 双击编辑文字(hyed)：替代 AutoCAD 原生 TEXTEDIT/MTEDIT/DDEDIT，绕开 TTF 扫描开窗慢 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                            <CheckBox Style="{StaticResource BlenderCheckBox}"
+                                      Content="双击编辑文字(hyed)"
+                                      VerticalAlignment="Center"
+                                      ToolTip="双击 MText/DBText/MLeader/Dimension 时由 hyed 接管，绕开 AutoCAD 原生编辑器（缓解 TTF 字体扫描卡顿）"
+                                      IsChecked="{Binding Settings.EnableHyEdDoubleClick, Mode=TwoWay}"
+                                      Margin="0,0,6,0"/>
+                            <TextBlock Text="上移×"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       FontSize="{DynamicResource Metric_FontMain}"
+                                       VerticalAlignment="Center"
+                                       ToolTip="编辑框相对原文字向上偏移的倍数（×文字高度）。0=原位重叠，1.2=贴在上方"
+                                       Margin="0,0,4,0"/>
+                            <TextBox Style="{StaticResource BlenderTextBox}"
+                                     Width="{DynamicResource Metric_InputWidth_XS}"
+                                     VerticalAlignment="Center"
+                                     IsEnabled="{Binding Settings.EnableHyEdDoubleClick}"
+                                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                                     helper:TextBoxHelper.ScrollStep="0.1"
+                                     ToolTip="编辑框相对原文字向上偏移的倍数（×文字高度）。0=原位重叠，1.2=贴在上方"
+                                     Text="{Binding Settings.HyEdAboveOffsetFactor, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}"/>
+                        </StackPanel>
                     </WrapPanel>
                 </Border>
 

@@ -1,0 +1,54 @@
+<Window x:Class="HyCADTool.Features.TextEdit.Views.HyEdInPlaceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:p="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+        Title=""
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Transparent"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        MinWidth="80" MinHeight="20">
+    <!--
+      原字段在 #F2000000（95% 不透明）下被完全遮挡。
+      Resize：右下角 Thumb（DragDelta 在 code-behind 改 Width/Height），WindowStyle=None+AllowsTransparency 下系统边框不可用。
+      不显示滚动条：用户用 Thumb 拉大窗口来容纳更多文字。
+    -->
+    <Grid>
+        <Border BorderBrush="#FFFFCC00" BorderThickness="1" Background="#F2000000" Padding="0">
+            <TextBox x:Name="BodyBox"
+                     Text="{Binding EditableText, UpdateSourceTrigger=PropertyChanged}"
+                     Background="Transparent"
+                     Foreground="White"
+                     CaretBrush="White"
+                     BorderThickness="0"
+                     Padding="2,1,2,1"
+                     FontFamily="Microsoft YaHei UI"
+                     FontSize="{Binding FontSizeDip}"
+                     AcceptsReturn="True"
+                     AcceptsTab="False"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Disabled"
+                     HorizontalScrollBarVisibility="Disabled"/>
+        </Border>
+        <!-- 右下角拖拽手柄：与 BorderBrush 同色三角条 -->
+        <p:Thumb x:Name="ResizeThumb"
+                 Width="14" Height="14"
+                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                 Cursor="SizeNWSE"
+                 ToolTip="拖拽调整编辑框大小">
+            <p:Thumb.Template>
+                <ControlTemplate TargetType="p:Thumb">
+                    <Grid Background="Transparent">
+                        <Polygon Points="14,0 14,14 0,14"
+                                 Fill="#FFFFCC00"
+                                 Opacity="0.85"/>
+                    </Grid>
+                </ControlTemplate>
+            </p:Thumb.Template>
+        </p:Thumb>
+    </Grid>
+</Window>

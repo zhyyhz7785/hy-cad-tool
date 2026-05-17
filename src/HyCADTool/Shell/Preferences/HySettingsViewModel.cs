@@ -5,6 +5,7 @@ using System.Windows.Input;
 using HyCADTool.Features.BaseRein.ViewModels;
 using HyCADTool.Features.Pile.ViewModels;
 using HyCADTool.App.Bootstrap;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Presentation.ViewModels
 {
@@ -30,6 +31,11 @@ namespace HyCADTool.Presentation.ViewModels
                                                    ?? _settingsFallback
                                                    ?? (_settingsFallback = new SettingsPanelViewModel());
         private SettingsPanelViewModel _settingsFallback;
+
+        /// <summary>
+        /// 曾订阅 StatusMessage 的 Settings 实例；随 <see cref="Settings"/> 指向的文档 VM 切换而迁移。
+        /// </summary>
+        private SettingsPanelViewModel _settingsStatusSubscription;
 
         /// <summary>
         /// 底板配筋 ViewModel（DI 注册 InstancePerDependency，此处单例缓存）
@@ -114,12 +120,46 @@ namespace HyCADTool.Presentation.ViewModels
             BuildSkeleton();
             SelectedCategory = Categories.Count > 0 ? Categories[0] : null;
 
-            // 订阅 Settings 变更：StatusMessage 同步（首次访问会惰性创建）
-            var settings = Settings;
-            if (settings != null)
+            RefreshSettingsBindingsFromDocument();
+
+            try
             {
-                settings.PropertyChanged += OnSettingsPropertyChanged;
+                var dm = AcApp.DocumentManager;
+                dm.DocumentActivated += OnDocumentManagerSurfaceChanged;
+                dm.DocumentToBeDestroyed += OnDocumentManagerSurfaceChanged;
             }
+            catch
+            {
+                // 非 AutoCAD 宿主 / 设计器
+            }
+        }
+
+        /// <summary>
+        /// <see cref="Settings"/> 由 Current 与 fallback 合成，引用随文档切换而变。
+        /// 若不单独 <c>OnPropertyChanged(nameof(Settings))</c>，WPF 仍把副比例等子绑定挂在旧实例上，
+        /// 会出现「勾选启用副比例后输入框仍灰、无法改数值」等现象。
+        /// </summary>
+        private void OnDocumentManagerSurfaceChanged(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
+            => RefreshSettingsBindingsFromDocument();
+
+        private void RefreshSettingsBindingsFromDocument()
+        {
+            OnPropertyChanged(nameof(Settings));
+            AttachSettingsStatusSubscription();
+        }
+
+        private void AttachSettingsStatusSubscription()
+        {
+            var s = Settings;
+            if (ReferenceEquals(s, _settingsStatusSubscription)) return;
+
+            if (_settingsStatusSubscription != null)
+                _settingsStatusSubscription.PropertyChanged -= OnSettingsPropertyChanged;
+
+            _settingsStatusSubscription = s;
+
+            if (s != null)
+                s.PropertyChanged += OnSettingsPropertyChanged;
         }
 
         private void OnSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)

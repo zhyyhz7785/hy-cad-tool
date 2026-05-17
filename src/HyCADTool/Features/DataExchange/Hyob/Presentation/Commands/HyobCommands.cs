@@ -16,6 +16,7 @@ using HyCADTool.Features.DataExchange.Hyob.Domain.Schemas;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Diff;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom;
+using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Merge;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Pack;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.RoundTrip;
 
@@ -36,8 +37,14 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
     //   - M12：hyobES 导出 hygeom JSON（hyob commit → AI 友好结构化文本） ✓
     //   - G/C/H 段 1：hyobL stat 摘要 + hyobD 智能折叠 + hyobES 过滤 ✓
     //   - M7：loose objects → Deflate 压缩 pack 文件（hyobG 落地）✓
-    //   - hyobI / hyobS / hyobC / hyobL / hyobR / hyobD / hyobES / hyobG 全部真正落地
-    //   - 其余命令（hyobCo / hyobB / hyobM / hyobP）仍为 stub
+    //   - M10：hyob 历史 PaletteSet（hyobP，commit DAG + 字段级 diff + WIP + 自检 一站式）✓
+    //   - M8-A：分支管理（hyobB list/new/delete）+ HEAD 切换（hyobCo，仅 ref 级，不动 Database）✓
+    //   - M8-B：三路合并（hyobM）—— LCA + 递归 tree merge + 冲突表 + FF 优化；不动 Database ✓
+    //   - M9-A：反向 patch 框架（hyobAp）—— 白名单 Line / Circle / Arc 三种几何，按 handle 增删改 ModelSpace ✓
+    //   - M9-B：反向白名单扩到 Polyline / DBText / MText（DBText/MText 自动按名解析 TextStyle）✓
+    //   - M9-C-1：Layer 表反向同步 —— hyobAp 前置创建/更新缺失图层，让 entity 反向 build 能拿到正确 Layer ✓
+    //   - hyobI / hyobS / hyobC / hyobL / hyobR / hyobD / hyobES / hyobG / hyobP / hyobB / hyobCo / hyobM / hyobAp 全部真正落地
+    //   - 剩余范畴：M9-C-2+（TextStyle/DimStyle/Block 表反向同步 + BlockRef/Dim/MLeader/Hatch 反向构造）
 
     // ---------- 共用辅助 ----------
 
@@ -715,6 +722,235 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
             catch (Exception ex) { Report("HyobPacker pack→read→add-loose", false, ex.Message); }
             finally { TryDelete(tmp7); }
 
+            // ---- M8-A 分支命名 + RefStore 增删 ----
+            try
+            {
+                bool ok = HyobRefStore.IsValidBranchName("main")
+                       && HyobRefStore.IsValidBranchName("feat/dim-fix_v2")
+                       && HyobRefStore.IsValidBranchName("a-1")
+                       && !HyobRefStore.IsValidBranchName("")
+                       && !HyobRefStore.IsValidBranchName("-foo")
+                       && !HyobRefStore.IsValidBranchName("foo/")
+                       && !HyobRefStore.IsValidBranchName("/foo")
+                       && !HyobRefStore.IsValidBranchName("a//b")
+                       && !HyobRefStore.IsValidBranchName("空格 不允许")
+                       && !HyobRefStore.IsValidBranchName("反斜杠\\nope")
+                       && !HyobRefStore.IsValidBranchName(new string('x', 65));
+                Report("HyobRefStore.IsValidBranchName 边界", ok);
+            }
+            catch (Exception ex) { Report("HyobRefStore.IsValidBranchName", false, ex.Message); }
+
+            string tmp8 = null;
+            try
+            {
+                tmp8 = Path.Combine(Path.GetTempPath(), "hyob-branch-selfcheck-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(tmp8);
+                var refs = new HyobRefStore(tmp8);
+                var h = Hash.OfPayload(Encoding.UTF8.GetBytes("dummy-tip"));
+                refs.WriteBranchTip("main", h);
+                refs.WriteBranchTip("feat/x", h);
+                bool list = refs.EnumerateBranches().OrderBy(s => s).SequenceEqual(new[] { "feat/x", "main" });
+                bool exists = refs.BranchExists("main") && refs.BranchExists("feat/x") && !refs.BranchExists("nope");
+                bool del = refs.DeleteBranch("feat/x") && !refs.BranchExists("feat/x") && !refs.DeleteBranch("feat/x");
+                Report("HyobRefStore 分支创建/列出/删除 round-trip", list && exists && del);
+            }
+            catch (Exception ex) { Report("HyobRefStore 分支 round-trip", false, ex.Message); }
+            finally { TryDelete(tmp8); }
+
+            // ---- M8-B 三路合并 mini-DAG ----
+            string tmp8b = null;
+            try
+            {
+                tmp8b = Path.Combine(Path.GetTempPath(), "hyob-merge-selfcheck-" + Guid.NewGuid().ToString("N"));
+                var store = new HyobObjectStore(Path.Combine(tmp8b, "objects"));
+                var fixedTime = DateTimeOffset.FromUnixTimeSeconds(1714000000);
+
+                // 三个 opaque 叶节点：A、B（ours 改）、C（theirs 改）
+                Hash hA = store.Write(new HyobOpaqueObject("AcDbLine", "ACAD", "A", new byte[] { 0xAA }).EncodeBlob());
+                Hash hB = store.Write(new HyobOpaqueObject("AcDbLine", "ACAD", "A", new byte[] { 0xBB }).EncodeBlob());
+                Hash hC = store.Write(new HyobOpaqueObject("AcDbLine", "ACAD", "A", new byte[] { 0xCC }).EncodeBlob());
+
+                // base tree: { foo→A, baz→A }
+                var baseTree = new HyobTree(new[] {
+                    new HyobTreeEntry("foo", HyobTreeEntryKind.Object, hA),
+                    new HyobTreeEntry("baz", HyobTreeEntryKind.Object, hA),
+                });
+                Hash hBase = store.Write(baseTree.EncodeBlob());
+                var baseCommit = new HyobCommit(hBase, "t", "base", time: fixedTime);
+                Hash hBaseC = store.Write(baseCommit.EncodeBlob());
+
+                // ours: 改 foo→B
+                var oursTree = new HyobTree(new[] {
+                    new HyobTreeEntry("foo", HyobTreeEntryKind.Object, hB),
+                    new HyobTreeEntry("baz", HyobTreeEntryKind.Object, hA),
+                });
+                Hash hOurs = store.Write(oursTree.EncodeBlob());
+                var oursCommit = new HyobCommit(hOurs, "t", "ours", parents: new[] { hBaseC }, time: fixedTime);
+                Hash hOursC = store.Write(oursCommit.EncodeBlob());
+
+                // theirs: 改 baz→B（与 ours 互不冲突）
+                var theirsTree = new HyobTree(new[] {
+                    new HyobTreeEntry("foo", HyobTreeEntryKind.Object, hA),
+                    new HyobTreeEntry("baz", HyobTreeEntryKind.Object, hB),
+                });
+                Hash hTheirs = store.Write(theirsTree.EncodeBlob());
+                var theirsCommit = new HyobCommit(hTheirs, "t", "theirs", parents: new[] { hBaseC }, time: fixedTime);
+                Hash hTheirsC = store.Write(theirsCommit.EncodeBlob());
+
+                // LCA(ours, theirs) == base
+                var lcaFinder = new MergeBaseFinder(store);
+                bool lcaOk = lcaFinder.TryFind(hOursC, hTheirsC, out var lca) && lca == hBaseC;
+
+                // 三路合并：无冲突，foo=B & baz=B
+                var merger = new TreeMerger(store);
+                var r1 = merger.Merge(hBase, hOurs, hTheirs);
+                bool noConflict = !r1.HasConflicts && r1.AutoMergedCount >= 2;
+                var mergedTree = HyobTree.Decode(store.Read(r1.MergedTreeHash));
+                bool dataOk = mergedTree.TryFind("foo", out var foo) && foo.Hash == hB
+                           && mergedTree.TryFind("baz", out var baz) && baz.Hash == hB;
+
+                // 冲突场景：theirs 把 foo 改成 C（与 ours 的 B 冲突）
+                var conflictTheirs = new HyobTree(new[] {
+                    new HyobTreeEntry("foo", HyobTreeEntryKind.Object, hC),
+                    new HyobTreeEntry("baz", HyobTreeEntryKind.Object, hA),
+                });
+                Hash hCTh = store.Write(conflictTheirs.EncodeBlob());
+                var r2 = merger.Merge(hBase, hOurs, hCTh);
+                bool conflictDetected = r2.HasConflicts
+                                     && r2.Conflicts.Count == 1
+                                     && r2.Conflicts[0].Path == "foo"
+                                     && r2.Conflicts[0].Kind == HyobConflictKind.ModifyModify;
+
+                Report("MergeBaseFinder + TreeMerger（无冲突 + 冲突） round-trip",
+                    lcaOk && noConflict && dataOk && conflictDetected);
+            }
+            catch (Exception ex) { Report("M8-B 三路合并", false, ex.Message); }
+            finally { TryDelete(tmp8b); }
+
+            // ---- M9-A 反向 converter Line/Circle/Arc Decode→Build ----
+            try
+            {
+                var lineHy = new HyobLine("0", "ABC", 1, 2, 3, 10, 20, 30);
+                bool okL = HyobToEntityConverter.TryBuild(lineHy.EncodeBlob(), null, null, out var entL, out var lyL);
+                bool dataL = false;
+                using (entL as IDisposable)
+                {
+                    var l = entL as Autodesk.AutoCAD.DatabaseServices.Line;
+                    dataL = l != null
+                            && l.StartPoint.X == 1 && l.StartPoint.Y == 2 && l.StartPoint.Z == 3
+                            && l.EndPoint.X == 10 && l.EndPoint.Y == 20 && l.EndPoint.Z == 30
+                            && lyL == "0";
+                }
+
+                var cirHy = new HyobCircle("LAY1", "DEF", 5, 6, 7, 12.5, 0, 0, 1);
+                bool okC = HyobToEntityConverter.TryBuild(cirHy.EncodeBlob(), null, null, out var entC, out var lyC);
+                bool dataC = false;
+                using (entC as IDisposable)
+                {
+                    var c = entC as Autodesk.AutoCAD.DatabaseServices.Circle;
+                    dataC = c != null
+                            && c.Center.X == 5 && c.Center.Y == 6 && c.Center.Z == 7
+                            && c.Radius == 12.5
+                            && lyC == "LAY1";
+                }
+
+                var arcHy = new HyobArc("LAY2", "777", 0, 0, 0, 5, 0.5, 1.2, 0, 0, 1);
+                bool okA = HyobToEntityConverter.TryBuild(arcHy.EncodeBlob(), null, null, out var entA, out var lyA);
+                bool dataA = false;
+                using (entA as IDisposable)
+                {
+                    var a = entA as Autodesk.AutoCAD.DatabaseServices.Arc;
+                    dataA = a != null
+                            && a.Radius == 5
+                            && System.Math.Abs(a.StartAngle - 0.5) < 1e-9
+                            && System.Math.Abs(a.EndAngle - 1.2) < 1e-9
+                            && lyA == "LAY2";
+                }
+
+                // 不支持类型应返回 false（用 Opaque 当 negative case）
+                var op = new HyobOpaqueObject("AcDbCustom", "TEST", "999", new byte[] { 1, 2, 3 });
+                bool unsupported = !HyobToEntityConverter.TryBuild(op.EncodeBlob(), null, null, out var entX, out _);
+                using (entX as IDisposable) { }
+
+                Report("HyobToEntityConverter Line/Circle/Arc Decode→Build + 不支持类型 false",
+                    okL && dataL && okC && dataC && okA && dataA && unsupported);
+            }
+            catch (Exception ex) { Report("M9-A 反向 converter", false, ex.Message); }
+
+            // ---- M9-B 反向 converter Polyline/DBText/MText Decode→Build ----
+            try
+            {
+                var verts = new System.Collections.Generic.List<HyobPolylineVertex>
+                {
+                    new HyobPolylineVertex(0, 0, 0),
+                    new HyobPolylineVertex(10, 0, 0.5),
+                    new HyobPolylineVertex(10, 10, 0),
+                };
+                var polyHy = new HyobPolyline("0", "P1", true, 1.5, 0, 0, 1, 0.2, verts);
+                bool okP = HyobToEntityConverter.TryBuild(polyHy.EncodeBlob(), null, null, out var entP, out var lyP);
+                bool dataP = false;
+                using (entP as IDisposable)
+                {
+                    var p = entP as Autodesk.AutoCAD.DatabaseServices.Polyline;
+                    dataP = p != null && p.Closed && p.NumberOfVertices == 3
+                            && System.Math.Abs(p.Elevation - 1.5) < 1e-9
+                            && System.Math.Abs(p.GetBulgeAt(1) - 0.5) < 1e-9
+                            && System.Math.Abs(p.ConstantWidth - 0.2) < 1e-9
+                            && lyP == "0";
+                }
+
+                var dbHy = new HyobDBText("0", "T1", "你好AB", "STANDARD",
+                    1, 2, 0, 2.5, 0.7, 0.9, 0.0, 0,
+                    0, 0, 1, (byte)0, (byte)0, 0, 0, 0, (byte)0);
+                bool okT = HyobToEntityConverter.TryBuild(dbHy.EncodeBlob(), null, null, out var entT, out var lyT);
+                bool dataT = false;
+                using (entT as IDisposable)
+                {
+                    var t = entT as Autodesk.AutoCAD.DatabaseServices.DBText;
+                    dataT = t != null && t.TextString == "你好AB"
+                            && System.Math.Abs(t.Height - 2.5) < 1e-9
+                            && System.Math.Abs(t.Rotation - 0.7) < 1e-9
+                            && System.Math.Abs(t.Position.X - 1) < 1e-9
+                            && lyT == "0";
+                }
+
+                var mtHy = new HyobMText("0", "M1", "abc{\\fSimSun;ABC}", "STANDARD",
+                    1, 2, 0, 3.0, 100.0, 0.5,
+                    0, 0, 1, 1, 0, 0,
+                    (byte)1, (byte)0, (byte)0, 1.0,
+                    (byte)0, 0u, 1.5);
+                bool okM = HyobToEntityConverter.TryBuild(mtHy.EncodeBlob(), null, null, out var entM, out var lyM);
+                bool dataM = false;
+                using (entM as IDisposable)
+                {
+                    var m = entM as Autodesk.AutoCAD.DatabaseServices.MText;
+                    dataM = m != null && m.Contents == "abc{\\fSimSun;ABC}"
+                            && System.Math.Abs(m.TextHeight - 3.0) < 1e-9
+                            && System.Math.Abs(m.Width - 100.0) < 1e-9
+                            && System.Math.Abs(m.Rotation - 0.5) < 1e-9
+                            && lyM == "0";
+                }
+
+                Report("HyobToEntityConverter Polyline/DBText/MText Decode→Build",
+                    okP && dataP && okT && dataT && okM && dataM);
+            }
+            catch (Exception ex) { Report("M9-B 反向 converter", false, ex.Message); }
+
+            // ---- M9-C-1 LayerReverseMirror 线宽 mm ↔ LineWeight 枚举 ----
+            try
+            {
+                bool ok =
+                    LayerReverseMirror.MmToLineWeight(0.25) == (Autodesk.AutoCAD.DatabaseServices.LineWeight)25
+                    && LayerReverseMirror.MmToLineWeight(0.5)  == (Autodesk.AutoCAD.DatabaseServices.LineWeight)50
+                    && LayerReverseMirror.MmToLineWeight(-3)   == Autodesk.AutoCAD.DatabaseServices.LineWeight.ByLayer
+                    && LayerReverseMirror.MmToLineWeight(-2)   == Autodesk.AutoCAD.DatabaseServices.LineWeight.ByBlock
+                    && LayerReverseMirror.MmToLineWeight(-1)   == Autodesk.AutoCAD.DatabaseServices.LineWeight.ByLineWeightDefault
+                    && LayerReverseMirror.MmToLineWeight(0)    == (Autodesk.AutoCAD.DatabaseServices.LineWeight)0
+                    && LayerReverseMirror.MmToLineWeight(99.0) == (Autodesk.AutoCAD.DatabaseServices.LineWeight)211; // clamp 上限
+                Report("LayerReverseMirror.MmToLineWeight 边界值（含 -3/-2/-1 与 clamp）", ok);
+            }
+            catch (Exception ex) { Report("M9-C-1 LineWeight 转换", false, ex.Message); }
+
             return (passed, failed);
         }
 
@@ -1275,33 +1511,438 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
         }
     }
 
-    /// <summary>hyobB - 创建 / 列出 / 切换 layer（M8 落地）。</summary>
+    /// <summary>
+    /// hyobB - 分支管理（M8-A）。
+    ///
+    /// 交互式子动作（命令行 prompt action）：
+    ///   <c>list</c>   列出所有分支（默认动作；当前分支前加 *）
+    ///   <c>new</c>    在指定 ref 处创建分支（不切换 HEAD），默认 ref = HEAD
+    ///   <c>delete</c> 删除分支（拒绝当前 HEAD 指向的分支）
+    ///
+    /// HEAD 移动由 <see cref="HyobCheckoutCommand"/> 负责，本命令仅管 refs/heads/* 文件本身。
+    /// </summary>
     public class HyobBranchCommand
     {
+        private const string DefaultAction = "list";
+
         public void Execute()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage("\n[hyob] hyobB: stub —— 将在 M8 落地（USD 风格多 layer 合成）。");
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage("\n[hyob] hyobB: 当前 DWG 未初始化 .hyob/，请先 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+
+            string action = PromptAction(ed);
+            if (action == null) return;
+            switch (action)
+            {
+                case "list":   ListBranches(ed, objects, refs); break;
+                case "new":    CreateBranch(ed, objects, refs); break;
+                case "delete": DeleteBranch(ed, refs);          break;
+                default:
+                    ed?.WriteMessage($"\n[hyob] hyobB: 未知动作 '{action}'，支持 list / new / delete。");
+                    break;
+            }
+        }
+
+        // ---- list ----
+
+        private static void ListBranches(Editor ed, HyobObjectStore objects, HyobRefStore refs)
+        {
+            refs.TryReadHead(out var headBranch, out var headDetached);
+            var names = refs.EnumerateBranches().OrderBy(s => s, StringComparer.Ordinal).ToList();
+            if (names.Count == 0)
+            {
+                ed?.WriteMessage("\n[hyob] hyobB: 当前没有任何分支。");
+                if (!headDetached.IsZero)
+                    ed?.WriteMessage($"\n  HEAD (detached): {headDetached.ToHex().Substring(0, 12)}");
+                return;
+            }
+            ed?.WriteMessage($"\n[hyob] hyobB: {names.Count} 个分支");
+            foreach (var n in names)
+            {
+                bool isCurrent = headBranch != null
+                    && string.Equals(n, headBranch, StringComparison.Ordinal);
+                string marker = isCurrent ? "*" : " ";
+                string tipShort = "(无 tip)";
+                string msg = string.Empty;
+                if (refs.TryReadBranchTip(n, out var tip))
+                {
+                    tipShort = tip.ToHex().Substring(0, 12);
+                    if (objects.TryRead(tip, out var blob))
+                    {
+                        try
+                        {
+                            var c = HyobCommit.Decode(blob);
+                            msg = (c.Message ?? string.Empty).Replace('\n', ' ').Replace('\r', ' ');
+                            if (msg.Length > 60) msg = msg.Substring(0, 60) + "…";
+                        }
+                        catch { /* 损坏 commit 不阻塞列表 */ }
+                    }
+                }
+                ed?.WriteMessage($"\n  {marker} {n,-24}  {tipShort}  {msg}");
+            }
+            if (headBranch == null && !headDetached.IsZero)
+                ed?.WriteMessage($"\n  * (HEAD detached)         {headDetached.ToHex().Substring(0, 12)}");
+        }
+
+        // ---- new ----
+
+        private static void CreateBranch(Editor ed, HyobObjectStore objects, HyobRefStore refs)
+        {
+            string name = PromptString(ed, "新分支名", null, allowSpaces: false);
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (!HyobRefStore.IsValidBranchName(name))
+            {
+                ed?.WriteMessage($"\n[hyob] hyobB: 分支名非法 '{name}'。允许 [A-Za-z0-9_-/]，长度 1..64，不以 - 或 / 开头。");
+                return;
+            }
+            if (refs.BranchExists(name))
+            {
+                ed?.WriteMessage($"\n[hyob] hyobB: 分支 '{name}' 已存在，拒绝覆盖。");
+                return;
+            }
+            string baseRef = PromptString(ed, "起点 ref", "HEAD", allowSpaces: false);
+            if (string.IsNullOrWhiteSpace(baseRef)) baseRef = "HEAD";
+
+            Hash startHash;
+            try { startHash = new RefResolver(objects, refs).Resolve(baseRef); }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobB: 解析起点 ref '{baseRef}' 失败：{ex.Message}");
+                return;
+            }
+            refs.WriteBranchTip(name, startHash);
+            ed?.WriteMessage(
+                $"\n[hyob] hyobB: 已创建分支 '{name}' → {startHash.ToHex().Substring(0, 12)}（起点：{baseRef}）。HEAD 未移动，如需切换请用 hyobCo。");
+        }
+
+        // ---- delete ----
+
+        private static void DeleteBranch(Editor ed, HyobRefStore refs)
+        {
+            string name = PromptString(ed, "要删除的分支", null, allowSpaces: false);
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (!refs.BranchExists(name))
+            {
+                ed?.WriteMessage($"\n[hyob] hyobB: 分支 '{name}' 不存在。");
+                return;
+            }
+            refs.TryReadHead(out var headBranch, out _);
+            if (string.Equals(headBranch, name, StringComparison.Ordinal))
+            {
+                ed?.WriteMessage($"\n[hyob] hyobB: 拒绝删除当前 HEAD 指向的分支 '{name}'，请先 hyobCo 切到其他分支。");
+                return;
+            }
+            refs.TryReadBranchTip(name, out var tip);
+            refs.DeleteBranch(name);
+            ed?.WriteMessage($"\n[hyob] hyobB: 已删除分支 '{name}'（曾指向 {tip.ToHex().Substring(0, 12)}）。");
+        }
+
+        // ---- prompts ----
+
+        private static string PromptAction(Editor ed)
+        {
+            if (ed == null) return DefaultAction;
+            var opts = new PromptKeywordOptions("\n[hyob] hyobB 动作")
+            {
+                AllowNone = true,
+            };
+            opts.Keywords.Add("list");
+            opts.Keywords.Add("new");
+            opts.Keywords.Add("delete");
+            opts.Keywords.Default = DefaultAction;
+            var res = ed.GetKeywords(opts);
+            if (res.Status == PromptStatus.None) return DefaultAction;
+            if (res.Status != PromptStatus.OK) return null;
+            return res.StringResult;
+        }
+
+        private static string PromptString(Editor ed, string label, string defaultValue, bool allowSpaces)
+        {
+            if (ed == null) return defaultValue;
+            var prompt = defaultValue == null
+                ? $"\n[hyob] hyobB {label}"
+                : $"\n[hyob] hyobB {label} (回车=默认 '{defaultValue}')";
+            var opts = new PromptStringOptions(prompt)
+            {
+                AllowSpaces = allowSpaces,
+            };
+            if (defaultValue != null)
+            {
+                opts.DefaultValue = defaultValue;
+                opts.UseDefaultValue = true;
+            }
+            var res = ed.GetString(opts);
+            if (res.Status != PromptStatus.OK) return null;
+            return string.IsNullOrWhiteSpace(res.StringResult) ? defaultValue : res.StringResult.Trim();
         }
     }
 
-    /// <summary>hyobCo - 切换 HEAD 到指定 commit / layer（M1-E 落地，含 Database 反向 patch）。</summary>
+    /// <summary>
+    /// hyobCo - 切换 HEAD 到指定 ref（M8-A，仅 ref 级 checkout，<b>不修改 AutoCAD Database</b>）。
+    ///
+    /// 行为：
+    ///   · ref 是已存在的分支名 → 写 HEAD = "ref: refs/heads/&lt;name&gt;"，并把当前最新 hyob 视图视作该分支的 view
+    ///   · 其他（HEAD~N / hash 前缀） → detached HEAD（HEAD 直接写 commit hash）
+    ///
+    /// <para>
+    /// 重要警告：M8-A 阶段不做 Database 反向 patch（DWG → 旧版本）。这里 checkout 等价于 git switch
+    /// 但 working tree（DWG）保持原样不变 —— 用户在切完 HEAD 后任何 hyobC 都会以新 HEAD 为父 commit。
+    /// 反向 patch（让 DWG 实体恢复到目标 commit）是 M9 内容，体量大、需要全量反 mirror。
+    /// </para>
+    /// </summary>
     public class HyobCheckoutCommand
     {
         public void Execute()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage("\n[hyob] hyobCo: stub —— 将在 M1-E 落地（含 Database 反向 patch）。");
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage("\n[hyob] hyobCo: 当前 DWG 未初始化 .hyob/，请先 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+
+            string target = PromptTarget(ed);
+            if (string.IsNullOrWhiteSpace(target)) return;
+
+            // 优先按 branch 名匹配（attached HEAD）
+            if (refs.BranchExists(target))
+            {
+                refs.WriteHeadBranch(target);
+                refs.TryReadBranchTip(target, out var tip);
+                ed?.WriteMessage(
+                    $"\n[hyob] hyobCo: HEAD → 分支 '{target}'  (tip {tip.ToHex().Substring(0, 12)})");
+                ed?.WriteMessage(
+                    "\n[hyob] 注意：本次仅移动 HEAD 指针，AutoCAD Database 内容未改变。");
+                ed?.WriteMessage(
+                    "\n[hyob]      如需让 DWG 实体回滚到该 commit，需 M9 反向 patch（尚未落地）。");
+                return;
+            }
+
+            // 否则按通用 ref 解析 → detached HEAD
+            Hash hash;
+            try { hash = new RefResolver(objects, refs).Resolve(target); }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobCo: 解析 '{target}' 失败：{ex.Message}");
+                return;
+            }
+            refs.WriteHeadDetached(hash);
+            ed?.WriteMessage(
+                $"\n[hyob] hyobCo: HEAD detached → {hash.ToHex().Substring(0, 12)}  ({target})");
+            ed?.WriteMessage(
+                "\n[hyob] 注意：HEAD 已 detached（不在任何分支上），AutoCAD Database 内容未改变。");
+            ed?.WriteMessage(
+                "\n[hyob]      在该状态下做 hyobC 会创建悬空 commit（无分支引用），建议先 hyobB new <name> 锚定。");
+        }
+
+        private static string PromptTarget(Editor ed)
+        {
+            if (ed == null) return null;
+            var opts = new PromptStringOptions(
+                "\n[hyob] hyobCo 目标 ref（分支名 / HEAD~N / hash 前缀）")
+            {
+                AllowSpaces = false,
+            };
+            var res = ed.GetString(opts);
+            if (res.Status != PromptStatus.OK) return null;
+            return res.StringResult?.Trim();
         }
     }
 
-    /// <summary>hyobM - 三路合并（M8/M10 落地）。</summary>
+    /// <summary>
+    /// hyobM - 三路合并（M8-B）。把指定分支 / commit 合并到当前 HEAD 所在分支。
+    ///
+    /// 算法：
+    ///   1. 解析 ours = 当前 HEAD（必须 attached），theirs = 用户输入 ref
+    ///   2. MergeBaseFinder 找最近公共祖先 base
+    ///   3. 若 ours 是 theirs 祖先 → fast-forward：HEAD 直接前移到 theirs，无新 commit
+    ///   4. 若 theirs 是 ours 祖先 → 已是最新，no-op
+    ///   5. 否则 TreeMerger 三路合并；有冲突 → 仅打印冲突表，<b>不写 commit、不动 ref</b>；
+    ///      无冲突 → 写新 merge commit（parents=[ours, theirs]），HEAD 移到该 commit
+    /// 不修改 AutoCAD Database（同 hyobCo，反向 patch 留 M9）。
+    /// </summary>
     public class HyobMergeCommand
     {
         public void Execute()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage("\n[hyob] hyobM: stub —— 将在 M8/M10 落地。");
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage("\n[hyob] hyobM: 当前 DWG 未初始化 .hyob/，请先 hyobI。");
+                return;
+            }
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            if (!refs.TryReadHead(out var headBranch, out var headDetached))
+            {
+                ed?.WriteMessage("\n[hyob] hyobM: HEAD 未设置。");
+                return;
+            }
+            if (headBranch == null)
+            {
+                ed?.WriteMessage(
+                    "\n[hyob] hyobM: HEAD 处于 detached 状态，拒绝合并。请先 hyobCo <branch> 或 hyobB new 后再合并。");
+                return;
+            }
+            if (!refs.TryReadBranchTip(headBranch, out var oursTip))
+            {
+                ed?.WriteMessage($"\n[hyob] hyobM: 当前分支 '{headBranch}' 无 tip。");
+                return;
+            }
+
+            string theirsExpr = PromptString(ed, "要合并进来的 ref");
+            if (string.IsNullOrWhiteSpace(theirsExpr)) return;
+
+            Hash theirsTip;
+            try { theirsTip = new RefResolver(objects, refs).Resolve(theirsExpr); }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobM: 解析 '{theirsExpr}' 失败：{ex.Message}");
+                return;
+            }
+            if (theirsTip == oursTip)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobM: 已经是最新（ours == theirs）。");
+                return;
+            }
+
+            var lcaFinder = new MergeBaseFinder(objects);
+            if (!lcaFinder.TryFind(oursTip, theirsTip, out var baseHash))
+            {
+                ed?.WriteMessage(
+                    "\n[hyob] hyobM: 找不到公共祖先（独立历史），首期版本拒绝合并。");
+                return;
+            }
+
+            ed?.WriteMessage($"\n[hyob] hyobM: 准备合并");
+            ed?.WriteMessage($"\n  ours   : {oursTip.ToHex().Substring(0, 12)}  ({headBranch})");
+            ed?.WriteMessage($"\n  theirs : {theirsTip.ToHex().Substring(0, 12)}  ({theirsExpr})");
+            ed?.WriteMessage($"\n  base   : {baseHash.ToHex().Substring(0, 12)}");
+
+            // FF / no-op
+            if (baseHash == oursTip)
+            {
+                refs.WriteBranchTip(headBranch, theirsTip);
+                ed?.WriteMessage($"\n[hyob] hyobM: fast-forward → {theirsTip.ToHex().Substring(0, 12)}（未新建 merge commit）");
+                ed?.WriteMessage("\n[hyob] 注意：HEAD 已前移，AutoCAD Database 未改变。");
+                return;
+            }
+            if (baseHash == theirsTip)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobM: 已是最新（theirs 是 ours 祖先），无操作。");
+                return;
+            }
+
+            // 真正三路合并
+            var oursCommit = HyobCommit.Decode(objects.Read(oursTip));
+            var theirsCommit = HyobCommit.Decode(objects.Read(theirsTip));
+            var baseCommit = HyobCommit.Decode(objects.Read(baseHash));
+
+            var merger = new TreeMerger(objects);
+            HyobMergeResult result;
+            try
+            {
+                result = merger.Merge(baseCommit.Tree, oursCommit.Tree, theirsCommit.Tree);
+            }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobM: 合并失败：{ex.Message}");
+                return;
+            }
+
+            if (result.HasConflicts)
+            {
+                ed?.WriteMessage(
+                    $"\n[hyob] hyobM: 检测到 {result.Conflicts.Count} 个冲突（自动合并 {result.AutoMergedCount} 项）");
+                ed?.WriteMessage("\n[hyob]      已中止，未写入 commit、未移动 HEAD。请人工解决后再合并：");
+                int shown = 0;
+                foreach (var c in result.Conflicts)
+                {
+                    if (shown++ >= 30) { ed?.WriteMessage($"\n  … 共 {result.Conflicts.Count} 条，已截断"); break; }
+                    string mark = ConflictMark(c.Kind);
+                    string detail = ConflictDetail(c);
+                    ed?.WriteMessage($"\n  {mark} {Trim(c.Path, 56)}  {detail}");
+                }
+                return;
+            }
+
+            // 无冲突 → 写 merge commit
+            var meta = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                { "merge.base",   baseHash.ToHex() },
+                { "merge.ours",   oursTip.ToHex() },
+                { "merge.theirs", theirsTip.ToHex() },
+                { "merge.autoMerged", result.AutoMergedCount.ToString(CultureInfo.InvariantCulture) },
+            };
+            var mergeCommit = new HyobCommit(
+                tree: result.MergedTreeHash,
+                author: Environment.UserName ?? "hyob",
+                message: $"merge {theirsExpr} into {headBranch}",
+                parents: new[] { oursTip, theirsTip },
+                command: "hyobM",
+                meta: meta);
+            var mergeHash = objects.Write(mergeCommit.EncodeBlob());
+            refs.WriteBranchTip(headBranch, mergeHash);
+
+            ed?.WriteMessage($"\n[hyob] hyobM: 合并完成");
+            ed?.WriteMessage($"\n  commit  : {mergeHash.ToHex().Substring(0, 12)}（parents = ours + theirs）");
+            ed?.WriteMessage($"\n  自动合并: {result.AutoMergedCount} 项");
+            ed?.WriteMessage($"\n  HEAD    : '{headBranch}' → {mergeHash.ToHex().Substring(0, 12)}");
+            ed?.WriteMessage("\n[hyob] 注意：HEAD 与 ref 已更新，AutoCAD Database 未改变（M9 反向 patch 尚未落地）。");
+        }
+
+        private static string PromptString(Editor ed, string label)
+        {
+            if (ed == null) return null;
+            var opts = new PromptStringOptions($"\n[hyob] hyobM {label}（分支名 / HEAD~N / hash 前缀）")
+            {
+                AllowSpaces = false,
+            };
+            var res = ed.GetString(opts);
+            if (res.Status != PromptStatus.OK) return null;
+            return res.StringResult?.Trim();
+        }
+
+        private static string ConflictMark(HyobConflictKind k)
+        {
+            switch (k)
+            {
+                case HyobConflictKind.ModifyModify: return "M/M";
+                case HyobConflictKind.AddAdd:       return "A/A";
+                case HyobConflictKind.ModifyDelete: return "M/D";
+                case HyobConflictKind.DeleteModify: return "D/M";
+                default:                            return "??";
+            }
+        }
+
+        private static string ConflictDetail(HyobMergeConflict c)
+        {
+            string b = c.BaseHash.IsZero   ? "—"           : c.BaseHash.ToHex().Substring(0, 8);
+            string o = c.OursHash.IsZero   ? "(deleted)"   : c.OursHash.ToHex().Substring(0, 8);
+            string t = c.TheirsHash.IsZero ? "(deleted)"   : c.TheirsHash.ToHex().Substring(0, 8);
+            return $"base={b}  ours={o}  theirs={t}";
+        }
+
+        private static string Trim(string s, int max)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            return s.Length <= max ? s : s.Substring(0, max - 1) + "…";
         }
     }
 
@@ -1591,13 +2232,146 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
         }
     }
 
-    /// <summary>hyobP - 弹出历史面板（M10 落地）。</summary>
+    /// <summary>hyobP - 弹出 hyob 历史面板（M10）。</summary>
     public class HyobShowHistoryPanelCommand
     {
         public void Execute()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage("\n[hyob] hyobP: stub —— 将在 M10 落地。");
+            HyCADTool.Shell.Commands.ShowPanelCommand.ShowHyobHistoryPanel();
+        }
+    }
+
+    /// <summary>
+    /// hyobAp - 反向 patch（M9-A）：把指定 ref 的 hyob 快照应用回 AutoCAD Database。
+    ///
+    /// 流程：
+    ///   1. 解析 target ref → commit → tree hash
+    ///   2. 用户二次确认（命令默认 "no"，避免误触）
+    ///   3. <see cref="DatabaseReverseMirror.Apply"/>：单事务内对 ModelSpace 增删改
+    ///   4. 报告 +N ~M -K 与按 type 分类，未支持类型计入 skip
+    ///
+    /// 安全约束（M9-A）：
+    ///   - 仅处理 Line / Circle / Arc 三种 typed 类型；其余（Polyline/MText/Dim/Hatch/Block/Opaque）跳过不动
+    ///   - 不创建/修改 Layer / Style / Block 表
+    ///   - 不保留 handle（Modify = erase + 新建，handle 重新分配）
+    ///   - 单事务，过程任何异常都会被 AutoCAD 自动回滚
+    ///
+    /// 不会自动 commit 应用结果到 hyob —— 用户应在 Apply 完成且确认 DWG 正确后手动 hyobC。
+    /// </summary>
+    public class HyobApplyCommand
+    {
+        public void Execute()
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            var paths = HyobContext.TryResolveLayout(ed, doc);
+            if (paths == null) return;
+            if (!paths.Exists())
+            {
+                ed?.WriteMessage("\n[hyob] hyobAp: 当前 DWG 未初始化 .hyob/，请先 hyobI。");
+                return;
+            }
+
+            var (objects, refs) = HyobContext.OpenStores(paths);
+            var resolver = new RefResolver(objects, refs);
+
+            var refExpr = PromptString(ed, "目标 ref（分支名 / HEAD~N / hash 前缀）", "HEAD");
+            if (refExpr == null) return;
+
+            Hash commitHash;
+            try { commitHash = resolver.Resolve(refExpr); }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobAp: 解析 '{refExpr}' 失败：{ex.Message}");
+                return;
+            }
+
+            HyobCommit commit;
+            try { commit = HyobCommit.Decode(objects.Read(commitHash)); }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobAp: 读取 commit 失败：{ex.Message}");
+                return;
+            }
+
+            ed?.WriteMessage($"\n[hyob] hyobAp: 准备把 {commitHash.ToHex().Substring(0, 12)} 的快照应用到 Database");
+            ed?.WriteMessage($"\n  msg    : {commit.Message}");
+            ed?.WriteMessage($"\n  tree   : {commit.Tree.ToHex().Substring(0, 12)}");
+            ed?.WriteMessage("\n  范围   : 仅 ModelSpace；白名单 Line/Circle/Arc/Polyline/DBText/MText；其它类型保留不动");
+            ed?.WriteMessage("\n  注意   : Modify 操作会销毁原 handle，新建实体获新 handle");
+
+            if (!ConfirmDestructive(ed)) return;
+
+            var mirror = new DatabaseReverseMirror(objects);
+            DatabaseReverseMirror.ApplyStats stats;
+            try
+            {
+                stats = mirror.Apply(doc.Database, commit.Tree);
+            }
+            catch (Exception ex)
+            {
+                ed?.WriteMessage($"\n[hyob] hyobAp: 应用过程异常，事务已回滚：{ex.Message}");
+                return;
+            }
+
+            ed?.WriteMessage("\n[hyob] hyobAp: 完成");
+            if (stats.LayersAdded > 0 || stats.LayersUpdated > 0)
+                ed?.WriteMessage($"\n  Layer: +{stats.LayersAdded} ~{stats.LayersUpdated}");
+            ed?.WriteMessage($"\n  +{stats.Added}  ~{stats.Modified}  -{stats.Deleted}");
+            if (stats.AddedByKind.Count > 0)
+                ed?.WriteMessage("\n  Add  : " + FormatKindMap(stats.AddedByKind));
+            if (stats.ModifiedByKind.Count > 0)
+                ed?.WriteMessage("\n  Mod  : " + FormatKindMap(stats.ModifiedByKind));
+            if (stats.SkippedUnsupported > 0)
+            {
+                ed?.WriteMessage($"\n  跳过 : {stats.SkippedUnsupported} 条不支持的 type（M9-B 后扩白名单）");
+                if (stats.SkippedByKind.Count > 0)
+                    ed?.WriteMessage("\n         " + FormatKindMap(stats.SkippedByKind));
+            }
+            if (stats.SkippedMissing > 0)
+                ed?.WriteMessage($"\n  缺失 : {stats.SkippedMissing} 条 target hash 在 ObjectStore 中读不到");
+            if (stats.Unchanged > 0)
+                ed?.WriteMessage($"\n  未变 : {stats.Unchanged}");
+            ed?.WriteMessage("\n[hyob] 注意：Database 已修改但未自动 hyobC；确认无误后请手动提交。");
+        }
+
+        private static string FormatKindMap(Dictionary<HyobObjectKind, int> map)
+        {
+            return string.Join(", ",
+                map.OrderByDescending(kv => kv.Value)
+                   .Select(kv => $"{HyobReporting.KindName(kv.Key)}={kv.Value}"));
+        }
+
+        private static string PromptString(Editor ed, string label, string defaultValue)
+        {
+            if (ed == null) return null;
+            var opts = new PromptStringOptions($"\n[hyob] hyobAp {label}") { AllowSpaces = false };
+            if (defaultValue != null)
+            {
+                opts.DefaultValue = defaultValue;
+                opts.UseDefaultValue = true;
+            }
+            var pr = ed.GetString(opts);
+            if (pr.Status != PromptStatus.OK) return null;
+            return pr.StringResult ?? defaultValue;
+        }
+
+        private static bool ConfirmDestructive(Editor ed)
+        {
+            if (ed == null) return false;
+            var opts = new PromptKeywordOptions("\n[hyob] hyobAp 是否继续应用到 Database？")
+            {
+                AllowNone = true
+            };
+            opts.Keywords.Add("Yes");
+            opts.Keywords.Add("No");
+            opts.Keywords.Default = "No";
+            var pr = ed.GetKeywords(opts);
+            if (pr.Status != PromptStatus.OK) return false;
+            if (string.Equals(pr.StringResult, "Yes", StringComparison.OrdinalIgnoreCase))
+                return true;
+            ed.WriteMessage("\n[hyob] hyobAp: 已取消，未对 Database 做任何修改。");
+            return false;
         }
     }
 }

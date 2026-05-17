@@ -1,5 +1,5 @@
 using Autodesk.AutoCAD.ApplicationServices;
-using HyCADTool.Shell.Commands;
+using HyCADTool.Features.TextEdit.Commands;
 using HyCADTool.App.Bootstrap;
 using System;
 using System.Reflection;
@@ -11,7 +11,7 @@ namespace HyCADTool.App.Test
     ///
     /// 日常业务请直接在 AutoCAD 命令行输对应命令名 —— 这些命令都由
     /// <c>ReCall.CommandFacade</c> 注册，经 <c>commands.json</c> 映射后反射调用。
-    /// 本方法只为"我想临时写一段代码跑一下"的调试场景保留。aa
+    /// 本方法只为"我想临时写一段代码跑一下"的调试场景保留。
     ///
     /// 改下方 <c>Execute()</c> 那一行即可切换测试目标，然后 C2 → C1。
     /// </summary>
@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("NewDDS Phase 0 占位", () =>
+            SimpleLogger.LogElapsedTime("hyed 文字编辑", () =>
             {
-                new HyCADTool.Features.AcadDimension.Commands.NewDdsCommand().Execute();
+                new HyEdCommand().Execute();
             });
         }
     }

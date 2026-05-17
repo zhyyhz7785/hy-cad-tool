@@ -72,6 +72,8 @@ namespace HyCADTool.App.Production
         [CommandMethod("sd")]     public void Cmd_sd() => LicenseGate.RunGated("sd", () => ProductionDispatcher.Invoke("sd"));
         [CommandMethod("ddaa")]   public void Cmd_ddaa() => LicenseGate.RunGated("ddaa", () => ProductionDispatcher.Invoke("ddaa"));
         [CommandMethod("hydimA")] public void Cmd_hydimA() => LicenseGate.RunGated("hydimA", () => ProductionDispatcher.Invoke("hydimA"));
+        [CommandMethod("hyed")] public void Cmd_hyed() => LicenseGate.RunGated("hyed", () => ProductionDispatcher.Invoke("hyed"));
+        [CommandMethod("_HYED_INTERNAL")] public void Cmd__HYED_INTERNAL() => LicenseGate.RunGated("_HYED_INTERNAL", () => ProductionDispatcher.Invoke("_HYED_INTERNAL"));
         #endregion
 
         #region 地脚螺栓 (Anchor Bolt)
