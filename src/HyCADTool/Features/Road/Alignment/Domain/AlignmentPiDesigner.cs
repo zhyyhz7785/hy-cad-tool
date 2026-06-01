@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 namespace HyCADTool.Features.Road.PlanAlignment.Domain

@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 namespace HyCADTool.Features.Road.PlanAlignment.Domain

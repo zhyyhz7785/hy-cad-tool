@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Road.Events;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Shared.AutoCAD.Services.Road;
@@ -79,7 +79,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
                     var p = centerline.GetPointAt(i);
                     pts.Add(new AlignmentPiInput
                     {
-                        P = new HyCADTool.Shared.Geometry.Point2D(p.X, p.Y),
+                        P = new HyCAD.Geometry.Point2D(p.X, p.Y),
                         Radius = 0,
                         SpiralIn = 0,
                         SpiralOut = 0,

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 
 namespace HyCADTool.Domain.Models.Road

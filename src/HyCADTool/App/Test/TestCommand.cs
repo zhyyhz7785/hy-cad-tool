@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.ApplicationServices;
-using HyCADTool.Features.TextEdit.Commands;
 using HyCADTool.App.Bootstrap;
+using HyCADTool.Shell.Commands;
 using System;
 using System.Reflection;
 
@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("hyed 文字编辑", () =>
+            SimpleLogger.LogElapsedTime("打开 HyBlender 面板", () =>
             {
-                new HyEdCommand().Execute();
+                ShowPanelCommand.ShowHyBlenderPanel();
             });
         }
     }

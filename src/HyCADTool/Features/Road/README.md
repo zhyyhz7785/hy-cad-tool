@@ -10,7 +10,7 @@
 
 | 属于本目录 | 不属于本目录 |
 |------------|--------------|
-| `PlanAlignment/`、`CrossSection/`、`PlanProfile/`、`Intersection/`、`Marking/`、`Plan/`、`Export/`、`Events/`、`Shared/` | 通用几何内核 → `Shared/Geometry` |
+| `PlanAlignment/`、`CrossSection/`、`PlanProfile/`、`Intersection/`、`Marking/`、`Plan/`、`Export/`、`Events/`、`Shared/` | 通用几何内核 → **`HyCAD.Geometry`**（原 `Shared/Geometry` 已迁入独立项目） |
 | `HyRoad` XData、`.roaddesign.json`、图层语义 | 全局图层注册表 → `PluginInitializer.GetRequiredLayers` 与 `HyRoadLayers` **必须同步**（pitfalls） |
 
 ## 子目录规划（L3 索引）

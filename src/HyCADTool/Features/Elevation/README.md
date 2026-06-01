@@ -11,7 +11,7 @@
 | 属于本目录 | 不属于本目录 |
 |------------|--------------|
 | `DrawElevationCommand` 等命令与 Jig | 全局 TextStyle/DimStyle → `Shell/Configuration` |
-| `Domain` 3D 与 `Services` 构造 | 纯 2D 通用几何 → `Shared/Geometry` |
+| `Domain` 3D 与 `Services` 构造 | 纯 2D 通用几何 → **`HyCAD.Geometry`** |
 
 ## 目录结构
 

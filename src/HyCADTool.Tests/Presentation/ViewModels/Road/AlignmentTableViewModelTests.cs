@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using Xunit;

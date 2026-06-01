@@ -57,6 +57,14 @@ public sealed class DofLayout
                     AddDof(required, t.NodeB, DofType.UX);
                     AddDof(required, t.NodeB, DofType.UY);
                     break;
+                case EulerBeam2DElementDef b:
+                    AddDof(required, b.NodeA, DofType.UX);
+                    AddDof(required, b.NodeA, DofType.UY);
+                    AddDof(required, b.NodeA, DofType.RZ);
+                    AddDof(required, b.NodeB, DofType.UX);
+                    AddDof(required, b.NodeB, DofType.UY);
+                    AddDof(required, b.NodeB, DofType.RZ);
+                    break;
                 default:
                     throw new NotSupportedException($"Element type {el.GetType().Name} is not supported.");
             }

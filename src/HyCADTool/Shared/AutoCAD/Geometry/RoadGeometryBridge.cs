@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using AcadGeom = Autodesk.AutoCAD.Geometry;
 using AcadDb = Autodesk.AutoCAD.DatabaseServices;
-using DomainGeom = HyCADTool.Shared.Geometry;
+using DomainGeom = HyCAD.Geometry;
 using DomainRoad = HyCADTool.Domain.Models.Road;
 
 namespace HyCADTool.Shared.AutoCAD.Geometry

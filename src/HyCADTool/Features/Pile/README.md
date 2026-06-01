@@ -39,4 +39,4 @@
 
 - [ ] 多文档缓存键使用文档全路径，与 `SettingsPanelViewModel` 模式一致。
 - [ ] 修改 `Shell/Configuration/Modules/PileConfiguration` 时避免再引入 `Features.Pile.Domain` 到 Shell（历史债，见 `Shell/README`）。
-- [ ] Voronoi 计算注意数值容差与 `Shared/Geometry` 一致性。
+- [ ] Voronoi 计算注意数值容差与 **`HyCAD.Geometry`**（如 `Tolerance`）一致性。

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.Features.Road.CrossSection.Services;

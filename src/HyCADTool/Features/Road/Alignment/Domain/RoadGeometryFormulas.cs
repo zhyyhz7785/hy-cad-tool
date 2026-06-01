@@ -1,5 +1,5 @@
 using System;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 namespace HyCADTool.Features.Road.PlanAlignment.Domain

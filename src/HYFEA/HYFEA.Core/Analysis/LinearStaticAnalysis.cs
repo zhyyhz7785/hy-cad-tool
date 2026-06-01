@@ -3,6 +3,7 @@ using HYFEA.Core.Diagnostics;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Elements;
 using HYFEA.Core.LinearAlgebra;
+using HYFEA.Core.Loads;
 using HYFEA.Core.Model;
 using HYFEA.Core.Results;
 using HYFEA.Core.Solvers;
@@ -30,6 +31,7 @@ public sealed class LinearStaticAnalysis
                 null,
                 null,
                 null,
+                null,
                 layout,
                 null);
         }
@@ -46,6 +48,7 @@ public sealed class LinearStaticAnalysis
                 null,
                 null,
                 null,
+                null,
                 layout,
                 sol.Diagnostics);
         }
@@ -55,6 +58,7 @@ public sealed class LinearStaticAnalysis
         var rVec = ComputeReactions(sys.Stiffness, sys.Force, uFull);
         var reacField = ToReactionField(layout, rVec);
         var axial = ComputeAxialForces(problem, layout, uFull);
+        var beams = ComputeBeamEndForces(problem, layout, uFull);
 
         return new FemResult(
             true,
@@ -63,6 +67,7 @@ public sealed class LinearStaticAnalysis
             disp,
             reacField,
             axial,
+            beams,
             layout,
             sol.Diagnostics);
     }
@@ -129,7 +134,31 @@ public sealed class LinearStaticAnalysis
                 case Truss2DElementDef t:
                     map.Set(t.Id, Truss2DContribution.AxialForce(problem, t, layout, uFull));
                     break;
+                case EulerBeam2DElementDef eb:
+                    map.Set(eb.Id, EulerBeam2DContribution.AxialForceFromDisplacement(problem, eb, layout, uFull));
+                    break;
             }
+        }
+        return map;
+    }
+
+    private static ElementBeamEndForceMap ComputeBeamEndForces(FemProblem problem, DofLayout layout, DenseVector uFull)
+    {
+        var map = new ElementBeamEndForceMap();
+        foreach (var el in problem.Elements)
+        {
+            if (el is not EulerBeam2DElementDef beam)
+                continue;
+            UniformBeamLoad? ul = null;
+            foreach (var L in problem.LoadCase.ElementLoads)
+            {
+                if (L is UniformBeamLoad u && u.TargetElement == beam.Id)
+                    ul = u;
+            }
+            EulerBeam2DContribution.RecoverEndForces(
+                problem, beam, layout, uFull, ul,
+                out double n, out double ma, out double va, out double mb, out double vb);
+            map.Set(beam.Id, new BeamEndValues(n, va, ma, vb, mb));
         }
         return map;
     }

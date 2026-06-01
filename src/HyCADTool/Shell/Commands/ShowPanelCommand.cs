@@ -1,4 +1,5 @@
 using Autofac;
+using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Presentation;
 using HyCADTool.Presentation.ViewModels;
 using HyCADTool.App.Bootstrap;
@@ -43,6 +44,10 @@ namespace HyCADTool.Shell.Commands
         public static void ShowFilterPanel()
             => OpenTab(HyBlenderPanelViewModel.FilterTabKey, "显示过滤面板失败");
 
+        /// <summary>HYSpongeCity 入口：显示海绵城市伪分类 Tab（参数+CAD+输出 一体面板）。</summary>
+        public static void ShowSpongeCityPanel()
+            => OpenTab(HyBlenderPanelViewModel.SpongeCityTabKey, "显示海绵城市面板失败");
+
         /// <summary>显示桩基分类 Tab。</summary>
         public static void ShowPilePanel()      => OpenTab("桩基", "显示桩基面板失败");
 
@@ -60,6 +65,20 @@ namespace HyCADTool.Shell.Commands
             catch (System.Exception ex)
             {
                 ed?.WriteMessage($"\n显示 hyob 历史面板失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>HYFEA 梁元 MVP（N7 / 独立 PaletteSet）。</summary>
+        public static void ShowHyfeaBeamMvpPanel(ObjectId? sourceEntityId = null)
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            try
+            {
+                ServiceLocator.Container.Resolve<PanelManager>().ShowHyfeaBeamMvpPalette(sourceEntityId);
+            }
+            catch (System.Exception ex)
+            {
+                ed?.WriteMessage($"\n显示 HYFEA 面板失败: {ex.Message}");
             }
         }
 

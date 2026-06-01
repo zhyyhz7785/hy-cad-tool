@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 
 namespace HyCADTool.Domain.Services.Road

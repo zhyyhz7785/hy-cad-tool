@@ -2,7 +2,7 @@ using System;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Xdata;

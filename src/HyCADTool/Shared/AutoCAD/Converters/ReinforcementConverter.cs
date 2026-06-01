@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System.Collections.Generic;
 
 namespace HyCADTool.Shared.AutoCAD.Converters

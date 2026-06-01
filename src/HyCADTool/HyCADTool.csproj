@@ -72,6 +72,8 @@
 
   <!-- 引用 Blender WPF 控件库（主题 + NumericSlider / PropertyRow / IconTabBar 等） -->
   <ItemGroup>
+    <ProjectReference Include="..\HYFEA\HYFEA.Core\HYFEA.Core.csproj" />
+    <ProjectReference Include="..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
     <ProjectReference Include="..\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -156,6 +158,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Features\Settlement\Views\SettlementPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\SpongeCity\Views\SpongeCityPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Reinforcement\Views\ReinToolPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -284,6 +294,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Features\Road\CrossSection\Views\StructureLayerWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Fem\Views\BeamMvpPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -6,6 +6,7 @@
 
 | 项目 | 目标框架 | 说明 |
 |------|----------|------|
+| `HyCAD.Geometry`（仓库 `src/HyCAD.Geometry/`） | netstandard2.0 | **共用**平面/向量/多边形等几何；`HYFEA.Core` 与 `HyCADTool` 均 `ProjectReference`，命名空间 `HyCAD.Geometry.*` |
 | `HYFEA.Core` | netstandard2.0 | IR、DOF、装配、稠密求解、线弹性 Spring1D / Truss2D、`GoldenCaseRunner` |
 | `HYFEA.Tests` | net48 | xunit + FluentAssertions，G01–G04 黄金算例 |
 | `HYFEA.Examples` | net48 | 控制台演示桁架（见 `Program.cs`） |
@@ -18,7 +19,7 @@ dotnet test src\HYFEA\HYFEA.Tests\HYFEA.Tests.csproj -c Debug
 dotnet run --project src\HYFEA\HYFEA.Examples\HYFEA.Examples.csproj -c Debug
 ```
 
-也可在 Visual Studio 中打开根目录 `HyCADtoolGpt.sln`，已包含上述三个项目。
+也可在 Visual Studio 中打开根目录 `HyCADtoolGpt.sln`，已包含上述工程及 **`HyCAD.Geometry`**。
 
 ## P0.v0.1 范围
 

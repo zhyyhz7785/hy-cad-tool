@@ -194,12 +194,6 @@ namespace HyCADTool.Presentation.ViewModels
                 new SettingsGroupVm("表格样式",     "TableStyle"),
             }));
 
-            Categories.Add(new SettingsCategoryVm("钢筋",       "＃", new[]
-            {
-                new SettingsGroupVm("钢筋参数", "ReinParams"),
-                new SettingsGroupVm("尺寸参数", "ReinDimParams"),
-            }));
-
             Categories.Add(new SettingsCategoryVm("底板",       "▦", new[]
             {
                 new SettingsGroupVm("配筋参数", "BasePlateRein"),

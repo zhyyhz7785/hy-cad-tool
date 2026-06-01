@@ -1,0 +1,73 @@
+<UserControl x:Class="HyCADTool.Features.Fem.Views.BeamMvpPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
+             d:DesignHeight="480"
+             d:DesignWidth="360"
+             Background="{DynamicResource Brush_RegionBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="8">
+            <TextBlock Margin="0 0 0 8" Text="HYFEA 梁元 MVP（N7 / 开发）" FontWeight="Bold" />
+
+            <TextBlock Margin="0 4 0 2" Text="E (MPa)" />
+            <TextBox Style="{StaticResource BlenderTextBox}"
+                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                     Text="{Binding YoungsModulus, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Margin="0 8 0 2" Text="A (mm²)" />
+            <TextBox Style="{StaticResource BlenderTextBox}"
+                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                     Text="{Binding AreaMm2, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Margin="0 8 0 2" Text="Iz (mm⁴)" />
+            <TextBox Style="{StaticResource BlenderTextBox}"
+                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                     Text="{Binding InertiaZ, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Margin="0 8 0 2" Text="q (N/mm) 均布" />
+            <TextBox Style="{StaticResource BlenderTextBox}"
+                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                     Text="{Binding Q, UpdateSourceTrigger=PropertyChanged}" />
+
+            <CheckBox Margin="0 8 0 0"
+                      Content="荷载：全局 −Y（否则局部法向）"
+                      IsChecked="{Binding LoadIsGlobalNegY}" />
+
+            <TextBlock Margin="0 8 0 2" Text="轴线分段数" />
+            <TextBox Style="{StaticResource BlenderTextBox}"
+                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                     Text="{Binding Segments, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Margin="0 8 0 2" Text="变形显示比例" />
+            <TextBox Style="{StaticResource BlenderTextBox}"
+                     helper:TextBoxHelper.EnableCustomHandlers="True"
+                     Text="{Binding DeflectionScale, UpdateSourceTrigger=PropertyChanged}" />
+
+            <CheckBox Margin="0 8 0 0" Content="单位 SI（m/N）；默认 MmN" IsChecked="{Binding UseSiUnits}" />
+
+            <CheckBox Margin="0 4 0 0" Content="绘变形" IsChecked="{Binding DrawDeflection}" />
+            <CheckBox Content="绘弯矩折线" IsChecked="{Binding DrawMoment}" />
+            <CheckBox Content="绘剪力折线" IsChecked="{Binding DrawShear}" />
+            <CheckBox Content="绘反力文字" IsChecked="{Binding DrawReactions}" />
+
+            <Button Margin="0 12 0 0"
+                    HorizontalAlignment="Stretch"
+                    Command="{Binding SolveCommand}"
+                    Content="求解并回写"
+                    Style="{StaticResource BlenderButtonFlat}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

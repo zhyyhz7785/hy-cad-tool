@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.AcadDimension.Services
 {

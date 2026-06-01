@@ -1,5 +1,5 @@
 using System;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 
 namespace HyCADTool.Domain.Services.Road

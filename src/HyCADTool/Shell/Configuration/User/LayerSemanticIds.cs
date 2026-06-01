@@ -61,6 +61,8 @@ namespace HyCADTool.Shell.Configuration.User
         public const string ClusterHull = nameof(ClusterHull);
         public const string ClusterPts = nameof(ClusterPts);
 
+        public const string HyfeaResult = nameof(HyfeaResult);
+
         public const string RoadPlaneAlignment = nameof(RoadPlaneAlignment);
         public const string RoadProfile = nameof(RoadProfile);
         public const string RoadCorridor = nameof(RoadCorridor);

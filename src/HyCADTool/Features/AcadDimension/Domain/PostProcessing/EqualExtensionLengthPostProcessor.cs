@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HyCADTool.Features.AcadDimension.Domain.Config;
 using HyCADTool.Features.AcadDimension.Domain.Results;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.AcadDimension.Domain.PostProcessing
 {

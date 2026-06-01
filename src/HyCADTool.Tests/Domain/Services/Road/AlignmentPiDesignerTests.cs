@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using FluentAssertions;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Services.Road

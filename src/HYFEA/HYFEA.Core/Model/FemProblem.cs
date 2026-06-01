@@ -11,5 +11,6 @@ public sealed record FemProblem(
     IReadOnlyDictionary<MaterialId, MaterialDefinition> Materials,
     IReadOnlyDictionary<SectionId, SectionDefinition> Sections,
     IReadOnlyList<FixedSupport> Supports,
-    LoadCase LoadCase
-);
+    LoadCase LoadCase,
+    UnitSystem Units = UnitSystem.MmN,
+    UnitDescriptor? CustomUnits = null);

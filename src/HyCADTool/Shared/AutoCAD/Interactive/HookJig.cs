@@ -49,6 +49,11 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
         }
 
         /// <summary>
+        /// 从原多段线末段解析出的线宽；提交时用它保持弯钩与原多段线一致（&lt;=0 表示原线无明确宽度）。
+        /// </summary>
+        public double SourceWidth => _hookSegmentWidth;
+
+        /// <summary>
         /// 采样器（Sampler）- 处理用户输入
         /// </summary>
         protected override SamplerStatus Sampler(JigPrompts prompts)
@@ -134,7 +139,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                     hookLength = _hookLength,
                     isVertical = _isVertical,
                     hookSegmentWidth = _hookSegmentWidth,
-                    constantWidth = _polyline.ConstantWidth,
+                    constantWidth = TryGetConstantWidth(_polyline),
                     appliedStartWidth = _polyline.GetStartWidthAt(_numVertices - 1),
                     appliedEndWidth = _polyline.GetEndWidthAt(_numVertices - 1)
                 });
@@ -148,7 +153,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             if (polyline == null || sourceSegmentIndex < 0)
                 return 0;
 
-            double constantWidth = polyline.ConstantWidth;
+            double constantWidth = TryGetConstantWidth(polyline);
             if (constantWidth > 0)
                 return constantWidth;
 
@@ -161,6 +166,23 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 return startWidth;
 
             return 0;
+        }
+
+        /// <summary>
+        /// 安全读取 <see cref="AcDbPolyline.ConstantWidth"/>。
+        /// 当多段线含逐段宽度（钢筋双线常用 SetStartWidthAt/SetEndWidthAt 设宽）而非统一宽时，
+        /// 其 getter 会抛 <c>eInvalidInput</c>，此处吞掉并返回 0，交由调用方回退到逐段宽。
+        /// </summary>
+        private static double TryGetConstantWidth(AcDbPolyline polyline)
+        {
+            try
+            {
+                return polyline.ConstantWidth;
+            }
+            catch (System.Exception)
+            {
+                return 0;
+            }
         }
     }
 }

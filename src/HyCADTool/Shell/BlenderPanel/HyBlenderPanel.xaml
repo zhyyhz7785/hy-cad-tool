@@ -4,6 +4,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="clr-namespace:HyCADTool.Presentation.Views"
+             xmlns:sponge="clr-namespace:HyCADTool.Features.SpongeCity.Views"
+             xmlns:rein="clr-namespace:HyCADTool.Features.Reinforcement.Views"
              xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:bp="clr-namespace:HyCAD.BlenderUI.Controls.Primitives;assembly=HyCAD.BlenderUI"
@@ -146,6 +148,34 @@
                     </Style>
                 </views:FilterPanel.Style>
             </views:FilterPanel>
+
+            <!-- ========== 模式 4：海绵城市面板（IsSpongeCityMode=True） ========== -->
+            <sponge:SpongeCityPanel DataContext="{Binding SpongeCityVm}">
+                <sponge:SpongeCityPanel.Style>
+                    <Style TargetType="{x:Type sponge:SpongeCityPanel}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsSpongeCityMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </sponge:SpongeCityPanel.Style>
+            </sponge:SpongeCityPanel>
+
+            <!-- ========== 模式 5：钢筋面板（IsReinMode=True） ========== -->
+            <rein:ReinToolPanel>
+                <rein:ReinToolPanel.Style>
+                    <Style TargetType="{x:Type rein:ReinToolPanel}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsReinMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </rein:ReinToolPanel.Style>
+            </rein:ReinToolPanel>
 
             <!-- ========== 模式 3：命令列表（IsCommandListMode=True） ========== -->
         <Grid>

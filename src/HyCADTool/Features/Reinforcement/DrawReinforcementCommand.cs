@@ -3,12 +3,12 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Features.Reinforcement.Domain;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;
 using System.Collections.Generic;
-using HyCADTool.Shared.Geometry.Interfaces;
+using HyCAD.Geometry.Interfaces;
 
 namespace HyCADTool.Features.Reinforcement
 {

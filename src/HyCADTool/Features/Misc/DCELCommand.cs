@@ -2,8 +2,8 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using HyCADTool.Shared.Geometry.Algorithms;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry.Algorithms;
+using HyCAD.Geometry;
 using HyCADTool.Features.DCEL.Services;
 using HyCADTool.Features.DCEL.Domain.Services;
 using HyCADTool.Shared.AutoCAD.Interfaces;
@@ -126,7 +126,7 @@ namespace HyCADTool.Features.Misc
                 // 3. 提取并简化所有曲线（使用全局配置）
                 var tolerance = 0.01;
                 var sw1 = Stopwatch.StartNew();
-                var simplificationService = new HyCADTool.Shared.Geometry.Algorithms.CurveSimplificationService();
+                var simplificationService = new HyCAD.Geometry.Algorithms.CurveSimplificationService();
                 var (segments, mappings) = _curveExtractor.ExtractAndSimplify(
                     curveIds, 
                     simplificationService, 

@@ -2,7 +2,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System;
 using System.Collections.Generic;
 

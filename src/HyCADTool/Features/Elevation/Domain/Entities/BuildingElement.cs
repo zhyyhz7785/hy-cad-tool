@@ -1,6 +1,6 @@
 using System;
 using HyCADTool.Features.Elevation.Domain.ValueObjects;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.Elevation.Domain.Entities
 {

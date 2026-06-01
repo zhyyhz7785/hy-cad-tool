@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 using HyCADTool.Presentation.ViewModels;

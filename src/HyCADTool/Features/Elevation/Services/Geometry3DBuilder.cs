@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.Features.Elevation.Domain.Entities;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.Elevation.Services
 {

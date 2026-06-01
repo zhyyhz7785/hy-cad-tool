@@ -1,4 +1,4 @@
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System.Collections.Generic;
 using System.Linq;
 

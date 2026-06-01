@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.AcadDimension.Domain.Context
 {

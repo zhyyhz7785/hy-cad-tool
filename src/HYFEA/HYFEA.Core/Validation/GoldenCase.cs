@@ -1,15 +1,26 @@
 using HYFEA.Core.Analysis;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Model;
+using HYFEA.Core.Results;
 
 namespace HYFEA.Core.Validation;
 
-public sealed record Tolerance(double DisplacementRelative, double ReactionAbsolute, double AxialRelative);
+/// <param name="MomentRelative">梁端弯矩 |M| 相对容差（默认 1e-5）</param>
+/// <param name="ShearRelative">梁端剪力 |V| 相对容差（默认 1e-5）</param>
+/// <param name="RotationRelative">转角 |RZ| 相对容差，与 <see cref="ExpectedDisplacements"/> 中 RZ 项配合（默认 1e-5）</param>
+public sealed record Tolerance(
+    double DisplacementRelative,
+    double ReactionAbsolute,
+    double AxialRelative,
+    double MomentRelative = 1e-5,
+    double ShearRelative = 1e-5,
+    double RotationRelative = 1e-5);
 
 public sealed record ExpectedResults(
     IReadOnlyList<(NodeId node, DofType dof, double displacement)> ExpectedDisplacements,
     IReadOnlyList<(NodeId node, DofType dof, double reaction)> ExpectedReactions,
-    IReadOnlyList<(ElementId element, double axial)>? ExpectedAxials = null);
+    IReadOnlyList<(ElementId element, double axial)>? ExpectedAxials = null,
+    IReadOnlyList<(ElementId element, BeamEndValues end)>? ExpectedBeamEnds = null);
 
 public sealed record GoldenCase(string Name, FemProblem Problem, ExpectedResults Expected, Tolerance Tolerance);
 
@@ -32,7 +43,8 @@ public static class GoldenCaseRunner
         foreach (var (node, dof, ev) in gc.Expected.ExpectedDisplacements)
         {
             double av = res.Displacements.Get(node, dof);
-            all &= Add(lines, $"u {node.Value}.{dof}", ev, av, gc.Tolerance.DisplacementRelative, relative: true);
+            double tolRel = dof == DofType.RZ ? gc.Tolerance.RotationRelative : gc.Tolerance.DisplacementRelative;
+            all &= Add(lines, $"u {node.Value}.{dof}", ev, av, tolRel, relative: true);
         }
 
         foreach (var (node, dof, ev) in gc.Expected.ExpectedReactions)
@@ -47,6 +59,19 @@ public static class GoldenCaseRunner
             {
                 double av = res.AxialForces.Get(eid);
                 all &= Add(lines, $"N {eid.Value}", ev, av, gc.Tolerance.AxialRelative, relative: true);
+            }
+        }
+
+        if (gc.Expected.ExpectedBeamEnds is not null && res.BeamEndForces is not null)
+        {
+            foreach (var (eid, ev) in gc.Expected.ExpectedBeamEnds)
+            {
+                var av = res.BeamEndForces.Get(eid);
+                all &= Add(lines, $"beam N {eid.Value}", ev.N, av.N, gc.Tolerance.AxialRelative, relative: true);
+                all &= Add(lines, $"beam VA {eid.Value}", ev.VA, av.VA, gc.Tolerance.ShearRelative, relative: true);
+                all &= Add(lines, $"beam MA {eid.Value}", ev.MA, av.MA, gc.Tolerance.MomentRelative, relative: true);
+                all &= Add(lines, $"beam VB {eid.Value}", ev.VB, av.VB, gc.Tolerance.ShearRelative, relative: true);
+                all &= Add(lines, $"beam MB {eid.Value}", ev.MB, av.MB, gc.Tolerance.MomentRelative, relative: true);
             }
         }
 

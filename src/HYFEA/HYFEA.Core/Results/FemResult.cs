@@ -30,6 +30,20 @@ public sealed class ElementAxialForceMap
     public IReadOnlyDictionary<ElementId, double> AsReadOnly() => _values;
 }
 
+public readonly record struct BeamEndValues(double N, double VA, double MA, double VB, double MB);
+
+/// <summary>Internal beam resultants at element ends (local / structural sign; see <see cref="Elements.EulerBeam2DContribution"/>).</summary>
+public sealed class ElementBeamEndForceMap
+{
+    private readonly Dictionary<ElementId, BeamEndValues> _values = [];
+
+    public void Set(ElementId id, BeamEndValues v) => _values[id] = v;
+
+    public BeamEndValues Get(ElementId id) => _values[id];
+
+    public IReadOnlyDictionary<ElementId, BeamEndValues> AsReadOnly() => _values;
+}
+
 public sealed record FemResult(
     bool Success,
     FemError? Error,
@@ -37,5 +51,6 @@ public sealed record FemResult(
     NodalValueField? Displacements,
     NodalValueField? Reactions,
     ElementAxialForceMap? AxialForces,
+    ElementBeamEndForceMap? BeamEndForces,
     DofLayout? Layout,
     SolveDiagnostics? Diagnostics);

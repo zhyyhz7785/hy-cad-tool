@@ -1,5 +1,5 @@
 using System;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using Newtonsoft.Json;
 
 namespace HyCADTool.Domain.Models.Road.ControlElements

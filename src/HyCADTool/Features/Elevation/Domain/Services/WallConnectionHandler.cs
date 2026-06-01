@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Features.BaseRein.Domain.Services;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.Elevation.Domain.Services
 {

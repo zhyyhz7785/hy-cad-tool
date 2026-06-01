@@ -1,5 +1,5 @@
 using HyCADTool.Features.Elevation.Domain.Interfaces;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System;
 using System.IO;
 

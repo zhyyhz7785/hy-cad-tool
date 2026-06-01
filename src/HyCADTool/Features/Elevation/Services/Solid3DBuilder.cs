@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 
 namespace HyCADTool.Features.Elevation.Services

@@ -2,7 +2,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.DCEL.Domain.DataStructures;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Shared.AutoCAD.Services;
 using System;
@@ -327,8 +327,8 @@ namespace HyCADTool.Features.DCEL.Services
         /// 查找匹配的曲线段
         /// </summary>
         private CurveSegment2D FindMatchingCurveSegment(
-            HyCADTool.Shared.Geometry.Point2D start,
-            HyCADTool.Shared.Geometry.Point2D end,
+            HyCAD.Geometry.Point2D start,
+            HyCAD.Geometry.Point2D end,
             List<CurveSegment2D> curveSegments,
             double tolerance,
             out bool isReversed)
@@ -394,7 +394,7 @@ namespace HyCADTool.Features.DCEL.Services
             else if (segment.Type == CurveSegmentType.Line && segment.OriginalLine.HasValue)
             {
                 var line = segment.OriginalLine.Value;
-                var reversedLine = new HyCADTool.Shared.Geometry.Line2D(line.EndPoint, line.StartPoint);
+                var reversedLine = new HyCAD.Geometry.Line2D(line.EndPoint, line.StartPoint);
                 return new CurveSegment2D(reversedLine);
             }
 
@@ -403,9 +403,9 @@ namespace HyCADTool.Features.DCEL.Services
         }
 
         private static bool IsPointOnSegment(
-            HyCADTool.Shared.Geometry.Point2D p,
-            HyCADTool.Shared.Geometry.Point2D a,
-            HyCADTool.Shared.Geometry.Point2D b,
+            HyCAD.Geometry.Point2D p,
+            HyCAD.Geometry.Point2D a,
+            HyCAD.Geometry.Point2D b,
             double tol)
         {
             // 向量叉积判断共线

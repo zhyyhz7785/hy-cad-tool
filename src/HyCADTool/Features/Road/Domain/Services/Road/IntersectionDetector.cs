@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
-using Polyline3D = HyCADTool.Shared.Geometry.Polyline3D;
+using HyCAD.Geometry;
+using Polyline3D = HyCAD.Geometry.Polyline3D;
 
 namespace HyCADTool.Domain.Services.Road
 {

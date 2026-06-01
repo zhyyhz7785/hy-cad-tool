@@ -38,6 +38,8 @@ namespace HyCADTool.Presentation.ViewModels
                 OnPropertyChanged(nameof(SelectedTabIndex));
                 OnPropertyChanged(nameof(IsPreferencesMode));
                 OnPropertyChanged(nameof(IsFilterMode));
+                OnPropertyChanged(nameof(IsSpongeCityMode));
+                OnPropertyChanged(nameof(IsReinMode));
                 OnPropertyChanged(nameof(IsCommandListMode));
                 RefreshFilterNow("tab-switch");
             }
@@ -82,8 +84,14 @@ namespace HyCADTool.Presentation.ViewModels
         /// <summary>当前选中的是否为「过滤」伪分类。</summary>
         public bool IsFilterMode => _selectedTab != null && _selectedTab.Key == FilterTabKey;
 
-        /// <summary>既非设置也非过滤 → 正常命令列表模式。</summary>
-        public bool IsCommandListMode => !IsPreferencesMode && !IsFilterMode;
+        /// <summary>当前选中的是否为「海绵城市」伪分类。</summary>
+        public bool IsSpongeCityMode => _selectedTab != null && _selectedTab.Key == SpongeCityTabKey;
+
+        /// <summary>当前选中的是否为「钢筋」业务分类。</summary>
+        public bool IsReinMode => _selectedTab != null && _selectedTab.Key == ReinTabKey;
+
+        /// <summary>既非设置/过滤/海绵/钢筋 → 正常命令列表模式。</summary>
+        public bool IsCommandListMode => !IsPreferencesMode && !IsFilterMode && !IsSpongeCityMode && !IsReinMode;
 
         /// <summary>设置面板的 ViewModel，首次切入「设置」时才创建。</summary>
         private HySettingsViewModel _preferencesVm;
@@ -95,11 +103,27 @@ namespace HyCADTool.Presentation.ViewModels
         public FilterPanelViewModel FilterVm
             => _filterVm ?? (_filterVm = new FilterPanelViewModel());
 
+        /// <summary>海绵城市面板的 ViewModel，首次切入「海绵城市」时绑定当前文档的 VM。</summary>
+        public HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel SpongeCityVm
+            => HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.Current
+               ?? new HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel();
+
+        /// <summary>钢筋面板的设置 ViewModel，直接服务 gj / gb 等钢筋命令。</summary>
+        private SettingsPanelViewModel _reinFallback;
+        public SettingsPanelViewModel ReinVm
+            => SettingsPanelViewModel.Current ?? (_reinFallback ?? (_reinFallback = new SettingsPanelViewModel()));
+
         /// <summary>「设置」伪分类的稳定 Key。</summary>
         public const string PreferencesTabKey = "__preferences__";
 
         /// <summary>「过滤」伪分类的稳定 Key。</summary>
         public const string FilterTabKey = "__filter__";
+
+        /// <summary>「海绵城市」伪分类的稳定 Key。</summary>
+        public const string SpongeCityTabKey = "__sponge__";
+
+        /// <summary>「钢筋」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
+        public const string ReinTabKey = "钢筋";
 
         /// <summary>过滤后的当前 Tab 命令（供 View 的 ListBox/ItemsControl 绑定）。</summary>
         public ObservableCollection<CommandItemVm> FilteredItems { get; } = new ObservableCollection<CommandItemVm>();
@@ -158,6 +182,13 @@ namespace HyCADTool.Presentation.ViewModels
                     Key  = FilterTabKey,
                     Name = "过滤",
                     Icon = "⧉",
+                });
+
+                Tabs.Add(new CategoryTabVm
+                {
+                    Key  = SpongeCityTabKey,
+                    Name = "海绵城市",
+                    Icon = "≈",
                 });
 
                 int totalCommands = 0;
@@ -222,6 +253,16 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return; // 过滤 Tab 有独立内容，不走命令过滤
+            }
+            if (IsSpongeCityMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 海绵 Tab 有独立内容，不走命令过滤
+            }
+            if (IsReinMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 钢筋 Tab 有独立内容，不走命令过滤
             }
 
             if (!IsSearching)
@@ -308,6 +349,7 @@ namespace HyCADTool.Presentation.ViewModels
                 case "尺寸标注":   return "↔";
                 case "地脚螺栓":   return "◉";
                 case "设备基础":   return "▤";
+                case "海绵命令":   return "❖";
                 case "图框视口":   return "□";
                 case "道路":       return "≋";
                 case "块引线":     return "⎋";

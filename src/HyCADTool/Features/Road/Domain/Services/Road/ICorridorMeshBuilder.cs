@@ -1,5 +1,5 @@
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Domain.Services.Road
 {

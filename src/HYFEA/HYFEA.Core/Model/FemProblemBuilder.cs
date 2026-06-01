@@ -1,5 +1,5 @@
 using HYFEA.Core.Boundary;
-using HYFEA.Core.Geometry;
+using HyCAD.Geometry;
 using HYFEA.Core.Loads;
 using HYFEA.Core.Materials;
 using HYFEA.Core.Model;
@@ -15,6 +15,16 @@ public sealed class FemProblemBuilder
     private readonly Dictionary<SectionId, SectionDefinition> _sections = [];
     private readonly List<FixedSupport> _supports = [];
     private readonly List<NodalLoad> _loads = [];
+    private readonly List<IElementLoad> _elementLoads = [];
+    private UnitSystem _units = UnitSystem.MmN;
+    private UnitDescriptor? _customUnits;
+
+    public FemProblemBuilder WithUnits(UnitSystem units, UnitDescriptor? custom = null)
+    {
+        _units = units;
+        _customUnits = custom;
+        return this;
+    }
 
     public FemProblemBuilder AddNode(NodeId id, double x, double y)
     {
@@ -46,6 +56,12 @@ public sealed class FemProblemBuilder
         return this;
     }
 
+    public FemProblemBuilder AddEulerBeam2D(ElementId id, NodeId a, NodeId b, MaterialId mat, SectionId sec)
+    {
+        _elements.Add(new EulerBeam2DElementDef(id, a, b, mat, sec));
+        return this;
+    }
+
     public FemProblemBuilder AddSupport(FixedSupport support)
     {
         _supports.Add(support);
@@ -58,6 +74,12 @@ public sealed class FemProblemBuilder
         return this;
     }
 
+    public FemProblemBuilder AddElementLoad(IElementLoad load)
+    {
+        _elementLoads.Add(load);
+        return this;
+    }
+
     public FemProblem Build()
     {
         return new FemProblem(
@@ -66,6 +88,8 @@ public sealed class FemProblemBuilder
             _materials,
             _sections,
             _supports,
-            new LoadCase(_loads));
+            new LoadCase(_loads, _elementLoads),
+            _units,
+            _customUnits);
     }
 }

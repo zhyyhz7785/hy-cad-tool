@@ -12,17 +12,17 @@ namespace HyCADTool.Shared.AutoCAD.Converters
     {
         // ========== Domain → AutoCAD ==========
 
-        public Point2d ToAutoCADPoint2d(HyCADTool.Shared.Geometry.Point2D domainPoint)
+        public Point2d ToAutoCADPoint2d(HyCAD.Geometry.Point2D domainPoint)
         {
             return new Point2d(domainPoint.X, domainPoint.Y);
         }
 
-        public Point3d ToAutoCADPoint3d(HyCADTool.Shared.Geometry.Point3D domainPoint)
+        public Point3d ToAutoCADPoint3d(HyCAD.Geometry.Point3D domainPoint)
         {
             return new Point3d(domainPoint.X, domainPoint.Y, domainPoint.Z);
         }
 
-        public Polyline ToAutoCADPolyline(HyCADTool.Shared.Geometry.Polygon2D domainPolygon)
+        public Polyline ToAutoCADPolyline(HyCAD.Geometry.Polygon2D domainPolygon)
         {
             var polyline = new Polyline();
 
@@ -36,63 +36,63 @@ namespace HyCADTool.Shared.AutoCAD.Converters
             return polyline;
         }
 
-        public Line ToAutoCADLine(HyCADTool.Shared.Geometry.Line2D domainLine)
+        public Line ToAutoCADLine(HyCAD.Geometry.Line2D domainLine)
         {
             return new Line(
-                ToAutoCADPoint3d(new HyCADTool.Shared.Geometry.Point3D(domainLine.StartPoint)),
-                ToAutoCADPoint3d(new HyCADTool.Shared.Geometry.Point3D(domainLine.EndPoint))
+                ToAutoCADPoint3d(new HyCAD.Geometry.Point3D(domainLine.StartPoint)),
+                ToAutoCADPoint3d(new HyCAD.Geometry.Point3D(domainLine.EndPoint))
             );
         }
 
         // ========== AutoCAD → Domain ==========
 
-        public HyCADTool.Shared.Geometry.Point2D FromAutoCADPoint2d(Point2d acPoint)
+        public HyCAD.Geometry.Point2D FromAutoCADPoint2d(Point2d acPoint)
         {
-            return new HyCADTool.Shared.Geometry.Point2D(acPoint.X, acPoint.Y);
+            return new HyCAD.Geometry.Point2D(acPoint.X, acPoint.Y);
         }
 
-        public HyCADTool.Shared.Geometry.Point3D FromAutoCADPoint3d(Point3d acPoint)
+        public HyCAD.Geometry.Point3D FromAutoCADPoint3d(Point3d acPoint)
         {
-            return new HyCADTool.Shared.Geometry.Point3D(acPoint.X, acPoint.Y, acPoint.Z);
+            return new HyCAD.Geometry.Point3D(acPoint.X, acPoint.Y, acPoint.Z);
         }
 
-        public HyCADTool.Shared.Geometry.Polygon2D FromAutoCADPolyline(Polyline acPolyline)
+        public HyCAD.Geometry.Polygon2D FromAutoCADPolyline(Polyline acPolyline)
         {
-            var vertices = new List<HyCADTool.Shared.Geometry.Point2D>();
+            var vertices = new List<HyCAD.Geometry.Point2D>();
 
             for (int i = 0; i < acPolyline.NumberOfVertices; i++)
             {
                 var pt = acPolyline.GetPoint2dAt(i);
-                vertices.Add(new HyCADTool.Shared.Geometry.Point2D(pt.X, pt.Y));
+                vertices.Add(new HyCAD.Geometry.Point2D(pt.X, pt.Y));
             }
 
-            return new HyCADTool.Shared.Geometry.Polygon2D(vertices, acPolyline.Closed);
+            return new HyCAD.Geometry.Polygon2D(vertices, acPolyline.Closed);
         }
 
-        public HyCADTool.Shared.Geometry.Line2D FromAutoCADLine(Line acLine)
+        public HyCAD.Geometry.Line2D FromAutoCADLine(Line acLine)
         {
             var start = FromAutoCADPoint3d(acLine.StartPoint).ToPoint2D();
             var end = FromAutoCADPoint3d(acLine.EndPoint).ToPoint2D();
-            return new HyCADTool.Shared.Geometry.Line2D(start, end);
+            return new HyCAD.Geometry.Line2D(start, end);
         }
 
         // ========== Circle 转换 ==========
 
-        public Circle ToAutoCADCircle(HyCADTool.Shared.Geometry.Circle2D domainCircle)
+        public Circle ToAutoCADCircle(HyCAD.Geometry.Circle2D domainCircle)
         {
-            var center = ToAutoCADPoint3d(new HyCADTool.Shared.Geometry.Point3D(domainCircle.Center));
+            var center = ToAutoCADPoint3d(new HyCAD.Geometry.Point3D(domainCircle.Center));
             return new Circle(center, Vector3d.ZAxis, domainCircle.Radius);
         }
 
-        public HyCADTool.Shared.Geometry.Circle2D FromAutoCADCircle(Circle acCircle)
+        public HyCAD.Geometry.Circle2D FromAutoCADCircle(Circle acCircle)
         {
             var center = FromAutoCADPoint3d(acCircle.Center).ToPoint2D();
-            return new HyCADTool.Shared.Geometry.Circle2D(center, acCircle.Radius);
+            return new HyCAD.Geometry.Circle2D(center, acCircle.Radius);
         }
 
         // ========== 批量转换 ==========
 
-        public List<Line> ToAutoCADLines(IEnumerable<HyCADTool.Shared.Geometry.Line2D> domainLines)
+        public List<Line> ToAutoCADLines(IEnumerable<HyCAD.Geometry.Line2D> domainLines)
         {
             var result = new List<Line>();
             foreach (var line in domainLines)
@@ -102,9 +102,9 @@ namespace HyCADTool.Shared.AutoCAD.Converters
             return result;
         }
 
-        public List<HyCADTool.Shared.Geometry.Line2D> FromAutoCADLines(IEnumerable<Line> acLines)
+        public List<HyCAD.Geometry.Line2D> FromAutoCADLines(IEnumerable<Line> acLines)
         {
-            var result = new List<HyCADTool.Shared.Geometry.Line2D>();
+            var result = new List<HyCAD.Geometry.Line2D>();
             foreach (var line in acLines)
             {
                 result.Add(FromAutoCADLine(line));

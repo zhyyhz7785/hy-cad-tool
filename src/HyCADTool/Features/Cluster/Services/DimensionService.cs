@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Cluster.Domain.Models;
 using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Shell.Configuration.User;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;

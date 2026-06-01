@@ -1,7 +1,7 @@
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.Road

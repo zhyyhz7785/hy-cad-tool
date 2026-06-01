@@ -1,6 +1,6 @@
 using HyCADTool.Features.AcadDimension.Domain.Config;
 using HyCADTool.Features.AcadDimension.Domain.Context;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.AcadDimension.Domain.Boundary
 {

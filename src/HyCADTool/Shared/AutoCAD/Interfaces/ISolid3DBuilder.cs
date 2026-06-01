@@ -1,5 +1,5 @@
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Shared.AutoCAD.Interfaces
 {

@@ -10,7 +10,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.Features.Road.Events;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Shared.AutoCAD.Geometry;

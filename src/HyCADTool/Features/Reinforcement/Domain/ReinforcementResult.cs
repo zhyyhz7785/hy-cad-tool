@@ -1,4 +1,4 @@
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System.Collections.Generic;
 
 namespace HyCADTool.Features.Reinforcement.Domain

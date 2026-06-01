@@ -64,7 +64,7 @@ namespace HyCADTool.Features.Road
             }
 
             // 5) 读取几何 → Domain Polyline3D
-            HyCADTool.Shared.Geometry.Polyline3D domainPoly;
+            HyCAD.Geometry.Polyline3D domainPoly;
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using HyCADTool.Features.AcadDimension.Domain.Config;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 
 namespace HyCADTool.Features.AcadDimension.Tests
 {

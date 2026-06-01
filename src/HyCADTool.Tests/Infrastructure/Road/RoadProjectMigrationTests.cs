@@ -4,7 +4,7 @@ using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Models.Road.Civil;
 using HyCADTool.Domain.Models.Road.Serialization;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using Xunit;
 

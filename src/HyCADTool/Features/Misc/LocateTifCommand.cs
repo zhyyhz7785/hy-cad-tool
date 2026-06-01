@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Features.Elevation.Domain.Interfaces;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.App.Bootstrap;
 using System;
 using System.Diagnostics;

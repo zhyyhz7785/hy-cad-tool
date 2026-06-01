@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Xdata;

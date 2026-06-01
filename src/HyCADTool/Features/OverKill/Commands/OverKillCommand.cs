@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Features.OverKill.Domain;
 using HyCADTool.Features.OverKill.Services;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.OverKill.Views;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;

@@ -1,5 +1,5 @@
 using HyCADTool.Features.DCEL.Domain.DataStructures;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System.Collections.Generic;
 
 namespace HyCADTool.Features.DCEL.Services

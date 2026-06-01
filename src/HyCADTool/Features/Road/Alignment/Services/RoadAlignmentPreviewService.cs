@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.GraphicsInterface;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using AcDb = Autodesk.AutoCAD.DatabaseServices;

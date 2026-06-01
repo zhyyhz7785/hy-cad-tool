@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using Newtonsoft.Json;

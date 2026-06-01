@@ -91,7 +91,10 @@ namespace HyCADTool.Features.Reinforcement
 
                     if (pr.Status == PromptStatus.OK)
                     {
-                        polyline.ApplyReinforcementWidth(reinWidth);
+                        // 弯钩属于同一根钢筋：优先保持与原多段线一致的线宽，
+                        // 仅当原线无明确宽度（解析为 0）时才回退到面板参数 PolylineWidth × Scale。
+                        double targetWidth = jig.SourceWidth > 0 ? jig.SourceWidth : reinWidth;
+                        polyline.ApplyReinforcementWidth(targetWidth);
                         trans.Commit();
                     }
                     // 用户取消 → 不提交，事务自动回滚（含方向反转）

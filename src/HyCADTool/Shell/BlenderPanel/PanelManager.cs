@@ -10,7 +10,9 @@ using HyCADTool.Features.Road.Plan.ViewModels;
 using HyCADTool.Features.Road.Plan.Views;
 using HyCADTool.Features.DataExchange.Hyob.Presentation.Views;
 using HyCADTool.Features.DataExchange.Hyob.Presentation.ViewModels;
+using HyCADTool.Features.Fem.Views;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using Autodesk.AutoCAD.DatabaseServices;
 
 namespace HyCADTool.Presentation
 {
@@ -39,6 +41,9 @@ namespace HyCADTool.Presentation
         /// <summary>hyob 历史面板（M10）PaletteSet GUID。</summary>
         private static readonly Guid HyobHistoryPaletteGuid = new Guid("E5F6A7B8-C9D0-1234-EF56-789012345678");
 
+        /// <summary>HYFEA 梁元 MVP 独立 PaletteSet。</summary>
+        private static readonly Guid HyfeaBeamMvpPaletteGuid = new Guid("F607A8B9-C0D1-4234-F567-8901ABCDEF01");
+
         private readonly IComponentContext _componentContext;
 
         private PaletteSet _blenderPaletteSet;
@@ -64,6 +69,11 @@ namespace HyCADTool.Presentation
         private PaletteSet _hyobHistoryPaletteSet;
         private HyobHistoryPanel _hyobHistoryPanel;
         private HyobHistoryPanelViewModel _hyobHistoryVm;
+
+        // ===== HYFEA 梁元 MVP（独立 PaletteSet） =====
+        private PaletteSet _hyfeaBeamMvpPaletteSet;
+        private BeamMvpPanel _hyfeaBeamMvpPanel;
+        private BeamMvpPanelViewModel _hyfeaBeamMvpVm;
 
         /// <summary>
         /// 路线工作台 PaletteSet 上一次 <c>StateChanged</c> 观察到的 Visible 值，用于做边缘触发：
@@ -242,6 +252,39 @@ namespace HyCADTool.Presentation
         /// <summary>hyob 历史面板是否可见。</summary>
         public bool IsHyobHistoryVisible
             => _hyobHistoryPaletteSet != null && _hyobHistoryPaletteSet.Visible;
+
+        /// <summary>显示 HYFEA 梁元 MVP 面板（N7）。可选传入已选梁线的 <see cref="ObjectId"/>。</summary>
+        public void ShowHyfeaBeamMvpPalette(ObjectId? sourceEntityId = null)
+        {
+            RegisterDocumentEvents();
+
+            if (_hyfeaBeamMvpPaletteSet == null)
+                CreateHyfeaBeamMvpPalette();
+            else
+                _hyfeaBeamMvpPaletteSet.Visible = true;
+
+            if (_hyfeaBeamMvpVm != null && sourceEntityId is { IsValid: true } id)
+                _hyfeaBeamMvpVm.SourceEntityId = id;
+        }
+
+        private void CreateHyfeaBeamMvpPalette()
+        {
+            _hyfeaBeamMvpVm = new BeamMvpPanelViewModel();
+            _hyfeaBeamMvpPanel = new BeamMvpPanel(_hyfeaBeamMvpVm);
+
+            _hyfeaBeamMvpPaletteSet = new PaletteSet("HYFEA 梁元 MVP", HyfeaBeamMvpPaletteGuid)
+            {
+                Size = new System.Drawing.Size(380, 520),
+                MinimumSize = new System.Drawing.Size(320, 360),
+                DockEnabled = (DockSides)((int)DockSides.Left | (int)DockSides.Right),
+                Style = PaletteSetStyles.ShowCloseButton |
+                        PaletteSetStyles.ShowAutoHideButton |
+                        PaletteSetStyles.Snappable
+            };
+
+            _hyfeaBeamMvpPaletteSet.AddVisual("HYFEA 梁元 MVP", _hyfeaBeamMvpPanel);
+            _hyfeaBeamMvpPaletteSet.Visible = true;
+        }
 
         private void CreateHyobHistoryPalette()
         {

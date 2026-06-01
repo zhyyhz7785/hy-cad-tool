@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Shared.Geometry;
-using HyCADTool.Shared.Geometry.Math;
+using HyCAD.Geometry;
+using HyCAD.Geometry.Math;
 
 namespace HyCADTool.Features.OverKill.Services
 {

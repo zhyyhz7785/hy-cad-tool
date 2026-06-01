@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Road.Events;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.Features.Road.PlanAlignment.Domain;

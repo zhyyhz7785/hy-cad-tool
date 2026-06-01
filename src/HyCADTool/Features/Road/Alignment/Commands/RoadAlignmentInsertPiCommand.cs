@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Presentation.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;

@@ -11,7 +11,7 @@ using HyCADTool.Features.AcadDimension.Domain.Derivation;
 using HyCADTool.Features.AcadDimension.Domain.PostProcessing;
 using HyCADTool.Features.AcadDimension.Domain.Results;
 using HyCADTool.Features.AcadDimension.Validation;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.AcadDimension.Services

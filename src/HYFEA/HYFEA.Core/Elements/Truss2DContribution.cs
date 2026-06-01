@@ -1,5 +1,5 @@
 using HYFEA.Core.Dofs;
-using HYFEA.Core.Geometry;
+using HyCAD.Geometry;
 using HYFEA.Core.LinearAlgebra;
 using HYFEA.Core.Materials;
 using HYFEA.Core.Model;
@@ -53,11 +53,11 @@ internal static class Truss2DContribution
     {
         var na = GetNode(problem, e.NodeA);
         var nb = GetNode(problem, e.NodeB);
-        var v = Vector2D.From(na.Position, nb.Position);
+        var v = na.Position.VectorTo(nb.Position);
         L = v.Length;
         if (L < 1e-30)
             throw new InvalidOperationException($"Truss element {e.Id.Value}: zero length.");
-        var vn = v.Normalized();
+        var vn = v.Normalize();
         c = vn.X;
         s = vn.Y;
         var mat = problem.Materials[e.MaterialId];

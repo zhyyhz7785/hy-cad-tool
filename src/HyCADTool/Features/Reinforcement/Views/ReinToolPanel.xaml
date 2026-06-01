@@ -1,0 +1,200 @@
+<UserControl x:Class="HyCADTool.Features.Reinforcement.Views.ReinToolPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+             xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
+             Background="{DynamicResource Brush_RegionBack}"
+             Foreground="{DynamicResource Brush_TextPrimary}"
+             mc:Ignorable="d"
+             btmetrics:BlenderMetricsOverlay.Attach="True"
+             d:DesignHeight="650"
+             d:DesignWidth="320">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="ReinPanelPropertyRow" TargetType="{x:Type bc:PropertyRow}">
+                <Setter Property="LabelWidth" Value="112"/>
+            </Style>
+
+            <Style x:Key="ReinPanelInputBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource BlenderTextBox}">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="MinWidth" Value="{DynamicResource Metric_InputWidth_S}"/>
+                <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True"/>
+            </Style>
+
+            <Style x:Key="ReinPanelCommandButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButtonFlat}">
+                <Setter Property="MinHeight" Value="{DynamicResource Metric_ActionButtonMinHeight}"/>
+                <Setter Property="Padding" Value="{DynamicResource Metric_CommandGridButtonPadding}"/>
+                <Setter Property="Margin" Value="1"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            </Style>
+
+            <DataTemplate x:Key="ReinCommandButtonTemplate">
+                <Button Style="{StaticResource ReinPanelCommandButton}"
+                        Command="{Binding ExecuteCommand}"
+                        ToolTip="{Binding Tooltip}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding DisplayName}"
+                                   Foreground="{DynamicResource Brush_TextPrimary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding KeyCaption}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Margin="6,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Button>
+            </DataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer Style="{StaticResource BlenderScrollViewer}"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="{DynamicResource Metric_ButtonPaddingSmall}">
+            <TextBlock Text="钢筋参数将直接用于 gj / gb 等钢筋命令。"
+                       Foreground="{DynamicResource Brush_TextSecondary}"
+                       FontSize="{DynamicResource Metric_FontCaption}"
+                       Margin="0,0,0,6"
+                       TextWrapping="Wrap"/>
+
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Header="钢筋直径 / 间距"
+                      IsExpanded="True"
+                      Margin="0,2,0,3">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="钢筋直径" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ReinVm.RebarDiameter, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="钢筋间距" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="10"
+                                 Text="{Binding ReinVm.RebarSpacing, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </Expander>
+
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Header="钢筋参数"
+                      IsExpanded="True"
+                      Margin="0,2,0,3">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="锚固长度" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="10"
+                                 Text="{Binding ReinVm.AnchorageLength, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="点钢筋间距" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="10"
+                                 Text="{Binding ReinVm.DotSeparation, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="最小弯折长度" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="10"
+                                 Text="{Binding ReinVm.BendingLineMinLength, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="锚固连接长度" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="10"
+                                 Text="{Binding ReinVm.AnchorageJoinLength, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="弯钩长度" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="0.1"
+                                 Text="{Binding ReinVm.HookLength, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="保护层厚度" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="0.1"
+                                 Text="{Binding ReinVm.ProtectionThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="点钢绘制直径" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="0.05"
+                                 Text="{Binding ReinVm.ReinforcementDiameter, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="点钢偏移" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="0.05"
+                                 Text="{Binding ReinVm.DotReinOffset, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="多段线宽" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="0.05"
+                                 Text="{Binding ReinVm.PolylineWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </Expander>
+
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Header="尺寸参数"
+                      IsExpanded="True"
+                      Margin="0,2,0,3">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <bc:PropertyRow Label="内部尺寸距离" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ReinVm.DimensionDistanceInside, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="外部尺寸距离" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ReinVm.DimensionDistanceOutside, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="带尺寸距离" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ReinVm.DimensionDistanceWithDim, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="引线距离" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ReinVm.MleaderDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="距离容差" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.ScrollStep="1"
+                                 Text="{Binding ReinVm.DimDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </Expander>
+
+            <Separator Style="{StaticResource BlenderSeparator}" Margin="0,4,0,4"/>
+
+            <UniformGrid Columns="2" Margin="0,0,0,4">
+                <Button Style="{StaticResource ReinPanelCommandButton}"
+                        Content="设置样式"
+                        Command="{Binding ReinVm.ApplyStyleCommand}"/>
+                <Button Style="{StaticResource ReinPanelCommandButton}"
+                        Content="恢复默认值"
+                        Command="{Binding ReinVm.ResetCommand}"/>
+            </UniformGrid>
+
+            <ItemsControl ItemsSource="{Binding SelectedTab.Items}"
+                          ItemTemplate="{StaticResource ReinCommandButtonTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="3"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

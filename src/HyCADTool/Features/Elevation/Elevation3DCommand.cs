@@ -11,7 +11,7 @@ using HyCADTool.Features.Elevation.Domain.Services;
 using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Shell.Configuration.User;
 using ElevationValue = HyCADTool.Features.Elevation.Domain.ValueObjects.ElevationValue;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Elevation.Services;
@@ -231,7 +231,7 @@ namespace HyCADTool.Features.Elevation
                     
                     // 查找包含在多边形内或最近的标高文本
                     var nearestText = elevationTexts
-                        .OrderBy(t => centroid.DistanceTo(new HyCADTool.Shared.Geometry.Point2D(
+                        .OrderBy(t => centroid.DistanceTo(new HyCAD.Geometry.Point2D(
                             t.text.Position.X,
                             t.text.Position.Y)))
                         .FirstOrDefault();

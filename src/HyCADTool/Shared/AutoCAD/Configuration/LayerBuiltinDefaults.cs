@@ -85,6 +85,8 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
         public const string RoadPlanBandDivider = "02-hy-1平面-板块";
         public const string RoadPlanMarking = "02-hy-1平面-标线";
 
+        public const string HyfeaResult = "01-hy-8FEA-结果";
+
         public const string LinetypeContinuous = "Continuous";
         public static string LinetypeHyCenter => HyLinetypeNames.Center;
     }

@@ -13,7 +13,7 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
     public static class LayerCatalogFactory
     {
         /// <summary>递增时与 <see cref="UserLayerSettingsMerger"/> 联动：旧 hy-settings 会刷新默认层名/线型。</summary>
-        public const int CurrentCatalogVersion = 3;
+        public const int CurrentCatalogVersion = 4;
 
         public static IReadOnlyList<LayerDefinitionItem> CreateDefaultItems()
         {
@@ -93,6 +93,7 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
             yield return (LayerSemanticIds.ClusterEEP, LayerBuiltinDefaults.ClusterAux, 8, c);
             yield return (LayerSemanticIds.ClusterHull, LayerBuiltinDefaults.ClusterAux, 8, c);
             yield return (LayerSemanticIds.ClusterPts, LayerBuiltinDefaults.ClusterAux, 8, c);
+            yield return (LayerSemanticIds.HyfeaResult, LayerBuiltinDefaults.HyfeaResult, 7, c);
 
             yield return (LayerSemanticIds.PublicAxisMain, LayerBuiltinDefaults.PublicAxisMain, 1, hyCenter);
             yield return (LayerSemanticIds.PublicAxisText, LayerBuiltinDefaults.PublicAxisText, 1, c);

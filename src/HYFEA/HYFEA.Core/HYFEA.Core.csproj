@@ -9,4 +9,13 @@
     <AssemblyName>HYFEA.Core</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
+  </ItemGroup>
+
+  <!-- netstandard2.0: Span<T> / stackalloc 需 System.Memory -->
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.6.0" />
+  </ItemGroup>
+
 </Project>

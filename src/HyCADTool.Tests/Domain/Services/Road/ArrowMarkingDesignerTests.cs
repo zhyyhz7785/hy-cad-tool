@@ -1,7 +1,7 @@
 using System;
 using FluentAssertions;
 using HyCADTool.Domain.Services.Road;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using Xunit;
 

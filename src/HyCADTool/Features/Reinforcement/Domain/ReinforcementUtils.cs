@@ -1,5 +1,5 @@
-using HyCADTool.Shared.Geometry;
-using HyCADTool.Shared.Geometry.Interfaces;
+using HyCAD.Geometry;
+using HyCAD.Geometry.Interfaces;
 using HyCADTool.Features.Reinforcement.Domain;
 using System;
 using System.Collections.Generic;

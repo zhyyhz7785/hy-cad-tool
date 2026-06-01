@@ -19,7 +19,7 @@
 
 | 子目录 | 职责 |
 |--------|------|
-| `Domain/` | 纯模型与算法，**不**引用 AutoCAD API（可引用 `Shared/Geometry`） |
+| `Domain/` | 纯模型与算法，**不**引用 AutoCAD API（可引用 **`HyCAD.Geometry`** 程序集：`using HyCAD.Geometry`） |
 | `Services/` | 读图、写图、事务、与 AutoCAD 交互 |
 | `ViewModels/` | 面板/对话框状态与命令绑定 |
 | `Views/` | XAML + code-behind |
@@ -32,7 +32,7 @@
 ## 与 `Shell` / `Shared` / `App` 的关系
 
 - **`Shell`**：机箱；`HyBlenderPanel`、Ribbon、全局配置 schema、`CommandCatalog`、`CommandDispatcher`、`IStyleService` 等。Feature 的**业务面板**可被 Shell 嵌入，但**实现代码**仍在 `Features`。
-- **`Shared`**：跨业务几何与 AutoCAD 通用封装；Feature 的 Domain 应优先依赖 Shared，而非另一 Feature。
+- **`Shared`**：跨业务 AutoCAD 通用封装等；**平面几何算法库**在独立项目 **`HyCAD.Geometry`**（`src/HyCAD.Geometry/`）。Feature 的 Domain 应优先依赖上述共用层，而非另一 Feature。
 - **`App`**：DI 注册与插件启动；新增服务/命令类记得注册到 Autofac（见项目既有模式）。
 
 ---
@@ -40,7 +40,7 @@
 ## 放新文件：5 秒决策（Feature 侧）
 
 1. 只属于本业务？→ `Features/<切片>/` 下按上表选子目录。
-2. 多个业务都会用？→ `Shared/Geometry` 或 `Shared/AutoCAD`。
+2. 多个业务都会用？→ **`HyCAD.Geometry`**（纯几何）或 `Shared/AutoCAD`（CAD 封装）。
 3. 全局 UI 框架/配置清单？→ 不放进 Feature；与维护者确认是否 `Shell`。
 4. 需要发 AutoCAD 命令串（与 `commands.json` 一致）？→ 可用 `Shell.Commands.CommandDispatcher.Send`（视为机箱提供的公共服务）。
 

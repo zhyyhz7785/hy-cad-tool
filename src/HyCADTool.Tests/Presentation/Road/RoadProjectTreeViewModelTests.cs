@@ -3,7 +3,7 @@ using System.Linq;
 using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Models.Road.Civil;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Features.Road.Plan.ViewModels;
 using Xunit;

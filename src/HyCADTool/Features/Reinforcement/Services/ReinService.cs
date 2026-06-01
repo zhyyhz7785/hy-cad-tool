@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Shell.Configuration.User;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Converters;

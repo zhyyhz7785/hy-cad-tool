@@ -36,7 +36,7 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
                     polyline.Closed,
                     polyline.NumberOfVertices,
                     segmentCount,
-                    constantWidthBefore = polyline.ConstantWidth
+                    constantWidthBefore = SafeConstantWidth(polyline)
                 });
             #endregion
 
@@ -53,11 +53,28 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
                 new
                 {
                     inputWidth = width,
-                    constantWidthAfter = polyline.ConstantWidth,
+                    constantWidthAfter = SafeConstantWidth(polyline),
                     firstStartWidth = segmentCount > 0 ? polyline.GetStartWidthAt(0) : 0.0,
                     firstEndWidth = segmentCount > 0 ? polyline.GetEndWidthAt(0) : 0.0
                 });
             #endregion
+        }
+
+        /// <summary>
+        /// 安全读取 <see cref="Polyline.ConstantWidth"/>。
+        /// 多段线含逐段宽度（钢筋弯钩/双线常用 SetStartWidthAt/SetEndWidthAt 设宽）而非统一宽时，
+        /// 其 getter 抛 <c>eInvalidInput</c>；此处吞掉返回 0，仅供调试日志使用，避免提交流程被中断。
+        /// </summary>
+        private static double SafeConstantWidth(Polyline polyline)
+        {
+            try
+            {
+                return polyline.ConstantWidth;
+            }
+            catch (System.Exception)
+            {
+                return 0.0;
+            }
         }
     }
 }

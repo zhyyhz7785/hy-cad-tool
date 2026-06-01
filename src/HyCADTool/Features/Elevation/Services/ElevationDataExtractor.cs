@@ -5,9 +5,9 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Elevation.Domain.Services;
-using HyCADTool.Shared.Geometry.Algorithms;
+using HyCAD.Geometry.Algorithms;
 using HyCADTool.Features.Elevation.Domain.ValueObjects;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using ElevationVo = HyCADTool.Features.Elevation.Domain.ValueObjects.ElevationValue;
 
 namespace HyCADTool.Features.Elevation.Services

@@ -1,4 +1,4 @@
-using HYFEA.Core.Geometry;
+using HyCAD.Geometry;
 
 namespace HYFEA.Core.Model;
 

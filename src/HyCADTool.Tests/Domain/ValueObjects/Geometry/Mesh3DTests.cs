@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FluentAssertions;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using Xunit;
 
 namespace HyCADTool.Tests.Domain.ValueObjects.Geometry

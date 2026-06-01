@@ -1,5 +1,5 @@
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using System.Collections.Generic;
 
 namespace HyCADTool.Shared.AutoCAD.Interfaces
@@ -44,7 +44,7 @@ namespace HyCADTool.Shared.AutoCAD.Interfaces
         /// </summary>
         (List<Line2D> segments, List<SimplifiedCurveMapping> mappings) ExtractAndSimplify(
             IEnumerable<ObjectId> curveIds,
-            HyCADTool.Shared.Geometry.Algorithms.CurveSimplificationService simplificationService,
+            HyCAD.Geometry.Algorithms.CurveSimplificationService simplificationService,
             double tolerance,
             int? arcSegmentCount = null,
             int? ellipseSegmentCount = null,

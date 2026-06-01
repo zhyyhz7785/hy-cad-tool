@@ -20,3 +20,11 @@ public sealed record Truss2DElementDef(
     MaterialId MaterialId,
     SectionId SectionId
 ) : FemElementDefinition(Id);
+
+public sealed record EulerBeam2DElementDef(
+    ElementId Id,
+    NodeId NodeA,
+    NodeId NodeB,
+    MaterialId MaterialId,
+    SectionId SectionId
+) : FemElementDefinition(Id);

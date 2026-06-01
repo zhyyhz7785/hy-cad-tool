@@ -4,7 +4,7 @@ using FluentAssertions;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Models.Road.ControlElements;
 using HyCADTool.Domain.Models.Road.Serialization;
-using HyCADTool.Shared.Geometry;
+using HyCAD.Geometry;
 using Newtonsoft.Json;
 using Xunit;
 
