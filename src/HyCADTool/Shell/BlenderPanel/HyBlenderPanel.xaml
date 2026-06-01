@@ -6,6 +6,7 @@
              xmlns:views="clr-namespace:HyCADTool.Presentation.Views"
              xmlns:sponge="clr-namespace:HyCADTool.Features.SpongeCity.Views"
              xmlns:rein="clr-namespace:HyCADTool.Features.Reinforcement.Views"
+             xmlns:pile="clr-namespace:HyCADTool.Features.Pile.Views"
              xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:bp="clr-namespace:HyCAD.BlenderUI.Controls.Primitives;assembly=HyCAD.BlenderUI"
@@ -176,6 +177,20 @@
                     </Style>
                 </rein:ReinToolPanel.Style>
             </rein:ReinToolPanel>
+
+            <!-- ========== 模式 6：桩基面板（IsPileMode=True） ========== -->
+            <pile:PilePanel DataContext="{Binding PileVm}">
+                <pile:PilePanel.Style>
+                    <Style TargetType="{x:Type pile:PilePanel}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsPileMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </pile:PilePanel.Style>
+            </pile:PilePanel>
 
             <!-- ========== 模式 3：命令列表（IsCommandListMode=True） ========== -->
         <Grid>

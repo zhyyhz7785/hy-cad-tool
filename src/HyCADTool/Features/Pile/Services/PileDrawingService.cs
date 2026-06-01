@@ -27,7 +27,9 @@ namespace HyCADTool.Features.Pile.Services
         /// <summary>
         /// 绘制桩布置结果
         /// </summary>
-        public void Draw(PileLayoutService.PileLayoutResult result)
+        /// <param name="result">布置计算结果</param>
+        /// <param name="elevation">桩顶标高：在每根桩中心标注该标高</param>
+        public void Draw(PileLayoutService.PileLayoutResult result, double elevation = 0.0)
         {
             var doc = Application.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
@@ -56,16 +58,13 @@ namespace HyCADTool.Features.Pile.Services
                 // 1. 绘制桩（圆或方）
                 DrawPileEntities(tr, btr, result);
 
-                // 2. 绘制小矩形网格
-                DrawSmallRects(tr, btr, result.SmallRects);
-
-                // 3. 绘制内缩矩形
+                // 2. 绘制内缩矩形（轮廓边界，非轴网）
                 DrawRect(tr, btr, result.InsetRect, LayerGrid);
 
-                // 4. 桩编号标注
-                DrawPileAnnotations(tr, btr, result);
+                // 3. 桩标高标注（无引线）
+                DrawPileElevationLabels(tr, btr, result, elevation);
 
-                // 5. 参数表
+                // 4. 参数表
                 DrawSummaryTable(tr, btr, result);
 
                 tr.Commit();
@@ -107,17 +106,6 @@ namespace HyCADTool.Features.Pile.Services
             }
         }
 
-        private void DrawSmallRects(Transaction tr, BlockTableRecord btr, List<PileLayoutService.Rect> rects)
-        {
-            foreach (var r in rects)
-            {
-                var pl = CreatePolylineFromRect(r);
-                pl.Layer = LayerGrid;
-                btr.AppendEntity(pl);
-                tr.AddNewlyCreatedDBObject(pl, true);
-            }
-        }
-
         private void DrawRect(Transaction tr, BlockTableRecord btr, PileLayoutService.Rect rect, string layer)
         {
             var pl = CreatePolylineFromRect(rect);
@@ -126,32 +114,23 @@ namespace HyCADTool.Features.Pile.Services
             tr.AddNewlyCreatedDBObject(pl, true);
         }
 
-        private void DrawPileAnnotations(Transaction tr, BlockTableRecord btr, PileLayoutService.PileLayoutResult result)
+        /// <summary>
+        /// 在每根桩中心标注桩顶标高（无引线）
+        /// </summary>
+        private void DrawPileElevationLabels(Transaction tr, BlockTableRecord btr, PileLayoutService.PileLayoutResult result, double elevation)
         {
             double scale = result.Scale;
-            int id = 1;
+            string content = elevation.ToString("F3");
             foreach (var pt in result.PilePoints)
             {
-                var cadPt = new Point3d(pt.X, pt.Y, 0);
-                var textPt = new Point3d(pt.X + 5 * scale, pt.Y + 5 * scale, 0);
-
-                var leader = new Leader();
-                leader.AppendVertex(cadPt);
-                leader.AppendVertex(textPt);
-                leader.HasArrowHead = true;
-                leader.Layer = LayerAnnotation;
-                btr.AppendEntity(leader);
-                tr.AddNewlyCreatedDBObject(leader, true);
-
                 var mtext = new MText();
-                mtext.Contents = id.ToString();
-                mtext.Location = new Point3d(pt.X + 6 * scale, pt.Y + 6 * scale, 0);
+                mtext.Contents = content;
+                mtext.Location = new Point3d(pt.X, pt.Y, 0);
+                mtext.Attachment = AttachmentPoint.MiddleCenter;
                 mtext.TextHeight = 2.5 * scale;
                 mtext.Layer = LayerAnnotation;
                 btr.AppendEntity(mtext);
                 tr.AddNewlyCreatedDBObject(mtext, true);
-
-                id++;
             }
         }
 

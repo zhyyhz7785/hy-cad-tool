@@ -7,6 +7,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows.Threading;
+using Autofac;
+using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.Commands;
 using HyCADTool.Shell.Services;
 
@@ -40,6 +42,9 @@ namespace HyCADTool.Presentation.ViewModels
                 OnPropertyChanged(nameof(IsFilterMode));
                 OnPropertyChanged(nameof(IsSpongeCityMode));
                 OnPropertyChanged(nameof(IsReinMode));
+                OnPropertyChanged(nameof(IsPileMode));
+                OnPropertyChanged(nameof(IsBaseReinMode));
+                OnPropertyChanged(nameof(IsClusterMode));
                 OnPropertyChanged(nameof(IsCommandListMode));
                 RefreshFilterNow("tab-switch");
             }
@@ -90,8 +95,18 @@ namespace HyCADTool.Presentation.ViewModels
         /// <summary>当前选中的是否为「钢筋」业务分类。</summary>
         public bool IsReinMode => _selectedTab != null && _selectedTab.Key == ReinTabKey;
 
-        /// <summary>既非设置/过滤/海绵/钢筋 → 正常命令列表模式。</summary>
-        public bool IsCommandListMode => !IsPreferencesMode && !IsFilterMode && !IsSpongeCityMode && !IsReinMode;
+        /// <summary>当前选中的是否为「桩基」业务分类。</summary>
+        public bool IsPileMode => _selectedTab != null && _selectedTab.Key == PileTabKey;
+
+        /// <summary>当前选中的是否为「基础钢筋」伪分类。</summary>
+        public bool IsBaseReinMode => _selectedTab != null && _selectedTab.Key == BaseReinTabKey;
+
+        /// <summary>当前选中的是否为「螺栓聚类与基础标注」伪分类。</summary>
+        public bool IsClusterMode => _selectedTab != null && _selectedTab.Key == ClusterTabKey;
+
+        /// <summary>既非设置/过滤/海绵/钢筋/桩基/基础钢筋/聚类 → 正常命令列表模式。</summary>
+        public bool IsCommandListMode => !IsPreferencesMode && !IsFilterMode && !IsSpongeCityMode
+            && !IsReinMode && !IsPileMode && !IsBaseReinMode && !IsClusterMode;
 
         /// <summary>设置面板的 ViewModel，首次切入「设置」时才创建。</summary>
         private HySettingsViewModel _preferencesVm;
@@ -113,6 +128,22 @@ namespace HyCADTool.Presentation.ViewModels
         public SettingsPanelViewModel ReinVm
             => SettingsPanelViewModel.Current ?? (_reinFallback ?? (_reinFallback = new SettingsPanelViewModel()));
 
+        /// <summary>桩基面板的 ViewModel（其自身有 Current 多文档机制），承载桩参数与桩基命令。</summary>
+        private HyCADTool.Features.Pile.ViewModels.PilePanelViewModel _pileFallback;
+        public HyCADTool.Features.Pile.ViewModels.PilePanelViewModel PileVm
+            => HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.Current
+               ?? (_pileFallback ?? (_pileFallback = new HyCADTool.Features.Pile.ViewModels.PilePanelViewModel()));
+
+        /// <summary>基础钢筋面板的 ViewModel（需 DI 注入 IBaseReinforcementService）。</summary>
+        private HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel _baseReinVm;
+        public HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel BaseReinVm
+            => _baseReinVm ?? (_baseReinVm = ResolveBaseReinVm());
+
+        /// <summary>螺栓聚类与基础标注面板的 ViewModel。</summary>
+        private ClusterPanelViewModel _clusterFallback;
+        public ClusterPanelViewModel ClusterVm
+            => ClusterPanelViewModel.Current ?? (_clusterFallback ?? (_clusterFallback = new ClusterPanelViewModel()));
+
         /// <summary>「设置」伪分类的稳定 Key。</summary>
         public const string PreferencesTabKey = "__preferences__";
 
@@ -124,6 +155,15 @@ namespace HyCADTool.Presentation.ViewModels
 
         /// <summary>「钢筋」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
         public const string ReinTabKey = "钢筋";
+
+        /// <summary>「桩基」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
+        public const string PileTabKey = "桩基";
+
+        /// <summary>「基础钢筋」伪分类的稳定 Key。</summary>
+        public const string BaseReinTabKey = "__baserein__";
+
+        /// <summary>「螺栓聚类与基础标注」伪分类的稳定 Key。</summary>
+        public const string ClusterTabKey = "__cluster__";
 
         /// <summary>过滤后的当前 Tab 命令（供 View 的 ListBox/ItemsControl 绑定）。</summary>
         public ObservableCollection<CommandItemVm> FilteredItems { get; } = new ObservableCollection<CommandItemVm>();
@@ -263,6 +303,11 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return; // 钢筋 Tab 有独立内容，不走命令过滤
+            }
+            if (IsPileMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 桩基 Tab 有独立内容，不走命令过滤
             }
 
             if (!IsSearching)

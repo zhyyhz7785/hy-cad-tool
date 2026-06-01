@@ -1068,12 +1068,12 @@ namespace HyCADTool.Presentation.ViewModels
         #region 命令路由（面板按钮 → C1 → AutoCAD 命令线程）
 
         /// <summary>
-        /// 待执行命令：面板按钮设置后通过 C1 在 AutoCAD 命令线程执行
+        /// 待执行命令：面板按钮设置后通过 _HyExec 在 AutoCAD 命令线程执行
         /// </summary>
         public static System.Action PendingCommand { get; set; }
 
         /// <summary>
-        /// 最后一次执行的命令（用于 C1 重复执行）
+        /// 最后一次执行的命令（用于 _HyExec 重复执行）
         /// </summary>
         public static System.Action LastCommand { get; private set; }
 
@@ -1094,7 +1094,7 @@ namespace HyCADTool.Presentation.ViewModels
         }
 
         /// <summary>
-        /// 从面板按钮发起命令：设置 PendingCommand，然后通过 C1 在正确线程执行
+        /// 从面板按钮发起命令：设置 PendingCommand，然后通过 _HyExec 在正确线程执行
         /// 面板按钮点击时先按需同步样式（仅 dirty 时），再执行命令
         /// </summary>
         private void SendCommand(System.Action commandAction)
@@ -1129,7 +1129,7 @@ namespace HyCADTool.Presentation.ViewModels
                         documentName = doc?.Name
                     });
                 #endregion
-                doc.SendStringToExecute("C1\n", true, false, false);
+                doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)
             {

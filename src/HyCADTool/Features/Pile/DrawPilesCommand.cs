@@ -91,7 +91,7 @@ namespace HyCADTool.Features.Pile
 
                 // 3. Infrastructure 绘制（从 DI 容器获取服务）
                 var drawingService = ServiceLocator.Resolve<PileDrawingService>();
-                drawingService.Draw(result);
+                drawingService.Draw(result, vm.PileElevation);
             }
             catch (System.Exception ex)
             {

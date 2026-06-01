@@ -223,8 +223,8 @@ namespace HyCADTool.Features.BaseRein.ViewModels
         #region 命令路由
 
         /// <summary>
-        /// 通过 C1 路由到 AutoCAD 命令线程
-        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制
+        /// 通过 _HyExec 路由到 AutoCAD 命令线程
+        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
         /// 执行前自动从设置面板同步 Scale 并确保样式已应用
         /// </summary>
         private void SendCommand(Action commandAction)
@@ -243,7 +243,7 @@ namespace HyCADTool.Features.BaseRein.ViewModels
             try
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
-                doc.SendStringToExecute("C1\n", true, false, false);
+                doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)
             {

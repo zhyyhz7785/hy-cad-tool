@@ -201,12 +201,6 @@ namespace HyCADTool.Presentation.ViewModels
                 new SettingsGroupVm("高级设置", "BasePlateAdvanced"),
             }));
 
-            Categories.Add(new SettingsCategoryVm("桩基",       "○", new[]
-            {
-                new SettingsGroupVm("桩参数",   "PileParams"),
-                new SettingsGroupVm("边距参数", "PileMargin"),
-            }));
-
             Categories.Add(new SettingsCategoryVm("聚类",       "⌘", new[]
             {
                 new SettingsGroupVm("聚类参数", "ClusterParams"),

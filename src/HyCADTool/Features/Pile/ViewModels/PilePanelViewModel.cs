@@ -12,7 +12,7 @@ namespace HyCADTool.Features.Pile.ViewModels
 {
     /// <summary>
     /// 桩基布置面板 ViewModel（自含式，不依赖旧项目服务）
-    /// 参数自管理 + JSON 持久化，DrawPiles 通过 SendCommand → C1 路由到 AutoCAD 命令线程
+    /// 参数自管理 + JSON 持久化，DrawPiles 通过 SendCommand → _HyExec 路由到 AutoCAD 命令线程
     /// 参照 SettingsPanelViewModel 的持久化模式
     /// </summary>
     public class PilePanelViewModel : INotifyPropertyChanged
@@ -205,6 +205,14 @@ namespace HyCADTool.Features.Pile.ViewModels
             set => SetProperty(ref _pileArrangeRate, value);
         }
 
+        private double _pileElevation;
+        /// <summary>桩顶标高：绘制桩时在每根桩处标注该标高（默认 0）</summary>
+        public double PileElevation
+        {
+            get => _pileElevation;
+            set => SetProperty(ref _pileElevation, value);
+        }
+
         private double _inputDistanceFromContour = 400.0;
         /// <summary>整体轮廓距离 (mm)，旧默认 400</summary>
         public double InputDistanceFromContour
@@ -293,8 +301,8 @@ namespace HyCADTool.Features.Pile.ViewModels
         #region 命令路由
 
         /// <summary>
-        /// 通过 C1 路由到 AutoCAD 命令线程（Refactored 命令用）
-        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制
+        /// 通过 _HyExec 路由到 AutoCAD 命令线程（Refactored 命令用）
+        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
         /// 执行前自动确保样式已应用
         /// </summary>
         private void SendCommand(Action commandAction)
@@ -316,7 +324,7 @@ namespace HyCADTool.Features.Pile.ViewModels
                     SettingsPanelViewModel.PendingCommand = null;
                     return;
                 }
-                doc.SendStringToExecute("C1\n", true, false, false);
+                doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)
             {
@@ -339,6 +347,7 @@ namespace HyCADTool.Features.Pile.ViewModels
                 MinPileCenterDistance = 1200.0;
                 InputDisplacementRate = 0.02;
                 PileArrangeRate = 0.5;
+                PileElevation = 0.0;
                 InputDistanceFromContour = 400.0;
                 MarginUp = 400.0;
                 MarginDown = 400.0;
@@ -406,6 +415,7 @@ namespace HyCADTool.Features.Pile.ViewModels
                     MinPileCenterDistance = MinPileCenterDistance,
                     InputDisplacementRate = InputDisplacementRate,
                     PileArrangeRate = PileArrangeRate,
+                    PileElevation = PileElevation,
                     InputDistanceFromContour = InputDistanceFromContour,
                     MarginUp = MarginUp,
                     MarginDown = MarginDown,
@@ -451,6 +461,7 @@ namespace HyCADTool.Features.Pile.ViewModels
                 MinPileCenterDistance = data.MinPileCenterDistance;
                 InputDisplacementRate = data.InputDisplacementRate;
                 PileArrangeRate = data.PileArrangeRate;
+                PileElevation = data.PileElevation;
                 InputDistanceFromContour = data.InputDistanceFromContour;
                 MarginUp = data.MarginUp;
                 MarginDown = data.MarginDown;
@@ -485,6 +496,7 @@ namespace HyCADTool.Features.Pile.ViewModels
             public double MinPileCenterDistance { get; set; } = 1200.0;
             public double InputDisplacementRate { get; set; } = 0.02;
             public double PileArrangeRate { get; set; } = 0.5;
+            public double PileElevation { get; set; }
             public double InputDistanceFromContour { get; set; } = 400.0;
             public double MarginUp { get; set; } = 400.0;
             public double MarginDown { get; set; } = 400.0;
