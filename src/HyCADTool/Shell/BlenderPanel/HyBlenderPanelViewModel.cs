@@ -231,6 +231,20 @@ namespace HyCADTool.Presentation.ViewModels
                     Icon = "≈",
                 });
 
+                Tabs.Add(new CategoryTabVm
+                {
+                    Key  = BaseReinTabKey,
+                    Name = "基础钢筋",
+                    Icon = "▦",
+                });
+
+                Tabs.Add(new CategoryTabVm
+                {
+                    Key  = ClusterTabKey,
+                    Name = "螺栓聚类与基础标注",
+                    Icon = "◉",
+                });
+
                 int totalCommands = 0;
                 foreach (var g in groups)
                 {
