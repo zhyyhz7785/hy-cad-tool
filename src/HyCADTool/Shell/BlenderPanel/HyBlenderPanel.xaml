@@ -7,6 +7,7 @@
              xmlns:sponge="clr-namespace:HyCADTool.Features.SpongeCity.Views"
              xmlns:rein="clr-namespace:HyCADTool.Features.Reinforcement.Views"
              xmlns:pile="clr-namespace:HyCADTool.Features.Pile.Views"
+             xmlns:baserein="clr-namespace:HyCADTool.Features.BaseRein.Views"
              xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:bp="clr-namespace:HyCAD.BlenderUI.Controls.Primitives;assembly=HyCAD.BlenderUI"
@@ -191,6 +192,34 @@
                     </Style>
                 </pile:PilePanel.Style>
             </pile:PilePanel>
+
+            <!-- ========== 模式 7：基础钢筋面板（IsBaseReinMode=True） ========== -->
+            <baserein:BaseReinPanel DataContext="{Binding BaseReinVm}">
+                <baserein:BaseReinPanel.Style>
+                    <Style TargetType="{x:Type baserein:BaseReinPanel}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsBaseReinMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </baserein:BaseReinPanel.Style>
+            </baserein:BaseReinPanel>
+
+            <!-- ========== 模式 8：螺栓聚类与基础标注面板（IsClusterMode=True） ========== -->
+            <views:ClusterPanel DataContext="{Binding ClusterVm}">
+                <views:ClusterPanel.Style>
+                    <Style TargetType="{x:Type views:ClusterPanel}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataContext.IsClusterMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </views:ClusterPanel.Style>
+            </views:ClusterPanel>
 
             <!-- ========== 模式 3：命令列表（IsCommandListMode=True） ========== -->
         <Grid>

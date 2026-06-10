@@ -52,10 +52,10 @@ namespace HyCADTool.Shell.Commands
         public static void ShowPilePanel()      => OpenTab("桩基", "显示桩基面板失败");
 
         /// <summary>显示底板配筋分类 Tab。</summary>
-        public static void ShowBaseReinPanel()  => OpenTab("底板配筋", "显示基础配筋面板失败");
+        public static void ShowBaseReinPanel()  => OpenTab(HyBlenderPanelViewModel.BaseReinTabKey, "显示基础配筋面板失败");
 
-        /// <summary>显示块引线分类 Tab（原聚类面板入口）。</summary>
-        public static void ShowClusterPanel()   => OpenTab("块引线", "显示聚类面板失败");
+        /// <summary>显示螺栓聚类与基础标注 Tab。</summary>
+        public static void ShowClusterPanel()   => OpenTab(HyBlenderPanelViewModel.ClusterTabKey, "显示聚类面板失败");
 
         /// <summary>hyobP 入口：拉起 hyob 历史 PaletteSet（独立面板，不在 HyBlenderPanel 内）。</summary>
         public static void ShowHyobHistoryPanel()

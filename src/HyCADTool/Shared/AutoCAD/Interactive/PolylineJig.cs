@@ -88,7 +88,18 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             options.Keywords.Add("撤销");
             options.Keywords.Add("Z");
             options.AppendKeywordsToMessage = true;
-            options.UserInputControls = UserInputControls.Accept3dCoordinates | UserInputControls.NullResponseAccepted;
+
+            // 相对上一确认点取点，并服从 ORTHOMODE（F8 正交）
+            if (_points.Count > 0)
+            {
+                options.UseBasePoint = true;
+                options.BasePoint = _points[_points.Count - 1];
+            }
+
+            options.UserInputControls =
+                UserInputControls.Accept3dCoordinates
+                | UserInputControls.NullResponseAccepted
+                | UserInputControls.GovernedByOrthoMode;
 
             PromptPointResult result = prompts.AcquirePoint(options);
 

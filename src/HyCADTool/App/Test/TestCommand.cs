@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("打开 HyBlender 面板", () =>
+            SimpleLogger.LogElapsedTime("打开基础钢筋 Tab", () =>
             {
-                ShowPanelCommand.ShowHyBlenderPanel();
+                ShowPanelCommand.ShowBaseReinPanel();
             });
         }
     }

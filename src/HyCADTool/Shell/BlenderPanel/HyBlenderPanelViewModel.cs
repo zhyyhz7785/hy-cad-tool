@@ -323,6 +323,16 @@ namespace HyCADTool.Presentation.ViewModels
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return; // 桩基 Tab 有独立内容，不走命令过滤
             }
+            if (IsBaseReinMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 基础钢筋 Tab 有独立内容，不走命令过滤
+            }
+            if (IsClusterMode)
+            {
+                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
+                return; // 螺栓聚类 Tab 有独立内容，不走命令过滤
+            }
 
             if (!IsSearching)
             {
@@ -393,6 +403,21 @@ namespace HyCADTool.Presentation.ViewModels
             int c = a.Order.CompareTo(b.Order);
             if (c != 0) return c;
             return string.Compare(a.DisplayName, b.DisplayName, StringComparison.Ordinal);
+        }
+
+        private static HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel ResolveBaseReinVm()
+        {
+            try
+            {
+                var container = ServiceLocator.Container;
+                if (container != null)
+                    return container.Resolve<HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel>();
+            }
+            catch
+            {
+                // 设计器或容器未初始化时忽略
+            }
+            return null;
         }
 
         private static string PickCategoryIcon(string category)

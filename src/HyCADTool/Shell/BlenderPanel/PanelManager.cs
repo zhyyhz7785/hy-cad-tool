@@ -160,10 +160,10 @@ namespace HyCADTool.Presentation
         public void ShowPilePanel()      => OpenHyBlenderPanelAndSelectTab("桩基");
 
         /// <summary>显示底板配筋命令组。</summary>
-        public void ShowBaseReinPanel()  => OpenHyBlenderPanelAndSelectTab("底板配筋");
+        public void ShowBaseReinPanel()  => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.BaseReinTabKey);
 
         /// <summary>显示聚类命令组。</summary>
-        public void ShowClusterPanel()   => OpenHyBlenderPanelAndSelectTab("块引线");
+        public void ShowClusterPanel()   => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.ClusterTabKey);
 
         /// <summary>显示过滤 Tab。</summary>
         public void ShowFilterPanel()
