@@ -1,27 +1,26 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.Contracts;
-using HyCADTool.Shared.AutoCAD.Extensions;
-using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shared.AutoCAD.Configuration;
+using HyCADTool.Shared.AutoCAD.Extensions;
+using HyCADTool.Shared.AutoCAD.Interactive;
+using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shell.Configuration.User;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Reinforcement
 {
     /// <summary>
-    /// 快速延伸钢筋至边界命令（对应旧命令 ge1 → QuickExtend）
-    /// 流程：选择边界多段线 → 循环选择钢筋多段线 → 每根延伸至边界减去保护层厚度 → ESC 退出
+    /// 延伸至相交钢筋并加 15d 方向弯钩（对应旧命令 ge1）。
+    /// 流程：选钢筋 → 按点击端删弯钩 → 沿主筋方向对「01-hy-1配筋-钢筋线」求交（含自身其它段）
+    /// → 相交线朝自身侧偏移保护层再求交得末端 → HookJig 沿相交线方向画 15d 弯钩。
     /// </summary>
     public class ReinQuickExtendCommand
     {
-        private readonly ILayerService _layerService;
-
-        public ReinQuickExtendCommand()
-        {
-            _layerService = ServiceLocator.Resolve<ILayerService>();
-        }
+        private static string LayerLineRein =>
+            UserLayerNameResolver.Get(LayerSemanticIds.ReinLine, LayerBuiltinDefaults.ReinLine);
 
         public void Execute()
         {
@@ -31,59 +30,97 @@ namespace HyCADTool.Features.Reinforcement
 
             var vm = SettingsPanelViewModel.Current;
             double scale = vm?.Scale ?? 40.0;
-            double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
+            double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale;
+            double rebarDiameter = vm?.RebarDiameter ?? 14.0;
+            double hookLength15d = 15.0 * rebarDiameter;
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
+            double hookHint = vm?.AnchorageLength ?? 500.0;
 
-            // 确保样式已同步
             vm?.EnsureStylesApplied();
 
             try
             {
-                // 1. 选择边界多段线
-                var boundaryOpt = new PromptEntityOptions("\n请选择边界Polyline对象：");
-                boundaryOpt.SetRejectMessage("\n请选择一个Polyline实体作为边界。");
-                boundaryOpt.AddAllowedClass(typeof(Polyline), false);
+                var peo = new PromptEntityOptions("\n请选择钢筋多段线（点击靠近要延伸的一端）：");
+                peo.SetRejectMessage("\n请选择一个多段线对象。");
+                peo.AddAllowedClass(typeof(Polyline), true);
+                var per = ed.GetEntity(peo);
+                if (per.Status != PromptStatus.OK) return;
 
-                var boundaryRes = ed.GetEntity(boundaryOpt);
-                if (boundaryRes.Status != PromptStatus.OK) return;
-
-                ObjectId boundaryId = boundaryRes.ObjectId;
-
-                // 2. 循环选择钢筋多段线并延伸
-                while (true)
+                using (var trans = db.TransactionManager.StartTransaction())
                 {
-                    var plineOpt = new PromptEntityOptions("\n请选择要延伸的Polyline（ESC退出）：");
-                    plineOpt.SetRejectMessage("\n请选择一个Polyline实体。");
-                    plineOpt.AddAllowedClass(typeof(Polyline), false);
-                    plineOpt.AllowNone = true;
-
-                    var plineRes = ed.GetEntity(plineOpt);
-                    if (plineRes.Status == PromptStatus.Cancel || plineRes.Status == PromptStatus.None)
-                        break;
-                    if (plineRes.Status != PromptStatus.OK)
-                        continue;
-
-                    using (var trans = db.TransactionManager.StartTransaction())
+                    var poly = trans.GetObject(per.ObjectId, OpenMode.ForWrite) as Polyline;
+                    if (poly == null || poly.NumberOfVertices < 2)
                     {
-                        var pline = trans.GetObject(plineRes.ObjectId, OpenMode.ForWrite) as Polyline;
-                        var boundary = trans.GetObject(boundaryId, OpenMode.ForRead) as Polyline;
-                        if (pline == null || boundary == null || pline.NumberOfVertices < 2)
-                        {
-                            trans.Abort();
-                            continue;
-                        }
+                        trans.Abort();
+                        return;
+                    }
 
-                        // 计算点击处的线段索引
-                        Point3d closestPt = pline.GetClosestPointTo(plineRes.PickedPoint, false);
-                        double param = pline.GetParameterAtPoint(closestPt);
-                        int segIndex = Math.Min((int)Math.Floor(param), pline.NumberOfVertices - 2);
+                    bool extendFromStart = ReinExtendCommand.IsPickedNearStart(poly, per.PickedPoint);
 
-                        // 延伸至边界减去保护层厚度
-                        ReinExtendCommand.ExtendSegmentToBoundary(
-                            pline, segIndex, closestPt, boundary, protectionThickness);
+                    if (!ReinExtendCommand.TryGetHookSpan(poly, hookHint, extendFromStart, out int mainTipIndex, out int mainPrevIndex))
+                    {
+                        ed.WriteMessage("\n无法识别钢筋末端。");
+                        trans.Abort();
+                        return;
+                    }
 
-                        pline.ApplyReinforcementWidth(reinWidth);
+                    if (extendFromStart)
+                        ReinExtendCommand.RemoveStartHookVertices(poly, mainTipIndex);
+                    else
+                        ReinExtendCommand.RemoveEndHookVertices(poly, mainTipIndex);
 
+                    if (poly.NumberOfVertices < 2)
+                    {
+                        trans.Abort();
+                        return;
+                    }
+
+                    int extIdx = extendFromStart ? 0 : poly.NumberOfVertices - 1;
+                    int adjIdx = extendFromStart ? 1 : extIdx - 1;
+                    Point3d endPt = poly.GetPoint3dAt(extIdx);
+                    Point3d adjPt = poly.GetPoint3dAt(adjIdx);
+                    Vector3d extDir = endPt - adjPt;
+                    if (extDir.Length < 1e-6)
+                    {
+                        ed.WriteMessage("\n端点与相邻点重合，无法延伸。");
+                        trans.Abort();
+                        return;
+                    }
+                    extDir = extDir.GetNormal();
+
+                    int skipSeg = ReinExtendCommand.GetSkipAdjacentSegmentIndex(poly, extIdx);
+                    if (!ReinExtendCommand.FindNearestForwardRayHit(
+                            db, trans, endPt, extDir, per.ObjectId, poly, skipSeg, LayerLineRein, out var hit))
+                    {
+                        ed.WriteMessage("\n未找到射线方向上的钢筋线。");
+                        trans.Abort();
+                        return;
+                    }
+
+                    if (!ReinExtendCommand.TryGetOffsetExtensionPoint(
+                            endPt, extDir, hit, protectionThickness, out Point3d extensionPt))
+                    {
+                        ed.WriteMessage("\n偏移保护层后无法确定延伸终点。");
+                        trans.Abort();
+                        return;
+                    }
+
+                    if (endPt.DistanceTo(extensionPt) < 1e-6)
+                    {
+                        ed.WriteMessage("\n延伸距离过短，无法延伸。");
+                        trans.Abort();
+                        return;
+                    }
+
+                    poly.SetPointAt(extIdx, new Point2d(extensionPt.X, extensionPt.Y));
+
+                    var hookJig = new DirectionalHookJig(poly, extensionPt, hit.SegmentDir, hookLength15d);
+                    var pr = ed.Drag(hookJig);
+
+                    if (pr.Status == PromptStatus.OK)
+                    {
+                        double targetWidth = hookJig.SourceWidth > 0 ? hookJig.SourceWidth : reinWidth;
+                        poly.ApplyReinforcementWidth(targetWidth);
                         trans.Commit();
                     }
                 }

@@ -17,8 +17,8 @@ namespace HyCADTool.Features.Elevation.Services
     /// </summary>
     public class ElevationService
     {
-        private static ObjectId _cachedTextStyleId = ObjectId.Null;
-        private static ObjectId _cachedLayerId = ObjectId.Null;
+        private static readonly Dictionary<IntPtr, (ObjectId textStyleId, ObjectId layerId)> _styleCacheByDatabase
+            = new Dictionary<IntPtr, (ObjectId, ObjectId)>();
 
         /// <summary>
         /// 确保标高图层和文字样式已创建，返回 (textStyleId, layerId)
@@ -27,27 +27,36 @@ namespace HyCADTool.Features.Elevation.Services
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
+            var dbKey = db.UnmanagedObject;
 
-            if (_cachedTextStyleId.IsNull || _cachedTextStyleId.IsErased)
+            if (!_styleCacheByDatabase.TryGetValue(dbKey, out var cached)
+                || cached.textStyleId.IsNull || cached.textStyleId.IsErased
+                || cached.layerId.IsNull || cached.layerId.IsErased)
             {
-                _cachedTextStyleId = CreateTextStyleForElevation(db, doc);
+                var textStyleId = CreateTextStyleForElevation(db, doc);
+                var layerId = CreateLayerForElevation(db, doc);
+                cached = (textStyleId, layerId);
+                _styleCacheByDatabase[dbKey] = cached;
             }
 
-            if (_cachedLayerId.IsNull || _cachedLayerId.IsErased)
-            {
-                _cachedLayerId = CreateLayerForElevation(db, doc);
-            }
-
-            return (_cachedTextStyleId, _cachedLayerId);
+            return cached;
         }
 
         /// <summary>
-        /// 重置缓存（文档切换时调用）
+        /// 重置全部缓存（测试或全局清理）。
         /// </summary>
         public static void ResetCache()
         {
-            _cachedTextStyleId = ObjectId.Null;
-            _cachedLayerId = ObjectId.Null;
+            _styleCacheByDatabase.Clear();
+        }
+
+        /// <summary>
+        /// 文档关闭时移除对应 Database 的样式缓存。
+        /// </summary>
+        public static void RemoveDocumentCache(Database db)
+        {
+            if (db == null) return;
+            _styleCacheByDatabase.Remove(db.UnmanagedObject);
         }
 
         /// <summary>

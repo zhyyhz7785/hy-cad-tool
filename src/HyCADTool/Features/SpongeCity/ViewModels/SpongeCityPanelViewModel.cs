@@ -31,13 +31,22 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
                 {
                     var doc = AcApp.DocumentManager.MdiActiveDocument;
                     if (doc == null) return null;
-                    var docName = doc.Name;
-                    if (!_documentViewModels.ContainsKey(docName))
-                        _documentViewModels[docName] = new SpongeCityPanelViewModel();
-                    return _documentViewModels[docName];
+                    return GetOrCreate(doc.Name);
                 }
                 catch { return null; }
             }
+        }
+
+        public static SpongeCityPanelViewModel GetOrCreate(string documentName)
+        {
+            if (!_documentViewModels.ContainsKey(documentName))
+                _documentViewModels[documentName] = new SpongeCityPanelViewModel();
+            return _documentViewModels[documentName];
+        }
+
+        public static void RemoveDocument(string documentName)
+        {
+            _documentViewModels.Remove(documentName);
         }
 
         #endregion

@@ -13,12 +13,13 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
     /// 多段线交互式绘制 Jig（Polyline Interactive Drawing Jig）
     /// 功能：实时预览偏移后的多段线，支持撤销（Z 关键字）
     /// </summary>
-    public class PolylineJig : DrawJig
+    public class PolylineJig : DrawJig, IDisposable
     {
         private readonly AcDbPolyline _polyline;
         private readonly Point3dCollection _points;
-        private Point3d _currentPoint;
+        private Point3d? _currentPoint;
         private readonly double _offsetDistance;
+        private bool _disposed;
 
         /// <summary>
         /// 获取绘制的点集合
@@ -54,10 +55,11 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                     _polyline.AddVertexAt(i, new Point2d(_points[i].X, _points[i].Y), 0, 0, 0);
                 }
 
-                // 添加当前点
-                if (_currentPoint != null)
+                // 添加当前点（Sampler 尚未赋值时不预览假顶点）
+                if (_currentPoint.HasValue)
                 {
-                    _polyline.AddVertexAt(_points.Count, new Point2d(_currentPoint.X, _currentPoint.Y), 0, 0, 0);
+                    var cp = _currentPoint.Value;
+                    _polyline.AddVertexAt(_points.Count, new Point2d(cp.X, cp.Y), 0, 0, 0);
                 }
 
                 // 生成偏移曲线并绘制
@@ -105,15 +107,13 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
             if (result.Status == PromptStatus.OK)
             {
-                if (result.Value == _currentPoint)
+                if (_currentPoint.HasValue && result.Value == _currentPoint.Value)
                 {
                     return SamplerStatus.NoChange;
                 }
-                else
-                {
-                    _currentPoint = result.Value;
-                    return SamplerStatus.OK;
-                }
+
+                _currentPoint = result.Value;
+                return SamplerStatus.OK;
             }
             else if (result.Status == PromptStatus.Keyword)
             {
@@ -153,9 +153,9 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             {
                 PromptResult res = ed.Drag(this);
 
-                if (res.Status == PromptStatus.OK)
+                if (res.Status == PromptStatus.OK && _currentPoint.HasValue)
                 {
-                    _points.Add(_currentPoint);
+                    _points.Add(_currentPoint.Value);
                 }
                 else if (res.Status == PromptStatus.Keyword)
                 {
@@ -178,6 +178,13 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             return PromptStatus.OK;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _polyline?.Dispose();
         }
     }
 }

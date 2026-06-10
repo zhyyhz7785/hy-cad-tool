@@ -22,7 +22,6 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.TitleBlock.Services;
 using HyCADTool.Shared.UI.Helpers;
@@ -247,6 +246,7 @@ namespace HyCADTool.Presentation.ViewModels
         {
             try
             {
+                if (_isLoading) return;
                 if (_styleService == null) return;
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
                 if (doc == null) return;
@@ -583,7 +583,11 @@ namespace HyCADTool.Presentation.ViewModels
         public double Dimasz { get => _dimasz; set { if (SetProperty(ref _dimasz, value)) _stylesDirty = true; } }
 
         private string _dimArrowName = "_ARCHTICK";
-        public string DimArrowName { get => _dimArrowName; set => SetProperty(ref _dimArrowName, value); }
+        public string DimArrowName
+        {
+            get => _dimArrowName;
+            set { if (SetProperty(ref _dimArrowName, value)) _stylesDirty = true; }
+        }
 
         #endregion
 
@@ -1103,15 +1107,6 @@ namespace HyCADTool.Presentation.ViewModels
             SaveSettings();
             if (_stylesDirty) EnsureStylesApplied();
 
-            #region agent log
-            AgentDebugLogger.Log("routing", "H6", "SettingsPanelViewModel.SendCommand", "panel send command",
-                new
-                {
-                    commandType = commandAction?.Method?.DeclaringType?.FullName,
-                    commandName = commandAction?.Method?.Name
-                });
-            #endregion
-
             PendingCommand = () =>
             {
                 commandAction();
@@ -1119,16 +1114,6 @@ namespace HyCADTool.Presentation.ViewModels
             try
             {
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-                #region agent log
-                AgentDebugLogger.Log("routing", "H11", "SettingsPanelViewModel.SendCommand", "before queue c1",
-                    new
-                    {
-                        hasPendingCommand = PendingCommand != null,
-                        hasDocument = doc != null,
-                        commandInProgress = doc?.CommandInProgress,
-                        documentName = doc?.Name
-                    });
-                #endregion
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)

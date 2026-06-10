@@ -1,5 +1,6 @@
 using Autodesk.AutoCAD.Windows;
 using Autofac;
+using HyCADTool.App.Bootstrap;
 using System;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Features.Road.PlanAlignment.Views;
@@ -657,11 +658,48 @@ namespace HyCADTool.Presentation
             }
         }
 
+        /// <summary>C2 卸载或面板管理器销毁时对称解绑，避免 DocumentManager 事件累积。</summary>
+        public void UnregisterDocumentEvents()
+        {
+            if (!_documentEventsRegistered) return;
+
+            try
+            {
+                AcApp.DocumentManager.DocumentToBeDestroyed -= OnDocumentToBeDestroyed;
+                AcApp.DocumentManager.DocumentActivated -= OnDocumentActivated;
+            }
+            catch
+            {
+                // 静默失败
+            }
+            finally
+            {
+                _documentEventsRegistered = false;
+            }
+        }
+
         private void OnDocumentToBeDestroyed(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
             if (e.Document == null) return;
-            ViewModels.SettingsPanelViewModel.RemoveDocument(e.Document.Name);
-            HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.RemoveDocument(e.Document.Name);
+            string docName = e.Document.Name;
+            ViewModels.SettingsPanelViewModel.RemoveDocument(docName);
+            HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.RemoveDocument(docName);
+            HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.RemoveDocument(docName);
+            HyCADTool.Features.Settlement.ViewModels.SettlementPanelViewModel.RemoveDocument(docName);
+            ViewModels.ClusterPanelViewModel.RemoveDocument(docName);
+            Features.Elevation.Services.ElevationService.RemoveDocumentCache(e.Document.Database);
+
+            try
+            {
+                var roadRegistry = ServiceLocator.TryResolve<HyCADTool.Shared.AutoCAD.Services.Road.RoadProjectRegistry>();
+                roadRegistry?.Remove(docName);
+            }
+            catch
+            {
+                // 容器未初始化或道路子系统未就绪
+            }
+
+            PluginInitializer.RemoveInitializedDocument(docName);
         }
 
         /// <summary>
@@ -700,6 +738,20 @@ namespace HyCADTool.Presentation
                 if (_hyobHistoryVm != null && _hyobHistoryPaletteSet != null && _hyobHistoryPanel != null && _hyobHistoryPaletteSet.Visible)
                 {
                     RefreshHyobHistoryFromCurrentDocument();
+                }
+            }
+            catch { }
+
+            // HyBlender 统一面板：切换文档时刷新各模式 VM 绑定
+            try
+            {
+                if (_blenderPanel?.DataContext is ViewModels.HyBlenderPanelViewModel blenderVm)
+                {
+                    var disp = _blenderPanel.Dispatcher;
+                    if (disp.CheckAccess())
+                        blenderVm.NotifyActiveDocumentChanged();
+                    else
+                        disp.BeginInvoke(new Action(blenderVm.NotifyActiveDocumentChanged));
                 }
             }
             catch { }

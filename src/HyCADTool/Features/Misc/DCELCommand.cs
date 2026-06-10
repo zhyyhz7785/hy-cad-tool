@@ -8,7 +8,6 @@ using HyCADTool.Features.DCEL.Services;
 using HyCADTool.Features.DCEL.Domain.Services;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -66,11 +65,6 @@ namespace HyCADTool.Features.Misc
 
             try
             {
-                AgentDebugLogger.Log("dcel", "H1", "DCELCommand.Execute", "enter execute", new
-                {
-                    document = doc.Name
-                });
-
                 // 1. 提示用户选择曲线
                 var selectionOptions = new PromptSelectionOptions
                 {
@@ -86,7 +80,6 @@ namespace HyCADTool.Features.Misc
 
                 if (selectionResult.Status != PromptStatus.OK)
                 {
-                    AgentDebugLogger.Log("dcel", "H2", "DCELCommand.Execute", "selection cancelled", new { status = selectionResult.Status.ToString() });
                     ed.WriteMessage("\n未选择任何曲线。");
                     return;
                 }
@@ -102,10 +95,6 @@ namespace HyCADTool.Features.Misc
                                $"恢复原曲线={settings.RestoreOriginalCurves}");
 
                 var selectionSet = selectionResult.Value;
-                AgentDebugLogger.Log("dcel", "H3", "DCELCommand.Execute", "selection accepted", new
-                {
-                    count = selectionSet?.Count ?? 0
-                });
 
                 // ⏱️ 性能测量开始（用户选择完成后）
                 var stopwatch = Stopwatch.StartNew();
@@ -137,12 +126,6 @@ namespace HyCADTool.Features.Misc
                 
                 sw1.Stop();
                 long extractTime = sw1.ElapsedMilliseconds;
-                AgentDebugLogger.Log("dcel", "H4", "DCELCommand.Execute", "extract and simplify completed", new
-                {
-                    segmentCount = segments.Count,
-                    mappingCount = mappings.Count,
-                    extractTime
-                });
 
                 if (segments.Count == 0)
                 {
@@ -155,13 +138,6 @@ namespace HyCADTool.Features.Misc
                 var graph = _dcelBuilder.BuildFromSegments(segments, new Tolerance(tolerance));
                 sw3.Stop();
                 long buildTime = sw3.ElapsedMilliseconds;
-                AgentDebugLogger.Log("dcel", "H5", "DCELCommand.Execute", "dcel build completed", new
-                {
-                    vertexCount = graph?.Vertices.Count ?? 0,
-                    halfEdgeCount = graph?.HalfEdges.Count ?? 0,
-                    faceCount = graph?.Faces.Count ?? 0,
-                    buildTime
-                });
 
                 if (graph == null || graph.Faces.Count == 0)
                 {
@@ -197,20 +173,11 @@ namespace HyCADTool.Features.Misc
                 
                 if (mappings.Count > 0)
                 {
-                    AgentDebugLogger.Log("dcel", "H6", "DCELCommand.Execute", "render with mappings", new
-                    {
-                        mappingCount = mappings.Count,
-                        restoreOriginal = settings.RestoreOriginalCurves
-                    });
                     // 包含曲线，使用曲线恢复渲染（根据用户配置）
                     _dcelRenderer.RenderWithMappings(graph, mappings, "dcelOuter", "dcelInner", restoreOriginal: settings.RestoreOriginalCurves);
                 }
                 else
                 {
-                    AgentDebugLogger.Log("dcel", "H6", "DCELCommand.Execute", "render simple graph", new
-                    {
-                        faceCount = graph.Faces.Count
-                    });
                     // 纯直线，使用简单渲染
                     _dcelRenderer.Render(graph, "dcelOuter", "dcelInner");
                 }
@@ -237,16 +204,7 @@ namespace HyCADTool.Features.Misc
                 stopwatch.Stop();
                 long totalTime = stopwatch.ElapsedMilliseconds;
                 long otherTime = totalTime - collectTime - extractTime - buildTime - statsTime - validateTime - renderTime - groupTime;
-                AgentDebugLogger.Log("dcel", "H7", "DCELCommand.Execute", "execute completed", new
-                {
-                    totalTime,
-                    stats.FaceCount,
-                    outerCount,
-                    innerCount,
-                    isValid,
-                    errorCount = errors?.Count ?? 0
-                });
-                
+
                 ed.WriteMessage($"\n曲线统计：{string.Join(", ", curveStats.Select(kv => $"{kv.Key}:{kv.Value}"))}");
                 ed.WriteMessage($"\nDCEL 完成：{stats.FaceCount} 面（{outerCount} 外 + {innerCount} 内）");
                 ed.WriteMessage($"\n━━━━━━━━━━ 详细性能分析 ━━━━━━━━━━");
@@ -262,12 +220,6 @@ namespace HyCADTool.Features.Misc
             }
             catch (System.Exception ex)
             {
-                AgentDebugLogger.Log("dcel", "E1", "DCELCommand.Execute", "execute failed", new
-                {
-                    exceptionType = ex.GetType().FullName,
-                    ex.Message,
-                    ex.StackTrace
-                });
                 ed.WriteMessage($"\n错误：{ex.Message}");
                 ed.WriteMessage($"\n{ex.StackTrace}");
             }

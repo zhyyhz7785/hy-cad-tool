@@ -1,7 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
 
@@ -131,24 +130,10 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             _polyline.SetStartWidthAt(_numVertices - 1, _hookSegmentWidth);
             _polyline.SetEndWidthAt(_numVertices - 1, _hookSegmentWidth);
 
-            #region agent log
-            AgentDebugLogger.Log("initial", "H3", "HookJig.Update", "hook segment width applied",
-                new
-                {
-                    numVerticesBeforeHook = _numVertices,
-                    hookLength = _hookLength,
-                    isVertical = _isVertical,
-                    hookSegmentWidth = _hookSegmentWidth,
-                    constantWidth = TryGetConstantWidth(_polyline),
-                    appliedStartWidth = _polyline.GetStartWidthAt(_numVertices - 1),
-                    appliedEndWidth = _polyline.GetEndWidthAt(_numVertices - 1)
-                });
-            #endregion
-
             return true; // 实体已更新，需要重绘
         }
 
-        private static double ResolveHookSegmentWidth(AcDbPolyline polyline, int sourceSegmentIndex)
+        internal static double ResolveHookSegmentWidth(AcDbPolyline polyline, int sourceSegmentIndex)
         {
             if (polyline == null || sourceSegmentIndex < 0)
                 return 0;

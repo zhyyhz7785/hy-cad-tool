@@ -7,7 +7,6 @@ using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;
 using System;
@@ -44,24 +43,12 @@ namespace HyCADTool.Features.Reinforcement
             double hookLength = (vm?.HookLength ?? 1.0) * scale;             // 绿色参数 × Scale
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
-            #region agent log
-            AgentDebugLogger.Log("initial", "H1", "DrawOffsetPolylineCommand.Execute", "gg width parameters",
-                new
-                {
-                    hasViewModel = vm != null,
-                    scale,
-                    polylineWidth = vm?.PolylineWidth,
-                    offsetDistance,
-                    hookLength,
-                    reinWidth
-                });
-            #endregion
-
             // 确保样式已同步
             vm?.EnsureStylesApplied();
 
             // 1. 交互式沿边界绘制（Jig 实时预览偏移效果）
-            var jig = new PolylineJig(-offsetDistance);
+            using (var jig = new PolylineJig(-offsetDistance))
+            {
             if (jig.StartJig() != PromptStatus.OK || jig.Points.Count <= 1)
                 return;
 
@@ -95,6 +82,7 @@ namespace HyCADTool.Features.Reinforcement
                 }
 
                 trans.Commit();
+            }
             }
         }
 

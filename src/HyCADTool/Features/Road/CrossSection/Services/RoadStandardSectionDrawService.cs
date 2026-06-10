@@ -1155,7 +1155,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
         {
             // 放到 LayerManager 更干净，但此服务作为独立模块，最小副作用：不改变现有图层状态，只确保存在。
             var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-            foreach (var (name, color, _) in HyRoadLayers.GetAll())
+            foreach (var (name, color) in HyRoadLayers.GetAllResolved())
             {
                 if (lt.Has(name)) continue;
                 if (!lt.IsWriteEnabled) lt.UpgradeOpen();

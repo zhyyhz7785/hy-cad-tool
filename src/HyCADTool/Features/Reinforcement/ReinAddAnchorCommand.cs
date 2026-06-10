@@ -7,7 +7,6 @@ using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -49,19 +48,6 @@ namespace HyCADTool.Features.Reinforcement
             double scale = vm?.Scale ?? 40.0;
             double hookLength = (vm?.HookLength ?? 1.0) * scale; // 绿色参数 × Scale
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
-
-            #region agent log
-            AgentDebugLogger.Log("initial", "H1", "ReinAddAnchorCommand.Execute", "g1/g2 width parameters",
-                new
-                {
-                    isVertical = _isVertical,
-                    hasViewModel = vm != null,
-                    scale,
-                    polylineWidth = vm?.PolylineWidth,
-                    hookLength,
-                    reinWidth
-                });
-            #endregion
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();

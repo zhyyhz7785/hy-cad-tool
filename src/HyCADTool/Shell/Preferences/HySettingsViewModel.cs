@@ -125,6 +125,8 @@ namespace HyCADTool.Presentation.ViewModels
             try
             {
                 var dm = AcApp.DocumentManager;
+                dm.DocumentActivated -= OnDocumentManagerSurfaceChanged;
+                dm.DocumentToBeDestroyed -= OnDocumentManagerSurfaceChanged;
                 dm.DocumentActivated += OnDocumentManagerSurfaceChanged;
                 dm.DocumentToBeDestroyed += OnDocumentManagerSurfaceChanged;
             }
@@ -142,7 +144,8 @@ namespace HyCADTool.Presentation.ViewModels
         private void OnDocumentManagerSurfaceChanged(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
             => RefreshSettingsBindingsFromDocument();
 
-        private void RefreshSettingsBindingsFromDocument()
+        /// <summary>活动文档切换时刷新设置绑定（供 HyBlenderPanelViewModel 显式通知）。</summary>
+        public void RefreshSettingsBindingsFromDocument()
         {
             OnPropertyChanged(nameof(Settings));
             AttachSettingsStatusSubscription();

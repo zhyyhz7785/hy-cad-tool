@@ -762,15 +762,15 @@ namespace HyCADTool.Features.BaseRein.Services
             var ed = doc.Editor;
 
             // 选择轴线
-            var axisLine = SelectLine(ed, "\n请选择一条轴线:");
-            if (axisLine == null)
+            var axisPick = SelectLine(ed, db, "\n请选择一条轴线:");
+            if (axisPick == null)
             {
                 ed.WriteMessage("\n未选择轴线，操作取消。");
                 return;
             }
 
             // 获取轴线图层的所有直线
-            string axisLayer = axisLine.Layer;
+            string axisLayer = axisPick.Value.layer;
             var pso = new PromptSelectionOptions { MessageForAdding = $"\n请选择'{axisLayer}'图层的轴线:" };
             var axisFilter = new SelectionFilter(new[] {
                 new TypedValue((int)DxfCode.LayerName, axisLayer),
@@ -780,14 +780,14 @@ namespace HyCADTool.Features.BaseRein.Services
             if (axisSel.Status != PromptStatus.OK) return;
 
             // 选择配筋区域 Polyline
-            var reinforcementPoly = SelectPolyline(ed, "\n请选择代表配筋区域的Polyline:");
-            if (reinforcementPoly == null)
+            var reinPick = SelectPolyline(ed, db, "\n请选择代表配筋区域的Polyline:");
+            if (reinPick == null)
             {
                 ed.WriteMessage("\n未选择配筋区域，操作取消。");
                 return;
             }
 
-            string reinLayer = reinforcementPoly.Layer;
+            string reinLayer = reinPick.Value.layer;
             var reinPso = new PromptSelectionOptions { MessageForAdding = $"\n请选择'{reinLayer}'图层的配筋区域:" };
             var reinFilter = new SelectionFilter(new[] {
                 new TypedValue((int)DxfCode.LayerName, reinLayer),
@@ -875,8 +875,8 @@ namespace HyCADTool.Features.BaseRein.Services
             ed.WriteMessage($"\n[BaseRein] 步骤6完成：创建 {dimCount} 个标注。");
         }
 
-        /// <summary>选择一条直线</summary>
-        private static Line SelectLine(Editor ed, string prompt)
+        /// <summary>选择一条直线，在事务内读取图层名后返回 ObjectId。</summary>
+        private static (ObjectId id, string layer)? SelectLine(Editor ed, Database db, string prompt)
         {
             var peo = new PromptEntityOptions(prompt);
             peo.SetRejectMessage("\n选择的对象必须是直线。");
@@ -884,16 +884,18 @@ namespace HyCADTool.Features.BaseRein.Services
             var per = ed.GetEntity(peo);
             if (per.Status != PromptStatus.OK) return null;
 
-            using (var tr = HostApplicationServices.WorkingDatabase.TransactionManager.StartTransaction())
+            using (var tr = db.TransactionManager.StartTransaction())
             {
                 var line = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Line;
+                if (line == null) return null;
+                string layer = line.Layer;
                 tr.Commit();
-                return line;
+                return (per.ObjectId, layer);
             }
         }
 
-        /// <summary>选择一条多段线</summary>
-        private static Polyline SelectPolyline(Editor ed, string prompt)
+        /// <summary>选择一条多段线，在事务内读取图层名后返回 ObjectId。</summary>
+        private static (ObjectId id, string layer)? SelectPolyline(Editor ed, Database db, string prompt)
         {
             var peo = new PromptEntityOptions(prompt);
             peo.SetRejectMessage("\n选择的对象必须是Polyline。");
@@ -901,11 +903,13 @@ namespace HyCADTool.Features.BaseRein.Services
             var per = ed.GetEntity(peo);
             if (per.Status != PromptStatus.OK) return null;
 
-            using (var tr = HostApplicationServices.WorkingDatabase.TransactionManager.StartTransaction())
+            using (var tr = db.TransactionManager.StartTransaction())
             {
                 var poly = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Polyline;
+                if (poly == null) return null;
+                string layer = poly.Layer;
                 tr.Commit();
-                return poly;
+                return (per.ObjectId, layer);
             }
         }
 

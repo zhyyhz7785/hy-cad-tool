@@ -1,14 +1,6 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.Contracts;
-using HyCADTool.Shell.Configuration.User;
-using HyCADTool.Shared.AutoCAD.Configuration;
-using HyCADTool.Shared.AutoCAD.Extensions;
-using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shared.AutoCAD.Interactive;
-using HyCADTool.Shared.AutoCAD.Utilities;
-using HyCADTool.App.Bootstrap;
 using HyCADTool.Presentation.ViewModels;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -16,24 +8,15 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Features.Reinforcement
 {
     /// <summary>
-    /// 延伸钢筋命令（对应旧命令 ge）
-    /// 流程：
-    ///   1. 选择钢筋的非弯钩段 → 删除该端弯钩
-    ///   2. 射线求交找最近钢筋线 → 计算延伸点 a = 交点 - 保护层厚度
-    ///   3. 添加点 a 到多段线末端
-    ///   4. HookJig 实时预览 15d 垂直弯折方向（用户选左/右）→ 确认
+    /// 延伸钢筋命令（对应旧命令 ge）。
+    /// 规则：
+    ///   1. 把钢筋（Polyline）按“锚固长度”延长；
+    ///   2. 用户点击靠近哪一端，就延长哪一端；
+    ///   3. 弯钩（直弯钩 / 斜弯钩）保持原样——延长时把弯钩随主筋末端整体平移，
+    ///      主筋末段加长 = 锚固长度，弯钩形状、角度、线宽不变。
     /// </summary>
     public class ReinExtendCommand
     {
-        private readonly ILayerService _layerService;
-
-        private static string LayerLineRein => UserLayerNameResolver.Get(LayerSemanticIds.ReinLine, LayerBuiltinDefaults.ReinLine);
-
-        public ReinExtendCommand()
-        {
-            _layerService = ServiceLocator.Resolve<ILayerService>();
-        }
-
         public void Execute()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -41,33 +24,20 @@ namespace HyCADTool.Features.Reinforcement
             var ed = doc.Editor;
 
             var vm = SettingsPanelViewModel.Current;
-            double scale = vm?.Scale ?? 40.0;
-            double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
-            double rebarDiameter = vm?.RebarDiameter ?? 14.0;                      // 红色参数，直接 mm
-            double hookLength15d = 15.0 * rebarDiameter;                           // 15d = 210mm
-            double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
-
-            #region agent log
-            AgentDebugLogger.Log("initial", "H1", "ReinExtendCommand.Execute", "ge width parameters",
-                new
-                {
-                    hasViewModel = vm != null,
-                    scale,
-                    polylineWidth = vm?.PolylineWidth,
-                    protectionThickness,
-                    rebarDiameter,
-                    hookLength15d,
-                    reinWidth
-                });
-            #endregion
+            double anchorageLength = vm?.AnchorageLength ?? 500.0; // 红色参数：直接 mm，延长长度 = 锚固长度
+            if (anchorageLength <= 0)
+            {
+                ed.WriteMessage("\n锚固长度无效（需 > 0）。");
+                return;
+            }
 
             // 确保样式已同步
             vm?.EnsureStylesApplied();
 
             try
             {
-                // 1. 选择钢筋多段线（非弯钩段）
-                var peo = new PromptEntityOptions("\n请选择钢筋多段线（点击非弯钩段）：");
+                // 1. 选择钢筋多段线（点击靠近要延长的一端）
+                var peo = new PromptEntityOptions("\n请选择钢筋多段线（点击靠近要延长的一端）：");
                 peo.SetRejectMessage("\n请选择一个多段线对象。");
                 peo.AddAllowedClass(typeof(Polyline), true);
                 var per = ed.GetEntity(peo);
@@ -76,76 +46,48 @@ namespace HyCADTool.Features.Reinforcement
                 using (var trans = db.TransactionManager.StartTransaction())
                 {
                     var poly = trans.GetObject(per.ObjectId, OpenMode.ForWrite) as Polyline;
-                    if (poly == null || poly.NumberOfVertices < 3) return;
+                    if (poly == null || poly.NumberOfVertices < 2) { trans.Abort(); return; }
 
-                    // 2. 判断靠近哪端
-                    Point3d closestPt = poly.GetClosestPointTo(per.PickedPoint, false);
-                    double param = poly.GetParameterAtPoint(closestPt);
-                    int segIndex = Math.Min((int)Math.Floor(param), poly.NumberOfVertices - 2);
-                    bool nearStart = segIndex < poly.NumberOfVertices / 2;
+                    // 2. 按点击位置决定延长哪一端（不反转库内多段线）
+                    bool extendFromStart = IsPickedNearStart(poly, per.PickedPoint);
 
-                    // 3. 删除弯钩顶点
-                    if (nearStart)
-                        poly.RemoveVertexAt(0);
+                    // 3. 识别弯钩跨度 + 主筋外伸方向（弯钩随主筋整体平移，原样保留）
+                    if (!TryGetHookSpan(poly, anchorageLength, extendFromStart, out int mainTipIndex, out int mainPrevIndex))
+                    {
+                        ed.WriteMessage("\n无法识别延长方向（端点重合）。");
+                        trans.Abort();
+                        return;
+                    }
+
+                    Vector3d dir = poly.GetPoint3dAt(mainTipIndex) - poly.GetPoint3dAt(mainPrevIndex);
+                    if (dir.Length < 1e-6)
+                    {
+                        ed.WriteMessage("\n无法识别延长方向（端点重合）。");
+                        trans.Abort();
+                        return;
+                    }
+
+                    Vector3d shift = dir.GetNormal() * anchorageLength;
+
+                    // 4. 平移“主筋末端 + 弯钩”各顶点：主筋末段加长 = 锚固长度，弯钩形状/线宽不变
+                    if (extendFromStart)
+                    {
+                        for (int i = 0; i <= mainTipIndex; i++)
+                        {
+                            Point3d p = poly.GetPoint3dAt(i);
+                            poly.SetPointAt(i, new Point2d(p.X + shift.X, p.Y + shift.Y));
+                        }
+                    }
                     else
-                        poly.RemoveVertexAt(poly.NumberOfVertices - 1);
-
-                    if (poly.NumberOfVertices < 2) { trans.Abort(); return; }
-
-                    // 4. 计算延伸方向（删除弯钩后的端点 → 向外）
-                    int endIdx = nearStart ? 0 : poly.NumberOfVertices - 1;
-                    int adjIdx = nearStart ? 1 : poly.NumberOfVertices - 2;
-                    Point3d endPt = poly.GetPoint3dAt(endIdx);
-                    Point3d adjPt = poly.GetPoint3dAt(adjIdx);
-                    Vector3d rawDir = endPt - adjPt;
-                    if (rawDir.Length < 1e-6)
                     {
-                        ed.WriteMessage("\n端点与相邻点重合，无法计算方向。");
-                        trans.Abort();
-                        return;
-                    }
-                    Vector3d extDir = rawDir.GetNormal();
-
-                    // 5. 射线求交：找同图层最近钢筋线（含自身非相邻段）
-                    Point3d hitPt = FindNearestReinIntersection(db, trans, endPt, extDir, per.ObjectId, poly, endIdx);
-                    if (hitPt == Point3d.Origin)
-                    {
-                        ed.WriteMessage("\n未找到射线方向上的钢筋线。");
-                        trans.Abort();
-                        return;
+                        for (int i = mainTipIndex; i < poly.NumberOfVertices; i++)
+                        {
+                            Point3d p = poly.GetPoint3dAt(i);
+                            poly.SetPointAt(i, new Point2d(p.X + shift.X, p.Y + shift.Y));
+                        }
                     }
 
-                    double rawDist = endPt.DistanceTo(hitPt);
-                    double extDist = rawDist - protectionThickness;
-                    if (extDist <= 0)
-                    {
-                        ed.WriteMessage("\n距离不足，无法延伸。");
-                        trans.Abort();
-                        return;
-                    }
-
-                    // 6. 计算点 a（延伸终点 = 交点 - 保护层）
-                    Point3d pointA = endPt + extDir * extDist;
-
-                    // 7. 确保延伸端在多段线末尾（HookJig 在末端操作）
-                    if (nearStart)
-                        poly.ReverseCurve();
-
-                    // 8. 在末尾添加点 a
-                    poly.AddVertexAt(poly.NumberOfVertices,
-                        new Point2d(pointA.X, pointA.Y), 0, 0, 0);
-
-                    // 9. HookJig 实时预览 15d 垂直弯折（isVertical=true → 90°/270°）
-                    //    用户移动光标选择弯折方向（左/右），点击确认
-                    var jig = new HookJig(poly, hookLength15d, true);
-                    var pr = ed.Drag(jig);
-
-                    if (pr.Status == PromptStatus.OK)
-                    {
-                        poly.ApplyReinforcementWidth(reinWidth);
-                        trans.Commit();
-                    }
-                    // 用户取消 → 事务自动回滚，恢复原始多段线
+                    trans.Commit();
                 }
             }
             catch (System.Exception ex)
@@ -155,240 +97,308 @@ namespace HyCADTool.Features.Reinforcement
         }
 
         // ================================================================
-        //  射线求交
+        //  弯钩识别 + 延长平移
         // ================================================================
 
         /// <summary>
-        /// 在钢筋图层上发射射线，找到最近的钢筋交点（含自身非相邻段 + 其他钢筋线）
+        /// 识别多段线“末端”主筋锚点与主筋末段起点索引（供 ge 平移弯钩、ge1 删弯钩复用）。
         /// </summary>
-        /// <param name="selfId">当前多段线 ObjectId（自身求交时逐段检查）</param>
-        /// <param name="selfPoly">当前多段线（已删除弯钩后的状态）</param>
-        /// <param name="extEndIdx">延伸端顶点索引，相邻线段会被排除</param>
-        private static Point3d FindNearestReinIntersection(
+        internal static bool TryGetHookSpan(
+            Polyline poly, double hookLengthHint, bool fromStart,
+            out int mainTipIndex, out int mainPrevIndex)
+            => fromStart
+                ? TryGetStartHookSpan(poly, hookLengthHint, out mainTipIndex, out mainPrevIndex)
+                : TryGetEndHookSpan(poly, hookLengthHint, out mainTipIndex, out mainPrevIndex);
+
+        internal static bool TryGetEndHookSpan(
+            Polyline poly, double hookLengthHint,
+            out int mainTipIndex, out int mainPrevIndex)
+        {
+            mainTipIndex = -1;
+            mainPrevIndex = -1;
+
+            int n = poly.NumberOfVertices;
+            if (n < 2) return false;
+
+            int last = n - 1;
+            const double eps = 1e-3;
+
+            if (n >= 4 && poly.GetPoint3dAt(last).DistanceTo(poly.GetPoint3dAt(last - 2)) < eps)
+            {
+                mainTipIndex = last - 2;
+                mainPrevIndex = last - 3;
+            }
+            else if (n >= 3 && IsHookBend(poly, last, hookLengthHint))
+            {
+                mainTipIndex = last - 1;
+                mainPrevIndex = last - 2;
+            }
+            else
+            {
+                mainTipIndex = last;
+                mainPrevIndex = last - 1;
+            }
+
+            if (mainPrevIndex < 0) return false;
+            return true;
+        }
+
+        internal static bool TryGetStartHookSpan(
+            Polyline poly, double hookLengthHint,
+            out int mainTipIndex, out int mainPrevIndex)
+        {
+            mainTipIndex = -1;
+            mainPrevIndex = -1;
+
+            int n = poly.NumberOfVertices;
+            if (n < 2) return false;
+
+            const double eps = 1e-3;
+
+            if (n >= 4 && poly.GetPoint3dAt(0).DistanceTo(poly.GetPoint3dAt(2)) < eps)
+            {
+                mainTipIndex = 2;
+                mainPrevIndex = 3;
+            }
+            else if (n >= 3 && IsHookBendAtStart(poly, hookLengthHint))
+            {
+                mainTipIndex = 1;
+                mainPrevIndex = 2;
+            }
+            else
+            {
+                mainTipIndex = 0;
+                mainPrevIndex = 1;
+            }
+
+            if (mainPrevIndex >= n) return false;
+            return true;
+        }
+
+        /// <summary>删除末端弯钩顶点，保留至 <paramref name="mainTipIndex"/>。</summary>
+        internal static void RemoveEndHookVertices(Polyline poly, int mainTipIndex)
+        {
+            while (poly.NumberOfVertices > mainTipIndex + 1)
+                poly.RemoveVertexAt(poly.NumberOfVertices - 1);
+        }
+
+        /// <summary>删除起点弯钩顶点，保留自 <paramref name="mainTipIndex"/> 起。</summary>
+        internal static void RemoveStartHookVertices(Polyline poly, int mainTipIndex)
+        {
+            while (poly.NumberOfVertices > mainTipIndex + 1)
+                poly.RemoveVertexAt(0);
+        }
+
+        /// <summary>点击位置是否更靠近多段线起点（待操作端在起点侧）。</summary>
+        internal static bool IsPickedNearStart(Polyline polyline, Point3d pickedPoint)
+        {
+            Point3d closest = polyline.GetClosestPointTo(pickedPoint, false);
+            return closest.DistanceTo(polyline.StartPoint) <= closest.DistanceTo(polyline.EndPoint);
+        }
+
+        /// <summary>按点击位置把待操作端转到多段线末端（会永久反转顶点顺序，仅用于可回滚流程）。</summary>
+        [Obsolete("优先使用 IsPickedNearStart + TryGetHookSpan，避免改写库内多段线方向。")]
+        internal static void OrientEndToPickedPoint(Polyline polyline, Point3d pickedPoint)
+        {
+            if (IsPickedNearStart(polyline, pickedPoint))
+                polyline.ReverseCurve();
+        }
+
+        /// <summary>射线命中结果（含被命中线段方向，供 ge1 偏移与 15d 弯钩）。</summary>
+        internal readonly struct ReinRayHit
+        {
+            public Point3d Point { get; }
+            public Point3d SegStart { get; }
+            public Point3d SegEnd { get; }
+            public Vector3d SegmentDir { get; }
+
+            public ReinRayHit(Point3d point, Point3d segStart, Point3d segEnd, Vector3d segmentDir)
+            {
+                Point = point;
+                SegStart = segStart;
+                SegEnd = segEnd;
+                SegmentDir = segmentDir;
+            }
+        }
+
+        /// <summary>
+        /// 沿 <paramref name="direction"/> 发射射线，在指定图层多段线上找最近正向交点（含自身，可跳过一段）。
+        /// </summary>
+        internal static bool FindNearestForwardRayHit(
             Database db, Transaction trans,
             Point3d origin, Vector3d direction,
-            ObjectId selfId, Polyline selfPoly, int extEndIdx)
+            ObjectId selfId, Polyline selfPoly, int skipSegmentIndex,
+            string targetLayer,
+            out ReinRayHit hit)
         {
+            hit = default;
             Point3d nearest = Point3d.Origin;
+            Point3d segA = Point3d.Origin, segB = Point3d.Origin;
             double nearestDist = double.MaxValue;
+            bool found = false;
 
-            var ray = new Line(origin, origin + direction * 1e8);
+            TryAccumulateRayHits(selfPoly, skipSegmentIndex, origin, direction,
+                ref nearest, ref segA, ref segB, ref nearestDist, ref found);
 
-            try
+            var bt = (BlockTable)trans.GetObject(db.BlockTableId, OpenMode.ForRead);
+            var btr = (BlockTableRecord)trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+
+            foreach (ObjectId id in btr)
             {
-                // --- 1. 自身求交（逐段检查，跳过延伸端相邻线段） ---
-                CheckSelfIntersection(ray, selfPoly, extEndIdx, origin, direction,
-                    ref nearest, ref nearestDist);
+                if (id == selfId) continue;
+                var ent = trans.GetObject(id, OpenMode.ForRead) as Polyline;
+                if (ent == null || ent.NumberOfVertices < 2) continue;
+                if (!string.Equals(ent.Layer, targetLayer, StringComparison.OrdinalIgnoreCase)) continue;
 
-                // --- 2. 其他钢筋求交 ---
-                var bt = (BlockTable)trans.GetObject(db.BlockTableId, OpenMode.ForRead);
-                var btr = (BlockTableRecord)trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
-
-                foreach (ObjectId id in btr)
-                {
-                    if (id == selfId) continue; // 自身已在上面处理
-
-                    var ent = trans.GetObject(id, OpenMode.ForRead) as Polyline;
-                    if (ent == null) continue;
-                    if (ent.Layer != LayerLineRein) continue;
-
-                    var pts = new Point3dCollection();
-                    ray.IntersectWith(ent, Intersect.ExtendThis, pts, IntPtr.Zero, IntPtr.Zero);
-
-                    foreach (Point3d pt in pts)
-                    {
-                        Vector3d toHit = pt - origin;
-                        if (toHit.DotProduct(direction) <= 0) continue;
-
-                        double dist = origin.DistanceTo(pt);
-                        if (dist < nearestDist && dist > 1e-6)
-                        {
-                            nearest = pt;
-                            nearestDist = dist;
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                ray.Dispose();
+                TryAccumulateRayHits(ent, -1, origin, direction,
+                    ref nearest, ref segA, ref segB, ref nearestDist, ref found);
             }
 
-            return nearest;
-        }
+            if (!found) return false;
 
-        /// <summary>
-        /// 自身求交：逐段与射线求交，跳过延伸端直接相邻的线段（避免误判）
-        /// </summary>
-        private static void CheckSelfIntersection(
-            Line ray, Polyline poly, int extEndIdx,
-            Point3d origin, Vector3d direction,
-            ref Point3d nearest, ref double nearestDist)
-        {
-            int numSegs = poly.NumberOfVertices - 1;
-            if (numSegs < 2) return; // 少于2段不可能自交
+            Vector3d e = segB - segA;
+            if (e.Length < 1e-10) e = direction;
+            else e = e.GetNormal();
 
-            // 延伸端相邻线段索引（需跳过）
-            // extEndIdx=0 → 跳过 seg 0
-            // extEndIdx=last → 跳过 seg last-1
-            int skipA = extEndIdx > 0 ? extEndIdx - 1 : -1;
-            int skipB = extEndIdx < numSegs ? extEndIdx : -1;
-
-            for (int i = 0; i < numSegs; i++)
-            {
-                if (i == skipA || i == skipB) continue;
-
-                Point3d sp = poly.GetPoint3dAt(i);
-                Point3d ep = poly.GetPoint3dAt(i + 1);
-                var seg = new Line(sp, ep);
-
-                try
-                {
-                    var pts = new Point3dCollection();
-                    ray.IntersectWith(seg, Intersect.OnBothOperands, pts, IntPtr.Zero, IntPtr.Zero);
-
-                    foreach (Point3d pt in pts)
-                    {
-                        Vector3d toHit = pt - origin;
-                        if (toHit.DotProduct(direction) <= 0) continue;
-
-                        double dist = origin.DistanceTo(pt);
-                        if (dist < nearestDist && dist > 1e-6)
-                        {
-                            nearest = pt;
-                            nearestDist = dist;
-                        }
-                    }
-                }
-                finally
-                {
-                    seg.Dispose();
-                }
-            }
-        }
-
-        // ================================================================
-        //  共享静态方法（供 ge1 等命令复用）
-        // ================================================================
-
-        /// <summary>
-        /// 延伸多段线某段，沿线段方向移动该端及之后/之前的所有顶点
-        /// </summary>
-        internal static void ExtendSegment(Polyline poly, int segIndex, Point3d clickPt, double distance)
-        {
-            if (distance <= 0) return;
-            if (segIndex < 0 || segIndex >= poly.NumberOfVertices - 1) return;
-
-            Point3d p1 = poly.GetPoint3dAt(segIndex);
-            Point3d p2 = poly.GetPoint3dAt(segIndex + 1);
-
-            bool forward = clickPt.DistanceTo(p1) > clickPt.DistanceTo(p2);
-
-            Vector3d vec = forward
-                ? (p2 - p1).GetNormal() * distance
-                : (p1 - p2).GetNormal() * distance;
-
-            if (forward)
-            {
-                for (int i = segIndex + 1; i < poly.NumberOfVertices; i++)
-                {
-                    Point3d pt = poly.GetPoint3dAt(i);
-                    poly.SetPointAt(i, new Point2d(pt.X + vec.X, pt.Y + vec.Y));
-                }
-            }
-            else
-            {
-                for (int i = segIndex; i >= 0; i--)
-                {
-                    Point3d pt = poly.GetPoint3dAt(i);
-                    poly.SetPointAt(i, new Point2d(pt.X + vec.X, pt.Y + vec.Y));
-                }
-            }
-        }
-
-        /// <summary>
-        /// 延伸多段线某段至边界多段线，再减去指定距离
-        /// </summary>
-        internal static bool ExtendSegmentToBoundary(Polyline poly, int segIndex, Point3d clickPt, Polyline boundary, double reduceDistance)
-        {
-            if (segIndex < 0 || segIndex >= poly.NumberOfVertices - 1) return false;
-
-            Point3d p1 = poly.GetPoint3dAt(segIndex);
-            Point3d p2 = poly.GetPoint3dAt(segIndex + 1);
-
-            bool forward = clickPt.DistanceTo(p1) > clickPt.DistanceTo(p2);
-            Point3d extensionPt = forward ? p2 : p1;
-            Vector3d extensionDir = forward ? (p2 - p1).GetNormal() : (p1 - p2).GetNormal();
-
-            Point3d boundaryPt = FindClosestBoundaryPoint(extensionPt, extensionDir, boundary);
-            if (boundaryPt == Point3d.Origin) return false;
-
-            double extensionDistance = extensionPt.DistanceTo(boundaryPt) - reduceDistance;
-            if (extensionDistance <= 0) return false;
-
-            Vector3d vec = extensionDir * extensionDistance;
-
-            if (forward)
-            {
-                for (int i = segIndex + 1; i < poly.NumberOfVertices; i++)
-                {
-                    Point3d pt = poly.GetPoint3dAt(i);
-                    poly.SetPointAt(i, new Point2d(pt.X + vec.X, pt.Y + vec.Y));
-                }
-            }
-            else
-            {
-                for (int i = segIndex; i >= 0; i--)
-                {
-                    Point3d pt = poly.GetPoint3dAt(i);
-                    poly.SetPointAt(i, new Point2d(pt.X + vec.X, pt.Y + vec.Y));
-                }
-            }
+            hit = new ReinRayHit(nearest, segA, segB, e);
             return true;
         }
 
         /// <summary>
-        /// 沿延伸方向找到与边界多段线最近的交点
+        /// 将相交线段朝“被延伸钢筋来的一侧”偏移保护层厚度，与延伸射线再求交得最终末端。
         /// </summary>
-        internal static Point3d FindClosestBoundaryPoint(Point3d startPt, Vector3d direction, Polyline boundary)
+        internal static bool TryGetOffsetExtensionPoint(
+            Point3d rayOrigin, Vector3d rayDir,
+            ReinRayHit firstHit, double protectionThickness,
+            out Point3d extensionPoint)
         {
-            var ray = new Line(startPt, startPt + direction * 1e8);
-            Point3d closest = Point3d.Origin;
-            double closestDist = double.MaxValue;
+            extensionPoint = Point3d.Origin;
+            Vector3d e = firstHit.SegmentDir;
+            if (e.Length < 1e-10) return false;
+            e = e.GetNormal();
 
-            try
+            Vector3d n = new Vector3d(-e.Y, e.X, 0);
+            if (n.Length < 1e-10) return false;
+            n = n.GetNormal();
+            if ((rayOrigin - firstHit.Point).DotProduct(n) < 0)
+                n = -n;
+
+            Point3d q = firstHit.Point + n * protectionThickness;
+            if (!TryRayLineIntersection2d(rayOrigin, rayDir, q, e, out double t) || t < 1e-6)
+                return false;
+
+            extensionPoint = rayOrigin + rayDir * t;
+            return true;
+        }
+
+        private static void TryAccumulateRayHits(
+            Polyline poly, int skipSegmentIndex,
+            Point3d origin, Vector3d direction,
+            ref Point3d nearest, ref Point3d segA, ref Point3d segB,
+            ref double nearestDist, ref bool found)
+        {
+            var o2 = new Point2d(origin.X, origin.Y);
+            var d2 = new Vector2d(direction.X, direction.Y);
+            if (d2.Length < 1e-10) return;
+            d2 = d2.GetNormal();
+
+            int numSegs = poly.NumberOfVertices - 1;
+            for (int i = 0; i < numSegs; i++)
             {
-                for (int i = 0; i < boundary.NumberOfVertices; i++)
+                if (i == skipSegmentIndex) continue;
+                if (poly.GetSegmentType(i) != SegmentType.Line) continue;
+
+                var a = poly.GetPoint2dAt(i);
+                var b = poly.GetPoint2dAt(i + 1);
+                if (!TryRayHitSegment(o2, d2, a, b, origin.Z, out Point3d pt)) continue;
+                if ((pt - origin).DotProduct(direction) <= 0) continue;
+
+                double dist = origin.DistanceTo(pt);
+                if (dist < nearestDist && dist > 1e-6)
                 {
-                    int next = (i + 1) % boundary.NumberOfVertices;
-                    if (next == i) continue;
-
-                    Point3d bp1 = boundary.GetPoint3dAt(i);
-                    Point3d bp2 = boundary.GetPoint3dAt(next);
-                    var seg = new Line(bp1, bp2);
-
-                    var intersections = new Point3dCollection();
-                    ray.IntersectWith(seg, Intersect.OnBothOperands, intersections, IntPtr.Zero, IntPtr.Zero);
-
-                    foreach (Point3d pt in intersections)
-                    {
-                        double dist = startPt.DistanceTo(pt);
-                        if (dist < closestDist)
-                        {
-                            closest = pt;
-                            closestDist = dist;
-                        }
-                    }
-
-                    seg.Dispose();
+                    nearest = pt;
+                    segA = poly.GetPoint3dAt(i);
+                    segB = poly.GetPoint3dAt(i + 1);
+                    nearestDist = dist;
+                    found = true;
                 }
             }
-            finally
-            {
-                ray.Dispose();
-            }
+        }
 
-            return closest;
+        private static bool TryRayLineIntersection2d(
+            Point3d rayOrigin, Vector3d rayDir, Point3d linePoint, Vector3d lineDir,
+            out double rayParameter)
+        {
+            rayParameter = 0;
+            double rdx = rayDir.X, rdy = rayDir.Y;
+            double ldx = lineDir.X, ldy = lineDir.Y;
+            double cross = rdx * ldy - rdy * ldx;
+            if (Math.Abs(cross) < 1e-10) return false;
+
+            double ox = linePoint.X - rayOrigin.X;
+            double oy = linePoint.Y - rayOrigin.Y;
+            rayParameter = (ox * ldy - oy * ldx) / cross;
+            return true;
+        }
+
+        private static bool TryRayHitSegment(
+            Point2d origin, Vector2d dir, Point2d segStart, Point2d segEnd, double z,
+            out Point3d hit)
+        {
+            hit = Point3d.Origin;
+            double sx = segEnd.X - segStart.X;
+            double sy = segEnd.Y - segStart.Y;
+            double cross = dir.X * sy - dir.Y * sx;
+            if (Math.Abs(cross) < 1e-10) return false;
+
+            double ox = segStart.X - origin.X;
+            double oy = segStart.Y - origin.Y;
+            double t = (ox * sy - oy * sx) / cross;
+            double u = (ox * dir.Y - oy * dir.X) / cross;
+            if (t < 1e-6 || u < -1e-6 || u > 1.0 + 1e-6) return false;
+
+            hit = new Point3d(origin.X + t * dir.X, origin.Y + t * dir.Y, z);
+            return true;
+        }
+
+        /// <summary>
+        /// 判断末段是否为“折弯弯钩”：末段相对前一段折角足够大（直/斜弯钩），且长度明显短于锚固长度。
+        /// </summary>
+        private static bool IsHookBend(Polyline poly, int last, double anchorageLength)
+        {
+            const double bendCos = 0.94; // ≈20°：折角超过该阈值视为弯钩
+
+            Vector3d dMain = poly.GetPoint3dAt(last - 1) - poly.GetPoint3dAt(last - 2);
+            Vector3d dLast = poly.GetPoint3dAt(last) - poly.GetPoint3dAt(last - 1);
+            if (dMain.Length < 1e-6 || dLast.Length < 1e-6) return false;
+
+            // 末段过长更可能是主筋本体而非弯钩
+            if (dLast.Length >= anchorageLength) return false;
+
+            double cos = dMain.GetNormal().DotProduct(dLast.GetNormal());
+            return cos < bendCos;
+        }
+
+        private static bool IsHookBendAtStart(Polyline poly, double anchorageLength)
+        {
+            const double bendCos = 0.94;
+
+            Vector3d dMain = poly.GetPoint3dAt(1) - poly.GetPoint3dAt(2);
+            Vector3d dFirst = poly.GetPoint3dAt(0) - poly.GetPoint3dAt(1);
+            if (dMain.Length < 1e-6 || dFirst.Length < 1e-6) return false;
+
+            if (dFirst.Length >= anchorageLength) return false;
+
+            double cos = dMain.GetNormal().DotProduct(dFirst.GetNormal());
+            return cos < bendCos;
+        }
+
+        internal static int GetSkipAdjacentSegmentIndex(Polyline poly, int extEndIdx)
+        {
+            int numSegs = poly.NumberOfVertices - 1;
+            if (extEndIdx <= 0) return 0;
+            if (extEndIdx >= poly.NumberOfVertices - 1) return numSegs - 1;
+            return -1;
         }
     }
 }

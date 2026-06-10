@@ -1,3 +1,4 @@
+#if DEBUG
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -6,8 +7,9 @@ namespace HyCADTool.Shared.AutoCAD.Utilities
 {
     internal static class AgentDebugLogger
     {
-        private const string LogPath = @"E:\BaiduSyncdisk\Code\CSharp\CursorProjects\hy-cad-tool\debug-24de30.log";
-        private const string SessionId = "24de30";
+        private static readonly string LogPath = Path.Combine(
+            Path.GetTempPath(),
+            "HyCADTool-agent-debug.log");
 
         public static void Log(string runId, string hypothesisId, string location, string message, object data)
         {
@@ -15,7 +17,6 @@ namespace HyCADTool.Shared.AutoCAD.Utilities
             {
                 var payload = new
                 {
-                    sessionId = SessionId,
                     runId,
                     hypothesisId,
                     location,
@@ -32,3 +33,4 @@ namespace HyCADTool.Shared.AutoCAD.Utilities
         }
     }
 }
+#endif

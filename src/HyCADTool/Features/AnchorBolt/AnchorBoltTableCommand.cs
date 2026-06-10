@@ -78,6 +78,7 @@ namespace HyCADTool.Features.AnchorBolt
                     int totalRows = 1 + 1 + typeCounts.Count + 1 + boltData.Count;
                     var table = new Table { Position = ppr.Value };
                     table.SetSize(totalRows, 14);
+                    UnmergeDefaultTableCells(table);
 
                     for (int i = 0; i < table.Rows.Count; i++)
                     {
@@ -145,6 +146,26 @@ namespace HyCADTool.Features.AnchorBolt
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n发生错误: {ex.Message}");
+            }
+        }
+
+        private static void UnmergeDefaultTableCells(Table table)
+        {
+            for (int r = 0; r < table.Rows.Count; r++)
+            {
+                for (int c = 0; c < table.Columns.Count; c++)
+                {
+                    try
+                    {
+                        var range = table.Cells[r, c].GetMergeRange();
+                        if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                            table.UnmergeCells(range);
+                    }
+                    catch
+                    {
+                        // 仅用于消除默认标题行自动合并。
+                    }
+                }
             }
         }
     }

@@ -118,21 +118,16 @@ namespace HyCADTool.Presentation.ViewModels
         public FilterPanelViewModel FilterVm
             => _filterVm ?? (_filterVm = new FilterPanelViewModel());
 
-        /// <summary>海绵城市面板的 ViewModel，首次切入「海绵城市」时绑定当前文档的 VM。</summary>
+        /// <summary>海绵城市面板的 ViewModel，绑定当前文档的 VM。</summary>
         public HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel SpongeCityVm
-            => HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.Current
-               ?? new HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel();
+            => HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.Current;
 
         /// <summary>钢筋面板的设置 ViewModel，直接服务 gj / gb 等钢筋命令。</summary>
-        private SettingsPanelViewModel _reinFallback;
-        public SettingsPanelViewModel ReinVm
-            => SettingsPanelViewModel.Current ?? (_reinFallback ?? (_reinFallback = new SettingsPanelViewModel()));
+        public SettingsPanelViewModel ReinVm => SettingsPanelViewModel.Current;
 
         /// <summary>桩基面板的 ViewModel（其自身有 Current 多文档机制），承载桩参数与桩基命令。</summary>
-        private HyCADTool.Features.Pile.ViewModels.PilePanelViewModel _pileFallback;
         public HyCADTool.Features.Pile.ViewModels.PilePanelViewModel PileVm
-            => HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.Current
-               ?? (_pileFallback ?? (_pileFallback = new HyCADTool.Features.Pile.ViewModels.PilePanelViewModel()));
+            => HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.Current;
 
         /// <summary>基础钢筋面板的 ViewModel（需 DI 注入 IBaseReinforcementService）。</summary>
         private HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel _baseReinVm;
@@ -140,9 +135,7 @@ namespace HyCADTool.Presentation.ViewModels
             => _baseReinVm ?? (_baseReinVm = ResolveBaseReinVm());
 
         /// <summary>螺栓聚类与基础标注面板的 ViewModel。</summary>
-        private ClusterPanelViewModel _clusterFallback;
-        public ClusterPanelViewModel ClusterVm
-            => ClusterPanelViewModel.Current ?? (_clusterFallback ?? (_clusterFallback = new ClusterPanelViewModel()));
+        public ClusterPanelViewModel ClusterVm => ClusterPanelViewModel.Current;
 
         /// <summary>「设置」伪分类的稳定 Key。</summary>
         public const string PreferencesTabKey = "__preferences__";
@@ -190,6 +183,19 @@ namespace HyCADTool.Presentation.ViewModels
             };
             _searchDebounceTimer.Tick += OnSearchDebounceTick;
             LoadFromCommandTable();
+        }
+
+        /// <summary>
+        /// 活动文档切换时由 <see cref="PanelManager"/> 调用，刷新各模式面板 VM 绑定。
+        /// </summary>
+        public void NotifyActiveDocumentChanged()
+        {
+            OnPropertyChanged(nameof(SpongeCityVm));
+            OnPropertyChanged(nameof(ReinVm));
+            OnPropertyChanged(nameof(PileVm));
+            OnPropertyChanged(nameof(BaseReinVm));
+            OnPropertyChanged(nameof(ClusterVm));
+            _preferencesVm?.RefreshSettingsBindingsFromDocument();
         }
 
         /// <summary>

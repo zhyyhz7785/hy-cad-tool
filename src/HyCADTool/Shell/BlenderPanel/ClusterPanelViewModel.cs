@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -14,12 +15,39 @@ namespace HyCADTool.Presentation.ViewModels
     /// </summary>
     public class ClusterPanelViewModel : INotifyPropertyChanged
     {
-        #region 静态实例
+        #region 多文档支持
+
+        private static readonly Dictionary<string, ClusterPanelViewModel> _documentViewModels
+            = new Dictionary<string, ClusterPanelViewModel>();
 
         /// <summary>
-        /// 当前活动实例，供外部命令读取配置
+        /// 当前活动文档的实例，供外部命令读取配置。
         /// </summary>
-        public static ClusterPanelViewModel Current { get; private set; }
+        public static ClusterPanelViewModel Current
+        {
+            get
+            {
+                try
+                {
+                    var doc = AcApp.DocumentManager.MdiActiveDocument;
+                    if (doc == null) return null;
+                    return GetOrCreate(doc.Name);
+                }
+                catch { return null; }
+            }
+        }
+
+        public static ClusterPanelViewModel GetOrCreate(string documentName)
+        {
+            if (!_documentViewModels.ContainsKey(documentName))
+                _documentViewModels[documentName] = new ClusterPanelViewModel();
+            return _documentViewModels[documentName];
+        }
+
+        public static void RemoveDocument(string documentName)
+        {
+            _documentViewModels.Remove(documentName);
+        }
 
         #endregion
 
@@ -331,8 +359,6 @@ namespace HyCADTool.Presentation.ViewModels
             LoadPreset2Command = new RelayCommand(() => SelectedPreset = 2);
             LoadPreset3Command = new RelayCommand(() => SelectedPreset = 3);
             ApplyPreset(1); // 默认方案1
-
-            Current = this;
         }
 
         #endregion

@@ -339,7 +339,12 @@ namespace HyCADTool.ReCall
                 // 反射执行新实例的 Initialize —— 这等价于"首次 NETLOAD 后 AutoCAD 调 IExtensionApplication.Initialize"。
                 // Autofac 容器、图层、道路子系统、文档事件订阅全在这里完成。
                 var swInit = System.Diagnostics.Stopwatch.StartNew();
-                InvokePluginInitialize(asm, ed);
+                if (!InvokePluginInitialize(asm, ed))
+                {
+                    swInit.Stop();
+                    if (logPhases) ed.WriteMessage($"\n── C2 中止(Initialize 失败)  {DateTime.Now:HH:mm:ss.fff} ──");
+                    return;
+                }
                 swInit.Stop();
                 tInit = swInit.ElapsedMilliseconds;
                 C2LogPhase(ed, ref accMs, tInit, "新 PluginInitializer.Initialize（细分见上）", logPhases);
@@ -488,29 +493,37 @@ namespace HyCADTool.ReCall
         }
 
         /// <summary>反射创建 PluginInitializer 并调用 Initialize（每次 C2 一个新实例，由新 Refactored.dll 提供）。</summary>
-        private static void InvokePluginInitialize(Assembly refactored, Editor ed)
+        private static bool InvokePluginInitialize(Assembly refactored, Editor ed)
         {
             try
             {
                 var t = refactored.GetType(PLUGIN_INIT_TYPE);
                 if (t == null)
                 {
-                    ed?.WriteMessage("\n  ⚠ 未找到类型 " + PLUGIN_INIT_TYPE + "（Autofac 容器未初始化，业务命令可能失败）");
-                    return;
+                    ed?.WriteMessage("\n  ✗ 未找到类型 " + PLUGIN_INIT_TYPE + "（Autofac 容器未初始化）");
+                    return false;
                 }
                 var instance = Activator.CreateInstance(t);
                 var m = t.GetMethod(PLUGIN_INIT_METHOD_INITIALIZE, BindingFlags.Public | BindingFlags.Instance);
-                m?.Invoke(instance, null);
+                if (m == null)
+                {
+                    ed?.WriteMessage("\n  ✗ 未找到方法 " + PLUGIN_INIT_METHOD_INITIALIZE);
+                    return false;
+                }
+                m.Invoke(instance, null);
                 _lastPluginInitInstance = instance;
+                return true;
             }
             catch (TargetInvocationException tie)
             {
                 var inner = tie.InnerException ?? tie;
-                ed?.WriteMessage("\n  ⚠ PluginInitializer.Initialize 异常: " + inner.GetType().Name + ": " + inner.Message);
+                ed?.WriteMessage("\n  ✗ PluginInitializer.Initialize 异常: " + inner.GetType().Name + ": " + inner.Message);
+                return false;
             }
             catch (System.Exception ex)
             {
-                ed?.WriteMessage("\n  ⚠ PluginInitializer 反射失败: " + ex.Message);
+                ed?.WriteMessage("\n  ✗ PluginInitializer 反射失败: " + ex.Message);
+                return false;
             }
         }
 
@@ -1218,6 +1231,9 @@ namespace HyCADTool.ReCall
             "AcDbMgd",
             "AcMgd",
             "AcCui",
+            "acdbmgdbrep",
+            "AcDx",
+            "AcTcMgd",
             "AcWindows",
             "Autodesk.AutoCAD.Interop",
             "Autodesk.AutoCAD.Interop.Common",

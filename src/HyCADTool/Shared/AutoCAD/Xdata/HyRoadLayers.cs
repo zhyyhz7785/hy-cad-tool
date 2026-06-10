@@ -100,6 +100,43 @@ namespace HyCADTool.Shared.AutoCAD.Xdata
         public static string PlanMarkingLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanMarking, LayerBuiltinDefaults.RoadPlanMarking);
         public const short PlanMarkingColor = 7;
 
+        /// <summary>经 <see cref="UserLayerNameResolver"/> 解析后的层名 + 色（供落图前兜底建层，与实体 Layer 赋值同源）。</summary>
+        public static (string layerName, short colorIndex)[] GetAllResolved()
+        {
+            return new[]
+            {
+                (AlignmentLayer, AlignmentColor),
+                (ProfileLayer, ProfileColor),
+                (CorridorLayer, CorridorColor),
+                (MarkingLayer, MarkingColor),
+                (StationLayer, StationColor),
+                (GeometryPointLayer, GeometryPointColor),
+                (OffsetLayer, OffsetColor),
+                (IntersectionLayer, IntersectionColor),
+                (CurbRampLayer, CurbRampColor),
+                (TactilePavingLayer, TactilePavingColor),
+                (CrosswalkLayer, CrosswalkColor),
+                (StopLineLayer, StopLineColor),
+                (CrossSectionOutlineLayer, CrossSectionOutlineColor),
+                (CrossSectionCenterlineLayer, CrossSectionCenterlineColor),
+                (CrossSectionPavementLayer, CrossSectionPavementColor),
+                (CrossSectionSidewalkLayer, CrossSectionSidewalkColor),
+                (CrossSectionKerbLayer, CrossSectionKerbColor),
+                (CrossSectionGreenLayer, CrossSectionGreenColor),
+                (CrossSectionDimensionLayer, CrossSectionDimensionColor),
+                (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),
+                (CrossSectionTitleLayer, CrossSectionTitleColor),
+                (CrossSectionTitleDecorationLayer, CrossSectionTitleDecorationColor),
+                (CrossSectionOrientationLayer, CrossSectionOrientationColor),
+                (PlanRedLineLayer, PlanRedLineColor),
+                (PlanBandDividerLayer, PlanBandDividerColor),
+                (PlanMarkingLayer, PlanMarkingColor),
+                (UserPickPreviewLayer, UserPickPreviewLayerColor),
+                (RawPolylineLayer, RawPolylineColor),
+                (LivePreviewLayer, LivePreviewColor),
+            };
+        }
+
         /// <summary>默认名 + 色 + 线型（供层表工厂；不调用 <see cref="UserLayerNameResolver"/>）。</summary>
         public static (string layerName, short colorIndex, string linetypeName)[] GetAll()
         {

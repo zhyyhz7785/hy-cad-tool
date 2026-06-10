@@ -25,14 +25,16 @@ namespace HyCADTool.Shell.Commands
         /// <summary>HyB 命令入口：显示/隐藏 HyBlenderPanel。</summary>
         public static void ShowHyBlenderPanel()
         {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
             try
             {
                 ServiceLocator.Container.Resolve<PanelManager>().ToggleHyBlenderPanel();
             }
             catch (System.Exception ex)
             {
-                ed.WriteMessage($"\n显示 HyBlender 面板失败: {ex.Message}");
+                doc.Editor?.WriteMessage($"\n显示 HyBlender 面板失败: {ex.Message}");
             }
         }
 
@@ -84,14 +86,16 @@ namespace HyCADTool.Shell.Commands
 
         private static void OpenTab(string tabKey, string errorPrefix)
         {
-            var ed = AcApp.DocumentManager.MdiActiveDocument.Editor;
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
             try
             {
                 ServiceLocator.Container.Resolve<PanelManager>().OpenHyBlenderPanelAndSelectTab(tabKey);
             }
             catch (System.Exception ex)
             {
-                ed.WriteMessage($"\n{errorPrefix}: {ex.Message}");
+                doc.Editor?.WriteMessage($"\n{errorPrefix}: {ex.Message}");
             }
         }
     }

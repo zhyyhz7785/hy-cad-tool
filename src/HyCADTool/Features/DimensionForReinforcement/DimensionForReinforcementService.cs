@@ -45,43 +45,64 @@ namespace HyCADTool.Features.DimensionForReinforcement
         #region 公共入口
 
         /// <summary>
-        /// 对单个多段线生成尺寸标注并写入模型空间
+        /// 对单个多段线生成尺寸标注并写入模型空间（在自身事务内打开实体）。
+        /// </summary>
+        public void GenerateDimension(ObjectId boundaryId)
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            using (doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
+            {
+                var boundary = tr.GetObject(boundaryId, OpenMode.ForRead) as Polyline;
+                if (boundary == null) return;
+                GenerateDimensionCore(boundary);
+                tr.Commit();
+            }
+        }
+
+        /// <summary>
+        /// 对已在打开事务中的多段线生成尺寸标注（调用方须保证 boundary 可读）。
         /// </summary>
         public void GenerateDimension(Polyline boundary)
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             using (doc.LockDocument())
             {
-                if (!SetProperties(boundary)) return;
-
-                SetCurrentDimensionLayer();
-
-                // 生成外部标注
-                var dimsLR = GenerateOutsideLeftRight();
-                var dimsUD = GenerateOutsideUpDown();
-
-                // 生成内部标注
-                var dimInLR = GenerateInsideLeftRight();
-                var dimInUD = GenerateInsideUpDown();
-
-                // 后处理：删除近距离平行标注
-                dimInLR = DeleteNearbyParallelDim(dimInLR, _dimDistanceTolerance);
-                dimInUD = DeleteNearbyParallelDim(dimInUD, _dimDistanceTolerance);
-
-                // 后处理：外部标注
-                var dimLeft = DimVsEqualLength(DeleteDimensionZero(dimsLR[0]));
-                var dimRight = DimVsEqualLength(DeleteDimensionZero(dimsLR[1]));
-                var dimUp = DimVsEqualLength(DeleteDimensionZero(dimsUD[0]));
-                var dimDown = DimVsEqualLength(DeleteDimensionZero(dimsUD[1]));
-
-                // 写入模型空间
-                WriteToSpace(dimLeft);
-                WriteToSpace(dimRight);
-                WriteToSpace(dimUp);
-                WriteToSpace(dimDown);
-                WriteToSpace(dimInLR);
-                WriteToSpace(dimInUD);
+                GenerateDimensionCore(boundary);
             }
+        }
+
+        private void GenerateDimensionCore(Polyline boundary)
+        {
+            if (!SetProperties(boundary)) return;
+
+            SetCurrentDimensionLayer();
+
+            // 生成外部标注
+            var dimsLR = GenerateOutsideLeftRight();
+            var dimsUD = GenerateOutsideUpDown();
+
+            // 生成内部标注
+            var dimInLR = GenerateInsideLeftRight();
+            var dimInUD = GenerateInsideUpDown();
+
+            // 后处理：删除近距离平行标注
+            dimInLR = DeleteNearbyParallelDim(dimInLR, _dimDistanceTolerance);
+            dimInUD = DeleteNearbyParallelDim(dimInUD, _dimDistanceTolerance);
+
+            // 后处理：外部标注
+            var dimLeft = DimVsEqualLength(DeleteDimensionZero(dimsLR[0]));
+            var dimRight = DimVsEqualLength(DeleteDimensionZero(dimsLR[1]));
+            var dimUp = DimVsEqualLength(DeleteDimensionZero(dimsUD[0]));
+            var dimDown = DimVsEqualLength(DeleteDimensionZero(dimsUD[1]));
+
+            // 写入模型空间
+            WriteToSpace(dimLeft);
+            WriteToSpace(dimRight);
+            WriteToSpace(dimUp);
+            WriteToSpace(dimDown);
+            WriteToSpace(dimInLR);
+            WriteToSpace(dimInUD);
         }
 
         #endregion

@@ -33,21 +33,8 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 var result = ed.GetEntity(opts);
                 if (result.Status != PromptStatus.OK) return;
 
-                Polyline poly;
-                using (var tr = doc.Database.TransactionManager.StartTransaction())
-                {
-                    poly = tr.GetObject(result.ObjectId, OpenMode.ForRead) as Polyline;
-                    tr.Commit();
-                }
-
-                if (poly == null)
-                {
-                    ed.WriteMessage("\n选择的不是多段线。");
-                    return;
-                }
-
                 var service = new DimensionForReinforcementService();
-                service.GenerateDimension(poly);
+                service.GenerateDimension(result.ObjectId);
                 ed.WriteMessage("\n标注完成。");
             }
             catch (System.Exception ex)
@@ -94,18 +81,10 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 var service = new DimensionForReinforcementService();
                 int count = 0;
 
-                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                foreach (SelectedObject selObj in selResult.Value)
                 {
-                    foreach (SelectedObject selObj in selResult.Value)
-                    {
-                        var poly = tr.GetObject(selObj.ObjectId, OpenMode.ForRead) as Polyline;
-                        if (poly != null)
-                        {
-                            service.GenerateDimension(poly);
-                            count++;
-                        }
-                    }
-                    tr.Commit();
+                    service.GenerateDimension(selObj.ObjectId);
+                    count++;
                 }
 
                 ed.WriteMessage($"\n已完成 {count} 条多段线标注。");

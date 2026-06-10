@@ -56,10 +56,11 @@ namespace HyCADTool.Features.AnchorBolt
 
                 var myOpt = new PromptDoubleOptions("\n请输入绕Y轴的力矩 M_y (kNm) [默认0]：") { AllowNone = true, DefaultValue = 0.0 };
                 var myRes = ed.GetDouble(myOpt);
-                double My = myRes.Status == PromptStatus.OK ? myRes.Value : 0;
+                double My = (myRes.Status == PromptStatus.OK ? myRes.Value : 0) * 1000;
 
                 var vRes = ed.GetDouble("\n请输入剪力 V (kN)：");
                 if (vRes.Status != PromptStatus.OK) return;
+                double V = vRes.Value;
 
                 var sfRes = ed.GetDouble("\n请输入安全系数：");
                 if (sfRes.Status != PromptStatus.OK || sfRes.Value <= 0) return;
@@ -103,7 +104,8 @@ namespace HyCADTool.Features.AnchorBolt
                 // 生成表格
                 var tablePos = new Point3d(centroid.X + 10 * scale, centroid.Y, 0);
                 var table = new Table { Position = tablePos };
-                table.SetSize(forces.Count + 2, 7);
+                table.SetSize(forces.Count + 3, 7);
+                UnmergeDefaultTableCells(table);
 
                 for (int i = 0; i < table.Rows.Count; i++)
                     table.Rows[i].TextHeight = 2.5 * scale;
@@ -124,8 +126,12 @@ namespace HyCADTool.Features.AnchorBolt
                     table.Cells[i + 1, 6].TextString = f.Force >= 0 ? "拉力" : "压力";
                 }
 
-                table.Cells[forces.Count + 1, 0].TextString = "安全系数";
-                table.Cells[forces.Count + 1, 1].TextString = safetyFactor.ToString("F2");
+                table.Cells[forces.Count + 1, 0].TextString = "剪力 V (kN)";
+                table.Cells[forces.Count + 1, 1].TextString = V.ToString("F2");
+                table.Cells[forces.Count + 1, 2].TextString = "（未参与单根受力计算）";
+
+                table.Cells[forces.Count + 2, 0].TextString = "安全系数";
+                table.Cells[forces.Count + 2, 1].TextString = safetyFactor.ToString("F2");
 
                 for (int j = 0; j < 7; j++)
                     table.Columns[j].Width = 15 * scale;
@@ -137,6 +143,26 @@ namespace HyCADTool.Features.AnchorBolt
                 tr.Commit();
             }
             ed.Regen();
+        }
+
+        private static void UnmergeDefaultTableCells(Table table)
+        {
+            for (int r = 0; r < table.Rows.Count; r++)
+            {
+                for (int c = 0; c < table.Columns.Count; c++)
+                {
+                    try
+                    {
+                        var range = table.Cells[r, c].GetMergeRange();
+                        if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                            table.UnmergeCells(range);
+                    }
+                    catch
+                    {
+                        // 仅用于消除默认标题行自动合并。
+                    }
+                }
+            }
         }
     }
 }

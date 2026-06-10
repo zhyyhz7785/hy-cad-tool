@@ -35,6 +35,13 @@ namespace HyCADTool.App.Bootstrap
     {
         private static readonly HashSet<string> _initializedDocuments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>文档关闭时移除初始化标记，同名文件再打开时可重新初始化。</summary>
+        public static void RemoveInitializedDocument(string documentName)
+        {
+            if (string.IsNullOrEmpty(documentName)) return;
+            _initializedDocuments.Remove(documentName);
+        }
+
         /// <summary>
         /// 插件初始化：构建 Autofac 容器、加载配置、初始化样式/图层、订阅文档事件、启动道路子系统。
         ///
@@ -219,6 +226,14 @@ namespace HyCADTool.App.Bootstrap
 
                 // 清理事件订阅
                 UnregisterDocumentEvents();
+
+                try
+                {
+                    ServiceLocator.TryResolve<HyCADTool.Presentation.PanelManager>()?.UnregisterDocumentEvents();
+                }
+                catch { }
+
+                _initializedDocuments.Clear();
 
                 // 清理容器
                 ServiceLocator.Reset();
