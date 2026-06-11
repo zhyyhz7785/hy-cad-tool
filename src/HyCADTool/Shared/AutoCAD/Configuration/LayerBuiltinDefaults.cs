@@ -46,9 +46,9 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
         public const string WallMainSolid = "01-hy-6墙-主-体";
         public const string WallRetainSolid = "01-hy-6墙-挡土-体";
         public const string WallConnectSolid = "01-hy-6墙-连接-体";
-        public const string HyRebarTextH = "00-hy-4说明-一般-文";
-        public const string HyRebarTextV = "00-hy-4说明-一般-文";
-        public const string HyRebarManual = "01-hy-1配筋-手动";
+        public const string HyRebarTextH = "HY_H向钢筋";
+        public const string HyRebarTextV = "HY_V向钢筋";
+        public const string HyRebarManual = "HY_手动配筋";
         public const string ClusterMain = "03-hy-1主";
         public const string ClusterAxis = "03-hy-2轴";
         public const string ClusterRegion = "03-hy-3区域";

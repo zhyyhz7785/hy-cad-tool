@@ -12,10 +12,8 @@ using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shell.Configuration.User;
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.BaseRein.Services
@@ -29,14 +27,17 @@ namespace HyCADTool.Features.BaseRein.Services
         private readonly IStyleService _styleService;
         private BaseReinforcementConfig _config;
 
-        // 图层常量
-        private const string LayerReinforcementOutline = "00_hy_配筋轮廓";
-        private const string LayerAdjustedOutline = "00_hy_调整配筋轮廓";
         private const string LayerTargetText = "筏板板元配筋标注";
+
+        private static string LayerReinforcementOutline =>
+            UserLayerNameResolver.Get(LayerSemanticIds.RaftOutline, LayerBuiltinDefaults.RaftOutline);
+        private static string LayerAdjustedOutline =>
+            UserLayerNameResolver.Get(LayerSemanticIds.RaftOutlineAdjust, LayerBuiltinDefaults.RaftOutlineAdjust);
 
         // 步骤间共享数据（Step4 产出 → Step5 消费）
         private Dictionary<ObjectId, List<double>> _reinforcementAreaData;
         private List<ObjectId> _pillarPierIds;
+        private string _cachedDatabaseKey;
 
         public BaseReinforcementService(IStyleService styleService)
         {
@@ -223,6 +224,16 @@ namespace HyCADTool.Features.BaseRein.Services
             var db = doc.Database;
             var ed = doc.Editor;
 
+            EnsureDataForCurrentDocument(db);
+            if (!config.IsValid(out string error))
+            {
+                ed.WriteMessage($"\n[BaseRein] 参数无效：{error}");
+                return;
+            }
+
+            _reinforcementAreaData = null;
+            _cachedDatabaseKey = GetDatabaseKey(db);
+
             // 4.0 选择有限元网格（BR03）
             var selOpts = new PromptSelectionOptions { MessageForAdding = "\n请选择有限元网格中的对象: " };
             var selRes = ed.GetSelection(selOpts);
@@ -249,37 +260,38 @@ namespace HyCADTool.Features.BaseRein.Services
                     .Select(p => p.ObjectId)
                     .ToList();
 
-                // 提取数值型文字对象
-                var rebarTexts = allObjects.Values
-                    .OfType<DBText>()
-                    .Where(t => double.TryParse(t.TextString, out _))
-                    .ToList();
+                var numericTexts = CollectNumericTexts(allObjects.Values);
 
-                // 并行查找：每个文字 → 包含它的多段线
-                var textToPolyMap = new ConcurrentDictionary<ObjectId, ObjectId>(); // textId → polyId
-                Parallel.ForEach(rebarTexts, text =>
+                var textToPolyMap = new Dictionary<ObjectId, ObjectId>();
+                foreach (var textHit in numericTexts)
                 {
                     foreach (var kvp in allObjects)
                     {
-                        if (kvp.Value is Polyline poly && IsPointInsidePolyline(poly, text.AlignmentPoint))
+                        if (kvp.Value is Polyline poly && IsPointInsidePolyline(poly, textHit.AlignmentPoint))
                         {
-                            textToPolyMap[text.ObjectId] = kvp.Key;
+                            textToPolyMap[textHit.TextId] = kvp.Key;
                             break;
                         }
                     }
-                });
+                }
 
-                // 删除"板元"图层上未被关联的多段线
-                var usedPolyIds = new HashSet<ObjectId>(textToPolyMap.Values);
                 int deletedCount = 0;
-                foreach (var kvp in allObjects)
+                if (textToPolyMap.Count > 0)
                 {
-                    if (!usedPolyIds.Contains(kvp.Key) && kvp.Value is Polyline poly && poly.Layer == "板元")
+                    var usedPolyIds = new HashSet<ObjectId>(textToPolyMap.Values);
+                    foreach (var kvp in allObjects)
                     {
-                        poly.UpgradeOpen();
-                        poly.Erase();
-                        deletedCount++;
+                        if (!usedPolyIds.Contains(kvp.Key) && kvp.Value is Polyline poly && poly.Layer == "板元")
+                        {
+                            poly.UpgradeOpen();
+                            poly.Erase();
+                            deletedCount++;
+                        }
                     }
+                }
+                else
+                {
+                    ed.WriteMessage("\n[BaseRein] 未匹配到数值文字，跳过板元删除。");
                 }
 
                 ed.WriteMessage($"\n[BaseRein] 选择网格完成：{textToPolyMap.Count} 组配筋数据，删除 {deletedCount} 个多余网格。");
@@ -313,9 +325,11 @@ namespace HyCADTool.Features.BaseRein.Services
                 var textPositions = new Dictionary<ObjectId, Point3d>();
                 foreach (var textId in textToEnvelopeMap.Keys)
                 {
-                    var text = tr.GetObject(textId, OpenMode.ForRead) as DBText;
-                    if (text != null)
-                        textPositions[textId] = text.Position;
+                    var textObj = tr.GetObject(textId, OpenMode.ForRead);
+                    if (textObj is DBText dbText)
+                        textPositions[textId] = dbText.AlignmentPoint;
+                    else if (textObj is MText mText)
+                        textPositions[textId] = mText.Location;
                 }
 
                 var groups = GroupBySpatialProximity(textPositions, textToEnvelopeMap, config.ProximityThreshold);
@@ -349,8 +363,7 @@ namespace HyCADTool.Features.BaseRein.Services
                         }
 
                         // 收集配筋数值
-                        var text = tr.GetObject(textId, OpenMode.ForRead) as DBText;
-                        if (text != null && double.TryParse(text.TextString, out double val))
+                        if (TryReadNumericText(tr.GetObject(textId, OpenMode.ForRead), out double val))
                             textValues.Add(val);
                     }
 
@@ -474,6 +487,13 @@ namespace HyCADTool.Features.BaseRein.Services
             var db = doc.Database;
             var ed = doc.Editor;
 
+            EnsureDataForCurrentDocument(db);
+            if (!config.IsValid(out string error))
+            {
+                ed.WriteMessage($"\n[BaseRein] 参数无效：{error}");
+                return;
+            }
+
             // 如果没有 Step4 的数据，让用户重新选择配筋区域
             if (_reinforcementAreaData == null || _reinforcementAreaData.Count == 0)
             {
@@ -545,7 +565,7 @@ namespace HyCADTool.Features.BaseRein.Services
             Polyline polyline, double diameter, BaseReinforcementConfig config, RebarDirection direction)
         {
             var scale = config.Scale;
-            var anchorLen = config.AnchorFactor * diameter;
+            var anchorLen = config.AddAnchorLength ? config.AnchorFactor * diameter : 0;
             var hookLen = config.HookLength * scale;
             var polyWidth = config.PolylineWidth * scale;
             var reinDist = config.ReinforceDistance * scale;
@@ -774,7 +794,11 @@ namespace HyCADTool.Features.BaseRein.Services
                 new TypedValue((int)DxfCode.Start, "LINE")
             });
             var axisSel = ed.GetSelection(pso, axisFilter);
-            if (axisSel.Status != PromptStatus.OK) return;
+            if (axisSel.Status != PromptStatus.OK)
+            {
+                ed.WriteMessage("\n[BaseRein] 未选择轴线，操作取消。");
+                return;
+            }
 
             // 选择配筋区域 Polyline
             var reinPick = SelectPolyline(ed, db, "\n请选择代表配筋区域的Polyline:");
@@ -791,7 +815,11 @@ namespace HyCADTool.Features.BaseRein.Services
                 new TypedValue((int)DxfCode.Start, "LWPOLYLINE")
             });
             var reinSel = ed.GetSelection(reinPso, reinFilter);
-            if (reinSel.Status != PromptStatus.OK) return;
+            if (reinSel.Status != PromptStatus.OK)
+            {
+                ed.WriteMessage("\n[BaseRein] 未选择配筋区域，操作取消。");
+                return;
+            }
 
             string dimLayer = direction == IntersectionsDirection.LeftRight
                 ? ResolveRaftLayer(LayerSemanticIds.RaftDimX)
@@ -931,6 +959,59 @@ namespace HyCADTool.Features.BaseRein.Services
         }
 
         #endregion
+
+        private void EnsureDataForCurrentDocument(Database db)
+        {
+            string key = GetDatabaseKey(db);
+            if (!string.Equals(_cachedDatabaseKey, key, StringComparison.OrdinalIgnoreCase))
+            {
+                _reinforcementAreaData = null;
+                _pillarPierIds = null;
+                _cachedDatabaseKey = key;
+            }
+        }
+
+        private static string GetDatabaseKey(Database db) =>
+            db?.Filename ?? string.Empty;
+
+        private readonly struct NumericTextHit
+        {
+            public ObjectId TextId { get; }
+            public Point3d AlignmentPoint { get; }
+
+            public NumericTextHit(ObjectId textId, Point3d alignmentPoint)
+            {
+                TextId = textId;
+                AlignmentPoint = alignmentPoint;
+            }
+        }
+
+        private static List<NumericTextHit> CollectNumericTexts(IEnumerable<DBObject> objects)
+        {
+            var result = new List<NumericTextHit>();
+            foreach (var obj in objects)
+            {
+                if (obj is DBText dbText && double.TryParse(dbText.TextString, out _))
+                    result.Add(new NumericTextHit(dbText.ObjectId, dbText.AlignmentPoint));
+                else if (obj is MText mText)
+                {
+                    string text = mText.Text.Replace("\\P", " ");
+                    if (double.TryParse(text, out _))
+                        result.Add(new NumericTextHit(mText.ObjectId, mText.Location));
+                }
+            }
+            return result;
+        }
+
+        private static bool TryReadNumericText(DBObject textObj, out double value)
+        {
+            value = 0;
+            if (textObj is DBText dbText)
+                return double.TryParse(dbText.TextString, out value);
+            if (textObj is MText mText)
+                return double.TryParse(mText.Text.Replace("\\P", " "), out value);
+            return false;
+        }
 
         private static string ResolveRaftLayer(string semanticId)
         {

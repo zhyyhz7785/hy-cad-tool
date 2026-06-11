@@ -53,7 +53,10 @@ namespace HyCADTool.Features.BaseRein.ViewModels
                 _reinforcementService.DrawReinforcement(_config, DimAll);
             }));
             StepSixCommand = new RelayCommand(() => SendCommand(() =>
-                _reinforcementService.DimensionReinforcementArea(SelectedDimDirection)));
+            {
+                SaveConfigToService();
+                _reinforcementService.DimensionReinforcementArea(SelectedDimDirection);
+            }));
         }
 
         #endregion
@@ -252,8 +255,16 @@ namespace HyCADTool.Features.BaseRein.ViewModels
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"发送命令失败: {ex.Message}");
                 SettingsPanelViewModel.PendingCommand = null;
+                try
+                {
+                    AcApp.DocumentManager.MdiActiveDocument?.Editor
+                        ?.WriteMessage($"\n[BaseRein] 发送命令失败: {ex.Message}");
+                }
+                catch
+                {
+                    System.Diagnostics.Debug.WriteLine($"发送命令失败: {ex.Message}");
+                }
             }
         }
 

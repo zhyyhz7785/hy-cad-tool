@@ -128,8 +128,8 @@ namespace HyCADTool.Features.Reinforcement.Domain
             return new ReinParameters
             {
                 // 基础参数
-                Scale = 40.0,
-                RebarDiameter = 12.0,
+                Scale = 50.0,
+                RebarDiameter = 14.0,
                 RebarSpacing = 200.0,
 
                 // 钢筋参数
@@ -166,19 +166,59 @@ namespace HyCADTool.Features.Reinforcement.Domain
                 return false;
             }
 
-            if (RebarDiameter < 0)
+            if (RebarDiameter <= 0)
             {
-                errorMessage = "钢筋直径不能为负数";
+                errorMessage = "钢筋直径必须大于 0";
                 return false;
             }
 
-            if (RebarSpacing < 0)
+            if (RebarSpacing <= 0)
             {
-                errorMessage = "钢筋间距不能为负数";
+                errorMessage = "钢筋间距必须大于 0";
                 return false;
             }
 
-            // 可以添加更多验证规则
+            if (DotSeparation <= 0)
+            {
+                errorMessage = "点钢筋间距必须大于 0";
+                return false;
+            }
+
+            if (AnchorageLength <= 0)
+            {
+                errorMessage = "锚固长度必须大于 0";
+                return false;
+            }
+
+            if (HookLength <= 0)
+            {
+                errorMessage = "弯钩长度必须大于 0";
+                return false;
+            }
+
+            if (PolylineWidth <= 0)
+            {
+                errorMessage = "多段线宽必须大于 0";
+                return false;
+            }
+
+            if (ProtectionThickness < 0)
+            {
+                errorMessage = "保护层厚度不能为负数";
+                return false;
+            }
+
+            if (ReinforcementDiameter <= 0)
+            {
+                errorMessage = "点钢绘制直径必须大于 0";
+                return false;
+            }
+
+            if (DotReinOffset < 0)
+            {
+                errorMessage = "点钢偏移不能为负数";
+                return false;
+            }
 
             errorMessage = string.Empty;
             return true;

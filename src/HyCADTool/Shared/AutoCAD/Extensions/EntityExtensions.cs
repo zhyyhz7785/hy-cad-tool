@@ -84,7 +84,8 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
             return CreateSolidCircle(r, new Point3d(x, y, 0), width);
         }
 
-        /// <summary>选择单个实体</summary>
+        /// <summary>选择单个实体（事务提交后返回的实体已关闭，禁止在事务外继续访问几何属性）。</summary>
+        [Obsolete("事务提交后实体已关闭。请在同一事务内 GetObject 并处理，或仅返回 ObjectId。")]
         public static T SelectAEntity<T>(this Database db, string prompt = null) where T : Entity
         {
             var doc = Application.DocumentManager.MdiActiveDocument;

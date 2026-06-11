@@ -19,32 +19,49 @@ namespace HyCADTool.Shared.AutoCAD.Services
         public Point2D GetNearestForwardIntersection(
             Point2D segmentEndPoint, Vector2D direction, Polyline2D boundary)
         {
+            if (TryGetNearestForwardIntersection(segmentEndPoint, direction, boundary, out Point2D hit))
+                return hit;
+
+            return segmentEndPoint;
+        }
+
+        public bool TryGetNearestForwardIntersection(
+            Point2D segmentEndPoint,
+            Vector2D direction,
+            Polyline2D boundary,
+            out Point2D intersection)
+        {
+            intersection = segmentEndPoint;
+
+            if (boundary == null || !direction.TryNormalize(out _))
+                return false;
+
             var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+                return false;
+
             var db = doc.Database;
 
             using (var tr = db.TransactionManager.StartTransaction())
             {
+                Line line = null;
+                Polyline acadBoundary = null;
                 try
                 {
-                    // 转换为 AutoCAD 类型
                     var pt1 = new Point3d(segmentEndPoint.X, segmentEndPoint.Y, 0);
                     var rawDir = new Vector3d(direction.X, direction.Y, 0);
                     if (rawDir.Length < 1e-10)
-                        return segmentEndPoint; // 零向量方向无法求交
+                        return false;
+
                     var dir = rawDir.GetNormal();
                     var pt2 = pt1 + dir;
 
-                    // 创建临时射线（用 Line 模拟）
-                    var line = new Line(pt1, pt2);
+                    line = new Line(pt1, pt2);
+                    acadBoundary = ToAcadPolyline(boundary);
 
-                    // 创建临时边界 Polyline
-                    var acadBoundary = ToAcadPolyline(boundary);
-
-                    // 求交点
                     var points = new Point3dCollection();
                     line.IntersectWith(acadBoundary, Intersect.ExtendThis, points, IntPtr.Zero, IntPtr.Zero);
 
-                    // 筛选正方向交点
                     var forwardPoints = new List<Point3d>();
                     for (int i = 0; i < points.Count; i++)
                     {
@@ -52,17 +69,10 @@ namespace HyCADTool.Shared.AutoCAD.Services
                         if (vec.Length > 1e-10)
                         {
                             var vecNorm = vec.GetNormal();
-                            // 同向判断（点积 > 0）
                             if (dir.DotProduct(vecNorm) > 0.99)
-                            {
                                 forwardPoints.Add(points[i]);
-                            }
                         }
                     }
-
-                    // 清理临时对象
-                    line.Dispose();
-                    acadBoundary.Dispose();
 
                     Point3d closest;
                     if (forwardPoints.Any())
@@ -71,7 +81,6 @@ namespace HyCADTool.Shared.AutoCAD.Services
                     }
                     else if (points.Count > 0)
                     {
-                        // 退化：取最近的任意交点
                         closest = Enumerable.Range(0, points.Count)
                             .Select(idx => points[idx])
                             .OrderBy(p => pt1.DistanceTo(p))
@@ -79,16 +88,21 @@ namespace HyCADTool.Shared.AutoCAD.Services
                     }
                     else
                     {
-                        // 没有交点，沿方向延伸一个默认距离
-                        closest = pt1 + dir * 1000;
+                        return false;
                     }
 
                     tr.Commit();
-                    return new Point2D(closest.X, closest.Y);
+                    intersection = new Point2D(closest.X, closest.Y);
+                    return true;
                 }
                 catch (System.Exception)
                 {
-                    return segmentEndPoint;
+                    return false;
+                }
+                finally
+                {
+                    line?.Dispose();
+                    acadBoundary?.Dispose();
                 }
             }
         }

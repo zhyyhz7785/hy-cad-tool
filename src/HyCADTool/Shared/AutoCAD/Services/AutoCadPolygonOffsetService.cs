@@ -17,42 +17,66 @@ namespace HyCADTool.Shared.AutoCAD.Services
         public Polyline2D Offset(Polyline2D polyline, double offsetDistance)
         {
             if (polyline == null || polyline.VertexCount < 2)
-                return polyline;
+                return null;
 
             var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+                return null;
+
             var db = doc.Database;
 
             using (var tr = db.TransactionManager.StartTransaction())
             {
+                Polyline acadPoly = null;
                 try
                 {
-                    // 创建临时 AutoCAD Polyline
-                    var acadPoly = ToAcadPolyline(polyline);
-
-                    // 执行偏移
+                    acadPoly = ToAcadPolyline(polyline);
                     var offsetCurves = acadPoly.GetOffsetCurves(offsetDistance);
-                    if (offsetCurves.Count == 0)
-                        return polyline;
+                    if (offsetCurves == null || offsetCurves.Count == 0)
+                        return null;
 
-                    var offsetPoly = offsetCurves[0] as Polyline;
-                    if (offsetPoly == null)
-                        return polyline;
-
-                    // 转回 Polyline2D
-                    var result = FromAcadPolyline(offsetPoly);
-
-                    // 清理临时对象
-                    offsetPoly.Dispose();
-                    acadPoly.Dispose();
-
+                    var result = PickLargestOffset(offsetCurves);
                     tr.Commit();
                     return result;
                 }
                 catch (System.Exception)
                 {
-                    return polyline;
+                    return null;
+                }
+                finally
+                {
+                    acadPoly?.Dispose();
                 }
             }
+        }
+
+        private static Polyline2D PickLargestOffset(DBObjectCollection offsetCurves)
+        {
+            Polyline2D best = null;
+            double bestArea = 0;
+
+            foreach (Entity ent in offsetCurves)
+            {
+                try
+                {
+                    if (ent is Polyline p)
+                    {
+                        var domain = FromAcadPolyline(p);
+                        double area = Math.Abs(domain.GetSignedArea());
+                        if (area > bestArea)
+                        {
+                            bestArea = area;
+                            best = domain;
+                        }
+                    }
+                }
+                finally
+                {
+                    ent?.Dispose();
+                }
+            }
+
+            return best;
         }
 
         private static Polyline ToAcadPolyline(Polyline2D poly)

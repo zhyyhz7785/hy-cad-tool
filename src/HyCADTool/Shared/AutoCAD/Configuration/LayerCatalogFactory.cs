@@ -76,8 +76,8 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
             yield return (LayerSemanticIds.Cushion, LayerBuiltinDefaults.Cushion, 8, c);
             yield return (LayerSemanticIds.TitleBlock, LayerBuiltinDefaults.TitleBlock, 7, c);
             yield return (LayerSemanticIds.HyRebarTextH, LayerBuiltinDefaults.HyRebarTextH, 7, c);
-            yield return (LayerSemanticIds.HyRebarTextV, LayerBuiltinDefaults.HyRebarTextV, 7, c);
-            yield return (LayerSemanticIds.HyRebarManual, LayerBuiltinDefaults.HyRebarManual, 6, c);
+            yield return (LayerSemanticIds.HyRebarTextV, LayerBuiltinDefaults.HyRebarTextV, 2, c);
+            yield return (LayerSemanticIds.HyRebarManual, LayerBuiltinDefaults.HyRebarManual, 1, c);
             yield return (LayerSemanticIds.ClusterBP, LayerBuiltinDefaults.ClusterMain, 3, c);
             yield return (LayerSemanticIds.ClusterAAP, LayerBuiltinDefaults.ClusterMain, 3, c);
             yield return (LayerSemanticIds.ClusterBAP, LayerBuiltinDefaults.ClusterMain, 3, c);

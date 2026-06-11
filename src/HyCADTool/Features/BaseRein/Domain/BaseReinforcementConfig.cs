@@ -244,6 +244,12 @@ namespace HyCADTool.Features.BaseRein.Domain
                 return false;
             }
 
+            if (AdditionalSpacing <= 0)
+            {
+                errorMessage = "附加钢筋间距必须大于 0";
+                return false;
+            }
+
             if (ProximityThreshold <= 0)
             {
                 errorMessage = "分组距离阈值必须大于 0";

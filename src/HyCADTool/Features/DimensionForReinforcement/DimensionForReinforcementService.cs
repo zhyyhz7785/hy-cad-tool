@@ -4,10 +4,12 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
-using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shell.Contracts;
+using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shell.Configuration;
+using Autodesk.AutoCAD.EditorInput;
 using NetTopologySuite.Geometries;
 using System;
 using System.Collections.Generic;
@@ -46,71 +48,118 @@ namespace HyCADTool.Features.DimensionForReinforcement
         #region 公共入口
 
         /// <summary>
-        /// 对单个多段线生成尺寸标注并写入模型空间（在自身事务内打开实体）。
+        /// 对单个多段线生成尺寸标注并写入模型空间（单事务批量写入）。
         /// </summary>
-        public void GenerateDimension(ObjectId boundaryId)
+        /// <returns>是否成功生成并写入至少一个标注</returns>
+        public bool GenerateDimension(ObjectId boundaryId, bool writeSummary = true)
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
+            var ed = doc.Editor;
             using (doc.LockDocument())
             using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
                 var boundary = tr.GetObject(boundaryId, OpenMode.ForRead) as Polyline;
-                if (boundary == null) return;
-                GenerateDimensionCore(boundary);
+                if (boundary == null)
+                {
+                    if (writeSummary)
+                        ed.WriteMessage("\n未找到有效多段线。");
+                    return false;
+                }
+
+                var output = new List<RotatedDimension>();
+                if (!TryCollectDimensions(boundary, ed, output))
+                    return false;
+
+                TrySetCurrentDimensionLayer(ed);
+
+                var btr = (BlockTableRecord)tr.GetObject(doc.Database.CurrentSpaceId, OpenMode.ForWrite);
+                foreach (var dim in output)
+                {
+                    btr.AppendEntity(dim);
+                    tr.AddNewlyCreatedDBObject(dim, true);
+                }
+
                 tr.Commit();
+                if (writeSummary && output.Count > 0)
+                    ed.WriteMessage($"\n标注完成：{output.Count} 个尺寸。");
+                return output.Count > 0;
             }
         }
 
         /// <summary>
-        /// 对已在打开事务中的多段线生成尺寸标注（调用方须保证 boundary 可读）。
+        /// 对已在打开事务中的多段线生成尺寸标注（单事务批量写入）。
         /// </summary>
-        public void GenerateDimension(Polyline boundary)
+        public bool GenerateDimension(Polyline boundary)
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
+            var ed = doc.Editor;
             using (doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
-                GenerateDimensionCore(boundary);
+                var output = new List<RotatedDimension>();
+                if (!TryCollectDimensions(boundary, ed, output))
+                    return false;
+
+                TrySetCurrentDimensionLayer(ed);
+
+                var btr = (BlockTableRecord)tr.GetObject(doc.Database.CurrentSpaceId, OpenMode.ForWrite);
+                foreach (var dim in output)
+                {
+                    btr.AppendEntity(dim);
+                    tr.AddNewlyCreatedDBObject(dim, true);
+                }
+
+                tr.Commit();
+                if (output.Count > 0)
+                    ed.WriteMessage($"\n标注完成：{output.Count} 个尺寸。");
+                return output.Count > 0;
             }
         }
 
-        private void GenerateDimensionCore(Polyline boundary)
+        private bool TryCollectDimensions(Polyline boundary, Editor ed, List<RotatedDimension> output)
         {
-            if (!SetProperties(boundary)) return;
+            if (!SetProperties(boundary, ed)) return false;
 
-            SetCurrentDimensionLayer();
+            var dimsLR = GenerateOutsideLeftRight(ed);
+            if (dimsLR == null) return false;
+            var dimsUD = GenerateOutsideUpDown(ed);
+            if (dimsUD == null) return false;
 
-            // 生成外部标注
-            var dimsLR = GenerateOutsideLeftRight();
-            var dimsUD = GenerateOutsideUpDown();
-
-            // 生成内部标注
             var dimInLR = GenerateInsideLeftRight();
             var dimInUD = GenerateInsideUpDown();
 
-            // 后处理：删除近距离平行标注
             dimInLR = DeleteNearbyParallelDim(dimInLR, _dimDistanceTolerance);
             dimInUD = DeleteNearbyParallelDim(dimInUD, _dimDistanceTolerance);
 
-            // 后处理：外部标注
             var dimLeft = DimVsEqualLength(DeleteDimensionZero(dimsLR[0]));
             var dimRight = DimVsEqualLength(DeleteDimensionZero(dimsLR[1]));
             var dimUp = DimVsEqualLength(DeleteDimensionZero(dimsUD[0]));
             var dimDown = DimVsEqualLength(DeleteDimensionZero(dimsUD[1]));
 
-            // 写入模型空间
-            WriteToSpace(dimLeft);
-            WriteToSpace(dimRight);
-            WriteToSpace(dimUp);
-            WriteToSpace(dimDown);
-            WriteToSpace(dimInLR);
-            WriteToSpace(dimInUD);
+            CollectDimensions(dimLeft, output);
+            CollectDimensions(dimRight, output);
+            CollectDimensions(dimUp, output);
+            CollectDimensions(dimDown, output);
+            CollectDimensions(dimInLR, output);
+            CollectDimensions(dimInUD, output);
+            return true;
+        }
+
+        private static void CollectDimensions(RotatedDimension[] dims, List<RotatedDimension> output)
+        {
+            if (dims == null) return;
+            foreach (var d in dims)
+            {
+                if (d != null)
+                    output.Add(d);
+            }
         }
 
         #endregion
 
         #region 初始化
 
-        private bool SetProperties(Polyline boundary)
+        private bool SetProperties(Polyline boundary, Editor ed)
         {
             if (boundary == null) return false;
             _boundary = boundary;
@@ -132,7 +181,19 @@ namespace HyCADTool.Features.DimensionForReinforcement
             var lines = ExplodePolyline(boundary);
             try
             {
+                if (lines.Length == 0)
+                {
+                    ed.WriteMessage("\n边界无有效直线段（弧段/退化多段线），无法标注。");
+                    return false;
+                }
+
                 var points = GetAllLinePoints(lines);
+                if (points.Length == 0)
+                {
+                    ed.WriteMessage("\n边界无有效顶点，无法标注。");
+                    return false;
+                }
+
                 _xMin = GetExtreme(points, ExtremeSide.XMin);
                 _xMax = GetExtreme(points, ExtremeSide.XMax);
                 _yMin = GetExtreme(points, ExtremeSide.YMin);
@@ -147,28 +208,21 @@ namespace HyCADTool.Features.DimensionForReinforcement
             return true;
         }
 
-        private void SetCurrentDimensionLayer()
+        private static bool TrySetCurrentDimensionLayer(Editor ed)
         {
             try
             {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                var db = doc.Database;
-                var layerName = UserLayerNameResolver.Get(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
-                using (var tr = db.TransactionManager.StartTransaction())
-                {
-                    var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-                    if (!lt.Has(layerName))
-                    {
-                        lt.UpgradeOpen();
-                        var ltr = new LayerTableRecord { Name = layerName };
-                        lt.Add(ltr);
-                        tr.AddNewlyCreatedDBObject(ltr, true);
-                    }
-                    db.Clayer = lt[layerName];
-                    tr.Commit();
-                }
+                var layerName = UserLayerNameResolver.Get(
+                    LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
+                var layerService = ServiceLocator.Resolve<ILayerService>();
+                layerService.SetCurrentLayer(layerName);
+                return true;
             }
-            catch (System.Exception) { /* 图层设置失败不影响核心功能 */ }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n警告：标注图层设置失败（{ex.Message}），将使用当前图层。");
+                return false;
+            }
         }
 
         #endregion
@@ -176,11 +230,16 @@ namespace HyCADTool.Features.DimensionForReinforcement
         #region 外部标注生成
 
         /// <summary>返回 [leftDims, rightDims]</summary>
-        private RotatedDimension[][] GenerateOutsideLeftRight()
+        private RotatedDimension[][] GenerateOutsideLeftRight(Editor ed)
         {
             // 1. 水平割线 → 上下扫描
-            GetAllSecantLinesHorizontal();
+            if (!GetAllSecantLinesHorizontal(ed)) return null;
             var cols = _lineIntersectionsUpDown.GetLength(1);
+            if (cols < 2)
+            {
+                ed.WriteMessage("\n割线未产生有效交线列，跳过外部左右标注。");
+                return new[] { new RotatedDimension[0], new RotatedDimension[0] };
+            }
 
             // 2. 提取左/右边界线
             var boundLeftLines = GetColumn(_lineIntersectionsUpDown, 0);
@@ -199,11 +258,16 @@ namespace HyCADTool.Features.DimensionForReinforcement
         }
 
         /// <summary>返回 [downDims, upDims]</summary>
-        private RotatedDimension[][] GenerateOutsideUpDown()
+        private RotatedDimension[][] GenerateOutsideUpDown(Editor ed)
         {
             // 1. 垂直割线 → 左右扫描
-            GetAllSecantLinesVertical();
+            if (!GetAllSecantLinesVertical(ed)) return null;
             var cols = _lineIntersectionsLeftRight.GetLength(1);
+            if (cols < 2)
+            {
+                ed.WriteMessage("\n割线未产生有效交线列，跳过外部上下标注。");
+                return new[] { new RotatedDimension[0], new RotatedDimension[0] };
+            }
 
             // 2. 提取下/上边界线（都是取列，与旧代码 GetDimensionLeftRight/GetDimensionByCol 一致）
             var boundDownLines = GetColumn(_lineIntersectionsLeftRight, 0);
@@ -370,7 +434,7 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
         #region 割线算法（水平 — 上下扫描）
 
-        private void GetAllSecantLinesHorizontal()
+        private bool GetAllSecantLinesHorizontal(Editor ed)
         {
             var lineIntersectionsList = new List<Line[]>();
             var secant = CreateHorizontalSecant(_yMin.Y + _startStep);
@@ -382,14 +446,19 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 intersectionLines = SortLinesByX(intersectionLines);
                 lineIntersectionsList.Add(intersectionLines);
 
-                // 统一方向为 Y+
                 NormalizeDirectionY(intersectionLines);
 
                 var shortest = intersectionLines.OrderBy(l => l.EndPoint.Y).FirstOrDefault();
-                secant = GetNextHorizontalSecant(shortest, secant);
+                var next = GetNextHorizontalSecant(shortest, secant, ed);
+                secant.Dispose();
+                if (next == null)
+                    return false;
+                secant = next;
             }
 
+            secant.Dispose();
             _lineIntersectionsUpDown = To2DArray(lineIntersectionsList);
+            return true;
         }
 
         private Line CreateHorizontalSecant(double y)
@@ -397,7 +466,7 @@ namespace HyCADTool.Features.DimensionForReinforcement
             return new Line(new Point3d(_xMin.X, y, 0), new Point3d(_xMax.X, y, 0));
         }
 
-        private Line GetNextHorizontalSecant(Line shortestIntersection, Line currentSecant)
+        private Line GetNextHorizontalSecant(Line shortestIntersection, Line currentSecant, Editor ed)
         {
             if (currentSecant == null || _boundary == null)
                 throw new System.ArgumentNullException("currentSecant or boundary cannot be null.");
@@ -411,20 +480,27 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
             int countPri = GetIntersectionCountAcad(currentSecant, _boundary);
             int countNext = countPri;
-            Line next = new Line();
+            Line next = null;
             int safetyCounter = 0;
 
             while (countPri == countNext && y <= shortestIntersection.EndPoint.Y && safetyCounter < 1000)
             {
                 y += _step;
+                next?.Dispose();
                 next = CreateHorizontalSecant(y);
                 try { countNext = GetIntersectionCountAcad(next, _boundary); }
-                catch { return next; }
+                catch
+                {
+                    next?.Dispose();
+                    ed.WriteMessage("\n水平割线求交失败，中止标注。");
+                    return null;
+                }
                 safetyCounter++;
             }
 
             if (safetyCounter >= 1000)
             {
+                next?.Dispose();
                 y = Math.Max(_yMax.Y + _step, shortestIntersection.EndPoint.Y + _step);
                 next = CreateHorizontalSecant(y);
             }
@@ -436,7 +512,7 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
         #region 割线算法（垂直 — 左右扫描）
 
-        private void GetAllSecantLinesVertical()
+        private bool GetAllSecantLinesVertical(Editor ed)
         {
             var lineIntersectionsList = new List<Line[]>();
             var secant = CreateVerticalSecant(_xMin.X + _startStep);
@@ -448,14 +524,19 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 intersectionLines = SortLinesByY(intersectionLines);
                 lineIntersectionsList.Add(intersectionLines);
 
-                // 统一方向为 X+
                 NormalizeDirectionX(intersectionLines);
 
                 var shortest = intersectionLines.OrderBy(l => l.EndPoint.X).FirstOrDefault();
-                secant = GetNextVerticalSecant(shortest, secant);
+                var next = GetNextVerticalSecant(shortest, secant, ed);
+                secant.Dispose();
+                if (next == null)
+                    return false;
+                secant = next;
             }
 
+            secant.Dispose();
             _lineIntersectionsLeftRight = To2DArray(lineIntersectionsList);
+            return true;
         }
 
         private Line CreateVerticalSecant(double x)
@@ -463,7 +544,7 @@ namespace HyCADTool.Features.DimensionForReinforcement
             return new Line(new Point3d(x, _yMin.Y, 0), new Point3d(x, _yMax.Y, 0));
         }
 
-        private Line GetNextVerticalSecant(Line shortestIntersection, Line currentSecant)
+        private Line GetNextVerticalSecant(Line shortestIntersection, Line currentSecant, Editor ed)
         {
             if (currentSecant == null || _boundary == null)
                 throw new System.ArgumentNullException("currentSecant or boundary cannot be null.");
@@ -477,20 +558,27 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
             int countPri = GetIntersectionCountAcad(currentSecant, _boundary);
             int countNext = countPri;
-            Line next = new Line();
+            Line next = null;
             int safetyCounter = 0;
 
             while (countPri == countNext && x <= shortestIntersection.EndPoint.X && safetyCounter < 1000)
             {
                 x += _step;
+                next?.Dispose();
                 next = CreateVerticalSecant(x);
                 try { countNext = GetIntersectionCountAcad(next, _boundary); }
-                catch { return next; }
+                catch
+                {
+                    next?.Dispose();
+                    ed.WriteMessage("\n垂直割线求交失败，中止标注。");
+                    return null;
+                }
                 safetyCounter++;
             }
 
             if (safetyCounter >= 1000)
             {
+                next?.Dispose();
                 x = Math.Max(_xMax.X + _step, shortestIntersection.EndPoint.X + _step);
                 next = CreateVerticalSecant(x);
             }
@@ -932,12 +1020,14 @@ namespace HyCADTool.Features.DimensionForReinforcement
             if (lengths[0] > lengths[1])
             {
                 var vec = dimPoints[0] - dim.XLine1Point;
-                dim.XLine1Point = dim.XLine1Point + vec.GetNormal() * d;
+                if (TryGetNormal(vec, out Vector3d n))
+                    dim.XLine1Point = dim.XLine1Point + n * d;
             }
             else
             {
                 var vec = dimPoints[1] - dim.XLine2Point;
-                dim.XLine2Point = dim.XLine2Point + vec.GetNormal() * d;
+                if (TryGetNormal(vec, out Vector3d n))
+                    dim.XLine2Point = dim.XLine2Point + n * d;
             }
         }
 
@@ -945,10 +1035,26 @@ namespace HyCADTool.Features.DimensionForReinforcement
         {
             var dimPoints = DimVPoint(dim);
             var vec1 = dim.XLine1Point - dimPoints[0];
-            dim.XLine1Point = dimPoints[0] + vec1.GetNormal() * len1;
+            if (TryGetNormal(vec1, out Vector3d n1))
+                dim.XLine1Point = dimPoints[0] + n1 * len1;
+
             var vec2 = dim.XLine2Point - dimPoints[1];
-            dim.XLine2Point = dimPoints[1] + vec2.GetNormal() * len2;
+            if (TryGetNormal(vec2, out Vector3d n2))
+                dim.XLine2Point = dimPoints[1] + n2 * len2;
+
             return dim;
+        }
+
+        private static bool TryGetNormal(Vector3d vec, out Vector3d normal)
+        {
+            if (vec.Length < 1e-6)
+            {
+                normal = Vector3d.XAxis;
+                return false;
+            }
+
+            normal = vec.GetNormal();
+            return true;
         }
 
         private double[] DimVLength(RotatedDimension dim)
@@ -973,19 +1079,6 @@ namespace HyCADTool.Features.DimensionForReinforcement
             var seg1 = new LineSegment3d(pts1[0], pts1[1]);
             var seg2 = new LineSegment3d(pts2[0], pts2[1]);
             return seg1.GetDistanceTo(seg2);
-        }
-
-        #endregion
-
-        #region 写入模型空间
-
-        private void WriteToSpace(RotatedDimension[] dims)
-        {
-            if (dims == null || dims.Length == 0) return;
-            foreach (var d in dims)
-            {
-                d.ToSpace();
-            }
         }
 
         #endregion

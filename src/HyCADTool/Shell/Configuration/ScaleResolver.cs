@@ -7,7 +7,7 @@ namespace HyCADTool.Shell.Configuration
     /// </summary>
     public static class ScaleResolver
     {
-        public const double DefaultScale = 40.0;
+        public const double DefaultScale = 50.0;
         public const double DefaultAnchorageLength = 500.0;
 
         public static double GetScale() => SettingsPanelViewModel.Current?.Scale ?? DefaultScale;

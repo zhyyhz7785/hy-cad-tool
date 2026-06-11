@@ -164,7 +164,7 @@ namespace HyCADTool.App.Bootstrap
                 .SingleInstance();
 
             // 射线-多段线交点服务（单例）
-            builder.RegisterType<AutoCadIntersectionService>()
+            builder.RegisterType<HyCAD.Geometry.Algorithms.RayPolylineIntersectionService>()
                 .As<ILineIntersectionService>()
                 .SingleInstance();
 

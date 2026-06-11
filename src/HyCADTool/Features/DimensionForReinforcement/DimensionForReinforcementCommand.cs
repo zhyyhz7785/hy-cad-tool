@@ -8,7 +8,6 @@ namespace HyCADTool.Features.DimensionForReinforcement
 {
     /// <summary>
     /// 配筋尺寸标注命令（旧 dds — 单个多段线）
-    /// 选择一条多段线，自动生成内外尺寸标注
     /// </summary>
     public class DimensionForReinforcementCommand : ICommand
     {
@@ -34,8 +33,8 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 if (result.Status != PromptStatus.OK) return;
 
                 var service = new DimensionForReinforcementService();
-                service.GenerateDimension(result.ObjectId);
-                ed.WriteMessage("\n标注完成。");
+                if (!service.GenerateDimension(result.ObjectId))
+                    ed.WriteMessage("\n标注未完成。");
             }
             catch (System.Exception ex)
             {
@@ -46,7 +45,6 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
     /// <summary>
     /// 配筋尺寸标注批量命令（旧 ddss — 多个多段线）
-    /// 选择多条多段线，逐一生成内外尺寸标注
     /// </summary>
     public class DimensionForReinforcementBatchCommand : ICommand
     {
@@ -79,15 +77,26 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 }
 
                 var service = new DimensionForReinforcementService();
-                int count = 0;
+                int success = 0;
+                int failed = 0;
 
                 foreach (SelectedObject selObj in selResult.Value)
                 {
-                    service.GenerateDimension(selObj.ObjectId);
-                    count++;
+                    try
+                    {
+                        if (service.GenerateDimension(selObj.ObjectId, writeSummary: false))
+                            success++;
+                        else
+                            failed++;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        failed++;
+                        ed.WriteMessage($"\n  跳过：{ex.Message}");
+                    }
                 }
 
-                ed.WriteMessage($"\n已完成 {count} 条多段线标注。");
+                ed.WriteMessage($"\n批量标注完成：成功 {success}，失败/跳过 {failed}。");
             }
             catch (System.Exception ex)
             {

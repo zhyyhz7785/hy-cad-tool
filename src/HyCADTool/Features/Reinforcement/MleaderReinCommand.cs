@@ -40,8 +40,9 @@ namespace HyCADTool.Features.Reinforcement
 
         private static string LayerMLeader => UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
         private static string LayerDotRein => UserLayerNameResolver.Get(LayerSemanticIds.ReinPoint, LayerBuiltinDefaults.ReinPoint);
-        private const double PointOffset = 100.0; // 沿多段线偏移距离（mm）
-        private const double SixPointDimDistance = 465.0; // gb2 水平偏移距离
+        // 1:40 出图原值 100mm / 465mm，运行时随 Scale 缩放
+        private const double PointOffsetAtScale40 = 2.5;
+        private const double SixPointDimDistanceAtScale40 = 11.625;
 
         public MleaderReinCommand(Mode mode = Mode.Standard)
         {
@@ -59,6 +60,8 @@ namespace HyCADTool.Features.Reinforcement
             var vm = SettingsPanelViewModel.Current;
 
             double scale = ScaleResolver.GetScale();
+            double pointOffset = PointOffsetAtScale40 * scale;
+            double sixPointDimDistance = SixPointDimDistanceAtScale40 * scale;
             double mleaderDistance = (vm?.MleaderDistance ?? 6.0) * scale;
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;
             double rebarSpacing = vm?.RebarSpacing ?? 200.0;
@@ -81,13 +84,13 @@ namespace HyCADTool.Features.Reinforcement
                 switch (_mode)
                 {
                     case Mode.Standard:
-                        ExecuteStandard(db, ed, mleaderDistance, content, reinDiameter, dotReinOffsetOut, globalReinWidth);
+                        ExecuteStandard(db, ed, mleaderDistance, content, reinDiameter, dotReinOffsetOut, globalReinWidth, pointOffset);
                         break;
                     case Mode.Single:
-                        ExecuteSingle(db, ed, mleaderDistance, content, dotReinOffsetOut);
+                        ExecuteSingle(db, ed, mleaderDistance, content, dotReinOffsetOut, pointOffset);
                         break;
                     case Mode.Six:
-                        ExecuteSix(db, ed, content, reinDiameter, dotReinOffsetOut, globalReinWidth);
+                        ExecuteSix(db, ed, content, reinDiameter, dotReinOffsetOut, globalReinWidth, pointOffset, sixPointDimDistance);
                         break;
                 }
             }
@@ -103,9 +106,9 @@ namespace HyCADTool.Features.Reinforcement
 
         /// <summary>gb: 多引线标注 + 点钢筋</summary>
         private void ExecuteStandard(Database db, Editor ed, double mleaderDistance, string content,
-            double reinDiameter, double dotReinOffset, double globalReinWidth)
+            double reinDiameter, double dotReinOffset, double globalReinWidth, double pointOffset)
         {
-            var points = GetReinPoints(db, ed, dotReinOffset);
+            var points = GetReinPoints(db, ed, dotReinOffset, pointOffset);
             if (points == null || points.Count < 3) return;
 
             var ps = points.ToArray();
@@ -120,9 +123,9 @@ namespace HyCADTool.Features.Reinforcement
 
         /// <summary>gb1: 单引线标注（无点钢筋）</summary>
         private void ExecuteSingle(Database db, Editor ed, double mleaderDistance, string content,
-            double dotReinOffset)
+            double dotReinOffset, double pointOffset)
         {
-            var points = GetReinPoints(db, ed, dotReinOffset);
+            var points = GetReinPoints(db, ed, dotReinOffset, pointOffset);
             if (points == null || points.Count < 3) return;
 
             var ps = points.ToArray();
@@ -133,13 +136,13 @@ namespace HyCADTool.Features.Reinforcement
 
         /// <summary>gb2: 六点引线标注 + 点钢筋</summary>
         private void ExecuteSix(Database db, Editor ed, string content,
-            double reinDiameter, double dotReinOffset, double globalReinWidth)
+            double reinDiameter, double dotReinOffset, double globalReinWidth, double pointOffset, double sixPointDimDistance)
         {
-            var points = GetReinPointsSix(db, ed, dotReinOffset);
+            var points = GetReinPointsSix(db, ed, dotReinOffset, pointOffset, sixPointDimDistance);
             if (points == null || points.Count < 6) return;
 
             var ps = points.ToArray();
-            var ml = ps.AddMleaderSix(SixPointDimDistance, content);
+            var ml = ps.AddMleaderSix(sixPointDimDistance, content);
 
             // 点钢筋：排除 index=1 和 index=4（两组的中心点）
             var dotPoints = ps.Where((p, i) => i != 1 && i != 4);
@@ -162,8 +165,7 @@ namespace HyCADTool.Features.Reinforcement
             using (doc.LockDocument())
             using (var tr = db.TransactionManager.StartTransaction())
             {
-                var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+                var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
 
                 // 添加点钢筋（指定图层）
                 foreach (var pl in dotReins)
@@ -189,7 +191,7 @@ namespace HyCADTool.Features.Reinforcement
         /// 获取3个标注点：沿多段线偏移的两个点钢筋位置 + 中心点
         /// 返回 [偏移点1, 中心点, 偏移点2]
         /// </summary>
-        private List<Point3d> GetReinPoints(Database db, Editor ed, double dotReinOffset)
+        private List<Point3d> GetReinPoints(Database db, Editor ed, double dotReinOffset, double pointOffset)
         {
             var peo = new PromptEntityOptions("\n请选择需要标注的多段线：");
             peo.SetRejectMessage("\n请选择一个多段线对象。");
@@ -202,7 +204,7 @@ namespace HyCADTool.Features.Reinforcement
                 var pl = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Polyline;
                 if (pl == null) { tr.Commit(); return null; }
 
-                var points = GetPointsAlongPolyline(pl, per.PickedPoint, PointOffset, dotReinOffset);
+                var points = GetPointsAlongPolyline(pl, per.PickedPoint, pointOffset, dotReinOffset);
                 tr.Commit();
                 return points;
             }
@@ -212,9 +214,9 @@ namespace HyCADTool.Features.Reinforcement
         /// 获取6个标注点（两组各3个），用于双排标注
         /// 第一组选第一条多段线，第二组选第二条（以第一组中心点投影到线段）
         /// </summary>
-        private List<Point3d> GetReinPointsSix(Database db, Editor ed, double dotReinOffset)
+        private List<Point3d> GetReinPointsSix(Database db, Editor ed, double dotReinOffset, double pointOffset, double sixPointDimDistance)
         {
-            var a = GetReinPoints(db, ed, dotReinOffset);
+            var a = GetReinPoints(db, ed, dotReinOffset, pointOffset);
             if (a == null || a.Count < 3) return null;
 
             var centerPt = a[1]; // 第一组的中心点
@@ -243,7 +245,7 @@ namespace HyCADTool.Features.Reinforcement
                 Point3d projectedPt = GetPerpendicularPoint(segment, centerPt);
 
                 // 第二组点距：0.4375×Scale（1:40 时 =17.5mm，随出图比例缩放）
-                var points = GetPointsAlongPolyline(pl, projectedPt, PointOffset, 0.4375 * ScaleResolver.GetScale());
+                var points = GetPointsAlongPolyline(pl, projectedPt, pointOffset, 0.4375 * ScaleResolver.GetScale());
                 tr.Commit();
 
                 if (points == null || points.Count < 3) return null;

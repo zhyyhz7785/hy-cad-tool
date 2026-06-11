@@ -50,40 +50,44 @@ namespace HyCADTool.Features.Reinforcement
             // 1. 交互式沿边界绘制（Jig 实时预览偏移效果）
             using (var jig = new PolylineJig(-offsetDistance))
             {
-            if (jig.StartJig() != PromptStatus.OK || jig.Points.Count <= 1)
-                return;
+                if (jig.StartJig() != PromptStatus.OK || jig.Points.Count <= 1)
+                    return;
 
-            using (var trans = db.TransactionManager.StartTransaction())
-            {
-                var bt = (BlockTable)trans.GetObject(db.BlockTableId, OpenMode.ForRead);
-                var btr = (BlockTableRecord)trans.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
-
-                // 2. 构建辅助多段线用于偏移计算（不写入图纸）
-                var tempPoly = new Polyline();
-                for (int i = 0; i < jig.Points.Count; i++)
+                using (var trans = db.TransactionManager.StartTransaction())
                 {
-                    tempPoly.AddVertexAt(i, new Point2d(jig.Points[i].X, jig.Points[i].Y), 0, 0, 0);
-                }
+                    var btr = (BlockTableRecord)trans.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
 
-                // 3. 生成偏移曲线（= 钢筋线）
-                var offsetCurves = tempPoly.GetOffsetCurves(-offsetDistance);
-
-                foreach (Entity ent in offsetCurves)
-                {
-                    // 4. 对偏移后的多段线自动添加两端弯钩
-                    if (ent is Polyline offsetPoly)
+                    using (var tempPoly = new Polyline())
                     {
-                        AddHooksAtBothEnds(offsetPoly, hookLength);
-                        offsetPoly.ApplyReinforcementWidth(reinWidth);
+                        for (int i = 0; i < jig.Points.Count; i++)
+                        {
+                            tempPoly.AddVertexAt(i, new Point2d(jig.Points[i].X, jig.Points[i].Y), 0, 0, 0);
+                        }
+
+                        var offsetCurves = tempPoly.GetOffsetCurves(-offsetDistance);
+                        if (offsetCurves == null || offsetCurves.Count == 0)
+                        {
+                            AcApp.DocumentManager.MdiActiveDocument.Editor
+                                .WriteMessage("\n偏移失败，未生成钢筋线。");
+                            trans.Abort();
+                            return;
+                        }
+
+                        foreach (Entity ent in offsetCurves)
+                        {
+                            if (ent is Polyline offsetPoly)
+                            {
+                                AddHooksAtBothEnds(offsetPoly, hookLength);
+                                offsetPoly.ApplyReinforcementWidth(reinWidth);
+                            }
+
+                            btr.AppendEntity(ent);
+                            trans.AddNewlyCreatedDBObject(ent, true);
+                        }
                     }
 
-                    // 5. 写入模型空间
-                    btr.AppendEntity(ent);
-                    trans.AddNewlyCreatedDBObject(ent, true);
+                    trans.Commit();
                 }
-
-                trans.Commit();
-            }
             }
         }
 

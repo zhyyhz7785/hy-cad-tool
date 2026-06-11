@@ -18,6 +18,9 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
         /// </summary>
         public static MLeader AddMleader(this Point3d[] points, double distance, string content)
         {
+            if (points == null || points.Length < 2)
+                return null;
+
             var db = Application.DocumentManager.MdiActiveDocument.Database;
             var startP = points.First();
             var endP = points.Last();
@@ -68,6 +71,9 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
         /// </summary>
         public static MLeader AddMleaderOne(this Point3d[] points, double distance, string content)
         {
+            if (points == null || points.Length < 2)
+                return null;
+
             var db = Application.DocumentManager.MdiActiveDocument.Database;
             var startP = points.First();
             var endP = points.Last();
@@ -117,6 +123,9 @@ namespace HyCADTool.Shared.AutoCAD.Extensions
         /// </summary>
         public static MLeader AddMleaderSix(this Point3d[] points, double distance, string content)
         {
+            if (points == null || points.Length < 6)
+                return null;
+
             var db = Application.DocumentManager.MdiActiveDocument.Database;
             var startP = points.First();
             var endP = points.Last();

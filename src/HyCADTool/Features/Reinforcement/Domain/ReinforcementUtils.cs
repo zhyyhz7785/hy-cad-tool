@@ -23,15 +23,17 @@ namespace HyCADTool.Features.Reinforcement.Domain
             Polyline2D[] subReinforcements,
             Polyline2D boundary,
             ReinParameters parameters,
-            ILineIntersectionService intersectionService)
+            ILineIntersectionService intersectionService,
+            Polyline2D[] rayTargets = null)
         {
+            var targets = rayTargets ?? new[] { boundary };
             var results = new Polyline2D[subReinforcements.Length];
             var bendingFlags = new List<Dictionary<int, bool>>();
 
             for (int i = 0; i < subReinforcements.Length; i++)
             {
                 results[i] = ExtendSingleToAnchorage(
-                    subReinforcements[i], boundary, parameters, intersectionService,
+                    subReinforcements[i], boundary, targets, parameters, intersectionService,
                     out Dictionary<int, bool> dic);
                 bendingFlags.Add(dic);
             }
@@ -52,6 +54,7 @@ namespace HyCADTool.Features.Reinforcement.Domain
         public static Polyline2D ExtendSingleToAnchorage(
             Polyline2D subPolyline,
             Polyline2D boundary,
+            Polyline2D[] rayTargets,
             ReinParameters parameters,
             ILineIntersectionService intersectionService,
             out Dictionary<int, bool> bendingFlags)
@@ -65,11 +68,11 @@ namespace HyCADTool.Features.Reinforcement.Domain
             var startSegReversed = new Line2D(startSeg.EndPoint, startSeg.StartPoint);
 
             // 1.2 得到弯折方向（旧代码: GetDirectionTwoPointInOneLine）
-            Vector2D? startDirection = GetBendDirection(subPolyline, boundary, intersectionService);
+            Vector2D? startDirection = GetBendDirection(subPolyline, rayTargets, intersectionService);
 
             // 2. 延伸起点（旧代码: ExtendEndingReinforcement(startSeg, startDirection, ...)）
             var extendStart = ExtendEnding(
-                startSegReversed, startDirection, boundary, parameters, intersectionService,
+                startSegReversed, startDirection, boundary, rayTargets, parameters, intersectionService,
                 out bool isStartBending);
 
             // 延伸终点（旧代码: ExtendEndingReinforcement(endSeg, -startDirection, ...)）
@@ -77,7 +80,7 @@ namespace HyCADTool.Features.Reinforcement.Domain
                 ? (Vector2D?)(new Vector2D(-startDirection.Value.X, -startDirection.Value.Y))
                 : null;
             var extendEnd = ExtendEnding(
-                endSeg, endDirection, boundary, parameters, intersectionService,
+                endSeg, endDirection, boundary, rayTargets, parameters, intersectionService,
                 out bool isEndBending);
 
             // 3. 弯折标记
@@ -110,6 +113,7 @@ namespace HyCADTool.Features.Reinforcement.Domain
             Line2D seg,
             Vector2D? preferredDirection,
             Polyline2D boundary,
+            Polyline2D[] rayTargets,
             ReinParameters parameters,
             ILineIntersectionService intersectionService,
             out bool isBending)
@@ -122,17 +126,15 @@ namespace HyCADTool.Features.Reinforcement.Domain
 
             // 钢筋方向（零长度线段直接返回空）
             if (!seg.Direction.TryNormalize(out Vector2D direction01))
-            {
-                extendPoints.Add(seg.EndPoint);
                 return extendPoints;
-            }
-
-            // 直线锚固终点
-            Point2D straightAnchorEnd = seg.EndPoint.Add(direction01 * anchorageLength);
 
             // 沿钢筋方向延伸到轮廓（减2倍保护层厚度）
-            var (extendSeg01End, nextDirection) = GetExtendSegment(
-                seg.EndPoint, direction01, boundary, protectionThickness, intersectionService);
+            if (!TryGetExtendSegment(
+                    seg.EndPoint, direction01, rayTargets, protectionThickness, intersectionService,
+                    out Point2D extendSeg01End, out Vector2D nextDirection))
+            {
+                return extendPoints;
+            }
 
             double extendLen01 = seg.EndPoint.DistanceTo(extendSeg01End);
 
@@ -141,33 +143,31 @@ namespace HyCADTool.Features.Reinforcement.Domain
                 // 需要弯折
                 Vector2D bendDir = preferredDirection ?? nextDirection;
 
-                // 弯折方向为零向量时，无法计算弯折，回退到直线锚固
                 if (bendDir.IsZero())
+                    return extendPoints;
+
+                if (!TryGetExtendSegment(
+                        extendSeg01End, bendDir, rayTargets, protectionThickness, intersectionService,
+                        out Point2D extendSeg02End, out _))
                 {
-                    extendPoints.Add(seg.EndPoint.Add(direction01 * anchorageLength));
                     return extendPoints;
                 }
-
-                var (extendSeg02End, _) = GetExtendSegment(
-                    extendSeg01End, bendDir, boundary, protectionThickness, intersectionService);
 
                 double extendLen02 = extendSeg01End.DistanceTo(extendSeg02End);
 
                 if ((extendLen02 + extendLen01) < anchorageLength)
                 {
                     // 两段总长不够，标记但保留
-                    // （旧代码在这里调用 MakeMark，Domain层不做，由调用方处理）
                 }
                 else
                 {
-                    // 计算弯折段的实际需要长度
                     double neededLen = anchorageLength - extendLen01;
                     Point2D bendEnd = extendSeg01End.Add(bendDir * neededLen);
 
-                    // 检查最小平直段长度
                     if (neededLen < bendingMinLength)
                     {
-                        bendEnd = extendSeg01End.Add(bendDir * bendingMinLength);
+                        double clampedLen = Math.Min(bendingMinLength, extendLen02);
+                        bendEnd = extendSeg01End.Add(bendDir * clampedLen);
                     }
 
                     extendSeg02End = bendEnd;
@@ -179,7 +179,7 @@ namespace HyCADTool.Features.Reinforcement.Domain
             }
             else
             {
-                // 直线锚固即可
+                Point2D straightAnchorEnd = seg.EndPoint.Add(direction01 * anchorageLength);
                 extendPoints.Add(straightAnchorEnd);
             }
 
@@ -192,34 +192,31 @@ namespace HyCADTool.Features.Reinforcement.Domain
         /// </summary>
         public static Vector2D? GetBendDirection(
             Polyline2D subPoly,
-            Polyline2D boundary,
+            Polyline2D[] rayTargets,
             ILineIntersectionService intersectionService)
         {
-            // 起止线段
             var startSeg = subPoly.GetSegmentAt(0);
             var endSeg = subPoly.GetSegmentAt(subPoly.VertexCount - 2);
 
-            // 起点方向反向（极短线段返回 null → 不弯折）
             if (!startSeg.EndPoint.VectorTo(startSeg.StartPoint).TryNormalize(out Vector2D startDir))
                 return null;
             if (!endSeg.Direction.TryNormalize(out Vector2D endDir))
                 return null;
 
-            // 求交点
-            Point2D boundStartPt = intersectionService.GetNearestForwardIntersection(
-                startSeg.StartPoint, startDir, boundary);
-            Point2D boundEndPt = intersectionService.GetNearestForwardIntersection(
-                endSeg.EndPoint, endDir, boundary);
+            if (!TryGetNearestForwardIntersection(
+                    startSeg.StartPoint, startDir, rayTargets, intersectionService,
+                    out Point2D boundStartPt, out Polyline2D hitStart))
+                return null;
+            if (!TryGetNearestForwardIntersection(
+                    endSeg.EndPoint, endDir, rayTargets, intersectionService,
+                    out Point2D boundEndPt, out Polyline2D hitEnd))
+                return null;
 
-            // 求交点所在线段
             try
             {
-                var (segStart, _) = boundary.GetSegmentAtPoint(boundStartPt);
-                var (segEnd, _) = boundary.GetSegmentAtPoint(boundEndPt);
+                var (segStart, _) = hitStart.GetSegmentAtPoint(boundStartPt);
+                var (segEnd, _) = hitEnd.GetSegmentAtPoint(boundEndPt);
 
-                // 两交点在同一线段上
-                // 旧代码: direction = (boundStartPoint - boundEndPoint).GetNormal()
-                // 即从 End交点 指向 Start交点
                 if (segStart.StartPoint.IsEqualTo(segEnd.StartPoint) &&
                     segStart.EndPoint.IsEqualTo(segEnd.EndPoint))
                 {
@@ -236,10 +233,6 @@ namespace HyCADTool.Features.Reinforcement.Domain
             return null;
         }
 
-        /// <summary>
-        /// 获取从基点沿方向到轮廓的延伸段（减去2倍保护层厚度）
-        /// 对应旧代码 GetExtendSeg
-        /// </summary>
         public static (Point2D endPoint, Vector2D nextDirection) GetExtendSegment(
             Point2D basePoint,
             Vector2D direction,
@@ -247,31 +240,91 @@ namespace HyCADTool.Features.Reinforcement.Domain
             double protectionThickness,
             ILineIntersectionService intersectionService)
         {
-            // 求射线与边界交点
-            Point2D boundaryPoint = intersectionService.GetNearestForwardIntersection(
-                basePoint, direction, boundary);
+            if (TryGetExtendSegment(
+                    basePoint, direction, new[] { boundary }, protectionThickness, intersectionService,
+                    out Point2D endPoint, out Vector2D nextDirection))
+            {
+                return (endPoint, nextDirection);
+            }
 
-            // 修正长度（减去 2 倍保护层厚度）
+            return (basePoint, direction.Perpendicular().IsZero() ? Vector2D.UnitX : direction.Perpendicular());
+        }
+
+        public static bool TryGetExtendSegment(
+            Point2D basePoint,
+            Vector2D direction,
+            Polyline2D[] rayTargets,
+            double protectionThickness,
+            ILineIntersectionService intersectionService,
+            out Point2D endPoint,
+            out Vector2D nextDirection)
+        {
+            endPoint = basePoint;
+            nextDirection = Vector2D.UnitX;
+
+            if (!TryGetNearestForwardIntersection(
+                    basePoint, direction, rayTargets, intersectionService,
+                    out Point2D boundaryPoint, out Polyline2D hitBoundary))
+            {
+                return false;
+            }
+
             double fullLen = basePoint.DistanceTo(boundaryPoint);
             double adjustedLen = Math.Max(0, fullLen - 2 * protectionThickness);
-            Point2D endPoint = basePoint.Add(direction * adjustedLen);
+            endPoint = basePoint.Add(direction * adjustedLen);
 
-            // 获取边界交点处的下一个方向
-            Vector2D nextDirection;
             try
             {
-                var (_, dir) = boundary.GetSegmentAtPoint(boundaryPoint);
+                var (_, dir) = hitBoundary.GetSegmentAtPoint(boundaryPoint);
                 nextDirection = dir.IsZero() ? direction.Perpendicular() : dir;
             }
             catch
             {
                 nextDirection = direction.Perpendicular();
             }
-            // 最终防护：如果 nextDirection 仍然是零向量，用 UnitX
+
             if (nextDirection.IsZero())
                 nextDirection = Vector2D.UnitX;
 
-            return (endPoint, nextDirection);
+            return true;
+        }
+
+        private static bool TryGetNearestForwardIntersection(
+            Point2D origin,
+            Vector2D direction,
+            Polyline2D[] rayTargets,
+            ILineIntersectionService intersectionService,
+            out Point2D intersection,
+            out Polyline2D hitBoundary)
+        {
+            intersection = origin;
+            hitBoundary = null;
+
+            if (rayTargets == null || rayTargets.Length == 0 || !direction.TryNormalize(out _))
+                return false;
+
+            double nearestDist = double.MaxValue;
+            bool found = false;
+
+            foreach (var target in rayTargets)
+            {
+                if (target == null)
+                    continue;
+
+                if (intersectionService.TryGetNearestForwardIntersection(origin, direction, target, out Point2D hit))
+                {
+                    double dist = origin.DistanceTo(hit);
+                    if (dist < nearestDist)
+                    {
+                        nearestDist = dist;
+                        intersection = hit;
+                        hitBoundary = target;
+                        found = true;
+                    }
+                }
+            }
+
+            return found;
         }
 
         #endregion
@@ -287,8 +340,11 @@ namespace HyCADTool.Features.Reinforcement.Domain
             List<Dictionary<int, bool>> bendingFlags,
             Polyline2D boundary,
             double hookLength,
-            ILineIntersectionService intersectionService)
+            ILineIntersectionService intersectionService,
+            Polyline2D[] rayTargets = null,
+            ReinRegion region = null)
         {
+            var targets = rayTargets ?? new[] { boundary };
             var result = new List<Polyline2D>();
 
             for (int i = 0; i < reinforcementsWithAnchors.Length; i++)
@@ -296,20 +352,17 @@ namespace HyCADTool.Features.Reinforcement.Domain
                 var poly = reinforcementsWithAnchors[i].Clone();
                 var flags = bendingFlags[i];
 
-                // 起止线段
                 var endSeg = poly.GetSegmentAt(poly.VertexCount - 2);
                 var startSeg = poly.GetSegmentAt(0);
                 var startSegReversed = new Line2D(startSeg.EndPoint, startSeg.StartPoint);
 
-                // 起点弯钩
                 Point2D hookStart = flags[1]
-                    ? CalculateHookPointWithReverse(startSegReversed, true, hookLength, boundary, intersectionService)
+                    ? CalculateHookPointWithReverse(startSegReversed, true, hookLength, targets, intersectionService, region)
                     : CalculateHookPoint(startSegReversed, true, hookLength);
                 poly.AddVertexAt(0, hookStart);
 
-                // 终点弯钩
                 Point2D hookEnd = flags[2]
-                    ? CalculateHookPointWithReverse(endSeg, false, hookLength, boundary, intersectionService)
+                    ? CalculateHookPointWithReverse(endSeg, false, hookLength, targets, intersectionService, region)
                     : CalculateHookPoint(endSeg, false, hookLength);
                 poly.AddVertex(hookEnd);
 
@@ -341,26 +394,54 @@ namespace HyCADTool.Features.Reinforcement.Domain
             Line2D seg,
             bool isStartPoint,
             double hookLength,
-            Polyline2D boundary,
-            ILineIntersectionService intersectionService)
+            Polyline2D[] rayTargets,
+            ILineIntersectionService intersectionService,
+            ReinRegion region = null)
         {
             Vector2D segDir = seg.StartPoint.VectorTo(seg.EndPoint);
             if (!segDir.TryNormalize(out Vector2D segDirNorm))
-                return seg.EndPoint; // 零长度线段，不添加弯钩
+                return seg.EndPoint;
             Vector2D hookDir = segDirNorm.Rotate(Math.PI * 3.0 / 4.0);
             Vector2D hookDirReverse = segDirNorm.Rotate(Math.PI * 5.0 / 4.0);
 
             Point2D basePoint = isStartPoint ? seg.StartPoint : seg.EndPoint;
+            Vector2D chosenDir = ChooseHookDirection(
+                basePoint, hookDir, hookDirReverse, hookLength, rayTargets, intersectionService, region);
 
-            // 沿两个方向分别求到边界距离，选较远的方向（内侧更远）
-            Point2D ptA = intersectionService.GetNearestForwardIntersection(basePoint, hookDir, boundary);
-            Point2D ptB = intersectionService.GetNearestForwardIntersection(basePoint, hookDirReverse, boundary);
-
-            double distA = basePoint.DistanceTo(ptA);
-            double distB = basePoint.DistanceTo(ptB);
-
-            Vector2D chosenDir = distA > distB ? hookDir : hookDirReverse;
             return seg.EndPoint.Add(chosenDir * hookLength);
+        }
+
+        private static Vector2D ChooseHookDirection(
+            Point2D basePoint,
+            Vector2D hookDir,
+            Vector2D hookDirReverse,
+            double hookLength,
+            Polyline2D[] rayTargets,
+            ILineIntersectionService intersectionService,
+            ReinRegion region)
+        {
+            if (region != null)
+            {
+                Point2D testA = basePoint.Add(hookDir * hookLength);
+                Point2D testB = basePoint.Add(hookDirReverse * hookLength);
+                bool inA = region.IsValidRebarPoint(testA);
+                bool inB = region.IsValidRebarPoint(testB);
+
+                if (inA && !inB)
+                    return hookDir;
+                if (inB && !inA)
+                    return hookDirReverse;
+            }
+
+            double distA = double.MaxValue;
+            double distB = double.MaxValue;
+
+            if (TryGetNearestForwardIntersection(basePoint, hookDir, rayTargets, intersectionService, out Point2D ptA, out _))
+                distA = basePoint.DistanceTo(ptA);
+            if (TryGetNearestForwardIntersection(basePoint, hookDirReverse, rayTargets, intersectionService, out Point2D ptB, out _))
+                distB = basePoint.DistanceTo(ptB);
+
+            return distA > distB ? hookDir : hookDirReverse;
         }
 
         #endregion
@@ -573,68 +654,191 @@ namespace HyCADTool.Features.Reinforcement.Domain
             Polyline2D boundary,
             ReinParameters parameters,
             IPolygonOffsetService offsetService,
-            ILineIntersectionService intersectionService)
+            ILineIntersectionService intersectionService,
+            ReinRegion region = null)
         {
             var result = new ReinforcementResult();
             result.Boundary = boundary;
 
+            var rayTargets = region?.AllRings ?? new[] { boundary };
             double scale = parameters.Scale;
             double protectionThickness = parameters.ProtectionThickness * scale;
             double dotReinOffset = parameters.DotReinOffset * scale;
             double hookLength = parameters.HookLength * scale;
             double dotSeparation = parameters.DotSeparation;
             double dotStartDistance = parameters.DotStartDistance;
-            double reinforcementDiameter = parameters.ReinforcementDiameter * scale;
             double leaderDistance = parameters.MleaderDistance * scale;
 
-            // 1. 偏移边界 → 分段钢筋（向内偏移：旧代码用负距离 GetOffsetCurves(-ProtectionThickness)）
             var offsetBoundary = offsetService.Offset(boundary, -protectionThickness);
-            // 偏移后清理极短线段（小尺寸多段线偏移可能产生退化几何）
-            offsetBoundary.RemoveShortSegments(1.0); // 1mm 容差
+            if (offsetBoundary == null)
+            {
+                result.SubReinforcements = new Polyline2D[0];
+                return result;
+            }
+            offsetBoundary.RemoveShortSegments(1.0);
             if (offsetBoundary.VertexCount < 3)
             {
-                // 偏移后退化为不可用的几何，返回空结果
                 result.SubReinforcements = new Polyline2D[0];
                 return result;
             }
             result.SubReinforcements = offsetBoundary.SplitByAngleThreshold();
 
-            // 过滤掉退化的子钢筋（顶点数<2 或长度过短）
             result.SubReinforcements = result.SubReinforcements
                 .Where(s => s.VertexCount >= 2 && s.GetTotalLength() > 1.0)
                 .ToArray();
             if (result.SubReinforcements.Length == 0)
                 return result;
 
-            // 2. 条件连接
             result.SubReinforcements = Polyline2D.ConnectByCondition(
                 result.SubReinforcements, parameters.AnchorageJoinLength);
 
-            // 3. 锚固延伸
             var (extended, bendingFlags) = ExtendAllToAnchorage(
-                result.SubReinforcements, boundary, parameters, intersectionService);
+                result.SubReinforcements, boundary, parameters, intersectionService, rayTargets);
             result.SubReinforcementWithAnchors = extended;
             result.BendingFlags = bendingFlags;
 
-            // 4. 添加弯钩 → 最终钢筋
             result.FinalReinforcements = AddHooks(
-                extended, bendingFlags, boundary, hookLength, intersectionService);
+                extended, bendingFlags, boundary, hookLength, intersectionService, rayTargets, region);
 
-            // 5. 点钢筋（向内偏移：旧代码用 GetOffsetCurves(-DotReinOffset)）
+            if (region != null)
+            {
+                result.FinalReinforcements = ClampReinforcementsToRegion(
+                    result.FinalReinforcements, region, protectionThickness, intersectionService, rayTargets);
+            }
+
             var dotCenterPoly = offsetService.Offset(boundary, -dotReinOffset);
-            dotCenterPoly.RemoveShortSegments(1.0);
+            if (dotCenterPoly != null)
+                dotCenterPoly.RemoveShortSegments(1.0);
             result.DotReinCenterPoly = dotCenterPoly;
-            if (dotCenterPoly.VertexCount >= 3)
+            if (dotCenterPoly != null && dotCenterPoly.VertexCount >= 3)
             {
                 result.DotReinPoints = GenerateDotPositions(dotCenterPoly, dotSeparation, dotStartDistance);
                 result.ReduceDotReinPoints = GenerateReducedDotPositions(dotCenterPoly, dotSeparation);
             }
 
-            // 6. 标注
             string labelContent = $"\\U+E532{parameters.RebarDiameter}@{parameters.RebarSpacing}";
-            result.MLeaders = CalculateLabelData(dotCenterPoly, dotSeparation, leaderDistance, labelContent);
+            result.MLeaders = dotCenterPoly != null && dotCenterPoly.VertexCount >= 3
+                ? CalculateLabelData(dotCenterPoly, dotSeparation, leaderDistance, labelContent)
+                : new MLeaderData[0];
 
             return result;
+        }
+
+        /// <summary>
+        /// 将钢筋端部顶点裁剪到有效配筋区域内，防止延伸/弯钩出界。
+        /// </summary>
+        public static Polyline2D[] ClampReinforcementsToRegion(
+            Polyline2D[] reinforcements,
+            ReinRegion region,
+            double protectionThickness,
+            ILineIntersectionService intersectionService,
+            Polyline2D[] rayTargets)
+        {
+            if (region == null || reinforcements == null)
+                return reinforcements;
+
+            var clamped = new Polyline2D[reinforcements.Length];
+            for (int i = 0; i < reinforcements.Length; i++)
+                clamped[i] = ClampSingleReinforcementToRegion(
+                    reinforcements[i], region, protectionThickness, intersectionService, rayTargets);
+            return clamped;
+        }
+
+        private static Polyline2D ClampSingleReinforcementToRegion(
+            Polyline2D poly,
+            ReinRegion region,
+            double protectionThickness,
+            ILineIntersectionService intersectionService,
+            Polyline2D[] rayTargets)
+        {
+            if (poly == null || poly.VertexCount < 2)
+                return poly;
+
+            var vertices = new List<Point2D>();
+            for (int i = 0; i < poly.VertexCount; i++)
+                vertices.Add(poly.GetPointAt(i));
+
+            vertices = ClampEndVertices(vertices, fromStart: true, region, protectionThickness, intersectionService, rayTargets);
+            vertices = ClampEndVertices(vertices, fromStart: false, region, protectionThickness, intersectionService, rayTargets);
+
+            if (vertices.Count < 2)
+                return poly;
+
+            return new Polyline2D(vertices, poly.IsClosed);
+        }
+
+        private static List<Point2D> ClampEndVertices(
+            List<Point2D> vertices,
+            bool fromStart,
+            ReinRegion region,
+            double protectionThickness,
+            ILineIntersectionService intersectionService,
+            Polyline2D[] rayTargets)
+        {
+            while (vertices.Count >= 2)
+            {
+                int endIdx = fromStart ? 0 : vertices.Count - 1;
+                int innerIdx = fromStart ? 1 : vertices.Count - 2;
+                Point2D endPoint = vertices[endIdx];
+                Point2D innerPoint = vertices[innerIdx];
+
+                if (region.IsValidRebarPoint(endPoint))
+                    break;
+
+                if (TryClampPointToRegion(
+                        innerPoint, endPoint, region, protectionThickness, intersectionService, rayTargets,
+                        out Point2D clamped))
+                {
+                    vertices[endIdx] = clamped;
+                    break;
+                }
+
+                vertices.RemoveAt(endIdx);
+            }
+
+            return vertices;
+        }
+
+        private static bool TryClampPointToRegion(
+            Point2D from,
+            Point2D to,
+            ReinRegion region,
+            double protectionThickness,
+            ILineIntersectionService intersectionService,
+            Polyline2D[] rayTargets,
+            out Point2D clamped)
+        {
+            clamped = to;
+            if (!from.VectorTo(to).TryNormalize(out Vector2D dir))
+                return false;
+
+            if (TryGetNearestForwardIntersection(from, dir, rayTargets, intersectionService, out Point2D hit, out _))
+            {
+                double fullLen = from.DistanceTo(hit);
+                double adjustedLen = Math.Max(0, fullLen - 2 * protectionThickness);
+                Point2D candidate = from.Add(dir * adjustedLen);
+                if (region.IsValidRebarPoint(candidate))
+                {
+                    clamped = candidate;
+                    return true;
+                }
+            }
+
+            const int steps = 16;
+            for (int i = steps - 1; i >= 1; i--)
+            {
+                double t = (double)i / steps;
+                Point2D candidate = new Point2D(
+                    from.X + (to.X - from.X) * t,
+                    from.Y + (to.Y - from.Y) * t);
+                if (region.IsValidRebarPoint(candidate))
+                {
+                    clamped = candidate;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         #endregion

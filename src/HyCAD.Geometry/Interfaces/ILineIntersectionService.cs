@@ -18,5 +18,14 @@ namespace HyCAD.Geometry.Interfaces
         /// <param name="boundary">目标多段线（边界）</param>
         /// <returns>最近的正向交点</returns>
         Point2D GetNearestForwardIntersection(Point2D segmentEndPoint, Vector2D direction, Polyline2D boundary);
+
+        /// <summary>
+        /// 尝试获取正向最近交点；未命中时返回 false，不返回假远距离点。
+        /// </summary>
+        bool TryGetNearestForwardIntersection(
+            Point2D segmentEndPoint,
+            Vector2D direction,
+            Polyline2D boundary,
+            out Point2D intersection);
     }
 }
