@@ -32,7 +32,7 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>编辑器类型下拉菜单分栏。</summary>
         public ObservableCollection<EditorMenuSectionVm> EditorMenuSections { get; } = new ObservableCollection<EditorMenuSectionVm>();
 
-        private string _selectedEditorKey = PreferencesTabKey;
+        private string _selectedEditorKey = CommandsEditorKey;
         /// <summary>当前激活的编辑器 Key（commands / __preferences__ / …）。</summary>
         public string SelectedEditorKey
         {
@@ -52,7 +52,11 @@ namespace HyCADTool.Shell.ViewModels
                 OnPropertyChanged(nameof(SelectedTabIndex));
                 OnPropertyChanged(nameof(IsReinMode));
                 OnPropertyChanged(nameof(IsPileMode));
+                OnPropertyChanged(nameof(PilePanelHost));
+                OnPropertyChanged(nameof(IsFilterMode));
+                OnPropertyChanged(nameof(FilterPanelHost));
                 OnPropertyChanged(nameof(IsCommandListMode));
+                OnPropertyChanged(nameof(ShowScalePanel));
                 OnPropertyChanged(nameof(BreadcrumbText));
                 RefreshFilterNow("tab-switch");
             }
@@ -106,8 +110,8 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>当前选中的是否为「设置」编辑器。</summary>
         public bool IsPreferencesMode => _selectedEditorKey == PreferencesTabKey;
 
-        /// <summary>当前选中的是否为「过滤」编辑器。</summary>
-        public bool IsFilterMode => _selectedEditorKey == FilterTabKey;
+        /// <summary>当前选中的是否为「过滤」伪分类 Tab（位于命令编辑器内，常用之下、钢筋之上）。</summary>
+        public bool IsFilterMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == FilterTabKey;
 
         /// <summary>当前选中的是否为「海绵城市」编辑器。</summary>
         public bool IsSpongeCityMode => _selectedEditorKey == SpongeCityTabKey;
@@ -124,8 +128,11 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>当前选中的是否为「螺栓聚类与基础标注」编辑器。</summary>
         public bool IsClusterMode => _selectedEditorKey == ClusterTabKey;
 
-        /// <summary>命令编辑器内：普通命令列表（非钢筋/桩基独立面板）。</summary>
-        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsPileMode;
+        /// <summary>命令编辑器内：普通命令列表（非钢筋/桩基/过滤独立面板）。</summary>
+        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsPileMode && !IsFilterMode;
+
+        /// <summary>出图比例区仅在「命令 · 常用」Tab 顶部显示。</summary>
+        public bool ShowScalePanel => IsCommandListMode && _selectedTab != null && _selectedTab.Key == CommonTabKey;
 
         /// <summary>顶栏面包屑文本。</summary>
         public string BreadcrumbText
@@ -137,7 +144,7 @@ namespace HyCADTool.Shell.ViewModels
                     var cat = PreferencesVm?.SelectedCategory?.Name;
                     return string.IsNullOrEmpty(cat) ? "设置" : $"设置 · {cat}";
                 }
-                if (IsFilterMode) return "过滤";
+                if (IsFilterMode) return "命令 · 过滤";
                 if (IsSpongeCityMode) return "海绵城市";
                 if (IsBaseReinMode) return "基础钢筋";
                 if (IsClusterMode) return "螺栓聚类与基础标注";
@@ -227,6 +234,25 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>「螺栓聚类与基础标注」伪分类的稳定 Key。</summary>
         public const string ClusterTabKey = "__cluster__";
 
+        /// <summary>「常用」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
+        public const string CommonTabKey = "常用";
+
+        /// <summary>「hyob」业务分类的稳定 Key（从左侧 Tab 收入编辑器菜单「业务」区）。</summary>
+        public const string HyobTabKey = "hyob";
+
+        /// <summary>合并 Tab：沉降/标高/尺寸标注/地脚螺栓/设备基础/图框视口/块引线/导出说明/多段线垫层。</summary>
+        public const string MergedDrawingToolsTabKey = "绘图工具";
+
+        private static readonly string[] MergedPanelSectionOrder =
+        {
+            "沉降", "标高", "尺寸标注", "地脚螺栓", "设备基础", "图框视口", "块引线", "导出说明", "多段线垫层",
+        };
+
+        private static readonly HashSet<string> MergedSourceCategories = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "沉降", "标高", "尺寸标注", "地脚螺栓", "设备基础", "图框视口", "块引线", "导出说明", "多段线垫层", "文字编辑",
+        };
+
         /// <summary>过滤后的当前 Tab 命令（供 View 的 ListBox/ItemsControl 绑定）。</summary>
         public ObservableCollection<CommandItemVm> FilteredItems { get; } = new ObservableCollection<CommandItemVm>();
 
@@ -246,7 +272,8 @@ namespace HyCADTool.Shell.ViewModels
 
         public HyBlenderPanelViewModel()
         {
-            SelectEditorCommand = new RelayCommand<string>(SelectEditor);
+            // 经 SelectTab 路由：编辑器 Key 走 SelectEditor，业务分类 Key（如 hyob）走命令 Tab 选中。
+            SelectEditorCommand = new RelayCommand<string>(SelectTab);
             _searchDebounceTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(SearchDebounceMs)
@@ -285,6 +312,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(IsBaseReinMode));
             OnPropertyChanged(nameof(IsClusterMode));
             OnPropertyChanged(nameof(IsCommandListMode));
+            OnPropertyChanged(nameof(ShowScalePanel));
             OnPropertyChanged(nameof(BreadcrumbText));
             OnPropertyChanged(nameof(CurrentEditorIcon));
             OnPropertyChanged(nameof(PreferencesPanelHost));
@@ -302,13 +330,13 @@ namespace HyCADTool.Shell.ViewModels
             var general = new EditorMenuSectionVm("常规");
             general.Items.Add(new EditorMenuItemVm(CommandsEditorKey, "命令", "★"));
             general.Items.Add(new EditorMenuItemVm(PreferencesTabKey, "设置", "⚙"));
-            general.Items.Add(new EditorMenuItemVm(FilterTabKey, "过滤", "⧉"));
             EditorMenuSections.Add(general);
 
             var business = new EditorMenuSectionVm("业务");
             business.Items.Add(new EditorMenuItemVm(SpongeCityTabKey, "海绵城市", "≈"));
             business.Items.Add(new EditorMenuItemVm(BaseReinTabKey, "基础钢筋", "▦"));
             business.Items.Add(new EditorMenuItemVm(ClusterTabKey, "螺栓聚类", "◉"));
+            business.Items.Add(new EditorMenuItemVm(HyobTabKey, "hyob", "◷"));
             EditorMenuSections.Add(business);
         }
 
@@ -318,7 +346,6 @@ namespace HyCADTool.Shell.ViewModels
             {
                 case CommandsEditorKey: return "★";
                 case PreferencesTabKey: return "⚙";
-                case FilterTabKey: return "⧉";
                 case SpongeCityTabKey: return "≈";
                 case BaseReinTabKey: return "▦";
                 case ClusterTabKey: return "◉";
@@ -330,7 +357,6 @@ namespace HyCADTool.Shell.ViewModels
         {
             return key == CommandsEditorKey
                 || key == PreferencesTabKey
-                || key == FilterTabKey
                 || key == SpongeCityTabKey
                 || key == BaseReinTabKey
                 || key == ClusterTabKey;
@@ -363,6 +389,14 @@ namespace HyCADTool.Shell.ViewModels
                 return;
             }
 
+            // hyob 收进编辑器菜单「业务」区，不在左侧 Tab 栏，但内容仍走命令列表渲染。
+            if (string.Equals(key, HyobTabKey, StringComparison.OrdinalIgnoreCase) && _hyobTab != null)
+            {
+                SelectEditor(CommandsEditorKey);
+                SelectedTab = _hyobTab;
+                return;
+            }
+
             var t = Tabs.FirstOrDefault(x => x.Key == key);
             if (t != null)
             {
@@ -375,16 +409,40 @@ namespace HyCADTool.Shell.ViewModels
             }
         }
 
+        /// <summary>hyob 分类 Tab：不进左侧 Tab 栏，由编辑器菜单「业务」区经 <see cref="SelectTab"/> 选中。</summary>
+        private CategoryTabVm _hyobTab;
+
         /// <summary>从 CommandCatalog 重新拉分组（可供外部在 JSON 变化后触发刷新）。</summary>
         public void LoadFromCommandTable()
         {
             Tabs.Clear();
+            _hyobTab = null;
             try
             {
                 var groups = CommandCatalog.GroupByCategory();
+                var mergedBuckets = new Dictionary<string, List<CommandItemVm>>(StringComparer.Ordinal);
+                var normalTabs = new List<CategoryTabVm>();
                 int totalCommands = 0;
+
                 foreach (var g in groups)
                 {
+                    if (string.Equals(g.Category, "海绵命令", StringComparison.Ordinal))
+                        continue;
+
+                    if (MergedSourceCategories.Contains(g.Category))
+                    {
+                        var section = MapToMergedSection(g.Category);
+                        if (!mergedBuckets.TryGetValue(section, out var list))
+                        {
+                            list = new List<CommandItemVm>();
+                            mergedBuckets[section] = list;
+                        }
+                        foreach (var it in g.Items)
+                            list.Add(new CommandItemVm(it));
+                        totalCommands += g.Items.Count;
+                        continue;
+                    }
+
                     var tab = new CategoryTabVm
                     {
                         Key  = g.Category,
@@ -392,25 +450,108 @@ namespace HyCADTool.Shell.ViewModels
                         Icon = PickCategoryIcon(g.Category),
                     };
                     foreach (var it in g.Items)
+                    {
+                        // HyB 即本面板自身的开关命令，不在面板内重复展示
+                        if (string.Equals(it.Key, "HyB", StringComparison.OrdinalIgnoreCase))
+                            continue;
                         tab.Items.Add(new CommandItemVm(it));
+                    }
                     if (string.Equals(g.Category, "道路", StringComparison.Ordinal))
                         FillRoadPanelGroups(tab);
-                    Tabs.Add(tab);
-                    totalCommands += g.Items.Count;
+
+                    if (string.Equals(g.Category, HyobTabKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _hyobTab = tab;   // 收进「业务」菜单，不占左侧 Tab 位
+                    }
+                    else
+                    {
+                        normalTabs.Add(tab);
+                    }
+                    totalCommands += tab.Items.Count;
                 }
 
-                StatusMessage = $"{groups.Count} 个分类，{totalCommands} 个命令";
+                // 「过滤」伪分类 Tab：常用之下、钢筋之上
+                var filterTab = new CategoryTabVm
+                {
+                    Key  = FilterTabKey,
+                    Name = "过滤",
+                    Icon = "⧉",
+                };
+                int commonIdx = normalTabs.FindIndex(
+                    t => string.Equals(t.Key, CommonTabKey, StringComparison.Ordinal));
+                normalTabs.Insert(commonIdx >= 0 ? commonIdx + 1 : 0, filterTab);
+
+                var mergedTab = mergedBuckets.Count > 0
+                    ? CreateMergedDrawingToolsTab(mergedBuckets)
+                    : null;
+
+                foreach (var tab in normalTabs)
+                {
+                    Tabs.Add(tab);
+                    if (mergedTab != null
+                        && string.Equals(tab.Key, PileTabKey, StringComparison.Ordinal))
+                    {
+                        Tabs.Add(mergedTab);
+                        mergedTab = null;
+                    }
+                }
+
+                if (mergedTab != null)
+                    Tabs.Add(mergedTab);
+
+                StatusMessage = $"{Tabs.Count} 个分类，{totalCommands} 个命令";
             }
             catch (System.Exception ex)
             {
                 StatusMessage = "读取 commands.json 失败：" + ex.Message;
             }
 
-            // 每次 Tabs 重建后刷新扁平索引
-            _searchService.Rebuild(Tabs);
+            // 每次 Tabs 重建后刷新扁平索引（hyob 虽不在 Tab 栏，仍要可搜索）
+            _searchService.Rebuild(_hyobTab == null
+                ? (IEnumerable<CategoryTabVm>)Tabs
+                : Tabs.Concat(new[] { _hyobTab }));
 
             if (_selectedEditorKey == CommandsEditorKey)
                 SelectedTab = Tabs.FirstOrDefault();
+        }
+
+        private static string MapToMergedSection(string category)
+        {
+            if (string.Equals(category, "文字编辑", StringComparison.Ordinal))
+                return "导出说明";
+            return category;
+        }
+
+        private static CategoryTabVm CreateMergedDrawingToolsTab(
+            Dictionary<string, List<CommandItemVm>> buckets)
+        {
+            var tab = new CategoryTabVm
+            {
+                Key  = MergedDrawingToolsTabKey,
+                Name = MergedDrawingToolsTabKey,
+                Icon = PickCategoryIcon(MergedDrawingToolsTabKey),
+            };
+
+            var first = true;
+            foreach (var name in MergedPanelSectionOrder)
+            {
+                if (!buckets.TryGetValue(name, out var list) || list.Count == 0) continue;
+                list.Sort(CompareCommandItems);
+                var section = new CommandSectionVm
+                {
+                    Header = name,
+                    IsExpanded = first,
+                };
+                first = false;
+                foreach (var vm in list)
+                {
+                    section.Items.Add(vm);
+                    tab.Items.Add(vm);
+                }
+                tab.RoadPanelGroups.Add(section);
+            }
+
+            return tab;
         }
 
         private void OnSearchDebounceTick(object sender, EventArgs e)
@@ -441,7 +582,7 @@ namespace HyCADTool.Shell.ViewModels
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
             }
-            if (IsReinMode || IsPileMode)
+            if (IsReinMode || IsPileMode || IsFilterMode)
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
@@ -552,6 +693,7 @@ namespace HyCADTool.Shell.ViewModels
                 case "块引线":     return "⎋";
                 case "导出说明":   return "⇪";
                 case "多段线垫层": return "▥";
+                case "绘图工具":   return "⚒";
                 case "测试":       return "✎";
                 default:           return "·";
             }

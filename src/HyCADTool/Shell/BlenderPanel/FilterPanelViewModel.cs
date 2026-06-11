@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Shared.AutoCAD.Extensions;
+using HyCADTool.Shared.AutoCAD.Entities;
 using HyCADTool.Shared.AutoCAD.Metadata;
 using HyCADTool.Shared.AutoCAD.Selection;
 using HyCADTool.Shared.AutoCAD.Selection.Rules;
@@ -19,16 +21,44 @@ namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// FilterPanel 的独立 ViewModel
-    /// 从旧项目 HyCADtool/Views/ViewModels/FilterPanelViewModel.cs 迁移
-    /// 提供图形过滤选择功能
     /// </summary>
     public class FilterPanelViewModel : INotifyPropertyChanged
     {
         private Document CurrentDocument => AcApp.DocumentManager.MdiActiveDocument;
         private Editor Editor => CurrentDocument?.Editor;
 
-        private Entity _selectedEntity;
+        private ObjectId _selectedEntityId = ObjectId.Null;
+        private SampleEntitySnapshot _sampleSnapshot;
         private ObjectId[] _userSelectedIds = new ObjectId[0];
+        private ObjectId[] _lastFilterResultIds = new ObjectId[0];
+
+        private static readonly string[] NumericOperators = { "==", "!=", ">", "<", ">=", "<=" };
+        private static readonly string[] TextOperators = { "==", "!=", "contains", "like" };
+        private static readonly string[] BooleanOperators = { "==", "!=" };
+
+        /// <summary>与公共属性勾选框语义重复，不在属性值过滤器列表中显示。</summary>
+        private static readonly HashSet<string> HiddenPanelPropertyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "DxfType",
+            "EntityType",
+            "Layer",
+            "TrueColor",
+            "ColorSource",
+            "TrueLineWeight",
+            "TrueLinetype",
+            "TrueTransparency"
+        };
+
+        private sealed class SampleEntitySnapshot
+        {
+            public string TypeName { get; set; }
+            public string DxfName { get; set; }
+            public string Layer { get; set; }
+            public Color TrueColor { get; set; }
+            public int TrueLineWeight { get; set; }
+            public ObjectId TrueLinetypeId { get; set; }
+            public int TrueTransparency { get; set; }
+        }
 
         #region 属性
 
@@ -100,7 +130,7 @@ namespace HyCADTool.Shell.ViewModels
             }
         }
 
-        private string _selectedOperator;
+        private string _selectedOperator = "==";
         public string SelectedOperator
         {
             get => _selectedOperator;
@@ -114,74 +144,54 @@ namespace HyCADTool.Shell.ViewModels
             set { _inputValue = value; OnPropertyChanged(); }
         }
 
-        private string _selectedExpressionFilter;
-        public string SelectedExpressionFilter
+        private string _ruleConditionsPreview = "（尚未添加条件，请在上方选择属性并点击「添加条件」）";
+        public string RuleConditionsPreview
         {
-            get => _selectedExpressionFilter;
-            set { _selectedExpressionFilter = value; OnPropertyChanged(); }
+            get => _ruleConditionsPreview;
+            set { _ruleConditionsPreview = value; OnPropertyChanged(); }
         }
 
         public ObservableCollection<string> PropertyFields { get; } = new ObservableCollection<string>();
-        public ObservableCollection<string> Operators { get; } = new ObservableCollection<string> { "==", "!=", ">", "<", ">=", "<=" };
-        public ObservableCollection<string> ExpressionFilters { get; } = new ObservableCollection<string>();
-        public ObservableCollection<string> RuleQueryModes { get; } = new ObservableCollection<string> { "条件树", "表达式", "类 SQL" };
-        public ObservableCollection<RuleCompletionItem> RuleCompletionItems { get; } = new ObservableCollection<RuleCompletionItem>();
-        public ObservableCollection<string> RuleQuickSnippets { get; } = new ObservableCollection<string>
-        {
-            "同图层",
-            "同类型",
-            "长度 >",
-            "半径区间",
-            "文字包含",
-            "图层通配",
-            "块名 =",
-            "有 XData"
-        };
+        public ObservableCollection<string> Operators { get; } = new ObservableCollection<string>(NumericOperators);
+        public ObservableCollection<string> Connectors { get; } = new ObservableCollection<string> { "与", "或" };
+        public ObservableCollection<RuleConditionItem> RuleConditions { get; } = new ObservableCollection<RuleConditionItem>();
+        public ObservableCollection<SelectionSetSlot> SelectionSets { get; } = new ObservableCollection<SelectionSetSlot>();
+        public ObservableCollection<string> SetOperators { get; } = new ObservableCollection<string> { "替换", "叠加", "减去", "筛选" };
 
-        private string _selectedRuleQueryMode = "表达式";
-        public string SelectedRuleQueryMode
+        private SelectionSetSlot _setOperandLeft;
+        public SelectionSetSlot SetOperandLeft
         {
-            get => _selectedRuleQueryMode;
+            get => _setOperandLeft;
+            set { _setOperandLeft = value; OnPropertyChanged(); RefreshSetOperationPreview(); }
+        }
+
+        private SelectionSetSlot _setOperandRight;
+        public SelectionSetSlot SetOperandRight
+        {
+            get => _setOperandRight;
+            set { _setOperandRight = value; OnPropertyChanged(); RefreshSetOperationPreview(); }
+        }
+
+        private string _selectedSetOperator = "叠加";
+        public string SelectedSetOperator
+        {
+            get => _selectedSetOperator;
             set
             {
-                _selectedRuleQueryMode = value;
+                _selectedSetOperator = value;
                 OnPropertyChanged();
-                RefreshRuleDiagnostics();
+                OnPropertyChanged(nameof(IsSetOperandRightEnabled));
+                RefreshSetOperationPreview();
             }
         }
 
-        private string _ruleQueryText;
-        public string RuleQueryText
-        {
-            get => _ruleQueryText;
-            set
-            {
-                _ruleQueryText = value;
-                OnPropertyChanged();
-                RefreshRuleCompletion();
-                RefreshRuleDiagnostics();
-            }
-        }
+        public bool IsSetOperandRightEnabled => SelectedSetOperator != "替换";
 
-        private string _ruleDiagnosticText = "选择样例后可使用快速输入和字段提示。";
-        public string RuleDiagnosticText
+        private string _setOperationPreview = "（请选择集合与运算符）";
+        public string SetOperationPreview
         {
-            get => _ruleDiagnosticText;
-            set { _ruleDiagnosticText = value; OnPropertyChanged(); }
-        }
-
-        private string _ruleAstPreview = "(尚未生成 Predicate)";
-        public string RuleAstPreview
-        {
-            get => _ruleAstPreview;
-            set { _ruleAstPreview = value; OnPropertyChanged(); }
-        }
-
-        private string _ruleExportPreview = "点击导出按钮生成 C# / WHERE / 伪 Python 对照。";
-        public string RuleExportPreview
-        {
-            get => _ruleExportPreview;
-            set { _ruleExportPreview = value; OnPropertyChanged(); }
+            get => _setOperationPreview;
+            set { _setOperationPreview = value; OnPropertyChanged(); }
         }
 
         #endregion
@@ -190,14 +200,12 @@ namespace HyCADTool.Shell.ViewModels
 
         public ICommand SelectSingleEntityCommand { get; }
         public ICommand SelectCommand { get; }
-        public ICommand ResetCommand { get; }
-        public ICommand AddExpressionFilterCommand { get; }
-        public ICommand RemoveExpressionFilterCommand { get; }
-        public ICommand InsertRuleSnippetCommand { get; }
-        public ICommand ApplyRuleQueryCommand { get; }
-        public ICommand RefreshRuleCompletionCommand { get; }
-        public ICommand ExportRuleQueryCommand { get; }
-        public ICommand InsertRuleCompletionCommand { get; }
+        public ICommand AddConditionCommand { get; }
+        public ICommand RemoveConditionCommand { get; }
+        public ICommand SlotClickCommand { get; }
+        public ICommand SlotClearCommand { get; }
+        public ICommand SelectSetOperatorCommand { get; }
+        public ICommand ApplySetOperationCommand { get; }
 
         #endregion
 
@@ -205,16 +213,23 @@ namespace HyCADTool.Shell.ViewModels
 
         public FilterPanelViewModel()
         {
+            RuleConditions.CollectionChanged += (_, __) => OnRuleConditionsChanged();
+
+            for (var i = 1; i <= 5; i++)
+            {
+                var slot = new SelectionSetSlot(i);
+                slot.PropertyChanged += OnSelectionSetSlotChanged;
+                SelectionSets.Add(slot);
+            }
+
             SelectSingleEntityCommand = new RelayCommand(SelectSingleEntity);
             SelectCommand = new RelayCommand(SelectWithFilters);
-            ResetCommand = new RelayCommand(ResetFilters);
-            AddExpressionFilterCommand = new RelayCommand(AddExpressionFilter);
-            RemoveExpressionFilterCommand = new RelayCommand(RemoveExpressionFilter);
-            InsertRuleSnippetCommand = new RelayCommand<string>(InsertRuleSnippet);
-            ApplyRuleQueryCommand = new RelayCommand(ApplyRuleQuery);
-            RefreshRuleCompletionCommand = new RelayCommand(RefreshRuleCompletion);
-            ExportRuleQueryCommand = new RelayCommand<string>(ExportRuleQuery);
-            InsertRuleCompletionCommand = new RelayCommand<RuleCompletionItem>(InsertRuleCompletion);
+            AddConditionCommand = new RelayCommand(AddCondition);
+            RemoveConditionCommand = new RelayCommand<RuleConditionItem>(RemoveCondition);
+            SlotClickCommand = new RelayCommand<SelectionSetSlot>(OnSlotClick);
+            SlotClearCommand = new RelayCommand<SelectionSetSlot>(OnSlotClear);
+            SelectSetOperatorCommand = new RelayCommand<string>(SelectSetOperator);
+            ApplySetOperationCommand = new RelayCommand(ApplySetOperation);
         }
 
         #endregion
@@ -223,32 +238,26 @@ namespace HyCADTool.Shell.ViewModels
 
         private void SelectSingleEntity()
         {
-            _selectedEntity = SelectionHelper.SelectSingleEntity();
-            if (_selectedEntity != null)
+            var entityId = SelectionHelper.SelectSingleEntity();
+            if (entityId.IsNull)
+                return;
+
+            if (!CaptureSampleSnapshot(entityId))
             {
-                // 使用 TypeNameConverter 将类型名转换为中文
-                SelectedType = TypeNameConverter.ToChinese(_selectedEntity.GetType().Name);
-                TypeChecked = true;
-
-                // 绑定可筛选属性列表（DisplayName 中文名）
-                PropertyFields.Clear();
-                var props = RulePropertyCatalog.GetDescriptors(_selectedEntity)
-                                .Select(p => $"{p.DisplayName} ({p.PropertyName})");
-
-                foreach (var item in props)
-                    PropertyFields.Add(item);
-
-                RefreshRuleCompletion();
-                RefreshRuleDiagnostics();
+                Editor?.WriteMessage("\n[FilterPanel] 无法读取样例对象属性\n");
+                return;
             }
+
+            ResetFilterState();
+            SelectedType = TypeNameConverter.ToChinese(_sampleSnapshot.TypeName);
+            TypeChecked = true;
+            RebuildPropertyFields();
         }
 
         private void SelectWithFilters()
         {
-            // 清空之前的选择状态
             Editor?.SetImpliedSelection(new ObjectId[0]);
 
-            // 获取用户新的选择
             PromptSelectionResult res = Editor?.GetSelection();
             if (res == null || res.Status != PromptStatus.OK)
             {
@@ -257,41 +266,175 @@ namespace HyCADTool.Shell.ViewModels
                 return;
             }
 
-            // 更新用户选择的对象ID集合
             _userSelectedIds = res.Value.GetObjectIds();
-
-            // 如果没有选择任何对象，直接返回
             if (_userSelectedIds == null || _userSelectedIds.Length == 0)
             {
                 Editor?.WriteMessage("未选择任何对象\n");
                 return;
             }
 
-            // 应用筛选器
-            IEnumerable<ObjectId> ids = _userSelectedIds;
+            var doc = CurrentDocument;
+            if (doc == null)
+                return;
 
-            if (TypeChecked) ids = ids.Intersect(GetTypeFilteredIds());
-            if (LayerChecked) ids = ids.Intersect(GetLayerFilteredIds());
-            if (ColorChecked) ids = ids.Intersect(GetColorFilteredIds());
-            if (LineWeightChecked) ids = ids.Intersect(GetLineWeightFilteredIds());
-            if (LineTypeChecked) ids = ids.Intersect(GetLineTypeFilteredIds());
-            if (TransparencyChecked) ids = ids.Intersect(GetTransparencyFilteredIds());
+            var conditions = RuleConditions.ToList();
+            var filteredIds = new List<ObjectId>();
 
-            // 应用表达式筛选器
-            foreach (var exp in ExpressionFilters)
+            using (var docLock = doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
-                ids = ids.Intersect(FilterEntitiesByRule(ids.ToArray(), exp));
+                foreach (var id in _userSelectedIds)
+                {
+                    if (!(tr.GetObject(id, OpenMode.ForRead, false) is Entity ent))
+                        continue;
+
+                    if (!PassesCommonFilters(ent, tr))
+                        continue;
+
+                    if (!PassesRuleConditions(ent, conditions))
+                        continue;
+
+                    filteredIds.Add(id);
+                }
+
+                tr.Commit();
             }
 
-            // 设置最终的选择结果
-            ObjectId[] finalIds = ids.ToArray();
+            var finalIds = SanitizeIds(filteredIds.ToArray());
+            _lastFilterResultIds = finalIds;
             Editor?.SetImpliedSelection(finalIds);
-
-            // 输出结果信息
             Editor?.WriteMessage($"筛选完成，共选中 {finalIds.Length} 个对象\n");
         }
 
-        private void ResetFilters()
+        private void OnSlotClick(SelectionSetSlot slot)
+        {
+            if (slot == null)
+                return;
+
+            if (!slot.IsEmpty)
+            {
+                var activeIds = SanitizeIds(slot.Ids);
+                Editor?.SetImpliedSelection(activeIds);
+                Editor?.WriteMessage($"\n[FilterPanel] 已激活槽位 {slot.Index}，共 {activeIds.Length} 个\n");
+                return;
+            }
+
+            var idsToStore = GetCurrentImpliedSelection();
+            if (idsToStore.Length == 0)
+                idsToStore = _lastFilterResultIds ?? Array.Empty<ObjectId>();
+
+            if (idsToStore.Length == 0)
+            {
+                Editor?.WriteMessage("\n[FilterPanel] 请先点击「选择过滤范围」获得筛选结果\n");
+                return;
+            }
+
+            var storedIds = SanitizeIds(idsToStore);
+            slot.SetIds(storedIds);
+            Editor?.WriteMessage($"\n[FilterPanel] 已存储到槽位 {slot.Index}，共 {storedIds.Length} 个\n");
+        }
+
+        private void OnSlotClear(SelectionSetSlot slot)
+        {
+            if (slot == null || slot.IsEmpty)
+                return;
+
+            slot.Clear();
+            ClearOperandIfMatches(slot);
+            Editor?.WriteMessage($"\n[FilterPanel] 槽位 {slot.Index} 已清空\n");
+        }
+
+        private void SelectSetOperator(string op)
+        {
+            if (string.IsNullOrWhiteSpace(op))
+                return;
+
+            SelectedSetOperator = op;
+        }
+
+        private void ApplySetOperation()
+        {
+            if (SetOperandLeft == null || SetOperandLeft.IsEmpty)
+            {
+                Editor?.WriteMessage("\n[FilterPanel] 请选择非空的集合 A\n");
+                return;
+            }
+
+            if (SelectedSetOperator != "替换")
+            {
+                if (SetOperandRight == null || SetOperandRight.IsEmpty)
+                {
+                    Editor?.WriteMessage("\n[FilterPanel] 请选择非空的集合 B\n");
+                    return;
+                }
+            }
+
+            var leftIds = SanitizeIds(SetOperandLeft.Ids);
+            var rightIds = SetOperandRight == null ? Array.Empty<ObjectId>() : SanitizeIds(SetOperandRight.Ids);
+            var result = CombineIdArrays(leftIds, rightIds, SelectedSetOperator);
+
+            Editor?.SetImpliedSelection(result);
+            Editor?.WriteMessage($"\n[FilterPanel] 运算完成：{SetOperationPreview}，共 {result.Length} 个\n");
+        }
+
+        private void OnSelectionSetSlotChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SelectionSetSlot.IsEmpty)
+                || e.PropertyName == nameof(SelectionSetSlot.Count))
+            {
+                if (sender is SelectionSetSlot slot && slot.IsEmpty)
+                    ClearOperandIfMatches(slot);
+
+                RefreshSetOperationPreview();
+            }
+        }
+
+        private void ClearOperandIfMatches(SelectionSetSlot slot)
+        {
+            if (SetOperandLeft == slot)
+                SetOperandLeft = null;
+            if (SetOperandRight == slot)
+                SetOperandRight = null;
+        }
+
+        private void RefreshSetOperationPreview()
+        {
+            if (SetOperandLeft == null)
+            {
+                SetOperationPreview = "（请选择集合与运算符）";
+                return;
+            }
+
+            if (SelectedSetOperator == "替换")
+            {
+                SetOperationPreview = SetOperandLeft.IsEmpty
+                    ? "（集合 A 为空）"
+                    : SetOperandLeft.Index.ToString();
+                return;
+            }
+
+            var symbol = GetSetOperatorSymbol(SelectedSetOperator);
+            if (SetOperandRight == null)
+            {
+                SetOperationPreview = $"{SetOperandLeft.Index} {symbol} ?";
+                return;
+            }
+
+            SetOperationPreview = $"{SetOperandLeft.Index} {symbol} {SetOperandRight.Index}";
+        }
+
+        private static string GetSetOperatorSymbol(string op)
+        {
+            switch (op)
+            {
+                case "叠加": return "∪";
+                case "减去": return "−";
+                case "筛选": return "∩";
+                default: return "=";
+            }
+        }
+
+        private void ResetFilterState()
         {
             TypeChecked = false;
             LayerChecked = false;
@@ -299,305 +442,429 @@ namespace HyCADTool.Shell.ViewModels
             LineWeightChecked = false;
             LineTypeChecked = false;
             TransparencyChecked = false;
-            ExpressionFilters.Clear();
-            RuleQueryText = string.Empty;
-            RuleCompletionItems.Clear();
-            RuleAstPreview = "(尚未生成 Predicate)";
-            RuleDiagnosticText = "选择样例后可使用快速输入和字段提示。";
-            RuleExportPreview = "点击导出按钮生成 C# / WHERE / 伪 Python 对照。";
-            SelectedType = string.Empty;
+            RuleConditions.Clear();
             SelectedPropertyValue = string.Empty;
             SelectedPropertyField = null;
             InputValue = string.Empty;
-
-            Editor?.WriteMessage("\n[FilterPanel] 所有筛选器已重置\n");
+            SelectedOperator = "==";
+            RefreshRuleConditionsPreview();
         }
 
-        private void AddExpressionFilter()
+        private void AddCondition()
         {
-            if (!string.IsNullOrWhiteSpace(SelectedPropertyField)
-                && !string.IsNullOrWhiteSpace(SelectedOperator)
-                && !string.IsNullOrWhiteSpace(InputValue))
-            {
-                string field = ExtractPropertyName(SelectedPropertyField);
-                string expression = $"{field} {SelectedOperator} {InputValue}";
-                ExpressionFilters.Add(expression);
-                Editor?.WriteMessage($"\n[FilterPanel] 已添加过滤器：{expression}\n");
-            }
-            else
+            if (string.IsNullOrWhiteSpace(SelectedPropertyField)
+                || string.IsNullOrWhiteSpace(SelectedOperator)
+                || string.IsNullOrWhiteSpace(InputValue))
             {
                 Editor?.WriteMessage("\n[FilterPanel] 请完整填写属性、操作符和值\n");
-            }
-        }
-
-        private void RemoveExpressionFilter()
-        {
-            if (SelectedExpressionFilter != null)
-            {
-                ExpressionFilters.Remove(SelectedExpressionFilter);
-                Editor?.WriteMessage($"\n[FilterPanel] 已删除过滤器：{SelectedExpressionFilter}\n");
-            }
-            else
-            {
-                Editor?.WriteMessage("\n[FilterPanel] 请先选择要删除的过滤器\n");
-            }
-        }
-
-        private void InsertRuleSnippet(string snippet)
-        {
-            if (string.IsNullOrWhiteSpace(snippet))
-                return;
-
-            RuleQueryText = BuildSnippet(snippet);
-            RefreshRuleDiagnostics();
-        }
-
-        private void InsertRuleCompletion(RuleCompletionItem item)
-        {
-            RuleQueryText = RuleCompletionProvider.ApplyCompletion(RuleQueryText, item);
-            RefreshRuleDiagnostics();
-        }
-
-        private void ApplyRuleQuery()
-        {
-            if (string.IsNullOrWhiteSpace(RuleQueryText))
-            {
-                RuleDiagnosticText = "规则查询为空。";
                 return;
             }
 
-            if (!RuleQueryEvaluator.CanParse(RuleQueryText))
-            {
-                RuleDiagnosticText = "当前规则暂不能解析，请检查字段名、操作符和值。";
-                return;
-            }
+            var propertyName = ExtractPropertyName(SelectedPropertyField);
+            var fieldDisplay = ExtractFieldDisplayName(SelectedPropertyField);
 
-            var expression = RuleQueryText.Trim();
-            ExpressionFilters.Add(expression);
-            RuleAstPreview = RuleQueryEvaluator.Preview(expression);
-            RuleDiagnosticText = $"已添加规则：{expression}";
-            Editor?.WriteMessage($"\n[FilterPanel] 已添加规则查询：{expression}\n");
+            var item = new RuleConditionItem
+            {
+                FieldDisplay = fieldDisplay,
+                PropertyName = propertyName,
+                Operator = SelectedOperator,
+                Value = InputValue.Trim(),
+                Connector = "与"
+            };
+            item.PropertyChanged += OnConditionItemPropertyChanged;
+
+            RuleConditions.Add(item);
+            Editor?.WriteMessage($"\n[FilterPanel] 已添加条件：{item.DisplayText}\n");
         }
 
-        private void ExportRuleQuery(string exportKind)
+        private void RemoveCondition(RuleConditionItem item)
         {
-            if (string.IsNullOrWhiteSpace(RuleQueryText))
-            {
-                RuleExportPreview = "规则查询为空，无法导出。";
+            if (item == null || !RuleConditions.Contains(item))
                 return;
-            }
 
-            if (!RuleQueryEvaluator.CanParse(RuleQueryText))
-            {
-                RuleExportPreview = "当前规则暂不能解析，修正后再导出。";
-                return;
-            }
-
-            RuleExportPreview = RuleQueryExporter.Export(RuleQueryText, exportKind);
+            item.PropertyChanged -= OnConditionItemPropertyChanged;
+            RuleConditions.Remove(item);
+            Editor?.WriteMessage($"\n[FilterPanel] 已删除条件：{item.DisplayText}\n");
         }
 
         #endregion
 
         #region 辅助方法
 
+        private void OnRuleConditionsChanged()
+        {
+            UpdateConditionRowFlags();
+            RefreshRuleConditionsPreview();
+        }
+
+        private void OnConditionItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(RuleConditionItem.Connector)
+                || e.PropertyName == nameof(RuleConditionItem.DisplayText))
+            {
+                RefreshRuleConditionsPreview();
+            }
+        }
+
+        private void UpdateConditionRowFlags()
+        {
+            for (var i = 0; i < RuleConditions.Count; i++)
+                RuleConditions[i].IsLast = i == RuleConditions.Count - 1;
+        }
+
+        private void RefreshRuleConditionsPreview()
+        {
+            if (RuleConditions.Count == 0)
+            {
+                RuleConditionsPreview = "（尚未添加条件，请在上方选择属性并点击「添加条件」）";
+                return;
+            }
+
+            var parts = new List<string>();
+            for (var i = 0; i < RuleConditions.Count; i++)
+            {
+                var condition = RuleConditions[i];
+                parts.Add(condition.DisplayText);
+                if (i < RuleConditions.Count - 1)
+                    parts.Add(condition.Connector);
+            }
+
+            RuleConditionsPreview = string.Join(" ", parts);
+        }
+
+        private static bool PassesRuleConditions(Entity entity, IReadOnlyList<RuleConditionItem> conditions)
+        {
+            if (conditions == null || conditions.Count == 0)
+                return true;
+
+            var orGroups = new List<List<RuleConditionItem>>();
+            var currentGroup = new List<RuleConditionItem> { conditions[0] };
+
+            for (var i = 1; i < conditions.Count; i++)
+            {
+                if (string.Equals(conditions[i - 1].Connector, "或", StringComparison.Ordinal))
+                {
+                    orGroups.Add(currentGroup);
+                    currentGroup = new List<RuleConditionItem>();
+                }
+
+                currentGroup.Add(conditions[i]);
+            }
+
+            orGroups.Add(currentGroup);
+
+            return orGroups.Any(group => group.All(c =>
+                RuleQueryEvaluator.MatchesCondition(entity, c.PropertyName, c.Operator, c.Value)));
+        }
+
+        private void RebuildPropertyFields()
+        {
+            PropertyFields.Clear();
+            if (_sampleSnapshot == null)
+                return;
+
+            var indexed = RulePropertyCatalog.GetDescriptors(_sampleSnapshot.TypeName)
+                .Select((descriptor, index) => new { descriptor, index })
+                .Where(x => !HiddenPanelPropertyNames.Contains(x.descriptor.PropertyName))
+                .OrderBy(x => x.descriptor.EntityType == "*" ? 1 : 0)
+                .ThenBy(x => x.index)
+                .Select(x => x.descriptor);
+
+            foreach (var descriptor in indexed)
+                PropertyFields.Add($"{descriptor.DisplayName} ({descriptor.PropertyName})");
+        }
+
+        private bool CaptureSampleSnapshot(ObjectId entityId)
+        {
+            var doc = CurrentDocument;
+            if (doc == null || entityId.IsNull)
+                return false;
+
+            try
+            {
+                using (var docLock = doc.LockDocument())
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    if (!(tr.GetObject(entityId, OpenMode.ForRead, false) is Entity ent))
+                        return false;
+
+                    _selectedEntityId = entityId;
+                    _sampleSnapshot = new SampleEntitySnapshot
+                    {
+                        TypeName = ent.GetType().Name,
+                        DxfName = ent.GetRXClass()?.DxfName ?? string.Empty,
+                        Layer = ent.Layer,
+                        TrueColor = EntityAppearanceResolver.GetTrueColor(ent, tr),
+                        TrueLineWeight = EntityAppearanceResolver.GetTrueLineWeight(ent, tr),
+                        TrueLinetypeId = EntityAppearanceResolver.GetTrueLinetype(ent, tr),
+                        TrueTransparency = EntityAppearanceResolver.GetTrueTransparency(ent, tr)
+                    };
+                    tr.Commit();
+                    return true;
+                }
+            }
+            catch
+            {
+                _selectedEntityId = ObjectId.Null;
+                _sampleSnapshot = null;
+                return false;
+            }
+        }
+
+        private bool TryReadSelectedEntity<T>(out T result, Func<Entity, T> read)
+        {
+            result = default;
+            var doc = CurrentDocument;
+            if (doc == null || _selectedEntityId.IsNull || !_selectedEntityId.IsValid || _selectedEntityId.IsErased)
+                return false;
+
+            try
+            {
+                using (var docLock = doc.LockDocument())
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    if (!(tr.GetObject(_selectedEntityId, OpenMode.ForRead, false) is Entity ent))
+                        return false;
+
+                    result = read(ent);
+                    tr.Commit();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool PassesCommonFilters(Entity ent, Transaction tr)
+        {
+            var needsSnapshot = TypeChecked || LayerChecked || ColorChecked
+                || LineWeightChecked || LineTypeChecked || TransparencyChecked;
+            if (needsSnapshot && _sampleSnapshot == null)
+                return false;
+
+            if (TypeChecked)
+            {
+                var typeName = ent.GetType().Name;
+                var dxfName = ent.GetRXClass()?.DxfName ?? string.Empty;
+                if (!string.Equals(typeName, _sampleSnapshot.TypeName, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(dxfName, _sampleSnapshot.DxfName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            if (LayerChecked && !string.Equals(ent.Layer, _sampleSnapshot.Layer, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (ColorChecked
+                && !EntityAppearanceResolver.ColorsEqual(
+                    EntityAppearanceResolver.GetTrueColor(ent, tr),
+                    _sampleSnapshot.TrueColor))
+            {
+                return false;
+            }
+
+            if (LineWeightChecked
+                && EntityAppearanceResolver.GetTrueLineWeight(ent, tr) != _sampleSnapshot.TrueLineWeight)
+            {
+                return false;
+            }
+
+            if (LineTypeChecked
+                && EntityAppearanceResolver.GetTrueLinetype(ent, tr) != _sampleSnapshot.TrueLinetypeId)
+            {
+                return false;
+            }
+
+            if (TransparencyChecked
+                && EntityAppearanceResolver.GetTrueTransparency(ent, tr) != _sampleSnapshot.TrueTransparency)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private void UpdateSelectedPropertyValue()
         {
-            if (_selectedEntity == null || string.IsNullOrWhiteSpace(SelectedPropertyField))
+            if (_selectedEntityId.IsNull || string.IsNullOrWhiteSpace(SelectedPropertyField))
             {
                 SelectedPropertyValue = string.Empty;
+                InputValue = string.Empty;
                 return;
             }
 
             try
             {
-                string propertyName = ExtractPropertyName(SelectedPropertyField);
-                var descriptor = RulePropertyCatalog.GetDescriptors(_selectedEntity, includeAdvanced: true)
-                    .FirstOrDefault(p => string.Equals(p.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
-                if (descriptor != null)
+                var propertyName = ExtractPropertyName(SelectedPropertyField);
+                if (!TryReadSelectedEntity(out RulePropertyDescriptor descriptor, ent =>
+                    {
+                        return RulePropertyCatalog.GetDescriptors(ent, includeAdvanced: true)
+                            .FirstOrDefault(p => string.Equals(p.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
+                    }))
                 {
-                    var value = descriptor.GetValue(_selectedEntity);
-                    SelectedPropertyValue = value?.ToString() ?? "(null)";
+                    SelectedPropertyValue = "(读取失败)";
+                    InputValue = string.Empty;
+                    return;
                 }
-                else
+
+                if (descriptor == null)
                 {
                     SelectedPropertyValue = "(属性不存在)";
+                    InputValue = string.Empty;
+                    return;
                 }
+
+                RebuildOperatorsForType(descriptor.PropertyType);
+
+                if (!TryReadSelectedEntity(out object value, ent => descriptor.GetValue(ent)))
+                {
+                    SelectedPropertyValue = "(读取失败)";
+                    InputValue = string.Empty;
+                    return;
+                }
+
+                SelectedPropertyValue = value?.ToString() ?? "(null)";
+                InputValue = FormatFilterInputValue(value, descriptor.PropertyType);
             }
             catch (System.Exception ex)
             {
                 SelectedPropertyValue = $"(读取失败: {ex.Message})";
+                InputValue = string.Empty;
             }
         }
 
-        private string ExtractPropertyName(string field)
+        private void RebuildOperatorsForType(string propertyType)
         {
-            if (field.Contains("(") && field.Contains(")"))
+            var ops = GetOperatorsForPropertyType(propertyType);
+            Operators.Clear();
+            foreach (var op in ops)
+                Operators.Add(op);
+
+            if (!Operators.Contains(SelectedOperator))
+                SelectedOperator = "==";
+        }
+
+        private static IEnumerable<string> GetOperatorsForPropertyType(string propertyType)
+        {
+            if (IsNumericPropertyType(propertyType))
+                return NumericOperators;
+
+            if (string.Equals(propertyType, "Boolean", StringComparison.OrdinalIgnoreCase))
+                return BooleanOperators;
+
+            return TextOperators;
+        }
+
+        private static string FormatFilterInputValue(object value, string propertyType)
+        {
+            if (value == null)
+                return string.Empty;
+
+            if (IsNumericPropertyType(propertyType))
             {
-                int start = field.IndexOf('(') + 1;
-                int end = field.IndexOf(')');
-                return field.Substring(start, end - start).Trim();
+                if (value is IFormattable formattable)
+                    return formattable.ToString("0.######", CultureInfo.InvariantCulture);
+                return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
             }
+
+            if (string.Equals(propertyType, "Boolean", StringComparison.OrdinalIgnoreCase))
+                return value.ToString().ToLowerInvariant();
+
+            var text = value.ToString() ?? string.Empty;
+            return "\"" + text.Replace("\"", "\\\"") + "\"";
+        }
+
+        private static bool IsNumericPropertyType(string propertyType)
+        {
+            return string.Equals(propertyType, "Double", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(propertyType, "Int32", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(propertyType, "Int64", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(propertyType, "Single", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ExtractPropertyName(string field)
+        {
+            var start = field.LastIndexOf('(');
+            var end = field.LastIndexOf(')');
+            if (start >= 0 && end > start)
+                return field.Substring(start + 1, end - start - 1).Trim();
             return field;
         }
 
-        private void RefreshRuleCompletion()
+        private static string ExtractFieldDisplayName(string field)
         {
-            RuleCompletionItems.Clear();
-
-            foreach (var item in RuleCompletionProvider.GetCompletions(_selectedEntity, RuleQueryText, includeAdvanced: true))
-                RuleCompletionItems.Add(item);
+            var start = field.LastIndexOf('(');
+            if (start > 0)
+                return field.Substring(0, start).Trim();
+            return field;
         }
 
-        private void RefreshRuleDiagnostics()
+        private ObjectId[] GetCurrentImpliedSelection()
         {
-            if (RuleCompletionItems.Count == 0)
-                RefreshRuleCompletion();
+            var res = Editor?.SelectImplied();
+            if (res?.Status == PromptStatus.OK && res.Value != null)
+                return SanitizeIds(res.Value.GetObjectIds());
 
-            if (string.IsNullOrWhiteSpace(RuleQueryText))
+            return Array.Empty<ObjectId>();
+        }
+
+        private ObjectId[] SanitizeIds(ObjectId[] ids)
+        {
+            if (ids == null || ids.Length == 0)
+                return Array.Empty<ObjectId>();
+
+            var doc = CurrentDocument;
+            if (doc == null)
+                return ids.Where(id => id.IsValid && !id.IsNull).ToArray();
+
+            var valid = new List<ObjectId>();
+            using (var docLock = doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
-                RuleDiagnosticText = _selectedEntity == null
-                    ? "选择样例后可使用快速输入和字段提示。"
-                    : "可输入字段名，或点击快速输入片段。";
-                RuleAstPreview = "(尚未生成 Predicate)";
-                return;
+                foreach (var id in ids)
+                {
+                    if (!id.IsValid || id.IsNull || id.IsErased)
+                        continue;
+
+                    if (tr.GetObject(id, OpenMode.ForRead, false) is Entity)
+                        valid.Add(id);
+                }
+
+                tr.Commit();
             }
 
-            RuleAstPreview = BuildAstPreview(RuleQueryText);
-            RuleDiagnosticText = DiagnoseRuleText(RuleQueryText);
+            return valid.ToArray();
         }
 
-        private string BuildSnippet(string snippet)
+        private static ObjectId[] CombineIdArrays(ObjectId[] left, ObjectId[] right, string op)
         {
-            var layer = _selectedEntity?.Layer ?? "0";
-            var dxf = _selectedEntity?.GetRXClass()?.DxfName ?? "LINE";
-            var typeName = _selectedEntity?.GetType().Name ?? string.Empty;
-
-            switch (snippet)
+            switch (op)
             {
-                case "同图层":
-                    return SelectedRuleQueryMode == "类 SQL" ? $"Layer = '{layer}'" : $"Layer == \"{layer}\"";
-                case "同类型":
-                    return SelectedRuleQueryMode == "类 SQL" ? $"DxfType = '{dxf}'" : $"DxfType == \"{dxf}\"";
-                case "长度 >":
-                    return "Length > 100";
-                case "半径区间":
-                    return SelectedRuleQueryMode == "类 SQL" ? "Radius BETWEEN 100 AND 300" : "Radius between 100 and 300";
-                case "文字包含":
-                    return SelectedRuleQueryMode == "类 SQL" ? "TextString LIKE '%说明%'" : "TextString contains \"说明\"";
-                case "图层通配":
-                    return SelectedRuleQueryMode == "类 SQL" ? "Layer LIKE '*-road-*'" : "Layer like \"*-road-*\"";
-                case "块名 =":
-                    return SelectedRuleQueryMode == "类 SQL" ? "BlockName = 'A1'" : "BlockName == \"A1\"";
-                case "有 XData":
-                    return "HasXData(\"HYROAD\")";
+                case "叠加":
+                {
+                    var set = new HashSet<ObjectId>(left);
+                    foreach (var id in right)
+                        set.Add(id);
+                    return set.ToArray();
+                }
+                case "减去":
+                {
+                    var remove = new HashSet<ObjectId>(right);
+                    return left.Where(id => !remove.Contains(id)).ToArray();
+                }
+                case "筛选":
+                {
+                    var keep = new HashSet<ObjectId>(left);
+                    return right.Where(id => keep.Contains(id)).ToArray();
+                }
+                case "替换":
                 default:
-                    return typeName == "Circle" ? "Radius > 100" : "Layer == \"0\"";
+                    return left;
             }
         }
-
-        private string NormalizeRuleQueryToLegacyExpression(string query)
-        {
-            var text = (query ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(text) || text.Contains("&&") || text.Contains("||") || text.Contains("("))
-                return null;
-
-            if (SelectedRuleQueryMode == "类 SQL")
-            {
-                text = text.Replace(" = ", " == ");
-                var andIndex = text.IndexOf(" AND ", StringComparison.OrdinalIgnoreCase);
-                if (andIndex >= 0)
-                    text = text.Substring(0, andIndex).Trim();
-            }
-
-            var normalized = text
-                .Replace(" contains ", " contains ")
-                .Replace(" like ", " contains ");
-
-            var parts = normalized.Split(new[] { ' ' }, 3, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 3)
-                return null;
-
-            var fieldExists = _selectedEntity != null && RulePropertyCatalog.GetDescriptors(_selectedEntity, includeAdvanced: true)
-                .Any(p => string.Equals(p.PropertyName, parts[0], StringComparison.OrdinalIgnoreCase));
-
-            if (!fieldExists)
-                return null;
-
-            return $"{parts[0]} {parts[1]} {TrimQuotes(parts[2])}";
-        }
-
-        private string BuildAstPreview(string query)
-        {
-            return RuleQueryEvaluator.Preview(query);
-        }
-
-        private string DiagnoseRuleText(string query)
-        {
-            if (_selectedEntity == null)
-                return "请先选择样例对象，才能提供字段提示。";
-
-            if (query.TrimStart().StartsWith("Has", StringComparison.OrdinalIgnoreCase))
-                return "函数/组合规则将在 Predicate 引擎中执行；当前可预览。";
-
-            var descriptors = RulePropertyCatalog.GetDescriptors(_selectedEntity, includeAdvanced: true);
-            var fields = RuleQueryEvaluator.GetFieldNames(query);
-            if (fields.Count == 0)
-                return "暂未识别出字段条件，请使用：Layer == \"0\"、Length > 100、Radius between 100 and 300。";
-
-            var unknownField = fields.FirstOrDefault(field =>
-                !descriptors.Any(p => string.Equals(p.PropertyName, field, StringComparison.OrdinalIgnoreCase)));
-            if (!string.IsNullOrWhiteSpace(unknownField))
-            {
-                var suggestion = descriptors.FirstOrDefault(p => p.PropertyName.StartsWith(unknownField, StringComparison.OrdinalIgnoreCase));
-                return suggestion != null
-                    ? $"字段不存在，是否为 {suggestion.PropertyName}？"
-                    : $"字段不存在：{unknownField}";
-            }
-
-            return RuleQueryEvaluator.CanParse(query)
-                ? "规则语法可识别；可添加到过滤器并参与筛选。"
-                : "字段可识别，但操作符或值暂不能解析。";
-        }
-
-        private string TrimQuotes(string value)
-        {
-            return value?.Trim().Trim('"', '\'') ?? string.Empty;
-        }
-
-        private IEnumerable<ObjectId> FilterEntitiesByRule(ObjectId[] ids, string query)
-        {
-            return RuleQueryEvaluator.Filter(CurrentDocument?.Database, ids, query);
-        }
-
-        private IEnumerable<ObjectId> GetTypeFilteredIds()
-        {
-            if (_selectedEntity == null || string.IsNullOrWhiteSpace(SelectedType)) 
-                return Enumerable.Empty<ObjectId>();
-            
-            // 使用 TypeNameConverter 将中文转回英文类型名
-            string typeName = TypeNameConverter.ToType(SelectedType);
-            return typeName.GetfilterWithString().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds);
-        }
-
-        private IEnumerable<ObjectId> GetLayerFilteredIds() => 
-            _selectedEntity?.Layer.GetLayerFilter().Getfilter().SelectWithFilterAll().Intersect(_userSelectedIds) 
-            ?? Enumerable.Empty<ObjectId>();
-
-        private IEnumerable<ObjectId> GetColorFilteredIds() => 
-            _selectedEntity?.GetTrueColor().GetEntitiesWithMatchingColorInputIds(CurrentDocument, _userSelectedIds) 
-            ?? Enumerable.Empty<ObjectId>();
-
-        private IEnumerable<ObjectId> GetLineWeightFilteredIds() => 
-            _selectedEntity?.GetTrueLineWeight().GetEntitiesWithMatchingLineWeight(CurrentDocument, _userSelectedIds) 
-            ?? Enumerable.Empty<ObjectId>();
-
-        private IEnumerable<ObjectId> GetLineTypeFilteredIds() => 
-            _selectedEntity?.GetTrueLinetype().GetEntitiesWithMatchingLinetype(CurrentDocument, _userSelectedIds) 
-            ?? Enumerable.Empty<ObjectId>();
-
-        private IEnumerable<ObjectId> GetTransparencyFilteredIds() => 
-            _selectedEntity?.GetTrueTransparency().GetEntitiesWithMatchingTransparency(CurrentDocument, _userSelectedIds) 
-            ?? Enumerable.Empty<ObjectId>();
 
         #endregion
 

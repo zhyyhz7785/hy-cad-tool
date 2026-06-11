@@ -226,14 +226,11 @@
                             Margin="0,3,0,3" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
 
                     <!-- 解析后的土层 DataGrid (保留自定义色以避免宿主 DataGrid 样式冲突) -->
-                    <DataGrid ItemsSource="{Binding ParsedSoilLayers}"
+                    <DataGrid Style="{StaticResource BlenderDataGrid}"
+                              ItemsSource="{Binding ParsedSoilLayers}"
                               AutoGenerateColumns="False" CanUserAddRows="False"
                               HeadersVisibility="Column" IsReadOnly="False"
-                              Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
-                              RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
-                              GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
-                              BorderThickness="0" MaxHeight="200"
+                              MaxHeight="200"
                               FontSize="{DynamicResource Metric_FontSmall}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="编号" Binding="{Binding Id}" Width="45" IsReadOnly="True" />
@@ -249,7 +246,7 @@
             <!-- ===== 命令按钮 ===== -->
             <UniformGrid Columns="2" Margin="0,4,0,4">
                 <Button Style="{StaticResource BlenderButton}" Content="计算沉降" Command="{Binding CalculateCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="绘制结果表格" Command="{Binding DrawTableCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="绘制结果表格" Command="{Binding DrawTableCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
             </UniformGrid>
 
             <!-- ===== 结果汇总 ===== -->
@@ -258,14 +255,11 @@
 
             <!-- ===== 计算结果 DataGrid ===== -->
             <Expander Style="{StaticResource BlenderExpander}" Header="逐层计算结果" IsExpanded="False" Margin="0,2,0,3">
-                <DataGrid ItemsSource="{Binding CalculationResults}"
+                <DataGrid Style="{StaticResource BlenderDataGrid}"
+                          ItemsSource="{Binding CalculationResults}"
                           AutoGenerateColumns="False" CanUserAddRows="False"
                           HeadersVisibility="Column" IsReadOnly="True"
-                          Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
-                          RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
-                          GridLinesVisibility="Horizontal"
-                          HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
-                          BorderThickness="0" MaxHeight="250"
+                          MaxHeight="250"
                           FontSize="{DynamicResource Metric_FontCaption}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="25" />
@@ -280,7 +274,7 @@
             </Expander>
 
             <!-- ===== 操作 ===== -->
-            <Button Style="{StaticResource BlenderButtonFlat}" Content="恢复默认" Command="{Binding ResetCommand}" Margin="0,4,0,2" />
+            <Button Style="{StaticResource BlenderButton}" Content="恢复默认" Command="{Binding ResetCommand}" Margin="0,4,0,2" />
 
             <!-- 状态 -->
             <TextBlock Text="{Binding StatusMessage}"

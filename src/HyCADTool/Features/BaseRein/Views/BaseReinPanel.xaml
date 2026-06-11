@@ -28,7 +28,7 @@
                   Header="操作"
                   IsExpanded="True">
             <StackPanel>
-                <Button Style="{StaticResource BlenderButtonFlat}"
+                <Button Style="{StaticResource BlenderButton}"
                         Command="{Binding StepOneCommand}"
                         Content="整理底图" />
 
@@ -38,11 +38,11 @@
                          helper:TextBoxHelper.EnableCustomHandlers="True"
                          Text="{Binding FilterValues, UpdateSourceTrigger=PropertyChanged}" />
 
-                <Button Style="{StaticResource BlenderButtonFlat}"
+                <Button Style="{StaticResource BlenderButton}"
                         Command="{Binding StepTwoCommand}"
                         Content="选择删除" />
 
-                <Button Style="{StaticResource BlenderButtonFlat}"
+                <Button Style="{StaticResource BlenderButton}"
                         Command="{Binding StepFourCommand}"
                         Content="生成配筋面积" />
             </StackPanel>
@@ -75,29 +75,11 @@
                     </ComboBox>
                 </Grid>
 
-                <!--  通长钢筋直径和间距  -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="40" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Foreground="{DynamicResource Brush_TextPrimary}" Text="通长:" />
-                    <TextBlock Grid.Column="1" Foreground="{DynamicResource Brush_TextPrimary}" Text="直径" />
-                    <TextBox Grid.Column="2" Style="{StaticResource BlenderTextBox}"
-                             IsEnabled="{Binding IsRebarInputEnabled}"
-                             helper:TextBoxHelper.EnableCustomHandlers="True"
-                             Text="{Binding RebarDiameter, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Grid.Column="3"
-                               Foreground="{DynamicResource Brush_TextPrimary}"
-                               Text="间距" />
-                    <TextBox Grid.Column="4" Style="{StaticResource BlenderTextBox}"
-                             IsEnabled="{Binding IsRebarInputEnabled}"
-                             helper:TextBoxHelper.EnableCustomHandlers="True"
-                             Text="{Binding RebarSpacing, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
+                <TextBlock Foreground="{DynamicResource Brush_TextDisabled}"
+                           FontSize="{DynamicResource Metric_FontCaption}"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,4"
+                           Text="通长筋直径/间距、弯钩、线宽、标注间距取自钢筋(gj)面板；执行步骤前自动同步。"/>
 
                 <!--  附加钢筋  -->
                 <Grid>
@@ -208,7 +190,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <Button Style="{StaticResource BlenderButtonFlat}"
+                    <Button Style="{StaticResource BlenderButton}"
                             Command="{Binding StepFiveCommand}"
                             Content="绘制钢筋" />
                 </Grid>
@@ -259,7 +241,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <Button Style="{StaticResource BlenderButtonFlat}"
+                    <Button Style="{StaticResource BlenderButton}"
                             Command="{Binding StepSixCommand}"
                             Content="标注配筋区域" />
                 </Grid>
@@ -322,30 +304,6 @@
                                  Text="{Binding TextToLineDistance, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
-                    <!--  弯钩长度  -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Foreground="{DynamicResource Brush_TextPrimary}" Text="弯钩长度" />
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
-                                 helper:TextBoxHelper.EnableCustomHandlers="True"
-                                 Text="{Binding HookLength, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-
-                    <!--  多段线宽度  -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Foreground="{DynamicResource Brush_TextPrimary}" Text="多段线宽度" />
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
-                                 helper:TextBoxHelper.EnableCustomHandlers="True"
-                                 Text="{Binding PolylineWidth, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-
                     <!--  标注最远距离  -->
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -358,17 +316,6 @@
                                  Text="{Binding AxisExtend, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
-                    <!--  标注间距  -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Foreground="{DynamicResource Brush_TextPrimary}" Text="标注间距" />
-                        <TextBox Grid.Column="1" Style="{StaticResource BlenderTextBox}"
-                                 helper:TextBoxHelper.EnableCustomHandlers="True"
-                                 Text="{Binding DimensionDistanceWithDim, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
                 </StackPanel>
             </ScrollViewer>
         </Expander>

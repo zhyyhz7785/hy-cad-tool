@@ -5,8 +5,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:sub="clr-namespace:HyCADTool.Shell.Views.Preferences"
              xmlns:vm="clr-namespace:HyCADTool.Shell.ViewModels"
-             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
-             xmlns:drawing="clr-namespace:HyCADTool.Shared.Drawing.Models"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
@@ -22,37 +20,13 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-
-            <Style x:Key="PrefsCategoryTabItemStyle" TargetType="{x:Type bc:IconTabItem}">
-                <Setter Property="Icon" Value="{Binding Icon}"/>
-                <Setter Property="TooltipText" Value="{Binding Name}"/>
-                <Setter Property="FontSize" Value="{DynamicResource Metric_FontIconLarge}"/>
-            </Style>
-
             <DataTemplate x:Key="GroupKey_LayerCatalog">         <sub:LayerSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_Theme">                <sub:ThemeSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_UiScale">              <sub:UiScaleSettingsView/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_KeyMap">               <sub:KeyMapSettingsView/></DataTemplate>
             <DataTemplate x:Key="GroupKey_TextStyle">            <sub:StyleSettingsView   Section="Text"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_DimStyle">             <sub:StyleSettingsView   Section="Dim"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_MLeaderStyle">         <sub:StyleSettingsView   Section="MLeader"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_TableStyle">           <sub:StyleSettingsView   Section="Table"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_ReinParams">           <sub:ReinSettingsView    Section="Rein"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_ReinDimParams">        <sub:ReinSettingsView    Section="ReinDim"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_BasePlateRein">        <sub:BasePlateSettingsView     Section="BasePlateRein"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_BasePlateDraw">        <sub:BasePlateSettingsView     Section="BasePlateDraw"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_BasePlateAdvanced">    <sub:BasePlateSettingsView     Section="BasePlateAdvanced"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_PileParams">           <sub:PileSettingsView          Section="PileParams"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_PileMargin">           <sub:PileSettingsView          Section="PileMargin"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_ClusterParams">        <sub:ClusterSettingsView       Section="ClusterParams"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_ClusterDrawSwitch">    <sub:ClusterSettingsView       Section="ClusterDrawSwitch"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_RoadCrosswalk">        <sub:RoadSettingsView          Section="RoadCrosswalk"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_RoadMunicipal">        <sub:RoadSettingsView          Section="RoadMunicipal"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_ElevationSymbol">      <sub:ElevationSettingsView     Section="ElevationSymbol"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_ElevationText">        <sub:ElevationSettingsView     Section="ElevationText"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_DimParams">            <sub:DimSettingsView           Section="DimParams"/></DataTemplate>
-            <DataTemplate x:Key="GroupKey_AnchorBoltParams">     <sub:AnchorBoltSettingsView    Section="AnchorBoltParams"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_EquipFoundationParams"><sub:EquipFoundationSettingsView Section="EquipFoundationParams"/></DataTemplate>
             <DataTemplate x:Key="GroupKey_Placeholder">
                 <TextBlock Text="（待迁移：尚未接入真实参数绑定）"
@@ -73,9 +47,6 @@
                     <DataTrigger Binding="{Binding GroupKey}" Value="UiScale">
                         <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_UiScale}"/>
                     </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="KeyMap">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_KeyMap}"/>
-                    </DataTrigger>
                     <DataTrigger Binding="{Binding GroupKey}" Value="TextStyle">
                         <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_TextStyle}"/>
                     </DataTrigger>
@@ -87,51 +58,6 @@
                     </DataTrigger>
                     <DataTrigger Binding="{Binding GroupKey}" Value="TableStyle">
                         <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_TableStyle}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="ReinParams">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ReinParams}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="ReinDimParams">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ReinDimParams}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="BasePlateRein">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_BasePlateRein}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="BasePlateDraw">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_BasePlateDraw}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="BasePlateAdvanced">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_BasePlateAdvanced}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="PileParams">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_PileParams}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="PileMargin">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_PileMargin}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="ClusterParams">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ClusterParams}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="ClusterDrawSwitch">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ClusterDrawSwitch}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="RoadCrosswalk">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_RoadCrosswalk}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="RoadMunicipal">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_RoadMunicipal}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="ElevationSymbol">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ElevationSymbol}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="ElevationText">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_ElevationText}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="DimParams">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_DimParams}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding GroupKey}" Value="AnchorBoltParams">
-                        <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_AnchorBoltParams}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding GroupKey}" Value="EquipFoundationParams">
                         <Setter Property="ContentTemplate" Value="{StaticResource GroupKey_EquipFoundationParams}"/>
@@ -166,104 +92,12 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 两层：左分类图标栏 + 右内容 -->
         <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <bc:IconTabBar Grid.Column="0"
-                           ItemsSource="{Binding Categories}"
-                           SelectedIndex="{Binding SelectedCategoryIndex, Mode=TwoWay}"
-                           ItemContainerStyle="{StaticResource PrefsCategoryTabItemStyle}"/>
-
-            <ScrollViewer Grid.Column="1"
-                          Style="{StaticResource BlenderScrollViewer}"
+            <ScrollViewer Style="{StaticResource BlenderScrollViewer}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <!-- 出图比例：Blender PropertyGroup + PropertyRow -->
-                    <Expander Style="{StaticResource BlenderPropertyGroupLevel1}"
-                              Header="出图比例"
-                              IsExpanded="True"
-                              Margin="0,0,0,1">
-                        <StackPanel Margin="{DynamicResource Metric_SectionInset}">
-                            <bc:PropertyRow Label="主比例 1 :">
-                                <TextBox Style="{StaticResource BlenderTextBox}"
-                                         helper:TextBoxHelper.EnableCustomHandlers="True"
-                                         helper:TextBoxHelper.ScrollStep="5"
-                                         Text="{Binding Settings.Scale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
-                            </bc:PropertyRow>
-                            <bc:PropertyRow Label="启用副比例">
-                                <StackPanel Orientation="Horizontal">
-                                    <CheckBox Style="{StaticResource BlenderCheckBox}"
-                                              VerticalAlignment="Center"
-                                              IsChecked="{Binding Settings.UseSubScale, Mode=TwoWay}"
-                                              Margin="0,0,6,0"/>
-                                    <TextBlock Text="1 :"
-                                               Foreground="{DynamicResource Brush_TextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,4,0"/>
-                                    <TextBox Style="{StaticResource BlenderTextBox}"
-                                             Width="{DynamicResource Metric_InputWidth_S}"
-                                             IsEnabled="{Binding Settings.UseSubScale}"
-                                             helper:TextBoxHelper.EnableCustomHandlers="True"
-                                             helper:TextBoxHelper.ScrollStep="5"
-                                             Text="{Binding Settings.SubScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
-                                </StackPanel>
-                            </bc:PropertyRow>
-                            <bc:PropertyRow Label="单位">
-                                <ComboBox Style="{StaticResource BlenderComboBox}"
-                                          SelectedValue="{Binding Settings.Unit, Mode=TwoWay}"
-                                          SelectedValuePath="Tag">
-                                    <ComboBoxItem Content="mm">
-                                        <ComboBoxItem.Tag>
-                                            <drawing:DrawingUnit>Millimeter</drawing:DrawingUnit>
-                                        </ComboBoxItem.Tag>
-                                    </ComboBoxItem>
-                                    <ComboBoxItem Content="cm">
-                                        <ComboBoxItem.Tag>
-                                            <drawing:DrawingUnit>Centimeter</drawing:DrawingUnit>
-                                        </ComboBoxItem.Tag>
-                                    </ComboBoxItem>
-                                    <ComboBoxItem Content="m">
-                                        <ComboBoxItem.Tag>
-                                            <drawing:DrawingUnit>Meter</drawing:DrawingUnit>
-                                        </ComboBoxItem.Tag>
-                                    </ComboBoxItem>
-                                </ComboBox>
-                            </bc:PropertyRow>
-                            <bc:PropertyRow Label="小数位">
-                                <ComboBox Style="{StaticResource BlenderComboBox}"
-                                          Width="{DynamicResource Metric_InputWidth_XS}"
-                                          ItemsSource="{Binding Settings.AllowedPrecisions}"
-                                          SelectedItem="{Binding Settings.Precision, Mode=TwoWay}"/>
-                            </bc:PropertyRow>
-                            <bc:PropertyRow Label="双击编辑(hyed)">
-                                <StackPanel Orientation="Horizontal">
-                                    <CheckBox Style="{StaticResource BlenderCheckBox}"
-                                              VerticalAlignment="Center"
-                                              ToolTip="双击 MText/DBText/MLeader/Dimension 时由 hyed 接管"
-                                              IsChecked="{Binding Settings.EnableHyEdDoubleClick, Mode=TwoWay}"
-                                              Margin="0,0,8,0"/>
-                                    <TextBlock Text="上移×"
-                                               Foreground="{DynamicResource Brush_TextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,4,0"/>
-                                    <TextBox Style="{StaticResource BlenderTextBox}"
-                                             Width="{DynamicResource Metric_InputWidth_XS}"
-                                             IsEnabled="{Binding Settings.EnableHyEdDoubleClick}"
-                                             helper:TextBoxHelper.EnableCustomHandlers="True"
-                                             helper:TextBoxHelper.ScrollStep="0.1"
-                                             Text="{Binding Settings.HyEdAboveOffsetFactor, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}"/>
-                                </StackPanel>
-                            </bc:PropertyRow>
-                        </StackPanel>
-                    </Expander>
-
-                    <!-- 正常：当前分类分组 -->
-                    <ItemsControl ItemsSource="{Binding SelectedCategory.Groups}"
+                    <ItemsControl ItemsSource="{Binding AllGroups}"
                                   ItemTemplate="{StaticResource SettingsGroupExpanderTemplate}">
                         <ItemsControl.Style>
                             <Style TargetType="{x:Type ItemsControl}">
@@ -277,7 +111,6 @@
                         </ItemsControl.Style>
                     </ItemsControl>
 
-                    <!-- 搜索：扁平命中分组 -->
                     <ItemsControl ItemsSource="{Binding FilteredGroups}"
                                   ItemTemplate="{StaticResource SettingsSearchMatchTemplate}">
                         <ItemsControl.Style>
@@ -316,46 +149,40 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- Blender 底栏：状态 + ☰ 菜单 + 主保存按钮 -->
         <Border Grid.Row="1"
                 Background="{DynamicResource Brush_RegionBack}"
                 BorderBrush="{DynamicResource Brush_BorderDark}"
                 BorderThickness="0,1,0,0"
                 Padding="4,2">
-            <Grid Height="{DynamicResource Metric_RowTall}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="2,0,8,0">
-                    <TextBlock Text="{Binding StatusMessage}"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               FontSize="{DynamicResource Metric_FontCaption}"
-                               TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Foreground="{DynamicResource Brush_TextDisabled}"
-                               FontSize="{DynamicResource Metric_FontCaption}"
-                               TextTrimming="CharacterEllipsis">
-                        <Run Text="标注样式 ⯈ "/>
-                        <Run Text="{Binding Settings.AppliedDimStyleName, Mode=OneWay}"/>
-                    </TextBlock>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource BlenderButtonFlat}"
+            <StackPanel>
+                <Grid Margin="2,0,2,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="{DynamicResource Metric_FontCaption}"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="{DynamicResource Metric_FontCaption}"
+                                   TextTrimming="CharacterEllipsis">
+                            <Run Text="标注样式 ⯈ "/>
+                            <Run Text="{Binding Settings.AppliedDimStyleName, Mode=OneWay}"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Style="{StaticResource BlenderButtonFlat}"
                             Content="☰"
                             Width="24" Height="24"
                             Padding="0"
-                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
                             ToolTip="更多操作">
                         <Button.ContextMenu>
                             <ContextMenu Style="{StaticResource BlenderContextMenu}">
                                 <MenuItem Header="置为当前"
                                           Command="{Binding ApplyCurrentCommand}"
-                                          Style="{StaticResource BlenderMenuItem}"/>
-                                <MenuItem Header="选择文件恢复"
-                                          Command="{Binding RestoreAutoSavedCommand}"
-                                          Style="{StaticResource BlenderMenuItem}"/>
-                                <MenuItem Header="加载初始设置"
-                                          Command="{Binding LoadDefaultsCommand}"
                                           Style="{StaticResource BlenderMenuItem}"/>
                                 <Separator/>
                                 <MenuItem Header="自动保存"
@@ -365,14 +192,31 @@
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
+                </Grid>
+                <UniformGrid Columns="3">
                     <Button Style="{StaticResource BlenderButton}"
-                            Content="保存用户设置"
-                            MinWidth="{DynamicResource Metric_DialogButtonWidth}"
+                            Content="恢复默认"
+                            Margin="1,0"
                             MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
                             Padding="{DynamicResource Metric_ButtonPaddingTiny}"
+                            ToolTip="恢复程序默认值并立即应用样式"
+                            Command="{Binding LoadDefaultsCommand}"/>
+                    <Button Style="{StaticResource BlenderButton}"
+                            Content="调取用户设置"
+                            Margin="1,0"
+                            MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                            Padding="{DynamicResource Metric_ButtonPaddingTiny}"
+                            ToolTip="从用户文档选取设置文件恢复"
+                            Command="{Binding RestoreAutoSavedCommand}"/>
+                    <Button Style="{StaticResource BlenderButton}"
+                            Content="保存用户设置"
+                            Margin="1,0"
+                            MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                            Padding="{DynamicResource Metric_ButtonPaddingTiny}"
+                            ToolTip="保存设置到用户文档"
                             Command="{Binding SaveUserSettingsCommand}"/>
-                </StackPanel>
-            </Grid>
+                </UniformGrid>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

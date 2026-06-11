@@ -11,8 +11,8 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
         <Setter Property="FontSize"   Value="{DynamicResource Metric_FontMain}"/>
-        <Setter Property="Background" Value="{DynamicResource Brush_CheckboxBack}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush_InputBorder}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush_InputBack}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_WidgetOutlineLight}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -21,8 +21,8 @@
                 <ControlTemplate TargetType="{x:Type CheckBox}">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="Box" Width="14" Height="14" Margin="0,0,6,0"
-                                Background="{DynamicResource Brush_CheckboxBack}"
-                                BorderBrush="{DynamicResource Brush_InputBorder}"
+                                Background="{DynamicResource Brush_InputBack}"
+                                BorderBrush="{DynamicResource Brush_WidgetOutlineLight}"
                                 BorderThickness="1"
                                 CornerRadius="4.5"
                                 SnapsToDevicePixels="True">
@@ -43,13 +43,6 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush_AccentBlueHover}"/>
                         </Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsMouseOver" Value="True"/>
-                                <Condition Property="IsChecked" Value="False"/>
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush_ScrollThumbHover}"/>
-                        </MultiTrigger>
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
                                 <Condition Property="IsMouseOver" Value="True"/>

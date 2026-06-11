@@ -125,7 +125,7 @@ namespace HyCADTool.Shared.AutoCAD.Entities
             return result.ToArray();
         }
 
-        private static Color GetTrueColor(Entity entity, Transaction transaction)
+        public static Color GetTrueColor(Entity entity, Transaction transaction)
         {
             var color = entity.Color;
             if (color.IsByLayer || color.IsByBlock)
@@ -136,7 +136,7 @@ namespace HyCADTool.Shared.AutoCAD.Entities
             return color;
         }
 
-        private static int GetTrueLineWeight(Entity entity, Transaction transaction)
+        public static int GetTrueLineWeight(Entity entity, Transaction transaction)
         {
             var lineWeight = entity.LineWeight;
             if (lineWeight == LineWeight.ByLayer || lineWeight == LineWeight.ByBlock)
@@ -148,7 +148,7 @@ namespace HyCADTool.Shared.AutoCAD.Entities
             return (int)lineWeight;
         }
 
-        private static ObjectId GetTrueLinetype(Entity entity, Transaction transaction)
+        public static ObjectId GetTrueLinetype(Entity entity, Transaction transaction)
         {
             if (IsByLayerOrByBlock(entity.Linetype))
             {
@@ -159,7 +159,7 @@ namespace HyCADTool.Shared.AutoCAD.Entities
             return entity.LinetypeId;
         }
 
-        private static int GetTrueTransparency(Entity entity, Transaction transaction)
+        public static int GetTrueTransparency(Entity entity, Transaction transaction)
         {
             var transparency = entity.Transparency;
             if (transparency.IsByAlpha)
@@ -193,7 +193,7 @@ namespace HyCADTool.Shared.AutoCAD.Entities
                 || string.Equals(value, "ByBlock", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static bool ColorsEqual(Color actual, Color target)
+        public static bool ColorsEqual(Color actual, Color target)
         {
             if (actual == null || target == null) return false;
 

@@ -25,7 +25,7 @@
             <!-- ===== 当前比例（从设置面板读取） ===== -->
             <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}">
                 <Run Text="当前比例: " /><Run Text="{Binding CurrentScale, Mode=OneWay}" Foreground="{DynamicResource Brush_AccentBlueHover}" />
-                <Run Text="（在[设置]页修改）" />
+                <Run Text="（在命令·常用顶部修改）" />
             </TextBlock>
 
             <!-- ===== 布置选项 ===== -->
@@ -213,12 +213,12 @@
             <!-- ===== 命令按钮组（重排到最下面一行） ===== -->
             <TextBlock Text="命令" Foreground="{DynamicResource Brush_TextSecondary}" FontSize="{DynamicResource Metric_FontCaption}" Margin="0,0,0,2" />
             <UniformGrid Columns="2" Margin="0,0,0,4">
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="绘制桩" Command="{Binding DrawPilesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="封闭图形分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="Voronoi优化" Command="{Binding PileVoronoiOptimizationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="优化(已有圆)" Command="{Binding PileVoronoiFromCirclesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="写入标高到圆心/形心" Command="{Binding MarkElevationAtCentroidsCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                <Button Style="{StaticResource BlenderButtonFlat}" Content="恢复默认" Command="{Binding ResetCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="绘制桩" Command="{Binding DrawPilesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="封闭图形分组标注" Command="{Binding GroupCirclesByElevationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="Voronoi优化" Command="{Binding PileVoronoiOptimizationCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="优化(已有圆)" Command="{Binding PileVoronoiFromCirclesCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="写入标高到圆心/形心" Command="{Binding MarkElevationAtCentroidsCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
+                <Button Style="{StaticResource BlenderButton}" Content="恢复默认" Command="{Binding ResetCommand}" Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
             </UniformGrid>
 
             <!-- 状态信息 -->

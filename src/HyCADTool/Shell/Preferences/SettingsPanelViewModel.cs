@@ -214,6 +214,7 @@ namespace HyCADTool.Shell.ViewModels
                     // UseSubScale=false 时 SubScale 始终随 MainScale 退化
                     if (!_useSubScale) _subScale = _scale;
                     NotifyScaleContextChanged();
+                    NotifyScaleChangedHint();
                 }
             }
         }
@@ -279,8 +280,19 @@ namespace HyCADTool.Shell.ViewModels
                 {
                     MarkStylesDirty();
                     NotifyScaleContextChanged();
+                    NotifyScaleChangedHint();
                 }
             }
+        }
+
+        /// <summary>主/副比例数值变更后更新状态栏提示（不自动应用样式，由用户点「置为当前」或执行命令时落地）。</summary>
+        private void NotifyScaleChangedHint()
+        {
+            if (_isLoading) return;
+            var ctx = BuildScaleContext();
+            StatusMessage = ctx.UseSubScale
+                ? $"比例已切换为 1:{ctx.MainScale:G} / 1:{ctx.SubScale:G}，执行命令时自动套用样式（或点置为当前）"
+                : $"比例已切换为 1:{ctx.MainScale:G}，执行命令时自动套用样式（或点置为当前）";
         }
 
         private DrawingUnit _unit = DrawingUnit.Millimeter;

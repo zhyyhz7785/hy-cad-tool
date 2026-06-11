@@ -29,11 +29,12 @@
                 <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True"/>
             </Style>
 
-            <Style x:Key="ReinPanelCommandButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButtonFlat}">
+            <Style x:Key="ReinPanelCommandButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButton}">
                 <Setter Property="MinHeight" Value="{DynamicResource Metric_ActionButtonMinHeight}"/>
                 <Setter Property="Padding" Value="{DynamicResource Metric_CommandGridButtonPadding}"/>
                 <Setter Property="Margin" Value="1"/>
                 <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
             </Style>
 
             <DataTemplate x:Key="ReinCommandButtonTemplate">

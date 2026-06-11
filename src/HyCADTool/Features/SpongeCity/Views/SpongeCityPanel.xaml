@@ -168,28 +168,25 @@
             <Expander Style="{StaticResource BlenderExpander}" Header="下垫面统计 (10 类)" IsExpanded="True" Margin="0,2,0,3">
                 <StackPanel Margin="5,5,0,0">
                     <UniformGrid Columns="3" Margin="0,0,0,4">
-                        <Button Style="{StaticResource BlenderButtonFlat}" Content="画样线"
+                        <Button Style="{StaticResource BlenderButton}" Content="画样线"
                                 Command="{Binding DrawLinesCommand}"
                                 ToolTip="对 10 类下垫面图层在拾取基点画样线，标尺线 a 缓存供合计文字定位（hyscDL）"
                                 Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                        <Button Style="{StaticResource BlenderButtonFlat}" Content="读面积"
+                        <Button Style="{StaticResource BlenderButton}" Content="读面积"
                                 Command="{Binding ReadAreaCommand}"
                                 ToolTip="扫描 10 类下垫面图层闭合 Polyline 并汇总面积回填（hyscRA）"
                                 Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                        <Button Style="{StaticResource BlenderButtonFlat}" Content="写面积"
+                        <Button Style="{StaticResource BlenderButton}" Content="写面积"
                                 Command="{Binding WriteAreaCommand}"
                                 ToolTip="在每条 Polyline 形心写面积文字 + 在样线 a 旁写合计（hyscWA）"
                                 Margin="1" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
                     </UniformGrid>
 
-                    <DataGrid ItemsSource="{Binding Surfaces}"
+                    <DataGrid Style="{StaticResource BlenderDataGrid}"
+                              ItemsSource="{Binding Surfaces}"
                               AutoGenerateColumns="False" CanUserAddRows="False"
                               HeadersVisibility="Column" IsReadOnly="False"
-                              Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
-                              RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
-                              GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
-                              BorderThickness="0" MaxHeight="260"
+                              MaxHeight="260"
                               FontSize="{DynamicResource Metric_FontSmall}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="#" Binding="{Binding Code}" Width="32" IsReadOnly="True" />
@@ -199,7 +196,7 @@
                             <DataGridTextColumn Header="ψ" Binding="{Binding Psi, StringFormat=F2}" Width="40" />
                         </DataGrid.Columns>
                     </DataGrid>
-                    <Button Style="{StaticResource BlenderButtonFlat}" Content="重算 ψ_z / W / 校核"
+                    <Button Style="{StaticResource BlenderButton}" Content="重算 ψ_z / W / 校核"
                             Command="{Binding CalculateCommand}"
                             Margin="0,4,0,0" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
                 </StackPanel>
@@ -207,14 +204,11 @@
 
             <!-- ===== 4. 设施配置 ===== -->
             <Expander Style="{StaticResource BlenderExpander}" Header="LID 设施配置 (8 类)" IsExpanded="False" Margin="0,2,0,3">
-                <DataGrid ItemsSource="{Binding Facilities}"
+                <DataGrid Style="{StaticResource BlenderDataGrid}"
+                          ItemsSource="{Binding Facilities}"
                           AutoGenerateColumns="False" CanUserAddRows="False"
                           HeadersVisibility="Column" IsReadOnly="False"
-                          Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
-                          RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
-                          GridLinesVisibility="Horizontal"
-                          HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
-                          BorderThickness="0" MaxHeight="240"
+                          MaxHeight="240"
                           FontSize="{DynamicResource Metric_FontSmall}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Code}" Width="32" IsReadOnly="True" />
@@ -229,14 +223,11 @@
 
             <!-- ===== 5. 校核结果 ===== -->
             <Expander Style="{StaticResource BlenderExpander}" Header="强制性指标校核" IsExpanded="True" Margin="0,2,0,3">
-                <DataGrid ItemsSource="{Binding Checks}"
+                <DataGrid Style="{StaticResource BlenderDataGrid}"
+                          ItemsSource="{Binding Checks}"
                           AutoGenerateColumns="False" CanUserAddRows="False"
                           HeadersVisibility="Column" IsReadOnly="True"
-                          Background="{DynamicResource Brush_PanelSubBack}" Foreground="{DynamicResource Brush_TextPrimary}"
-                          RowBackground="{DynamicResource Brush_PanelSubBack}" AlternatingRowBackground="{DynamicResource Brush_PanelBack}"
-                          GridLinesVisibility="Horizontal"
-                          HorizontalGridLinesBrush="{DynamicResource Brush_BorderMid}"
-                          BorderThickness="0" MaxHeight="220"
+                          MaxHeight="220"
                           FontSize="{DynamicResource Metric_FontSmall}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="校核项" Binding="{Binding Name}" Width="*" />
@@ -253,17 +244,17 @@
                     <Button Style="{StaticResource BlenderButton}" Content="导出计算表 Excel (hyscExC)"
                             Command="{Binding ExportCalcExcelCommand}"
                             Margin="0,2" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                    <Button Style="{StaticResource BlenderButtonFlat}" Content="导出预算表 Excel (hyscExB)"
+                    <Button Style="{StaticResource BlenderButton}" Content="导出预算表 Excel (hyscExB)"
                             Command="{Binding ExportBudgetExcelCommand}"
                             Margin="0,2" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
-                    <Button Style="{StaticResource BlenderButtonFlat}" Content="导出 md 计算书 (hyscExM)"
+                    <Button Style="{StaticResource BlenderButton}" Content="导出 md 计算书 (hyscExM)"
                             Command="{Binding ExportMdReportCommand}"
                             Margin="0,2" Padding="{DynamicResource Metric_CommandGridButtonPadding}" />
                 </StackPanel>
             </Expander>
 
             <Separator Style="{StaticResource BlenderSeparator}" Margin="0,2,0,4" />
-            <Button Style="{StaticResource BlenderButtonFlat}" Content="恢复默认参数"
+            <Button Style="{StaticResource BlenderButton}" Content="恢复默认参数"
                     Command="{Binding ResetCommand}" Margin="0,2,0,4" />
 
             <!-- ===== 7. 状态 ===== -->

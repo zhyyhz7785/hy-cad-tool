@@ -21,7 +21,7 @@
     </UserControl.Resources>
 
     <StackPanel Margin="5,10,5,5">
-        <Button Style="{StaticResource BlenderButtonFlat}" Margin="0,2" Command="{Binding ExecuteDrawCommand}" Content="生成标注" />
+        <Button Style="{StaticResource BlenderButton}" Margin="0,2" Command="{Binding ExecuteDrawCommand}" Content="生成标注" />
 
         <Expander Style="{StaticResource BlenderExpander}" Header="聚类参数" IsExpanded="True" Margin="0,0,0,10">
             <StackPanel>
@@ -118,9 +118,9 @@
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Style="{StaticResource BlenderButtonFlat}" Command="{Binding LoadPreset1Command}" Content="方案1" />
-                    <Button Grid.Column="1" Style="{StaticResource BlenderButtonFlat}" Command="{Binding LoadPreset2Command}" Content="方案2" />
-                    <Button Grid.Column="2" Style="{StaticResource BlenderButtonFlat}" Command="{Binding LoadPreset3Command}" Content="方案3" />
+                    <Button Grid.Column="0" Style="{StaticResource BlenderButton}" Command="{Binding LoadPreset1Command}" Content="方案1" />
+                    <Button Grid.Column="1" Style="{StaticResource BlenderButton}" Command="{Binding LoadPreset2Command}" Content="方案2" />
+                    <Button Grid.Column="2" Style="{StaticResource BlenderButton}" Command="{Binding LoadPreset3Command}" Content="方案3" />
                 </Grid>
 
 

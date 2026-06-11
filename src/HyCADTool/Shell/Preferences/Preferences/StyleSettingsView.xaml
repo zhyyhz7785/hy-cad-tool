@@ -94,25 +94,42 @@
                 </StackPanel>
             </DataTemplate>
 
-            <!-- 标注样式 -->
+            <!-- 标注样式（AutoCAD Dim* 样式参数，原「尺寸」分类已并入此处） -->
             <DataTemplate x:Key="Section_Dim">
                 <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
-                    <bc:PropertyRow Label="Dimtxt" Style="{StaticResource StylePropertyRow}">
-                        <TextBox Style="{StaticResource BlenderTextBox}" Text="2.5"/>
+                    <bc:PropertyRow Label="Dimtxt（字高）" Style="{StaticResource StylePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 Text="{Binding Settings.Dimtxt, UpdateSourceTrigger=LostFocus, FallbackValue=2.5}"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="Dimasz" Style="{StaticResource StylePropertyRow}">
-                        <TextBox Style="{StaticResource BlenderTextBox}" Text="1.0"/>
+                    <bc:PropertyRow Label="Dimasz（箭头）" Style="{StaticResource StylePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 Text="{Binding Settings.Dimasz, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimexo（起点偏移）" Style="{StaticResource StylePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 Text="{Binding Settings.Dimexo, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimexe（延伸超出）" Style="{StaticResource StylePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 Text="{Binding Settings.Dimexe, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimdle（尺寸线延伸）" Style="{StaticResource StylePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 Text="{Binding Settings.Dimdle, UpdateSourceTrigger=LostFocus, FallbackValue=0.5}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="Dimgap（文字边距）" Style="{StaticResource StylePropertyRow}">
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 Text="{Binding Settings.Dimgap, UpdateSourceTrigger=LostFocus, FallbackValue=1.0}"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="箭头块名" Style="{StaticResource StylePropertyRow}">
-                        <TextBox Style="{StaticResource BlenderTextBox}" Text=""/>
-                    </bc:PropertyRow>
-                    <bc:PropertyRow Label="Dimdle/Dimexo/Dimexe/Dimgap" Style="{StaticResource StylePropertyRow}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}" Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}" Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}" Margin="0,0,4,0"/>
-                            <TextBox Style="{StaticResource BlenderTextBox}" Width="{DynamicResource Metric_InputWidth_XS}"/>
-                        </StackPanel>
+                        <TextBox Style="{StaticResource BlenderTextBox}"
+                                 Text="{Binding Settings.DimArrowName, UpdateSourceTrigger=LostFocus, FallbackValue=_ARCHTICK}"/>
                     </bc:PropertyRow>
                 </StackPanel>
             </DataTemplate>

@@ -5,9 +5,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
-using HyCADTool.Features.BaseRein.ViewModels;
-using HyCADTool.Features.Pile.ViewModels;
-using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Shell.ViewModels
@@ -15,10 +12,8 @@ namespace HyCADTool.Shell.ViewModels
     /// <summary>
     /// HyB 面板「设置」伪分类使用的总 ViewModel（对应 Blender Preferences）。
     /// 
-    /// 阶段 C 改造：本类不再持有自己的参数存储，而是作为壳子持有真实 ViewModel：
-    ///   Settings / BaseReinVm / PileVm / ClusterVm
-    /// 子 View 通过 DataContext 继承沿逻辑树访问 {Binding Settings.XXX} / {Binding BaseReinVm.XXX}。
-    /// 持久化复用原各 VM 内部机制（SettingsPanelViewModel.SaveSettings 等）。
+    /// 壳子持有 <see cref="SettingsPanelViewModel"/>；业务参数在各自业务面板编辑（钢筋 gj / 聚类 / 底板配筋等）。
+    /// 持久化复用 SettingsPanelViewModel.SaveSettings 等。
     /// </summary>
     public class HySettingsViewModel : INotifyPropertyChanged
     {
@@ -40,34 +35,14 @@ namespace HyCADTool.Shell.ViewModels
         /// </summary>
         private SettingsPanelViewModel _settingsStatusSubscription;
 
-        /// <summary>
-        /// 底板配筋 ViewModel（DI 注册 InstancePerDependency，此处单例缓存）
-        /// </summary>
-        public BaseReinPanelViewModel BaseReinVm => _baseReinVm
-                                                   ?? (_baseReinVm = ServiceLocator.TryResolve<BaseReinPanelViewModel>());
-        private BaseReinPanelViewModel _baseReinVm;
-
-        /// <summary>
-        /// 桩基 ViewModel（其自身有 Current 多文档机制）
-        /// </summary>
-        public PilePanelViewModel PileVm => PilePanelViewModel.Current
-                                            ?? _pileVmFallback
-                                            ?? (_pileVmFallback = new PilePanelViewModel());
-        private PilePanelViewModel _pileVmFallback;
-
-        /// <summary>
-        /// 聚类 ViewModel（DI 注册 InstancePerDependency，此处单例缓存）
-        /// </summary>
-        public ClusterPanelViewModel ClusterVm => _clusterVm
-                                                  ?? (_clusterVm = ServiceLocator.TryResolve<ClusterPanelViewModel>()
-                                                                   ?? new ClusterPanelViewModel());
-        private ClusterPanelViewModel _clusterVm;
-
         // ================================================================
-        //  2. 一级目录 / 二级分组（不变）
+        //  2. 一级目录 / 二级分组
         // ================================================================
 
         public ObservableCollection<SettingsCategoryVm> Categories { get; } = new ObservableCollection<SettingsCategoryVm>();
+
+        /// <summary>所有分类的分组扁平合并：设置面板「三合一」单滚动列表的数据源。</summary>
+        public ObservableCollection<SettingsGroupVm> AllGroups { get; } = new ObservableCollection<SettingsGroupVm>();
 
         private SettingsCategoryVm _selectedCategory;
         public SettingsCategoryVm SelectedCategory
@@ -257,67 +232,30 @@ namespace HyCADTool.Shell.ViewModels
 
         private void BuildSkeleton()
         {
-            // 「界面」放在最顶：用户进设置面板第一眼即可看到主题切换
-            Categories.Add(new SettingsCategoryVm("界面",       "◐", new[]
+            Categories.Add(new SettingsCategoryVm("界面", "◐", new[]
             {
-                new SettingsGroupVm("主题",         "Theme"),
-                new SettingsGroupVm("尺寸",         "UiScale"),
+                new SettingsGroupVm("主题", "Theme"),
+                new SettingsGroupVm("尺寸", "UiScale"),
             }));
 
-            // 「快捷键」分类：UI 键位（hy-keymap.json 持久化）+ 未来扩展命令级 hy.cmd.* 录键
-            Categories.Add(new SettingsCategoryVm("快捷键",     "⌨", new[]
+            Categories.Add(new SettingsCategoryVm("设置", "⚙", new[]
             {
-                new SettingsGroupVm("UI 键位",      "KeyMap"),
+                new SettingsGroupVm("图层",     "LayerCatalog"),
+                new SettingsGroupVm("文字样式", "TextStyle"),
+                new SettingsGroupVm("标注样式", "DimStyle"),
+                new SettingsGroupVm("引线样式", "MLeaderStyle"),
+                new SettingsGroupVm("表格样式", "TableStyle"),
             }));
 
-            Categories.Add(new SettingsCategoryVm("设置",       "⚙", new[]
-            {
-                new SettingsGroupVm("图层",         "LayerCatalog"),
-                new SettingsGroupVm("文字样式",     "TextStyle"),
-                new SettingsGroupVm("标注样式",     "DimStyle"),
-                new SettingsGroupVm("引线样式",     "MLeaderStyle"),
-                new SettingsGroupVm("表格样式",     "TableStyle"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("底板",       "▦", new[]
-            {
-                new SettingsGroupVm("配筋参数", "BasePlateRein"),
-                new SettingsGroupVm("绘制参数", "BasePlateDraw"),
-                new SettingsGroupVm("高级设置", "BasePlateAdvanced"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("聚类",       "⌘", new[]
-            {
-                new SettingsGroupVm("聚类参数", "ClusterParams"),
-                new SettingsGroupVm("绘图开关", "ClusterDrawSwitch"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("道路",       "≋", new[]
-            {
-                new SettingsGroupVm("人行横道",     "RoadCrosswalk"),
-                new SettingsGroupVm("市政道路 P0", "RoadMunicipal"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("标高",       "⬍", new[]
-            {
-                new SettingsGroupVm("符号样式", "ElevationSymbol"),
-                new SettingsGroupVm("文字样式", "ElevationText"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("尺寸",       "↔", new[]
-            {
-                new SettingsGroupVm("尺寸参数", "DimParams"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("地脚螺栓",   "◉", new[]
-            {
-                new SettingsGroupVm("螺栓参数", "AnchorBoltParams"),
-            }));
-
-            Categories.Add(new SettingsCategoryVm("设备基础",   "▤", new[]
+            Categories.Add(new SettingsCategoryVm("设备基础", "▤", new[]
             {
                 new SettingsGroupVm("基础参数", "EquipFoundationParams"),
             }));
+
+            AllGroups.Clear();
+            foreach (var cat in Categories)
+                foreach (var grp in cat.Groups)
+                    AllGroups.Add(grp);
         }
 
         // ================================================================
@@ -338,31 +276,23 @@ namespace HyCADTool.Shell.ViewModels
             var s = Settings;
             if (s == null) { StatusMessage = "无可用设置实例"; return; }
 
-            // 关闭自动保存：弹 SaveFileDialog 让用户选位置；
-            // 开启自动保存：仍走默认 %APPDATA%\HyCADTool\hy-settings.json（与按钮语义"显式保存一次"一致）。
-            if (!AutoSaveEnabled)
+            // 显式保存一份到用户文档（默认目录 = 我的文档），与自动保存的 %APPDATA% 存储互不影响。
+            var dlg = new Microsoft.Win32.SaveFileDialog
             {
-                var dlg = new Microsoft.Win32.SaveFileDialog
-                {
-                    FileName = "hy-settings.json",
-                    Filter = "HyCAD 设置 (*.json)|*.json|所有文件 (*.*)|*.*",
-                    DefaultExt = ".json",
-                    AddExtension = true,
-                    Title = "保存用户设置"
-                };
-                if (dlg.ShowDialog() != true) { StatusMessage = "已取消保存"; return; }
-                try
-                {
-                    s.SaveSettingsToFile(dlg.FileName);
-                    StatusMessage = $"已保存到 {dlg.FileName}";
-                }
-                catch (System.Exception ex) { StatusMessage = $"保存失败: {ex.Message}"; }
-            }
-            else
+                FileName = "hy-settings.json",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Filter = "HyCAD 设置 (*.json)|*.json|所有文件 (*.*)|*.*",
+                DefaultExt = ".json",
+                AddExtension = true,
+                Title = "保存用户设置（默认放在用户文档）"
+            };
+            if (dlg.ShowDialog() != true) { StatusMessage = "已取消保存"; return; }
+            try
             {
-                s.SavePublic();
-                StatusMessage = "用户设置已保存 → hy-settings.json";
+                s.SaveSettingsToFile(dlg.FileName);
+                StatusMessage = $"已保存到 {dlg.FileName}";
             }
+            catch (System.Exception ex) { StatusMessage = $"保存失败: {ex.Message}"; }
         }
 
         private void OnRestoreAutoSaved()
@@ -370,18 +300,19 @@ namespace HyCADTool.Shell.ViewModels
             var s = Settings;
             if (s == null) { StatusMessage = "无可用设置实例"; return; }
 
-            // 始终弹 OpenFileDialog：按钮已改名"选择文件恢复"。
+            // 调取用户设置：默认从用户文档目录选取 json 恢复。
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 Filter = "HyCAD 设置 (*.json)|*.json|所有文件 (*.*)|*.*",
                 CheckFileExists = true,
-                Title = "选择设置文件恢复"
+                Title = "调取用户设置"
             };
-            if (dlg.ShowDialog() != true) { StatusMessage = "已取消恢复"; return; }
+            if (dlg.ShowDialog() != true) { StatusMessage = "已取消调取"; return; }
             try
             {
                 s.LoadSettingsFromFile(dlg.FileName);
-                StatusMessage = $"已从 {dlg.FileName} 恢复";
+                StatusMessage = $"已从 {dlg.FileName} 调取";
             }
             catch (System.Exception ex) { StatusMessage = $"加载失败: {ex.Message}"; }
         }

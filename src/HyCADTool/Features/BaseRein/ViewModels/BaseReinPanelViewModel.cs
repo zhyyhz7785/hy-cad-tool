@@ -231,11 +231,16 @@ namespace HyCADTool.Features.BaseRein.ViewModels
         {
             SettingsPanelViewModel.PendingCommand = () =>
             {
-                // 从设置面板同步 Scale，确保样式已应用
+                // 从 gj 面板（SettingsPanelViewModel）同步基础钢筋参数，确保样式已应用
                 var settingsVm = SettingsPanelViewModel.Current;
                 if (settingsVm != null)
                 {
                     _config.Scale = settingsVm.Scale;
+                    _config.RebarDiameter = settingsVm.RebarDiameter;
+                    _config.RebarSpacing = settingsVm.RebarSpacing;
+                    _config.HookLength = settingsVm.HookLength;
+                    _config.PolylineWidth = settingsVm.PolylineWidth;
+                    _config.DimensionDistanceWithDim = settingsVm.DimensionDistanceWithDim;
                     settingsVm.EnsureStylesApplied();
                 }
                 commandAction();

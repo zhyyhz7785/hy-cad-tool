@@ -48,8 +48,9 @@
                 <Setter Property="Margin" Value="0,1"/>
             </Style>
 
-            <Style x:Key="CommandRowButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButtonFlat}">
+            <Style x:Key="CommandRowButton" TargetType="{x:Type Button}" BasedOn="{StaticResource BlenderButton}">
                 <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
                 <Setter Property="Height" Value="{DynamicResource Metric_RowHeight}"/>
                 <Setter Property="Margin" Value="0,1"/>
             </Style>
@@ -396,11 +397,17 @@
                         </Style>
                     </Grid.Style>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0">
+                    <!-- 出图比例：仅在「命令 · 常用」Tab 顶部显示 -->
+                    <views:ScalePanel Grid.Row="0"
+                                      DataContext="{Binding PreferencesVm}"
+                                      Visibility="{Binding DataContext.ShowScalePanel, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource BoolToVis}}"/>
+
+                    <Grid Grid.Row="1">
                         <!-- 搜索中：全局结果 -->
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <ScrollViewer.Style>
@@ -505,7 +512,7 @@
                         </Grid>
                     </Grid>
 
-                    <bc:StatusBar Grid.Row="1" CenterContent="{Binding StatusMessage}"/>
+                    <bc:StatusBar Grid.Row="2" CenterContent="{Binding StatusMessage}"/>
                 </Grid>
             </Grid>
         </Grid>

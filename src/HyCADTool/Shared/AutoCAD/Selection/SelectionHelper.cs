@@ -11,15 +11,13 @@ namespace HyCADTool.Shared.AutoCAD.Selection
     public static class SelectionHelper
     {
         /// <summary>
-        /// 选择单个实体
-        /// 从旧项目 HyCADtool/Tools/SelectTool/SelectEntityTool.cs 迁移
+        /// 选择单个实体，返回 ObjectId（不在事务外持有已关闭的 Entity 引用）。
         /// </summary>
-        /// <returns>选中的实体，如果取消或出错则返回 null</returns>
-        public static Entity SelectSingleEntity()
+        /// <returns>选中的 ObjectId；取消或出错时返回 ObjectId.Null</returns>
+        public static ObjectId SelectSingleEntity()
         {
-            // 每次调用都从 Application 获取当前活动文档
             Document doc = AcApp.DocumentManager.MdiActiveDocument;
-            if (doc == null) return null;
+            if (doc == null) return ObjectId.Null;
 
             Editor ed = doc.Editor;
 
@@ -27,27 +25,25 @@ namespace HyCADTool.Shared.AutoCAD.Selection
             {
                 ed.WriteMessage("\n请选择一个实体或按 ESC 退出\n");
 
-                // 在未锁文档前获取用户选择
                 PromptSelectionResult res = ed.GetSelection();
                 if (res.Status != PromptStatus.OK)
                 {
                     ed.WriteMessage("\n选择已取消或出错\n");
-                    return null;
+                    return ObjectId.Null;
                 }
 
                 ObjectId[] ids = res.Value.GetObjectIds();
                 if (ids.Length == 0)
                 {
                     ed.WriteMessage("\n没有选中实体\n");
-                    return null;
+                    return ObjectId.Null;
                 }
                 if (ids.Length > 1)
                 {
                     ed.WriteMessage("\n选中多个实体，请只选择一个\n");
-                    return null;
+                    return ObjectId.Null;
                 }
 
-                // 开始事务操作前加锁
                 using (DocumentLock docLock = doc.LockDocument())
                 using (Transaction trans = doc.TransactionManager.StartTransaction())
                 {
@@ -56,7 +52,7 @@ namespace HyCADTool.Shared.AutoCAD.Selection
                     {
                         ed.WriteMessage($"\n选中单个实体成功，类型为：{ent.GetType().Name}\n");
                         trans.Commit();
-                        return ent;
+                        return ids[0];
                     }
                 }
             }
@@ -65,7 +61,7 @@ namespace HyCADTool.Shared.AutoCAD.Selection
                 ed.WriteMessage($"\n系统错误：{ex.Message}\n");
             }
 
-            return null;
+            return ObjectId.Null;
         }
 
         /// <summary>

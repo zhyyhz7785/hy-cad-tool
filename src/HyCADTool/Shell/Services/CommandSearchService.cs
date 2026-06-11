@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using HyCADTool.Shell.ViewModels;
 
@@ -16,7 +15,7 @@ namespace HyCADTool.Shell.Services
 
         private readonly List<CommandItemVm> _flatAll = new List<CommandItemVm>();
 
-        public void Rebuild(ObservableCollection<CategoryTabVm> tabs)
+        public void Rebuild(IEnumerable<CategoryTabVm> tabs)
         {
             _flatAll.Clear();
             if (tabs == null) return;

@@ -85,8 +85,8 @@
     <sys:Double x:Key="Metric_InputWidth_ML">100</sys:Double>
     <sys:Double x:Key="Metric_HeaderComboMinWidth">180</sys:Double>
     <sys:Double x:Key="Metric_StructurePreviewRowHeight">60</sys:Double>
-    <sys:Double x:Key="Metric_FilterCanvasHeight">80</sys:Double>
-    <sys:Double x:Key="Metric_FilterRowHeaderHeight">28</sys:Double>
+    <sys:Double x:Key="Metric_FilterCanvasHeight">64</sys:Double>
+    <sys:Double x:Key="Metric_FilterRowHeaderHeight">24</sys:Double>
     <sys:Double x:Key="Metric_FilterResultCanvasHeight">100</sys:Double>
     <sys:Double x:Key="Metric_InputWidth_L">120</sys:Double>
     <sys:Double x:Key="Metric_InputWidth_XL">200</sys:Double>

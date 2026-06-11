@@ -4,7 +4,9 @@ using System.Linq;
 using System.Reflection;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
+using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Shared.AutoCAD.Entities;
+using Exception = System.Exception;
 
 namespace HyCADTool.Shared.AutoCAD.Metadata
 {
@@ -48,19 +50,46 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
             var props = new Dictionary<string, (object, string)>(StringComparer.OrdinalIgnoreCase);
             foreach (var descriptor in GetDescriptors(entity, includeAdvanced))
             {
-                try
+                if (TryGetValue(entity, descriptor.PropertyName, out var value, out var type, includeAdvanced)
+                    && value != null)
                 {
-                    var value = descriptor.GetValue(entity);
-                    if (value != null)
-                        props[descriptor.PropertyName] = (value, descriptor.PropertyType);
-                }
-                catch
-                {
-                    // Some properties are only available for specific DB states; skip them.
+                    props[descriptor.PropertyName] = (value, type);
                 }
             }
 
             return props;
+        }
+
+        /// <summary>
+        /// 读取单个可筛选属性；失败时返回 false，不抛异常。
+        /// </summary>
+        public static bool TryGetValue(
+            Entity entity,
+            string propertyName,
+            out object value,
+            out string propertyType,
+            bool includeAdvanced = false)
+        {
+            value = null;
+            propertyType = null;
+            if (entity == null || string.IsNullOrWhiteSpace(propertyName))
+                return false;
+
+            var descriptor = GetDescriptors(entity, includeAdvanced)
+                .FirstOrDefault(p => string.Equals(p.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
+            if (descriptor == null)
+                return false;
+
+            try
+            {
+                value = descriptor.GetValue(entity);
+                propertyType = descriptor.PropertyType;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static List<PropertyMetadata> GetMetadataList(bool includeAdvanced = false)
@@ -199,8 +228,8 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
                 },
                 ["Dimension"] = new List<RulePropertyDescriptor>
                 {
+                    For<Dimension>("Dimension", "Measurement", "测量值", "Double", d => GetDimensionMeasurement(d)),
                     For<Dimension>("Dimension", "DimensionStyleName", "标注样式", "String", d => GetDimensionStyleName(d)),
-                    For<Dimension>("Dimension", "Measurement", "测量值", "Double", d => d.Measurement),
                     For<Dimension>("Dimension", "TextOverride", "文字替代", "String", d => d.DimensionText),
                     For<Dimension>("Dimension", "DimScale", "标注比例", "Double", d => GetDoubleProperty(d, "Dimscale"), RulePropertyPriority.Style)
                 },
@@ -224,20 +253,20 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
                 },
                 ["Region"] = new List<RulePropertyDescriptor>
                 {
-                    For<Region>("Region", "Area", "面积", "Double", r => r.Area),
-                    For<Region>("Region", "BoundsMinX", "边界最小X", "Double", r => r.GeometricExtents.MinPoint.X),
-                    For<Region>("Region", "BoundsMinY", "边界最小Y", "Double", r => r.GeometricExtents.MinPoint.Y),
-                    For<Region>("Region", "BoundsMaxX", "边界最大X", "Double", r => r.GeometricExtents.MaxPoint.X),
-                    For<Region>("Region", "BoundsMaxY", "边界最大Y", "Double", r => r.GeometricExtents.MaxPoint.Y)
+                    For<Region>("Region", "Area", "面积", "Double", r => SafeArea(r)),
+                    For<Region>("Region", "BoundsMinX", "边界最小X", "Double", r => SafeExtents(r).MinPoint.X),
+                    For<Region>("Region", "BoundsMinY", "边界最小Y", "Double", r => SafeExtents(r).MinPoint.Y),
+                    For<Region>("Region", "BoundsMaxX", "边界最大X", "Double", r => SafeExtents(r).MaxPoint.X),
+                    For<Region>("Region", "BoundsMaxY", "边界最大Y", "Double", r => SafeExtents(r).MaxPoint.Y)
                 },
                 ["Solid3d"] = new List<RulePropertyDescriptor>
                 {
-                    For<Solid3d>("Solid3d", "BoundsMinX", "边界最小X", "Double", s => s.GeometricExtents.MinPoint.X),
-                    For<Solid3d>("Solid3d", "BoundsMinY", "边界最小Y", "Double", s => s.GeometricExtents.MinPoint.Y),
-                    For<Solid3d>("Solid3d", "BoundsMinZ", "边界最小Z", "Double", s => s.GeometricExtents.MinPoint.Z),
-                    For<Solid3d>("Solid3d", "BoundsMaxX", "边界最大X", "Double", s => s.GeometricExtents.MaxPoint.X),
-                    For<Solid3d>("Solid3d", "BoundsMaxY", "边界最大Y", "Double", s => s.GeometricExtents.MaxPoint.Y),
-                    For<Solid3d>("Solid3d", "BoundsMaxZ", "边界最大Z", "Double", s => s.GeometricExtents.MaxPoint.Z)
+                    For<Solid3d>("Solid3d", "BoundsMinX", "边界最小X", "Double", s => SafeExtents(s).MinPoint.X),
+                    For<Solid3d>("Solid3d", "BoundsMinY", "边界最小Y", "Double", s => SafeExtents(s).MinPoint.Y),
+                    For<Solid3d>("Solid3d", "BoundsMinZ", "边界最小Z", "Double", s => SafeExtents(s).MinPoint.Z),
+                    For<Solid3d>("Solid3d", "BoundsMaxX", "边界最大X", "Double", s => SafeExtents(s).MaxPoint.X),
+                    For<Solid3d>("Solid3d", "BoundsMaxY", "边界最大Y", "Double", s => SafeExtents(s).MaxPoint.Y),
+                    For<Solid3d>("Solid3d", "BoundsMaxZ", "边界最大Z", "Double", s => SafeExtents(s).MaxPoint.Z)
                 }
             };
 
@@ -304,16 +333,58 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
             catch { return 0.0; }
         }
 
+        private static double SafeArea(Region region)
+        {
+            try { return region.Area; }
+            catch { return 0.0; }
+        }
+
+        private static Extents3d SafeExtents(Entity entity)
+        {
+            try { return entity.GeometricExtents; }
+            catch { return new Extents3d(); }
+        }
+
+        private static double GetDimensionMeasurement(Dimension dimension)
+        {
+            try
+            {
+                return dimension.Measurement;
+            }
+            catch (Exception ex) when (ex is Autodesk.AutoCAD.Runtime.Exception acEx
+                && acEx.ErrorStatus == ErrorStatus.NotOpenForWrite)
+            {
+                dimension.UpgradeOpen();
+                try
+                {
+                    return dimension.Measurement;
+                }
+                finally
+                {
+                    dimension.DowngradeOpen();
+                }
+            }
+        }
+
         private static string GetLinetypeName(Entity entity)
         {
-            var linetypeId = EntityAppearanceResolver.GetTrueLinetype(entity);
+            var tr = entity.Database.TransactionManager.TopTransaction;
+            var linetypeId = tr != null
+                ? EntityAppearanceResolver.GetTrueLinetype(entity, tr)
+                : EntityAppearanceResolver.GetTrueLinetype(entity);
             if (linetypeId.IsNull)
                 return entity.Linetype;
 
-            using (var tr = entity.Database.TransactionManager.StartTransaction())
+            if (tr != null)
             {
                 var record = tr.GetObject(linetypeId, OpenMode.ForRead, false) as LinetypeTableRecord;
-                tr.Commit();
+                return record?.Name ?? entity.Linetype;
+            }
+
+            using (var newTr = entity.Database.TransactionManager.StartTransaction())
+            {
+                var record = newTr.GetObject(linetypeId, OpenMode.ForRead, false) as LinetypeTableRecord;
+                newTr.Commit();
                 return record?.Name ?? entity.Linetype;
             }
         }
@@ -323,10 +394,17 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
             if (blockTableRecordId.IsNull)
                 return block.Name;
 
-            using (var tr = block.Database.TransactionManager.StartTransaction())
+            var tr = block.Database.TransactionManager.TopTransaction;
+            if (tr != null)
             {
                 var record = tr.GetObject(blockTableRecordId, OpenMode.ForRead, false) as BlockTableRecord;
-                tr.Commit();
+                return record?.Name ?? block.Name;
+            }
+
+            using (var newTr = block.Database.TransactionManager.StartTransaction())
+            {
+                var record = newTr.GetObject(blockTableRecordId, OpenMode.ForRead, false) as BlockTableRecord;
+                newTr.Commit();
                 return record?.Name ?? block.Name;
             }
         }
@@ -336,10 +414,17 @@ namespace HyCADTool.Shared.AutoCAD.Metadata
             if (dimension.DimensionStyle.IsNull)
                 return string.Empty;
 
-            using (var tr = dimension.Database.TransactionManager.StartTransaction())
+            var tr = dimension.Database.TransactionManager.TopTransaction;
+            if (tr != null)
             {
                 var record = tr.GetObject(dimension.DimensionStyle, OpenMode.ForRead, false) as DimStyleTableRecord;
-                tr.Commit();
+                return record?.Name ?? string.Empty;
+            }
+
+            using (var newTr = dimension.Database.TransactionManager.StartTransaction())
+            {
+                var record = newTr.GetObject(dimension.DimensionStyle, OpenMode.ForRead, false) as DimStyleTableRecord;
+                newTr.Commit();
                 return record?.Name ?? string.Empty;
             }
         }

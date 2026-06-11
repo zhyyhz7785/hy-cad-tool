@@ -23,10 +23,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ScrollViewer Style="{StaticResource BlenderScrollViewer}"
-                  VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel>
+    <StackPanel>
             <Expander Style="{StaticResource BlenderPropertyGroupLevel1}"
                       Header="出图比例"
                       IsExpanded="True"
@@ -102,8 +99,34 @@
                                      Text="{Binding Settings.HyEdAboveOffsetFactor, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}"/>
                         </StackPanel>
                     </bc:PropertyRow>
+                    <Separator Style="{StaticResource BlenderSeparator}" Margin="0,6,0,4"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               FontSize="{DynamicResource Metric_FontCaption}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,2"/>
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Foreground="{DynamicResource Brush_TextDisabled}"
+                                   FontSize="{DynamicResource Metric_FontCaption}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis">
+                            <Run Text="标注样式 ⯈ "/>
+                            <Run Text="{Binding Settings.AppliedDimStyleName, Mode=OneWay}"/>
+                        </TextBlock>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource BlenderButton}"
+                                Content="置为当前"
+                                Command="{Binding ApplyCurrentCommand}"
+                                Padding="8,2"
+                                MinHeight="{DynamicResource Metric_ActionButtonMinHeight}"
+                                FontSize="{DynamicResource Metric_FontCaption}"/>
+                    </Grid>
                 </StackPanel>
             </Expander>
-        </StackPanel>
-    </ScrollViewer>
+    </StackPanel>
 </UserControl>
