@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.AutoCAD.Services.Road;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -451,6 +452,11 @@ namespace HyCADTool.Shared.AutoCAD.Services
                         rec = new LayerTableRecord { Name = layerName };
                         layerTable.Add(rec);
                         tr.AddNewlyCreatedDBObject(rec, true);
+                    }
+
+                    using (LayerLockScope.Unlock(tr, db, layerName))
+                    {
+                        rec.IsLocked = it.IsLocked;
                     }
 
                     rec.Color = Color.FromColorIndex(ColorMethod.ByAci, it.AciColor);

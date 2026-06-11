@@ -1,4 +1,4 @@
-<UserControl x:Class="HyCADTool.Presentation.Views.Preferences.PileSettingsView"
+<UserControl x:Class="HyCADTool.Shell.Views.Preferences.PileSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"

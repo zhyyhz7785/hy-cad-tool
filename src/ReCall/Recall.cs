@@ -135,7 +135,7 @@ namespace HyCADTool.ReCall
         private const string PLUGIN_INIT_METHOD_TERMINATE = "Terminate";
 
         /// <summary>SettingsPanelViewModel 前置钩子（每个业务命令调用前反射触发一次）</summary>
-        private const string VM_TYPE = "HyCADTool.Presentation.ViewModels.SettingsPanelViewModel";
+        private const string VM_TYPE = "HyCADTool.Shell.ViewModels.SettingsPanelViewModel";
 
         /// <summary>临时目录副本保留数量（按 mtime 最新优先），超过则删除多余的</summary>
         private const int TEMP_COPY_RETAIN = 15;
@@ -1123,9 +1123,17 @@ namespace HyCADTool.ReCall
             try
             {
                 var swDir = System.Diagnostics.Stopwatch.StartNew();
-                CopyDirectoryRecursive(sourceDir, tempDir);
+                var copyFailures = new List<string>();
+                CopyDirectoryRecursive(sourceDir, tempDir, copyFailures);
                 swDir.Stop();
                 copyRecursiveMs = swDir.ElapsedMilliseconds;
+
+                if (copyFailures.Count > 0)
+                {
+                    var preview = string.Join(", ", copyFailures.Take(5));
+                    if (copyFailures.Count > 5) preview += ", ...";
+                    ed?.WriteMessage($"\n⚠ C2 复制失败 {copyFailures.Count} 个文件: {preview}");
+                }
 
                 loadPath = Path.Combine(tempDir, Path.GetFileName(mainDllPath));
                 if (!File.Exists(loadPath)) loadPath = null;
@@ -1138,18 +1146,18 @@ namespace HyCADTool.ReCall
             }
         }
 
-        private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+        private static void CopyDirectoryRecursive(string sourceDir, string destDir, List<string> failures)
         {
             Directory.CreateDirectory(destDir);
             foreach (string file in Directory.GetFiles(sourceDir))
             {
                 try { File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true); }
-                catch (System.Exception) { }
+                catch (System.Exception) { failures?.Add(file); }
             }
             foreach (string subDir in Directory.GetDirectories(sourceDir))
             {
-                try { CopyDirectoryRecursive(subDir, Path.Combine(destDir, Path.GetFileName(subDir))); }
-                catch (System.Exception) { }
+                try { CopyDirectoryRecursive(subDir, Path.Combine(destDir, Path.GetFileName(subDir)), failures); }
+                catch (System.Exception) { failures?.Add(subDir); }
             }
         }
 

@@ -8,7 +8,8 @@ using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Pile.ViewModels;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -27,30 +28,23 @@ namespace HyCADTool.Features.Pile
         private static string LeaderLayerName => UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
         private static string ElevationTextLayerName => UserLayerNameResolver.Get(LayerSemanticIds.ElevationSymbol, LayerBuiltinDefaults.ElevationSymbol);
 
-        private readonly Document _doc;
-        private readonly Database _db;
-        private readonly Editor _ed;
-
-        public GroupCirclesByElevationCommand()
-        {
-            _doc = Application.DocumentManager.MdiActiveDocument;
-            _db = _doc.Database;
-            _ed = _doc.Editor;
-        }
-
         public void Execute()
         {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var db = doc.Database;
+            var ed = doc.Editor;
+
             try
             {
-                // 获取 Scale
-                double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+                double scale = ScaleResolver.GetScale();
 
                 // 1. 询问是否在引线中标注标高
                 var pko = new PromptKeywordOptions("\n是否在引线中标注标高？ [是(Y)/否(N)]: ", "是 否")
                 {
                     AllowNone = false
                 };
-                var pkr = _ed.GetKeywords(pko);
+                var pkr = ed.GetKeywords(pko);
                 if (pkr.Status != PromptStatus.OK) return;
                 bool includeElevation = pkr.StringResult == "是";
 
@@ -61,7 +55,7 @@ namespace HyCADTool.Features.Pile
                     AllowNegative = true,
                     AllowZero = true
                 };
-                var pdr = _ed.GetDouble(pdo);
+                var pdr = ed.GetDouble(pdo);
                 if (pdr.Status != PromptStatus.OK) return;
                 double elevationOffset = pdr.Value;
 
@@ -75,14 +69,14 @@ namespace HyCADTool.Features.Pile
                     new TypedValue((int)DxfCode.Start, "MTEXT"),
                     new TypedValue((int)DxfCode.Operator, "or>")
                 };
-                var psr = _ed.GetSelection(new SelectionFilter(filter));
+                var psr = ed.GetSelection(new SelectionFilter(filter));
                 if (psr.Status != PromptStatus.OK) return;
 
                 int totalCount = 0;
-                using (var tr = _db.TransactionManager.StartTransaction())
+                using (var tr = db.TransactionManager.StartTransaction())
                 {
-                    var ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(_db), OpenMode.ForWrite);
-                    var lt = (LayerTable)tr.GetObject(_db.LayerTableId, OpenMode.ForRead);
+                    var ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(db), OpenMode.ForWrite);
+                    var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
 
                     // 3. 提取桩对象（圆 + 闭合多段线）和文字
                     var piles = new List<(Entity Entity, Point3d Anchor)>();
@@ -100,7 +94,7 @@ namespace HyCADTool.Features.Pile
                         {
                             if (!pl.Closed)
                             {
-                                _ed.WriteMessage($"\n跳过未闭合的多段线 (Handle: {pl.Handle})");
+                                ed.WriteMessage($"\n跳过未闭合的多段线 (Handle: {pl.Handle})");
                             }
                             else if (pl.NumberOfVertices >= 2)
                             {
@@ -130,7 +124,7 @@ namespace HyCADTool.Features.Pile
                         }
                     }
                     if (removedCount > 0)
-                        _ed.WriteMessage($"\n已删除 {removedCount} 个重合对象");
+                        ed.WriteMessage($"\n已删除 {removedCount} 个重合对象");
                     piles = uniquePiles;
 
                     // 4. 匹配桩对象和文字，解析标高（文字必须在半径范围内才算匹配）
@@ -215,7 +209,7 @@ namespace HyCADTool.Features.Pile
                             ms.AppendEntity(warningCircle);
                             tr.AddNewlyCreatedDBObject(warningCircle, true);
                         }
-                        _ed.WriteMessage($"\n⚠ 警告：{noTextCircles.Count} 个对象内部无标高数字，已绘制红色警示圆，请检查！");
+                        ed.WriteMessage($"\n⚠ 警告：{noTextCircles.Count} 个对象内部无标高数字，已绘制红色警示圆，请检查！");
                     }
 
                     // 10. 创建引线图层
@@ -256,7 +250,7 @@ namespace HyCADTool.Features.Pile
                     int totalRows = 1 + dataRows + extraRows;  // 表头 + 数据 + 额外
 
                     Table table = new Table();
-                    table.TableStyle = _db.Tablestyle;
+                    table.TableStyle = db.Tablestyle;
                     table.SetSize(totalRows, 3);
 
                     for (int r = 0; r < totalRows; r++)
@@ -313,7 +307,7 @@ namespace HyCADTool.Features.Pile
                     table.GenerateLayout();
 
                     // 让用户选择表格插入点
-                    var ptResult = _ed.GetPoint("\n选择表格插入点: ");
+                    var ptResult = ed.GetPoint("\n选择表格插入点: ");
                     if (ptResult.Status == PromptStatus.OK)
                         table.Position = ptResult.Value;
                     else
@@ -325,11 +319,11 @@ namespace HyCADTool.Features.Pile
                     tr.Commit();
                 }
 
-                _ed.WriteMessage($"\n封闭图形分组标注完成，共 {totalCount} 个对象（圆+闭合多段线）。");
+                ed.WriteMessage($"\n封闭图形分组标注完成，共 {totalCount} 个对象（圆+闭合多段线）。");
             }
             catch (System.Exception ex)
             {
-                _ed.WriteMessage($"\n错误: {ex.Message}");
+                ed.WriteMessage($"\n错误: {ex.Message}");
             }
         }
 
@@ -338,16 +332,21 @@ namespace HyCADTool.Features.Pile
         /// </summary>
         public void ExecutePlaceElevationTextAtCentroids()
         {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var db = doc.Database;
+            var ed = doc.Editor;
+
             try
             {
                 var vm = PilePanelViewModel.Current;
                 if (vm == null)
                 {
-                    _ed.WriteMessage("\n桩基面板未初始化。");
+                    ed.WriteMessage("\n桩基面板未初始化。");
                     return;
                 }
 
-                double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+                double scale = ScaleResolver.GetScale();
                 double textHeight = vm.MarkerTextHeightScale * scale;
                 double elevation = vm.MarkerElevation;
                 string textContent = elevation.ToString("F3", CultureInfo.InvariantCulture);
@@ -359,17 +358,17 @@ namespace HyCADTool.Features.Pile
                     new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),
                     new TypedValue((int)DxfCode.Operator, "or>")
                 });
-                var psr = _ed.GetSelection(new PromptSelectionOptions
+                var psr = ed.GetSelection(new PromptSelectionOptions
                 {
                     MessageForAdding = "\n选择要写入标高文字的圆或闭合多段线: "
                 }, filter);
                 if (psr.Status != PromptStatus.OK) return;
 
                 int createdCount = 0;
-                using (var tr = _db.TransactionManager.StartTransaction())
+                using (var tr = db.TransactionManager.StartTransaction())
                 {
-                    var ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(_db), OpenMode.ForWrite);
-                    var lt = (LayerTable)tr.GetObject(_db.LayerTableId, OpenMode.ForRead);
+                    var ms = (BlockTableRecord)tr.GetObject(SymbolUtilityServices.GetBlockModelSpaceId(db), OpenMode.ForWrite);
+                    var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                     CreateLayerIfNotExists(tr, lt, ElevationTextLayerName, 7);
 
                     foreach (SelectedObject sel in psr.Value)
@@ -387,7 +386,7 @@ namespace HyCADTool.Features.Pile
                         {
                             if (!pl.Closed)
                             {
-                                _ed.WriteMessage($"\n跳过未闭合的多段线 (Handle: {pl.Handle})");
+                                ed.WriteMessage($"\n跳过未闭合的多段线 (Handle: {pl.Handle})");
                                 continue;
                             }
                             if (pl.NumberOfVertices < 2)
@@ -415,11 +414,11 @@ namespace HyCADTool.Features.Pile
                     tr.Commit();
                 }
 
-                _ed.WriteMessage($"\n已在 {createdCount} 个对象中心写入标高文字: {textContent}");
+                ed.WriteMessage($"\n已在 {createdCount} 个对象中心写入标高文字: {textContent}");
             }
             catch (System.Exception ex)
             {
-                _ed.WriteMessage($"\n写入标高文字失败: {ex.Message}");
+                ed.WriteMessage($"\n写入标高文字失败: {ex.Message}");
             }
         }
 

@@ -84,9 +84,9 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
             else if (ppr.Status == PromptStatus.None)
             {
-                // 用户点击确认，结束操作
+                // 回车/右键：确认当前方向
                 _isCompleted = true;
-                return SamplerStatus.Cancel;
+                return SamplerStatus.OK;
             }
             else
             {

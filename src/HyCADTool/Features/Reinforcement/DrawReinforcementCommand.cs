@@ -6,7 +6,7 @@ using HyCADTool.Features.Reinforcement.Domain;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using System.Collections.Generic;
 using HyCAD.Geometry.Interfaces;
 

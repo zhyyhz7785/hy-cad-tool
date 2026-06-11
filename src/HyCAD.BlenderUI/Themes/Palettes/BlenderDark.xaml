@@ -2,6 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
+     自定义控件隐式 Style 为默认样式机制（非标准控件，不触发 B1）；勿改为无 x:Key 的标准控件 Style。
      主题 1：Blender Dark
      ───────────────────────────────────────────────────────────────
      色值来源：Blender 4.5 release · release/datafiles/userdef/userdef_default_theme.c

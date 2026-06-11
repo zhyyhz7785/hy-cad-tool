@@ -8,7 +8,7 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
 {
     /// <summary>

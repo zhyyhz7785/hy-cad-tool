@@ -8,7 +8,8 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Reinforcement
@@ -45,7 +46,7 @@ namespace HyCADTool.Features.Reinforcement
             _layerService.SetCurrentLayer(LayerLineRein);
 
             var vm = SettingsPanelViewModel.Current;
-            double scale = vm?.Scale ?? 40.0;
+            double scale = ScaleResolver.GetScale();
             double hookLength = (vm?.HookLength ?? 1.0) * scale; // 绿色参数 × Scale
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
@@ -75,7 +76,7 @@ namespace HyCADTool.Features.Reinforcement
                     var jig = new HookJig(polyline, hookLength, _isVertical);
                     var pr = ed.Drag(jig);
 
-                    if (pr.Status == PromptStatus.OK)
+                    if (pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None)
                     {
                         // 弯钩属于同一根钢筋：优先保持与原多段线一致的线宽，
                         // 仅当原线无明确宽度（解析为 0）时才回退到面板参数 PolylineWidth × Scale。

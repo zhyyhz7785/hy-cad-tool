@@ -3,9 +3,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
-namespace HyCADTool.Presentation.Views.Preferences
+namespace HyCADTool.Shell.Views.Preferences
 {
     /// <summary>
     /// 样式类二级分组示范骨架。

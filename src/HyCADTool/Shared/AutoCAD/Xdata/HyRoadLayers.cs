@@ -85,12 +85,6 @@ namespace HyCADTool.Shared.AutoCAD.Xdata
         public static string CrossSectionTitleLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
         public const short CrossSectionTitleColor = 3;
 
-        public static string CrossSectionTitleDecorationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitleDecoration, LayerBuiltinDefaults.RoadCrossSectionTitleDecoration);
-        public const short CrossSectionTitleDecorationColor = 3;
-
-        public static string CrossSectionOrientationLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionOrientation, LayerBuiltinDefaults.RoadCrossSectionOrientation);
-        public const short CrossSectionOrientationColor = 6;
-
         public static string PlanRedLineLayer => UserLayerNameResolver.Get(LayerSemanticIds.RoadPlanRedLine, LayerBuiltinDefaults.RoadPlanRedLine);
         public const short PlanRedLineColor = 1;
 
@@ -126,8 +120,6 @@ namespace HyCADTool.Shared.AutoCAD.Xdata
                 (CrossSectionDimensionLayer, CrossSectionDimensionColor),
                 (CrossSectionAnnotationLayer, CrossSectionAnnotationColor),
                 (CrossSectionTitleLayer, CrossSectionTitleColor),
-                (CrossSectionTitleDecorationLayer, CrossSectionTitleDecorationColor),
-                (CrossSectionOrientationLayer, CrossSectionOrientationColor),
                 (PlanRedLineLayer, PlanRedLineColor),
                 (PlanBandDividerLayer, PlanBandDividerColor),
                 (PlanMarkingLayer, PlanMarkingColor),
@@ -165,8 +157,6 @@ namespace HyCADTool.Shared.AutoCAD.Xdata
                 (LayerBuiltinDefaults.RoadCrossSectionDimension, CrossSectionDimensionColor, c),
                 (LayerBuiltinDefaults.RoadCrossSectionAnnotation, CrossSectionAnnotationColor, c),
                 (LayerBuiltinDefaults.RoadCrossSectionTitle, CrossSectionTitleColor, c),
-                (LayerBuiltinDefaults.RoadCrossSectionTitleDecoration, CrossSectionTitleDecorationColor, c),
-                (LayerBuiltinDefaults.RoadCrossSectionOrientation, CrossSectionOrientationColor, c),
                 (LayerBuiltinDefaults.RoadPlanRedLine, PlanRedLineColor, c),
                 (LayerBuiltinDefaults.RoadPlanBandDivider, PlanBandDividerColor, c),
                 (LayerBuiltinDefaults.RoadPlanMarking, PlanMarkingColor, c),

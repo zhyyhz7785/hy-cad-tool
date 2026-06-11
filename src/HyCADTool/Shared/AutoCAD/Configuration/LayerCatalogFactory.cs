@@ -13,7 +13,7 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
     public static class LayerCatalogFactory
     {
         /// <summary>递增时与 <see cref="UserLayerSettingsMerger"/> 联动：旧 hy-settings 会刷新默认层名/线型。</summary>
-        public const int CurrentCatalogVersion = 4;
+        public const int CurrentCatalogVersion = 5;
 
         public static IReadOnlyList<LayerDefinitionItem> CreateDefaultItems()
         {
@@ -185,9 +185,9 @@ namespace HyCADTool.Shared.AutoCAD.Configuration
                 case "05_hy_道路_横断面_尺寸链":
                     return LayerSemanticIds.RoadCrossSectionDimension;
                 case "05_hy_道路_横断面_图题_装饰":
-                    return LayerSemanticIds.RoadCrossSectionTitleDecoration;
+                    return LayerSemanticIds.RoadCrossSectionTitle;
                 case "05_hy_道路_横断面_方位":
-                    return LayerSemanticIds.RoadCrossSectionOrientation;
+                    return LayerSemanticIds.RoadCrossSectionAnnotation;
                 case "02-hy-3横断-图题":
                 case "05_hy_道路_横断面_图题":
                     return LayerSemanticIds.RoadCrossSectionTitle;

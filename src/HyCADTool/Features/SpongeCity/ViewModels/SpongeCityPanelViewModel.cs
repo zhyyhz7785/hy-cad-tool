@@ -6,7 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Domain.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.SpongeCity.ViewModels
@@ -31,7 +32,7 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
                 {
                     var doc = AcApp.DocumentManager.MdiActiveDocument;
                     if (doc == null) return null;
-                    return GetOrCreate(doc.Name);
+                    return GetOrCreate(DocumentKeys.GetKey(doc));
                 }
                 catch { return null; }
             }

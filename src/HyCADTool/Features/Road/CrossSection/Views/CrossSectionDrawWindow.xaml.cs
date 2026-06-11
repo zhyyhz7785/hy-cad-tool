@@ -14,10 +14,10 @@ using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Features.Road.CrossSection.Services.Workflows;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.Road.CrossSection.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
-using HyCADTool.Presentation;
+using HyCADTool.Shell;
 namespace HyCADTool.Features.Road.CrossSection.Views
 {
     /// <summary>

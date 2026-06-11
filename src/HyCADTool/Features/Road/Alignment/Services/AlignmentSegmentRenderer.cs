@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
@@ -99,8 +100,9 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
 
                             segmented = count > 0;
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            Debug.WriteLine($"[AlignmentSegmentRenderer] 分段失败: {ex.Message}");
                             segmented = false;
                         }
                     }
@@ -122,9 +124,9 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
 
                 return count;
             }
-            catch
+            catch (Exception ex)
             {
-                // 文档被关闭 / LockDocument 失败等 — VM 线程不扩散异常
+                Debug.WriteLine($"[AlignmentSegmentRenderer] 渲染中止: {ex.Message}");
                 return 0;
             }
         }
@@ -148,8 +150,9 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
                 }
                 return n;
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[AlignmentSegmentRenderer] 计算失败: {ex.Message}");
                 return 0;
             }
         }
@@ -170,8 +173,9 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
                 }
                 return n;
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[AlignmentSegmentRenderer] 计算失败: {ex.Message}");
                 return 0;
             }
         }

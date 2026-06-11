@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Diagnostics;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Shared.Drawing.Models;
@@ -8,7 +9,7 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.Road.CrossSection.Services
 {
@@ -114,7 +115,10 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             {
                 if (s.ActualMLeaderLandingGap > 0) return s.ActualMLeaderLandingGap;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RoadCsDrawStyleFactory] MLeader 引线间隙读取失败: {ex.Message}");
+            }
             return fallback;
         }
 
@@ -124,7 +128,10 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             {
                 if (s.ActualMLeaderArrowSize > 0) return s.ActualMLeaderArrowSize;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RoadCsDrawStyleFactory] MLeader 箭头大小读取失败: {ex.Message}");
+            }
             return fallback;
         }
 

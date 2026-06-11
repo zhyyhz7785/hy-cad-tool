@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
-namespace HyCADTool.Presentation.Views.Preferences
+namespace HyCADTool.Shell.Views.Preferences
 {
     /// <summary>「界面 → 尺寸」：三类 Metric 比例预设与滑块；持久化走 <see cref="SettingsPanelViewModel"/>。</summary>
     public partial class UiScaleSettingsView : UserControl

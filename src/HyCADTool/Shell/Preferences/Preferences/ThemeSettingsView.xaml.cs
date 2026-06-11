@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
-namespace HyCADTool.Presentation.Views.Preferences
+namespace HyCADTool.Shell.Views.Preferences
 {
     /// <summary>
     /// 「界面 → 主题」二级分组视图。

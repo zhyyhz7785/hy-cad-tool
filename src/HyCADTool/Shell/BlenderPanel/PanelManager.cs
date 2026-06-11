@@ -15,7 +15,7 @@ using HyCADTool.Features.Fem.Views;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using Autodesk.AutoCAD.DatabaseServices;
 
-namespace HyCADTool.Presentation
+namespace HyCADTool.Shell
 {
     /// <summary>
     /// 面板管理器 —— 唯一的 PaletteSet（<see cref="Views.HyBlenderPanel"/>，命令 <c>Hy</c>/<c>HyB</c>）：
@@ -681,25 +681,26 @@ namespace HyCADTool.Presentation
         private void OnDocumentToBeDestroyed(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
             if (e.Document == null) return;
-            string docName = e.Document.Name;
-            ViewModels.SettingsPanelViewModel.RemoveDocument(docName);
-            HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.RemoveDocument(docName);
-            HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.RemoveDocument(docName);
-            HyCADTool.Features.Settlement.ViewModels.SettlementPanelViewModel.RemoveDocument(docName);
-            ViewModels.ClusterPanelViewModel.RemoveDocument(docName);
+            string docKey = HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(e.Document);
+            if (e.Document.Database != null)
+                ViewModels.SettingsPanelViewModel.ClearDatabaseStyleState(e.Document.Database.UnmanagedObject);
+            HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.RemoveDocument(docKey);
+            HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.RemoveDocument(docKey);
+            HyCADTool.Features.Settlement.ViewModels.SettlementPanelViewModel.RemoveDocument(docKey);
+            ViewModels.ClusterPanelViewModel.RemoveDocument(docKey);
             Features.Elevation.Services.ElevationService.RemoveDocumentCache(e.Document.Database);
 
             try
             {
                 var roadRegistry = ServiceLocator.TryResolve<HyCADTool.Shared.AutoCAD.Services.Road.RoadProjectRegistry>();
-                roadRegistry?.Remove(docName);
+                roadRegistry?.Remove(e.Document.Name);
             }
             catch
             {
                 // 容器未初始化或道路子系统未就绪
             }
 
-            PluginInitializer.RemoveInitializedDocument(docName);
+            PluginInitializer.RemoveInitializedDocument(docKey);
         }
 
         /// <summary>

@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Infrastructure;
 using HyCADTool.Features.SpongeCity.ViewModels;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.SpongeCity.Commands

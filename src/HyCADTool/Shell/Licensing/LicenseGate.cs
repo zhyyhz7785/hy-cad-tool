@@ -19,8 +19,11 @@ namespace HyCADTool.Shell.Licensing
             var st = LicenseService.Instance.LastStatus;
             var required = LicenseCommandTierMap.GetRequiredTier(commandKey);
 
+            // fail-open 有意：License 状态文件异常时仍放行 Freemium 档命令，仅拦截更高档位。
             if (!st.Ok)
             {
+                if (!string.IsNullOrWhiteSpace(st.ErrorMessage))
+                    Write($"\n[HyCAD] License 状态异常（fail-open 放行免费命令）：{st.ErrorMessage}\n");
                 if (required > LicenseProductTier.Freemium && !string.Equals(commandKey, "hyLicense", StringComparison.OrdinalIgnoreCase))
                 {
                     Write($"\n[HyCAD] License 无效：{st.ErrorMessage}\n");

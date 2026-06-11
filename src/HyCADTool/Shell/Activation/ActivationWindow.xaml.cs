@@ -7,7 +7,7 @@ using HyCADTool.Licensing;
 using Microsoft.Win32;
 using QRCoder;
 
-namespace HyCADTool.Presentation.Views
+namespace HyCADTool.Shell.Views
 {
     public partial class ActivationWindow : System.Windows.Window
     {

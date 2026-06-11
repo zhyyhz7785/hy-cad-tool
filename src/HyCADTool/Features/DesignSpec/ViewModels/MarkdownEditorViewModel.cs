@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.DesignSpec.ViewModels
 {

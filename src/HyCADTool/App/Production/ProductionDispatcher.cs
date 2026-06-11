@@ -31,7 +31,7 @@ namespace HyCADTool.App.Production
     /// </summary>
     public static class ProductionDispatcher
     {
-        private const string VmType = "HyCADTool.Presentation.ViewModels.SettingsPanelViewModel";
+        private const string VmType = "HyCADTool.Shell.ViewModels.SettingsPanelViewModel";
 
         // 反射结果缓存：避免每次命令都 asm.GetType / type.GetMethod
         private static readonly ConcurrentDictionary<string, Type> _typeCache = new ConcurrentDictionary<string, Type>(StringComparer.Ordinal);

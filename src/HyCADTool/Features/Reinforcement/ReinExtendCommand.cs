@@ -1,7 +1,8 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -24,7 +25,7 @@ namespace HyCADTool.Features.Reinforcement
             var ed = doc.Editor;
 
             var vm = SettingsPanelViewModel.Current;
-            double anchorageLength = vm?.AnchorageLength ?? 500.0; // 红色参数：直接 mm，延长长度 = 锚固长度
+            double anchorageLength = ScaleResolver.GetAnchorageLength(); // 红色参数：直接 mm，延长长度 = 锚固长度
             if (anchorageLength <= 0)
             {
                 ed.WriteMessage("\n锚固长度无效（需 > 0）。");

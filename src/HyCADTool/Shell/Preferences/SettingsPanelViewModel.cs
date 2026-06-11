@@ -24,10 +24,11 @@ using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.TitleBlock.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.UI.Helpers;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// HY 设置面板 ViewModel
@@ -35,11 +36,11 @@ namespace HyCADTool.Presentation.ViewModels
     /// Tab B: 钢筋参数（对应旧 ReinPanel）
     /// 样式名称根据 Scale 动态生成
     /// 
-    /// 多文档支持：每个文档有独立的 ViewModel 实例
+    /// 全局单实例（hy-settings.json 单文件）；样式同步状态按 Database 分键。
     /// </summary>
     public class SettingsPanelViewModel : INotifyPropertyChanged
     {
-        private readonly IStyleService _styleService;
+        private IStyleService _styleService;
 
         /// <summary>用户可编辑图层表（与 hy-settings.json 中 <see cref="UserLayerSettings"/> 同步）。</summary>
         public ObservableCollection<LayerDefinitionItem> LayerCatalogItems { get; }
@@ -63,62 +64,69 @@ namespace HyCADTool.Presentation.ViewModels
         /// <summary>将层表恢复为程序默认并可选写盘（与自动保存联动）。</summary>
         public ICommand RestoreDefaultLayerCatalogCommand { get; }
 
-        /// <summary>
-        /// 样式脏标记：参数变更后置 true，样式同步后置 false
-        /// 避免每个命令执行前都无条件重建样式（8~10 个事务）
-        /// </summary>
-        private bool _stylesDirty = true;
+        /// <summary>全局样式修订号；参数变更时递增，各 Database 记录已应用的修订号。</summary>
+        private int _globalStyleRevision = 1;
+        private readonly Dictionary<IntPtr, int> _appliedStyleRevisionByDb = new Dictionary<IntPtr, int>();
+
+        private static SettingsPanelViewModel _instance;
 
         /// <summary>
-        /// 文档级 ViewModel 存储（每个文档独立参数）
-        /// </summary>
-        private static readonly Dictionary<string, SettingsPanelViewModel> _documentViewModels 
-            = new Dictionary<string, SettingsPanelViewModel>();
-
-        /// <summary>
-        /// 当前活动文档的 ViewModel（供 DrawReinforcementCommand 等外部读取参数）
+        /// 全局设置 ViewModel（供 DrawReinforcementCommand 等外部读取参数）
         /// 对应旧代码 ReinPanel.ActivePanel
         /// </summary>
         public static SettingsPanelViewModel Current
         {
             get
             {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc == null) return null;
+                if (_instance != null) return _instance;
 
-                var docName = doc.Name;
-                if (!_documentViewModels.ContainsKey(docName))
-                {
-                    // 从 DI 容器获取 IStyleService，确保命令按钮可用
-                    IStyleService styleService = null;
-                    try { styleService = ServiceLocator.Container?.Resolve<IStyleService>(); }
-                    catch { }
-                    _documentViewModels[docName] = styleService != null
-                        ? new SettingsPanelViewModel(styleService)
-                        : new SettingsPanelViewModel();
-                }
-                return _documentViewModels[docName];
+                IStyleService styleService = null;
+                try { styleService = ServiceLocator.Container?.Resolve<IStyleService>(); }
+                catch { }
+
+                _instance = styleService != null
+                    ? new SettingsPanelViewModel(styleService)
+                    : new SettingsPanelViewModel();
+                return _instance;
             }
         }
 
-        /// <summary>
-        /// 获取或创建指定文档的 ViewModel
-        /// </summary>
+        /// <summary>获取或创建全局单例；若实例缺 IStyleService 则补挂。</summary>
         public static SettingsPanelViewModel GetOrCreate(string documentName, IStyleService styleService)
         {
-            if (!_documentViewModels.ContainsKey(documentName))
-            {
-                _documentViewModels[documentName] = new SettingsPanelViewModel(styleService);
-            }
-            return _documentViewModels[documentName];
+            var vm = Current;
+            vm.EnsureStyleService(styleService);
+            return vm;
         }
 
-        /// <summary>
-        /// 清理已关闭文档的 ViewModel
-        /// </summary>
-        public static void RemoveDocument(string documentName)
+        /// <summary>文档关闭时清除该 Database 的样式同步状态（不销毁全局 VM）。</summary>
+        public static void ClearDatabaseStyleState(IntPtr dbHandle)
         {
-            _documentViewModels.Remove(documentName);
+            _instance?._appliedStyleRevisionByDb.Remove(dbHandle);
+        }
+
+        private void EnsureStyleService(IStyleService styleService)
+        {
+            if (_styleService == null && styleService != null)
+                _styleService = styleService;
+        }
+
+        private void MarkStylesDirty() => _globalStyleRevision++;
+
+        private bool IsStylesDirtyForActiveDoc()
+        {
+            var db = AcApp.DocumentManager.MdiActiveDocument?.Database;
+            if (db == null) return true;
+            var h = db.UnmanagedObject;
+            if (!_appliedStyleRevisionByDb.TryGetValue(h, out var rev)) return true;
+            return rev < _globalStyleRevision;
+        }
+
+        private void MarkStylesAppliedForActiveDoc()
+        {
+            var db = AcApp.DocumentManager.MdiActiveDocument?.Database;
+            if (db == null) return;
+            _appliedStyleRevisionByDb[db.UnmanagedObject] = _globalStyleRevision;
         }
 
         #region 构造函数
@@ -180,7 +188,7 @@ namespace HyCADTool.Presentation.ViewModels
 
         #region 基础属性
 
-        private string _equipmentDataFilePath = @"E:\BaiduSyncdisk\Code\testResult\00equipment_data.md";
+        private string _equipmentDataFilePath = string.Empty;
         /// <summary>
         /// 设备数据 Markdown 文件路径（设备基础命令使用）
         /// </summary>
@@ -202,7 +210,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _scale, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     // UseSubScale=false 时 SubScale 始终随 MainScale 退化
                     if (!_useSubScale) _subScale = _scale;
                     NotifyScaleContextChanged();
@@ -223,7 +231,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _useSubScale, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     if (!_useSubScale)
                     {
                         // 关闭时归一 SubScale 并刷新 UI 输入框显示
@@ -269,7 +277,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _subScale, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     NotifyScaleContextChanged();
                 }
             }
@@ -289,7 +297,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _unit, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     // 切单位时把小数位切到该单位的推荐默认值（mm=0 / cm=2 / m=3）。
                     // 允许集合现统一 0..3，用户仍可随后手动微调；初次切换自动给到合理粒度。
                     _precision = ScaleContext.GetDefaultPrecision(_unit);
@@ -318,7 +326,7 @@ namespace HyCADTool.Presentation.ViewModels
                 int clamped = ScaleContext.ClampPrecision(_unit, value);
                 if (SetProperty(ref _precision, clamped))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     NotifyScaleContextChanged();
                     // 小数位也写入样式名后缀 {p}，属模式切换 → 立即落盘并置为当前。
                     TryAutoApplyStyleForModeSwitch();
@@ -427,7 +435,7 @@ namespace HyCADTool.Presentation.ViewModels
 
         /// <summary>样式1：0-hy-说明-T，TrueType 字体（标题/说明用）</summary>
         private string _styleTName = "0-hy-说明-T";
-        public string StyleTName { get => _styleTName; set { if (SetProperty(ref _styleTName, value)) _stylesDirty = true; } }
+        public string StyleTName { get => _styleTName; set { if (SetProperty(ref _styleTName, value)) MarkStylesDirty(); } }
 
         private string _styleTFont = "微软雅黑";
         public string StyleTFont
@@ -437,7 +445,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _styleTFont, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     OnPropertyChanged(nameof(StyleTFontOptionsWithCurrent));
                 }
             }
@@ -445,7 +453,7 @@ namespace HyCADTool.Presentation.ViewModels
 
         /// <summary>样式2：0-hy-说明-S，SHX 字体（标注/引线/表格用）</summary>
         private string _styleSName = "0-hy-说明-S";
-        public string StyleSName { get => _styleSName; set { if (SetProperty(ref _styleSName, value)) _stylesDirty = true; } }
+        public string StyleSName { get => _styleSName; set { if (SetProperty(ref _styleSName, value)) MarkStylesDirty(); } }
 
         private string _styleSFont = "tssdeng.shx";
         public string StyleSFont
@@ -455,7 +463,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _styleSFont, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     OnPropertyChanged(nameof(StyleSFontOptionsWithCurrent));
                 }
             }
@@ -469,7 +477,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _styleSBigFont, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     OnPropertyChanged(nameof(StyleSBigFontOptionsWithCurrent));
                 }
             }
@@ -525,7 +533,7 @@ namespace HyCADTool.Presentation.ViewModels
         public double TextSize
         {
             get => _textSize;
-            set { if (SetProperty(ref _textSize, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualTextHeight)); } }
+            set { if (SetProperty(ref _textSize, value)) { MarkStylesDirty(); OnPropertyChanged(nameof(ActualTextHeight)); } }
         }
 
         private double _styleTXScale = 1.0;
@@ -533,7 +541,7 @@ namespace HyCADTool.Presentation.ViewModels
         public double StyleTXScale
         {
             get => _styleTXScale;
-            set { if (SetProperty(ref _styleTXScale, value)) _stylesDirty = true; }
+            set { if (SetProperty(ref _styleTXScale, value)) MarkStylesDirty(); }
         }
 
         private double _styleSXScale = 0.7;
@@ -545,7 +553,7 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 if (SetProperty(ref _styleSXScale, value))
                 {
-                    _stylesDirty = true;
+                    MarkStylesDirty();
                     OnPropertyChanged(nameof(TextXScale));
                 }
             }
@@ -565,28 +573,28 @@ namespace HyCADTool.Presentation.ViewModels
         #region 标注样式属性
 
         private double _dimtxt = 2.5;
-        public double Dimtxt { get => _dimtxt; set { if (SetProperty(ref _dimtxt, value)) _stylesDirty = true; } }
+        public double Dimtxt { get => _dimtxt; set { if (SetProperty(ref _dimtxt, value)) MarkStylesDirty(); } }
 
         private double _dimexo = 1.0;
-        public double Dimexo { get => _dimexo; set { if (SetProperty(ref _dimexo, value)) _stylesDirty = true; } }
+        public double Dimexo { get => _dimexo; set { if (SetProperty(ref _dimexo, value)) MarkStylesDirty(); } }
 
         private double _dimexe = 1.0;
-        public double Dimexe { get => _dimexe; set { if (SetProperty(ref _dimexe, value)) _stylesDirty = true; } }
+        public double Dimexe { get => _dimexe; set { if (SetProperty(ref _dimexe, value)) MarkStylesDirty(); } }
 
         private double _dimdle = 0.5;
-        public double Dimdle { get => _dimdle; set { if (SetProperty(ref _dimdle, value)) _stylesDirty = true; } }
+        public double Dimdle { get => _dimdle; set { if (SetProperty(ref _dimdle, value)) MarkStylesDirty(); } }
 
         private double _dimgap = 1.0;
-        public double Dimgap { get => _dimgap; set { if (SetProperty(ref _dimgap, value)) _stylesDirty = true; } }
+        public double Dimgap { get => _dimgap; set { if (SetProperty(ref _dimgap, value)) MarkStylesDirty(); } }
 
         private double _dimasz = 1.0;
-        public double Dimasz { get => _dimasz; set { if (SetProperty(ref _dimasz, value)) _stylesDirty = true; } }
+        public double Dimasz { get => _dimasz; set { if (SetProperty(ref _dimasz, value)) MarkStylesDirty(); } }
 
         private string _dimArrowName = "_ARCHTICK";
         public string DimArrowName
         {
             get => _dimArrowName;
-            set { if (SetProperty(ref _dimArrowName, value)) _stylesDirty = true; }
+            set { if (SetProperty(ref _dimArrowName, value)) MarkStylesDirty(); }
         }
 
         #endregion
@@ -597,21 +605,21 @@ namespace HyCADTool.Presentation.ViewModels
         public double MLeaderArrowSize
         {
             get => _mleaderArrowSize;
-            set { if (SetProperty(ref _mleaderArrowSize, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualMLeaderArrowSize)); } }
+            set { if (SetProperty(ref _mleaderArrowSize, value)) { MarkStylesDirty(); OnPropertyChanged(nameof(ActualMLeaderArrowSize)); } }
         }
 
         private string _mleaderArrowName = "_DotSmall";
-        public string MLeaderArrowName { get => _mleaderArrowName; set { if (SetProperty(ref _mleaderArrowName, value)) _stylesDirty = true; } }
+        public string MLeaderArrowName { get => _mleaderArrowName; set { if (SetProperty(ref _mleaderArrowName, value)) MarkStylesDirty(); } }
 
         private double _mleaderLandingGap = 0.5;
         public double MLeaderLandingGap
         {
             get => _mleaderLandingGap;
-            set { if (SetProperty(ref _mleaderLandingGap, value)) { _stylesDirty = true; OnPropertyChanged(nameof(ActualMLeaderLandingGap)); } }
+            set { if (SetProperty(ref _mleaderLandingGap, value)) { MarkStylesDirty(); OnPropertyChanged(nameof(ActualMLeaderLandingGap)); } }
         }
 
         private int _mleaderTextColorIndex = 7;
-        public int MLeaderTextColorIndex { get => _mleaderTextColorIndex; set { if (SetProperty(ref _mleaderTextColorIndex, value)) _stylesDirty = true; } }
+        public int MLeaderTextColorIndex { get => _mleaderTextColorIndex; set { if (SetProperty(ref _mleaderTextColorIndex, value)) MarkStylesDirty(); } }
 
         /// <summary>模型空间箭头实际大小 = MLeaderArrowSize(paper-mm) × UnitFactor × Scale</summary>
         public double ActualMLeaderArrowSize => MLeaderArrowSize * BuildScaleContext().UnitFactor * Scale;
@@ -1105,7 +1113,7 @@ namespace HyCADTool.Presentation.ViewModels
         {
             CommitFocusedTextBoxValue();
             SaveSettings();
-            if (_stylesDirty) EnsureStylesApplied();
+            if (IsStylesDirtyForActiveDoc()) EnsureStylesApplied();
 
             PendingCommand = () =>
             {
@@ -1177,7 +1185,7 @@ namespace HyCADTool.Presentation.ViewModels
 
                 if (includeDimensionAndTable)
                 {
-                    _stylesDirty = false;
+                    MarkStylesAppliedForActiveDoc();
                     SaveSettings();
                     StatusMessage = ctx.UseSubScale
                         ? $"样式应用成功 (M=1:{scale} S=1:{ctx.SubScale} {ctx.UnitShortName} p={dimdec})"
@@ -1200,7 +1208,7 @@ namespace HyCADTool.Presentation.ViewModels
         /// </summary>
         public void EnsureStylesApplied()
         {
-            if (!_stylesDirty) return;
+            if (!IsStylesDirtyForActiveDoc()) return;
             ApplyStyle();
             // 成功路径由 ApplyStyle() 置 _stylesDirty=false；失败或 StyleService 未就绪时保持 dirty，
             // 否则「单位/副比例」等模式切换的 auto-apply 失败后用户再点「置为当前」会被误判为无需同步。
@@ -1227,7 +1235,7 @@ namespace HyCADTool.Presentation.ViewModels
         {
             CommitFocusedTextBoxValue();
             SaveSettings();
-            if (_stylesDirty)
+            if (IsStylesDirtyForActiveDoc())
                 EnsureStylesApplied();
             StatusMessage = "当前设置已保存为默认值";
         }
@@ -1726,7 +1734,7 @@ namespace HyCADTool.Presentation.ViewModels
                 // 否则 gj/gb 等每次执行都会白白重建一轮样式，造成重复执行前的明显停顿。
                 string afterStyleSignature = BuildStyleSignature();
                 if (!string.Equals(beforeStyleSignature, afterStyleSignature, StringComparison.Ordinal))
-                    _stylesDirty = true;
+                    MarkStylesDirty();
             }
             catch (Exception ex)
             {

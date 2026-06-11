@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
-namespace HyCADTool.Presentation.Views.Preferences
+namespace HyCADTool.Shell.Views.Preferences
 {
     /// <summary>
     /// 桩基 设置骨架：PileParams / PileMargin

@@ -5,7 +5,7 @@ using System.Windows.Input;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
 {
     /// <summary>

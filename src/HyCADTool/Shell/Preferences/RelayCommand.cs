@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Input;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// 简单的 ICommand 实现，用于 MVVM 模式的命令绑定。

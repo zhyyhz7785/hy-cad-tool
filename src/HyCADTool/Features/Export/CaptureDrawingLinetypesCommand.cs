@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Export.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using Newtonsoft.Json;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

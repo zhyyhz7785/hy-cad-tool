@@ -2,7 +2,7 @@ using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Features.DCEL.Domain.Enums;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Features.BaseRein.Domain;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

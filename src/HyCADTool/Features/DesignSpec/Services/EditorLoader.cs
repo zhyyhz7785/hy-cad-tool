@@ -1,5 +1,5 @@
 using HyCADTool.Features.DesignSpec.Domain.Models;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;

@@ -13,7 +13,8 @@ using HyCADTool.Features.Settlement;
 using HyCADTool.Features.Settlement.Commands;
 using HyCADTool.Features.Settlement.Domain.Services;
 using HyCADTool.Features.DesignSpec.Domain;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Settlement.ViewModels
@@ -33,10 +34,10 @@ namespace HyCADTool.Features.Settlement.ViewModels
                 {
                     var doc = AcApp.DocumentManager.MdiActiveDocument;
                     if (doc == null) return null;
-                    var docName = doc.Name;
-                    if (!_documentViewModels.ContainsKey(docName))
-                        _documentViewModels[docName] = new SettlementPanelViewModel();
-                    return _documentViewModels[docName];
+                    var docKey = DocumentKeys.GetKey(doc);
+                    if (!_documentViewModels.ContainsKey(docKey))
+                        _documentViewModels[docKey] = new SettlementPanelViewModel();
+                    return _documentViewModels[docKey];
                 }
                 catch { return null; }
             }

@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.Configuration;
 
 namespace HyCADTool.Features.AnchorBolt
 {
@@ -73,8 +73,7 @@ namespace HyCADTool.Features.AnchorBolt
                 { ed.WriteMessage("\n惯性矩分量过小！"); tr.Commit(); return; }
 
                 // 计算受力
-                var vm = SettingsPanelViewModel.Current;
-                double scale = vm != null ? vm.Scale : 40.0;
+                double scale = ScaleResolver.GetScale();
 
                 var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);

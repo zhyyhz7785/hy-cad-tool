@@ -7,6 +7,7 @@ using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCADTool.Shared.AutoCAD.Services;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace HyCADTool.Features.DCEL.Services
@@ -84,9 +85,9 @@ namespace HyCADTool.Features.DCEL.Services
                         btr.AppendEntity(polyline);
                         tr.AddNewlyCreatedDBObject(polyline, true);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // 忽略单个面的绘制错误，继续处理其他面
+                        Debug.WriteLine($"[DCELRenderer] 单面绘制失败: {ex.Message}");
                         continue;
                     }
                 }
@@ -155,9 +156,9 @@ namespace HyCADTool.Features.DCEL.Services
                             }
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // 忽略单个面的绘制错误，继续处理其他面
+                        Debug.WriteLine($"[DCELRenderer] 单面绘制失败: {ex.Message}");
                         continue;
                     }
                 }
@@ -484,9 +485,9 @@ namespace HyCADTool.Features.DCEL.Services
                     tr.AddNewlyCreatedDBObject(entity, true);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // 忽略绘制错误
+                Debug.WriteLine($"[DCELRenderer] 绘制失败: {ex.Message}");
             }
         }
 
@@ -581,9 +582,9 @@ namespace HyCADTool.Features.DCEL.Services
                             polyline.Dispose();
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // 静默处理错误
+                        Debug.WriteLine($"[DCELRenderer] 多段线绘制失败: {ex.Message}");
                     }
                 }
 

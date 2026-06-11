@@ -1,6 +1,6 @@
 using System.Windows.Controls;
 
-namespace HyCADTool.Presentation.Views
+namespace HyCADTool.Shell.Views
 {
     /// <summary>
     /// HyB 面板「设置」Tab 的主视图（Blender Preferences 风格）。

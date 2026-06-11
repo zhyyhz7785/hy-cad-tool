@@ -1,7 +1,7 @@
 using System.Windows.Controls;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
-namespace HyCADTool.Presentation.Views.Preferences
+namespace HyCADTool.Shell.Views.Preferences
 {
     /// <summary>
     /// 首选项「快捷键」分组 View。

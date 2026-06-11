@@ -67,7 +67,7 @@ namespace HyCADTool.Features.Elevation.Services
         {
             try
             {
-                var vm = Presentation.ViewModels.SettingsPanelViewModel.Current;
+                var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
                 if (vm != null)
                 {
                     double unitFactor = vm.BuildScaleContext().UnitFactor;
@@ -287,7 +287,7 @@ namespace HyCADTool.Features.Elevation.Services
 
         private static ObjectId CreateTextStyleForElevation(Database db, Document doc)
         {
-            var vm = Presentation.ViewModels.SettingsPanelViewModel.Current;
+            var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
             string styleName = vm != null ? vm.TextStyleName : "0_Hy_40";
             string fontName = vm != null ? vm.FontFileName : "tssdeng.shx";
             string bigFontName = vm != null ? vm.BigFontFileName : "hztxt.shx";

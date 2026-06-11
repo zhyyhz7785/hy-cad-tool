@@ -1074,7 +1074,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
                 new Point3d(origin.X + rightX, origin.Y + y, 0),
                 new Point3d(origin.X + leftX, origin.Y + y, 0))
             {
-                Layer = HyRoadLayers.CrossSectionOrientationLayer,
+                Layer = HyRoadLayers.CrossSectionAnnotationLayer,
                 ColorIndex = 256,
             };
             SetEntityAciWhite(left);
@@ -1116,7 +1116,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             pl.AddVertexAt(1, pa, 0, 0, 0);
             pl.AddVertexAt(2, pb, 0, 0, 0);
             pl.Closed = true;
-            pl.Layer = HyRoadLayers.CrossSectionOrientationLayer;
+            pl.Layer = HyRoadLayers.CrossSectionAnnotationLayer;
             pl.ColorIndex = 256;
             SetEntityAciWhite(pl);
             ms.AppendEntity(pl);

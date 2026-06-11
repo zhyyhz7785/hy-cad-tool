@@ -1,7 +1,7 @@
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Features.Road.Intersections.ViewModels;
 using HyCADTool.Features.Road.Intersections.Views;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;

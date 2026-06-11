@@ -13,7 +13,7 @@ namespace HyCADTool.Shared.Drawing.ValueObjects
         /// <summary>与 <c>HyRoadLayers.CrossSectionTitleLayer</c> 一致，Factory 会合并为同值。</summary>
         public const string DefaultTitleTextLayer = "02-hy-3横断-图题";
 
-        /// <summary>与 <c>HyRoadLayers.CrossSectionTitleDecorationLayer</c> 一致。</summary>
+        /// <summary>与 <c>HyRoadLayers.CrossSectionTitleLayer</c> 一致（图题与装饰合并同一语义）。</summary>
         public const string DefaultTitleDecorationLayer = "02-hy-3横断-图题";
 
         public bool ShowCrosshair { get; }

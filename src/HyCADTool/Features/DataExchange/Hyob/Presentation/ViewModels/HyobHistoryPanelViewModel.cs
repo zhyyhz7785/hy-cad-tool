@@ -13,7 +13,7 @@ using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Diff;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.RoundTrip;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Schemas;
 using HyCADTool.Features.DataExchange.Hyob.Presentation.Commands;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.DataExchange.Hyob.Presentation.ViewModels
 {

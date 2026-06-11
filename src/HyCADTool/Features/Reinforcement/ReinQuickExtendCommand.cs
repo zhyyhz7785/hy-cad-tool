@@ -1,7 +1,8 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Interactive;
@@ -29,12 +30,12 @@ namespace HyCADTool.Features.Reinforcement
             var ed = doc.Editor;
 
             var vm = SettingsPanelViewModel.Current;
-            double scale = vm?.Scale ?? 40.0;
+            double scale = ScaleResolver.GetScale();
             double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale;
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;
             double hookLength15d = 15.0 * rebarDiameter;
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
-            double hookHint = vm?.AnchorageLength ?? 500.0;
+            double hookHint = ScaleResolver.GetAnchorageLength();
 
             vm?.EnsureStylesApplied();
 
@@ -117,7 +118,7 @@ namespace HyCADTool.Features.Reinforcement
                     var hookJig = new DirectionalHookJig(poly, extensionPt, hit.SegmentDir, hookLength15d);
                     var pr = ed.Drag(hookJig);
 
-                    if (pr.Status == PromptStatus.OK)
+                    if (pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None)
                     {
                         double targetWidth = hookJig.SourceWidth > 0 ? hookJig.SourceWidth : reinWidth;
                         poly.ApplyReinforcementWidth(targetWidth);

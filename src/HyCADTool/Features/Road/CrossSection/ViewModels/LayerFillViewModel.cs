@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using HyCADTool.Domain.ValueObjects.Road;
 
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
 namespace HyCADTool.Features.Road.CrossSection.ViewModels
 {

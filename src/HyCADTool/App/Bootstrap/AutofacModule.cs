@@ -11,8 +11,7 @@ using HyCADTool.Features.Pile.Services;
 using HyCADTool.Features.Reinforcement.Services;
 using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.Shared.AutoCAD.Repositories;
-using HyCADTool.Shared.AutoCAD.Selection;
-using HyCADTool.Presentation;
+using HyCADTool.Shell;
 using HyCADTool.Features.OverKill.Commands;
 using HyCADTool.Features.OverKill.Services;
 using HyCAD.Geometry.Algorithms;
@@ -117,10 +116,10 @@ namespace HyCADTool.App.Bootstrap
             // 子面板 / ViewModel 通过 DI 供 HyBlenderPanel 或单元测试按需解析。
 
             // ViewModel 注册
-            builder.RegisterType<HyCADTool.Presentation.ViewModels.SettingsPanelViewModel>()
+            builder.RegisterType<HyCADTool.Shell.ViewModels.SettingsPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Presentation.ViewModels.FilterPanelViewModel>()
+            builder.RegisterType<HyCADTool.Shell.ViewModels.FilterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Features.BaseRein.ViewModels.BaseReinPanelViewModel>()
@@ -129,7 +128,7 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<HyCADTool.Features.Pile.ViewModels.PilePanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Presentation.ViewModels.ClusterPanelViewModel>()
+            builder.RegisterType<HyCADTool.Shell.ViewModels.ClusterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
 
@@ -140,10 +139,10 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<HyCADTool.Features.Pile.Views.PilePanel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Presentation.Views.ClusterPanel>()
+            builder.RegisterType<HyCADTool.Shell.Views.ClusterPanel>()
                 .AsSelf()
                 .InstancePerDependency();
-            builder.RegisterType<HyCADTool.Presentation.Views.FilterPanel>()
+            builder.RegisterType<HyCADTool.Shell.Views.FilterPanel>()
                 .AsSelf()
                 .InstancePerDependency();
 
@@ -200,10 +199,6 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<PointAlgorithmService>().As<IPointAlgorithmService>().SingleInstance();
             builder.RegisterType<GeometryConverterService>().As<IGeometryConverterService>().SingleInstance();
             
-            // === Phase 2.2: 选择服务重构 ===
-            // 注册高级选择服务
-            builder.RegisterType<AdvancedSelectionService>().As<IAdvancedSelectionService>().SingleInstance();
-
             // === 阶段 10: 聚类与边界框服务 ===
             // 聚类算法服务
             builder.RegisterType<ClusteringService>().As<IClusteringService>().SingleInstance();

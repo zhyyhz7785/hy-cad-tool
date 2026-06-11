@@ -1,7 +1,7 @@
 using Autofac;
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Presentation;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -10,7 +10,7 @@ namespace HyCADTool.Shell.Commands
     /// <summary>
     /// 面板显示方法（无 [CommandMethod]，避免热重载 eDuplicateKey）。
     ///
-    /// 唯一 PaletteSet：<see cref="HyCADTool.Presentation.Views.HyBlenderPanel"/>。所有入口都转发到它的对应 Tab：
+    /// 唯一 PaletteSet：<see cref="HyCADTool.Shell.Views.HyBlenderPanel"/>。所有入口都转发到它的对应 Tab：
     /// - Hy / ShowSettingsPanel → 「设置」Tab
     /// - HyB                    → toggle 显示
     /// - ShowFilterPanel        → 「过滤」Tab

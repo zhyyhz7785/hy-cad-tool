@@ -6,7 +6,10 @@ using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Features.DCEL.Domain.Enums;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Features.BaseRein.Domain;
+using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
+using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shell.Configuration.User;
 
 using System;
 using System.Collections.Concurrent;
@@ -481,13 +484,7 @@ namespace HyCADTool.Features.BaseRein.Services
                     return;
             }
 
-            // 确保图层存在
-            string rebarLayerX = config.Direction == RebarDirection.BottomX || config.Direction == RebarDirection.BottomY
-                ? "00_hy_筏板附加配筋x_下" : "00_hy_筏板附加配筋x_上";
-            string rebarLayerY = config.Direction == RebarDirection.BottomX || config.Direction == RebarDirection.BottomY
-                ? "00_hy_筏板附加配筋y_下" : "00_hy_筏板附加配筋y_上";
-
-            // 图层已在 PluginInitializer 统一创建
+            // 图层经 LayerCatalogFactory 注册，由 PluginInitializer 统一创建
 
             int rebarCount = 0;
 
@@ -568,8 +565,8 @@ namespace HyCADTool.Features.BaseRein.Services
                 {
                     double yCenter = (p0.Y + p2.Y) / 2 + reinDist;
                     rebar = CreateXRebar(p0.X - anchorLen, p1.X + anchorLen, yCenter, hookLen, polyWidth, isTop: true);
-                    rebarLayer = "00_hy_筏板附加配筋x_上";
-                    textLayer = "00_hy_筏板附加配筋文字_x";
+                    rebarLayer = ResolveRaftLayer(LayerSemanticIds.RaftSlabXTop);
+                    textLayer = ResolveRaftLayer(LayerSemanticIds.RaftTextX);
                     var mid = new Point3d((p0.X + p1.X) / 2 + config.ReinforceTextDistanceX * scale,
                         yCenter + config.TextToLineDistance * scale, 0);
                     textPos = mid;
@@ -580,8 +577,8 @@ namespace HyCADTool.Features.BaseRein.Services
                     double yCenter = (p0.Y + p2.Y) / 2 - reinDist;
                     double w = hookLen / Math.Sqrt(2);
                     rebar = CreateXRebar(p0.X - anchorLen, p1.X + anchorLen, yCenter, w, polyWidth, isTop: false);
-                    rebarLayer = "00_hy_筏板附加配筋x_下";
-                    textLayer = "00_hy_筏板附加配筋文字_x";
+                    rebarLayer = ResolveRaftLayer(LayerSemanticIds.RaftSlabXBottom);
+                    textLayer = ResolveRaftLayer(LayerSemanticIds.RaftTextX);
                     var mid = new Point3d((p0.X + p1.X) / 2 + config.ReinforceTextDistanceX * scale,
                         yCenter - hookLen + config.TextToLineDistance * scale, 0);
                     textPos = mid;
@@ -591,8 +588,8 @@ namespace HyCADTool.Features.BaseRein.Services
                 {
                     double xCenter = (p0.X + p1.X) / 2 + reinDist;
                     rebar = CreateYRebar(p1.Y - anchorLen, p2.Y + anchorLen, xCenter, hookLen, polyWidth, isTop: true);
-                    rebarLayer = "00_hy_筏板附加配筋y_上";
-                    textLayer = "00_hy_筏板附加配筋文字_y";
+                    rebarLayer = ResolveRaftLayer(LayerSemanticIds.RaftSlabYTop);
+                    textLayer = ResolveRaftLayer(LayerSemanticIds.RaftTextY);
                     var mid = new Point3d(xCenter - config.TextToLineDistance * scale,
                         (p1.Y + p2.Y) / 2 + config.ReinforceTextDistanceY * scale, 0);
                     textPos = mid;
@@ -604,8 +601,8 @@ namespace HyCADTool.Features.BaseRein.Services
                     double xCenter = (p0.X + p1.X) / 2 - reinDist;
                     double w = hookLen / Math.Sqrt(2);
                     rebar = CreateYRebar(p1.Y - anchorLen, p2.Y + anchorLen, xCenter, w, polyWidth, isTop: false);
-                    rebarLayer = "00_hy_筏板附加配筋y_下";
-                    textLayer = "00_hy_筏板附加配筋文字_y";
+                    rebarLayer = ResolveRaftLayer(LayerSemanticIds.RaftSlabYBottom);
+                    textLayer = ResolveRaftLayer(LayerSemanticIds.RaftTextY);
                     var mid = new Point3d(xCenter + hookLen - config.TextToLineDistance * scale,
                         (p1.Y + p2.Y) / 2 + config.ReinforceTextDistanceY * scale, 0);
                     textPos = mid;
@@ -797,8 +794,8 @@ namespace HyCADTool.Features.BaseRein.Services
             if (reinSel.Status != PromptStatus.OK) return;
 
             string dimLayer = direction == IntersectionsDirection.LeftRight
-                ? "00_hy_筏板附加配筋x_标注" : "00_hy_筏板附加配筋Y_标注";
-            // 图层已在 PluginInitializer 统一创建
+                ? ResolveRaftLayer(LayerSemanticIds.RaftDimX)
+                : ResolveRaftLayer(LayerSemanticIds.RaftDimY);
 
             int dimCount = 0;
 
@@ -934,5 +931,22 @@ namespace HyCADTool.Features.BaseRein.Services
         }
 
         #endregion
+
+        private static string ResolveRaftLayer(string semanticId)
+        {
+            string fallback = semanticId switch
+            {
+                LayerSemanticIds.RaftSlabXTop => LayerBuiltinDefaults.RaftSlabXTop,
+                LayerSemanticIds.RaftSlabXBottom => LayerBuiltinDefaults.RaftSlabXBottom,
+                LayerSemanticIds.RaftSlabYTop => LayerBuiltinDefaults.RaftSlabYTop,
+                LayerSemanticIds.RaftSlabYBottom => LayerBuiltinDefaults.RaftSlabYBottom,
+                LayerSemanticIds.RaftTextX => LayerBuiltinDefaults.RaftTextX,
+                LayerSemanticIds.RaftTextY => LayerBuiltinDefaults.RaftTextY,
+                LayerSemanticIds.RaftDimX => LayerBuiltinDefaults.RaftDimX,
+                LayerSemanticIds.RaftDimY => LayerBuiltinDefaults.RaftDimY,
+                _ => null
+            };
+            return UserLayerNameResolver.Get(semanticId, fallback);
+        }
     }
 }

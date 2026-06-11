@@ -6,13 +6,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Autofac;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.Commands;
 using HyCADTool.Shell.Services;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// Blender 面板的总 ViewModel（唯一 PaletteSet，承载设置 / 过滤 / 命令分类 Tab）。
@@ -25,8 +26,19 @@ namespace HyCADTool.Presentation.ViewModels
     {
         private const int SearchDebounceMs = 160;
 
-        /// <summary>左侧所有分类 Tab。</summary>
+        /// <summary>命令编辑器左侧 Tab（仅 commands.json 业务分类，不含伪分类）。</summary>
         public ObservableCollection<CategoryTabVm> Tabs { get; } = new ObservableCollection<CategoryTabVm>();
+
+        /// <summary>编辑器类型下拉菜单分栏。</summary>
+        public ObservableCollection<EditorMenuSectionVm> EditorMenuSections { get; } = new ObservableCollection<EditorMenuSectionVm>();
+
+        private string _selectedEditorKey = PreferencesTabKey;
+        /// <summary>当前激活的编辑器 Key（commands / __preferences__ / …）。</summary>
+        public string SelectedEditorKey
+        {
+            get => _selectedEditorKey;
+            set => SelectEditor(value);
+        }
 
         private CategoryTabVm _selectedTab;
         public CategoryTabVm SelectedTab
@@ -38,14 +50,10 @@ namespace HyCADTool.Presentation.ViewModels
                 _selectedTab = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedTabIndex));
-                OnPropertyChanged(nameof(IsPreferencesMode));
-                OnPropertyChanged(nameof(IsFilterMode));
-                OnPropertyChanged(nameof(IsSpongeCityMode));
                 OnPropertyChanged(nameof(IsReinMode));
                 OnPropertyChanged(nameof(IsPileMode));
-                OnPropertyChanged(nameof(IsBaseReinMode));
-                OnPropertyChanged(nameof(IsClusterMode));
                 OnPropertyChanged(nameof(IsCommandListMode));
+                OnPropertyChanged(nameof(BreadcrumbText));
                 RefreshFilterNow("tab-switch");
             }
         }
@@ -83,35 +91,96 @@ namespace HyCADTool.Presentation.ViewModels
 
         public bool IsSearching => !string.IsNullOrWhiteSpace(_searchText);
 
-        /// <summary>当前选中的是否为「设置」伪分类。</summary>
-        public bool IsPreferencesMode => _selectedTab != null && _selectedTab.Key == PreferencesTabKey;
+        /// <summary>命令编辑器 Key。</summary>
+        public const string CommandsEditorKey = "commands";
 
-        /// <summary>当前选中的是否为「过滤」伪分类。</summary>
-        public bool IsFilterMode => _selectedTab != null && _selectedTab.Key == FilterTabKey;
+        /// <summary>当前是否为命令编辑器。</summary>
+        public bool IsCommandEditorMode => _selectedEditorKey == CommandsEditorKey;
 
-        /// <summary>当前选中的是否为「海绵城市」伪分类。</summary>
-        public bool IsSpongeCityMode => _selectedTab != null && _selectedTab.Key == SpongeCityTabKey;
+        /// <summary>命令编辑器左侧 IconTabBar 是否可见。</summary>
+        public bool ShowCommandIconTabBar => IsCommandEditorMode;
 
-        /// <summary>当前选中的是否为「钢筋」业务分类。</summary>
-        public bool IsReinMode => _selectedTab != null && _selectedTab.Key == ReinTabKey;
+        /// <summary>顶栏搜索框是否可见（设置 / 命令列表）。</summary>
+        public bool IsHeaderSearchVisible => IsPreferencesMode || IsCommandEditorMode;
 
-        /// <summary>当前选中的是否为「桩基」业务分类。</summary>
-        public bool IsPileMode => _selectedTab != null && _selectedTab.Key == PileTabKey;
+        /// <summary>当前选中的是否为「设置」编辑器。</summary>
+        public bool IsPreferencesMode => _selectedEditorKey == PreferencesTabKey;
 
-        /// <summary>当前选中的是否为「基础钢筋」伪分类。</summary>
-        public bool IsBaseReinMode => _selectedTab != null && _selectedTab.Key == BaseReinTabKey;
+        /// <summary>当前选中的是否为「过滤」编辑器。</summary>
+        public bool IsFilterMode => _selectedEditorKey == FilterTabKey;
 
-        /// <summary>当前选中的是否为「螺栓聚类与基础标注」伪分类。</summary>
-        public bool IsClusterMode => _selectedTab != null && _selectedTab.Key == ClusterTabKey;
+        /// <summary>当前选中的是否为「海绵城市」编辑器。</summary>
+        public bool IsSpongeCityMode => _selectedEditorKey == SpongeCityTabKey;
 
-        /// <summary>既非设置/过滤/海绵/钢筋/桩基/基础钢筋/聚类 → 正常命令列表模式。</summary>
-        public bool IsCommandListMode => !IsPreferencesMode && !IsFilterMode && !IsSpongeCityMode
-            && !IsReinMode && !IsPileMode && !IsBaseReinMode && !IsClusterMode;
+        /// <summary>当前选中的是否为「钢筋」业务分类 Tab。</summary>
+        public bool IsReinMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == ReinTabKey;
+
+        /// <summary>当前选中的是否为「桩基」业务分类 Tab。</summary>
+        public bool IsPileMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == PileTabKey;
+
+        /// <summary>当前选中的是否为「基础钢筋」编辑器。</summary>
+        public bool IsBaseReinMode => _selectedEditorKey == BaseReinTabKey;
+
+        /// <summary>当前选中的是否为「螺栓聚类与基础标注」编辑器。</summary>
+        public bool IsClusterMode => _selectedEditorKey == ClusterTabKey;
+
+        /// <summary>命令编辑器内：普通命令列表（非钢筋/桩基独立面板）。</summary>
+        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsPileMode;
+
+        /// <summary>顶栏面包屑文本。</summary>
+        public string BreadcrumbText
+        {
+            get
+            {
+                if (IsPreferencesMode)
+                {
+                    var cat = PreferencesVm?.SelectedCategory?.Name;
+                    return string.IsNullOrEmpty(cat) ? "设置" : $"设置 · {cat}";
+                }
+                if (IsFilterMode) return "过滤";
+                if (IsSpongeCityMode) return "海绵城市";
+                if (IsBaseReinMode) return "基础钢筋";
+                if (IsClusterMode) return "螺栓聚类与基础标注";
+                if (IsReinMode) return "命令 · 钢筋";
+                if (IsPileMode) return "命令 · 桩基";
+                if (_selectedTab != null) return $"命令 · {_selectedTab.Name}";
+                return "命令";
+            }
+        }
+
+        /// <summary>当前编辑器图标（下拉按钮显示）。</summary>
+        public string CurrentEditorIcon => ResolveEditorIcon(_selectedEditorKey);
+
+        public ICommand SelectEditorCommand { get; }
+
+        /// <summary>惰性加载宿主：仅对应模式激活时非 null，供 ContentControl 延迟实例化子面板。</summary>
+        public HyBlenderPanelViewModel PreferencesPanelHost => IsPreferencesMode ? this : null;
+        public HyBlenderPanelViewModel FilterPanelHost => IsFilterMode ? this : null;
+        public HyBlenderPanelViewModel SpongeCityPanelHost => IsSpongeCityMode ? this : null;
+        public HyBlenderPanelViewModel PilePanelHost => IsPileMode ? this : null;
+        public HyBlenderPanelViewModel BaseReinPanelHost => IsBaseReinMode ? this : null;
+        public HyBlenderPanelViewModel ClusterPanelHost => IsClusterMode ? this : null;
 
         /// <summary>设置面板的 ViewModel，首次切入「设置」时才创建。</summary>
         private HySettingsViewModel _preferencesVm;
         public HySettingsViewModel PreferencesVm
-            => _preferencesVm ?? (_preferencesVm = new HySettingsViewModel());
+        {
+            get
+            {
+                if (_preferencesVm == null)
+                {
+                    _preferencesVm = new HySettingsViewModel();
+                    _preferencesVm.PropertyChanged += OnPreferencesVmPropertyChanged;
+                }
+                return _preferencesVm;
+            }
+        }
+
+        private void OnPreferencesVmPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(HySettingsViewModel.SelectedCategory))
+                OnPropertyChanged(nameof(BreadcrumbText));
+        }
 
         /// <summary>过滤面板的 ViewModel，首次切入「过滤」时才创建。</summary>
         private FilterPanelViewModel _filterVm;
@@ -177,12 +246,94 @@ namespace HyCADTool.Presentation.ViewModels
 
         public HyBlenderPanelViewModel()
         {
+            SelectEditorCommand = new RelayCommand(p => SelectEditor(p as string));
             _searchDebounceTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(SearchDebounceMs)
             };
             _searchDebounceTimer.Tick += OnSearchDebounceTick;
+            BuildEditorMenu();
             LoadFromCommandTable();
+        }
+
+        /// <summary>切换到指定编辑器（下拉菜单 / SelectTab 伪 Key 入口）。</summary>
+        public void SelectEditor(string editorKey)
+        {
+            if (string.IsNullOrEmpty(editorKey)) return;
+            if (_selectedEditorKey == editorKey) return;
+
+            _selectedEditorKey = editorKey;
+            OnPropertyChanged(nameof(SelectedEditorKey));
+            NotifyEditorModeChanged();
+
+            if (editorKey == CommandsEditorKey && _selectedTab == null && Tabs.Count > 0)
+                SelectedTab = Tabs[0];
+
+            RefreshFilterNow("editor-switch");
+        }
+
+        private void NotifyEditorModeChanged()
+        {
+            OnPropertyChanged(nameof(IsCommandEditorMode));
+            OnPropertyChanged(nameof(ShowCommandIconTabBar));
+            OnPropertyChanged(nameof(IsHeaderSearchVisible));
+            OnPropertyChanged(nameof(IsPreferencesMode));
+            OnPropertyChanged(nameof(IsFilterMode));
+            OnPropertyChanged(nameof(IsSpongeCityMode));
+            OnPropertyChanged(nameof(IsReinMode));
+            OnPropertyChanged(nameof(IsPileMode));
+            OnPropertyChanged(nameof(IsBaseReinMode));
+            OnPropertyChanged(nameof(IsClusterMode));
+            OnPropertyChanged(nameof(IsCommandListMode));
+            OnPropertyChanged(nameof(BreadcrumbText));
+            OnPropertyChanged(nameof(CurrentEditorIcon));
+            OnPropertyChanged(nameof(PreferencesPanelHost));
+            OnPropertyChanged(nameof(FilterPanelHost));
+            OnPropertyChanged(nameof(SpongeCityPanelHost));
+            OnPropertyChanged(nameof(PilePanelHost));
+            OnPropertyChanged(nameof(BaseReinPanelHost));
+            OnPropertyChanged(nameof(ClusterPanelHost));
+        }
+
+        private void BuildEditorMenu()
+        {
+            EditorMenuSections.Clear();
+
+            var general = new EditorMenuSectionVm("常规");
+            general.Items.Add(new EditorMenuItemVm(CommandsEditorKey, "命令", "★"));
+            general.Items.Add(new EditorMenuItemVm(PreferencesTabKey, "设置", "⚙"));
+            general.Items.Add(new EditorMenuItemVm(FilterTabKey, "过滤", "⧉"));
+            EditorMenuSections.Add(general);
+
+            var business = new EditorMenuSectionVm("业务");
+            business.Items.Add(new EditorMenuItemVm(SpongeCityTabKey, "海绵城市", "≈"));
+            business.Items.Add(new EditorMenuItemVm(BaseReinTabKey, "基础钢筋", "▦"));
+            business.Items.Add(new EditorMenuItemVm(ClusterTabKey, "螺栓聚类", "◉"));
+            EditorMenuSections.Add(business);
+        }
+
+        private static string ResolveEditorIcon(string editorKey)
+        {
+            switch (editorKey)
+            {
+                case CommandsEditorKey: return "★";
+                case PreferencesTabKey: return "⚙";
+                case FilterTabKey: return "⧉";
+                case SpongeCityTabKey: return "≈";
+                case BaseReinTabKey: return "▦";
+                case ClusterTabKey: return "◉";
+                default: return "·";
+            }
+        }
+
+        private static bool IsEditorKey(string key)
+        {
+            return key == CommandsEditorKey
+                || key == PreferencesTabKey
+                || key == FilterTabKey
+                || key == SpongeCityTabKey
+                || key == BaseReinTabKey
+                || key == ClusterTabKey;
         }
 
         /// <summary>
@@ -205,8 +356,23 @@ namespace HyCADTool.Presentation.ViewModels
         public void SelectTab(string key)
         {
             if (string.IsNullOrEmpty(key)) return;
+
+            if (IsEditorKey(key))
+            {
+                SelectEditor(key);
+                return;
+            }
+
             var t = Tabs.FirstOrDefault(x => x.Key == key);
-            SelectedTab = t ?? Tabs.FirstOrDefault();
+            if (t != null)
+            {
+                SelectEditor(CommandsEditorKey);
+                SelectedTab = t;
+            }
+            else
+            {
+                SelectedTab = Tabs.FirstOrDefault();
+            }
         }
 
         /// <summary>从 CommandCatalog 重新拉分组（可供外部在 JSON 变化后触发刷新）。</summary>
@@ -216,41 +382,6 @@ namespace HyCADTool.Presentation.ViewModels
             try
             {
                 var groups = CommandCatalog.GroupByCategory();
-                Tabs.Add(new CategoryTabVm
-                {
-                    Key  = PreferencesTabKey,
-                    Name = "设置",
-                    Icon = "⚙",
-                });
-
-                Tabs.Add(new CategoryTabVm
-                {
-                    Key  = FilterTabKey,
-                    Name = "过滤",
-                    Icon = "⧉",
-                });
-
-                Tabs.Add(new CategoryTabVm
-                {
-                    Key  = SpongeCityTabKey,
-                    Name = "海绵城市",
-                    Icon = "≈",
-                });
-
-                Tabs.Add(new CategoryTabVm
-                {
-                    Key  = BaseReinTabKey,
-                    Name = "基础钢筋",
-                    Icon = "▦",
-                });
-
-                Tabs.Add(new CategoryTabVm
-                {
-                    Key  = ClusterTabKey,
-                    Name = "螺栓聚类与基础标注",
-                    Icon = "◉",
-                });
-
                 int totalCommands = 0;
                 foreach (var g in groups)
                 {
@@ -275,10 +406,11 @@ namespace HyCADTool.Presentation.ViewModels
                 StatusMessage = "读取 commands.json 失败：" + ex.Message;
             }
 
-            // 每次 Tabs 重建后刷新扁平索引；SelectedTab 赋值会触发 RefreshFilter
+            // 每次 Tabs 重建后刷新扁平索引
             _searchService.Rebuild(Tabs);
 
-            SelectedTab = Tabs.FirstOrDefault();
+            if (_selectedEditorKey == CommandsEditorKey)
+                SelectedTab = Tabs.FirstOrDefault();
         }
 
         private void OnSearchDebounceTick(object sender, EventArgs e)
@@ -304,40 +436,15 @@ namespace HyCADTool.Presentation.ViewModels
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
             }
-            if (IsPreferencesMode)
+            if (!IsCommandEditorMode)
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 设置 Tab 不走命令过滤
+                return;
             }
-            if (IsFilterMode)
+            if (IsReinMode || IsPileMode)
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 过滤 Tab 有独立内容，不走命令过滤
-            }
-            if (IsSpongeCityMode)
-            {
-                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 海绵 Tab 有独立内容，不走命令过滤
-            }
-            if (IsReinMode)
-            {
-                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 钢筋 Tab 有独立内容，不走命令过滤
-            }
-            if (IsPileMode)
-            {
-                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 桩基 Tab 有独立内容，不走命令过滤
-            }
-            if (IsBaseReinMode)
-            {
-                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 基础钢筋 Tab 有独立内容，不走命令过滤
-            }
-            if (IsClusterMode)
-            {
-                LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
-                return; // 螺栓聚类 Tab 有独立内容，不走命令过滤
+                return;
             }
 
             if (!IsSearching)
@@ -453,6 +560,30 @@ namespace HyCADTool.Presentation.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    /// <summary>编辑器类型下拉菜单分栏。</summary>
+    public class EditorMenuSectionVm
+    {
+        public string Header { get; }
+        public ObservableCollection<EditorMenuItemVm> Items { get; } = new ObservableCollection<EditorMenuItemVm>();
+
+        public EditorMenuSectionVm(string header) => Header = header;
+    }
+
+    /// <summary>编辑器类型下拉菜单项。</summary>
+    public class EditorMenuItemVm
+    {
+        public string Key { get; }
+        public string Name { get; }
+        public string Icon { get; }
+
+        public EditorMenuItemVm(string key, string name, string icon)
+        {
+            Key = key;
+            Name = name;
+            Icon = icon;
+        }
     }
 
     /// <summary>Blender 面板左侧一个图标 Tab 的数据。</summary>

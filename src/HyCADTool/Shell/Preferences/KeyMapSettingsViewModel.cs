@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Shell.Input;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// 首选项「快捷键」分组的 VM：

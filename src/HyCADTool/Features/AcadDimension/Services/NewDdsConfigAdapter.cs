@@ -1,5 +1,5 @@
 using HyCADTool.Features.AcadDimension.Domain.Config;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.AcadDimension.Services
 {

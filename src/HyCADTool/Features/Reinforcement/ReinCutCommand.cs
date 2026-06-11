@@ -7,7 +7,8 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -38,7 +39,7 @@ namespace HyCADTool.Features.Reinforcement
             var db = doc.Database;
             var ed = doc.Editor;
             var vm = SettingsPanelViewModel.Current;
-            double scale = vm?.Scale ?? 40.0;
+            double scale = ScaleResolver.GetScale();
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 
             try

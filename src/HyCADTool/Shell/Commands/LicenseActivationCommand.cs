@@ -1,4 +1,4 @@
-using HyCADTool.Presentation.Views;
+using HyCADTool.Shell.Views;
 
 namespace HyCADTool.Shell.Commands
 {

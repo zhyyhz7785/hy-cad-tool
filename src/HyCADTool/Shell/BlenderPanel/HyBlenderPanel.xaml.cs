@@ -1,9 +1,9 @@
 using System;
 using System.Windows.Controls;
 using HyCADTool.Shell.Input;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
-namespace HyCADTool.Presentation.Views
+namespace HyCADTool.Shell.Views
 {
     /// <summary>
     /// Blender 风格命令面板（独立面板，通过 <c>HyB</c> 命令打开）。
@@ -54,38 +54,48 @@ namespace HyCADTool.Presentation.Views
 
         private void FocusSearchBox()
         {
-            // 仅命令列表模式下才有 SearchBox；其他模式下聚焦无意义
-            if (_vm == null || !_vm.IsCommandListMode) return;
-            if (SearchBox == null) return;
-            SearchBox.Focus();
+            if (_vm == null) return;
+            if (_vm.IsPreferencesMode)
+            {
+                PrefsSearchBox?.Focus();
+                return;
+            }
+            if (_vm.IsCommandEditorMode)
+                SearchBox?.Focus();
         }
 
         private void ClearSearchText()
         {
             if (_vm == null) return;
-            if (string.IsNullOrEmpty(_vm.SearchText)) return;
-            _vm.SearchText = string.Empty;
+            if (_vm.IsPreferencesMode)
+            {
+                if (!string.IsNullOrEmpty(_vm.PreferencesVm.SettingsSearchText))
+                    _vm.PreferencesVm.SettingsSearchText = string.Empty;
+                return;
+            }
+            if (!string.IsNullOrEmpty(_vm.SearchText))
+                _vm.SearchText = string.Empty;
         }
 
         private void TogglePreferencesTab()
         {
             if (_vm == null) return;
             if (_vm.IsPreferencesMode)
-            {
-                // 已在设置 → 退回第一个非伪分类 Tab
-                for (int i = 0; i < _vm.Tabs.Count; i++)
-                {
-                    var t = _vm.Tabs[i];
-                    if (t.Key == HyBlenderPanelViewModel.PreferencesTabKey) continue;
-                    if (t.Key == HyBlenderPanelViewModel.FilterTabKey) continue;
-                    _vm.SelectedTab = t;
-                    return;
-                }
-            }
+                _vm.SelectEditor(HyBlenderPanelViewModel.CommandsEditorKey);
             else
-            {
-                _vm.SelectTab(HyBlenderPanelViewModel.PreferencesTabKey);
-            }
+                _vm.SelectEditor(HyBlenderPanelViewModel.PreferencesTabKey);
+        }
+
+        private void OnEditorTypeButtonClick(object sender, System.Windows.RoutedEventArgs e)
+        {
+            if (EditorMenuPopup != null)
+                EditorMenuPopup.IsOpen = !EditorMenuPopup.IsOpen;
+        }
+
+        private void OnEditorMenuItemClick(object sender, System.Windows.RoutedEventArgs e)
+        {
+            if (EditorMenuPopup != null)
+                EditorMenuPopup.IsOpen = false;
         }
     }
 }

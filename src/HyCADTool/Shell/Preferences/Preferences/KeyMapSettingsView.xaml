@@ -1,15 +1,25 @@
-<UserControl x:Class="HyCADTool.Presentation.Views.Preferences.KeyMapSettingsView"
+<UserControl x:Class="HyCADTool.Shell.Views.Preferences.KeyMapSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:HyCADTool.Presentation.ViewModels"
+             xmlns:vm="clr-namespace:HyCADTool.Shell.ViewModels"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
              xmlns:bw="clr-namespace:HyCAD.BlenderUI.Controls.Widgets;assembly=HyCAD.BlenderUI"
              mc:Ignorable="d"
              Background="{DynamicResource Brush_RegionBack}"
              d:DesignHeight="400" d:DesignWidth="520"
              d:DataContext="{d:DesignInstance Type=vm:KeyMapSettingsViewModel, IsDesignTimeCreatable=False}">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
     <!--
         「快捷键」面板：
           - 列表式展示当前 KeyMap 条目（3 条内置 UI 键位 + 将来可扩展的 hy.cmd.* 条目）；

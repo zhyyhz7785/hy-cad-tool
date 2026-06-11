@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Views;

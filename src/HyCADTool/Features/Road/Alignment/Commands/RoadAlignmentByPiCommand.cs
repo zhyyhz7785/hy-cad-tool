@@ -14,8 +14,8 @@ using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell;
+using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 

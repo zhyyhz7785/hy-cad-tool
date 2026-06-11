@@ -2,7 +2,7 @@ using System.Windows.Input;
 using HyCADTool.Features.Road.Shared;
 using HyCADTool.Shell.Commands;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// Blender 面板 / Ribbon / CUIX 菜单共用的命令项 ViewModel。

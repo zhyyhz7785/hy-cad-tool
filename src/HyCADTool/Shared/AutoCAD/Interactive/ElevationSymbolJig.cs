@@ -114,7 +114,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 new Point3d(_currentPoint.X + (4 - sqrt2 / 2) * paperToModelScale, _currentPoint.Y + sqrt2 * paperToModelScale, 0),
                 _currentPoint, _angleRadians);
 
-            var vm = Presentation.ViewModels.SettingsPanelViewModel.Current;
+            var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
             double textSize = (vm != null ? vm.TextSize : 2.5) * paperToModelScale;
             double widthFactor = vm != null ? vm.TextXScale : 0.7;
 
@@ -262,7 +262,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
         private void AdjustTextByState(double sqrt2, double paperToModelScale)
         {
-            var vm = Presentation.ViewModels.SettingsPanelViewModel.Current;
+            var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
             double textSize = (vm != null ? vm.TextSize : 2.5);
             Point3d textPos = Label.Position;
 

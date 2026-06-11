@@ -1,5 +1,5 @@
 using HyCADTool.Shell.Configuration.User;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Shared.AutoCAD.Services
 {

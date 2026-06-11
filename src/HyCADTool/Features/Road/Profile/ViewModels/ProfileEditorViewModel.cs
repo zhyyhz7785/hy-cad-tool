@@ -11,7 +11,7 @@ using HyCADTool.Domain.Services.Road;
 
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Features.Road.PlanProfile.Domain;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanProfile.Views;
 namespace HyCADTool.Features.Road.PlanProfile.ViewModels
 {

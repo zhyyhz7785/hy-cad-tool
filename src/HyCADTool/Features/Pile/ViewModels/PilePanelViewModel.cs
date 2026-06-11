@@ -5,7 +5,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Pile.ViewModels
@@ -34,12 +35,12 @@ namespace HyCADTool.Features.Pile.ViewModels
                     var doc = AcApp.DocumentManager.MdiActiveDocument;
                     if (doc == null) return null;
 
-                    var docName = doc.Name;
-                    if (!_documentViewModels.ContainsKey(docName))
+                    var docKey = DocumentKeys.GetKey(doc);
+                    if (!_documentViewModels.ContainsKey(docKey))
                     {
-                        _documentViewModels[docName] = new PilePanelViewModel();
+                        _documentViewModels[docKey] = new PilePanelViewModel();
                     }
-                    return _documentViewModels[docName];
+                    return _documentViewModels[docKey];
                 }
                 catch
                 {

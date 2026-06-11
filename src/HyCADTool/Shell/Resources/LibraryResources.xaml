@@ -6,7 +6,8 @@
     ================================================================================
     SettlementWindow 独立窗口本地样式（原 LibraryResources.xaml，阶段 D2 重写）
     ================================================================================
-    归属：仅 Presentation/Views/SettlementWindow.xaml 使用（独立非贴靠 Window）。
+    【守护】禁止 merge 进 PaletteSet / HyBlenderPanel：内含标准控件隐式 Style（B1 原生崩溃风险）。
+    归属：仅 SettlementWindow / ActivationWindow 等独立 Window 本地 merge。
     主要内容：
       - Converters（BoolToVisibilityConverter / InverseBoolConverter / EnumDescriptionConverter / EnumToIndexConverter）
       - 深色面板风格的隐式 TextBox / TextBlock / Button / CheckBox / RadioButton / ListBox / ComboBox / Expander 样式

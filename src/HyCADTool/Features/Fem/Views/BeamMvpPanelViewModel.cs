@@ -9,7 +9,7 @@ using Autodesk.AutoCAD.EditorInput;
 using HyCAD.Geometry;
 using HyCADTool.Features.Fem.Integration;
 using HyCADTool.Features.Fem.Renderer;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shell.Configuration.User;

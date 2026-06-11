@@ -8,7 +8,7 @@ using System.Windows.Input;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
 
 namespace HyCADTool.Features.Road.CrossSection.ViewModels

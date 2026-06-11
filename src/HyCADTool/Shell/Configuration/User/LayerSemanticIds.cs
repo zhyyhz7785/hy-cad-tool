@@ -87,8 +87,6 @@ namespace HyCADTool.Shell.Configuration.User
         public const string RoadCrossSectionDimension = nameof(RoadCrossSectionDimension);
         public const string RoadCrossSectionAnnotation = nameof(RoadCrossSectionAnnotation);
         public const string RoadCrossSectionTitle = nameof(RoadCrossSectionTitle);
-        public const string RoadCrossSectionTitleDecoration = nameof(RoadCrossSectionTitleDecoration);
-        public const string RoadCrossSectionOrientation = nameof(RoadCrossSectionOrientation);
         public const string RoadPlanRedLine = nameof(RoadPlanRedLine);
         public const string RoadPlanBandDivider = nameof(RoadPlanBandDivider);
         public const string RoadPlanMarking = nameof(RoadPlanMarking);

@@ -8,7 +8,7 @@ using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Pile.Services;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.Pile.ViewModels;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using System;
 using System.Linq;
 

@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Settlement;
 using HyCADTool.Features.Settlement.ViewModels;
 using HyCADTool.Features.Settlement.Views;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Settlement.Commands

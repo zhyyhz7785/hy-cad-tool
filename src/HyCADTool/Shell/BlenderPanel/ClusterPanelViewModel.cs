@@ -5,9 +5,10 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.Cluster.Domain.Models;
 using HyCADTool.Features.Cluster.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// 聚类分析面板 ViewModel
@@ -31,7 +32,7 @@ namespace HyCADTool.Presentation.ViewModels
                 {
                     var doc = AcApp.DocumentManager.MdiActiveDocument;
                     if (doc == null) return null;
-                    return GetOrCreate(doc.Name);
+                    return GetOrCreate(DocumentKeys.GetKey(doc));
                 }
                 catch { return null; }
             }

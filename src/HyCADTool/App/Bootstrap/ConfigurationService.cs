@@ -1,6 +1,6 @@
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Shell.Configuration.Global;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.App.Bootstrap
 {

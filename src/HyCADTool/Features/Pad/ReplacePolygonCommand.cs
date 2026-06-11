@@ -79,7 +79,8 @@ namespace HyCADTool.Features.Pad
             double area2 = Math.Abs(Clipper.Area(clip)) / (Scale * Scale);
             double intersectArea = result.Sum(p => Math.Abs(Clipper.Area(p))) / (Scale * Scale);
 
-            if (intersectArea < Tolerance.Global.EqualPoint)
+            const double MinValidArea = 1e-6;
+            if (intersectArea < MinValidArea)
             {
                 ed.WriteMessage("\n交集面积太小");
                 return;

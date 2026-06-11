@@ -1,7 +1,7 @@
 using System.Windows.Controls;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
-namespace HyCADTool.Presentation.Views
+namespace HyCADTool.Shell.Views
 {
     /// <summary>
     /// FilterPanel.xaml 的交互逻辑。

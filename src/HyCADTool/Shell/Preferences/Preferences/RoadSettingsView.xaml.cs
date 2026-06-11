@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
-namespace HyCADTool.Presentation.Views.Preferences
+namespace HyCADTool.Shell.Views.Preferences
 {
     /// <summary>
     /// 道路 设置骨架：RoadCrosswalk（走人行横道，接 Settings.Road*）/ RoadMunicipal（P0 占位）

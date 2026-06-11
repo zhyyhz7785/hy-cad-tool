@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -60,8 +61,9 @@ namespace HyCADTool.Shared.AutoCAD.Xdata
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[HyRoadLayerInitializer] 建层失败: {ex.Message}");
                 return false;
             }
         }

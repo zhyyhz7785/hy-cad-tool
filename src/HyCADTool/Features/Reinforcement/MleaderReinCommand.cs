@@ -7,7 +7,8 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,7 +58,7 @@ namespace HyCADTool.Features.Reinforcement
             // 从面板读取最新参数（样式已在 ReCall.Invoke 前置钩子里同步，无需重复调用）
             var vm = SettingsPanelViewModel.Current;
 
-            double scale = vm?.Scale ?? 40.0;
+            double scale = ScaleResolver.GetScale();
             double mleaderDistance = (vm?.MleaderDistance ?? 6.0) * scale;
             double rebarDiameter = vm?.RebarDiameter ?? 14.0;
             double rebarSpacing = vm?.RebarSpacing ?? 200.0;
@@ -241,8 +242,8 @@ namespace HyCADTool.Features.Reinforcement
                 var segment = new LineSegment3d(segStart, segEnd);
                 Point3d projectedPt = GetPerpendicularPoint(segment, centerPt);
 
-                // 以投影点为基准获取第二组3个点（dv=17.5 与旧代码一致）
-                var points = GetPointsAlongPolyline(pl, projectedPt, PointOffset, 17.5);
+                // 第二组点距：0.4375×Scale（1:40 时 =17.5mm，随出图比例缩放）
+                var points = GetPointsAlongPolyline(pl, projectedPt, PointOffset, 0.4375 * ScaleResolver.GetScale());
                 tr.Commit();
 
                 if (points == null || points.Count < 3) return null;

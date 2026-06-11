@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;

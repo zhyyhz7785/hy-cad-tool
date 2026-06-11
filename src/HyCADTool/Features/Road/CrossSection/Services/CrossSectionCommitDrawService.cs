@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 

@@ -3,7 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Elevation.Domain.Enums;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services;

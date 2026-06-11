@@ -1,9 +1,9 @@
 using System.Windows.Controls;
 using Autofac;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using HyCADTool.App.Bootstrap;
 
-namespace HyCADTool.Presentation.Views
+namespace HyCADTool.Shell.Views
 {
     /// <summary>
     /// ClusterPanel.xaml 的交互逻辑

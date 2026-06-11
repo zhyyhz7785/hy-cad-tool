@@ -66,7 +66,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             if (ppr.Status == PromptStatus.None)
             {
                 _isCompleted = true;
-                return SamplerStatus.Cancel;
+                return SamplerStatus.OK;
             }
 
             return SamplerStatus.Cancel;

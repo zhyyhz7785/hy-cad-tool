@@ -4,7 +4,7 @@ using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.TitleBlock.Services
 {
@@ -92,8 +92,8 @@ namespace HyCADTool.Features.TitleBlock.Services
         private static string ResolveTitleDecorationLayerName(SettingsPanelViewModel? settings = null)
         {
             if (settings != null)
-                return settings.TryResolveLayerName(LayerSemanticIds.RoadCrossSectionTitleDecoration, LayerBuiltinDefaults.RoadCrossSectionTitleDecoration);
-            return UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitleDecoration, LayerBuiltinDefaults.RoadCrossSectionTitleDecoration);
+                return settings.TryResolveLayerName(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
+            return UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
         }
     }
 }

@@ -1,13 +1,16 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using System.Windows.Threading;
 using HyCADTool.Features.BaseRein.ViewModels;
 using HyCADTool.Features.Pile.ViewModels;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// HyB 面板「设置」伪分类使用的总 ViewModel（对应 Blender Preferences）。
@@ -75,8 +78,43 @@ namespace HyCADTool.Presentation.ViewModels
                 if (_selectedCategory == value) return;
                 _selectedCategory = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedCategoryIndex));
             }
         }
+
+        /// <summary>供 IconTabBar.SelectedIndex 双向绑定。</summary>
+        public int SelectedCategoryIndex
+        {
+            get => _selectedCategory == null ? -1 : Categories.IndexOf(_selectedCategory);
+            set
+            {
+                if (value < 0 || value >= Categories.Count) return;
+                SelectedCategory = Categories[value];
+            }
+        }
+
+        private const int SettingsSearchDebounceMs = 160;
+        private readonly DispatcherTimer _settingsSearchDebounceTimer;
+        private string _settingsSearchText = string.Empty;
+
+        /// <summary>设置面板顶栏搜索（匹配分类名 / 分组名）。</summary>
+        public string SettingsSearchText
+        {
+            get => _settingsSearchText;
+            set
+            {
+                if (_settingsSearchText == value) return;
+                _settingsSearchText = value ?? string.Empty;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSettingsSearching));
+                ScheduleSettingsFilterRefresh();
+            }
+        }
+
+        public bool IsSettingsSearching => !string.IsNullOrWhiteSpace(_settingsSearchText);
+
+        /// <summary>搜索命中：扁平「分类 · 分组」列表。</summary>
+        public ObservableCollection<SettingsSearchMatchVm> FilteredGroups { get; } = new ObservableCollection<SettingsSearchMatchVm>();
 
         // ================================================================
         //  3. 状态栏 & 自动保存（阶段 D 再双向绑定到 Settings.AutoSaveEnabled）
@@ -116,6 +154,16 @@ namespace HyCADTool.Presentation.ViewModels
             SaveUserSettingsCommand  = new RelayCommand(OnSaveUserSettings);
             RestoreAutoSavedCommand  = new RelayCommand(OnRestoreAutoSaved);
             LoadDefaultsCommand      = new RelayCommand(OnLoadDefaults);
+
+            _settingsSearchDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(SettingsSearchDebounceMs)
+            };
+            _settingsSearchDebounceTimer.Tick += (_, __) =>
+            {
+                _settingsSearchDebounceTimer.Stop();
+                RefreshSettingsFilter();
+            };
 
             BuildSkeleton();
             SelectedCategory = Categories.Count > 0 ? Categories[0] : null;
@@ -171,6 +219,40 @@ namespace HyCADTool.Presentation.ViewModels
             {
                 StatusMessage = s.StatusMessage;
             }
+        }
+
+        private void ScheduleSettingsFilterRefresh()
+        {
+            _settingsSearchDebounceTimer.Stop();
+            _settingsSearchDebounceTimer.Start();
+        }
+
+        private void RefreshSettingsFilter()
+        {
+            FilteredGroups.Clear();
+            if (!IsSettingsSearching) return;
+
+            var q = _settingsSearchText.Trim().ToLowerInvariant();
+            var qPinyin = PinyinHelper.GetFirstLetters(_settingsSearchText);
+
+            foreach (var cat in Categories)
+            {
+                foreach (var grp in cat.Groups)
+                {
+                    if (MatchesSettingsQuery(cat.Name, grp.Header, q, qPinyin))
+                        FilteredGroups.Add(new SettingsSearchMatchVm(cat, grp));
+                }
+            }
+        }
+
+        private static bool MatchesSettingsQuery(string category, string header, string q, string qPinyin)
+        {
+            var cat = (category ?? string.Empty).ToLowerInvariant();
+            var hdr = (header ?? string.Empty).ToLowerInvariant();
+            var combined = cat + " " + hdr;
+            if (combined.Contains(q)) return true;
+            var letters = PinyinHelper.GetFirstLetters(combined);
+            return !string.IsNullOrEmpty(qPinyin) && letters.Contains(qPinyin);
         }
 
         private void BuildSkeleton()
@@ -317,6 +399,20 @@ namespace HyCADTool.Presentation.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    /// <summary>设置搜索扁平命中项。</summary>
+    public class SettingsSearchMatchVm
+    {
+        public SettingsCategoryVm Category { get; }
+        public SettingsGroupVm Group { get; }
+        public string DisplayLabel => $"{Category.Name} · {Group.Header}";
+
+        public SettingsSearchMatchVm(SettingsCategoryVm category, SettingsGroupVm group)
+        {
+            Category = category;
+            Group = group;
+        }
     }
 
     /// <summary>设置面板一级目录。</summary>

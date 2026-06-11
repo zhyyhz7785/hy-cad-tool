@@ -8,7 +8,7 @@ using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Shell.Input;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -229,7 +229,7 @@ namespace HyCADTool.App.Bootstrap
 
                 try
                 {
-                    ServiceLocator.TryResolve<HyCADTool.Presentation.PanelManager>()?.UnregisterDocumentEvents();
+                    ServiceLocator.TryResolve<HyCADTool.Shell.PanelManager>()?.UnregisterDocumentEvents();
                 }
                 catch { }
 
@@ -452,7 +452,7 @@ namespace HyCADTool.App.Bootstrap
             try
             {
                 var styleService = ServiceLocator.Resolve<IStyleService>();
-                SettingsPanelViewModel.GetOrCreate(e.Document.Name, styleService);
+                SettingsPanelViewModel.GetOrCreate(HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(e.Document), styleService);
             }
             catch
             {
@@ -810,7 +810,7 @@ namespace HyCADTool.App.Bootstrap
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
 
-            string documentName = doc.Name ?? "default";
+            string documentName = HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(doc);
             if (!force && _initializedDocuments.Contains(documentName))
                 return;
 

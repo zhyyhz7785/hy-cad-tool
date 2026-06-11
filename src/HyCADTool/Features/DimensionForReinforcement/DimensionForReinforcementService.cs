@@ -6,7 +6,8 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using NetTopologySuite.Geometries;
 using System;
 using System.Collections.Generic;
@@ -116,7 +117,7 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
             // 从 SettingsPanelViewModel 读取参数（面板值 × Scale = 实际 mm）
             var vm = SettingsPanelViewModel.Current;
-            double scale = vm?.Scale ?? 40.0;
+            double scale = ScaleResolver.GetScale();
 
             _dimensionDistanceOutside = (vm?.DimensionDistanceOutside ?? 14.0) * scale;
             _dimensionDistanceInside = (vm?.DimensionDistanceInside ?? 6.0) * scale;
@@ -129,11 +130,19 @@ namespace HyCADTool.Features.DimensionForReinforcement
 
             // 炸开多段线，获取极值点
             var lines = ExplodePolyline(boundary);
-            var points = GetAllLinePoints(lines);
-            _xMin = GetExtreme(points, ExtremeSide.XMin);
-            _xMax = GetExtreme(points, ExtremeSide.XMax);
-            _yMin = GetExtreme(points, ExtremeSide.YMin);
-            _yMax = GetExtreme(points, ExtremeSide.YMax);
+            try
+            {
+                var points = GetAllLinePoints(lines);
+                _xMin = GetExtreme(points, ExtremeSide.XMin);
+                _xMax = GetExtreme(points, ExtremeSide.XMax);
+                _yMin = GetExtreme(points, ExtremeSide.YMin);
+                _yMax = GetExtreme(points, ExtremeSide.YMax);
+            }
+            finally
+            {
+                foreach (var line in lines)
+                    line?.Dispose();
+            }
 
             return true;
         }
@@ -566,7 +575,10 @@ namespace HyCADTool.Features.DimensionForReinforcement
             var lines = new List<Line>();
             foreach (Entity ent in coll)
             {
-                if (ent is Line l) lines.Add(l);
+                if (ent is Line l)
+                    lines.Add(l);
+                else
+                    ent.Dispose();
             }
             return lines.ToArray();
         }

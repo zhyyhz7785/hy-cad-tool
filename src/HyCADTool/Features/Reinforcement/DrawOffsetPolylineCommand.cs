@@ -8,7 +8,8 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shell.Configuration;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -38,7 +39,7 @@ namespace HyCADTool.Features.Reinforcement
             _layerService.SetCurrentLayer(LayerLineRein);
 
             var vm = SettingsPanelViewModel.Current;
-            double scale = vm?.Scale ?? 40.0;
+            double scale = ScaleResolver.GetScale();
             double offsetDistance = (vm?.ProtectionThickness ?? 1.0) * scale; // 绿色参数 × Scale
             double hookLength = (vm?.HookLength ?? 1.0) * scale;             // 绿色参数 × Scale
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;

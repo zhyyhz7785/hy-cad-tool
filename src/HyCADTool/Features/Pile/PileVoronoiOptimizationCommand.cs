@@ -19,16 +19,10 @@ namespace HyCADTool.Features.Pile
     /// </summary>
     public class PileVoronoiOptimizationCommand
     {
-        private readonly Document _doc;
-        private readonly Database _db;
-        private readonly Editor _ed;
         private readonly VoronoiOptimizationService _voronoiService;
 
         public PileVoronoiOptimizationCommand()
         {
-            _doc = Application.DocumentManager.MdiActiveDocument;
-            _db = _doc.Database;
-            _ed = _doc.Editor;
             _voronoiService = HyCADTool.App.Bootstrap.ServiceLocator.Resolve<VoronoiOptimizationService>();
         }
 
@@ -37,36 +31,36 @@ namespace HyCADTool.Features.Pile
         /// </summary>
         public void Execute()
         {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var db = doc.Database;
+            var ed = doc.Editor;
+
             try
             {
-                using (var tr = _db.TransactionManager.StartTransaction())
+                using (var tr = db.TransactionManager.StartTransaction())
                 {
-                    // 1. 获取基础多边形
-                    Polygon polygon = PolylineHelper.PromptAndGetPolygon(_ed, tr);
+                    Polygon polygon = PolylineHelper.PromptAndGetPolygon(ed, tr);
                     if (polygon == null)
                     {
-                        _ed.WriteMessage("\n未能获取有效多边形，命令结束。");
+                        ed.WriteMessage("\n未能获取有效多边形，命令结束。");
                         return;
                     }
 
-                    // 2. 输入桩参数
-                    var (diameter, replacementRate, numberOfPiles) = GetPileParameters(polygon);
-                    _ed.WriteMessage($"\n对应置换率，需要的桩为 {numberOfPiles} 棵");
+                    var (diameter, replacementRate, numberOfPiles) = GetPileParameters(polygon, ed);
+                    ed.WriteMessage($"\n对应置换率，需要的桩为 {numberOfPiles} 棵");
 
-                    // 3. 生成随机初始点
                     List<Coordinate> pileCenters = _voronoiService.GenerateRandomPointsInsidePolygon(polygon, numberOfPiles);
-
-                    // 4. 执行优化和绘制
-                    ExecuteOptimizationAndDraw(polygon, pileCenters, diameter, replacementRate, tr);
+                    ExecuteOptimizationAndDraw(polygon, pileCenters, diameter, replacementRate, tr, db, ed);
 
                     tr.Commit();
                 }
 
-                _ed.WriteMessage("\n桩布置完成。");
+                ed.WriteMessage("\n桩布置完成。");
             }
             catch (System.Exception ex)
             {
-                _ed.WriteMessage($"\n错误: {ex.Message}");
+                ed.WriteMessage($"\n错误: {ex.Message}");
             }
         }
 
@@ -75,44 +69,43 @@ namespace HyCADTool.Features.Pile
         /// </summary>
         public void ExecuteWithExistingCircles()
         {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var db = doc.Database;
+            var ed = doc.Editor;
+
             try
             {
-                using (var tr = _db.TransactionManager.StartTransaction())
+                using (var tr = db.TransactionManager.StartTransaction())
                 {
-                    // 1. 获取基础多边形
-                    Polygon polygon = PolylineHelper.PromptAndGetPolygon(_ed, tr);
+                    Polygon polygon = PolylineHelper.PromptAndGetPolygon(ed, tr);
                     if (polygon == null)
                     {
-                        _ed.WriteMessage("\n未能获取有效多边形，命令结束。");
+                        ed.WriteMessage("\n未能获取有效多边形，命令结束。");
                         return;
                     }
 
-                    // 2. 选择已有圆
-                    List<Coordinate> pileCenters = GetSelectedCircleCenters(tr);
+                    List<Coordinate> pileCenters = GetSelectedCircleCenters(tr, ed);
                     if (pileCenters == null || pileCenters.Count == 0)
                     {
-                        _ed.WriteMessage("\n未选择任何圆，命令结束。");
+                        ed.WriteMessage("\n未选择任何圆，命令结束。");
                         return;
                     }
 
-                    // 3. 过滤多边形内的点
                     pileCenters = _voronoiService.GetPointsInsidePolygon(polygon, pileCenters);
-                    _ed.WriteMessage($"\n多边形内共有 {pileCenters.Count} 个圆");
+                    ed.WriteMessage($"\n多边形内共有 {pileCenters.Count} 个圆");
 
-                    // 4. 输入桩参数
-                    var (diameter, replacementRate, _) = GetPileParameters(polygon, pileCenters.Count);
-
-                    // 5. 执行优化和绘制
-                    ExecuteOptimizationAndDraw(polygon, pileCenters, diameter, replacementRate, tr);
+                    var (diameter, replacementRate, _) = GetPileParameters(polygon, ed, pileCenters.Count);
+                    ExecuteOptimizationAndDraw(polygon, pileCenters, diameter, replacementRate, tr, db, ed);
 
                     tr.Commit();
                 }
 
-                _ed.WriteMessage("\n桩布置完成。");
+                ed.WriteMessage("\n桩布置完成。");
             }
             catch (System.Exception ex)
             {
-                _ed.WriteMessage($"\n错误: {ex.Message}");
+                ed.WriteMessage($"\n错误: {ex.Message}");
             }
         }
 
@@ -120,7 +113,7 @@ namespace HyCADTool.Features.Pile
         /// 执行 Lloyd 优化并绘制结果
         /// </summary>
         private void ExecuteOptimizationAndDraw(Polygon polygon, List<Coordinate> pileCenters, 
-            double diameter, double replacementRate, Transaction tr)
+            double diameter, double replacementRate, Transaction tr, Database db, Editor ed)
         {
             // 1. Lloyd 优化
             pileCenters = _voronoiService.ApplyLloydOptimization(polygon, pileCenters, 4500, diameter);
@@ -129,22 +122,22 @@ namespace HyCADTool.Features.Pile
             var voronoiDiagram = _voronoiService.CreateVoronoiDiagram(polygon, pileCenters);
 
             // 3. 绘制
-            BlockTable bt = tr.GetObject(_db.BlockTableId, OpenMode.ForRead) as BlockTable;
+            BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
             BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
 
-            CreateLayerIfNotExists(tr, "00-HY-桩", Color.FromColorIndex(ColorMethod.ByAci, 3));
-            CreateLayerIfNotExists(tr, "00-HY-Voronoi", Color.FromColorIndex(ColorMethod.ByAci, 2));
+            CreateLayerIfNotExists(tr, db, "00-HY-桩", Color.FromColorIndex(ColorMethod.ByAci, 3));
+            CreateLayerIfNotExists(tr, db, "00-HY-Voronoi", Color.FromColorIndex(ColorMethod.ByAci, 2));
 
             DrawVoronoiRegion(tr, btr, voronoiDiagram, polygon);
             DrawPiles(tr, btr, pileCenters, diameter);
 
-            _ed.WriteMessage($"\n桩布置完成，共 {pileCenters.Count} 根桩，置换率: {replacementRate:P2}。");
+            ed.WriteMessage($"\n桩布置完成，共 {pileCenters.Count} 根桩，置换率: {replacementRate:P2}。");
         }
 
         /// <summary>
         /// 获取桩参数（带用户输入桩数量）
         /// </summary>
-        private (double diameter, double replacementRate, int numberOfPiles) GetPileParameters(Polygon polygon, int? existingCount = null)
+        private (double diameter, double replacementRate, int numberOfPiles) GetPileParameters(Polygon polygon, Editor ed, int? existingCount = null)
         {
             double diameter = 400.0;
             double replacementRate = 0.022734275;
@@ -155,7 +148,7 @@ namespace HyCADTool.Features.Pile
                 // 获取桩数量
                 PromptIntegerOptions pdoPiles = new PromptIntegerOptions("\n请输入桩的根数 (0表示自动计算):");
                 pdoPiles.DefaultValue = 0;
-                var pdrPiles = _ed.GetInteger(pdoPiles);
+                var pdrPiles = ed.GetInteger(pdoPiles);
 
                 if (pdrPiles.Status == PromptStatus.OK && pdrPiles.Value != 0)
                 {
@@ -166,14 +159,14 @@ namespace HyCADTool.Features.Pile
                     double pileArea = Math.PI * Math.Pow(diameter / 2.0, 2);
                     double totalArea = polygon.Area;
                     numberOfPiles = (int)Math.Ceiling((totalArea * replacementRate) / pileArea);
-                    _ed.WriteMessage($"\n对应置换率，需要的桩为 {numberOfPiles} 棵");
+                    ed.WriteMessage($"\n对应置换率，需要的桩为 {numberOfPiles} 棵");
                 }
             }
 
             // 获取桩直径
             PromptDoubleOptions pdoD = new PromptDoubleOptions("\n请输入桩直径(单位mm):");
             pdoD.DefaultValue = 400.0;
-            var pdrD = _ed.GetDouble(pdoD);
+            var pdrD = ed.GetDouble(pdoD);
             if (pdrD.Status == PromptStatus.OK)
             {
                 diameter = pdrD.Value;
@@ -182,7 +175,7 @@ namespace HyCADTool.Features.Pile
             // 获取目标置换率
             PromptDoubleOptions pdoRate = new PromptDoubleOptions("\n请输入目标置换率 (0-100)%:");
             pdoRate.DefaultValue = 2.2;
-            var pdrRate = _ed.GetDouble(pdoRate);
+            var pdrRate = ed.GetDouble(pdoRate);
             if (pdrRate.Status == PromptStatus.OK)
             {
                 replacementRate = pdrRate.Value / 100;
@@ -194,7 +187,7 @@ namespace HyCADTool.Features.Pile
         /// <summary>
         /// 获取选中圆的圆心
         /// </summary>
-        private List<Coordinate> GetSelectedCircleCenters(Transaction tr)
+        private List<Coordinate> GetSelectedCircleCenters(Transaction tr, Editor ed)
         {
             TypedValue[] filter = new TypedValue[]
             {
@@ -206,11 +199,11 @@ namespace HyCADTool.Features.Pile
             {
                 MessageForAdding = "\n请选择一些圆:"
             };
-            PromptSelectionResult selectionResult = _ed.GetSelection(selectionOptions, selectionFilter);
+            PromptSelectionResult selectionResult = ed.GetSelection(selectionOptions, selectionFilter);
 
             if (selectionResult.Status != PromptStatus.OK)
             {
-                _ed.WriteMessage("\n未选择任何圆。");
+                ed.WriteMessage("\n未选择任何圆。");
                 return new List<Coordinate>();
             }
 
@@ -268,9 +261,9 @@ namespace HyCADTool.Features.Pile
         /// <summary>
         /// 创建图层（如果不存在）
         /// </summary>
-        private void CreateLayerIfNotExists(Transaction tr, string layerName, Color color)
+        private void CreateLayerIfNotExists(Transaction tr, Database db, string layerName, Color color)
         {
-            LayerTable layerTable = tr.GetObject(_db.LayerTableId, OpenMode.ForRead) as LayerTable;
+            LayerTable layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
             if (!layerTable.Has(layerName))
             {
                 LayerTableRecord layerTableRecord = new LayerTableRecord

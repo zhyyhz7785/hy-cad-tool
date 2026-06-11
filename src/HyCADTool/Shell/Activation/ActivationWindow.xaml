@@ -1,4 +1,4 @@
-<Window x:Class="HyCADTool.Presentation.Views.ActivationWindow"
+<Window x:Class="HyCADTool.Shell.Views.ActivationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"

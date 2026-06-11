@@ -7,7 +7,7 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Xdata;
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

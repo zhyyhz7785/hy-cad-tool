@@ -37,7 +37,6 @@ namespace HyCADTool.Features.AcadDimension.Commands
             foreach (SelectedObject so in sel.Value)
             {
                 idx++;
-                ed.WriteMessage($"\n[NewDDS] [{idx}/{total}] 处理 Handle={so.ObjectId.Handle}...");
                 service.Execute(so.ObjectId);
             }
 

@@ -15,7 +15,7 @@ using HyCADTool.Shared.AutoCAD.Selection.Rules;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using TypeNameConverter = HyCADTool.Shared.AutoCAD.Extensions.TypeNameConverter;
 
-namespace HyCADTool.Presentation.ViewModels
+namespace HyCADTool.Shell.ViewModels
 {
     /// <summary>
     /// FilterPanel 的独立 ViewModel

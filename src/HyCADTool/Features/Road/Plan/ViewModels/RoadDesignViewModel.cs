@@ -10,7 +10,7 @@ using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
-using HyCADTool.Presentation.ViewModels;
+using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.Road.Plan.ViewModels
 {
