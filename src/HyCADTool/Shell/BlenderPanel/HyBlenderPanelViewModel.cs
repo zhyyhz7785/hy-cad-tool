@@ -246,7 +246,7 @@ namespace HyCADTool.Shell.ViewModels
 
         public HyBlenderPanelViewModel()
         {
-            SelectEditorCommand = new RelayCommand(p => SelectEditor(p as string));
+            SelectEditorCommand = new RelayCommand<string>(SelectEditor);
             _searchDebounceTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(SearchDebounceMs)

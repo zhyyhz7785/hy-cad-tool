@@ -375,7 +375,7 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </ContentControl.ContentTemplate>
+                    </ContentControl.Style>
                     <ContentControl.ContentTemplate>
                         <DataTemplate DataType="{x:Type vm:HyBlenderPanelViewModel}">
                             <views:ClusterPanel DataContext="{Binding ClusterVm}"/>
