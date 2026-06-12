@@ -721,7 +721,7 @@ namespace HyCADTool.Shell.ViewModels
         private double _compWallMaxThickness = 500.0;
         public double CompWallMaxThickness { get => _compWallMaxThickness; set => SetProperty(ref _compWallMaxThickness, value); }
 
-        private double _compBottomSlabMaxThickness = 700.0;
+        private double _compBottomSlabMaxThickness = 1500.0;
         public double CompBottomSlabMaxThickness { get => _compBottomSlabMaxThickness; set => SetProperty(ref _compBottomSlabMaxThickness, value); }
 
         private bool _compIgnoreBottomSlabHeightDiff = true;
@@ -732,6 +732,14 @@ namespace HyCADTool.Shell.ViewModels
 
         private double _compMassMinSize = 1000.0;
         public double CompMassMinSize { get => _compMassMinSize; set => SetProperty(ref _compMassMinSize, value); }
+
+        private double _compLocalConcreteMaxHeight = 1000.0;
+        /// <summary>局部混凝土高差上限（mm）。</summary>
+        public double CompLocalConcreteMaxHeight { get => _compLocalConcreteMaxHeight; set => SetProperty(ref _compLocalConcreteMaxHeight, value); }
+
+        private double _compGroupClusterDistance = 1500.0;
+        /// <summary>区域分组聚类距离（mm，同 hymbr）。</summary>
+        public double CompGroupClusterDistance { get => _compGroupClusterDistance; set => SetProperty(ref _compGroupClusterDistance, value); }
 
         private double _compBeamMaxWidth = 800.0;
         public double CompBeamMaxWidth { get => _compBeamMaxWidth; set => SetProperty(ref _compBeamMaxWidth, value); }
@@ -1385,8 +1393,8 @@ namespace HyCADTool.Shell.ViewModels
             DimensionDistanceInside = 6.0; DimensionDistanceOutside = 14.0;
             DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0;             DimDistanceTolerance = 30.0;
             CompParallelAngleThreshold = 15.0;
-            CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompBottomSlabMaxThickness = 700.0;
-            CompMassMinSize = 1000.0; CompIgnoreBottomSlabHeightDiff = true; CompBottomSlabHeightDiff = 150.0; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
+            CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompBottomSlabMaxThickness = 1500.0;
+            CompMassMinSize = 1000.0; CompLocalConcreteMaxHeight = 1000.0; CompGroupClusterDistance = 1500.0; CompIgnoreBottomSlabHeightDiff = true; CompBottomSlabHeightDiff = 150.0; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
             CompBeamSkipRein = false; CompParallelLineRatio = 0.6;
             CompSlabRebarDiameter = CompWallRebarDiameter = CompBottomRebarDiameter = CompMassRebarDiameter = CompBeamRebarDiameter = 14.0;
             CompSlabRebarSpacing = CompWallRebarSpacing = CompBottomRebarSpacing = CompMassRebarSpacing = CompBeamRebarSpacing = 200.0;
@@ -1568,6 +1576,8 @@ namespace HyCADTool.Shell.ViewModels
                 IgnoreBottomSlabHeightDiff = CompIgnoreBottomSlabHeightDiff,
                 BottomSlabHeightToleranceMm = CompBottomSlabHeightDiff,
                 MassConcreteMinSizeMm = CompMassMinSize,
+                LocalConcreteMaxHeightMm = CompLocalConcreteMaxHeight,
+                RegionGroupDistanceMm = CompGroupClusterDistance,
                 BeamMaxWidthMm = CompBeamMaxWidth,
                 BeamMaxHeightMm = CompBeamMaxHeight,
                 BeamSkipReinforcement = CompBeamSkipRein,
@@ -1676,6 +1686,8 @@ namespace HyCADTool.Shell.ViewModels
                     CompIgnoreBottomSlabHeightDiff = CompIgnoreBottomSlabHeightDiff,
                     CompBottomSlabHeightDiff = CompBottomSlabHeightDiff,
                     CompMassMinSize = CompMassMinSize,
+                    CompLocalConcreteMaxHeight = CompLocalConcreteMaxHeight,
+                    CompGroupClusterDistance = CompGroupClusterDistance,
                     CompBeamMaxWidth = CompBeamMaxWidth,
                     CompBeamMaxHeight = CompBeamMaxHeight,
                     CompBeamSkipRein = CompBeamSkipRein,
@@ -1857,6 +1869,8 @@ namespace HyCADTool.Shell.ViewModels
                 CompIgnoreBottomSlabHeightDiff = data.CompIgnoreBottomSlabHeightDiff;
                 if (data.CompBottomSlabHeightDiff > 0) CompBottomSlabHeightDiff = data.CompBottomSlabHeightDiff;
                 if (data.CompMassMinSize > 0) CompMassMinSize = data.CompMassMinSize;
+                if (data.CompLocalConcreteMaxHeight > 0) CompLocalConcreteMaxHeight = data.CompLocalConcreteMaxHeight;
+                if (data.CompGroupClusterDistance > 0) CompGroupClusterDistance = data.CompGroupClusterDistance;
                 if (data.CompBeamMaxWidth > 0) CompBeamMaxWidth = data.CompBeamMaxWidth;
                 if (data.CompBeamMaxHeight > 0) CompBeamMaxHeight = data.CompBeamMaxHeight;
                 CompBeamSkipRein = data.CompBeamSkipRein;
@@ -2049,10 +2063,12 @@ namespace HyCADTool.Shell.ViewModels
             public double CompParallelAngleThreshold { get; set; } = 15.0;
             public double CompSlabMaxThickness { get; set; } = 300.0;
             public double CompWallMaxThickness { get; set; } = 500.0;
-            public double CompBottomSlabMaxThickness { get; set; } = 700.0;
+            public double CompBottomSlabMaxThickness { get; set; } = 1500.0;
             public bool CompIgnoreBottomSlabHeightDiff { get; set; } = true;
             public double CompBottomSlabHeightDiff { get; set; } = 150.0;
             public double CompMassMinSize { get; set; } = 1000.0;
+            public double CompLocalConcreteMaxHeight { get; set; } = 1000.0;
+            public double CompGroupClusterDistance { get; set; } = 1500.0;
             public double CompBeamMaxWidth { get; set; } = 800.0;
             public double CompBeamMaxHeight { get; set; } = 1500.0;
             public bool CompBeamSkipRein { get; set; }

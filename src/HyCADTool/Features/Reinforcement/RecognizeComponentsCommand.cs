@@ -57,18 +57,20 @@ namespace HyCADTool.Features.Reinforcement
             }
 
             var classified = ReinRegionBuilder.ClassifyBoundaries(rawBoundaries);
-            var reinRegions = ReinRegionBuilder.BuildRegions(classified);
-            if (reinRegions.Count == 0)
+            var groups = ReinRegionBuilder.BuildGroupedRegions(classified, parameters.RegionGroupDistanceMm);
+            if (groups.Count == 0)
             {
                 ed.WriteMessage("\n未找到有效外轮廓。");
                 return;
             }
 
             var reinRegionList = new List<ReinRegion>();
-            foreach (var (region, _) in reinRegions)
-                reinRegionList.Add(region);
-
-            var allComponents = ComponentRecognizer.Recognize(reinRegionList, parameters);
+            var allComponents = new List<ComponentRegion>();
+            foreach (var group in groups)
+            {
+                reinRegionList.AddRange(group);
+                allComponents.AddRange(ComponentRecognizer.Recognize(group, parameters));
+            }
 
             if (allComponents.Count == 0)
             {

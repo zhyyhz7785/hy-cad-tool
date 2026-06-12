@@ -17,8 +17,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
         private const int PriorityBottomSlab = 1;
         private const int PrioritySlab = 2;
-        private const int PriorityWall = 3;
-        private const int PriorityBeam = 4;
+        private const int PriorityMass = 3;
+        private const int PriorityLocal = 4;
+        private const int PriorityWall = 5;
+        private const int PriorityBeam = 6;
 
         /// <summary>整批识别（独立轮廓判型 + 大轮廓割线分区）。</summary>
         public static List<ComponentRegion> Recognize(
@@ -44,7 +46,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     continue;
                 }
 
-                result.AddRange(RecognizeLargeRegion(region));
+                result.AddRange(RecognizeLargeRegion(region, parameters, globalBbox.MinY));
             }
 
             return result;
@@ -109,9 +111,20 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         //  大轮廓：竖直割线扫描精确分区
         // ===================================================================
 
-        private static List<ComponentRegion> RecognizeLargeRegion(ReinRegion region)
+        private static List<ComponentRegion> RecognizeLargeRegion(
+            ReinRegion region,
+            ComponentParameters parameters,
+            double groundY)
         {
-            var partitions = RegionPartitioner.Partition(region);
+            var partitions = RegionPartitioner.Partition(
+                region,
+                parameters.BottomSlabMaxThicknessMm,
+                parameters.WallMaxThicknessMm,
+                parameters.AnchorageLengthMm,
+                parameters.SlabMaxThicknessMm,
+                parameters.BeamMaxWidthMm,
+                parameters.LocalConcreteMaxHeightMm,
+                groundY);
             var result = new List<ComponentRegion>(partitions.Count);
 
             foreach (var part in partitions)
@@ -156,6 +169,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             {
                 case ComponentType.BottomSlab: return PriorityBottomSlab;
                 case ComponentType.Slab: return PrioritySlab;
+                case ComponentType.MassConcrete: return PriorityMass;
+                case ComponentType.LocalConcrete: return PriorityLocal;
                 case ComponentType.Wall: return PriorityWall;
                 case ComponentType.Beam: return PriorityBeam;
                 default: return PrioritySlab;

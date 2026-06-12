@@ -12,7 +12,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
         public double SlabMaxThicknessMm { get; set; } = 300.0;
         public double WallMaxThicknessMm { get; set; } = 500.0;
-        public double BottomSlabMaxThicknessMm { get; set; } = 700.0;
+        /// <summary>基础底板高度上限（mm）：超出部分归大体积混凝土。</summary>
+        public double BottomSlabMaxThicknessMm { get; set; } = 1500.0;
 
         /// <summary>忽略底板顶面小台阶：run 内 max(t)-min(t) ≤ 阈值时统一取 min(t)。</summary>
         public bool IgnoreBottomSlabHeightDiff { get; set; } = true;
@@ -21,12 +22,18 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         public double BottomSlabHeightToleranceMm { get; set; } = 150.0;
 
         public double MassConcreteMinSizeMm { get; set; } = 1000.0;
+
+        /// <summary>局部混凝土高差上限（mm）：基础上凸低于该值 → 局部混凝土，否则进墙/大体积判型。</summary>
+        public double LocalConcreteMaxHeightMm { get; set; } = 1000.0;
         public double BeamMaxWidthMm { get; set; } = 800.0;
         public double BeamMaxHeightMm { get; set; } = 1500.0;
         public bool BeamSkipReinforcement { get; set; }
 
         /// <summary>锚固长度（mm）：构件带深入相邻混凝土的延伸限度。</summary>
         public double AnchorageLengthMm { get; set; } = 500.0;
+
+        /// <summary>区域分组聚类距离（mm）：外轮廓 bbox 间隙 ≤ 此值归同一计算组（同 hymbr）。</summary>
+        public double RegionGroupDistanceMm { get; set; } = 1500.0;
 
         /// <summary>平行直线占比下限（0~1）：边对支撑高度 / 混凝土柱全高低于该值时不判墙/梁。</summary>
         public double ParallelLineRatioMin { get; set; } = 0.6;
@@ -59,6 +66,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 case ComponentType.Wall: return WallRebarDiameter;
                 case ComponentType.BottomSlab: return BottomSlabRebarDiameter;
                 case ComponentType.MassConcrete: return MassRebarDiameter;
+                case ComponentType.LocalConcrete: return MassRebarDiameter;
                 case ComponentType.Beam: return BeamRebarDiameter;
                 default: return SlabRebarDiameter;
             }
@@ -72,6 +80,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 case ComponentType.Wall: return WallRebarSpacing;
                 case ComponentType.BottomSlab: return BottomSlabRebarSpacing;
                 case ComponentType.MassConcrete: return MassRebarSpacing;
+                case ComponentType.LocalConcrete: return MassRebarSpacing;
                 case ComponentType.Beam: return BeamRebarSpacing;
                 default: return SlabRebarSpacing;
             }

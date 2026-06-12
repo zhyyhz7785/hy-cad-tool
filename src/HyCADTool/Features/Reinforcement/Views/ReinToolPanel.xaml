@@ -178,6 +178,23 @@
             </Expander>
 
             <Expander Style="{StaticResource BlenderExpander}"
+                      Header="区域分组"
+                      IsExpanded="False"
+                      Margin="0,2,0,3">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <TextBlock Text="外轮廓 bbox 间隙聚类（同 hymbr），分好组后各自独立识别。"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               FontSize="{DynamicResource Metric_FontCaption}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,6"/>
+                    <bc:PropertyRow Label="聚类距离" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompGroupClusterDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                </StackPanel>
+            </Expander>
+
+            <Expander Style="{StaticResource BlenderExpander}"
                       Header="构件确认"
                       IsExpanded="False"
                       Margin="0,2,0,3">
