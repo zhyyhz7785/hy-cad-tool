@@ -11,16 +11,17 @@ namespace HyCADTool.Shell.Commands
     /// 面板显示方法（无 [CommandMethod]，避免热重载 eDuplicateKey）。
     ///
     /// 唯一 PaletteSet：<see cref="HyCADTool.Shell.Views.HyBlenderPanel"/>。所有入口都转发到它的对应 Tab：
-    /// - Hy / ShowSettingsPanel → 「设置」Tab
+    /// - Hy / ShowHyToolPanel → 「命令」编辑器（常用 Tab）
+    /// - ShowSettingsPanel    → 「设置」Tab
     /// - HyB                    → toggle 显示
     /// - ShowFilterPanel        → 「过滤」Tab
     /// - ShowPilePanel 等       → commands.json 里的 Category Tab
     /// </summary>
     public static class ShowPanelCommand
     {
-        /// <summary>Hy 命令入口：打开 HyBlenderPanel 并跳到「设置」Tab。</summary>
+        /// <summary>Hy 命令入口：打开 HyBlenderPanel 并跳到「命令」编辑器（常用 Tab）。</summary>
         public static void ShowHyToolPanel()
-            => OpenTab(HyBlenderPanelViewModel.PreferencesTabKey, "显示面板失败");
+            => OpenTab(HyBlenderPanelViewModel.CommandsEditorKey, "显示面板失败");
 
         /// <summary>HyB 命令入口：显示/隐藏 HyBlenderPanel。</summary>
         public static void ShowHyBlenderPanel()
@@ -49,6 +50,10 @@ namespace HyCADTool.Shell.Commands
         /// <summary>HYSpongeCity 入口：显示海绵城市伪分类 Tab（参数+CAD+输出 一体面板）。</summary>
         public static void ShowSpongeCityPanel()
             => OpenTab(HyBlenderPanelViewModel.SpongeCityTabKey, "显示海绵城市面板失败");
+
+        /// <summary>显示结构构件（22G101）Tab。</summary>
+        public static void ShowG101Panel()
+            => OpenTab(HyBlenderPanelViewModel.G101TabKey, "显示结构构件面板失败");
 
         /// <summary>显示桩基分类 Tab。</summary>
         public static void ShowPilePanel()      => OpenTab("桩基", "显示桩基面板失败");

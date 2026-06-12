@@ -177,6 +177,86 @@
                 </StackPanel>
             </Expander>
 
+            <Expander Style="{StaticResource BlenderExpander}"
+                      Header="构件确认"
+                      IsExpanded="False"
+                      Margin="0,2,0,3">
+                <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                    <TextBlock Text="识别：平行边距+倾角阈值；预览层 5 色区分类型，可点击切换。"
+                               Foreground="{DynamicResource Brush_TextSecondary}"
+                               FontSize="{DynamicResource Metric_FontCaption}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,6"/>
+                    <bc:PropertyRow Label="平行夹角阈值°" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompParallelAngleThreshold, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="楼板厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompSlabMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="墙厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompWallMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="底板厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompBottomSlabMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="忽略底板高差" Style="{StaticResource ReinPanelPropertyRow}">
+                        <CheckBox IsChecked="{Binding ReinVm.CompIgnoreBottomSlabHeightDiff, Mode=TwoWay}"
+                                  VerticalAlignment="Center"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="底板高差 mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompBottomSlabHeightDiff, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="大体积≥mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompMassMinSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="梁宽≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompBeamMaxWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="梁高≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompBeamMaxHeight, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="平行占比≥" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompParallelLineRatio, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="梁不配筋" Style="{StaticResource ReinPanelPropertyRow}">
+                        <CheckBox IsChecked="{Binding ReinVm.CompBeamSkipRein, Mode=TwoWay}"
+                                  VerticalAlignment="Center"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="构造筋直径" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompMassConstructDiameter, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="构造筋最大间距" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompMassConstructMaxSpacing, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="凸起高≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Text="{Binding ReinVm.CompBumpMaxHeight, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
+                    <UniformGrid Columns="1" Margin="0,4,0,0">
+                        <Button Style="{StaticResource ReinPanelCommandButton}"
+                                Content="识别构件"
+                                Command="{Binding ReinVm.CmdCompRecognize}"/>
+                        <Button Style="{StaticResource ReinPanelCommandButton}"
+                                Content="切换类型"
+                                Command="{Binding ReinVm.CmdCompSwitch}"/>
+                        <Button Style="{StaticResource ReinPanelCommandButton}"
+                                Content="按构件配筋"
+                                Command="{Binding ReinVm.CmdCompGenerate}"/>
+                    </UniformGrid>
+                </StackPanel>
+            </Expander>
+
             <Separator Style="{StaticResource BlenderSeparator}" Margin="0,4,0,4"/>
 
             <UniformGrid Columns="2" Margin="0,0,0,4">

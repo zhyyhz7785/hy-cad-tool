@@ -51,6 +51,7 @@ namespace HyCADTool.Shell.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedTabIndex));
                 OnPropertyChanged(nameof(IsReinMode));
+                OnPropertyChanged(nameof(IsG101Mode));
                 OnPropertyChanged(nameof(IsPileMode));
                 OnPropertyChanged(nameof(PilePanelHost));
                 OnPropertyChanged(nameof(IsFilterMode));
@@ -119,6 +120,9 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>当前选中的是否为「钢筋」业务分类 Tab。</summary>
         public bool IsReinMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == ReinTabKey;
 
+        /// <summary>当前选中的是否为「结构构件」伪分类 Tab（钢筋之后）。</summary>
+        public bool IsG101Mode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == G101TabKey;
+
         /// <summary>当前选中的是否为「桩基」业务分类 Tab。</summary>
         public bool IsPileMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == PileTabKey;
 
@@ -128,8 +132,8 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>当前选中的是否为「螺栓聚类与基础标注」编辑器。</summary>
         public bool IsClusterMode => _selectedEditorKey == ClusterTabKey;
 
-        /// <summary>命令编辑器内：普通命令列表（非钢筋/桩基/过滤独立面板）。</summary>
-        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsPileMode && !IsFilterMode;
+        /// <summary>命令编辑器内：普通命令列表（非钢筋/结构构件/桩基/过滤独立面板）。</summary>
+        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsG101Mode && !IsPileMode && !IsFilterMode;
 
         /// <summary>出图比例区仅在「命令 · 常用」Tab 顶部显示。</summary>
         public bool ShowScalePanel => IsCommandListMode && _selectedTab != null && _selectedTab.Key == CommonTabKey;
@@ -149,6 +153,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (IsBaseReinMode) return "基础钢筋";
                 if (IsClusterMode) return "螺栓聚类与基础标注";
                 if (IsReinMode) return "命令 · 钢筋";
+                if (IsG101Mode) return "命令 · 结构构件";
                 if (IsPileMode) return "命令 · 桩基";
                 if (_selectedTab != null) return $"命令 · {_selectedTab.Name}";
                 return "命令";
@@ -201,6 +206,10 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>钢筋面板的设置 ViewModel，直接服务 gj / gb 等钢筋命令。</summary>
         public SettingsPanelViewModel ReinVm => SettingsPanelViewModel.Current;
 
+        /// <summary>结构构件（22G101）面板 ViewModel。</summary>
+        public HyCADTool.Features.G101.ViewModels.G101PanelViewModel G101Vm
+            => HyCADTool.Features.G101.ViewModels.G101PanelViewModel.Current;
+
         /// <summary>桩基面板的 ViewModel（其自身有 Current 多文档机制），承载桩参数与桩基命令。</summary>
         public HyCADTool.Features.Pile.ViewModels.PilePanelViewModel PileVm
             => HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.Current;
@@ -224,6 +233,9 @@ namespace HyCADTool.Shell.ViewModels
 
         /// <summary>「钢筋」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
         public const string ReinTabKey = "钢筋";
+
+        /// <summary>「结构构件」伪分类的稳定 Key（22G101 参数化大样）。</summary>
+        public const string G101TabKey = "__g101__";
 
         /// <summary>「桩基」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
         public const string PileTabKey = "桩基";
@@ -308,6 +320,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(IsFilterMode));
             OnPropertyChanged(nameof(IsSpongeCityMode));
             OnPropertyChanged(nameof(IsReinMode));
+            OnPropertyChanged(nameof(IsG101Mode));
             OnPropertyChanged(nameof(IsPileMode));
             OnPropertyChanged(nameof(IsBaseReinMode));
             OnPropertyChanged(nameof(IsClusterMode));
@@ -369,6 +382,7 @@ namespace HyCADTool.Shell.ViewModels
         {
             OnPropertyChanged(nameof(SpongeCityVm));
             OnPropertyChanged(nameof(ReinVm));
+            OnPropertyChanged(nameof(G101Vm));
             OnPropertyChanged(nameof(PileVm));
             OnPropertyChanged(nameof(BaseReinVm));
             OnPropertyChanged(nameof(ClusterVm));
@@ -403,8 +417,13 @@ namespace HyCADTool.Shell.ViewModels
                 SelectEditor(CommandsEditorKey);
                 SelectedTab = t;
             }
+            else if (string.Equals(key, CommandsEditorKey, StringComparison.Ordinal))
+            {
+                SelectEditor(CommandsEditorKey);
+            }
             else
             {
+                SelectEditor(CommandsEditorKey);
                 SelectedTab = Tabs.FirstOrDefault();
             }
         }
@@ -480,6 +499,17 @@ namespace HyCADTool.Shell.ViewModels
                 int commonIdx = normalTabs.FindIndex(
                     t => string.Equals(t.Key, CommonTabKey, StringComparison.Ordinal));
                 normalTabs.Insert(commonIdx >= 0 ? commonIdx + 1 : 0, filterTab);
+
+                // 「结构构件」伪分类 Tab：钢筋之后
+                var g101Tab = new CategoryTabVm
+                {
+                    Key  = G101TabKey,
+                    Name = "结构构件",
+                    Icon = "▣",
+                };
+                int reinIdx = normalTabs.FindIndex(
+                    t => string.Equals(t.Key, ReinTabKey, StringComparison.Ordinal));
+                normalTabs.Insert(reinIdx >= 0 ? reinIdx + 1 : normalTabs.Count, g101Tab);
 
                 var mergedTab = mergedBuckets.Count > 0
                     ? CreateMergedDrawingToolsTab(mergedBuckets)
@@ -582,7 +612,7 @@ namespace HyCADTool.Shell.ViewModels
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
             }
-            if (IsReinMode || IsPileMode || IsFilterMode)
+            if (IsReinMode || IsG101Mode || IsPileMode || IsFilterMode)
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;

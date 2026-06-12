@@ -6,6 +6,7 @@
              xmlns:views="clr-namespace:HyCADTool.Shell.Views"
              xmlns:sponge="clr-namespace:HyCADTool.Features.SpongeCity.Views"
              xmlns:rein="clr-namespace:HyCADTool.Features.Reinforcement.Views"
+             xmlns:g101="clr-namespace:HyCADTool.Features.G101.Views"
              xmlns:pile="clr-namespace:HyCADTool.Features.Pile.Views"
              xmlns:baserein="clr-namespace:HyCADTool.Features.BaseRein.Views"
              xmlns:vm="clr-namespace:HyCADTool.Shell.ViewModels"
@@ -326,6 +327,20 @@
                         </Style>
                     </rein:ReinToolPanel.Style>
                 </rein:ReinToolPanel>
+
+                <!-- 结构构件（22G101）面板 -->
+                <g101:G101Panel DataContext="{Binding G101Vm}">
+                    <g101:G101Panel.Style>
+                        <Style TargetType="{x:Type g101:G101Panel}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataContext.IsG101Mode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </g101:G101Panel.Style>
+                </g101:G101Panel>
 
                 <!-- 桩基面板 -->
                 <ContentControl Content="{Binding PilePanelHost}">

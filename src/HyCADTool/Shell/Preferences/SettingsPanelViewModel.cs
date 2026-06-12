@@ -17,6 +17,7 @@ using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.Plan.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.Services;
 using HyCADTool.Features.Reinforcement.Domain;
+using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.Drawing.ValueObjects;
@@ -155,6 +156,10 @@ namespace HyCADTool.Shell.ViewModels
             CmdGb1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Single).Execute()));
             CmdGb2 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Six).Execute()));
 
+            CmdCompRecognize = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.RecognizeComponentsCommand().Execute()));
+            CmdCompSwitch = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.SwitchComponentTypeCommand().Execute()));
+            CmdCompGenerate = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.GenerateByComponentsCommand().Execute()));
+
             // 道路
             CmdRoad = new RelayCommand(() => SendCommand(() => new Features.Road.DrawCrosswalkCommand().Execute()));
 
@@ -175,6 +180,7 @@ namespace HyCADTool.Shell.ViewModels
             CmdGj = CmdGg = new RelayCommand(() => { });
             CmdG1 = CmdG2 = CmdGe = CmdGe1 = CmdGd = new RelayCommand(() => { });
             CmdGb = CmdGb1 = CmdGb2 = new RelayCommand(() => { });
+            CmdCompRecognize = CmdCompSwitch = CmdCompGenerate = new RelayCommand(() => { });
             CmdRoad = new RelayCommand(() => { });
             ApplyLayerCatalogToDocumentCommand = new RelayCommand(() => { });
             RestoreDefaultLayerCatalogCommand = new RelayCommand(() => { });
@@ -704,6 +710,89 @@ namespace HyCADTool.Shell.ViewModels
 
         #endregion
 
+        #region 构件确认参数
+
+        private double _compParallelAngleThreshold = 15.0;
+        public double CompParallelAngleThreshold { get => _compParallelAngleThreshold; set => SetProperty(ref _compParallelAngleThreshold, value); }
+
+        private double _compSlabMaxThickness = 300.0;
+        public double CompSlabMaxThickness { get => _compSlabMaxThickness; set => SetProperty(ref _compSlabMaxThickness, value); }
+
+        private double _compWallMaxThickness = 500.0;
+        public double CompWallMaxThickness { get => _compWallMaxThickness; set => SetProperty(ref _compWallMaxThickness, value); }
+
+        private double _compBottomSlabMaxThickness = 700.0;
+        public double CompBottomSlabMaxThickness { get => _compBottomSlabMaxThickness; set => SetProperty(ref _compBottomSlabMaxThickness, value); }
+
+        private bool _compIgnoreBottomSlabHeightDiff = true;
+        public bool CompIgnoreBottomSlabHeightDiff { get => _compIgnoreBottomSlabHeightDiff; set => SetProperty(ref _compIgnoreBottomSlabHeightDiff, value); }
+
+        private double _compBottomSlabHeightDiff = 150.0;
+        public double CompBottomSlabHeightDiff { get => _compBottomSlabHeightDiff; set => SetProperty(ref _compBottomSlabHeightDiff, value); }
+
+        private double _compMassMinSize = 1000.0;
+        public double CompMassMinSize { get => _compMassMinSize; set => SetProperty(ref _compMassMinSize, value); }
+
+        private double _compBeamMaxWidth = 800.0;
+        public double CompBeamMaxWidth { get => _compBeamMaxWidth; set => SetProperty(ref _compBeamMaxWidth, value); }
+
+        private double _compParallelLineRatio = 0.6;
+        /// <summary>平行直线占比下限（0~1）：低于该值的轮廓不判墙/梁。</summary>
+        public double CompParallelLineRatio { get => _compParallelLineRatio; set => SetProperty(ref _compParallelLineRatio, value); }
+
+        private double _compBeamMaxHeight = 1500.0;
+        public double CompBeamMaxHeight { get => _compBeamMaxHeight; set => SetProperty(ref _compBeamMaxHeight, value); }
+
+        private bool _compBeamSkipRein;
+        public bool CompBeamSkipRein { get => _compBeamSkipRein; set => SetProperty(ref _compBeamSkipRein, value); }
+
+        private double _compSlabRebarDiameter = 14.0;
+        public double CompSlabRebarDiameter { get => _compSlabRebarDiameter; set => SetProperty(ref _compSlabRebarDiameter, value); }
+
+        private double _compSlabRebarSpacing = 200.0;
+        public double CompSlabRebarSpacing { get => _compSlabRebarSpacing; set => SetProperty(ref _compSlabRebarSpacing, value); }
+
+        private double _compWallRebarDiameter = 14.0;
+        public double CompWallRebarDiameter { get => _compWallRebarDiameter; set => SetProperty(ref _compWallRebarDiameter, value); }
+
+        private double _compWallRebarSpacing = 200.0;
+        public double CompWallRebarSpacing { get => _compWallRebarSpacing; set => SetProperty(ref _compWallRebarSpacing, value); }
+
+        private double _compBottomRebarDiameter = 14.0;
+        public double CompBottomRebarDiameter { get => _compBottomRebarDiameter; set => SetProperty(ref _compBottomRebarDiameter, value); }
+
+        private double _compBottomRebarSpacing = 200.0;
+        public double CompBottomRebarSpacing { get => _compBottomRebarSpacing; set => SetProperty(ref _compBottomRebarSpacing, value); }
+
+        private double _compMassRebarDiameter = 14.0;
+        public double CompMassRebarDiameter { get => _compMassRebarDiameter; set => SetProperty(ref _compMassRebarDiameter, value); }
+
+        private double _compMassRebarSpacing = 200.0;
+        public double CompMassRebarSpacing { get => _compMassRebarSpacing; set => SetProperty(ref _compMassRebarSpacing, value); }
+
+        private double _compBeamRebarDiameter = 14.0;
+        public double CompBeamRebarDiameter { get => _compBeamRebarDiameter; set => SetProperty(ref _compBeamRebarDiameter, value); }
+
+        private double _compBeamRebarSpacing = 200.0;
+        public double CompBeamRebarSpacing { get => _compBeamRebarSpacing; set => SetProperty(ref _compBeamRebarSpacing, value); }
+
+        private double _compMassConstructDiameter = 12.0;
+        public double CompMassConstructDiameter { get => _compMassConstructDiameter; set => SetProperty(ref _compMassConstructDiameter, value); }
+
+        private double _compMassConstructMaxSpacing = 500.0;
+        public double CompMassConstructMaxSpacing { get => _compMassConstructMaxSpacing; set => SetProperty(ref _compMassConstructMaxSpacing, value); }
+
+        private double _compBumpMaxHeight = 150.0;
+        public double CompBumpMaxHeight { get => _compBumpMaxHeight; set => SetProperty(ref _compBumpMaxHeight, value); }
+
+        private double _compBumpRebarDiameter = 8.0;
+        public double CompBumpRebarDiameter { get => _compBumpRebarDiameter; set => SetProperty(ref _compBumpRebarDiameter, value); }
+
+        private double _compBumpRebarSpacing = 200.0;
+        public double CompBumpRebarSpacing { get => _compBumpRebarSpacing; set => SetProperty(ref _compBumpRebarSpacing, value); }
+
+        #endregion
+
         #region 道路参数
 
         private double _roadGapWidth = 5.0;
@@ -1077,6 +1166,10 @@ namespace HyCADTool.Shell.ViewModels
         public ICommand CmdGb1 { get; }
         public ICommand CmdGb2 { get; }
 
+        public ICommand CmdCompRecognize { get; }
+        public ICommand CmdCompSwitch { get; }
+        public ICommand CmdCompGenerate { get; }
+
         // 道路命令
         public ICommand CmdRoad { get; }
 
@@ -1291,6 +1384,14 @@ namespace HyCADTool.Shell.ViewModels
             ReinforcementDiameter = 0.35; DotReinOffset = 1.35; PolylineWidth = 0.4;
             DimensionDistanceInside = 6.0; DimensionDistanceOutside = 14.0;
             DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0;             DimDistanceTolerance = 30.0;
+            CompParallelAngleThreshold = 15.0;
+            CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompBottomSlabMaxThickness = 700.0;
+            CompMassMinSize = 1000.0; CompIgnoreBottomSlabHeightDiff = true; CompBottomSlabHeightDiff = 150.0; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
+            CompBeamSkipRein = false; CompParallelLineRatio = 0.6;
+            CompSlabRebarDiameter = CompWallRebarDiameter = CompBottomRebarDiameter = CompMassRebarDiameter = CompBeamRebarDiameter = 14.0;
+            CompSlabRebarSpacing = CompWallRebarSpacing = CompBottomRebarSpacing = CompMassRebarSpacing = CompBeamRebarSpacing = 200.0;
+            CompMassConstructDiameter = 12.0; CompMassConstructMaxSpacing = 500.0;
+            CompBumpMaxHeight = 150.0; CompBumpRebarDiameter = 8.0; CompBumpRebarSpacing = 200.0;
 
             _uiFontScale = _uiDensityScale = _uiInputWidthScale = 1.0;
             OnPropertyChanged(nameof(UiFontScale));
@@ -1455,6 +1556,41 @@ namespace HyCADTool.Shell.ViewModels
             };
         }
 
+        public ComponentParameters CreateComponentParameters()
+        {
+            return new ComponentParameters
+            {
+                Scale = Scale,
+                ParallelAngleThresholdDeg = CompParallelAngleThreshold,
+                SlabMaxThicknessMm = CompSlabMaxThickness,
+                WallMaxThicknessMm = CompWallMaxThickness,
+                BottomSlabMaxThicknessMm = CompBottomSlabMaxThickness,
+                IgnoreBottomSlabHeightDiff = CompIgnoreBottomSlabHeightDiff,
+                BottomSlabHeightToleranceMm = CompBottomSlabHeightDiff,
+                MassConcreteMinSizeMm = CompMassMinSize,
+                BeamMaxWidthMm = CompBeamMaxWidth,
+                BeamMaxHeightMm = CompBeamMaxHeight,
+                BeamSkipReinforcement = CompBeamSkipRein,
+                AnchorageLengthMm = AnchorageLength,
+                ParallelLineRatioMin = CompParallelLineRatio,
+                SlabRebarDiameter = CompSlabRebarDiameter,
+                SlabRebarSpacing = CompSlabRebarSpacing,
+                WallRebarDiameter = CompWallRebarDiameter,
+                WallRebarSpacing = CompWallRebarSpacing,
+                BottomSlabRebarDiameter = CompBottomRebarDiameter,
+                BottomSlabRebarSpacing = CompBottomRebarSpacing,
+                MassRebarDiameter = CompMassRebarDiameter,
+                MassRebarSpacing = CompMassRebarSpacing,
+                BeamRebarDiameter = CompBeamRebarDiameter,
+                BeamRebarSpacing = CompBeamRebarSpacing,
+                MassConstructRebarDiameter = CompMassConstructDiameter,
+                MassConstructRebarMaxSpacing = CompMassConstructMaxSpacing,
+                BumpMaxHeightMm = CompBumpMaxHeight,
+                BumpRebarDiameter = CompBumpRebarDiameter,
+                BumpRebarSpacing = CompBumpRebarSpacing
+            };
+        }
+
         #endregion
 
         // ================================================================
@@ -1533,6 +1669,32 @@ namespace HyCADTool.Shell.ViewModels
                     DimensionDistanceWithDim = DimensionDistanceWithDim,
                     MleaderDistance = MleaderDistance,
                     DimDistanceTolerance = DimDistanceTolerance,
+                    CompParallelAngleThreshold = CompParallelAngleThreshold,
+                    CompSlabMaxThickness = CompSlabMaxThickness,
+                    CompWallMaxThickness = CompWallMaxThickness,
+                    CompBottomSlabMaxThickness = CompBottomSlabMaxThickness,
+                    CompIgnoreBottomSlabHeightDiff = CompIgnoreBottomSlabHeightDiff,
+                    CompBottomSlabHeightDiff = CompBottomSlabHeightDiff,
+                    CompMassMinSize = CompMassMinSize,
+                    CompBeamMaxWidth = CompBeamMaxWidth,
+                    CompBeamMaxHeight = CompBeamMaxHeight,
+                    CompBeamSkipRein = CompBeamSkipRein,
+                    CompParallelLineRatio = CompParallelLineRatio,
+                    CompSlabRebarDiameter = CompSlabRebarDiameter,
+                    CompSlabRebarSpacing = CompSlabRebarSpacing,
+                    CompWallRebarDiameter = CompWallRebarDiameter,
+                    CompWallRebarSpacing = CompWallRebarSpacing,
+                    CompBottomRebarDiameter = CompBottomRebarDiameter,
+                    CompBottomRebarSpacing = CompBottomRebarSpacing,
+                    CompMassRebarDiameter = CompMassRebarDiameter,
+                    CompMassRebarSpacing = CompMassRebarSpacing,
+                    CompBeamRebarDiameter = CompBeamRebarDiameter,
+                    CompBeamRebarSpacing = CompBeamRebarSpacing,
+                    CompMassConstructDiameter = CompMassConstructDiameter,
+                    CompMassConstructMaxSpacing = CompMassConstructMaxSpacing,
+                    CompBumpMaxHeight = CompBumpMaxHeight,
+                    CompBumpRebarDiameter = CompBumpRebarDiameter,
+                    CompBumpRebarSpacing = CompBumpRebarSpacing,
                     // Tab C: 道路
                     RoadGapWidth = RoadGapWidth,
                     RoadCrosswalkWidth = RoadCrosswalkWidth,
@@ -1688,6 +1850,32 @@ namespace HyCADTool.Shell.ViewModels
                 DimensionDistanceWithDim = data.DimensionDistanceWithDim;
                 MleaderDistance = data.MleaderDistance;
                 DimDistanceTolerance = data.DimDistanceTolerance;
+                if (data.CompParallelAngleThreshold > 0) CompParallelAngleThreshold = data.CompParallelAngleThreshold;
+                if (data.CompSlabMaxThickness > 0) CompSlabMaxThickness = data.CompSlabMaxThickness;
+                if (data.CompWallMaxThickness > 0) CompWallMaxThickness = data.CompWallMaxThickness;
+                if (data.CompBottomSlabMaxThickness > 0) CompBottomSlabMaxThickness = data.CompBottomSlabMaxThickness;
+                CompIgnoreBottomSlabHeightDiff = data.CompIgnoreBottomSlabHeightDiff;
+                if (data.CompBottomSlabHeightDiff > 0) CompBottomSlabHeightDiff = data.CompBottomSlabHeightDiff;
+                if (data.CompMassMinSize > 0) CompMassMinSize = data.CompMassMinSize;
+                if (data.CompBeamMaxWidth > 0) CompBeamMaxWidth = data.CompBeamMaxWidth;
+                if (data.CompBeamMaxHeight > 0) CompBeamMaxHeight = data.CompBeamMaxHeight;
+                CompBeamSkipRein = data.CompBeamSkipRein;
+                if (data.CompParallelLineRatio > 0) CompParallelLineRatio = data.CompParallelLineRatio;
+                if (data.CompSlabRebarDiameter > 0) CompSlabRebarDiameter = data.CompSlabRebarDiameter;
+                if (data.CompSlabRebarSpacing > 0) CompSlabRebarSpacing = data.CompSlabRebarSpacing;
+                if (data.CompWallRebarDiameter > 0) CompWallRebarDiameter = data.CompWallRebarDiameter;
+                if (data.CompWallRebarSpacing > 0) CompWallRebarSpacing = data.CompWallRebarSpacing;
+                if (data.CompBottomRebarDiameter > 0) CompBottomRebarDiameter = data.CompBottomRebarDiameter;
+                if (data.CompBottomRebarSpacing > 0) CompBottomRebarSpacing = data.CompBottomRebarSpacing;
+                if (data.CompMassRebarDiameter > 0) CompMassRebarDiameter = data.CompMassRebarDiameter;
+                if (data.CompMassRebarSpacing > 0) CompMassRebarSpacing = data.CompMassRebarSpacing;
+                if (data.CompBeamRebarDiameter > 0) CompBeamRebarDiameter = data.CompBeamRebarDiameter;
+                if (data.CompBeamRebarSpacing > 0) CompBeamRebarSpacing = data.CompBeamRebarSpacing;
+                if (data.CompMassConstructDiameter > 0) CompMassConstructDiameter = data.CompMassConstructDiameter;
+                if (data.CompMassConstructMaxSpacing > 0) CompMassConstructMaxSpacing = data.CompMassConstructMaxSpacing;
+                if (data.CompBumpMaxHeight > 0) CompBumpMaxHeight = data.CompBumpMaxHeight;
+                if (data.CompBumpRebarDiameter > 0) CompBumpRebarDiameter = data.CompBumpRebarDiameter;
+                if (data.CompBumpRebarSpacing > 0) CompBumpRebarSpacing = data.CompBumpRebarSpacing;
                 // Tab C: 道路
                 RoadGapWidth = data.RoadGapWidth;
                 RoadCrosswalkWidth = data.RoadCrosswalkWidth;
@@ -1858,6 +2046,32 @@ namespace HyCADTool.Shell.ViewModels
             public double DimensionDistanceWithDim { get; set; } = 6.0;
             public double MleaderDistance { get; set; } = 6.0;
             public double DimDistanceTolerance { get; set; } = 30.0;
+            public double CompParallelAngleThreshold { get; set; } = 15.0;
+            public double CompSlabMaxThickness { get; set; } = 300.0;
+            public double CompWallMaxThickness { get; set; } = 500.0;
+            public double CompBottomSlabMaxThickness { get; set; } = 700.0;
+            public bool CompIgnoreBottomSlabHeightDiff { get; set; } = true;
+            public double CompBottomSlabHeightDiff { get; set; } = 150.0;
+            public double CompMassMinSize { get; set; } = 1000.0;
+            public double CompBeamMaxWidth { get; set; } = 800.0;
+            public double CompBeamMaxHeight { get; set; } = 1500.0;
+            public bool CompBeamSkipRein { get; set; }
+            public double CompParallelLineRatio { get; set; } = 0.6;
+            public double CompSlabRebarDiameter { get; set; } = 14.0;
+            public double CompSlabRebarSpacing { get; set; } = 200.0;
+            public double CompWallRebarDiameter { get; set; } = 14.0;
+            public double CompWallRebarSpacing { get; set; } = 200.0;
+            public double CompBottomRebarDiameter { get; set; } = 14.0;
+            public double CompBottomRebarSpacing { get; set; } = 200.0;
+            public double CompMassRebarDiameter { get; set; } = 14.0;
+            public double CompMassRebarSpacing { get; set; } = 200.0;
+            public double CompBeamRebarDiameter { get; set; } = 14.0;
+            public double CompBeamRebarSpacing { get; set; } = 200.0;
+            public double CompMassConstructDiameter { get; set; } = 12.0;
+            public double CompMassConstructMaxSpacing { get; set; } = 500.0;
+            public double CompBumpMaxHeight { get; set; } = 150.0;
+            public double CompBumpRebarDiameter { get; set; } = 8.0;
+            public double CompBumpRebarSpacing { get; set; } = 200.0;
             // Tab C: 道路
             public double RoadGapWidth { get; set; } = 5.0;
             public double RoadCrosswalkWidth { get; set; } = 5.0;

@@ -9,7 +9,7 @@ namespace HyCADTool.Shell.Views
     /// Blender 风格命令面板（独立面板，通过 <c>HyB</c> 命令打开）。
     /// 左侧 <see cref="HyCAD.BlenderUI.Controls.IconTabBar"/> + 顶部
     /// <see cref="HyCAD.BlenderUI.Controls.Primitives.SearchBox"/> + 主区命令列表。
-    /// Hy/HyB 均打开此面板：Hy → 跳「设置」Tab，HyB → 停在默认 Tab；过滤走独立「过滤」Tab。
+    /// Hy/HyB 均打开此面板：Hy → 跳「命令」Tab，HyB → toggle 保持当前 Tab；设置走 ShowSettingsPanel。
     /// </summary>
     public partial class HyBlenderPanel : UserControl
     {

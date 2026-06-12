@@ -1,0 +1,5 @@
+<UserControl x:Class="HyCADTool.Features.G101.Views.DetailPreviewControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="120"
+             MinWidth="200"/>

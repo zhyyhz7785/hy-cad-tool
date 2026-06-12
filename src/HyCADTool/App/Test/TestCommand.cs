@@ -1,6 +1,5 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.Commands;
 using System;
 using System.Reflection;
 
@@ -24,9 +23,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("绘制钢筋 gj", () =>
+            SimpleLogger.LogElapsedTime("识别构件 N8", () =>
             {
-                new Features.Reinforcement.DrawReinforcementCommand().Execute();
+                new Features.Reinforcement.RecognizeComponentsCommand().Execute();
             });
         }
     }

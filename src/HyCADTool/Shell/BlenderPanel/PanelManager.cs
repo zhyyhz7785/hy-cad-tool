@@ -19,8 +19,8 @@ namespace HyCADTool.Shell
 {
     /// <summary>
     /// 面板管理器 —— 唯一的 PaletteSet（<see cref="Views.HyBlenderPanel"/>，命令 <c>Hy</c>/<c>HyB</c>）：
-    /// - <c>Hy</c>      → 打开面板并跳到「设置」伪 Tab
-    /// - <c>HyB</c>     → 打开/关闭面板（默认 Tab）
+    /// - <c>Hy</c>      → 打开面板并跳到「命令」编辑器（常用 Tab）
+    /// - <c>HyB</c>     → 打开/关闭面板（保持当前 Tab）
     /// - 过滤/桩基/聚类… → 打开面板并跳到对应分类 Tab
     ///
     /// 原 HyToolPanel 已退役、文件删除；保留的 ShowXxxPanel() 只作为回退入口，全部转发到
@@ -149,9 +149,9 @@ namespace HyCADTool.Shell
         //
         // commands.json 和旧代码仍可能通过 Hy/ShowXxxPanel 调用，保留 public 不抛异常。
 
-        /// <summary>Hy 命令 → 打开 HyBlenderPanel 的「设置」Tab。</summary>
+        /// <summary>Hy 命令 → 打开 HyBlenderPanel 的「命令」编辑器（常用 Tab）。</summary>
         public void ShowHyToolPanel()
-            => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.PreferencesTabKey);
+            => OpenHyBlenderPanelAndSelectTab(ViewModels.HyBlenderPanelViewModel.CommandsEditorKey);
 
         /// <summary>显示设置 → 同 <see cref="ShowHyToolPanel"/>。</summary>
         public void ShowSettingsPanel()

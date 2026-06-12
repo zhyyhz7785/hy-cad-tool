@@ -608,6 +608,16 @@ namespace HyCADTool.Features.Reinforcement.Domain
         public static MLeaderData[] CalculateLabelData(
             Polyline2D dotReinCenterPoly, double separation, double leaderDistance, string content)
         {
+            return CalculateLabelData(dotReinCenterPoly, separation, leaderDistance, content, null);
+        }
+
+        public static MLeaderData[] CalculateLabelData(
+            Polyline2D dotReinCenterPoly,
+            double separation,
+            double leaderDistance,
+            string defaultContent,
+            Func<Point2D, string> contentResolver)
+        {
             var result = new List<MLeaderData>();
             var segments = dotReinCenterPoly.GetSegments();
             double minGap = separation * 0.5; // 标注中点距离小于此值则视为重叠，跳过
@@ -625,7 +635,7 @@ namespace HyCADTool.Features.Reinforcement.Domain
                 {
                     AnchorPoints = points,
                     LeaderDistance = leaderDistance,
-                    Content = content
+                    Content = contentResolver != null ? contentResolver(mid) : defaultContent
                 });
             }
 
@@ -839,6 +849,112 @@ namespace HyCADTool.Features.Reinforcement.Domain
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 按构件分区配筋：主筋拉通凸起、梁区可跳过、标注/构造筋按构件类型。
+        /// </summary>
+        public static ReinforcementResult GenerateAllWithComponents(
+            Polyline2D boundary,
+            ReinParameters parameters,
+            Components.ComponentParameters componentParams,
+            IReadOnlyList<Components.ComponentRegion> componentRegions,
+            ReinRegion region,
+            IPolygonOffsetService offsetService,
+            ILineIntersectionService intersectionService)
+        {
+            Polyline2D workBoundary = boundary;
+            if (componentParams != null)
+                workBoundary = Components.BumpDetector.FlattenForMainRebar(boundary, componentParams.BumpMaxHeightMm);
+
+            var result = GenerateAll(workBoundary, parameters, offsetService, intersectionService, region);
+
+            if (componentParams != null && componentRegions != null && componentRegions.Count > 0)
+            {
+                if (componentParams.BeamSkipReinforcement)
+                    result.FinalReinforcements = FilterBeamSkippedRebars(result.FinalReinforcements, componentRegions);
+
+                if (result.DotReinCenterPoly != null && result.DotReinCenterPoly.VertexCount >= 3)
+                {
+                    double leaderDistance = parameters.MleaderDistance * parameters.Scale;
+                    result.MLeaders = CalculateLabelData(
+                        result.DotReinCenterPoly,
+                        parameters.DotSeparation,
+                        leaderDistance,
+                        componentParams.BuildLabelContent(Components.ComponentType.Slab),
+                        pt => componentParams.BuildLabelContent(
+                            Components.ComponentRecognizer.ClassifyPoint(pt, componentRegions)));
+                }
+
+                var extraBars = new List<Polyline2D>();
+                foreach (var comp in componentRegions)
+                {
+                    if (comp.Type == Components.ComponentType.MassConcrete)
+                    {
+                        extraBars.AddRange(
+                            Components.MassConcreteRebarGenerator.GenerateHorizontalBars(comp, componentParams, parameters));
+                    }
+                }
+
+                extraBars.AddRange(GenerateBumpSupplementalBars(boundary, componentParams, parameters));
+
+                if (extraBars.Count > 0)
+                {
+                    var merged = new List<Polyline2D>();
+                    if (result.FinalReinforcements != null)
+                        merged.AddRange(result.FinalReinforcements);
+                    merged.AddRange(extraBars);
+                    result.FinalReinforcements = merged.ToArray();
+                }
+            }
+
+            return result;
+        }
+
+        private static Polyline2D[] FilterBeamSkippedRebars(
+            Polyline2D[] bars,
+            IReadOnlyList<Components.ComponentRegion> componentRegions)
+        {
+            if (bars == null || bars.Length == 0)
+                return bars;
+
+            var beamRegions = componentRegions
+                .Where(r => r.Type == Components.ComponentType.Beam)
+                .ToList();
+            if (beamRegions.Count == 0)
+                return bars;
+
+            return bars
+                .Where(bar =>
+                {
+                    if (bar == null || bar.VertexCount < 2) return false;
+                    var mid = bar.GetSegmentAt(Math.Max(0, bar.VertexCount - 2)).MidPoint;
+                    return !beamRegions.Any(b => b.ContainsPoint(mid));
+                })
+                .ToArray();
+        }
+
+        private static IEnumerable<Polyline2D> GenerateBumpSupplementalBars(
+            Polyline2D boundary,
+            Components.ComponentParameters componentParams,
+            ReinParameters reinParameters)
+        {
+            var bumps = Components.BumpDetector.DetectBumps(boundary, componentParams.BumpMaxHeightMm);
+            foreach (var bump in bumps)
+            {
+                if (bump.VertexCount < 2) continue;
+                var seg = bump.GetSegmentAt(0);
+                if (seg.Length < 1.0) continue;
+                var ratios = GetEvenlySpacedRatios(seg.Length, componentParams.BumpRebarSpacing);
+                foreach (double r in ratios)
+                {
+                    var pt = seg.GetPointAtParameter(r);
+                    var bar = new Polyline2D();
+                    bar.AddVertex(pt);
+                    bar.AddVertex(pt.Add(new Vector2D(0, componentParams.BumpMaxHeightMm * 0.5)));
+                    yield return bar;
+                }
+            }
         }
 
         #endregion
