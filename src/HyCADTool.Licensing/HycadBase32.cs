@@ -7,6 +7,19 @@ namespace HyCADTool.Licensing
     {
         private const string Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+        /// <summary>32 位无分隔机器码是否全属本字母表。</summary>
+        public static bool IsValidNormalizedCode(string normalized32)
+        {
+            if (string.IsNullOrEmpty(normalized32) || normalized32.Length != 32)
+                return false;
+            foreach (var c in normalized32)
+            {
+                if (Alphabet.IndexOf(c) < 0)
+                    return false;
+            }
+            return true;
+        }
+
         public static string Encode20Bytes(byte[] first20)
         {
             if (first20 == null) first20 = Array.Empty<byte>();

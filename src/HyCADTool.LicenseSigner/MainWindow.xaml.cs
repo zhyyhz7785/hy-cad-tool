@@ -79,15 +79,17 @@ namespace HyCADTool.LicenseSigner
         {
             if (MachineCodeHint == null) return;
             var raw = MachineCodeBox.Text ?? "";
-            var norm = LicenseService.NormalizeMc(raw);
+            var norm = MachineId.NormalizeMc(raw);
             if (string.IsNullOrEmpty(norm))
             {
                 MachineCodeHint.Text = "";
             }
-            else if (norm.Length != 32)
+            else if (!MachineId.IsValidMachineCodeFormat(raw))
             {
                 MachineCodeHint.Foreground = (Brush)FindResource("Err");
-                MachineCodeHint.Text = "机器码须为 8 段 × 4 位（已规范化 " + norm.Length + " 位）。";
+                MachineCodeHint.Text = norm.Length != 32
+                    ? "机器码须为 8 段 × 4 位（已规范化 " + norm.Length + " 位）。"
+                    : "机器码含非法字符，请确认粘贴完整。";
             }
             else
             {
@@ -135,15 +137,10 @@ namespace HyCADTool.LicenseSigner
             }
 
             var rawMc = MachineCodeBox.Text ?? "";
-            if (!MachineId.IsValidMachineCodeFormat(rawMc))
-            {
-                ErrorText.Text = "请填写完整机器码（8 段 × 4 位）。";
-                return;
-            }
             var mc = MachineId.NormalizeMachineCodeFromUser(rawMc);
             if (!MachineId.IsValidMachineCodeFormat(mc))
             {
-                ErrorText.Text = "机器码格式无效。";
+                ErrorText.Text = "请填写完整机器码（8 段 × 4 位，无非法字符）。";
                 return;
             }
 
@@ -267,8 +264,18 @@ namespace HyCADTool.LicenseSigner
                 File.AppendAllText(path, line + Environment.NewLine, new UTF8Encoding(true));
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                try
+                {
+                    var path = Path.Combine(Path.GetTempPath(), "signer-crash.log");
+                    File.AppendAllText(path,
+                        "--- ledger " + DateTime.UtcNow.ToString("o") + " ---\n" + ex + "\n",
+                        Encoding.UTF8);
+                }
+                catch
+                {
+                }
                 return false;
             }
         }

@@ -53,15 +53,11 @@ namespace HyCADTool.Licensing
             return LastStatus.Tier;
         }
 
-        public static string NormalizeMc(string c)
-        {
-            if (string.IsNullOrWhiteSpace(c)) return "";
-            return c.Trim().Replace("-", "").Replace(" ", "");
-        }
+        public static string NormalizeMc(string c) => MachineId.NormalizeMc(c);
 
         public static bool IsMachineCodeMatch(string licenseMc, string localMc)
         {
-            return string.Equals(NormalizeMc(licenseMc), NormalizeMc(localMc), StringComparison.OrdinalIgnoreCase);
+            return string.Equals(NormalizeMc(licenseMc), NormalizeMc(localMc), StringComparison.Ordinal);
         }
 
         public static bool TryVerifyDocument(string jsonText, out LicenseDocumentDto dto, out string error)
@@ -129,6 +125,7 @@ namespace HyCADTool.Licensing
             {
                 Directory.CreateDirectory(LicensePaths.ProgramDataHyCAD);
                 File.WriteAllText(LicensePaths.LicenseFile, jsonText.Trim(), new System.Text.UTF8Encoding(false));
+                Instance.Refresh(true);
                 return true;
             }
             catch (Exception ex)
@@ -249,7 +246,7 @@ namespace HyCADTool.Licensing
             }
             else if (!status.Ok && !string.IsNullOrWhiteSpace(status.ErrorMessage))
             {
-                // 保留 license 自身错误，不混入 state 提示
+                status.ErrorMessage += "\n\n另：state.bin 异常，可尝试：" + StateRecoveryHint;
             }
             else
             {

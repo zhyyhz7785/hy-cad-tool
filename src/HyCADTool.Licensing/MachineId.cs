@@ -30,17 +30,24 @@ namespace HyCADTool.Licensing
             return _cachedMachineCode;
         }
 
+        /// <summary>去分隔符/空格并大写，供比较与格式校验。</summary>
+        public static string NormalizeMc(string c)
+        {
+            if (string.IsNullOrWhiteSpace(c)) return "";
+            return c.Trim().Replace("-", "").Replace(" ", "").ToUpperInvariant();
+        }
+
         public static string NormalizeMachineCodeFromUser(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return s;
-            var t = s.Trim().ToUpperInvariant().Replace("-", "").Replace(" ", "");
+            var t = NormalizeMc(s);
             if (t.Length != 32) return s.Trim();
             return string.Join("-", Enumerable.Range(0, 8).Select(i => t.Substring(i * 4, 4)));
         }
 
         public static bool IsValidMachineCodeFormat(string s)
         {
-            return LicenseService.NormalizeMc(s).Length == 32;
+            return HycadBase32.IsValidNormalizedCode(NormalizeMc(s));
         }
 
         private static string Wmi(string wmiClass, string prop)

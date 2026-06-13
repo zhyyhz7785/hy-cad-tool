@@ -235,6 +235,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("HYDCEL")]    public void Cmd_HYDCEL()    => ReCallClass.Invoke("HYDCEL");
         [CommandMethod("HYDCELSET")] public void Cmd_HYDCELSET() => ReCallClass.Invoke("HYDCELSET");
         [CommandMethod("HYMBR")]     public void Cmd_HYMBR()     => ReCallClass.Invoke("HYMBR");
+        [CommandMethod("HYMBRN")]    public void Cmd_HYMBRN()    => ReCallClass.Invoke("HYMBRN");
         [CommandMethod("HYJP")]      public void Cmd_HYJP()      => ReCallClass.Invoke("HYJP");
         [CommandMethod("HYOV")]      public void Cmd_HYOV()      => ReCallClass.Invoke("HYOV");
         [CommandMethod("HYOVSET")]   public void Cmd_HYOVSET()   => ReCallClass.Invoke("HYOVSET");

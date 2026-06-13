@@ -211,6 +211,7 @@ namespace HyCADTool.App.Production
         [CommandMethod("HYDCEL")]    public void Cmd_HYDCEL() => LicenseGate.RunGated("HYDCEL", () => ProductionDispatcher.Invoke("HYDCEL"));
         [CommandMethod("HYDCELSET")] public void Cmd_HYDCELSET() => LicenseGate.RunGated("HYDCELSET", () => ProductionDispatcher.Invoke("HYDCELSET"));
         [CommandMethod("HYMBR")]     public void Cmd_HYMBR() => LicenseGate.RunGated("HYMBR", () => ProductionDispatcher.Invoke("HYMBR"));
+        [CommandMethod("HYMBRN")]    public void Cmd_HYMBRN() => LicenseGate.RunGated("HYMBRN", () => ProductionDispatcher.Invoke("HYMBRN"));
         [CommandMethod("HYJP")]      public void Cmd_HYJP() => LicenseGate.RunGated("HYJP", () => ProductionDispatcher.Invoke("HYJP"));
         [CommandMethod("HYOV")]      public void Cmd_HYOV() => LicenseGate.RunGated("HYOV", () => ProductionDispatcher.Invoke("HYOV"));
         [CommandMethod("HYOVSET")]   public void Cmd_HYOVSET() => LicenseGate.RunGated("HYOVSET", () => ProductionDispatcher.Invoke("HYOVSET"));

@@ -9,6 +9,8 @@ namespace HyCADTool.Shell.Licensing
     {
         private static string _lastBlockMessageKey;
 
+        public static void ResetBlockMessage() => _lastBlockMessageKey = null;
+
         public static void RunGated(string commandKey, Action action)
         {
 #if !HYCAD_PRODUCTION
@@ -33,9 +35,10 @@ namespace HyCADTool.Shell.Licensing
 
             if (!st.Ok)
             {
+                var reason = FormatBlockReason(st);
                 WriteBlockOnce(
-                    "invalid:" + (st.ErrorMessage ?? ""),
-                    $"\n[HyCAD] 命令「{commandKey}」需要 {required} 及以上许可：{st.ErrorMessage}\n[HyCAD] 输入 hyLicense 可查看机器码并激活。\n");
+                    "invalid:" + reason,
+                    $"\n[HyCAD] 命令「{commandKey}」需要 {required} 及以上许可：{reason}\n[HyCAD] 输入 hyLicense 可查看机器码并激活。\n");
                 return;
             }
 
@@ -49,6 +52,14 @@ namespace HyCADTool.Shell.Licensing
 
             _lastBlockMessageKey = null;
             action();
+        }
+
+        private static string FormatBlockReason(LicenseStatus st)
+        {
+            if (st.ClockRollBackLocked && st.RecognizedTier > LicenseProductTier.Freemium
+                && !string.IsNullOrWhiteSpace(st.ErrorMessage))
+                return st.ErrorMessage;
+            return st.ErrorMessage ?? "未激活（免费版）。";
         }
 
         private static void WriteBlockOnce(string key, string msg)

@@ -57,6 +57,7 @@
         "hyef_Axis_CreateTable":       { "type": "HyCADTool.Features.EquipmentFoundation.EF_AxisCreateTableCommand",  "method": "Execute", "category": "设备基础", "displayName": "轴线表",       "tooltip": "创建轴线表（hyef_Axis_CreateTable）",              "order": 60 },
 
         "HYMBR":            { "type": "HyCADTool.Features.TitleBlock.MBRCommand",                "method": "Execute", "category": "图框视口", "displayName": "最小包围矩形","tooltip": "最小包围矩形（HYMBR）",      "order": 10 },
+        "HYMBRN":           { "type": "HyCADTool.Features.TitleBlock.MBRNCommand",               "method": "Execute", "category": "图框视口", "displayName": "MBR性能对比","tooltip": "MBR聚类BFS/Grid对比（HYMBRN）", "order": 11 },
         "HYMBRD":           { "type": "HyCADTool.Features.TitleBlock.DrawTitleBlockCommand",     "method": "Execute", "category": "图框视口", "displayName": "绘制图框",    "tooltip": "绘制图框（HYMBRD）",         "order": 20 },
         "HYMBRC":           { "type": "HyCADTool.Features.TitleBlock.CreateLayoutViewportsCommand","method": "Execute", "category": "图框视口", "displayName": "布局视口",    "tooltip": "创建布局视口（HYMBRC）",     "order": 30 },
         "HY_PackViewports": { "type": "HyCADTool.Features.TitleBlock.PackViewportsCommand",      "method": "Execute", "category": "图框视口", "displayName": "视口排列",    "tooltip": "视口紧凑排列（HY_PackViewports）", "order": 40 },

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using HyCADTool.Licensing;
+using HyCADTool.Shell.Licensing;
 using Microsoft.Win32;
 using QRCoder;
 
@@ -163,6 +164,7 @@ namespace HyCADTool.Shell.Views
         private void FinishImportSuccess()
         {
             RefreshStatusUi(forceRefresh: true);
+            LicenseGate.ResetBlockMessage();
             var st = LicenseService.Instance.LastStatus;
             if (st != null && st.Ok && st.Tier > LicenseProductTier.Freemium)
             {

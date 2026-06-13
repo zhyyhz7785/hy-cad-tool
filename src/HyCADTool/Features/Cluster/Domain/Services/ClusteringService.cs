@@ -1,6 +1,7 @@
 using HyCAD.Geometry;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HyCADTool.Features.Cluster.Domain.Services
 {
@@ -63,6 +64,124 @@ namespace HyCADTool.Features.Cluster.Domain.Services
             }
 
             return clusters;
+        }
+
+        /// <summary>
+        /// 空间网格 + 并查集：候选对由 expanded bbox 覆盖的网格单元筛出，再精确 DistanceTo 判定。
+        /// </summary>
+        public List<List<T>> ClusterByBoundsDistanceGrid<T>(
+            List<T> items,
+            Func<T, BoundingBox> getBounds,
+            double maxDistance)
+        {
+            if (items == null || items.Count == 0)
+                return new List<List<T>>();
+
+            int n = items.Count;
+            if (n == 1)
+                return new List<List<T>> { new List<T> { items[0] } };
+
+            var bounds = new BoundingBox[n];
+            for (int i = 0; i < n; i++)
+                bounds[i] = getBounds(items[i]);
+
+            var parent = new int[n];
+            var rank = new int[n];
+            for (int i = 0; i < n; i++)
+                parent[i] = i;
+
+            int Find(int x)
+            {
+                while (parent[x] != x)
+                {
+                    parent[x] = parent[parent[x]];
+                    x = parent[x];
+                }
+                return x;
+            }
+
+            void Union(int a, int b)
+            {
+                int ra = Find(a);
+                int rb = Find(b);
+                if (ra == rb) return;
+                if (rank[ra] < rank[rb])
+                    parent[ra] = rb;
+                else if (rank[ra] > rank[rb])
+                    parent[rb] = ra;
+                else
+                {
+                    parent[rb] = ra;
+                    rank[ra]++;
+                }
+            }
+
+            double cellSize = maxDistance;
+            var grid = new Dictionary<(long Cx, long Cy), List<int>>();
+
+            for (int i = 0; i < n; i++)
+            {
+                ForEachGridCell(bounds[i], cellSize, (cx, cy) =>
+                {
+                    var key = (cx, cy);
+                    if (!grid.TryGetValue(key, out var list))
+                    {
+                        list = new List<int>();
+                        grid[key] = list;
+                    }
+                    list.Add(i);
+                });
+            }
+
+            var candidates = new HashSet<int>();
+            for (int i = 0; i < n; i++)
+            {
+                candidates.Clear();
+                var query = bounds[i].Expand(maxDistance, maxDistance);
+                ForEachGridCell(query, cellSize, (cx, cy) =>
+                {
+                    if (!grid.TryGetValue((cx, cy), out var list)) return;
+                    foreach (int j in list)
+                    {
+                        if (j > i)
+                            candidates.Add(j);
+                    }
+                });
+
+                foreach (int j in candidates)
+                {
+                    if (bounds[i].DistanceTo(bounds[j]) <= maxDistance)
+                        Union(i, j);
+                }
+            }
+
+            var groups = new Dictionary<int, List<T>>();
+            for (int i = 0; i < n; i++)
+            {
+                int root = Find(i);
+                if (!groups.TryGetValue(root, out var cluster))
+                {
+                    cluster = new List<T>();
+                    groups[root] = cluster;
+                }
+                cluster.Add(items[i]);
+            }
+
+            return groups.Values.ToList();
+        }
+
+        private static void ForEachGridCell(BoundingBox region, double cellSize, Action<long, long> action)
+        {
+            long minCx = (long)Math.Floor(region.MinPoint.X / cellSize);
+            long maxCx = (long)Math.Floor(region.MaxPoint.X / cellSize);
+            long minCy = (long)Math.Floor(region.MinPoint.Y / cellSize);
+            long maxCy = (long)Math.Floor(region.MaxPoint.Y / cellSize);
+
+            for (long cx = minCx; cx <= maxCx; cx++)
+            {
+                for (long cy = minCy; cy <= maxCy; cy++)
+                    action(cx, cy);
+            }
         }
 
         /// <summary>
