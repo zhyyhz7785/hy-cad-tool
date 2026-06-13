@@ -8,6 +8,12 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+  <!-- Release：单目录交付到 build/artifacts/LicenseSigner（exe + 私钥 + 文档） -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <OutputPath>..\..\build\artifacts\LicenseSigner\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- Costura：把 HyCADTool.Licensing.dll / Newtonsoft.Json.dll 内嵌进 exe，Release 出单文件 -->
@@ -21,8 +27,20 @@
     <None Update="PrivateKey.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="README-签发流程.md">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
+  <!-- 若存在 build/keys/rsa-priv.xml，Debug/Release 均链接为输出目录 PrivateKey.xml -->
   <ItemGroup>
-    <None Condition="'$(Configuration)'=='Debug' and Exists('$(MSBuildThisFileDirectory)..\..\build\keys\rsa-priv.xml')" Include="..\..\build\keys\rsa-priv.xml" Link="PrivateKey.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Condition="Exists('$(MSBuildThisFileDirectory)..\..\build\keys\rsa-priv.xml')"
+          Include="..\..\build\keys\rsa-priv.xml"
+          Link="PrivateKey.xml"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <Target Name="CopySignerDocs" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\README-签发流程.md"
+          DestinationFiles="$(OutputPath)README-LicenseSigner.md"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>

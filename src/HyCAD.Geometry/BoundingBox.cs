@@ -148,15 +148,32 @@ namespace HyCAD.Geometry
         }
 
         /// <summary>
+        /// 轴分离间隙的平方（相交时为 0），聚类热路径用，避免 Sqrt。
+        /// </summary>
+        public double GapDistanceSquared(BoundingBox other)
+        {
+            double dx = System.Math.Max(0, System.Math.Max(MinPoint.X - other.MaxPoint.X, other.MinPoint.X - MaxPoint.X));
+            double dy = System.Math.Max(0, System.Math.Max(MinPoint.Y - other.MaxPoint.Y, other.MinPoint.Y - MaxPoint.Y));
+            return dx * dx + dy * dy;
+        }
+
+        /// <summary>
+        /// 两 bbox 最小间隙是否 ≤ maxDistance（含相交）。
+        /// </summary>
+        public bool IsWithinDistance(BoundingBox other, double maxDistance)
+        {
+            double limit = maxDistance * maxDistance;
+            return GapDistanceSquared(other) <= limit;
+        }
+
+        /// <summary>
         /// 计算到另一个边界框的最小距离
         /// </summary>
         /// <param name="other">另一个边界框</param>
         /// <returns>最小距离（相交返回0）</returns>
         public double DistanceTo(BoundingBox other)
         {
-            double dx = System.Math.Max(0, System.Math.Max(MinPoint.X - other.MaxPoint.X, other.MinPoint.X - MaxPoint.X));
-            double dy = System.Math.Max(0, System.Math.Max(MinPoint.Y - other.MaxPoint.Y, other.MinPoint.Y - MaxPoint.Y));
-            return System.Math.Sqrt(dx * dx + dy * dy);
+            return System.Math.Sqrt(GapDistanceSquared(other));
         }
 
         /// <summary>

@@ -7,7 +7,6 @@ namespace HyCADTool.Features.Cluster.Domain.Services
 {
     /// <summary>
     /// 聚类算法服务实现（平台无关）
-    /// 使用 BFS（广度优先搜索）进行基于距离的聚类
     /// </summary>
     public class ClusteringService : IClusteringService
     {
@@ -23,16 +22,16 @@ namespace HyCADTool.Features.Cluster.Domain.Services
                 return new List<List<T>>();
 
             int n = items.Count;
+            var bounds = CacheBounds(items, getBounds, n);
             bool[] visited = new bool[n];
-            List<List<T>> clusters = new List<List<T>>();
+            var clusters = new List<List<T>>();
 
-            // BFS 聚类
             for (int i = 0; i < n; i++)
             {
                 if (visited[i]) continue;
 
                 var cluster = new List<T>();
-                Queue<int> queue = new Queue<int>();
+                var queue = new Queue<int>();
                 queue.Enqueue(i);
                 visited[i] = true;
 
@@ -41,17 +40,11 @@ namespace HyCADTool.Features.Cluster.Domain.Services
                     int current = queue.Dequeue();
                     cluster.Add(items[current]);
 
-                    BoundingBox currentBounds = getBounds(items[current]);
-
-                    // 查找相邻项目
                     for (int j = 0; j < n; j++)
                     {
                         if (visited[j]) continue;
 
-                        BoundingBox otherBounds = getBounds(items[j]);
-                        double distance = currentBounds.DistanceTo(otherBounds);
-
-                        if (distance <= maxDistance)
+                        if (bounds[current].IsWithinDistance(bounds[j], maxDistance))
                         {
                             queue.Enqueue(j);
                             visited[j] = true;
@@ -67,7 +60,7 @@ namespace HyCADTool.Features.Cluster.Domain.Services
         }
 
         /// <summary>
-        /// 空间网格 + 并查集：候选对由 expanded bbox 覆盖的网格单元筛出，再精确 DistanceTo 判定。
+        /// 空间网格（中心 cell + 自适应邻域）+ 并查集
         /// </summary>
         public List<List<T>> ClusterByBoundsDistanceGrid<T>(
             List<T> items,
@@ -81,107 +74,108 @@ namespace HyCADTool.Features.Cluster.Domain.Services
             if (n == 1)
                 return new List<List<T>> { new List<T> { items[0] } };
 
-            var bounds = new BoundingBox[n];
-            for (int i = 0; i < n; i++)
-                bounds[i] = getBounds(items[i]);
-
-            var parent = new int[n];
-            var rank = new int[n];
-            for (int i = 0; i < n; i++)
-                parent[i] = i;
-
-            int Find(int x)
-            {
-                while (parent[x] != x)
-                {
-                    parent[x] = parent[parent[x]];
-                    x = parent[x];
-                }
-                return x;
-            }
-
-            void Union(int a, int b)
-            {
-                int ra = Find(a);
-                int rb = Find(b);
-                if (ra == rb) return;
-                if (rank[ra] < rank[rb])
-                    parent[ra] = rb;
-                else if (rank[ra] > rank[rb])
-                    parent[rb] = ra;
-                else
-                {
-                    parent[rb] = ra;
-                    rank[ra]++;
-                }
-            }
-
+            var bounds = CacheBounds(items, getBounds, n);
+            var unionFind = new UnionFind(n);
             double cellSize = maxDistance;
             var grid = new Dictionary<(long Cx, long Cy), List<int>>();
+            var largeIndices = new List<int>();
 
             for (int i = 0; i < n; i++)
             {
-                ForEachGridCell(bounds[i], cellSize, (cx, cy) =>
+                if (bounds[i].Width > cellSize * 2 || bounds[i].Height > cellSize * 2)
+                    largeIndices.Add(i);
+
+                var center = bounds[i].Center;
+                long cx = (long)Math.Floor(center.X / cellSize);
+                long cy = (long)Math.Floor(center.Y / cellSize);
+                var key = (cx, cy);
+                if (!grid.TryGetValue(key, out var list))
                 {
-                    var key = (cx, cy);
-                    if (!grid.TryGetValue(key, out var list))
-                    {
-                        list = new List<int>();
-                        grid[key] = list;
-                    }
-                    list.Add(i);
-                });
+                    list = new List<int>();
+                    grid[key] = list;
+                }
+                list.Add(i);
             }
 
             var candidates = new HashSet<int>();
             for (int i = 0; i < n; i++)
             {
                 candidates.Clear();
-                var query = bounds[i].Expand(maxDistance, maxDistance);
-                ForEachGridCell(query, cellSize, (cx, cy) =>
+                var center = bounds[i].Center;
+                double halfDiag = Math.Sqrt(
+                    bounds[i].Width * bounds[i].Width + bounds[i].Height * bounds[i].Height) * 0.5;
+                int radius = 1 + (int)Math.Ceiling((halfDiag + maxDistance) / cellSize);
+
+                long cx0 = (long)Math.Floor(center.X / cellSize);
+                long cy0 = (long)Math.Floor(center.Y / cellSize);
+
+                for (long dx = -radius; dx <= radius; dx++)
                 {
-                    if (!grid.TryGetValue((cx, cy), out var list)) return;
-                    foreach (int j in list)
+                    for (long dy = -radius; dy <= radius; dy++)
                     {
-                        if (j > i)
-                            candidates.Add(j);
+                        if (!grid.TryGetValue((cx0 + dx, cy0 + dy), out var list)) continue;
+                        foreach (int j in list)
+                        {
+                            if (j > i)
+                                candidates.Add(j);
+                        }
                     }
-                });
+                }
+
+                foreach (int j in largeIndices)
+                {
+                    if (j > i)
+                        candidates.Add(j);
+                }
 
                 foreach (int j in candidates)
                 {
-                    if (bounds[i].DistanceTo(bounds[j]) <= maxDistance)
-                        Union(i, j);
+                    if (bounds[i].IsWithinDistance(bounds[j], maxDistance))
+                        unionFind.Union(i, j);
                 }
             }
 
-            var groups = new Dictionary<int, List<T>>();
-            for (int i = 0; i < n; i++)
-            {
-                int root = Find(i);
-                if (!groups.TryGetValue(root, out var cluster))
-                {
-                    cluster = new List<T>();
-                    groups[root] = cluster;
-                }
-                cluster.Add(items[i]);
-            }
-
-            return groups.Values.ToList();
+            return BuildClustersFromUnionFind(items, unionFind, n);
         }
 
-        private static void ForEachGridCell(BoundingBox region, double cellSize, Action<long, long> action)
+        /// <summary>
+        /// X 排序 + 剪枝 + 并查集
+        /// </summary>
+        public List<List<T>> ClusterByBoundsDistanceSweep<T>(
+            List<T> items,
+            Func<T, BoundingBox> getBounds,
+            double maxDistance)
         {
-            long minCx = (long)Math.Floor(region.MinPoint.X / cellSize);
-            long maxCx = (long)Math.Floor(region.MaxPoint.X / cellSize);
-            long minCy = (long)Math.Floor(region.MinPoint.Y / cellSize);
-            long maxCy = (long)Math.Floor(region.MaxPoint.Y / cellSize);
+            if (items == null || items.Count == 0)
+                return new List<List<T>>();
 
-            for (long cx = minCx; cx <= maxCx; cx++)
+            int n = items.Count;
+            if (n == 1)
+                return new List<List<T>> { new List<T> { items[0] } };
+
+            var bounds = CacheBounds(items, getBounds, n);
+            var unionFind = new UnionFind(n);
+            var order = new int[n];
+            for (int i = 0; i < n; i++)
+                order[i] = i;
+
+            Array.Sort(order, (a, b) => bounds[a].MinPoint.X.CompareTo(bounds[b].MinPoint.X));
+
+            for (int ai = 0; ai < n; ai++)
             {
-                for (long cy = minCy; cy <= maxCy; cy++)
-                    action(cx, cy);
+                int i = order[ai];
+                for (int aj = ai + 1; aj < n; aj++)
+                {
+                    int j = order[aj];
+                    if (bounds[j].MinPoint.X - bounds[i].MaxPoint.X > maxDistance)
+                        break;
+
+                    if (bounds[i].IsWithinDistance(bounds[j], maxDistance))
+                        unionFind.Union(i, j);
+                }
             }
+
+            return BuildClustersFromUnionFind(items, unionFind, n);
         }
 
         /// <summary>
@@ -197,8 +191,8 @@ namespace HyCADTool.Features.Cluster.Domain.Services
             int n = points.Count;
             bool[] visited = new bool[n];
             List<List<Point2D>> clusters = new List<List<Point2D>>();
+            double limitSq = maxDistance * maxDistance;
 
-            // BFS 聚类
             for (int i = 0; i < n; i++)
             {
                 if (visited[i]) continue;
@@ -213,14 +207,13 @@ namespace HyCADTool.Features.Cluster.Domain.Services
                     int current = queue.Dequeue();
                     cluster.Add(points[current]);
 
-                    // 查找相邻点
                     for (int j = 0; j < n; j++)
                     {
                         if (visited[j]) continue;
 
-                        double distance = points[current].DistanceTo(points[j]);
-
-                        if (distance <= maxDistance)
+                        double dx = points[current].X - points[j].X;
+                        double dy = points[current].Y - points[j].Y;
+                        if (dx * dx + dy * dy <= limitSq)
                         {
                             queue.Enqueue(j);
                             visited[j] = true;
@@ -234,6 +227,70 @@ namespace HyCADTool.Features.Cluster.Domain.Services
 
             return clusters;
         }
+
+        private static BoundingBox[] CacheBounds<T>(List<T> items, Func<T, BoundingBox> getBounds, int n)
+        {
+            var bounds = new BoundingBox[n];
+            for (int i = 0; i < n; i++)
+                bounds[i] = getBounds(items[i]);
+            return bounds;
+        }
+
+        private static List<List<T>> BuildClustersFromUnionFind<T>(List<T> items, UnionFind unionFind, int n)
+        {
+            var groups = new Dictionary<int, List<T>>();
+            for (int i = 0; i < n; i++)
+            {
+                int root = unionFind.Find(i);
+                if (!groups.TryGetValue(root, out var cluster))
+                {
+                    cluster = new List<T>();
+                    groups[root] = cluster;
+                }
+                cluster.Add(items[i]);
+            }
+
+            return groups.Values.ToList();
+        }
+
+        private sealed class UnionFind
+        {
+            private readonly int[] _parent;
+            private readonly int[] _rank;
+
+            public UnionFind(int n)
+            {
+                _parent = new int[n];
+                _rank = new int[n];
+                for (int i = 0; i < n; i++)
+                    _parent[i] = i;
+            }
+
+            public int Find(int x)
+            {
+                while (_parent[x] != x)
+                {
+                    _parent[x] = _parent[_parent[x]];
+                    x = _parent[x];
+                }
+                return x;
+            }
+
+            public void Union(int a, int b)
+            {
+                int ra = Find(a);
+                int rb = Find(b);
+                if (ra == rb) return;
+                if (_rank[ra] < _rank[rb])
+                    _parent[ra] = rb;
+                else if (_rank[ra] > _rank[rb])
+                    _parent[rb] = ra;
+                else
+                {
+                    _parent[rb] = ra;
+                    _rank[ra]++;
+                }
+            }
+        }
     }
 }
-

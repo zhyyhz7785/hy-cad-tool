@@ -6,10 +6,10 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("HyCADTool")]
-[assembly: AssemblyDescription("Refactored AutoCAD Plugin with Clean Architecture")]
+[assembly: AssemblyDescription("HyCAD AutoCAD 插件：hy道路/钢筋/结构辅助工具集")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("HyCADTool Team")]
-[assembly: AssemblyProduct("HyCADTool")]
+[assembly: AssemblyProduct("HyCAD")]
 [assembly: AssemblyCopyright("Copyright © 2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

@@ -27,6 +27,16 @@ function Find-Iscc {
     return $null
 }
 
+# Inno 加强版按 GBK 解析 .iss；仓库内为 UTF-8，编译前转码
+function New-GbkIssCopy {
+    param([string]$IssPath)
+    $utf8 = [System.Text.UTF8Encoding]::new($false)
+    $text = [System.IO.File]::ReadAllText($IssPath, $utf8)
+    $gbkPath = Join-Path $env:TEMP ("HyCAD-Setup-" + [guid]::NewGuid().ToString("n") + ".iss")
+    [System.IO.File]::WriteAllText($gbkPath, $text, [System.Text.Encoding]::GetEncoding(936))
+    return $gbkPath
+}
+
 Write-Host "==> PackBundle (Production + bundle)" -ForegroundColor Cyan
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "PackBundle.ps1") -Version $Version -RepoRoot $RepoRoot
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -42,9 +52,15 @@ if (-not $iscc) {
 }
 
 $iss = Join-Path $RepoRoot "build\installer\HyCAD-Setup.iss"
-Write-Host "==> Inno Setup: $iscc" -ForegroundColor Cyan
-& $iscc "/DRepoRoot=$RepoRoot" "/DMyAppVersion=$Version" $iss
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$issGbk = New-GbkIssCopy -IssPath $iss
+Write-Host "==> Inno Setup (GBK): $iscc" -ForegroundColor Cyan
+try {
+    & $iscc "/DRepoRoot=$RepoRoot" "/DMyAppVersion=$Version" $issGbk
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+finally {
+    if (Test-Path $issGbk) { Remove-Item $issGbk -Force -ErrorAction SilentlyContinue }
+}
 
 $setupExe = Join-Path $RepoRoot "build\artifacts\HyCAD-Setup-$Version.exe"
 Write-Host ""

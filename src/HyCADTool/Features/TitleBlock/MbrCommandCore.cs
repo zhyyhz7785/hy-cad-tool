@@ -67,7 +67,7 @@ namespace HyCADTool.Features.TitleBlock
         internal static List<(ObjectId Id, BoundingBox Bounds)> CollectEntityBounds(
             Transaction tr, SelectionSet selection)
         {
-            var entityBounds = new List<(ObjectId Id, BoundingBox Bounds)>();
+            var entityBounds = new List<(ObjectId Id, BoundingBox Bounds)>(selection.Count);
 
             foreach (SelectedObject selObj in selection)
             {
@@ -76,19 +76,15 @@ namespace HyCADTool.Features.TitleBlock
                 var ent = tr.GetObject(selObj.ObjectId, OpenMode.ForRead) as Entity;
                 if (ent == null) continue;
 
-                Extents3d? bounds = null;
                 try
                 {
-                    bounds = ent.Bounds;
+                    var extents = ent.GeometricExtents;
+                    entityBounds.Add((selObj.ObjectId, extents.ToBoundingBox()));
                 }
                 catch
                 {
                     continue;
                 }
-
-                if (!bounds.HasValue) continue;
-
-                entityBounds.Add((selObj.ObjectId, bounds.Value.ToBoundingBox()));
             }
 
             return entityBounds;

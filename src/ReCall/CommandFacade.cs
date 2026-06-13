@@ -214,7 +214,7 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadLaneMarking")][CommandMethod("rLm")]   public void Cmd_hyRoadLaneMarking()   => ReCallClass.Invoke("hyRoadLaneMarking");
         [CommandMethod("hyRoadArrow")][CommandMethod("rAr")]         public void Cmd_hyRoadArrow()         => ReCallClass.Invoke("hyRoadArrow");
         [CommandMethod("hyRoadP")][CommandMethod("rPr")]            public void Cmd_hyRoadP()            => ReCallClass.Invoke("hyRoadP");
-        // 鸿业风格的纵断面 3 件套：FG 设计线（与 hyRoadP 等价）/ EG 地面线（v1.1）/ Label 标注到 DWG（v1.1）
+        // hy道路纵断面 3 件套：FG 设计线（与 hyRoadP 等价）/ EG 地面线（v1.1）/ Label 标注到 DWG（v1.1）
         [CommandMethod("hyRoadProfFG")][CommandMethod("rFg")]       public void Cmd_hyRoadProfFG()       => ReCallClass.Invoke("hyRoadProfFG");
         [CommandMethod("hyRoadProfEG")][CommandMethod("rEg")]       public void Cmd_hyRoadProfEG()       => ReCallClass.Invoke("hyRoadProfEG");
         [CommandMethod("hyRoadProfLabel")][CommandMethod("rPl")]    public void Cmd_hyRoadProfLabel()    => ReCallClass.Invoke("hyRoadProfLabel");

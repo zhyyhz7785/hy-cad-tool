@@ -10,8 +10,7 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace HyCADTool.Features.TitleBlock
 {
     /// <summary>
-    /// HYMBRN - HYMBR 聚类算法 A/B 性能对比（BFS vs 空间网格），结果一致时用 Grid 版出图。
-    /// 对比完成后可删除本命令，将 HYMBR 切到 Grid 实现。
+    /// HYMBRN - 收集/聚类/出图分段计时；BFS / Grid / Sweep 三路对比，一致时采用最快者出图。
     /// </summary>
     public sealed class MBRNCommand
     {
@@ -47,10 +46,26 @@ namespace HyCADTool.Features.TitleBlock
                 }
 
                 List<(ObjectId Id, BoundingBox Bounds)> entityBounds;
+                long msCollect;
+                long msBfs;
+                long msGrid;
+                long msSweep;
+                long msDraw;
+                int countBfs;
+                int countGrid;
+                int countSweep;
+                bool equivalent;
+                string winnerName;
+                List<List<(ObjectId Id, BoundingBox Bounds)>> outputClusters;
+
                 using (doc.LockDocument())
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
+                    var swCollect = Stopwatch.StartNew();
                     entityBounds = MbrCommandCore.CollectEntityBounds(tr, selectionResult.Value);
+                    swCollect.Stop();
+                    msCollect = swCollect.ElapsedMilliseconds;
+
                     if (entityBounds.Count == 0)
                     {
                         ed.WriteMessage("\n没有有效边界的图元。");
@@ -63,6 +78,8 @@ namespace HyCADTool.Features.TitleBlock
                         item => item.Bounds,
                         distanceThreshold);
                     swBfs.Stop();
+                    msBfs = swBfs.ElapsedMilliseconds;
+                    countBfs = clustersBfs.Count;
 
                     var swGrid = Stopwatch.StartNew();
                     var clustersGrid = _clusteringService.ClusterByBoundsDistanceGrid(
@@ -70,18 +87,56 @@ namespace HyCADTool.Features.TitleBlock
                         item => item.Bounds,
                         distanceThreshold);
                     swGrid.Stop();
+                    msGrid = swGrid.ElapsedMilliseconds;
+                    countGrid = clustersGrid.Count;
 
-                    bool equivalent = AreClusterPartitionsEquivalent(clustersBfs, clustersGrid);
-                    var useGrid = equivalent && swGrid.Elapsed <= swBfs.Elapsed;
-                    var outputClusters = useGrid ? clustersGrid : clustersBfs;
+                    var swSweep = Stopwatch.StartNew();
+                    var clustersSweep = _clusteringService.ClusterByBoundsDistanceSweep(
+                        entityBounds,
+                        item => item.Bounds,
+                        distanceThreshold);
+                    swSweep.Stop();
+                    msSweep = swSweep.ElapsedMilliseconds;
+                    countSweep = clustersSweep.Count;
 
+                    equivalent =
+                        AreClusterPartitionsEquivalent(clustersBfs, clustersGrid) &&
+                        AreClusterPartitionsEquivalent(clustersBfs, clustersSweep) &&
+                        AreClusterPartitionsEquivalent(clustersGrid, clustersSweep);
+
+                    outputClusters = clustersBfs;
+                    winnerName = "BFS";
+
+                    if (equivalent)
+                    {
+                        if (msSweep <= msGrid && msSweep <= msBfs)
+                        {
+                            outputClusters = clustersSweep;
+                            winnerName = "Sweep";
+                        }
+                        else if (msGrid <= msBfs)
+                        {
+                            outputClusters = clustersGrid;
+                            winnerName = "Grid";
+                        }
+                    }
+                    else
+                    {
+                        ed.WriteMessage("\n警告：三路聚类分区不一致，出图回退 BFS。");
+                    }
+
+                    var swDraw = Stopwatch.StartNew();
                     MbrCommandCore.GenerateBoundaryBoxes(tr, db, outputClusters, expandX, expandY);
-                    tr.Commit();
+                    swDraw.Stop();
+                    msDraw = swDraw.ElapsedMilliseconds;
 
-                    ed.WriteMessage(
-                        $"\n[HYMBRN] n={entityBounds.Count} | BFS {swBfs.ElapsedMilliseconds}ms ({clustersBfs.Count}组) | " +
-                        $"Grid {swGrid.ElapsedMilliseconds}ms ({clustersGrid.Count}组) | 分区一致={equivalent} | 出图={(useGrid ? "Grid" : "BFS")}");
+                    tr.Commit();
                 }
+
+                ed.WriteMessage(
+                    $"\n[HYMBRN] n={entityBounds.Count} | 收集={msCollect}ms | " +
+                    $"BFS={msBfs}ms({countBfs}) | Grid={msGrid}ms({countGrid}) | Sweep={msSweep}ms({countSweep}) | " +
+                    $"一致={equivalent} | 出图={msDraw}ms | 采用={winnerName}");
             }
             catch (System.Exception ex)
             {

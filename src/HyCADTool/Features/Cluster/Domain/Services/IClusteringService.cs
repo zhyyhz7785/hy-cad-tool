@@ -32,6 +32,14 @@ namespace HyCADTool.Features.Cluster.Domain.Services
             double maxDistance);
 
         /// <summary>
+        /// 基于边界框距离的聚类（X 排序 + 剪枝 + 并查集，CAD 分区场景通常最快）
+        /// </summary>
+        List<List<T>> ClusterByBoundsDistanceSweep<T>(
+            List<T> items,
+            System.Func<T, BoundingBox> getBounds,
+            double maxDistance);
+
+        /// <summary>
         /// 基于点距离的聚类算法（BFS）
         /// </summary>
         /// <param name="points">点集合</param>

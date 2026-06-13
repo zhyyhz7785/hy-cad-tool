@@ -57,16 +57,16 @@ namespace HyCADTool.LicenseSigner
             _privateKeyXml = null;
             KeyDot.Fill = (Brush)FindResource("Err");
             PrivateKeyStatus.Foreground = (Brush)FindResource("Err");
-            PrivateKeyStatus.Text = "未找到私钥。请把 build/keys/rsa-priv.xml 复制为本程序同目录的 PrivateKey.xml。";
+            PrivateKeyStatus.Text = "未找到私钥。请执行 build\\scripts\\_gen-rsa-keys.ps1 后重新 Release 编译，或把 build\\keys\\rsa-priv.xml 复制为同目录 PrivateKey.xml。";
         }
 
         private static string ResolvePrivateKeyPath()
         {
+            var baseDir = AppContext.BaseDirectory;
             var candidates = new[]
             {
-                Path.Combine(AppContext.BaseDirectory, "PrivateKey.xml"),
-                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "rsa-priv.xml")),
-                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "build", "keys", "rsa-priv.xml")),
+                Path.Combine(baseDir, "PrivateKey.xml"),
+                Path.GetFullPath(Path.Combine(baseDir, "..", "..", "keys", "rsa-priv.xml")),
             };
             foreach (var c in candidates)
             {
@@ -144,8 +144,7 @@ namespace HyCADTool.LicenseSigner
                 return;
             }
 
-            var ed = (EditionBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
-            if (EditionBox.IsEditable && !string.IsNullOrWhiteSpace(EditionBox.Text)) ed = EditionBox.Text.Trim();
+            var ed = GetEditionFromCombo(EditionBox);
             if (string.IsNullOrWhiteSpace(ed)) ed = "standard";
 
             var j = new JObject
@@ -278,6 +277,18 @@ namespace HyCADTool.LicenseSigner
                 }
                 return false;
             }
+        }
+
+        private static string GetEditionFromCombo(ComboBox box)
+        {
+            if (box == null) return null;
+            if (box.IsEditable && !string.IsNullOrWhiteSpace(box.Text))
+                return box.Text.Trim();
+
+            if (!(box.SelectedItem is ComboBoxItem item)) return null;
+            if (item.Content is TextBlock tb)
+                return tb.Text?.Trim();
+            return item.Content?.ToString()?.Trim();
         }
 
         private static string EscapeCsv(string s)
