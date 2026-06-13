@@ -23,6 +23,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Condition="Exists('$(MSBuildThisFileDirectory)..\..\build\keys\rsa-priv.xml')" Include="..\..\build\keys\rsa-priv.xml" Link="PrivateKey.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Condition="'$(Configuration)'=='Debug' and Exists('$(MSBuildThisFileDirectory)..\..\build\keys\rsa-priv.xml')" Include="..\..\build\keys\rsa-priv.xml" Link="PrivateKey.xml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

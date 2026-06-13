@@ -10,17 +10,24 @@ namespace HyCADTool.Licensing
     public static class MachineId
     {
         private const string Salt = "HYCAD-V1-SALT";
+        private static string _cachedMachineCode;
 
         public static string GetMachineCode()
         {
+            if (_cachedMachineCode != null) return _cachedMachineCode;
+
             var raw = new StringBuilder(256);
             try { raw.Append(Wmi("Win32_Processor", "ProcessorId")); } catch { raw.Append("p?"); }
             raw.Append('|');
             try { raw.Append(Wmi("Win32_BaseBoard", "SerialNumber")); } catch { raw.Append("b?"); }
             raw.Append('|');
             try { raw.Append(GetSystemDriveVolumeSerial()); } catch { raw.Append("v?"); }
-            var hash = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(raw.ToString() + Salt));
-            return HycadBase32.Encode20Bytes(hash);
+            using (var sha = SHA256.Create())
+            {
+                var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(raw.ToString() + Salt));
+                _cachedMachineCode = HycadBase32.Encode20Bytes(hash);
+            }
+            return _cachedMachineCode;
         }
 
         public static string NormalizeMachineCodeFromUser(string s)
@@ -28,8 +35,12 @@ namespace HyCADTool.Licensing
             if (string.IsNullOrWhiteSpace(s)) return s;
             var t = s.Trim().ToUpperInvariant().Replace("-", "").Replace(" ", "");
             if (t.Length != 32) return s.Trim();
-            // 加回 8 组
             return string.Join("-", Enumerable.Range(0, 8).Select(i => t.Substring(i * 4, 4)));
+        }
+
+        public static bool IsValidMachineCodeFormat(string s)
+        {
+            return LicenseService.NormalizeMc(s).Length == 32;
         }
 
         private static string Wmi(string wmiClass, string prop)

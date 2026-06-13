@@ -20,6 +20,7 @@ namespace HyCADTool.Licensing
         [JsonProperty("edition", Required = Required.Always)]
         public string Edition { get; set; }
 
+        /// <summary>v1 预留，运行时仅校验 edition，不逐项校验 features。</summary>
         [JsonProperty("features")]
         public List<string> Features { get; set; } = new List<string>();
 
@@ -32,9 +33,11 @@ namespace HyCADTool.Licensing
         [JsonProperty("perpetual", Required = Required.Always)]
         public bool Perpetual { get; set; }
 
+        /// <summary>v1 预留，运行时未强制校验设备数。</summary>
         [JsonProperty("max_devices")]
         public int MaxDevices { get; set; } = 1;
 
+        /// <summary>v1 预留，换机流程未启用。</summary>
         [JsonProperty("migration_token")]
         public string MigrationToken { get; set; }
 

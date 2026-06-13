@@ -7,121 +7,49 @@ namespace HyCADTool.Licensing
 {
     public sealed class LicenseService
     {
+        private static readonly TimeSpan RefreshMinInterval = TimeSpan.FromMinutes(5);
+
         public static LicenseService Instance { get; } = new LicenseService();
+
+        private DateTime _lastRefreshUtc = DateTime.MinValue;
+        private DateTime _licenseFileMtimeUtc = DateTime.MinValue;
+        private DateTime _stateFileMtimeUtc = DateTime.MinValue;
 
         private LicenseService() { }
 
         public LicenseStatus LastStatus { get; private set; } = new LicenseStatus();
 
-        public void Refresh()
+        public void Refresh() => Refresh(false);
+
+        public void Refresh(bool force)
         {
+            var licenseMtime = GetFileMtimeUtc(LicensePaths.LicenseFile);
+            var stateMtime = GetFileMtimeUtc(LicensePaths.StateFile);
+            if (!force
+                && _lastRefreshUtc != DateTime.MinValue
+                && DateTime.UtcNow - _lastRefreshUtc < RefreshMinInterval
+                && licenseMtime == _licenseFileMtimeUtc
+                && stateMtime == _stateFileMtimeUtc)
+            {
+                return;
+            }
+
+            _licenseFileMtimeUtc = licenseMtime;
+            _stateFileMtimeUtc = stateMtime;
+            _lastRefreshUtc = DateTime.UtcNow;
+
             var m = MachineId.GetMachineCode();
             StateStore.Instance.OnStartupUtc(DateTime.UtcNow, m);
+
+            var status = BuildStatusFromLicenseFile(m);
             if (StateStore.Instance.ClockRollBackLocked)
-            {
-                LastStatus = new LicenseStatus
-                {
-                    Ok = false,
-                    Tier = LicenseProductTier.Freemium,
-                    ErrorMessage = "系统时间曾异常回拨。请校时后联系销售重新签发，或继续免费版。"
-                };
-                return;
-            }
-
-            if (!File.Exists(LicensePaths.LicenseFile))
-            {
-                LastStatus = new LicenseStatus
-                {
-                    Ok = true,
-                    Tier = LicenseProductTier.Freemium,
-                    ErrorMessage = null
-                };
-                return;
-            }
-
-            string err;
-            LicenseDocumentDto dto;
-            try
-            {
-                var text = File.ReadAllText(LicensePaths.LicenseFile);
-                if (!TryVerifyDocument(text, out dto, out err))
-                {
-                    LastStatus = new LicenseStatus
-                    {
-                        Ok = false,
-                        Tier = LicenseProductTier.Freemium,
-                        ErrorMessage = err
-                    };
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                LastStatus = new LicenseStatus
-                {
-                    Ok = false,
-                    Tier = LicenseProductTier.Freemium,
-                    ErrorMessage = ex.GetType().Name + ": " + ex.Message
-                };
-                return;
-            }
-
-            if (!string.Equals(
-                    NormalizeMc(dto.MachineCode),
-                    NormalizeMc(m),
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                LastStatus = new LicenseStatus
-                {
-                    Ok = false,
-                    Tier = LicenseProductTier.Freemium,
-                    ErrorMessage = "license.lic 与本机机器码不匹配。"
-                };
-                return;
-            }
-
-            var tier = LicenseEditionHelper.TryParseTier(dto.Edition);
-            if (tier == LicenseProductTier.Freemium)
-            {
-                LastStatus = new LicenseStatus
-                {
-                    Ok = false,
-                    Tier = LicenseProductTier.Freemium,
-                    ErrorMessage = "无法识别的 license edition。"
-                };
-                return;
-            }
-
-            if (!dto.Perpetual)
-            {
-                var now = DateTime.UtcNow;
-                if (now > dto.ExpiresAt)
-                {
-                    LastStatus = new LicenseStatus
-                    {
-                        Ok = false,
-                        Tier = LicenseProductTier.Freemium,
-                        ErrorMessage = "License 已过期（截止 " + dto.ExpiresAt.ToString("u") + "）。"
-                    };
-                    return;
-                }
-            }
-
-            LastStatus = new LicenseStatus
-            {
-                Ok = true,
-                Tier = tier,
-                ErrorMessage = null,
-                Document = dto,
-                ExpiresAt = dto.ExpiresAt,
-                Perpetual = dto.Perpetual,
-                MachineCode = m
-            };
+                ApplyClockRollBackLock(status);
+            LastStatus = status;
         }
 
         public LicenseProductTier GetEffectiveProductTier()
         {
-            if (LastStatus == null) Refresh();
+            Refresh();
             return LastStatus.Tier;
         }
 
@@ -129,6 +57,11 @@ namespace HyCADTool.Licensing
         {
             if (string.IsNullOrWhiteSpace(c)) return "";
             return c.Trim().Replace("-", "").Replace(" ", "");
+        }
+
+        public static bool IsMachineCodeMatch(string licenseMc, string localMc)
+        {
+            return string.Equals(NormalizeMc(licenseMc), NormalizeMc(localMc), StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool TryVerifyDocument(string jsonText, out LicenseDocumentDto dto, out string error)
@@ -179,14 +112,165 @@ namespace HyCADTool.Licensing
             return true;
         }
 
-        public static bool TryImportToProgramData(string sourceFile)
+        /// <summary>验签 + 机器码匹配后写入 ProgramData。</summary>
+        public static bool TryImportLicenseText(string input, out string error)
         {
-            if (string.IsNullOrEmpty(sourceFile) || !File.Exists(sourceFile)) return false;
+            error = null;
+            if (!LicenseCodeCodec.TryDecodeToLicenseJson(input, out var jsonText, out error))
+                return false;
+            if (!TryVerifyDocument(jsonText, out var dto, out error))
+                return false;
+            if (!IsMachineCodeMatch(dto.MachineCode, MachineId.GetMachineCode()))
+            {
+                error = "license 与本机机器码不匹配。";
+                return false;
+            }
+            try
+            {
+                Directory.CreateDirectory(LicensePaths.ProgramDataHyCAD);
+                File.WriteAllText(LicensePaths.LicenseFile, jsonText.Trim(), new System.Text.UTF8Encoding(false));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = "写入 license 失败：" + ex.Message;
+                return false;
+            }
+        }
+
+        public static bool TryImportToProgramData(string sourceFile, out string error)
+        {
+            error = null;
+            if (string.IsNullOrEmpty(sourceFile) || !File.Exists(sourceFile))
+            {
+                error = "文件不存在";
+                return false;
+            }
             var t = File.ReadAllText(sourceFile);
-            if (!TryVerifyDocument(t, out _, out _)) return false;
-            Directory.CreateDirectory(LicensePaths.ProgramDataHyCAD);
-            File.Copy(sourceFile, LicensePaths.LicenseFile, true);
-            return true;
+            return TryImportLicenseText(t, out error);
+        }
+
+        public static string StateRecoveryHint =>
+            "请删除 " + LicensePaths.StateFile + " 后完全退出并重启 AutoCAD。";
+
+        private static LicenseStatus BuildStatusFromLicenseFile(string machineCode)
+        {
+            if (!File.Exists(LicensePaths.LicenseFile))
+            {
+                return new LicenseStatus
+                {
+                    Ok = true,
+                    Tier = LicenseProductTier.Freemium,
+                    ErrorMessage = null
+                };
+            }
+
+            string err;
+            LicenseDocumentDto dto;
+            try
+            {
+                var text = File.ReadAllText(LicensePaths.LicenseFile);
+                if (!TryVerifyDocument(text, out dto, out err))
+                {
+                    return new LicenseStatus
+                    {
+                        Ok = false,
+                        Tier = LicenseProductTier.Freemium,
+                        ErrorMessage = err
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new LicenseStatus
+                {
+                    Ok = false,
+                    Tier = LicenseProductTier.Freemium,
+                    ErrorMessage = ex.GetType().Name + ": " + ex.Message
+                };
+            }
+
+            if (!IsMachineCodeMatch(dto.MachineCode, machineCode))
+            {
+                return new LicenseStatus
+                {
+                    Ok = false,
+                    Tier = LicenseProductTier.Freemium,
+                    ErrorMessage = "license.lic 与本机机器码不匹配。"
+                };
+            }
+
+            var tier = LicenseEditionHelper.TryParseTier(dto.Edition);
+            if (tier == LicenseProductTier.Freemium)
+            {
+                return new LicenseStatus
+                {
+                    Ok = false,
+                    Tier = LicenseProductTier.Freemium,
+                    ErrorMessage = "无法识别的 license edition。"
+                };
+            }
+
+            if (!dto.Perpetual)
+            {
+                var now = DateTime.UtcNow;
+                if (now > dto.ExpiresAt)
+                {
+                    return new LicenseStatus
+                    {
+                        Ok = false,
+                        Tier = LicenseProductTier.Freemium,
+                        ErrorMessage = "License 已过期（截止 " + dto.ExpiresAt.ToString("u") + "）。"
+                    };
+                }
+            }
+
+            return new LicenseStatus
+            {
+                Ok = true,
+                Tier = tier,
+                RecognizedTier = tier,
+                ErrorMessage = null,
+                Document = dto,
+                ExpiresAt = dto.ExpiresAt,
+                Perpetual = dto.Perpetual,
+                MachineCode = machineCode
+            };
+        }
+
+        private static void ApplyClockRollBackLock(LicenseStatus status)
+        {
+            status.ClockRollBackLocked = true;
+            if (status.Ok && status.Tier > LicenseProductTier.Freemium)
+            {
+                status.RecognizedTier = status.Tier;
+                status.ErrorMessage =
+                    "授权文件有效（" + status.Tier + "），但防回拨状态异常。\n" + StateRecoveryHint;
+            }
+            else if (!status.Ok && !string.IsNullOrWhiteSpace(status.ErrorMessage))
+            {
+                // 保留 license 自身错误，不混入 state 提示
+            }
+            else
+            {
+                status.ErrorMessage =
+                    "系统时间曾异常回拨，或 state.bin 损坏。\n" + StateRecoveryHint;
+            }
+            status.Ok = false;
+            status.Tier = LicenseProductTier.Freemium;
+        }
+
+        private static DateTime GetFileMtimeUtc(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    return File.GetLastWriteTimeUtc(path);
+            }
+            catch
+            {
+            }
+            return DateTime.MinValue;
         }
     }
 
@@ -194,6 +278,9 @@ namespace HyCADTool.Licensing
     {
         public bool Ok { get; set; }
         public LicenseProductTier Tier { get; set; } = LicenseProductTier.Freemium;
+        /// <summary>license 文件解析出的档位（state 锁定时仍保留，供激活窗提示）。</summary>
+        public LicenseProductTier RecognizedTier { get; set; } = LicenseProductTier.Freemium;
+        public bool ClockRollBackLocked { get; set; }
         public string ErrorMessage { get; set; }
         public LicenseDocumentDto Document { get; set; }
         public DateTime? ExpiresAt { get; set; }

@@ -18,6 +18,7 @@ namespace HyCADTool.LicenseSigner
         private DateTime _expiresUtc = DateTime.UtcNow.AddYears(1);
         private string _privateKeyXml;
         private string _generatedText;
+        private string _generatedCode;
 
         public MainWindow()
         {
@@ -25,8 +26,6 @@ namespace HyCADTool.LicenseSigner
             DetectPrivateKey();
             SetExp(DateTime.UtcNow.AddYears(1), false);
         }
-
-        // ---------- 私钥检测 ----------
 
         private void DetectPrivateKey()
         {
@@ -76,8 +75,6 @@ namespace HyCADTool.LicenseSigner
             return candidates[0];
         }
 
-        // ---------- 机器码输入 ----------
-
         private void OnMachineCodeChanged(object sender, TextChangedEventArgs e)
         {
             if (MachineCodeHint == null) return;
@@ -87,10 +84,10 @@ namespace HyCADTool.LicenseSigner
             {
                 MachineCodeHint.Text = "";
             }
-            else if (norm.Length < 8)
+            else if (norm.Length != 32)
             {
                 MachineCodeHint.Foreground = (Brush)FindResource("Err");
-                MachineCodeHint.Text = "机器码过短（已规范化 " + norm.Length + " 位），请确认粘贴完整。";
+                MachineCodeHint.Text = "机器码须为 8 段 × 4 位（已规范化 " + norm.Length + " 位）。";
             }
             else
             {
@@ -98,8 +95,6 @@ namespace HyCADTool.LicenseSigner
                 MachineCodeHint.Text = "已规范化：" + norm;
             }
         }
-
-        // ---------- 期限 ----------
 
         private void Y1(object sender, RoutedEventArgs e) => SetExp(DateTime.UtcNow.AddYears(1), false);
         private void Y3(object sender, RoutedEventArgs e) => SetExp(DateTime.UtcNow.AddYears(3), false);
@@ -124,12 +119,14 @@ namespace HyCADTool.LicenseSigner
                 : "到期：" + _expiresUtc.ToLocalTime().ToString("yyyy-MM-dd") + "（UTC " + _expiresUtc.ToString("yyyy-MM-dd") + "）";
         }
 
-        // ---------- 生成 ----------
-
         private void OnGenerate(object sender, RoutedEventArgs e)
         {
             ErrorText.Text = "";
             CopyCodeHint.Text = "";
+            SaveLicBtn.IsEnabled = false;
+            CopyCodeBtn.IsEnabled = false;
+            _generatedText = null;
+            _generatedCode = null;
 
             if (string.IsNullOrEmpty(_privateKeyXml))
             {
@@ -138,12 +135,17 @@ namespace HyCADTool.LicenseSigner
             }
 
             var rawMc = MachineCodeBox.Text ?? "";
-            if (LicenseService.NormalizeMc(rawMc).Length < 8)
+            if (!MachineId.IsValidMachineCodeFormat(rawMc))
             {
-                ErrorText.Text = "请填写有效机器码。";
+                ErrorText.Text = "请填写完整机器码（8 段 × 4 位）。";
                 return;
             }
             var mc = MachineId.NormalizeMachineCodeFromUser(rawMc);
+            if (!MachineId.IsValidMachineCodeFormat(mc))
+            {
+                ErrorText.Text = "机器码格式无效。";
+                return;
+            }
 
             var ed = (EditionBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
             if (EditionBox.IsEditable && !string.IsNullOrWhiteSpace(EditionBox.Text)) ed = EditionBox.Text.Trim();
@@ -182,14 +184,33 @@ namespace HyCADTool.LicenseSigner
             }
 
             _generatedText = j.ToString(Formatting.Indented);
-            CodeOutputBox.Text = _generatedText;
+
+            if (!LicenseService.TryVerifyDocument(_generatedText, out _, out var verifyErr))
+            {
+                ErrorText.Text = "自校验失败（私钥与内嵌公钥可能不匹配）：" + verifyErr;
+                _generatedText = null;
+                return;
+            }
+
+            _generatedCode = LicenseCodeCodec.Encode(_generatedText);
+
+            if (!LicenseCodeCodec.TryDecodeToLicenseJson(_generatedCode, out var roundTrip, out var decodeErr)
+                || !LicenseService.TryVerifyDocument(roundTrip, out _, out verifyErr))
+            {
+                ErrorText.Text = "HYC1 编解码回环失败：" + (decodeErr ?? verifyErr);
+                _generatedText = null;
+                _generatedCode = null;
+                return;
+            }
+
+            CodeOutputBox.Text = _generatedCode;
             SaveLicBtn.IsEnabled = true;
             CopyCodeBtn.IsEnabled = true;
             CopyCodeHint.Foreground = (Brush)FindResource("Ok");
-            CopyCodeHint.Text = "已生成。请保存 license.lic 或复制授权码发给客户。";
+            CopyCodeHint.Text = "已生成 HYC1 授权码。复制发给客户，或保存 license.lic 文件。";
+            if (!AppendLedger(mc, ed, CustomerBox.Text?.Trim() ?? ""))
+                CopyCodeHint.Text += "（台账 CSV 写入失败，请检查 exe 目录写权限。）";
         }
-
-        // ---------- 交付 ----------
 
         private void OnSaveLic(object sender, RoutedEventArgs e)
         {
@@ -204,7 +225,7 @@ namespace HyCADTool.LicenseSigner
             {
                 File.WriteAllText(dlg.FileName, _generatedText, new UTF8Encoding(false));
                 CopyCodeHint.Foreground = (Brush)FindResource("Ok");
-                CopyCodeHint.Text = "已保存：" + dlg.FileName;
+                CopyCodeHint.Text = "已保存 license.lic：" + dlg.FileName;
             }
             catch (Exception ex)
             {
@@ -214,17 +235,50 @@ namespace HyCADTool.LicenseSigner
 
         private void OnCopyCode(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(_generatedText)) return;
+            if (string.IsNullOrEmpty(_generatedCode)) return;
             try
             {
-                Clipboard.SetText(_generatedText);
+                Clipboard.SetText(_generatedCode);
                 CopyCodeHint.Foreground = (Brush)FindResource("Ok");
-                CopyCodeHint.Text = "授权码已复制到剪贴板。";
+                CopyCodeHint.Text = "HYC1 授权码已复制到剪贴板。";
             }
             catch (Exception ex)
             {
                 ErrorText.Text = "复制失败：" + ex.Message;
             }
+        }
+
+        private bool AppendLedger(string machineCode, string edition, string customer)
+        {
+            try
+            {
+                var path = Path.Combine(AppContext.BaseDirectory, "issued-licenses.csv");
+                var header = "UtcTime,Customer,MachineCode,Edition,Perpetual,ExpiresAt,CodeLength";
+                var line = string.Join(",",
+                    EscapeCsv(DateTime.UtcNow.ToString("o")),
+                    EscapeCsv(customer),
+                    EscapeCsv(machineCode),
+                    EscapeCsv(edition),
+                    _perpetual ? "true" : "false",
+                    EscapeCsv(_expiresUtc.ToString("o")),
+                    (_generatedCode?.Length ?? 0).ToString());
+                if (!File.Exists(path))
+                    File.WriteAllText(path, header + Environment.NewLine, new UTF8Encoding(true));
+                File.AppendAllText(path, line + Environment.NewLine, new UTF8Encoding(true));
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string EscapeCsv(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            if (s.IndexOfAny(new[] { ',', '"', '\r', '\n' }) >= 0)
+                return "\"" + s.Replace("\"", "\"\"") + "\"";
+            return s;
         }
 
         private static string[] DefaultFeaturesForEdition(string ed)

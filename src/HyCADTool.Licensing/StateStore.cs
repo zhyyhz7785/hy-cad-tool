@@ -32,9 +32,7 @@ namespace HyCADTool.Licensing
                 }
                 if (!TryReadFile(localMachineCode, out var high, out var last, out var mig))
                 {
-                    // 损坏/换机后 machine 变：可视为新状态或锁定由上层决定
-                    WriteFile(nowUtc, nowUtc, 0, localMachineCode);
-                    ClockRollBackLocked = false;
+                    ClockRollBackLocked = true;
                     return;
                 }
                 if (nowUtc < high.AddHours(-24))
@@ -54,8 +52,7 @@ namespace HyCADTool.Licensing
             }
             catch
             {
-                // 状态失败不阻启动；仅失去防回拨
-                ClockRollBackLocked = false;
+                ClockRollBackLocked = true;
             }
         }
 
@@ -91,7 +88,15 @@ namespace HyCADTool.Licensing
         {
             high = last = default;
             mig = 0;
-            var all = File.ReadAllBytes(LicensePaths.StateFile);
+            byte[] all;
+            try
+            {
+                all = File.ReadAllBytes(LicensePaths.StateFile);
+            }
+            catch
+            {
+                return false;
+            }
             if (all.Length < 32) return false;
             var iv = new byte[16];
             Buffer.BlockCopy(all, 0, iv, 0, 16);
@@ -99,28 +104,56 @@ namespace HyCADTool.Licensing
             Buffer.BlockCopy(all, 16, enc, 0, enc.Length);
             var key = DeriveKey(machineCode);
             byte[] plain;
-            using (var aes = Aes.Create())
+            try
             {
-                aes.Key = key;
-                aes.IV = iv;
-                aes.Mode = CipherMode.CBC;
-                using (var d = aes.CreateDecryptor())
-                    plain = d.TransformFinalBlock(enc, 0, enc.Length);
+                using (var aes = Aes.Create())
+                {
+                    aes.Key = key;
+                    aes.IV = iv;
+                    aes.Mode = CipherMode.CBC;
+                    using (var d = aes.CreateDecryptor())
+                        plain = d.TransformFinalBlock(enc, 0, enc.Length);
+                }
             }
-            var s = Encoding.UTF8.GetString(plain);
-            var j = JObject.Parse(s);
-            last = j["l"].ToObject<DateTime>();
-            high = j["h"].ToObject<DateTime>();
-            mig = (int)j["m"];
+            catch
+            {
+                return false;
+            }
+
+            JObject j;
+            try
+            {
+                var s = Encoding.UTF8.GetString(plain);
+                j = JObject.Parse(s);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (j["l"] == null || j["h"] == null || j["m"] == null) return false;
+            try
+            {
+                last = j["l"].ToObject<DateTime>();
+                high = j["h"].ToObject<DateTime>();
+                mig = j["m"].ToObject<int>();
+            }
+            catch
+            {
+                return false;
+            }
             return true;
         }
 
         private static byte[] DeriveKey(string machineCode)
         {
-            var h = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes((machineCode ?? "") + KdfSalt));
-            var k = new byte[32];
-            Buffer.BlockCopy(h, 0, k, 0, 32);
-            return k;
+            using (var sha = SHA256.Create())
+            {
+                var h = sha.ComputeHash(Encoding.UTF8.GetBytes((machineCode ?? "") + KdfSalt));
+                var k = new byte[32];
+                Buffer.BlockCopy(h, 0, k, 0, 32);
+                return k;
+            }
         }
     }
 }
