@@ -2,38 +2,51 @@
     "version": "2.0.0",
     "tasks": [
         {
+            // 默认编译：主工程 HyCADTool（与 ReCall 完全解耦，AutoCAD 开着也安全）
             "label": "build",
             "command": "dotnet",
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/HyCADtoolGpt.sln",
+                "${workspaceFolder}/src/HyCADTool/HyCADTool.csproj",
+                "-c", "Debug",
+                "-nodeReuse:false",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            // 冷启动专用：编译 ReCall（必须先关闭 AutoCAD，否则 ReCall.dll 被锁）
+            "label": "build-recall (需先关 AutoCAD)",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/ReCall/ReCall.csproj",
+                "-c", "Debug",
+                "-nodeReuse:false",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "publish",
+            // 生产构建：NETLOAD HyCADTool.dll 的发布路径
+            "label": "build-production",
             "command": "dotnet",
             "type": "process",
             "args": [
-                "publish",
-                "${workspaceFolder}/HyCADtoolGpt.sln",
+                "build",
+                "${workspaceFolder}/src/HyCADTool/HyCADTool.csproj",
+                "-c", "Production",
+                "-nodeReuse:false",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "watch",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "watch",
-                "run",
-                "--project",
-                "${workspaceFolder}/HyCADtoolGpt.sln"
             ],
             "problemMatcher": "$msCompile"
         }

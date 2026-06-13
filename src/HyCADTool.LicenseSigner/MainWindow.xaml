@@ -1,30 +1,242 @@
 <Window x:Class="HyCADTool.LicenseSigner.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="HyCAD License 签发（仅开发者）" Height="500" Width="650"
-        WindowStartupLocation="CenterScreen">
-  <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="12">
-      <TextBlock Text="客户 / 说明" />
-      <TextBox x:Name="CustomerBox" MinHeight="28" Margin="0,4,0,8" Text="测试客户" />
-      <TextBlock Text="机器码（5 段 XXXX-XXXX-…，可从 hyLicense 窗口复制）" />
-      <TextBox x:Name="MachineCodeBox" MinHeight="28" Margin="0,4,0,8" Text="" />
-      <TextBlock Text="档" />
-      <ComboBox x:Name="EditionBox" IsEditable="True" Margin="0,4,0,8" SelectedIndex="0">
-        <ComboBoxItem Content="standard" />
-        <ComboBoxItem Content="professional" />
-        <ComboBoxItem Content="enterprise" />
-      </ComboBox>
-      <TextBlock Text="期限" />
-      <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
-        <Button Content="1 年" Click="Y1" Margin="0,0,8,0" Padding="8,4" />
-        <Button Content="3 年" Click="Y3" Margin="0,0,8,0" Padding="8,4" />
-        <Button Content="终身" Click="Perp" Padding="8,4" />
+        Title="HyCAD 授权签发中心"
+        Height="820" Width="720" MinWidth="600" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF1E1F22"
+        FontFamily="Microsoft YaHei UI" FontSize="13"
+        TextOptions.TextFormattingMode="Display">
+
+  <Window.Resources>
+    <SolidColorBrush x:Key="Bg"        Color="#FF1E1F22" />
+    <SolidColorBrush x:Key="Card"      Color="#FF2B2D31" />
+    <SolidColorBrush x:Key="CardLine"  Color="#FF3A3D44" />
+    <SolidColorBrush x:Key="InputBg"   Color="#FF17181B" />
+    <SolidColorBrush x:Key="Text"      Color="#FFE6E6E6" />
+    <SolidColorBrush x:Key="Subtle"    Color="#FF9AA0AA" />
+    <SolidColorBrush x:Key="Accent"    Color="#FF4F7CC9" />
+    <SolidColorBrush x:Key="AccentHi"  Color="#FF5E8BD8" />
+    <SolidColorBrush x:Key="Ok"        Color="#FF8FBF6F" />
+    <SolidColorBrush x:Key="Err"       Color="#FFD46A6A" />
+
+    <Style x:Key="H1" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Sub" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Subtle}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+
+    <Style x:Key="CardBorder" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource Card}" />
+      <Setter Property="BorderBrush" Value="{StaticResource CardLine}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+
+    <Style x:Key="Input" TargetType="TextBox">
+      <Setter Property="Background" Value="{StaticResource InputBg}" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="CaretBrush" Value="{StaticResource Text}" />
+      <Setter Property="BorderBrush" Value="{StaticResource CardLine}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="6">
+              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Ghost" TargetType="Button">
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="Background" Value="#FF3A3D44" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#FF4A4E57" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="AccentBtn" TargetType="Button" BasedOn="{StaticResource Ghost}">
+      <Setter Property="Background" Value="{StaticResource Accent}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Padding" Value="18,11" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="{StaticResource AccentHi}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Combo" TargetType="ComboBox">
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="Background" Value="{StaticResource InputBg}" />
+      <Setter Property="BorderBrush" Value="{StaticResource CardLine}" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="Height" Value="34" />
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,18,20,18">
+      <StackPanel>
+
+        <TextBlock Style="{StaticResource H1}" Text="HyCAD 授权签发中心" />
+        <TextBlock Style="{StaticResource Sub}" Margin="0,4,0,14"
+                   Text="开发者离线签发 · RSA 私钥本地签名 · 输入客户机器码与期限即可生成 license.lic" />
+
+        <!-- 私钥状态 -->
+        <Border Style="{StaticResource CardBorder}" Padding="12,10">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse x:Name="KeyDot" Width="10" Height="10" Fill="{StaticResource Subtle}"
+                     VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock x:Name="PrivateKeyStatus" VerticalAlignment="Center"
+                       Foreground="{StaticResource Subtle}" Text="检测私钥中…" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <!-- 1 机器码 -->
+        <Border Style="{StaticResource CardBorder}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SectionTitle}" Text="① 客户机器码" />
+            <TextBlock Style="{StaticResource Sub}" Margin="0,0,0,8"
+                       Text="粘贴客户从激活窗复制的机器码（8 段 × 4 位，自动忽略空格与连字符）。" />
+            <TextBox x:Name="MachineCodeBox" Style="{StaticResource Input}"
+                     FontFamily="Consolas" FontSize="17" MinHeight="38"
+                     TextChanged="OnMachineCodeChanged" />
+            <TextBlock x:Name="MachineCodeHint" Style="{StaticResource Sub}" Margin="0,6,0,0" />
+          </StackPanel>
+        </Border>
+
+        <!-- 2 客户备注 -->
+        <Border Style="{StaticResource CardBorder}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SectionTitle}" Text="② 客户 / 备注（仅记录，不影响验签）" />
+            <TextBox x:Name="CustomerBox" Style="{StaticResource Input}" MinHeight="36"
+                     Text="测试客户" />
+          </StackPanel>
+        </Border>
+
+        <!-- 3 档位与期限 -->
+        <Border Style="{StaticResource CardBorder}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SectionTitle}" Text="③ 授权档位与期限" />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="2*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource Sub}" Text="档位" Margin="0,0,0,4" />
+                <ComboBox x:Name="EditionBox" Style="{StaticResource Combo}" SelectedIndex="0">
+                  <ComboBoxItem Content="standard" />
+                  <ComboBoxItem Content="professional" />
+                  <ComboBoxItem Content="enterprise" />
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Style="{StaticResource Sub}" Text="期限" Margin="0,0,0,4" />
+                <StackPanel Orientation="Horizontal">
+                  <Button Content="1 年"  Style="{StaticResource Ghost}" Click="Y1" />
+                  <Button Content="3 年"  Style="{StaticResource Ghost}" Click="Y3" />
+                  <Button Content="永久"  Style="{StaticResource Ghost}" Click="Perp" />
+                  <DatePicker x:Name="CustomExpiry" Width="140" VerticalAlignment="Center"
+                              SelectedDateChanged="OnCustomExpiry" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+            <TextBlock x:Name="ExpiryInfo" Style="{StaticResource Sub}" Margin="0,10,0,0"
+                       Foreground="{StaticResource Text}" />
+          </StackPanel>
+        </Border>
+
+        <!-- 生成 -->
+        <Button x:Name="GenerateBtn" Style="{StaticResource AccentBtn}"
+                Content="生成授权" Click="OnGenerate"
+                HorizontalAlignment="Stretch" Margin="0,2,0,8" />
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource Err}" TextWrapping="Wrap"
+                   MinHeight="20" Margin="0,0,0,6" />
+
+        <!-- 4 结果 -->
+        <Border Style="{StaticResource CardBorder}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource SectionTitle}" Text="④ 交付给客户" />
+            <TextBlock Style="{StaticResource Sub}" Margin="0,0,0,8"
+                       Text="推荐「保存 license.lic」发文件给客户导入；也可「复制授权码」用文本（微信）发送。" />
+            <TextBox x:Name="CodeOutputBox" Style="{StaticResource Input}"
+                     FontFamily="Consolas" FontSize="12" IsReadOnly="True"
+                     TextWrapping="Wrap" AcceptsReturn="True" MinHeight="96"
+                     VerticalScrollBarVisibility="Auto" />
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Button x:Name="SaveLicBtn" Content="保存 license.lic" Style="{StaticResource AccentBtn}"
+                      Click="OnSaveLic" IsEnabled="False" Margin="0,0,8,0" />
+              <Button x:Name="CopyCodeBtn" Content="复制授权码" Style="{StaticResource Ghost}"
+                      Click="OnCopyCode" IsEnabled="False" />
+            </StackPanel>
+            <TextBlock x:Name="CopyCodeHint" Style="{StaticResource Sub}" Margin="0,8,0,0" />
+          </StackPanel>
+        </Border>
+
+        <TextBlock x:Name="LedgerHint" Style="{StaticResource Sub}" Margin="2,0,0,0"
+                   Text="私钥：同目录 PrivateKey.xml（来自 build/keys/rsa-priv.xml，切勿外传或提交）。" />
       </StackPanel>
-      <TextBlock x:Name="ExpiryInfo" TextWrapping="Wrap" Margin="0,0,0,8" />
-      <TextBlock x:Name="ErrorText" Foreground="DarkRed" TextWrapping="Wrap" MinHeight="32" />
-      <Button Content="生成并保存 license.lic" Click="OnSave" Padding="10,6" HorizontalAlignment="Left" />
-      <TextBlock Text="私钥：同目录 PrivateKey.xml（从 build/keys/rsa-priv.xml 复制，勿提交）" Foreground="Gray" FontSize="10" Margin="0,8,0,0" TextWrapping="Wrap" />
-    </StackPanel>
-  </ScrollViewer>
+    </ScrollViewer>
+  </Grid>
 </Window>

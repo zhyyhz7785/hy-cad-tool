@@ -9,11 +9,14 @@ namespace HyCADTool.Shell.Licensing
     {
         public static void RunGated(string commandKey, Action action)
         {
+#if !HYCAD_PRODUCTION
+            // 开发调试用旁路：仅 Debug 构建编译进来，生产包（Configuration=Production）不存在此后门。
             if (string.Equals(Environment.GetEnvironmentVariable("HYCAD_BYPASS_LICENSE"), "1", StringComparison.OrdinalIgnoreCase))
             {
                 action();
                 return;
             }
+#endif
 
             LicenseService.Instance.Refresh();
             var st = LicenseService.Instance.LastStatus;
@@ -26,14 +29,14 @@ namespace HyCADTool.Shell.Licensing
                     Write($"\n[HyCAD] License 状态异常（fail-open 放行免费命令）：{st.ErrorMessage}\n");
                 if (required > LicenseProductTier.Freemium && !string.Equals(commandKey, "hyLicense", StringComparison.OrdinalIgnoreCase))
                 {
-                    Write($"\n[HyCAD] License 无效：{st.ErrorMessage}\n");
+                    Write($"\n[HyCAD] License 无效：{st.ErrorMessage}\n[HyCAD] 输入 hyLicense 可查看本机机器码并输入授权码激活。\n");
                     return;
                 }
             }
 
             if ((int)st.Tier < (int)required)
             {
-                Write($"\n[HyCAD] 命令「{commandKey}」需要 {required} 及以上许可，当前为 {st.Tier}。\n");
+                Write($"\n[HyCAD] 命令「{commandKey}」需要 {required} 及以上许可，当前为 {st.Tier}。输入 hyLicense 可查看机器码并激活。\n");
                 return;
             }
 

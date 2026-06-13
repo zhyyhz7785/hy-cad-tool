@@ -1,7 +1,7 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using HyCADTool.Licensing;
 using Microsoft.Win32;
@@ -19,16 +19,16 @@ namespace HyCADTool.Shell.Views
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                LicenseService.Instance.Refresh();
-            }
-            catch
-            {
-            }
+            Activate();
+            Topmost = true;
+            RefreshStatusUi();
+            LoadMachineCodeAndQr();
+        }
+
+        private void LoadMachineCodeAndQr()
+        {
             var mc = MachineId.GetMachineCode();
             MachineCodeText.Text = mc;
-            StatusText.Text = BuildStatus();
             try
             {
                 using (var gen = new QRCodeGenerator())
@@ -50,11 +50,23 @@ namespace HyCADTool.Shell.Views
             }
             catch
             {
-                StatusText.Text = (StatusText.Text ?? "") + "（二维码生成失败，请使用复制。）\n";
+                StatusText.Text = (StatusText.Text ?? "") + "\n（二维码生成失败，请使用复制机器码。）";
             }
         }
 
-        private string BuildStatus()
+        private void RefreshStatusUi()
+        {
+            try
+            {
+                LicenseService.Instance.Refresh();
+            }
+            catch
+            {
+            }
+            StatusText.Text = BuildStatus();
+        }
+
+        private static string BuildStatus()
         {
             var s = LicenseService.Instance;
             s.Refresh();
@@ -66,19 +78,53 @@ namespace HyCADTool.Shell.Views
             var exp = s.LastStatus.Perpetual
                 ? "终身有效"
                 : "有效期至: " + (s.LastStatus.ExpiresAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-");
-            return "已授权: " + s.LastStatus.Tier + "； " + exp;
+            return "已授权: " + s.LastStatus.Tier + "；" + exp;
+        }
+
+        private void BtnMinimize_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
+        }
+
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
 
         private void OnCopy(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Windows.Clipboard.SetText(MachineCodeText.Text ?? "");
-                StatusText.Text = "已复制到剪贴板。";
+                Clipboard.SetText(MachineCodeText.Text ?? "");
+                StatusText.Text = "机器码已复制到剪贴板。";
             }
-            catch
+            catch (Exception ex)
             {
+                StatusText.Text = "复制失败：" + ex.Message;
             }
+        }
+
+        private void OnActivate(object sender, RoutedEventArgs e)
+        {
+            var text = LicenseCodeBox.Text?.Trim();
+            if (string.IsNullOrEmpty(text))
+            {
+                MessageBox.Show(this, "请粘贴授权码，或使用「从文件导入」。", "激活", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (!TryWriteVerifiedLicense(text, out var err))
+            {
+                MessageBox.Show(this, err ?? "授权无效", "激活失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            FinishImportSuccess();
         }
 
         private void OnImport(object sender, RoutedEventArgs e)
@@ -89,17 +135,61 @@ namespace HyCADTool.Shell.Views
                 Title = "选择 license.lic"
             };
             if (d.ShowDialog() != true) return;
-            if (!LicenseService.TryImportToProgramData(d.FileName))
+
+            string text;
+            try
             {
-                System.Windows.MessageBox.Show(this, "无法导入：文件不是有效的 license 或签名校验失败。", "导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                text = File.ReadAllText(d.FileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "无法读取文件：" + ex.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            if (!TryWriteVerifiedLicense(text, out var err))
+            {
+                MessageBox.Show(this, err ?? "文件不是有效的 license 或签名校验失败。", "导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            LicenseCodeBox.Text = text.Trim();
+            FinishImportSuccess();
+        }
+
+        private static bool TryWriteVerifiedLicense(string text, out string error)
+        {
+            error = null;
+            if (!LicenseService.TryVerifyDocument(text, out _, out error))
+                return false;
+            try
+            {
+                Directory.CreateDirectory(LicensePaths.ProgramDataHyCAD);
+                File.WriteAllText(LicensePaths.LicenseFile, text.Trim(), new UTF8Encoding(false));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = "写入 license 失败：" + ex.Message;
+                return false;
+            }
+        }
+
+        private void FinishImportSuccess()
+        {
             LicenseService.Instance.Refresh();
-            StatusText.Text = BuildStatus();
-            if (LicenseService.Instance.LastStatus != null && LicenseService.Instance.LastStatus.Ok && LicenseService.Instance.LastStatus.Tier > LicenseProductTier.Freemium)
-                System.Windows.MessageBox.Show(this, "已导入并激活: " + LicenseService.Instance.LastStatus.Tier, "HyCAD", MessageBoxButton.OK, MessageBoxImage.Information);
+            RefreshStatusUi();
+            var st = LicenseService.Instance.LastStatus;
+            if (st != null && st.Ok && st.Tier > LicenseProductTier.Freemium)
+            {
+                MessageBox.Show(this, "已激活：" + st.Tier, "HyCAD", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
             else
-                System.Windows.MessageBox.Show(this, "已导入。若仍无权限请重启 AutoCAD 后重试，或看状态行提示。", "HyCAD", MessageBoxButton.OK, MessageBoxImage.Information);
+            {
+                MessageBox.Show(this,
+                    st?.ErrorMessage ?? "已写入 license.lic。若仍无权限请重启 AutoCAD 后重试。",
+                    "HyCAD", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
     }
 }

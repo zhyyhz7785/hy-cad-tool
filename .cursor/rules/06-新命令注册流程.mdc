@@ -6,4 +6,4 @@ alwaysApply: false
 
 完整步骤、模板、常见坑、占位符清理：**读** `.cursor/skills/hycad-new-command-registration/SKILL.md`（对话里 @ 该文件或说「新命令 skill」）。
 
-**一句备忘**：改 Refactored 源码后须 **VS 编译 Refactored**，再 `C2`，否则仍是旧 DLL。
+**一句备忘**：改主工程源码后由 **AI 编译**（`dotnet build src\HyCADTool\HyCADTool.csproj -c Debug`），再让用户输 `C2`，否则仍是旧 DLL。

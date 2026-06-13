@@ -22,6 +22,8 @@ namespace HyCADTool.Shell.Commands
         public string Tooltip { get; set; }
         public int Order { get; set; } = 100;
         public string RoadPanelGroup { get; set; }
+        /// <summary>许可档位：freemium / standard / professional / enterprise（缺省 standard）。</summary>
+        public string Tier { get; set; }
     }
 
     /// <summary>分类分组结果（按 Order 升序）。</summary>
@@ -184,6 +186,7 @@ namespace HyCADTool.Shell.Commands
                         Tooltip = (string)obj["tooltip"],
                         Order = obj["order"] != null ? (int)obj["order"] : 100,
                         RoadPanelGroup = (string)obj["roadPanelGroup"],
+                        Tier = (string)obj["tier"],
                     };
                 }
             }

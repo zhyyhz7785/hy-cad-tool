@@ -1,6 +1,5 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
-using Autodesk.AutoCAD.Runtime;
 using HyCADTool.Features.DCEL.Domain.Services;
 using System;
 
@@ -24,17 +23,15 @@ namespace HyCADTool.Features.Misc
             try
             {
                 ed.WriteMessage("\n━━━━━━━━ DCEL设置 ━━━━━━━━");
-                ed.WriteMessage($"\n当前配置：");
-                ed.WriteMessage($"\n  Arc分段数     : {currentSettings.ArcSegmentCount?.ToString() ?? "自动"}");
-                ed.WriteMessage($"\n  Ellipse分段数 : {currentSettings.EllipseSegmentCount?.ToString() ?? "自动"}");
-                ed.WriteMessage($"\n  Spline分段数  : {currentSettings.SplineSegmentCount?.ToString() ?? "自动"}");
-                ed.WriteMessage($"\n  恢复原曲线    : {(currentSettings.RestoreOriginalCurves ? "是" : "否（使用简化线段）")}");
-                ed.WriteMessage("\n━━━━━━━━━━━━━━━━━━━━━━━━");
+                WriteSettings(ed, currentSettings);
 
-                // 1. 选择是否恢复原曲线（简化测试流程）
+                // 在当前配置基础上修改（旧实现从 Default 起步会重置 Ellipse/Spline 段数等未涉及项）
+                var newSettings = currentSettings.Clone();
+
+                // 1. 选择输出模式
                 var restoreOptions = new PromptKeywordOptions("\n输出模式 [简化线段(S)/恢复原曲线(R)]", "S R");
                 restoreOptions.AllowNone = false;
-                restoreOptions.Keywords.Default = "S"; // 默认：简化线段
+                restoreOptions.Keywords.Default = currentSettings.RestoreOriginalCurves ? "R" : "S";
                 var restoreResult = ed.GetKeywords(restoreOptions);
 
                 if (restoreResult.Status != PromptStatus.OK)
@@ -43,36 +40,37 @@ namespace HyCADTool.Features.Misc
                     return;
                 }
 
-                DCELSettings newSettings = DCELSettings.Default;
+                newSettings.RestoreOriginalCurves = restoreResult.StringResult == "R";
 
-                switch (restoreResult.StringResult)
-                {
-                    case "S":
-                        newSettings.RestoreOriginalCurves = false;
-                        ed.WriteMessage("\n已选择：输出简化线段（便于观察端点对齐）");
-                        break;
-                    case "R":
-                        newSettings.RestoreOriginalCurves = true;
-                        ed.WriteMessage("\n已选择：恢复原曲线（Arc恢复为bulge段）");
-                        break;
-                }
-                
                 // 2. 可选：调整Arc分段数
-                var arcPrompt = new PromptIntegerOptions("\nArc分段数（4-16，回车=6）");
+                int arcDefault = currentSettings.ArcSegmentCount ?? 6;
+                var arcPrompt = new PromptIntegerOptions($"\nArc分段数（4-16，回车={arcDefault}）");
                 arcPrompt.AllowNegative = false;
                 arcPrompt.AllowNone = true;
-                arcPrompt.DefaultValue = 6;
+                arcPrompt.DefaultValue = arcDefault;
                 var arcResult = ed.GetInteger(arcPrompt);
-                
+
                 if (arcResult.Status == PromptStatus.OK)
                 {
                     newSettings.ArcSegmentCount = arcResult.Value;
                 }
-                else if (arcResult.Status == PromptStatus.None)
+                else if (arcResult.Status != PromptStatus.None)
                 {
-                    newSettings.ArcSegmentCount = 6; // 默认6段
+                    ed.WriteMessage("\n取消设置");
+                    return;
                 }
-                else
+
+                // 3. 可选：详细耗时输出开关
+                var timingOptions = new PromptKeywordOptions("\n详细耗时输出 [开(Y)/关(N)]", "Y N");
+                timingOptions.AllowNone = true;
+                timingOptions.Keywords.Default = currentSettings.VerboseTiming ? "Y" : "N";
+                var timingResult = ed.GetKeywords(timingOptions);
+
+                if (timingResult.Status == PromptStatus.OK)
+                {
+                    newSettings.VerboseTiming = timingResult.StringResult == "Y";
+                }
+                else if (timingResult.Status != PromptStatus.None)
                 {
                     ed.WriteMessage("\n取消设置");
                     return;
@@ -81,13 +79,8 @@ namespace HyCADTool.Features.Misc
                 // 应用新配置
                 DCELSettings.Current = newSettings;
 
-                // 显示新配置
                 ed.WriteMessage("\n━━━━━━━━ 新配置 ━━━━━━━━");
-                ed.WriteMessage($"\n  Arc分段数     : {newSettings.ArcSegmentCount?.ToString() ?? "自动"}");
-                ed.WriteMessage($"\n  Ellipse分段数 : {newSettings.EllipseSegmentCount?.ToString() ?? "自动"}");
-                ed.WriteMessage($"\n  Spline分段数  : {newSettings.SplineSegmentCount?.ToString() ?? "自动"}");
-                ed.WriteMessage($"\n  恢复原曲线    : {(newSettings.RestoreOriginalCurves ? "是" : "否（使用简化线段）")}");
-                ed.WriteMessage("\n━━━━━━━━━━━━━━━━━━━━━━━━");
+                WriteSettings(ed, newSettings);
                 ed.WriteMessage("\n配置已保存！");
             }
             catch (System.Exception ex)
@@ -95,6 +88,15 @@ namespace HyCADTool.Features.Misc
                 ed.WriteMessage($"\n错误：{ex.Message}");
             }
         }
+
+        private static void WriteSettings(Editor ed, DCELSettings settings)
+        {
+            ed.WriteMessage($"\n  容差          : {settings.Tolerance}");
+            ed.WriteMessage($"\n  Arc分段数     : {settings.ArcSegmentCount?.ToString() ?? "自动"}");
+            ed.WriteMessage($"\n  Ellipse分段数 : {settings.EllipseSegmentCount?.ToString() ?? "自动"}");
+            ed.WriteMessage($"\n  Spline分段数  : {settings.SplineSegmentCount?.ToString() ?? "自动"}");
+            ed.WriteMessage($"\n  恢复原曲线    : {(settings.RestoreOriginalCurves ? "是" : "否（使用简化线段）")}");
+            ed.WriteMessage($"\n  详细耗时      : {(settings.VerboseTiming ? "开" : "关")}");
+        }
     }
 }
-

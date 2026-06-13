@@ -1,10 +1,10 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using HyCADTool.Licensing;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -14,52 +14,140 @@ namespace HyCADTool.LicenseSigner
 {
     public partial class MainWindow : System.Windows.Window
     {
-        private bool _perpetual = true;
-        private DateTime _expiresUtc = DateTime.UtcNow.AddYears(100);
+        private bool _perpetual;
+        private DateTime _expiresUtc = DateTime.UtcNow.AddYears(1);
+        private string _privateKeyXml;
+        private string _generatedText;
 
         public MainWindow()
         {
             InitializeComponent();
+            DetectPrivateKey();
             SetExp(DateTime.UtcNow.AddYears(1), false);
         }
+
+        // ---------- 私钥检测 ----------
+
+        private void DetectPrivateKey()
+        {
+            var path = ResolvePrivateKeyPath();
+            if (path != null && File.Exists(path))
+            {
+                try
+                {
+                    _privateKeyXml = File.ReadAllText(path);
+                    using (var rsa = new RSACryptoServiceProvider())
+                    {
+                        rsa.FromXmlString(_privateKeyXml);
+                    }
+                    KeyDot.Fill = (Brush)FindResource("Ok");
+                    PrivateKeyStatus.Foreground = (Brush)FindResource("Text");
+                    PrivateKeyStatus.Text = "私钥就绪：" + path;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _privateKeyXml = null;
+                    KeyDot.Fill = (Brush)FindResource("Err");
+                    PrivateKeyStatus.Foreground = (Brush)FindResource("Err");
+                    PrivateKeyStatus.Text = "私钥无效：" + ex.Message;
+                    return;
+                }
+            }
+
+            _privateKeyXml = null;
+            KeyDot.Fill = (Brush)FindResource("Err");
+            PrivateKeyStatus.Foreground = (Brush)FindResource("Err");
+            PrivateKeyStatus.Text = "未找到私钥。请把 build/keys/rsa-priv.xml 复制为本程序同目录的 PrivateKey.xml。";
+        }
+
+        private static string ResolvePrivateKeyPath()
+        {
+            var candidates = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, "PrivateKey.xml"),
+                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "rsa-priv.xml")),
+                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "build", "keys", "rsa-priv.xml")),
+            };
+            foreach (var c in candidates)
+            {
+                try { if (File.Exists(c)) return c; } catch { }
+            }
+            return candidates[0];
+        }
+
+        // ---------- 机器码输入 ----------
+
+        private void OnMachineCodeChanged(object sender, TextChangedEventArgs e)
+        {
+            if (MachineCodeHint == null) return;
+            var raw = MachineCodeBox.Text ?? "";
+            var norm = LicenseService.NormalizeMc(raw);
+            if (string.IsNullOrEmpty(norm))
+            {
+                MachineCodeHint.Text = "";
+            }
+            else if (norm.Length < 8)
+            {
+                MachineCodeHint.Foreground = (Brush)FindResource("Err");
+                MachineCodeHint.Text = "机器码过短（已规范化 " + norm.Length + " 位），请确认粘贴完整。";
+            }
+            else
+            {
+                MachineCodeHint.Foreground = (Brush)FindResource("Subtle");
+                MachineCodeHint.Text = "已规范化：" + norm;
+            }
+        }
+
+        // ---------- 期限 ----------
 
         private void Y1(object sender, RoutedEventArgs e) => SetExp(DateTime.UtcNow.AddYears(1), false);
         private void Y3(object sender, RoutedEventArgs e) => SetExp(DateTime.UtcNow.AddYears(3), false);
         private void Perp(object sender, RoutedEventArgs e) => SetExp(new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc), true);
 
-        private void SetExp(DateTime exp, bool perp)
+        private void OnCustomExpiry(object sender, SelectionChangedEventArgs e)
         {
-            _expiresUtc = perp ? new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc) : exp;
-            _perpetual = perp;
-            ExpiryInfo.Text = "expires_at(UTC) = " + _expiresUtc.ToString("o") + " ； perpetual = " + _perpetual;
+            if (CustomExpiry.SelectedDate is DateTime d)
+            {
+                var utc = DateTime.SpecifyKind(d.Date.AddHours(23).AddMinutes(59).AddSeconds(59), DateTimeKind.Utc);
+                SetExp(utc, false);
+            }
         }
 
-        private void OnSave(object sender, RoutedEventArgs e)
+        private void SetExp(DateTime exp, bool perp)
+        {
+            _perpetual = perp;
+            _expiresUtc = perp ? new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc) : exp;
+            if (ExpiryInfo == null) return;
+            ExpiryInfo.Text = perp
+                ? "永久授权（无到期日）"
+                : "到期：" + _expiresUtc.ToLocalTime().ToString("yyyy-MM-dd") + "（UTC " + _expiresUtc.ToString("yyyy-MM-dd") + "）";
+        }
+
+        // ---------- 生成 ----------
+
+        private void OnGenerate(object sender, RoutedEventArgs e)
         {
             ErrorText.Text = "";
-            var mc = (MachineCodeBox.Text ?? "").Trim();
-            if (string.IsNullOrEmpty(mc) || LicenseService.NormalizeMc(mc).Length < 8)
+            CopyCodeHint.Text = "";
+
+            if (string.IsNullOrEmpty(_privateKeyXml))
+            {
+                ErrorText.Text = "私钥未就绪，无法签发。请先放好 PrivateKey.xml。";
+                return;
+            }
+
+            var rawMc = MachineCodeBox.Text ?? "";
+            if (LicenseService.NormalizeMc(rawMc).Length < 8)
             {
                 ErrorText.Text = "请填写有效机器码。";
                 return;
             }
-            mc = HyCADTool.Licensing.MachineId.NormalizeMachineCodeFromUser(mc);
-            var ed = (EditionBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "standard";
-            if (EditionBox.IsEditable) ed = (EditionBox.Text ?? "standard").Trim();
-            if (string.IsNullOrEmpty(ed)) ed = "standard";
+            var mc = MachineId.NormalizeMachineCodeFromUser(rawMc);
 
-            var privPath = Path.Combine(AppContext.BaseDirectory, "PrivateKey.xml");
-            if (!File.Exists(privPath))
-            {
-                var tryTools = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "tools", "rsa-priv.xml"));
-                if (File.Exists(tryTools)) privPath = tryTools;
-            }
-            if (!File.Exists(privPath))
-            {
-                ErrorText.Text = "找不到私钥。请将 build/scripts/_gen-rsa-keys.ps1 生成的 rsa-priv.xml 复制为输出目录的 PrivateKey.xml。";
-                return;
-            }
-            var priv = File.ReadAllText(privPath);
+            var ed = (EditionBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if (EditionBox.IsEditable && !string.IsNullOrWhiteSpace(EditionBox.Text)) ed = EditionBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(ed)) ed = "standard";
 
             var j = new JObject
             {
@@ -73,34 +161,70 @@ namespace HyCADTool.LicenseSigner
                 ["perpetual"] = _perpetual,
                 ["max_devices"] = 1
             };
-            var payload = LicenseCanonicalizer.GetUtf8SignPayloadFromJObject(j);
-            byte[] sig;
+
             try
             {
+                var payload = LicenseCanonicalizer.GetUtf8SignPayloadFromJObject(j);
                 byte[] hash;
                 using (var sha = SHA256.Create()) hash = sha.ComputeHash(payload);
+                byte[] sig;
                 using (var rsa = new RSACryptoServiceProvider())
                 {
-                    rsa.FromXmlString(priv);
+                    rsa.FromXmlString(_privateKeyXml);
                     sig = rsa.SignHash(hash, "SHA256");
                 }
+                j["signature"] = Convert.ToBase64String(sig);
             }
             catch (Exception ex)
             {
-                ErrorText.Text = "签名失败: " + ex.Message;
+                ErrorText.Text = "签名失败：" + ex.Message;
                 return;
             }
-            j["signature"] = Convert.ToBase64String(sig);
 
-            var d = new SaveFileDialog
+            _generatedText = j.ToString(Formatting.Indented);
+            CodeOutputBox.Text = _generatedText;
+            SaveLicBtn.IsEnabled = true;
+            CopyCodeBtn.IsEnabled = true;
+            CopyCodeHint.Foreground = (Brush)FindResource("Ok");
+            CopyCodeHint.Text = "已生成。请保存 license.lic 或复制授权码发给客户。";
+        }
+
+        // ---------- 交付 ----------
+
+        private void OnSaveLic(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(_generatedText)) return;
+            var dlg = new SaveFileDialog
             {
                 FileName = "license.lic",
                 Filter = "License (*.lic)|*.lic|JSON (*.json)|*.json|所有文件|*.*"
             };
-            if (d.ShowDialog() != true) return;
-            var text = j.ToString(Formatting.Indented);
-            File.WriteAllText(d.FileName, text, new UTF8Encoding(false));
-            MessageBox.Show("已保存: " + d.FileName, "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dlg.ShowDialog() != true) return;
+            try
+            {
+                File.WriteAllText(dlg.FileName, _generatedText, new UTF8Encoding(false));
+                CopyCodeHint.Foreground = (Brush)FindResource("Ok");
+                CopyCodeHint.Text = "已保存：" + dlg.FileName;
+            }
+            catch (Exception ex)
+            {
+                ErrorText.Text = "保存失败：" + ex.Message;
+            }
+        }
+
+        private void OnCopyCode(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(_generatedText)) return;
+            try
+            {
+                Clipboard.SetText(_generatedText);
+                CopyCodeHint.Foreground = (Brush)FindResource("Ok");
+                CopyCodeHint.Text = "授权码已复制到剪贴板。";
+            }
+            catch (Exception ex)
+            {
+                ErrorText.Text = "复制失败：" + ex.Message;
+            }
         }
 
         private static string[] DefaultFeaturesForEdition(string ed)

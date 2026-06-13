@@ -10,6 +10,9 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Costura：把 HyCADTool.Licensing.dll / Newtonsoft.Json.dll 内嵌进 exe，Release 出单文件 -->
+    <PackageReference Include="Costura.Fody" Version="5.7.0" PrivateAssets="all" />
+    <PackageReference Include="Fody" Version="6.8.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />

@@ -17,20 +17,5 @@ namespace HyCADTool.Features.DCEL.Domain.Services
         /// <param name="tolerance">容差</param>
         /// <returns>构建的 DCEL 图</returns>
         DCELGraph BuildFromSegments(List<Line2D> segments, Tolerance tolerance);
-
-        /// <summary>
-        /// 分类面为外轮廓或内部（Classify Faces）
-        /// </summary>
-        /// <param name="graph">DCEL 图</param>
-        void ClassifyFaces(DCELGraph graph);
-
-        /// <summary>
-        /// 计算面的有向面积（Calculate Signed Area）
-        /// 正值表示逆时针（外轮廓），负值表示顺时针（内部）
-        /// </summary>
-        /// <param name="face">面</param>
-        /// <returns>有向面积</returns>
-        double CalculateSignedArea(Face face);
     }
 }
-

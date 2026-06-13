@@ -28,7 +28,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
     /// 竖直割线扫描分区 — 四阶段流水线（基础 → 墙 → 板/梁 → 大体积）。
     ///
     /// 阶段0：X 断点中点割线 + gap 内外测试 → 梯形 cell。
-    /// 阶段1：最下区间统一 cut 剖基础；[cut,顶] → protrusionPool；矮凸起 → 局部混凝土。
+    /// 阶段1：最下区间统一 cut 剖基础；[cut,顶] → protrusionPool / floatingCells（非落地板系路由）。
     /// 阶段2：protrusionPool 高度带 + 轮廓量宽 → 墙 / 大体积池。
     /// 阶段3：板组薄厚拆分；厚列下凸 → 梁(窄) / 大体积池(宽)。
     /// 阶段4：大体积池收尾 + 局部贴大体积升级。
@@ -161,7 +161,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             double slabMaxThicknessMm = DefaultSlabMaxThicknessMm,
             double beamMaxWidthMm = DefaultBeamMaxWidthMm,
             double localConcreteMaxHeightMm = DefaultLocalConcreteMaxHeightMm,
-            double? groundY = null)
+            double? groundY = null,
+            bool mergeBumpsIntoBottomSlab = true)
         {
             var result = new List<PartitionRegion>();
             if (region?.Outer == null || region.Outer.VertexCount < 3)
@@ -227,6 +228,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             // ---------------- 阶段1：统一基础切割 ----------------
             var bottomSlabCells = new List<TrapezoidCell>();
             var protrusionPool = new List<TrapezoidCell>();
+            var floatingCells = new List<TrapezoidCell>();
+            var shortBumps = new List<TrapezoidCell>();
+            var slabCellAtStrip = new Dictionary<int, TrapezoidCell>();
+            var bareStripTop = new Dictionary<int, double>();
 
             // 预填各条带底板顶（供邻近桥接 cut 使用）
             foreach (var sb in stripBottoms)
@@ -264,6 +269,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     cut = Math.Min(refTop, maxBot + bottomSlabMaxHeightMm);
                     if (cut > maxTop)
                         cut = maxTop;
+                    // 下限夹紧：cut 不得低于本条带自身底面，否则深坑邻列把 cut 拖到
+                    // 真实底以下 → 不生成底板 cell + bumpHeight 虚高跳过矮凸起合并（单侧洋红/孤洞）
+                    if (cut < maxBot)
+                        cut = maxBot;
                 }
                 else
                 {
@@ -272,7 +281,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
                 if (grounded && cut - maxBot >= MinIntervalHeightMm)
                 {
-                    bottomSlabCells.Add(new TrapezoidCell
+                    var slabCell = new TrapezoidCell
                     {
                         Id = cellId++,
                         StripIndex = i,
@@ -286,13 +295,16 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                         OrigBotL = botL,
                         OrigBotR = botR,
                         ThicknessMm = cut - (botL + botR) / 2.0
-                    });
+                    };
+                    bottomSlabCells.Add(slabCell);
+                    slabCellAtStrip[i] = slabCell;
+                    bareStripTop[i] = cut;
                     bottomTopAtStrip[i] = cut;
                 }
 
                 if (topL - cut >= MinIntervalHeightMm || topR - cut >= MinIntervalHeightMm)
                 {
-                    protrusionPool.Add(new TrapezoidCell
+                    var raisedCell = new TrapezoidCell
                     {
                         Id = cellId++,
                         StripIndex = i,
@@ -306,9 +318,50 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                         OrigBotL = botL,
                         OrigBotR = botR,
                         ThicknessMm = ((topL - cut) + (topR - cut)) / 2.0
-                    });
+                    };
+
+                    if (!grounded)
+                    {
+                        floatingCells.Add(raisedCell);
+                    }
+                    else
+                    {
+                        double bumpHeight = Math.Max(topL, topR) - cut;
+                        bool shortFeature = bumpHeight < localConcreteMaxHeightMm;
+                        bool toShort = shortFeature
+                            && (slabCellAtStrip.ContainsKey(i) || mergeBumpsIntoBottomSlab);
+                        if (toShort)
+                            shortBumps.Add(raisedCell);
+                        else
+                            protrusionPool.Add(raisedCell);
+                    }
                 }
             }
+
+            // 非落地列预分组：含薄列证据 → 板系（阶段3）；全厚列 → 墙/大体积
+            foreach (var group in MergeCells(floatingCells))
+            {
+                if (group.Any(c => c.ThicknessMm <= slabMaxThicknessMm))
+                {
+                    foreach (var c in group)
+                        c.Kind = CellKind.Slab;
+                    upperSlabCells.AddRange(group);
+                }
+                else
+                {
+                    protrusionPool.AddRange(group);
+                }
+            }
+
+            ProcessShortBottomBumps(
+                mergeBumpsIntoBottomSlab,
+                shortBumps,
+                bottomSlabCells,
+                slabCellAtStrip,
+                bareStripTop,
+                protrusionPool,
+                result,
+                ref cellId);
 
             // Y 断点（高度带剖分）
             var yBreakSet = new SortedSet<double>();
@@ -337,7 +390,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             var massPool = new List<TrapezoidCell>();
             var slabPieces = new List<TrapezoidCell>();
 
-            // 阶段1 收尾：矮凸起 → 局部混凝土；其余 → 墙/大体积候选
+            // 阶段1 收尾：矮凸起已在 ProcessShortBottomBumps 处理；其余 → 墙/大体积候选
             foreach (var group in MergeCells(protrusionPool))
             {
                 double height = group.Max(c => c.MaxTop) - group.Min(c => c.MinBot);
@@ -371,7 +424,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             var allSlabCells = upperSlabCells.Concat(slabPieces).ToList();
             var beamCells = new List<TrapezoidCell>();
             ProcessSlabGroups(
-                allSlabCells, slabMaxThicknessMm, beamMaxWidthMm,
+                allSlabCells, slabMaxThicknessMm, beamMaxWidthMm, anchorageMm,
                 ref cellId, result, massPool, beamCells);
 
             foreach (var group in MergeCells(beamCells))
@@ -429,10 +482,174 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             };
         }
 
+        private static void ProcessShortBottomBumps(
+            bool mergeBumpsIntoBottomSlab,
+            List<TrapezoidCell> shortBumps,
+            List<TrapezoidCell> bottomSlabCells,
+            Dictionary<int, TrapezoidCell> slabCellAtStrip,
+            Dictionary<int, double> bareStripTop,
+            List<TrapezoidCell> protrusionPool,
+            List<PartitionRegion> result,
+            ref int cellId)
+        {
+            if (shortBumps.Count == 0)
+                return;
+
+            var highStripIndices = new HashSet<int>(protrusionPool.Select(p => p.StripIndex));
+
+            if (mergeBumpsIntoBottomSlab)
+            {
+                foreach (var bump in shortBumps)
+                {
+                    if (slabCellAtStrip.TryGetValue(bump.StripIndex, out var slab))
+                    {
+                        slab.TopL = bump.TopL;
+                        slab.TopR = bump.TopR;
+                        slab.ThicknessMm = ((slab.TopL - slab.BotL) + (slab.TopR - slab.BotR)) / 2.0;
+                        continue;
+                    }
+
+                    // 孤立矮凸起：底面取真实轮廓 OrigBot，新建底板 cell 补洞
+                    var newSlab = new TrapezoidCell
+                    {
+                        Id = cellId++,
+                        StripIndex = bump.StripIndex,
+                        Kind = CellKind.BottomSlab,
+                        X0 = bump.X0,
+                        X1 = bump.X1,
+                        TopL = bump.TopL,
+                        TopR = bump.TopR,
+                        BotL = bump.OrigBotL,
+                        BotR = bump.OrigBotR,
+                        OrigBotL = bump.OrigBotL,
+                        OrigBotR = bump.OrigBotR,
+                        ThicknessMm = ((bump.TopL - bump.OrigBotL) + (bump.TopR - bump.OrigBotR)) / 2.0
+                    };
+                    bottomSlabCells.Add(newSlab);
+                    slabCellAtStrip[bump.StripIndex] = newSlab;
+                    bareStripTop[bump.StripIndex] = newSlab.MaxTop;
+                }
+
+                return;
+            }
+
+            foreach (var run in MergeCells(bottomSlabCells))
+            {
+                var runStrips = new HashSet<int>(run.Select(c => c.StripIndex));
+                double runMinTop = double.MaxValue;
+
+                foreach (var cell in run)
+                {
+                    if (highStripIndices.Contains(cell.StripIndex))
+                        continue;
+
+                    if (bareStripTop.TryGetValue(cell.StripIndex, out double bare))
+                        runMinTop = Math.Min(runMinTop, bare);
+                }
+
+                foreach (var bump in shortBumps)
+                {
+                    if (!runStrips.Contains(bump.StripIndex))
+                        continue;
+
+                    if (highStripIndices.Contains(bump.StripIndex))
+                        continue;
+
+                    runMinTop = Math.Min(runMinTop, bump.MaxTop);
+                }
+
+                if (runMinTop == double.MaxValue)
+                    continue;
+
+                var bumpStripsHandled = new HashSet<int>();
+
+                foreach (var bump in shortBumps)
+                {
+                    if (!runStrips.Contains(bump.StripIndex))
+                        continue;
+
+                    if (highStripIndices.Contains(bump.StripIndex))
+                        continue;
+
+                    if (!slabCellAtStrip.TryGetValue(bump.StripIndex, out var slab))
+                        continue;
+
+                    // 逐侧夹紧：底板顶不得低于底面（斜坡过渡段防自交）
+                    double newTopL = Math.Max(runMinTop, slab.BotL);
+                    double newTopR = Math.Max(runMinTop, slab.BotR);
+                    slab.TopL = newTopL;
+                    slab.TopR = newTopR;
+                    slab.ThicknessMm = ((newTopL - slab.BotL) + (newTopR - slab.BotR)) / 2.0;
+                    bumpStripsHandled.Add(bump.StripIndex);
+
+                    double avgH = ((bump.TopL - newTopL) + (bump.TopR - newTopR)) / 2.0;
+                    if (avgH >= MinIntervalHeightMm)
+                    {
+                        EmitGroup(result, new List<TrapezoidCell>
+                        {
+                            new TrapezoidCell
+                            {
+                                StripIndex = bump.StripIndex,
+                                Kind = CellKind.Raised,
+                                X0 = bump.X0,
+                                X1 = bump.X1,
+                                TopL = bump.TopL,
+                                TopR = bump.TopR,
+                                BotL = newTopL,
+                                BotR = newTopR,
+                                ThicknessMm = avgH
+                            }
+                        }, ComponentType.LocalConcrete, avgH);
+                    }
+                }
+
+                foreach (var cell in run)
+                {
+                    if (highStripIndices.Contains(cell.StripIndex))
+                        continue;
+
+                    if (bumpStripsHandled.Contains(cell.StripIndex))
+                        continue;
+
+                    if (!bareStripTop.TryGetValue(cell.StripIndex, out double bare))
+                        continue;
+
+                    double origTopL = cell.TopL;
+                    double origTopR = cell.TopR;
+                    double newTopL = Math.Max(runMinTop, cell.BotL);
+                    double newTopR = Math.Max(runMinTop, cell.BotR);
+                    cell.TopL = newTopL;
+                    cell.TopR = newTopR;
+                    cell.ThicknessMm = ((newTopL - cell.BotL) + (newTopR - cell.BotR)) / 2.0;
+
+                    double avgH = ((origTopL - newTopL) + (origTopR - newTopR)) / 2.0;
+                    if (avgH >= MinIntervalHeightMm)
+                    {
+                        EmitGroup(result, new List<TrapezoidCell>
+                        {
+                            new TrapezoidCell
+                            {
+                                StripIndex = cell.StripIndex,
+                                Kind = CellKind.Raised,
+                                X0 = cell.X0,
+                                X1 = cell.X1,
+                                TopL = origTopL,
+                                TopR = origTopR,
+                                BotL = newTopL,
+                                BotR = newTopR,
+                                ThicknessMm = avgH
+                            }
+                        }, ComponentType.LocalConcrete, avgH);
+                    }
+                }
+            }
+        }
+
         private static void ProcessSlabGroups(
             List<TrapezoidCell> slabCells,
             double slabMaxThicknessMm,
             double beamMaxWidthMm,
+            double anchorageMm,
             ref int cellId,
             List<PartitionRegion> result,
             List<TrapezoidCell> massPool,
@@ -459,7 +676,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 // 薄列下边为板基线（板底标高）
                 double baseline = thin.Max(c => c.MinBot);
                 var stillSlab = new List<TrapezoidCell>(thin);
-                var protPieces = new List<TrapezoidCell>();
+                var lowerPieces = new List<TrapezoidCell>();
+                var topByLowerId = new Dictionary<int, TrapezoidCell>();
 
                 foreach (var cell in thick)
                 {
@@ -467,29 +685,12 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     double topR = cell.TopR;
                     double botL = cell.BotL;
                     double botR = cell.BotR;
+                    bool hasTop = Math.Max(topL, topR) - baseline >= MinIntervalHeightMm;
+                    bool hasLower = baseline - Math.Min(botL, botR) >= MinIntervalHeightMm;
 
-                    // 基线以上 → 板
-                    if (Math.Max(topL, topR) - baseline >= MinIntervalHeightMm)
+                    if (hasLower)
                     {
-                        stillSlab.Add(new TrapezoidCell
-                        {
-                            Id = cellId++,
-                            StripIndex = cell.StripIndex,
-                            Kind = CellKind.Slab,
-                            X0 = cell.X0,
-                            X1 = cell.X1,
-                            TopL = topL,
-                            TopR = topR,
-                            BotL = baseline,
-                            BotR = baseline,
-                            ThicknessMm = ((topL - baseline) + (topR - baseline)) / 2.0
-                        });
-                    }
-
-                    // 基线以下 → 下凸独立区域（先收集，合并后再判型）
-                    if (baseline - Math.Min(botL, botR) >= MinIntervalHeightMm)
-                    {
-                        protPieces.Add(new TrapezoidCell
+                        var lower = new TrapezoidCell
                         {
                             Id = cellId++,
                             StripIndex = cell.StripIndex,
@@ -500,24 +701,89 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                             TopR = baseline,
                             BotL = botL,
                             BotR = botR,
+                            OrigBotL = cell.OrigBotL,
+                            OrigBotR = cell.OrigBotR,
                             ThicknessMm = baseline - (botL + botR) / 2.0
-                        });
+                        };
+                        lowerPieces.Add(lower);
+
+                        if (hasTop)
+                        {
+                            topByLowerId[lower.Id] = new TrapezoidCell
+                            {
+                                StripIndex = cell.StripIndex,
+                                Kind = CellKind.Slab,
+                                X0 = cell.X0,
+                                X1 = cell.X1,
+                                TopL = topL,
+                                TopR = topR,
+                                BotL = baseline,
+                                BotR = baseline,
+                                ThicknessMm = ((topL - baseline) + (topR - baseline)) / 2.0
+                            };
+                        }
+                    }
+                    else if (hasTop)
+                    {
+                        massPool.Add(CopyCell(ref cellId, new TrapezoidCell
+                        {
+                            StripIndex = cell.StripIndex,
+                            Kind = CellKind.Raised,
+                            X0 = cell.X0,
+                            X1 = cell.X1,
+                            TopL = topL,
+                            TopR = topR,
+                            BotL = baseline,
+                            BotR = baseline,
+                            ThicknessMm = ((topL - baseline) + (topR - baseline)) / 2.0
+                        }, CellKind.Raised));
                     }
                 }
 
-                foreach (var sub in MergeCells(protPieces))
+                foreach (var sub in MergeCells(lowerPieces))
                 {
-                    if (TouchesAnyCell(sub, massPool))
+                    bool isMass = TouchesAnyCell(sub, massPool)
+                               || (sub.Max(c => c.X1) - sub.Min(c => c.X0)) > beamMaxWidthMm;
+
+                    if (isMass)
                     {
                         massPool.AddRange(sub);
-                        continue;
-                    }
+                        double mx0 = sub.Min(c => c.X0);
+                        double mx1 = sub.Max(c => c.X1);
+                        bool thinLeft = thin.Any(t => Math.Abs(t.X1 - mx0) < MinStripWidthMm);
+                        bool thinRight = thin.Any(t => Math.Abs(t.X0 - mx1) < MinStripWidthMm);
 
-                    double width = sub.Max(c => c.X1) - sub.Min(c => c.X0);
-                    if (width <= beamMaxWidthMm)
-                        beamCells.AddRange(sub);
+                        foreach (var lc in sub)
+                        {
+                            if (!topByLowerId.TryGetValue(lc.Id, out var tp))
+                                continue;
+
+                            massPool.Add(CopyCell(ref cellId, tp, CellKind.Raised));
+
+                            if (thinLeft)
+                            {
+                                var clipped = ClipCellX(tp, tp.X0, Math.Min(tp.X1, mx0 + anchorageMm));
+                                if (clipped != null)
+                                    stillSlab.Add(CopyCell(ref cellId, clipped, CellKind.Slab));
+                            }
+
+                            if (thinRight)
+                            {
+                                var clipped = ClipCellX(tp, Math.Max(tp.X0, mx1 - anchorageMm), tp.X1);
+                                if (clipped != null)
+                                    stillSlab.Add(CopyCell(ref cellId, clipped, CellKind.Slab));
+                            }
+                        }
+                    }
                     else
-                        massPool.AddRange(sub);
+                    {
+                        beamCells.AddRange(sub);
+                        foreach (var lc in sub)
+                        {
+                            if (topByLowerId.TryGetValue(lc.Id, out var tp))
+                                stillSlab.Add(CopyCell(ref cellId, tp, CellKind.Slab));
+                        }
+                    }
                 }
 
                 foreach (var sub in MergeCells(stillSlab))
@@ -526,6 +792,64 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                         sub.Average(c => c.ThicknessMm));
                 }
             }
+        }
+
+        private static TrapezoidCell CopyCell(ref int cellId, TrapezoidCell src, CellKind kind)
+        {
+            return new TrapezoidCell
+            {
+                Id = cellId++,
+                StripIndex = src.StripIndex,
+                Kind = kind,
+                X0 = src.X0,
+                X1 = src.X1,
+                TopL = src.TopL,
+                TopR = src.TopR,
+                BotL = src.BotL,
+                BotR = src.BotR,
+                OrigBotL = src.OrigBotL,
+                OrigBotR = src.OrigBotR,
+                ThicknessMm = ((src.TopL - src.BotL) + (src.TopR - src.BotR)) / 2.0
+            };
+        }
+
+        /// <summary>按新 X 界线裁剪梯形 cell（Top/Bot 线性插值）。</summary>
+        private static TrapezoidCell ClipCellX(TrapezoidCell src, double newX0, double newX1)
+        {
+            if (newX1 - newX0 < MinStripWidthMm)
+                return null;
+
+            double topL = InterpolateYAtX(src.X0, src.TopL, src.X1, src.TopR, newX0);
+            double topR = InterpolateYAtX(src.X0, src.TopL, src.X1, src.TopR, newX1);
+            double botL = InterpolateYAtX(src.X0, src.BotL, src.X1, src.BotR, newX0);
+            double botR = InterpolateYAtX(src.X0, src.BotL, src.X1, src.BotR, newX1);
+
+            return new TrapezoidCell
+            {
+                StripIndex = src.StripIndex,
+                Kind = src.Kind,
+                X0 = newX0,
+                X1 = newX1,
+                TopL = topL,
+                TopR = topR,
+                BotL = botL,
+                BotR = botR,
+                OrigBotL = src.OrigBotL,
+                OrigBotR = src.OrigBotR,
+                ThicknessMm = ((topL - botL) + (topR - botR)) / 2.0
+            };
+        }
+
+        private static double InterpolateYAtX(
+            double x0, double y0, double x1, double y1, double x)
+        {
+            if (Math.Abs(x1 - x0) < IntersectionEpsilon)
+                return (y0 + y1) / 2.0;
+
+            double t = (x - x0) / (x1 - x0);
+            if (t < 0) t = 0;
+            else if (t > 1) t = 1;
+            return y0 + t * (y1 - y0);
         }
 
         private static void EmitMassAndLocal(
@@ -691,19 +1015,71 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
             ys.Add(yHi);
 
-            // 0 = 墙带，1 = 大体积带，2 = 板带
+            // 0 = 墙带，1 = 大体积带，2 = 板带候选
             int n = ys.Count - 1;
             var kinds = new int[n];
+            var slabLeftEdge = new double[n];
+            var slabRightEdge = new double[n];
+            var needsAnchorTongue = new bool[n];
+
             for (int b = 0; b < n; b++)
             {
+                slabLeftEdge[b] = double.NaN;
+                slabRightEdge[b] = double.NaN;
+
                 double ym = (ys[b] + ys[b + 1]) / 2.0;
                 double width = MeasureContourWidthAt(
                     region, segments, breakpoints, cellsByStrip,
-                    cell.X0, cell.X1, xmCol, ym, out double nearestSlabDist);
-                bool slabWithinAnchorage = nearestSlabDist <= anchorageMm;
+                    cell.X0, cell.X1, xmCol, ym,
+                    out double leftEdgeX, out double rightEdgeX);
+                slabLeftEdge[b] = leftEdgeX;
+                slabRightEdge[b] = rightEdgeX;
+
+                bool leftAnchorage = !double.IsNaN(leftEdgeX)
+                    && cell.X0 - leftEdgeX <= anchorageMm;
+                bool rightAnchorage = !double.IsNaN(rightEdgeX)
+                    && rightEdgeX - cell.X1 <= anchorageMm;
+                bool slabWithinAnchorage = leftAnchorage || rightAnchorage;
+
                 kinds[b] = width <= wallMaxWidthMm
                     ? 0
                     : (allowSlabBands && slabWithinAnchorage ? 2 : 1);
+            }
+
+            // 2-run 下邻判型：下邻为大体积 → 转大体积并延伸到列顶，标记锚固舌
+            int r0 = 0;
+            while (r0 < n)
+            {
+                if (kinds[r0] != 2)
+                {
+                    r0++;
+                    continue;
+                }
+
+                int r1 = r0;
+                while (r1 + 1 < n && kinds[r1 + 1] == 2)
+                    r1++;
+
+                int belowKind = -1;
+                for (int b = r0 - 1; b >= 0; b--)
+                {
+                    if (kinds[b] != 2)
+                    {
+                        belowKind = kinds[b];
+                        break;
+                    }
+                }
+
+                if (belowKind == 1)
+                {
+                    for (int b = r0; b <= r1; b++)
+                    {
+                        kinds[b] = 1;
+                        needsAnchorTongue[b] = true;
+                    }
+                }
+
+                r0 = r1 + 1;
             }
 
             // 连续同类带合并成 run 后出 cell
@@ -784,13 +1160,90 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                         massPieces.Add(piece);
                 }
 
+                for (int tb = b0; tb <= b1; tb++)
+                {
+                    if (!needsAnchorTongue[tb])
+                        continue;
+
+                    double yBot = ys[tb];
+                    double yTop = ys[tb + 1];
+                    TryAddAnchorTongue(
+                        cell, ref cellId, cell.StripIndex, yBot, yTop,
+                        slabLeftEdge[tb], slabRightEdge[tb], anchorageMm, slabPieces);
+                }
+
                 b0 = b1 + 1;
             }
         }
 
+        private static void TryAddAnchorTongue(
+            TrapezoidCell cell,
+            ref int cellId,
+            int stripIndex,
+            double yBot,
+            double yTop,
+            double slabLeftEdgeX,
+            double slabRightEdgeX,
+            double anchorageMm,
+            List<TrapezoidCell> slabPieces)
+        {
+            if (yTop - yBot < MinIntervalHeightMm)
+                return;
+
+            if (!double.IsNaN(slabLeftEdgeX))
+            {
+                double x1 = Math.Min(cell.X1, slabLeftEdgeX + anchorageMm);
+                var tongue = CreateFlatBandCell(
+                    cell, ref cellId, stripIndex, CellKind.Slab,
+                    cell.X0, x1, yBot, yTop);
+                if (tongue != null)
+                    slabPieces.Add(tongue);
+            }
+
+            if (!double.IsNaN(slabRightEdgeX))
+            {
+                double x0 = Math.Max(cell.X0, slabRightEdgeX - anchorageMm);
+                var tongue = CreateFlatBandCell(
+                    cell, ref cellId, stripIndex, CellKind.Slab,
+                    x0, cell.X1, yBot, yTop);
+                if (tongue != null)
+                    slabPieces.Add(tongue);
+            }
+        }
+
+        private static TrapezoidCell CreateFlatBandCell(
+            TrapezoidCell cell,
+            ref int cellId,
+            int stripIndex,
+            CellKind kind,
+            double x0,
+            double x1,
+            double yBot,
+            double yTop)
+        {
+            if (x1 - x0 < MinStripWidthMm || yTop - yBot < MinIntervalHeightMm)
+                return null;
+
+            return new TrapezoidCell
+            {
+                Id = cellId++,
+                StripIndex = stripIndex,
+                Kind = kind,
+                X0 = x0,
+                X1 = x1,
+                TopL = yTop,
+                TopR = yTop,
+                BotL = yBot,
+                BotR = yBot,
+                OrigBotL = cell.OrigBotL,
+                OrigBotR = cell.OrigBotR,
+                ThicknessMm = yTop - yBot
+            };
+        }
+
         /// <summary>
         /// 用原始轮廓水平割线 y = ym 量测包含 xm 的连续混凝土实际宽度，
-        /// 并返回同高度最近板 cell 到当前列 [colX0,colX1] 的水平距离（无板则 MaxValue）。
+        /// 并返回同高度左右板缘 X（NaN = 该侧无板）。
         /// </summary>
         private static double MeasureContourWidthAt(
             ReinRegion region,
@@ -801,9 +1254,11 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             double colX1,
             double xm,
             double ym,
-            out double nearestSlabDistMm)
+            out double slabLeftEdgeX,
+            out double slabRightEdgeX)
         {
-            nearestSlabDistMm = double.MaxValue;
+            slabLeftEdgeX = double.NaN;
+            slabRightEdgeX = double.NaN;
 
             var hits = new List<double>();
             foreach (var seg in segments)
@@ -871,7 +1326,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             if (double.IsNaN(wx0))
                 return double.MaxValue;
 
-            // 同高板 cell → 到当前列的最近水平距离
+            // 同高板 cell → 左右板缘 X
             foreach (var kv in cellsByStrip)
             {
                 double sx0 = breakpoints[kv.Key];
@@ -882,16 +1337,17 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     if (c.Kind != CellKind.Slab || ym < c.MinBot || ym > c.MaxTop)
                         continue;
 
-                    double dist;
-                    if (sx1 >= colX0 - MinStripWidthMm && sx0 <= colX1 + MinStripWidthMm)
-                        dist = 0;
-                    else if (sx1 <= colX0)
-                        dist = colX0 - sx1;
-                    else
-                        dist = sx0 - colX1;
+                    if (sx1 <= colX0 + MinStripWidthMm)
+                    {
+                        if (double.IsNaN(slabLeftEdgeX) || sx1 > slabLeftEdgeX)
+                            slabLeftEdgeX = sx1;
+                    }
 
-                    if (dist < nearestSlabDistMm)
-                        nearestSlabDistMm = dist;
+                    if (sx0 >= colX1 - MinStripWidthMm)
+                    {
+                        if (double.IsNaN(slabRightEdgeX) || sx0 < slabRightEdgeX)
+                            slabRightEdgeX = sx0;
+                    }
                 }
             }
 

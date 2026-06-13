@@ -20,20 +20,6 @@ namespace HyCADTool.Features.DCEL.Services
         void Render(DCELGraph graph, string outerLayer = "dcelOuter", string innerLayer = "dcelInner");
 
         /// <summary>
-        /// 渲染 DCEL 图（包含曲线信息恢复）
-        /// 尝试恢复原始曲线类型（Arc, Spline, Ellipse）并连接成 Polyline
-        /// </summary>
-        /// <param name="graph">DCEL 图</param>
-        /// <param name="curveSegments">曲线段列表（包含原始曲线信息）</param>
-        /// <param name="outerLayer">外轮廓面图层名称（默认: dcelOuter）</param>
-        /// <param name="innerLayer">内部面图层名称（默认: dcelInner）</param>
-        void RenderWithCurveInfo(
-            DCELGraph graph,
-            List<CurveSegment2D> curveSegments,
-            string outerLayer = "dcelOuter",
-            string innerLayer = "dcelInner");
-        
-        /// <summary>
         /// 渲染 DCEL 图（使用简化曲线映射）
         /// 根据映射字典恢复原始曲线或使用简化线段
         /// </summary>
@@ -42,18 +28,13 @@ namespace HyCADTool.Features.DCEL.Services
         /// <param name="outerLayer">外轮廓面图层名称（默认: dcelOuter）</param>
         /// <param name="innerLayer">内部面图层名称（默认: dcelInner）</param>
         /// <param name="restoreOriginal">是否恢复原始曲线（true=恢复原曲线，false=使用简化线段）</param>
+        /// <param name="tolerance">几何容差（与 DCEL 构建容差同源，用于曲线段匹配）</param>
         void RenderWithMappings(
             DCELGraph graph,
             List<SimplifiedCurveMapping> mappings,
             string outerLayer = "dcelOuter",
             string innerLayer = "dcelInner",
-            bool restoreOriginal = true);
+            bool restoreOriginal = true,
+            double tolerance = 0.01);
     }
 }
-
-
-
-
-
-
-

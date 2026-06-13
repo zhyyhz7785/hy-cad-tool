@@ -16,15 +16,14 @@
 ## 目录结构
 
 - `Domain/`：`DCELGraph`、半边/面/顶点、`DCELBuilderService`、`DCELSettings`、`IDCELBuilderService`
-- `Services/`：`DCELRenderer`、`IDCELRenderer`
-- `Domain/Utilities/EntityTypeMapping.cs` 等辅助
+- `Services/`：`DCELRenderer`、`IDCELRenderer`、`DCELPipelineRunner`、`DCELTimingReporter`
 
 ## 命令与入口
 
 | 键 | 位置 | 说明 |
 |----|------|------|
 | `HYDCEL` | `Misc/DCELCommand` | 选曲线 → Builder + Renderer |
-| `HYDCELSET` | `Misc/DCELSettingsCommand` | 读写 `DCELSettings` |
+| `HYDCELSET` | `Misc/DCELSettingsCommand` | 读写 `DCELSettings`（含 VerboseTiming 详细耗时） |
 
 DI：`IDCELBuilderService` / `IDCELRenderer` 在 `AutofacModule` 注册（以项目为准）。
 

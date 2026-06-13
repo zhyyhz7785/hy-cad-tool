@@ -23,9 +23,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("识别构件 N8", () =>
+            SimpleLogger.LogElapsedTime("hyLicense", () =>
             {
-                new Features.Reinforcement.RecognizeComponentsCommand().Execute();
+                new Shell.Commands.LicenseActivationCommand().Execute();
             });
         }
     }

@@ -220,13 +220,9 @@
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
                                  Text="{Binding ReinVm.CompBottomSlabMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
-                    <bc:PropertyRow Label="忽略底板高差" Style="{StaticResource ReinPanelPropertyRow}">
-                        <CheckBox IsChecked="{Binding ReinVm.CompIgnoreBottomSlabHeightDiff, Mode=TwoWay}"
+                    <bc:PropertyRow Label="局部凸起并入底板" Style="{StaticResource ReinPanelPropertyRow}">
+                        <CheckBox IsChecked="{Binding ReinVm.CompMergeBumpsIntoBottomSlab, Mode=TwoWay}"
                                   VerticalAlignment="Center"/>
-                    </bc:PropertyRow>
-                    <bc:PropertyRow Label="底板高差 mm" Style="{StaticResource ReinPanelPropertyRow}">
-                        <TextBox Style="{StaticResource ReinPanelInputBox}"
-                                 Text="{Binding ReinVm.CompBottomSlabHeightDiff, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="大体积≥mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"

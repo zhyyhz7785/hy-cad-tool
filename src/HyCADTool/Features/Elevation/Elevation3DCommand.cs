@@ -42,6 +42,14 @@ namespace HyCADTool.Features.Elevation
         private SlabThickness _baseThickness;
         
         public Elevation3DCommand()
+            : this(wallThicknessMm: 350, raftThicknessMm: 500)
+        {
+        }
+
+        /// <summary>
+        /// 带参构造（供「3D结构」面板传入墙厚 / 筏板厚，单位实际 mm）。
+        /// </summary>
+        public Elevation3DCommand(double wallThicknessMm, double raftThicknessMm)
         {
             // Domain 纯算法服务，无外部依赖，直接 new
             _geometryAnalyzer = new GeometryAnalyzer();
@@ -54,10 +62,9 @@ namespace HyCADTool.Features.Elevation
             _geometry3DBuilder = new Geometry3DBuilder(scale: 1.0);
             _polygonAdapter = new PolygonAdapter(scale: 1.0);
             
-            // 默认配置（与原代码保持一致）
-            _defaultWallThickness = WallThickness.Create(350); // 350mm
-            _raftThickness = SlabThickness.Create(500);        // 500mm
-            _baseThickness = SlabThickness.Create(500);        // 500mm
+            _defaultWallThickness = WallThickness.Create(wallThicknessMm);
+            _raftThickness = SlabThickness.Create(raftThicknessMm);
+            _baseThickness = SlabThickness.Create(raftThicknessMm);
         }
         
         /// <summary>

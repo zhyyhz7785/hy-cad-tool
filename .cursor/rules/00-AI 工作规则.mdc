@@ -11,13 +11,25 @@ alwaysApply: true
 
 ---
 
-## 规则 1: 代码→编译→文档 流程
+## 规则 1: 代码→AI编译→文档 流程
 
 ```
-改代码 → 提示"请编译" → 等用户反馈 → 成功后问"需要文档吗？" → 用户同意才生成
+改代码 → AI 自己编译验证 → 通过后提示用户 C2→C1 测试 → 成功后问"需要文档吗？" → 用户同意才生成
 ```
 
-**禁止**：代码完成后直接生成文档、编译前生成文档、未经询问生成文档
+**AI 编译（默认，AutoCAD 开着也安全）**：
+
+```powershell
+dotnet build src\HyCADTool\HyCADTool.csproj -c Debug
+```
+
+- 主工程已与 ReCall 完全解耦，编译不会触碰被 AutoCAD 锁定的 `ReCall.dll`
+- 编译失败时 AI 自己读错误、修复、重编，直到 0 error，不要把编译错误丢给用户
+- 若报 `CS2012 obj\...dll 被 MSBuild.exe 锁定`：先 `dotnet build-server shutdown` 再加 `-nodeReuse:false` 重试
+
+**唯一例外（冷启动，必须提醒用户）**：改了 `src/ReCall/*.cs` → AI 改完后提醒用户「关闭 AutoCAD → 编译 ReCall → 重启 AutoCAD 并 NETLOAD」，AI 不要在 AutoCAD 开着时编译 ReCall
+
+**禁止**：代码完成后直接生成文档、编译前生成文档、未经询问生成文档、改完代码不编译就交差
 
 ---
 
@@ -44,14 +56,14 @@ alwaysApply: true
 - 遵循 Clean Architecture + DDD + SOLID
 - 警惕过度工程化与边界泄漏
 
-- **禁止反射桥接**：重构旧代码时，必须将逻辑真正移植到 Refactored 项目，不得用反射调用旧项目
+- **禁止反射桥接**：重构旧代码时，必须将逻辑真正移植到主工程 `src/HyCADTool`，不得用反射调用旧项目
 - **分段重构**：当重构范围超过 3 个文件或 300 行时，主动提示"建议分段"，列出阶段计划，逐段执行
 - **分层移植**：遵循 Domain → Infrastructure → Presentation 顺序
   - Domain：纯算法/数据结构，平台无关（不引用 AutoCAD API）
   - Infrastructure：AutoCAD 绘图/转换，依赖 Domain
   - Presentation：命令/面板，编排 Domain + Infrastructure
-- **复用已有**：优先使用 Refactored 项目已有的实体/枚举/值对象，不重新定义
+- **复用已有**：优先使用主工程已有的实体/枚举/值对象，不重新定义
 
 ---
 
-**版本**: v5.0 | **更新**: 2026-02
+**版本**: v6.0 | **更新**: 2026-06（编译改为 AI 主导 dotnet build；仅改 ReCall 才冷启动）

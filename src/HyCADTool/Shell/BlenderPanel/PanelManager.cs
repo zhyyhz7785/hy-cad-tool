@@ -688,6 +688,7 @@ namespace HyCADTool.Shell
             HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.RemoveDocument(docKey);
             HyCADTool.Features.Settlement.ViewModels.SettlementPanelViewModel.RemoveDocument(docKey);
             ViewModels.ClusterPanelViewModel.RemoveDocument(docKey);
+            HyCADTool.Features.Elevation.ViewModels.Structure3DPanelViewModel.RemoveDocument(docKey);
             Features.Elevation.Services.ElevationService.RemoveDocumentCache(e.Document.Database);
 
             try

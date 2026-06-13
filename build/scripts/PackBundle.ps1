@@ -40,10 +40,15 @@ $pkg = $pkg -replace 'Version="1\.0\.0"', "Version=`"$Version`""
 $destPkg = Join-Path $bundlePath "PackageContents.xml"
 [System.IO.File]::WriteAllText($destPkg, $pkg, (New-Object System.Text.UTF8Encoding $false))
 
-$allowedDlls = "HyCADTool.dll", "HyCAD.BlenderUI.dll", "HyCADTool.TextLayout.dll", "HyCADTool.Licensing.dll", "Newtonsoft.Json.dll", "Autofac.dll", "Clipper2Lib.dll", "Markdig.dll", "NetTopologySuite.dll", "QRCoder.dll", "DocumentFormat.OpenXml.dll", "DocumentFormat.OpenXml.Framework.dll", "Microsoft.Bcl.AsyncInterfaces.dll", "System.Buffers.dll", "System.Diagnostics.DiagnosticSource.dll", "System.Memory.dll", "System.Numerics.Vectors.dll", "System.Runtime.CompilerServices.Unsafe.dll", "System.Threading.Tasks.Extensions.dll"
-foreach ($n in $allowedDlls) {
-    $f = Join-Path $outDir $n
-    if (Test-Path $f) { Copy-Item $f -Destination $win64 -Force }
+# 复制 Production 输出目录下全部托管 dll（避免白名单漏拷 HyCAD.Geometry / HYFEA.Core 等）
+$skipHostAssemblies = @(
+    "AcCoreMgd", "AcDbMgd", "AcMgd", "AcCui", "AcMr", "AcWindows", "AdWindows",
+    "Autodesk.AutoCAD.Interop"
+)
+Get-ChildItem -Path $outDir -Filter *.dll -File | ForEach-Object {
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+    if ($skipHostAssemblies -contains $base) { return }
+    Copy-Item $_.FullName -Destination $win64 -Force
 }
 Get-ChildItem -Path $outDir -Filter "HyCAD*.pdb" -File -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $win64 -Force }
 Get-ChildItem -Path $outDir -Filter "*.json" -File -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName -Destination $win64 -Force }
@@ -55,10 +60,24 @@ foreach ($dir in @("_libraries", "Resources")) {
     }
 }
 
+$required = @(
+    "HyCADTool.dll", "HyCAD.BlenderUI.dll", "HyCAD.Geometry.dll", "HYFEA.Core.dll",
+    "HyCADTool.Licensing.dll", "Autofac.dll", "commands.json"
+)
+foreach ($n in $required) {
+    $p = Join-Path $win64 $n
+    if (-not (Test-Path $p)) { Write-Error "Bundle missing required file: $n" }
+}
+
 $zip = Join-Path $distRoot "HyCAD-v$Version-bundle.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path $bundlePath -DestinationPath $zip -Force
+try {
+    Compress-Archive -Path $bundlePath -DestinationPath $zip -Force
+    Write-Host "ZIP: $zip" -ForegroundColor Green
+}
+catch {
+    Write-Host "WARN: ZIP 打包失败（可能被 AutoCAD 锁定）: $($_.Exception.Message)" -ForegroundColor Yellow
+}
 
 Write-Host "OK: $bundlePath" -ForegroundColor Green
-Write-Host "ZIP: $zip" -ForegroundColor Green
 Write-Host "Install: copy folder to `$env:APPDATA\Autodesk\ApplicationPlugins\HyCAD.bundle" -ForegroundColor Yellow

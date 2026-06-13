@@ -55,6 +55,10 @@ namespace HyCADTool.Shell.Commands
         public static void ShowG101Panel()
             => OpenTab(HyBlenderPanelViewModel.G101TabKey, "显示结构构件面板失败");
 
+        /// <summary>显示 3D结构（HY3 工作流）Tab。</summary>
+        public static void ShowStructure3DPanel()
+            => OpenTab(HyBlenderPanelViewModel.Structure3DTabKey, "显示3D结构面板失败");
+
         /// <summary>显示桩基分类 Tab。</summary>
         public static void ShowPilePanel()      => OpenTab("桩基", "显示桩基面板失败");
 

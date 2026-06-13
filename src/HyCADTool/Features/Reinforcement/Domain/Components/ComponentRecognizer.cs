@@ -124,7 +124,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 parameters.SlabMaxThicknessMm,
                 parameters.BeamMaxWidthMm,
                 parameters.LocalConcreteMaxHeightMm,
-                groundY);
+                groundY,
+                parameters.MergeBumpsIntoBottomSlab);
             var result = new List<ComponentRegion>(partitions.Count);
 
             foreach (var part in partitions)

@@ -12,8 +12,6 @@ namespace HyCADTool.Features.DCEL.Domain.Services
     /// </summary>
     public class DCELBuilderService : IDCELBuilderService
     {
-        private const int MaxIterations = 1000;
-
         /// <summary>
         /// 从线段列表构建 DCEL 图
         /// </summary>
@@ -23,17 +21,32 @@ namespace HyCADTool.Features.DCEL.Domain.Services
                 return new DCELGraph();
 
             var graph = new DCELGraph();
-            var vertexMap = new Dictionary<Point2D, Vertex>(new Point2DEqualityComparer(tolerance));
+            var comparer = new Point2DEqualityComparer(tolerance);
+            var vertexMap = new Dictionary<Point2D, Vertex>(comparer);
+            var vertexIndex = new Dictionary<Vertex, int>();
+            var edgeKeys = new HashSet<(int, int)>();
 
-            // 1. 为每条线段创建半边对
+            // 1. 为每条线段创建半边对（过滤零长线段与重复线段）
             foreach (var segment in segments)
             {
-                var startVertex = GetOrCreateVertex(graph, vertexMap, segment.StartPoint);
-                var endVertex = GetOrCreateVertex(graph, vertexMap, segment.EndPoint);
+                // 零长线段（量化后起终点同格）会产生自环半边，跳过
+                if (comparer.Equals(segment.StartPoint, segment.EndPoint))
+                    continue;
+
+                var startVertex = GetOrCreateVertex(graph, vertexMap, vertexIndex, segment.StartPoint);
+                var endVertex = GetOrCreateVertex(graph, vertexMap, vertexIndex, segment.EndPoint);
+
+                // 重复线段去重（无向：A→B 与 B→A 视为同一条边）
+                int i1 = vertexIndex[startVertex];
+                int i2 = vertexIndex[endVertex];
+                var key = i1 < i2 ? (i1, i2) : (i2, i1);
+                if (!edgeKeys.Add(key))
+                    continue;
+
                 graph.AddEdgePair(startVertex, endVertex);
             }
 
-            // 2. 删除度数小于2的孤立顶点
+            // 2. 删除悬挂链（度数<=1 的顶点及其边，级联剥离）
             RemoveIsolatedVertices(graph);
 
             // 3. 设置半边的 Next/Prev 关系，构建面（构建时直接设置IsOuter）
@@ -43,84 +56,70 @@ namespace HyCADTool.Features.DCEL.Domain.Services
         }
 
         /// <summary>
-        /// 分类面为外轮廓或内部（已弃用，现在在面构建时直接设置IsOuter）
-        /// 保留以兼容接口定义
-        /// </summary>
-        [Obsolete("面的方向现在在构建时自动设置，无需调用此方法")]
-        public void ClassifyFaces(DCELGraph graph)
-        {
-            // 该方法已被弃用，面的IsOuter属性在构建时直接设置
-            // 为了保持接口兼容性暂时保留，但实际不执行任何操作
-        }
-
-        /// <summary>
-        /// 计算面的有向面积（已弃用，使用Face.CalculateSignedArea()代替）
-        /// 保留以兼容接口定义
-        /// </summary>
-        [Obsolete("使用Face.CalculateSignedArea()代替")]
-        public double CalculateSignedArea(Face face)
-        {
-            return face.CalculateSignedArea();
-        }
-
-        /// <summary>
         /// 获取或创建顶点（从缓存中）
         /// </summary>
-        private Vertex GetOrCreateVertex(DCELGraph graph, Dictionary<Point2D, Vertex> vertexMap, Point2D position)
+        private Vertex GetOrCreateVertex(
+            DCELGraph graph,
+            Dictionary<Point2D, Vertex> vertexMap,
+            Dictionary<Vertex, int> vertexIndex,
+            Point2D position)
         {
             if (!vertexMap.TryGetValue(position, out var vertex))
             {
                 vertex = graph.AddVertex(position);
                 vertexMap[position] = vertex;
+                vertexIndex[vertex] = vertexIndex.Count;
             }
             return vertex;
         }
 
         /// <summary>
-        /// 删除孤立的顶点（度数 <= 1）
+        /// 删除悬挂的顶点与边（度数 &lt;= 1）。
+        /// 队列式级联剥离：删除一条悬挂边后邻居顶点降度，若也变为悬挂则继续剥离。
+        /// 总复杂度 O(V + E)，且无迭代次数上限（任意长的悬挂链都能剥干净）。
         /// </summary>
         private void RemoveIsolatedVertices(DCELGraph graph)
         {
-            int iteration = 0;
-            bool hasRemoved = true;
+            var removedEdges = new HashSet<HalfEdge>();
+            var queue = new Queue<Vertex>();
 
-            while (hasRemoved && iteration < MaxIterations)
+            foreach (var vertex in graph.Vertices)
             {
-                hasRemoved = false;
-                var halfEdgesToRemove = new HashSet<HalfEdge>();
-
-                // 收集需要删除的半边
-                foreach (var he in graph.HalfEdges.ToList())
-                {
-                    if (he.StartVertex.OutgoingHalfedges.Count <= 1)
-                    {
-                        halfEdgesToRemove.Add(he);
-                        if (he.Twin != null)
-                            halfEdgesToRemove.Add(he.Twin);
-                    }
-                }
-
-                // 删除半边
-                if (halfEdgesToRemove.Count > 0)
-                {
-                    hasRemoved = true;
-                    foreach (var he in halfEdgesToRemove)
-                    {
-                        he.StartVertex.OutgoingHalfedges.Remove(he);
-                        graph.HalfEdges.Remove(he);
-                    }
-
-                    // 删除度数为0的顶点
-                    var verticesToRemove = graph.Vertices
-                        .Where(v => v.OutgoingHalfedges.Count == 0)
-                        .ToList();
-                    foreach (var vertex in verticesToRemove)
-                    {
-                        graph.Vertices.Remove(vertex);
-                    }
-                }
-                iteration++;
+                if (vertex.OutgoingHalfedges.Count <= 1)
+                    queue.Enqueue(vertex);
             }
+
+            while (queue.Count > 0)
+            {
+                var vertex = queue.Dequeue();
+
+                // 度数0：无边可删；度数1：删除唯一出射边及其孪生边
+                if (vertex.OutgoingHalfedges.Count != 1)
+                    continue;
+
+                var halfEdge = vertex.OutgoingHalfedges[0];
+                var twin = halfEdge.Twin;
+
+                vertex.OutgoingHalfedges.Clear();
+                removedEdges.Add(halfEdge);
+
+                if (twin != null)
+                {
+                    removedEdges.Add(twin);
+                    var neighbor = twin.StartVertex;
+                    if (neighbor != null)
+                    {
+                        neighbor.OutgoingHalfedges.Remove(twin);
+                        if (neighbor.OutgoingHalfedges.Count <= 1)
+                            queue.Enqueue(neighbor);
+                    }
+                }
+            }
+
+            if (removedEdges.Count > 0)
+                graph.HalfEdges.RemoveAll(removedEdges.Contains);
+
+            graph.Vertices.RemoveAll(v => v.OutgoingHalfedges.Count == 0);
         }
 
         /// <summary>
@@ -128,18 +127,23 @@ namespace HyCADTool.Features.DCEL.Domain.Services
         /// </summary>
         private void BuildFacesFromHalfEdges(DCELGraph graph)
         {
-            // 按顺序排序半边（按起点坐标）
-            var halfEdgeSet = graph.HalfEdges
+            // 按顺序排序半边（按起点坐标），保证起始边选取的确定性
+            var sortedEdges = graph.HalfEdges
                 .OrderBy(he => he.StartVertex.Position.X)
                 .ThenBy(he => he.StartVertex.Position.Y)
                 .ThenBy(he => he.Twin.StartVertex.Position.Y)
                 .ToList();
 
-            while (halfEdgeSet.Any())
+            // 单个面的边数不可能超过全部半边数，以此为环路保护上限
+            // （旧实现固定 1000 会把超长边界面静默丢弃）
+            int maxFaceEdges = graph.HalfEdges.Count + 1;
+
+            // 索引推进替代每轮 FirstOrDefault 全表扫描（O(E²) → O(E)）
+            for (int scanIndex = 0; scanIndex < sortedEdges.Count; scanIndex++)
             {
-                var startEdge = halfEdgeSet.FirstOrDefault(he => !he.IsInitialized);
-                if (startEdge == null)
-                    break;
+                var startEdge = sortedEdges[scanIndex];
+                if (startEdge.IsInitialized)
+                    continue;
 
                 startEdge.IsInitialized = true;
                 var currentEdge = startEdge;
@@ -159,10 +163,10 @@ namespace HyCADTool.Features.DCEL.Domain.Services
                     currentEdge = nextEdge;
                     iterationCount++;
 
-                    if (iterationCount > MaxIterations)
+                    if (iterationCount > maxFaceEdges)
                         break;
 
-                } while (currentEdge != null && currentEdge != startEdge);
+                } while (currentEdge != startEdge);
 
                 // 如果形成闭合面，创建面并直接设置IsOuter属性
                 if (currentEdge == startEdge && faceEdges.Count >= 3)
@@ -181,7 +185,7 @@ namespace HyCADTool.Features.DCEL.Domain.Services
         {
             var vertex1 = currentEdge.StartVertex;
             var vertex2 = currentEdge.Twin.StartVertex;
-            
+
             // 重要：与原代码保持一致，使用反向向量（从vertex2指向vertex1）
             var vector = new Vector2D(
                 vertex1.Position.X - vertex2.Position.X,
@@ -201,7 +205,7 @@ namespace HyCADTool.Features.DCEL.Domain.Services
                     candidate.Twin.StartVertex.Position.X - vertex2.Position.X,
                     candidate.Twin.StartVertex.Position.Y - vertex2.Position.Y
                 );
-                
+
                 double angle = CalculateCounterClockwiseAngle(vector, currentVector);
 
                 if (angle < minAngle)
@@ -226,30 +230,35 @@ namespace HyCADTool.Features.DCEL.Domain.Services
         }
 
         /// <summary>
-        /// Point2D 相等性比较器（考虑容差）
+        /// Point2D 相等性比较器（网格量化语义）。
+        /// Equals 与 GetHashCode 使用同一套量化函数（坐标/容差四舍五入到整数格），
+        /// 保证「相等的点哈希必然相同」——旧实现 Equals 用容差比较而哈希用网格取整，
+        /// 容差内的两点可能落入不同哈希桶，导致顶点随机分裂、面无法闭合。
         /// </summary>
         private class Point2DEqualityComparer : IEqualityComparer<Point2D>
         {
-            private readonly Tolerance _tolerance;
+            private readonly double _cellSize;
 
             public Point2DEqualityComparer(Tolerance tolerance)
             {
-                _tolerance = tolerance;
+                _cellSize = tolerance != null && tolerance.Value > 0 ? tolerance.Value : 1e-9;
             }
+
+            private long QuantizeX(Point2D p) => (long)Math.Round(p.X / _cellSize);
+            private long QuantizeY(Point2D p) => (long)Math.Round(p.Y / _cellSize);
 
             public bool Equals(Point2D p1, Point2D p2)
             {
-                return Math.Abs(p1.X - p2.X) <= _tolerance.Value &&
-                       Math.Abs(p1.Y - p2.Y) <= _tolerance.Value;
+                return QuantizeX(p1) == QuantizeX(p2) && QuantizeY(p1) == QuantizeY(p2);
             }
 
             public int GetHashCode(Point2D point)
             {
-                int hashX = Math.Round(point.X / _tolerance.Value).GetHashCode();
-                int hashY = Math.Round(point.Y / _tolerance.Value).GetHashCode();
-                return hashX ^ hashY;
+                unchecked
+                {
+                    return (QuantizeX(point).GetHashCode() * 397) ^ QuantizeY(point).GetHashCode();
+                }
             }
         }
     }
 }
-

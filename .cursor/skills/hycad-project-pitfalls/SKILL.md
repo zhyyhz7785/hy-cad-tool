@@ -1,7 +1,8 @@
 ---
 name: hycad-project-pitfalls
 description: |
-  HyCADTool 项目（HyCADTool.Refactored + HyCAD.BlenderUI + AutoCAD 插件）全部已验证的陷阱清单。
+  HyCADTool 项目（主工程 HyCADTool（2026 年中前名为 HyCADTool.Refactored）+ HyCAD.BlenderUI + AutoCAD 插件）
+  全部已验证的陷阱清单。
   覆盖：AutoCAD API 多文档 / 单例 Database 缓存 / Table Title 自动合并 / 样式与图层初始化 / 配置分裂 /
   HyRoad 图层注册清单分裂（HyRoadLayers 常量 ↔ PluginInitializer.GetRequiredLayers() 手写清单必须同步，
   否则 Entity.Layer 静默回落 0 层；锁定层写入强制用 LayerLockScope.Unlock，finally 吞异常）；
@@ -31,17 +32,22 @@ description: |
   Cursor Debug 模式收尾撤埋点 / 处理 AutoCAD 关闭崩溃 / 处理统一面板点击卡顿 /
   增删跨项目引用 / 处理 AutoCAD 锁文件致 Build 失败 /
   处理 VS XAML 设计器报 XDG0023/XDG0003/XDG-0001 全员加载失败 / 改 csproj 平台目标；
+  改 HYDCEL / DCEL 构建 / Bulge 弧段 / 平面剖分 / 曲线恢复；
   首选项 Shell/Preferences：空 Host + 代码套 DataTemplate 时 VS 设计器全白（B12）——`Dispatcher.BeginInvoke(Loaded)` + `d:ContentTemplate`/`d:Content`。
   本 skill 替代：wpf-paletteset-avoid-implicit-styles / wpf-blender-panel-guideline /
   hycad-autocad-singleton-database-context / hycad-multidoc-panel-resource-init /
   .cursor/rules/04-AutoCAD-Table陷阱.mdc。
 author: Cursor Agent
-version: 1.12.0
-date: 2026-04-26
+version: 1.14.0
+date: 2026-06-12
 ---
 
 # HyCAD 项目级闭坑清单
 
+> **命名换算（2026-06）**：主工程已转正为 **`HyCADTool`**（`src/HyCADTool`，`AssemblyName=HyCADTool`）。本 skill 历史条目中出现的 `HyCADTool.Refactored` / `Refactored.dll` / `HyCADTool.Refactored.csproj` 均指现在的 `HyCADTool` / `HyCADTool.dll` / `src/HyCADTool/HyCADTool.csproj`；命令命名空间已从 `HyCADTool.Refactored.Presentation.*` 迁到 `HyCADTool.Features.*` / `HyCADTool.Shell.*`。历史文件名按当时记录保留，不再逐条改写。
+>
+> **编译职责（2026-06）**：业务代码由 **AI** 用 `dotnet build src\HyCADTool\HyCADTool.csproj -c Debug` 编译（AutoCAD 开着也安全）；仅改 `src/ReCall/*.cs` 才提醒用户冷启动（关 CAD → 编译 ReCall → 重启 NETLOAD）。
+>
 > 本 skill 收录本仓库**已踩过且已在关键路径落实缓解或修复**的陷阱。条目按"症状 → 触发条件 → 根因 → 正确做法 → 反例 → 已修复案例"组织。
 >
 > **§ 验证状态与残留风险**（2026-04-26 起含 B12；`HyCADTool` / `ReCall` / `HyCAD.BlenderUI` 代码核对）见文末 **§ 验证状态与残留风险** 一节；**不要**把本 skill 当成「永不再现」的数学保证——宿主为 AutoCAD + 多程序集 WPF，仍有版本差与环境差。
@@ -377,6 +383,67 @@ btr.AppendEntity(pl);
 - 图层有锁定 / 冻结 / 线型特殊属性 → 独立 `HyRoadLayerInitializer.EnsureXxx(doc)`，不要硬塞进批量清单
 - 锁定层写入**必须**用 `LayerLockScope.Unlock`；禁止在命令里直接 `layer.IsLocked = false` 不复原
 - 同层多 KIND（历史场景）如需共存，擦除严格按 `(KIND, Id)` 过滤；禁止 `EraseByLayer` 作为公开 API
+
+---
+
+### A8【新 2026-06-12】HYDCEL 平面剖分：Bulge/容差/构建复杂度/渲染匹配（详见 doc/068）
+
+**现象**
+
+- 纯直线大数据集：面数新旧一致，但旧实现 DCEL 构建 **~1.3s**，新实现 **~66ms**（实测 22816 段 → 2816 面）
+- 含弧多段线：旧实现弧段简化几何偏移、跨 0° 弧离散成补弧、恢复模式反向遍历 bulge 画成补弧
+- 偶发：容差内端点应合并却分裂 → 面无法闭合（难复现）
+- 弧恢复静默退化为直线（无报错）
+
+**触发条件**
+
+- 多段线弧段走错误的 `BulgeToArc`（弓高 sagitta 当圆心距 apothem）
+- `Arc` 实体跨 0° 时 `EndAngle < StartAngle` 未归一化就构造 `Arc2D`
+- 整圆按单条 `Arc2D(0, 2π)` 恢复（bulge = tan(π/2) = ∞）
+- `Dictionary<Point2D, Vertex>` 比较器 `Equals` 用容差、`GetHashCode` 用不同量化
+- 构建容差 0.01、渲染匹配硬编码 1e-3
+- 反向遍历面时用「交换起止角的 Arc2D」表达顺时针（`SweepAngle` 恒正 → 永远是 CCW 补弧）
+- `RemoveIsolatedVertices` / `BuildFacesFromHalfEdges` 每轮全表扫描 + 固定 1000 迭代上限
+
+**根因**：几何提取、DCEL 构建、曲线恢复三阶段各自有独立 bug；大数据集上 O(E²) 构建成为主瓶颈。
+
+**正确做法**（`Features/DCEL/` + `CurveSegmentExtractor`）
+
+1. **Bulge**：唯一 `BulgeToArc2D`；apothem = `radius - sagitta`；负 bulge 规范化为 CCW（交换起止角）
+2. **Arc 实体**：进 `Arc2D` 前 `if (endAngle <= startAngle) endAngle += 2π`
+3. **整圆**：拆两个半圆 `Arc2D(0, π)` + `Arc2D(π, 2π)` 各一条 mapping
+4. **顶点合并**：`Point2DEqualityComparer` 的 `Equals` 与 `GetHashCode` **同一套** `Round(x/tolerance)` 量化
+5. **容差**：`DCELSettings.Tolerance` 贯穿构建与 `RenderWithMappings` 匹配（匹配取 ≥2× 构建容差）
+6. **反向弧恢复**：仅翻转 bulge 符号 `±tan(sweep/4)`，**禁止**构造「反转 Arc2D」
+7. **构建性能**：悬挂链用队列式度数剥离 O(V+E)；面遍历排序后索引推进，禁止每轮 `FirstOrDefault` 全扫
+8. **渲染**：面顶点仅去相邻重复点，禁止全局 `Distinct`（8 字形面）
+9. **验证**：改 DCEL 后跑大数据集 + 含弧样例；`HYDCELSET` → VerboseTiming 看分阶段耗时
+
+**反例**（详见 `doc/068` §3 P1–P10，旧代码已删除勿复刻）
+
+```csharp
+// ❌ 第二套错误 Bulge 转换（已删，Legacy 中保留作对照）
+double sagitta = radius - Math.Sqrt(radius * radius - (chord / 2) * (chord / 2));
+var center = midPoint + perpDir * (bulge > 0 ? sagitta : -sagitta); // sagitta 不是 apothem
+
+// ❌ 哈希与 Equals 语义分裂
+public bool Equals(Point2D p1, Point2D p2) => Math.Abs(p1.X - p2.X) <= tol; // 容差比较
+public int GetHashCode(Point2D p) => Math.Round(p.X / tol).GetHashCode();    // 可能不同桶
+
+// ❌ 反向弧用交换角度
+var reversedArc = new Arc2D(c, r, arc.EndAngle, arc.StartAngle); // SweepAngle 仍为正 → 补弧
+```
+
+**已修复 / 已落地**：
+
+- `doc/068-HYDCEL新旧对比与优化闭坑-2026-06-12-180000.md` — 实测对比 + P1–P10 闭坑表（Legacy 已删，文档保留动机）
+- `HYDCEL` 优化管线；2026-06-12 实测 22816 直线构建 ~66ms（旧版曾 ~1315ms）
+
+**规则**
+
+- **禁止**再引入第二套 Bulge 转换或 DCEL Legacy 分叉
+- Dictionary 容差键 **必须** Equals/GetHashCode 量化一致
+- 删 DCEL 备用路径前 `grep` 确认无调用
 
 ---
 
@@ -863,6 +930,8 @@ XamlReader.Load(info.Stream);  // 抛 XmlException 0x0C
 
 ### C1【新 2026-04-21】Refactored→ReCall 用 `<ProjectReference>` 致 AutoCAD 锁定 ReCall.dll 时整个解决方案构建中断
 
+> **现状（2026-04-25 已再进一步，本条目大部分为历史背景）**：主工程 `HyCADTool` 已与 ReCall **完全解耦**——业务代码切到自有命名空间（`HyCADTool.Shell.Commands` 的 CommandCatalog 等），csproj 中既无 `<ProjectReference>` 也无 `<Reference HintPath>` 指向 ReCall，本条目描述的 `Reference HintPath` 中间方案与 `EnsureReCallDllExists` cold-start Target 均已删除（详见 `src/HyCADTool/HyCADTool.csproj` 尾部注释）。结论不变且更强：**AI 编译主工程永远不会触碰被 AutoCAD 锁定的 ReCall.dll**。本条目保留的价值：a) 解释"为什么绝不能让任何项目 ProjectReference ReCall"；b) 同类宿主（VSTO/Revit/IIS）仍适用。
+
 **现象**
 
 - AutoCAD 开着调试 Refactored，VS 重新生成 HyCADToolGpt 解决方案（或单独 Build/Rebuild HyCADTool.Refactored）
@@ -957,14 +1026,16 @@ XamlReader.Load(info.Stream);  // 抛 XmlException 0x0C
 4. ✅ 删过 bin 目录或全新 checkout 后第一次 Build Refactored — 由 `EnsureReCallDllExists` Target 自动触发一次 ReCall 构建（前提：AutoCAD 没开），无需手工预热。
 5. ❌ **绝不**尝试在 ReCall.csproj 里覆写 `CopyFilesToOutputDirectory`（被 SDK 末段覆盖，无效）。如果未来真的需要让 ReCall 自身在锁文件时跳过复制，改用 `Directory.Build.targets`（在 SDK targets 之后导入），或改用 `<Copy ContinueOnError="true">` 重定义私有 Target。
 
-**新工作流变化（用户必须知道）**
+**新工作流变化（2026-06 起编译由 AI 完成）**
 
 | 改了什么 | 该怎么做 | AutoCAD 要不要关 |
 |---|---|---|
-| `HyCADTool.Refactored/**/*.cs` / XAML | VS 直接 Build → AutoCAD 输 `C2` 热重载 | **不用关** |
-| `HyCAD.BlenderUI/**/*` | VS 直接 Build → `C2` | **不用关** |
-| `commands.json` 配置 | VS 直接 Build → 下次命令调度自动重读（CommandTable mtime 失效缓存） | **不用关** |
-| `ReCall/*.cs`（CommandTable / CommandFacade / Recall.cs） | **关闭 AutoCAD** → 解决方案资源管理器右键 ReCall → 生成 → 重启 AutoCAD | **必须关** |
+| `src/HyCADTool/**/*.cs` / XAML | **AI** `dotnet build src\HyCADTool\HyCADTool.csproj -c Debug` → 用户在 AutoCAD 输 `C2` 热重载 | **不用关** |
+| `src/HyCAD.BlenderUI/**/*` | **AI** 编译主工程（连带构建 BlenderUI）→ `C2` | **不用关** |
+| `commands.json` 配置 | `Copy-Item` 到 `src\ReCall\bin\Debug` → 下次命令调度自动重读（CommandTable mtime 失效缓存） | **不用关** |
+| `src/ReCall/*.cs`（CommandTable / CommandFacade / Recall.cs） | **冷启动，提醒用户**：关闭 AutoCAD → 编译 ReCall（`dotnet build src\ReCall\ReCall.csproj -c Debug`）→ 重启 AutoCAD 并 NETLOAD | **必须关** |
+
+编译小坑：报 `CS2012 obj\...dll 被 MSBuild.exe 锁定` 时，先 `dotnet build-server shutdown` 再加 `-nodeReuse:false` 重试（残留 MSBuild 节点持有句柄，与 AutoCAD 无关）。
 
 **已修复文件**
 
@@ -1374,9 +1445,10 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 | **B1/B2** | `HyCAD.BlenderUI/Themes/Controls/ScrollBar.xaml` 为 **`x:Key="BlenderScrollBar"`** 命名 Style，非隐式无 Key。 |
 | **D3 / D4** | `PluginInitializer.InstallWpfExceptionTraps`：`MdiActiveDocument` 空防御；`BindingErrorListener` 白名单 + `Debug.WriteLine`，避免命令行刷爆卡死。 |
 | **Badge 真修复（B11）** | `ReCall/Recall.cs::ResolveAssembly` 增加 `AutoCadHostAssemblyNames` 黑名单，宿主程序集（`AdWindows` / `AcMr` / ...）一律走 `AppDomain` 已加载查表，绝不从 deps 目录 byte[] 加载，杜绝 5.0.1.2 与 5.1.1.1 双载入；见 **B11** 全文。 |
-| **C1** | `HyCADTool.Refactored.csproj` 已移除 `<ProjectReference Include="..\ReCall\ReCall.csproj">`，改用 `<Reference Include="ReCall"><HintPath>..\ReCall\bin\$(Configuration)\ReCall.dll</HintPath></Reference>` + `EnsureReCallDllExists` cold-start Target（约 222–252 行）。`grep -n 'ReCall.csproj' HyCADTool.Refactored.csproj` 应 0 命中。AutoCAD 开着 dotnet build Refactored 实测 0 error。 |
+| **C1** | 【2026-04-25 已更进一步】主工程 `src/HyCADTool/HyCADTool.csproj` 对 ReCall **零引用**（ProjectReference / Reference HintPath / EnsureReCallDllExists 全部移除，业务代码切到 `HyCADTool.Shell.Commands` 自有类型）。`grep -n 'ReCall' src/HyCADTool/HyCADTool.csproj` 仅命中注释与 Production 的 commands.json 拷贝项。AutoCAD 开着 `dotnet build src\HyCADTool\HyCADTool.csproj -c Debug` 实测 0 error（2026-06-12 复测通过）。 |
 | **C2** | `HyCADTool.Refactored.csproj` 与 `HyCAD.BlenderUI.csproj` 都已 `<PlatformTarget>AnyCPU</PlatformTarget>` + `<Prefer32Bit>false</Prefer32Bit>`。校验：用 32-bit PowerShell 跑 `[System.Reflection.Assembly]::LoadFrom('HyCADTool.Refactored\bin\Debug\HyCAD.BlenderUI.dll').GetTypes().Length` 应返回 210；同样测 Refactored.dll 应返回 1249。VS 重启后错误列表 0 个 XDG-0001/XDG0023/XDG0010。`ReCall.csproj` 故意保持 x64 不变（设计器不引用它）。 |
 | **B12** | `HyCADTool/Shell/Preferences/Preferences/*SettingsView.xaml.cs`：`Loaded` + `Dispatcher.BeginInvoke(ApplySection, DispatcherPriority.Loaded)`；对应 `.xaml` 中 `Host` 含 `d:ContentTemplate`（`Section_<默认键>`）与 `d:Content=" "`。若设计器仍白屏，先查 XAML 错误列表与 **B5/C2**（pack/平台），见 **B12** 全文。 |
+| **A8** | 无 `Features/DCEL/Legacy`；`BulgeToArc2D` 唯一；`DCELSettings.Tolerance` 贯穿构建与渲染匹配；`doc/068` 闭坑表 P1–P10 与代码一致。 |
 
 ### 仍为环境型 / 缓解型风险（不是单靠改一行就能封死）
 
@@ -1403,6 +1475,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 - 重复执行命令不再每次卡顿（A3）
 - 样式/Scale/钢筋参数只从 `SettingsPanelViewModel.Current` 读（A4）
 - 新 `Table` 表头各列文字都可见，不会被 Title 行合并吞（A5）
+- `HYDCEL` 2 万+ 线段：构建 ms 量级合理（A8）；含弧样例 bulge 恢复无补弧（A8）
 
 **B 域验证**
 
@@ -1416,10 +1489,9 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 
 **C 域验证**
 
-- AutoCAD 开着的情况下 `dotnet build HyCADTool.Refactored/HyCADTool.Refactored.csproj -c Debug` 退出码 0，无 `MSB3027` / `MSB3021` / "文件被 AutoCAD Application 锁定" 错误（C1）
-- 构建后 `HyCADTool.Refactored.dll` 时间戳更新，`ReCall.dll` 时间戳保持不变（C1）
-- `grep -n 'ReCall\.csproj' HyCADTool.Refactored.csproj` 0 命中，`grep -n '<Reference Include="ReCall"' HyCADTool.Refactored.csproj` 命中 1 次（C1）
-- 全新 checkout（删 `ReCall/bin/Debug` 后）首次 Build Refactored，`EnsureReCallDllExists` Target 触发一次 ReCall 自动构建（C1 cold-start）
+- AutoCAD 开着的情况下 `dotnet build src\HyCADTool\HyCADTool.csproj -c Debug` 退出码 0，无 `MSB3027` / `MSB3021` / "文件被 AutoCAD Application 锁定" 错误（C1）
+- 构建后 `HyCADTool.dll` 时间戳更新，`ReCall.dll` 时间戳保持不变（C1）
+- `grep -n 'ReCall\.csproj' src/HyCADTool/HyCADTool.csproj` 0 命中，且无任何 `<Reference Include="ReCall"`（2026-04-25 起完全解耦，连 HintPath 也不存在）（C1）
 - VS 重启后打开 `RoadAlignmentWorkbenchPanel.xaml` / `BaseReinPanel.xaml` 设计器，错误列表里 0 个 `XDG-0001` / `XDG0023` / `XDG0003` / `XDG0010`（C2）
 - `grep -n '<PlatformTarget>x64' HyCADTool.Refactored.csproj HyCAD.BlenderUI.csproj` 0 命中（应都是 AnyCPU；C2）
 - 在 32-bit PowerShell `& "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"` 里 `LoadFrom HyCAD.BlenderUI.dll` + `GetTypes().Length` 返回 210；`LoadFrom HyCADTool.Refactored.dll` + `GetTypes().Length` 返回 1249（C2）

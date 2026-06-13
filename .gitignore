@@ -3,9 +3,13 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-# HyCAD: 开发机私钥（公钥在 EmbeddedPublicKey；勿提交私钥）
+# HyCAD: 许可证敏感文件（公钥在 EmbeddedPublicKey / build/keys/rsa-pub.xml 可提交；以下永不提交）
 build/keys/rsa-priv.xml
-HyCADTool.LicenseSigner/PrivateKey.xml
+build/keys/backup-*/
+**/PrivateKey.xml
+**/issued-licenses.csv
+**/signer-crash.log
+*.lic
 
 # HyCAD: 构建产物（.bundle 安装包等）
 build/artifacts/
