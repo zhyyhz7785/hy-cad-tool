@@ -17,6 +17,8 @@ namespace HyCADTool.Licensing
         {
             if (string.IsNullOrWhiteSpace(licenseJsonUtf8))
                 throw new ArgumentException("license JSON 为空", nameof(licenseJsonUtf8));
+            if (licenseJsonUtf8.Length > MaxRawJsonChars)
+                throw new ArgumentException("license JSON 过长（上限 " + MaxRawJsonChars + " 字符）", nameof(licenseJsonUtf8));
             var plain = Encoding.UTF8.GetBytes(licenseJsonUtf8);
             byte[] gz;
             using (var ms = new MemoryStream())
@@ -53,6 +55,7 @@ namespace HyCADTool.Licensing
 
             if (sanitized[0] == '{')
             {
+                // 兼容 license.lic 直粘贴；签名校验在 TryVerifyDocument
                 json = sanitized;
                 return true;
             }
