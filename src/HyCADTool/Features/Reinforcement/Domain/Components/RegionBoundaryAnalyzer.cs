@@ -7,7 +7,8 @@ using System.Linq;
 namespace HyCADTool.Features.Reinforcement.Domain.Components
 {
     /// <summary>
-    /// 外轮廓土/气分析：割线与最外侧闭环两交点，左交点沿 CCW 至右交点为空气，其余为土壤。
+    /// 外轮廓土/气分析：每组内仅 ymin 最低的基础图形按割线切分；
+    /// 组内其余独立图形外轮廓 100% 空气。
     /// </summary>
     public static class RegionBoundaryAnalyzer
     {
@@ -133,6 +134,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
                 double graphicMinY = GetMinY(region.Outer);
                 bool isFoundation = r == foundationIndex;
+                // 组内仅基础图形（ymin 最低）做土/气；其余独立图形外轮廓全部空气
                 profiles.Add(isFoundation
                     ? AnalyzeFoundationGraphic(region, context, r, graphicMinY, cutY)
                     : AnalyzeAllAirGraphic(region, context, r, graphicMinY));
@@ -163,6 +165,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             return BuildProfile(context, regionIndex, edges, isFoundation: true, graphicMinY, cutY);
         }
 
+        /// <summary>组内非基础图形：外轮廓全部标记为空气接触；预览整圈橙色。</summary>
         private static RegionBoundaryProfile AnalyzeAllAirGraphic(
             ReinRegion region,
             RegionElevationContext context,
@@ -191,7 +194,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         }
 
         /// <summary>
-        /// 割线与外环求交，取最左/最右交点；左交点沿 CCW 至右交点弧段为空气。
+        /// 割线与外环求交，取最左/最右交点；左交点沿 CCW 至右交点弧段为土壤（绿），其余为空气（橙）。
         /// </summary>
         private static List<ClassifiedBoundaryEdge> ClassifyOuterByContourArc(Polyline2D outer, double cutY)
         {
@@ -233,8 +236,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                         continue;
 
                     double midPos = cumulative + traversed + piece.Length / 2.0;
-                    bool isAir = IsOnCcwArc(midPos, leftPos, rightPos, perimeter);
-                    AddEdge(edges, piece, isAir ? BoundaryEdgeRole.Air : BoundaryEdgeRole.Soil, i);
+                    bool isSoil = IsOnCcwArc(midPos, leftPos, rightPos, perimeter);
+                    AddEdge(edges, piece, isSoil ? BoundaryEdgeRole.Soil : BoundaryEdgeRole.Air, i);
                     traversed += piece.Length;
                 }
 

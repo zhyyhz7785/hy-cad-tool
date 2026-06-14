@@ -152,7 +152,7 @@ namespace HyCADTool.Features.Reinforcement
 
                 $"\n阶段B 轮廓预览：{drawn} 个实体，图层「{BoundaryProfilePreviewService.DebugLayerName}」。" +
 
-                $"\n  橙=土壤(左交点→右交点 CCW 之外)  绿=空气(左交点 CCW→右交点)  灰=孔洞  黄虚=割线");
+                $"\n  绿=土壤(基础图形 CCW弧)  橙=空气  组内其余独立图形外轮廓全橙  灰=孔洞  黄虚=割线");
 
         }
 

@@ -36,9 +36,9 @@ namespace HyCADTool.Features.Reinforcement.Services
 
 
 
-        private const short SoilColor = 30;
+        private const short SoilColor = 3;
 
-        private const short AirColor = 3;
+        private const short AirColor = 30;
 
         private const short HoleOutlineColor = 8;
 
@@ -128,9 +128,11 @@ namespace HyCADTool.Features.Reinforcement.Services
 
                     {
 
-                        foreach (var regionProfile in profile.Regions)
+                        for (int r = 0; r < profile.Regions.Count; r++)
 
                         {
+
+                            var regionProfile = profile.Regions[r];
 
                             if (regionProfile?.Edges == null)
 
