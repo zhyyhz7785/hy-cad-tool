@@ -32,6 +32,12 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         /// <summary>区域分组聚类距离（mm）：外轮廓 bbox 间隙 ≤ 此值归同一计算组（同 hymbr）。</summary>
         public double RegionGroupDistanceMm { get; set; } = 1500.0;
 
+        /// <summary>基础底面标高（m，模型 Y）：用户输入，默认 -8.1。</summary>
+        public double FoundationBottomElevationMm { get; set; } = -8.1;
+
+        /// <summary>埋置深度（m）：从独立图形 ymin 向上，割线 Y = ymin + 本值。</summary>
+        public double EmbedmentDepthMm { get; set; } = 3.0;
+
         /// <summary>平行直线占比下限（0~1）：边对支撑高度 / 混凝土柱全高低于该值时不判墙/梁。</summary>
         public double ParallelLineRatioMin { get; set; } = 0.6;
 

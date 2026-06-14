@@ -204,6 +204,17 @@
                                FontSize="{DynamicResource Metric_FontCaption}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,6"/>
+                    <bc:PropertyRow Label="基础底面标高" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 Foreground="Red"
+                                 ToolTip="图形单位，仅命令行上报，默认 -8.1"
+                                 Text="{Binding ReinVm.CompFoundationBottomElevation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </bc:PropertyRow>
+                    <bc:PropertyRow Label="埋置深度(m)" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 ToolTip="输入米，自动×1000 转 mm；割线 Y = ymin + 埋置深度(m)×1000"
+                                 Text="{Binding ReinVm.CompEmbedmentDepth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </bc:PropertyRow>
                     <bc:PropertyRow Label="平行夹角阈值°" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
                                  Text="{Binding ReinVm.CompParallelAngleThreshold, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>

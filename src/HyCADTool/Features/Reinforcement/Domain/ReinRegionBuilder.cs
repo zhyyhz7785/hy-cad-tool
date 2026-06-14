@@ -183,6 +183,63 @@ namespace HyCADTool.Features.Reinforcement.Domain
             return groups;
         }
 
+        /// <summary>
+        /// 阶段 B 用：按外轮廓 bbox 间隙聚类，每组内保留独立图形（外框+孔洞，不 Union）。
+        /// </summary>
+        public static List<List<ReinRegion>> BuildGroupedIndependentRegions(
+            IReadOnlyList<ClassifiedBoundary> classified,
+            double groupDistanceMm)
+        {
+            var groups = new List<List<ReinRegion>>();
+            var outers = classified.Where(c => !c.IsHole).ToList();
+            if (outers.Count == 0)
+                return groups;
+
+            if (groupDistanceMm <= 0)
+                groupDistanceMm = 1500.0;
+
+            var outerItems = outers
+                .Where(o => o.Boundary.VertexCount >= 3)
+                .Select(o => new OuterClusterItem(o, GetBoundaryBox(o.Boundary)))
+                .ToList();
+
+            if (outerItems.Count == 0)
+                return groups;
+
+            var clusteringService = new ClusteringService();
+            var clusters = clusteringService.ClusterByBoundsDistance(
+                outerItems,
+                o => o.Bbox,
+                groupDistanceMm);
+
+            foreach (var cluster in clusters)
+            {
+                if (cluster.Count == 0)
+                    continue;
+
+                var clusterSet = new HashSet<ClassifiedBoundary>(cluster.Select(c => c.Classified));
+                var filtered = classified.Where(c =>
+                {
+                    if (!c.IsHole)
+                        return clusterSet.Contains(c);
+
+                    if (c.Boundary.VertexCount < 3)
+                        return false;
+
+                    var testPoint = c.Boundary.GetPointAt(0);
+                    return cluster.Any(o =>
+                        PolygonAlgorithms.ContainsPoint(o.Classified.Boundary.Vertices, testPoint));
+                }).ToList();
+
+                var independent = BuildRegions(filtered);
+                var groupRegions = independent.Select(m => m.Region).ToList();
+                if (groupRegions.Count > 0)
+                    groups.Add(groupRegions);
+            }
+
+            return groups;
+        }
+
         private sealed class OuterClusterItem
         {
             public OuterClusterItem(ClassifiedBoundary classified, BoundingBox bbox)

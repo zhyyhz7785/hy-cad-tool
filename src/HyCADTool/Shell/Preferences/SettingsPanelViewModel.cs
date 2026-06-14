@@ -739,6 +739,39 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>区域分组聚类距离（mm，同 hymbr）。</summary>
         public double CompGroupClusterDistance { get => _compGroupClusterDistance; set => SetProperty(ref _compGroupClusterDistance, value); }
 
+        private double _compFoundationBottomElevation = -8.1;
+        /// <summary>基础底面标高（m，模型 Y），构件确认默认 -8.1。</summary>
+        public double CompFoundationBottomElevation
+        {
+            get => _compFoundationBottomElevation;
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value))
+                    return;
+                if (Math.Abs(_compFoundationBottomElevation - value) < 1e-9)
+                    return;
+                SetProperty(ref _compFoundationBottomElevation, value);
+                if (!_isLoading && _autoSaveEnabled)
+                    SaveSettings();
+            }
+        }
+
+        private double _compEmbedmentDepth = 3.0;
+        /// <summary>埋置深度（m）：从组 ymin 向上，×1000 转 mm 参与割线。</summary>
+        public double CompEmbedmentDepth
+        {
+            get => _compEmbedmentDepth;
+            set
+            {
+                double v = double.IsNaN(value) || double.IsInfinity(value) ? 0 : Math.Max(0, value);
+                if (Math.Abs(_compEmbedmentDepth - v) < 1e-9)
+                    return;
+                SetProperty(ref _compEmbedmentDepth, v);
+                if (!_isLoading && _autoSaveEnabled)
+                    SaveSettings();
+            }
+        }
+
         private double _compBeamMaxWidth = 800.0;
         public double CompBeamMaxWidth { get => _compBeamMaxWidth; set => SetProperty(ref _compBeamMaxWidth, value); }
 
@@ -1575,6 +1608,8 @@ namespace HyCADTool.Shell.ViewModels
                 MassConcreteMinSizeMm = CompMassMinSize,
                 LocalConcreteMaxHeightMm = CompLocalConcreteMaxHeight,
                 RegionGroupDistanceMm = CompGroupClusterDistance,
+                FoundationBottomElevationMm = CompFoundationBottomElevation,
+                EmbedmentDepthMm = CompEmbedmentDepth,
                 BeamMaxWidthMm = CompBeamMaxWidth,
                 BeamMaxHeightMm = CompBeamMaxHeight,
                 BeamSkipReinforcement = CompBeamSkipRein,
@@ -1684,6 +1719,10 @@ namespace HyCADTool.Shell.ViewModels
                     CompMassMinSize = CompMassMinSize,
                     CompLocalConcreteMaxHeight = CompLocalConcreteMaxHeight,
                     CompGroupClusterDistance = CompGroupClusterDistance,
+                    CompFoundationBottomElevation = double.IsNaN(CompFoundationBottomElevation)
+                        ? (double?)null
+                        : CompFoundationBottomElevation,
+                    CompEmbedmentDepth = CompEmbedmentDepth,
                     CompBeamMaxWidth = CompBeamMaxWidth,
                     CompBeamMaxHeight = CompBeamMaxHeight,
                     CompBeamSkipRein = CompBeamSkipRein,
@@ -1866,6 +1905,9 @@ namespace HyCADTool.Shell.ViewModels
                 if (data.CompMassMinSize > 0) CompMassMinSize = data.CompMassMinSize;
                 if (data.CompLocalConcreteMaxHeight > 0) CompLocalConcreteMaxHeight = data.CompLocalConcreteMaxHeight;
                 if (data.CompGroupClusterDistance > 0) CompGroupClusterDistance = data.CompGroupClusterDistance;
+                if (data.CompFoundationBottomElevation.HasValue)
+                    CompFoundationBottomElevation = data.CompFoundationBottomElevation.Value;
+                if (data.CompEmbedmentDepth >= 0) CompEmbedmentDepth = data.CompEmbedmentDepth;
                 if (data.CompBeamMaxWidth > 0) CompBeamMaxWidth = data.CompBeamMaxWidth;
                 if (data.CompBeamMaxHeight > 0) CompBeamMaxHeight = data.CompBeamMaxHeight;
                 CompBeamSkipRein = data.CompBeamSkipRein;
@@ -2063,6 +2105,8 @@ namespace HyCADTool.Shell.ViewModels
             public double CompMassMinSize { get; set; } = 1000.0;
             public double CompLocalConcreteMaxHeight { get; set; } = 1000.0;
             public double CompGroupClusterDistance { get; set; } = 1500.0;
+            public double? CompFoundationBottomElevation { get; set; } = -8.1;
+            public double CompEmbedmentDepth { get; set; } = 3.0;
             public double CompBeamMaxWidth { get; set; } = 800.0;
             public double CompBeamMaxHeight { get; set; } = 1500.0;
             public bool CompBeamSkipRein { get; set; }

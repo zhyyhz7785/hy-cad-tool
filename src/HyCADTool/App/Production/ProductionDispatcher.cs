@@ -117,7 +117,7 @@ namespace HyCADTool.App.Production
         }
 
         /// <summary>
-        /// 前置钩子：与 ReCallClass.InvokePreHooks 等价。把面板焦点 TextBox 的待输入值提交、刷新 Settings、确保样式注入。
+        /// 前置钩子：与 ReCallClass.InvokePreHooks 等价。LoadSettings 后 Commit，面板编辑值优先。
         /// </summary>
         private static void InvokePreHooks()
         {
@@ -127,13 +127,12 @@ namespace HyCADTool.App.Production
                 var vmType = _typeCache.GetOrAdd(VmType, t => asm.GetType(t));
                 if (vmType == null) return;
 
-                vmType.GetMethod("CommitFocusedTextBoxValue", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
-
                 var currentProp = vmType.GetProperty("Current", BindingFlags.Public | BindingFlags.Static);
                 var current = currentProp?.GetValue(null);
                 if (current == null) return;
 
                 vmType.GetMethod("LoadSettings", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
+                vmType.GetMethod("CommitFocusedTextBoxValue", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
                 vmType.GetMethod("EnsureStylesApplied", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
             }
             catch
