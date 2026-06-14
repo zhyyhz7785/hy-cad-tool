@@ -30,9 +30,9 @@ namespace HyCADTool.Features.Reinforcement
             vm?.SaveSettings();
 
             double groupDistanceMm = parameters.RegionGroupDistanceMm;
-            double foundationElevation = vm?.CompFoundationBottomElevation ?? parameters.FoundationBottomElevationMm;
-            double embedmentDepth = vm?.CompEmbedmentDepth ?? parameters.EmbedmentDepthMm;
-            double bottomSlabMaxMm = vm?.CompBottomSlabMaxThickness ?? parameters.BottomSlabMaxThicknessMm;
+            double foundationElevation = parameters.FoundationBottomElevationMm;
+            double embedmentDepth = parameters.EmbedmentDepthMm;
+            double bottomSlabMaxMm = parameters.BottomSlabMaxThicknessMm;
 
             ed.WriteMessage(
                 $"\n[基础分区] 埋深={embedmentDepth:F2}m  底板上限={bottomSlabMaxMm:F0}mm  " +

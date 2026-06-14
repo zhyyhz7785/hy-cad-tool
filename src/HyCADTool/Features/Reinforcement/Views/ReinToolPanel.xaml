@@ -221,14 +221,17 @@
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="楼板厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinVm.CompSlabMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="墙厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinVm.CompWallMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="底板厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinVm.CompBottomSlabMaxThickness, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="局部凸起并入底板" Style="{StaticResource ReinPanelPropertyRow}">

@@ -212,6 +212,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 diagnostics.Add(diag);
             }
 
+            // 真实底板快照：仅含第一遍 H≤h_b 落地的条带，供高条带邻接拉通参照，
+            // 避免被第二遍写回的"已夹高条带 cut"污染传播。
+            var genuineCut = (double?[])cutAtStrip.Clone();
+
             foreach (var sample in stripSamples)
             {
                 var diag = diagnostics.First(d => d.StripIndex == sample.Index);
@@ -228,12 +232,22 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 }
                 else
                 {
-                    StripGeometry.FindNeighborBottomTops(cutAtStrip, sample.Index, out double? lt, out double? rt);
-                    double refTop = lt.HasValue && rt.HasValue
-                        ? Math.Max(lt.Value, rt.Value)
-                        : (lt ?? rt ?? maxBot + bottomSlabMaxHeightMm);
+                    StripGeometry.FindNeighborBottomTops(genuineCut, sample.Index, out double? lt, out double? rt);
 
-                    cut = refTop;
+                    // 拉通厚度 = 邻接真实底板 cut - 本高列 maxBot。
+                    // 超过 h_b 的侧是大体积/墙方向（需被拉通），放弃比较；仅保留真实基础高度侧。
+                    double? leftCut = lt.HasValue && lt.Value - maxBot <= bottomSlabMaxHeightMm ? lt : null;
+                    double? rightCut = rt.HasValue && rt.Value - maxBot <= bottomSlabMaxHeightMm ? rt : null;
+
+                    if (leftCut.HasValue && rightCut.HasValue)
+                        cut = Math.Max(leftCut.Value, rightCut.Value);
+                    else if (leftCut.HasValue)
+                        cut = leftCut.Value;
+                    else if (rightCut.HasValue)
+                        cut = rightCut.Value;
+                    else
+                        cut = maxBot + bottomSlabMaxHeightMm;
+
                     if (cut > maxTop)
                         cut = maxTop;
                     if (cut < maxBot)
