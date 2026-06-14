@@ -36,7 +36,7 @@ namespace HyCADTool.Features.Reinforcement
 
             ed.WriteMessage(
                 $"\n[基础分区] 埋深={embedmentDepth:F2}m  底板上限={bottomSlabMaxMm:F0}mm  " +
-                $"(落地=BotSeg y≤cutY, 过高条带取邻接较低 cut)");
+                $"(落地=BotSeg y≤cutY, 过高条带取邻接较高 cut 拉通)");
 
             var filter = new SelectionFilter(new[]
             {
@@ -124,7 +124,7 @@ namespace HyCADTool.Features.Reinforcement
                     sb.AppendLine(
                         $"    τ{d.StripIndex} x=[{d.X0:F0},{d.X1:F0}]  S={d.IsSoilContact}  " +
                         $"H={d.CandidateHeightMm:F0}  cut={d.CutY:F0}  t={d.ThicknessMm:F0}  " +
-                        $"邻接削平={d.ClampedByNeighbor}  ({tag})");
+                        $"邻接拉通={d.ClampedByNeighbor}  ({tag})");
                 }
             }
 

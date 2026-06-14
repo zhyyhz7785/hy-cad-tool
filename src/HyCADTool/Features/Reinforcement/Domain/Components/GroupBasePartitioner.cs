@@ -230,10 +230,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 {
                     StripGeometry.FindNeighborBottomTops(cutAtStrip, sample.Index, out double? lt, out double? rt);
                     double refTop = lt.HasValue && rt.HasValue
-                        ? Math.Min(lt.Value, rt.Value)
+                        ? Math.Max(lt.Value, rt.Value)
                         : (lt ?? rt ?? maxBot + bottomSlabMaxHeightMm);
 
-                    cut = Math.Min(refTop, maxBot + bottomSlabMaxHeightMm);
+                    cut = refTop;
                     if (cut > maxTop)
                         cut = maxTop;
                     if (cut < maxBot)
