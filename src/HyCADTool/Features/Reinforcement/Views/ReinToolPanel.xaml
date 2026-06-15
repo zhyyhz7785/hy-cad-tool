@@ -234,6 +234,12 @@
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinVm.CompBottomSlabMaxThickness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </bc:PropertyRow>
+                    <bc:PropertyRow Label="割线步长mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 ToolTip="沿 S_g 竖直割线步进间距（mm），默认 10"
+                                 Text="{Binding ReinVm.CompBottomSlabMarchStep, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </bc:PropertyRow>
                     <bc:PropertyRow Label="局部凸起并入底板" Style="{StaticResource ReinPanelPropertyRow}">
                         <CheckBox IsChecked="{Binding ReinVm.CompMergeBumpsIntoBottomSlab, Mode=TwoWay}"
                                   VerticalAlignment="Center"/>

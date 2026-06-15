@@ -33,10 +33,18 @@ namespace HyCADTool.Features.Reinforcement
             double foundationElevation = parameters.FoundationBottomElevationMm;
             double embedmentDepth = parameters.EmbedmentDepthMm;
             double bottomSlabMaxMm = vm?.CompBottomSlabMaxThickness ?? parameters.BottomSlabMaxThicknessMm;
+            var partitionOptions = new BasePartitionOptions
+            {
+                BottomSlabMaxMm = bottomSlabMaxMm,
+                MarchStepMm = vm?.CompBottomSlabMarchStep ?? parameters.BottomSlabMarchStepMm,
+                WallMaxMm = parameters.WallMaxThicknessMm,
+                MassMinMm = parameters.MassConcreteMinSizeMm
+            };
 
             ed.WriteMessage(
                 $"\n[基础分区] 埋深={embedmentDepth:F2}m  底板上限={bottomSlabMaxMm:F0}mm  " +
-                $"(底边=土壤CCW弧, 上轮廓=第2交点TopSeg, H>h_b 跳过)");
+                $"步长={partitionOptions.EffectiveMarchStepMm:F0}mm  " +
+                $"(S弧步进, 第1/2交点皆S跳过, 第2非S→TopSeg, H>h_b跳过, 人工顶边分类)");
 
             var filter = new SelectionFilter(new[]
             {
@@ -86,14 +94,14 @@ namespace HyCADTool.Features.Reinforcement
                 groups, embedmentDepth, foundationElevation);
 
             var partitionResults = GroupBasePartitioner.PartitionAllGroups(
-                groups, groupProfiles, bottomSlabMaxMm);
+                groups, groupProfiles, partitionOptions);
 
-            ReportToCommandLine(ed, groups, groupProfiles, partitionResults, bottomSlabMaxMm);
+            ReportToCommandLine(ed, groups, groupProfiles, partitionResults, partitionOptions);
 
             int drawn = BasePartitionPreviewService.Draw(groupProfiles, partitionResults);
             ed.WriteMessage(
                 $"\n基础分区预览：{drawn} 个实体，图层「{BasePartitionPreviewService.DebugLayerName}」。" +
-                $"\n  蓝=基础/底板 cell  黄虚=土气割线 cutY  标注 t=条带厚度(mm)");
+                $"\n  蓝=底板  绿=墙  红=大体积  黄虚=土气割线 cutY  标注 t=厚度(mm)");
         }
 
         private static void ReportToCommandLine(
@@ -101,11 +109,14 @@ namespace HyCADTool.Features.Reinforcement
             IReadOnlyList<IReadOnlyList<ReinRegion>> groups,
             IReadOnlyList<GroupBoundaryProfile> groupProfiles,
             IReadOnlyList<GroupBasePartitionResult> partitionResults,
-            double bottomSlabMaxMm)
+            BasePartitionOptions partitionOptions)
         {
             var sb = new StringBuilder();
             sb.AppendLine("\n── 基础底板分区（C1）──");
-            sb.AppendLine($"  计算组={groups.Count}  底板上限={bottomSlabMaxMm:F0}mm");
+            sb.AppendLine(
+                $"  计算组={groups.Count}  底板上限={partitionOptions.BottomSlabMaxMm:F0}mm  " +
+                $"步长={partitionOptions.EffectiveMarchStepMm:F0}mm  " +
+                $"墙厚≤{partitionOptions.WallMaxMm:F0}  大体积≥{partitionOptions.MassMinMm:F0}");
 
             for (int g = 0; g < partitionResults.Count; g++)
             {
@@ -120,12 +131,29 @@ namespace HyCADTool.Features.Reinforcement
 
                 foreach (var d in pr.StripDiagnostics)
                 {
-                    string tag = d.HasBottomSlab ? "底板" : (d.SkippedTooThick ? "超厚跳过" : (d.IsGrounded ? "无cell" : "非S"));
+                    string tag = !string.IsNullOrEmpty(d.ProbeTag)
+                        ? d.ProbeTag
+                        : (d.HasBottomSlab ? "底板" : (d.SkippedTooThick ? "超厚跳过" : (d.IsGrounded ? "无cell" : "非S")));
+                    string kindText = d.HasBottomSlab ? d.Kind.DisplayName() : "-";
+                    string syntheticText = d.IsTopSynthetic
+                        ? $"  人工边={d.SyntheticTopLengthMm:F0}"
+                        : string.Empty;
                     sb.AppendLine(
                         $"    τ{d.StripIndex} x=[{d.X0:F0},{d.X1:F0}]  S={d.IsSoilContact}  " +
                         $"H={d.CandidateHeightMm:F0}  cut={d.CutY:F0}  t={d.ThicknessMm:F0}  " +
                         $"斜={d.IsSloped}  上限={d.EffectiveMaxHeightMm:F0}  " +
-                        $"超厚跳过={d.SkippedTooThick}  ({tag})");
+                        $"S-S跳过={d.SkippedSoilSoil}  TopSeg={d.TriggeredNonSoilTop}  " +
+                        $"超厚={d.SkippedTooThick}  型={kindText}{syntheticText}  ({tag})");
+                }
+
+                if (pr.BottomCells != null)
+                {
+                    foreach (var cell in pr.BottomCells.Where(c => c != null && c.IsTopSynthetic))
+                    {
+                        sb.AppendLine(
+                            $"    cell#{cell.Id}  人工顶边={cell.SyntheticTopLengthMm:F0}mm  " +
+                            $"型={cell.Kind.DisplayName()}  x=[{cell.X0:F0},{cell.X1:F0}]");
+                    }
                 }
             }
 

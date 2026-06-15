@@ -96,6 +96,7 @@ namespace HyCADTool.Features.Reinforcement.Services
 
         private static int DrawCell(Transaction tr, BlockTableRecord btr, BaseSlabCell cell)
         {
+            short colorIndex = cell.Kind.ColorIndex();
             var pl = new Polyline(4);
             pl.AddVertexAt(0, new Point2d(cell.X0, cell.TopL), 0, 0, 0);
             pl.AddVertexAt(1, new Point2d(cell.X1, cell.TopR), 0, 0, 0);
@@ -103,7 +104,7 @@ namespace HyCADTool.Features.Reinforcement.Services
             pl.AddVertexAt(3, new Point2d(cell.X0, cell.BotL), 0, 0, 0);
             pl.Closed = true;
             pl.Layer = DebugLayerName;
-            pl.Color = Color.FromColorIndex(ColorMethod.ByAci, BaseSlabColor);
+            pl.Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex);
             pl.ConstantWidth = CellOutlineWidthMm;
 
             btr.AppendEntity(pl);
@@ -111,13 +112,16 @@ namespace HyCADTool.Features.Reinforcement.Services
 
             double cx = (cell.X0 + cell.X1) / 2.0;
             double cy = (cell.TopL + cell.TopR + cell.BotL + cell.BotR) / 4.0;
+            string labelText = cell.IsTopSynthetic
+                ? $"t={cell.ThicknessMm:F0} L={cell.SyntheticTopLengthMm:F0} {cell.Kind.DisplayName()}"
+                : $"t={cell.ThicknessMm:F0}";
             var label = new DBText
             {
                 Position = new Point3d(cx, cy, 0),
                 Height = 60,
-                TextString = $"t={cell.ThicknessMm:F0}",
+                TextString = labelText,
                 Layer = DebugLayerName,
-                Color = Color.FromColorIndex(ColorMethod.ByAci, BaseSlabColor)
+                Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex)
             };
             btr.AppendEntity(label);
             tr.AddNewlyCreatedDBObject(label, true);

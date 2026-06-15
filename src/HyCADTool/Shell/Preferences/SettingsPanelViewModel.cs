@@ -724,6 +724,10 @@ namespace HyCADTool.Shell.ViewModels
         private double _compBottomSlabMaxThickness = 1500.0;
         public double CompBottomSlabMaxThickness { get => _compBottomSlabMaxThickness; set => SetProperty(ref _compBottomSlabMaxThickness, value); }
 
+        private double _compBottomSlabMarchStep = 10.0;
+        /// <summary>沿 S_g 竖直割线步进间距（mm）。</summary>
+        public double CompBottomSlabMarchStep { get => _compBottomSlabMarchStep; set => SetProperty(ref _compBottomSlabMarchStep, value); }
+
         private bool _compMergeBumpsIntoBottomSlab = true;
         /// <summary>局部凸起并入底板：true=并入（一体蓝色），false=拆分出局部混凝土。</summary>
         public bool CompMergeBumpsIntoBottomSlab { get => _compMergeBumpsIntoBottomSlab; set => SetProperty(ref _compMergeBumpsIntoBottomSlab, value); }
@@ -1425,6 +1429,7 @@ namespace HyCADTool.Shell.ViewModels
             DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0;             DimDistanceTolerance = 30.0;
             CompParallelAngleThreshold = 15.0;
             CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompBottomSlabMaxThickness = 1500.0;
+            CompBottomSlabMarchStep = 10.0;
             CompMassMinSize = 1000.0; CompLocalConcreteMaxHeight = 1000.0; CompGroupClusterDistance = 1500.0; CompMergeBumpsIntoBottomSlab = true; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
             CompBeamSkipRein = false; CompParallelLineRatio = 0.6;
             CompSlabRebarDiameter = CompWallRebarDiameter = CompBottomRebarDiameter = CompMassRebarDiameter = CompBeamRebarDiameter = 14.0;
@@ -1604,6 +1609,7 @@ namespace HyCADTool.Shell.ViewModels
                 SlabMaxThicknessMm = CompSlabMaxThickness,
                 WallMaxThicknessMm = CompWallMaxThickness,
                 BottomSlabMaxThicknessMm = CompBottomSlabMaxThickness,
+                BottomSlabMarchStepMm = CompBottomSlabMarchStep,
                 MergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
                 MassConcreteMinSizeMm = CompMassMinSize,
                 LocalConcreteMaxHeightMm = CompLocalConcreteMaxHeight,
@@ -1715,6 +1721,7 @@ namespace HyCADTool.Shell.ViewModels
                     CompSlabMaxThickness = CompSlabMaxThickness,
                     CompWallMaxThickness = CompWallMaxThickness,
                     CompBottomSlabMaxThickness = CompBottomSlabMaxThickness,
+                    CompBottomSlabMarchStep = CompBottomSlabMarchStep,
                     CompMergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
                     CompMassMinSize = CompMassMinSize,
                     CompLocalConcreteMaxHeight = CompLocalConcreteMaxHeight,
@@ -1901,6 +1908,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (data.CompSlabMaxThickness > 0) CompSlabMaxThickness = data.CompSlabMaxThickness;
                 if (data.CompWallMaxThickness > 0) CompWallMaxThickness = data.CompWallMaxThickness;
                 if (data.CompBottomSlabMaxThickness > 0) CompBottomSlabMaxThickness = data.CompBottomSlabMaxThickness;
+                if (data.CompBottomSlabMarchStep > 0) CompBottomSlabMarchStep = data.CompBottomSlabMarchStep;
                 CompMergeBumpsIntoBottomSlab = data.CompMergeBumpsIntoBottomSlab;
                 if (data.CompMassMinSize > 0) CompMassMinSize = data.CompMassMinSize;
                 if (data.CompLocalConcreteMaxHeight > 0) CompLocalConcreteMaxHeight = data.CompLocalConcreteMaxHeight;
@@ -2101,6 +2109,7 @@ namespace HyCADTool.Shell.ViewModels
             public double CompSlabMaxThickness { get; set; } = 300.0;
             public double CompWallMaxThickness { get; set; } = 500.0;
             public double CompBottomSlabMaxThickness { get; set; } = 1500.0;
+            public double CompBottomSlabMarchStep { get; set; } = 10.0;
             public bool CompMergeBumpsIntoBottomSlab { get; set; } = true;
             public double CompMassMinSize { get; set; } = 1000.0;
             public double CompLocalConcreteMaxHeight { get; set; } = 1000.0;

@@ -15,6 +15,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         /// <summary>基础底板高度上限（mm）：超出部分归大体积混凝土。</summary>
         public double BottomSlabMaxThicknessMm { get; set; } = 1500.0;
 
+        /// <summary>沿 S_g 竖直割线步进间距（mm）。</summary>
+        public double BottomSlabMarchStepMm { get; set; } = 10.0;
+
         /// <summary>true = 矮凸起并入底板（一体蓝色）；false = 拆分出局部混凝土（底板取最低台阶面）。</summary>
         public bool MergeBumpsIntoBottomSlab { get; set; } = true;
 
