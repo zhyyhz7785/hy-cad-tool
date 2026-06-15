@@ -278,6 +278,10 @@ namespace HyCADTool.Shared.UI.Helpers
             var parentBinding = BindingOperations.GetBinding(textBox, TextBox.TextProperty);
             if (parentBinding == null) return;
 
+            // XAML 显式 PropertyChanged 的构件参数框：保持即时回写，由 TextChanged 兜底提交
+            if (parentBinding.UpdateSourceTrigger == UpdateSourceTrigger.PropertyChanged)
+                return;
+
             if (parentBinding.UpdateSourceTrigger == UpdateSourceTrigger.LostFocus
                 && Equals(parentBinding.ConverterCulture, CultureInfo.InvariantCulture))
             {

@@ -32,11 +32,11 @@ namespace HyCADTool.Features.Reinforcement
             double groupDistanceMm = parameters.RegionGroupDistanceMm;
             double foundationElevation = parameters.FoundationBottomElevationMm;
             double embedmentDepth = parameters.EmbedmentDepthMm;
-            double bottomSlabMaxMm = parameters.BottomSlabMaxThicknessMm;
+            double bottomSlabMaxMm = vm?.CompBottomSlabMaxThickness ?? parameters.BottomSlabMaxThicknessMm;
 
             ed.WriteMessage(
                 $"\n[基础分区] 埋深={embedmentDepth:F2}m  底板上限={bottomSlabMaxMm:F0}mm  " +
-                $"(落地=BotSeg y≤cutY, 过高条带取邻接较高 cut 拉通)");
+                $"(底边=土壤CCW弧, 上轮廓=第2交点TopSeg, H>h_b 跳过)");
 
             var filter = new SelectionFilter(new[]
             {
@@ -120,11 +120,12 @@ namespace HyCADTool.Features.Reinforcement
 
                 foreach (var d in pr.StripDiagnostics)
                 {
-                    string tag = d.HasBottomSlab ? "底板" : (d.IsGrounded ? "无cell" : "非S");
+                    string tag = d.HasBottomSlab ? "底板" : (d.SkippedTooThick ? "超厚跳过" : (d.IsGrounded ? "无cell" : "非S"));
                     sb.AppendLine(
                         $"    τ{d.StripIndex} x=[{d.X0:F0},{d.X1:F0}]  S={d.IsSoilContact}  " +
                         $"H={d.CandidateHeightMm:F0}  cut={d.CutY:F0}  t={d.ThicknessMm:F0}  " +
-                        $"邻接拉通={d.ClampedByNeighbor}  ({tag})");
+                        $"斜={d.IsSloped}  上限={d.EffectiveMaxHeightMm:F0}  " +
+                        $"超厚跳过={d.SkippedTooThick}  ({tag})");
                 }
             }
 

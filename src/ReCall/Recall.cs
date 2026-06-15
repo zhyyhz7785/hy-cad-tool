@@ -671,7 +671,7 @@ namespace HyCADTool.ReCall
             }
         }
 
-        /// <summary>前置钩子：LoadSettings + CommitFocusedTextBoxValue + EnsureStylesApplied。面板编辑值优先于磁盘。</summary>
+        /// <summary>前置钩子：Commit + EnsureStylesApplied。面板编辑值优先，命令前不重载 hy-settings。</summary>
         private static void InvokePreHooks(Assembly refactored)
         {
             try
@@ -683,7 +683,6 @@ namespace HyCADTool.ReCall
                 var current = currentProp?.GetValue(null);
                 if (current == null) return;
 
-                vmType.GetMethod("LoadSettings", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
                 vmType.GetMethod("CommitFocusedTextBoxValue", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
                 vmType.GetMethod("EnsureStylesApplied", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
             }

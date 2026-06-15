@@ -117,7 +117,7 @@ namespace HyCADTool.App.Production
         }
 
         /// <summary>
-        /// 前置钩子：与 ReCallClass.InvokePreHooks 等价。LoadSettings 后 Commit，面板编辑值优先。
+        /// 前置钩子：Commit + EnsureStylesApplied。面板编辑值优先，命令前不重载 hy-settings。
         /// </summary>
         private static void InvokePreHooks()
         {
@@ -131,7 +131,6 @@ namespace HyCADTool.App.Production
                 var current = currentProp?.GetValue(null);
                 if (current == null) return;
 
-                vmType.GetMethod("LoadSettings", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
                 vmType.GetMethod("CommitFocusedTextBoxValue", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
                 vmType.GetMethod("EnsureStylesApplied", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
             }
