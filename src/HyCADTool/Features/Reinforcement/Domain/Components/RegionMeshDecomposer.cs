@@ -46,7 +46,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             foreach (var trap in trapezoids)
                 SplitTrapezoidIntoParts(trap, rectPieces, triangles);
 
-            // 3. 矩形横/竖向合并。
+            // 3. 按全局 Y 断点切格，再 H→V 两趟合并（横向优先：梁/板满宽贯通）。
+            rectPieces = SplitRectPiecesByGlobalYs(rectPieces);
             var mergedRects = MergeRectanglesHorizontally(rectPieces);
             mergedRects = MergeRectanglesVertically(mergedRects);
 
@@ -321,6 +322,72 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         {
             AddTriangle(triangles, t.X0, t.TopL, t.X1, t.TopR, t.X1, t.BotR);
             AddTriangle(triangles, t.X0, t.TopL, t.X1, t.BotR, t.X0, t.BotL);
+        }
+
+        private static List<RectPiece> SplitRectPiecesByGlobalYs(List<RectPiece> rectPieces)
+        {
+            if (rectPieces.Count == 0)
+                return new List<RectPiece>();
+
+            var ys = BuildSortedAxis(rectPieces.SelectMany(r => new[] { r.YBot, r.YTop }));
+            if (ys.Count < 2)
+                return new List<RectPiece>(rectPieces);
+
+            var cells = new List<RectPiece>();
+            foreach (var rect in rectPieces)
+            {
+                int iy0 = FindAxisIndex(ys, rect.YBot);
+                int iy1 = FindAxisIndex(ys, rect.YTop);
+                if (iy0 < 0 || iy1 < 0 || iy1 <= iy0)
+                {
+                    cells.Add(rect);
+                    continue;
+                }
+
+                for (int iy = iy0; iy < iy1; iy++)
+                {
+                    cells.Add(new RectPiece
+                    {
+                        X0 = rect.X0,
+                        X1 = rect.X1,
+                        YBot = ys[iy],
+                        YTop = ys[iy + 1]
+                    });
+                }
+            }
+
+            return cells;
+        }
+
+        private static List<double> BuildSortedAxis(IEnumerable<double> values)
+        {
+            var merged = new List<double>();
+            foreach (double value in values.OrderBy(v => v))
+            {
+                if (merged.Count == 0 || value - merged[merged.Count - 1] > YToleranceMm)
+                    merged.Add(value);
+            }
+
+            return merged;
+        }
+
+        private static int FindAxisIndex(IReadOnlyList<double> axis, double value)
+        {
+            int lo = 0;
+            int hi = axis.Count - 1;
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) / 2;
+                double diff = axis[mid] - value;
+                if (Math.Abs(diff) <= YToleranceMm)
+                    return mid;
+                if (diff < 0)
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+
+            return -1;
         }
 
         private static List<RectPiece> MergeRectanglesHorizontally(List<RectPiece> rectPieces)
