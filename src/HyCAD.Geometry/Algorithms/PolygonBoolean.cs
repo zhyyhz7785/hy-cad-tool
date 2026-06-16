@@ -135,6 +135,33 @@ namespace HyCAD.Geometry.Algorithms
             return IntersectAllAndSubtractHoles(subject, clip, holePolys);
         }
 
+        /// <summary>
+        /// subject ∩ outer，减去 holes 后返回全部片段（按面积降序）。
+        /// </summary>
+        public static IReadOnlyList<Polygon2D> IntersectPolygonWithRegionAll(
+            Polygon2D subject,
+            Polyline2D outer,
+            IReadOnlyList<Polyline2D> holes)
+        {
+            if (subject == null || subject.VertexCount < 3)
+                return Array.Empty<Polygon2D>();
+
+            var clip = PolylineToPolygon(outer);
+            if (clip == null)
+                return Array.Empty<Polygon2D>();
+
+            IReadOnlyList<Polygon2D> holePolys = null;
+            if (holes != null && holes.Count > 0)
+            {
+                holePolys = holes
+                    .Select(PolylineToPolygon)
+                    .Where(h => h != null)
+                    .ToList();
+            }
+
+            return IntersectAllAndSubtractHoles(subject, clip, holePolys);
+        }
+
         private static IReadOnlyList<Polygon2D> IntersectAllAndSubtractHoles(
             Polygon2D subject,
             Polygon2D clip,

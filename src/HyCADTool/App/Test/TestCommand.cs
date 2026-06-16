@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("基础底板分区C1", () =>
+            SimpleLogger.LogElapsedTime("N15区域网格化", () =>
             {
-                new DebugBasePartitionCommand().Execute();
+                new MeshConcreteRegionCommand().Execute();
             });
         }
     }

@@ -162,7 +162,13 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             double beamMaxWidthMm = DefaultBeamMaxWidthMm,
             double localConcreteMaxHeightMm = DefaultLocalConcreteMaxHeightMm,
             double? groundY = null,
-            bool mergeBumpsIntoBottomSlab = true)
+            bool mergeBumpsIntoBottomSlab = true,
+            double? soilCutY = null,
+            bool useVerticalEdgeWalls = false,
+            double wallMinHeightForEdgeMm = 200.0,
+            double parallelAngleThresholdDeg = 15.0,
+            double parallelLineRatioMin = 0.6,
+            List<WallColumnRect> detectedWallColumns = null)
         {
             var result = new List<PartitionRegion>();
             if (region?.Outer == null || region.Outer.VertexCount < 3)
@@ -174,8 +180,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 localConcreteMaxHeightMm = DefaultLocalConcreteMaxHeightMm;
 
             double regionMinY = GetRegionMinY(region);
-            bool grounded = !groundY.HasValue
-                || regionMinY <= groundY.Value + bottomSlabMaxHeightMm;
+            bool grounded = soilCutY.HasValue
+                ? regionMinY <= soilCutY.Value
+                : !groundY.HasValue || regionMinY <= groundY.Value + bottomSlabMaxHeightMm;
 
             var segments = CollectSegments(region);
             if (segments.Count == 0)
@@ -242,7 +249,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 double botR = EvaluateYOnSegment(sb.Iv.BotSeg, sb.X1);
                 double maxBot = Math.Max(botL, botR);
                 double maxTop = Math.Max(topL, topR);
-                bottomTopAtStrip[sb.StripIndex] = Math.Min(maxTop, maxBot + bottomSlabMaxHeightMm);
+                double bottomCeiling = soilCutY ?? (maxBot + bottomSlabMaxHeightMm);
+                bottomTopAtStrip[sb.StripIndex] = Math.Min(maxTop, bottomCeiling);
             }
 
             foreach (var sb in stripBottoms)
@@ -262,11 +270,12 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 if (grounded)
                 {
                     FindNeighborBottomTops(bottomTopAtStrip, i, out double? lt, out double? rt);
+                    double bottomCeiling = soilCutY ?? (maxBot + bottomSlabMaxHeightMm);
                     double refTop = lt.HasValue && rt.HasValue
                         ? Math.Min(lt.Value, rt.Value)
-                        : (lt ?? rt ?? maxBot + bottomSlabMaxHeightMm);
+                        : (lt ?? rt ?? bottomCeiling);
 
-                    cut = Math.Min(refTop, maxBot + bottomSlabMaxHeightMm);
+                    cut = Math.Min(refTop, bottomCeiling);
                     if (cut > maxTop)
                         cut = maxTop;
                     // 下限夹紧：cut 不得低于本条带自身底面，否则深坑邻列把 cut 拖到
@@ -405,13 +414,27 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 }
             }
 
-            // ---------------- 阶段2：墙体（高度带 + 轮廓量宽） ----------------
-            foreach (var cell in wallCandidates)
+            // ---------------- 阶段2：墙体 ----------------
+            if (useVerticalEdgeWalls)
             {
-                SplitRaisedCellByWidth(
-                    cell, yBreaks, region, segments, breakpoints, cellsByStrip,
-                    wallMaxWidthMm, anchorageMm, localConcreteMaxHeightMm, ref cellId,
-                    wallCells, massPool, slabPieces, allowSlabBands: true);
+                var wallColumns = DetectWallColumnsByVerticalEdges(
+                    segments, region, wallCandidates, wallMaxWidthMm, wallMinHeightForEdgeMm,
+                    parallelAngleThresholdDeg, parallelLineRatioMin);
+                if (detectedWallColumns != null)
+                    detectedWallColumns.AddRange(wallColumns);
+
+                ApplyVerticalEdgeWallsToCandidates(
+                    wallCandidates, wallColumns, ref cellId, wallCells, massPool);
+            }
+            else
+            {
+                foreach (var cell in wallCandidates)
+                {
+                    SplitRaisedCellByWidth(
+                        cell, yBreaks, region, segments, breakpoints, cellsByStrip,
+                        wallMaxWidthMm, anchorageMm, localConcreteMaxHeightMm, ref cellId,
+                        wallCells, massPool, slabPieces, allowSlabBands: true);
+                }
             }
 
             foreach (var group in MergeCells(wallCells))
@@ -978,6 +1001,417 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     ThicknessMm = thickness
                 });
             }
+        }
+
+        // ===================================================================
+        //  竖边成对识别墙（N12）
+        // ===================================================================
+
+        private const double VerticalFaceInsideOffsetMm = 1.0;
+
+        private sealed class VerticalFace
+        {
+            public double X;
+            public double YBot, YTop;
+            public bool IsLeftFace;
+            /// <summary>与 X 轴夹角归一化到 [0°,90°]。</summary>
+            public double AngleDeg;
+        }
+
+        /// <summary>线段与 X 轴夹角归一化到 [0°,90°]。</summary>
+        private static double NormalizeSegmentAngleDeg(Line2D seg)
+        {
+            if (!seg.Direction.TryNormalize(out Vector2D dir))
+                return 0.0;
+
+            double angle = Math.Abs(Math.Atan2(dir.Y, dir.X) * 180.0 / Math.PI);
+            if (angle > 90.0)
+                angle = 180.0 - angle;
+            return angle;
+        }
+
+        /// <summary>墙立面：与竖直夹角 ≤ threshold（即归一化角 ≥ 90°−threshold）。</summary>
+        private static bool IsVerticalWallFaceAngle(double normalizedAngleDeg, double thresholdDeg)
+        {
+            if (thresholdDeg <= 0)
+                thresholdDeg = 15.0;
+            return normalizedAngleDeg >= 90.0 - thresholdDeg - IntersectionEpsilon;
+        }
+
+        /// <summary>
+        /// 从轮廓边提取左/右竖直面，成对（间距≤墙厚、平行、Y重叠≥minH、平行占比≥ratio）→ 墙柱矩形。
+        /// </summary>
+        private static List<WallColumnRect> DetectWallColumnsByVerticalEdges(
+            List<Line2D> segments,
+            ReinRegion region,
+            List<TrapezoidCell> wallCandidates,
+            double wallMaxWidthMm,
+            double wallMinHeightMm,
+            double parallelAngleThresholdDeg,
+            double parallelLineRatioMin)
+        {
+            var result = new List<WallColumnRect>();
+            if (segments == null || segments.Count == 0 || wallCandidates == null || wallCandidates.Count == 0)
+                return result;
+
+            if (wallMinHeightMm < MinIntervalHeightMm)
+                wallMinHeightMm = MinIntervalHeightMm;
+            if (parallelAngleThresholdDeg <= 0)
+                parallelAngleThresholdDeg = 15.0;
+            if (parallelLineRatioMin <= 0 || parallelLineRatioMin > 1.0)
+                parallelLineRatioMin = 0.6;
+
+            var faces = CollectVerticalFaces(
+                segments, region, wallMinHeightMm, parallelAngleThresholdDeg);
+            var leftFaces = faces.Where(f => f.IsLeftFace).OrderBy(f => f.X).ToList();
+            var rightFaces = faces.Where(f => !f.IsLeftFace).OrderBy(f => f.X).ToList();
+
+            foreach (var left in leftFaces)
+            {
+                VerticalFace bestRight = null;
+                double bestWidth = double.MaxValue;
+                double bestOverlapRatio = 0;
+
+                foreach (var right in rightFaces)
+                {
+                    if (right.X <= left.X + IntersectionEpsilon)
+                        continue;
+
+                    if (Math.Abs(left.AngleDeg - right.AngleDeg) > parallelAngleThresholdDeg + IntersectionEpsilon)
+                        continue;
+
+                    double width = right.X - left.X;
+                    if (width > wallMaxWidthMm + IntersectionEpsilon)
+                        continue;
+
+                    double yBot = Math.Max(left.YBot, right.YBot);
+                    double yTop = Math.Min(left.YTop, right.YTop);
+                    if (yTop - yBot < wallMinHeightMm)
+                        continue;
+
+                    if (!IsConcreteBetween(region, left.X, right.X, yBot, yTop))
+                        continue;
+
+                    double overlapBot = yBot;
+                    double overlapTop = yTop;
+                    ClampWallColumnYToCandidates(
+                        left.X, right.X, ref overlapBot, ref overlapTop, wallCandidates);
+
+                    if (overlapTop - overlapBot < wallMinHeightMm)
+                        continue;
+
+                    if (!PassesParallelLineRatioGate(
+                            left.X, right.X, overlapBot, overlapTop, wallCandidates,
+                            parallelLineRatioMin, out double overlapRatio))
+                        continue;
+
+                    if (width < bestWidth)
+                    {
+                        bestWidth = width;
+                        bestRight = right;
+                        bestOverlapRatio = overlapRatio;
+                    }
+                }
+
+                if (bestRight == null)
+                    continue;
+
+                double finalBot = Math.Max(left.YBot, bestRight.YBot);
+                double finalTop = Math.Min(left.YTop, bestRight.YTop);
+                ClampWallColumnYToCandidates(
+                    left.X, bestRight.X, ref finalBot, ref finalTop, wallCandidates);
+
+                if (finalTop - finalBot < wallMinHeightMm)
+                    continue;
+
+                result.Add(new WallColumnRect
+                {
+                    X0 = left.X,
+                    X1 = bestRight.X,
+                    YBot = finalBot,
+                    YTop = finalTop,
+                    OverlapRatio = bestOverlapRatio
+                });
+            }
+
+            return MergeOverlappingWallColumns(result);
+        }
+
+        private static List<VerticalFace> CollectVerticalFaces(
+            List<Line2D> segments,
+            ReinRegion region,
+            double wallMinHeightMm,
+            double parallelAngleThresholdDeg)
+        {
+            var faces = new List<VerticalFace>();
+            double delta = VerticalFaceInsideOffsetMm;
+
+            foreach (var seg in segments)
+            {
+                double angleDeg = NormalizeSegmentAngleDeg(seg);
+                if (!IsVerticalWallFaceAngle(angleDeg, parallelAngleThresholdDeg))
+                    continue;
+
+                double yBot = Math.Min(seg.StartPoint.Y, seg.EndPoint.Y);
+                double yTop = Math.Max(seg.StartPoint.Y, seg.EndPoint.Y);
+                if (yTop - yBot < wallMinHeightMm)
+                    continue;
+
+                double yMid = (yBot + yTop) / 2.0;
+                double x = EvaluateXOnSegment(seg, yMid);
+                bool rightInside = region.IsValidRebarPoint(new Point2D(x + delta, yMid));
+                bool leftInside = region.IsValidRebarPoint(new Point2D(x - delta, yMid));
+
+                if (rightInside && !leftInside)
+                {
+                    faces.Add(new VerticalFace
+                    {
+                        X = x,
+                        YBot = yBot,
+                        YTop = yTop,
+                        IsLeftFace = true,
+                        AngleDeg = angleDeg
+                    });
+                }
+                else if (leftInside && !rightInside)
+                {
+                    faces.Add(new VerticalFace
+                    {
+                        X = x,
+                        YBot = yBot,
+                        YTop = yTop,
+                        IsLeftFace = false,
+                        AngleDeg = angleDeg
+                    });
+                }
+            }
+
+            return faces;
+        }
+
+        private static double EvaluateXOnSegment(Line2D seg, double y)
+        {
+            double y1 = seg.StartPoint.Y, y2 = seg.EndPoint.Y;
+            if (Math.Abs(y2 - y1) < IntersectionEpsilon)
+                return (seg.StartPoint.X + seg.EndPoint.X) / 2.0;
+
+            double t = (y - y1) / (y2 - y1);
+            if (t < 0) t = 0;
+            else if (t > 1) t = 1;
+            return seg.StartPoint.X + t * (seg.EndPoint.X - seg.StartPoint.X);
+        }
+
+        private static bool PassesParallelLineRatioGate(
+            double xL,
+            double xR,
+            double overlapBot,
+            double overlapTop,
+            List<TrapezoidCell> wallCandidates,
+            double parallelLineRatioMin,
+            out double overlapRatio)
+        {
+            overlapRatio = 0;
+
+            var covering = wallCandidates
+                .Where(c => c.X1 > xL + IntersectionEpsilon
+                    && c.X0 < xR - IntersectionEpsilon
+                    && c.X0 >= xL - IntersectionEpsilon
+                    && c.X1 <= xR + IntersectionEpsilon)
+                .ToList();
+
+            if (covering.Count == 0)
+                return false;
+
+            double columnFullHeight = covering.Max(c => c.MaxTop) - covering.Min(c => c.MinBot);
+            if (columnFullHeight < MinIntervalHeightMm)
+                return false;
+
+            double overlapHeight = overlapTop - overlapBot;
+            overlapRatio = overlapHeight / columnFullHeight;
+            return overlapRatio >= parallelLineRatioMin - IntersectionEpsilon;
+        }
+
+        private static bool IsConcreteBetween(
+            ReinRegion region,
+            double xL,
+            double xR,
+            double yBot,
+            double yTop)
+        {
+            if (yTop - yBot < MinIntervalHeightMm)
+                return false;
+
+            double xMid = (xL + xR) / 2.0;
+            double span = yTop - yBot;
+            double[] sampleY =
+            {
+                yBot + span * 0.25,
+                yBot + span * 0.5,
+                yBot + span * 0.75
+            };
+
+            foreach (double y in sampleY)
+            {
+                if (!region.IsValidRebarPoint(new Point2D(xMid, y)))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static void ClampWallColumnYToCandidates(
+            double x0,
+            double x1,
+            ref double yBot,
+            ref double yTop,
+            List<TrapezoidCell> wallCandidates)
+        {
+            var overlapping = wallCandidates
+                .Where(c => c.X1 > x0 + IntersectionEpsilon
+                    && c.X0 < x1 - IntersectionEpsilon
+                    && c.X0 >= x0 - IntersectionEpsilon
+                    && c.X1 <= x1 + IntersectionEpsilon)
+                .ToList();
+
+            if (overlapping.Count == 0)
+                return;
+
+            double clampBot = overlapping.Max(c => c.MinBot);
+            double clampTop = overlapping.Min(c => c.MaxTop);
+            yBot = Math.Max(yBot, clampBot);
+            yTop = Math.Min(yTop, clampTop);
+        }
+
+        private static List<WallColumnRect> MergeOverlappingWallColumns(List<WallColumnRect> columns)
+        {
+            if (columns.Count <= 1)
+                return columns;
+
+            var merged = new List<WallColumnRect>();
+            foreach (var col in columns.OrderBy(c => c.X0).ThenBy(c => c.YBot))
+            {
+                var existing = merged.FirstOrDefault(m =>
+                    Math.Abs(m.X0 - col.X0) < DedupeYToleranceMm
+                    && Math.Abs(m.X1 - col.X1) < DedupeYToleranceMm
+                    && !(col.YTop < m.YBot - DedupeYToleranceMm || col.YBot > m.YTop + DedupeYToleranceMm));
+
+                if (existing == null)
+                {
+                    merged.Add(new WallColumnRect
+                    {
+                        X0 = col.X0,
+                        X1 = col.X1,
+                        YBot = col.YBot,
+                        YTop = col.YTop,
+                        OverlapRatio = col.OverlapRatio
+                    });
+                }
+                else
+                {
+                    existing.YBot = Math.Min(existing.YBot, col.YBot);
+                    existing.YTop = Math.Max(existing.YTop, col.YTop);
+                    existing.OverlapRatio = Math.Max(existing.OverlapRatio, col.OverlapRatio);
+                }
+            }
+
+            return merged;
+        }
+
+        /// <summary>按墙柱矩形 Y 区间切分 wallCandidate → 墙带 / 大体积带。</summary>
+        private static void ApplyVerticalEdgeWallsToCandidates(
+            List<TrapezoidCell> wallCandidates,
+            List<WallColumnRect> wallColumns,
+            ref int cellId,
+            List<TrapezoidCell> wallCells,
+            List<TrapezoidCell> massPool)
+        {
+            foreach (var cell in wallCandidates)
+            {
+                var wallIntervals = CollectWallYIntervalsForCell(cell, wallColumns);
+                if (wallIntervals.Count == 0)
+                {
+                    massPool.Add(CopyCell(ref cellId, cell, CellKind.Raised));
+                    continue;
+                }
+
+                wallIntervals = MergeYIntervals(wallIntervals);
+                double cursor = cell.MinBot;
+
+                foreach (var interval in wallIntervals.OrderBy(i => i.Bot))
+                {
+                    if (interval.Bot - cursor >= MinIntervalHeightMm)
+                    {
+                        var massPiece = CreateFlatBandCell(
+                            cell, ref cellId, cell.StripIndex, CellKind.Raised,
+                            cell.X0, cell.X1, cursor, interval.Bot);
+                        if (massPiece != null)
+                            massPool.Add(massPiece);
+                    }
+
+                    var wallPiece = CreateFlatBandCell(
+                        cell, ref cellId, cell.StripIndex, CellKind.Raised,
+                        cell.X0, cell.X1, interval.Bot, interval.Top);
+                    if (wallPiece != null)
+                        wallCells.Add(wallPiece);
+
+                    cursor = interval.Top;
+                }
+
+                if (cell.MaxTop - cursor >= MinIntervalHeightMm)
+                {
+                    var massPiece = CreateFlatBandCell(
+                        cell, ref cellId, cell.StripIndex, CellKind.Raised,
+                        cell.X0, cell.X1, cursor, cell.MaxTop);
+                    if (massPiece != null)
+                        massPool.Add(massPiece);
+                }
+            }
+        }
+
+        private static List<(double Bot, double Top)> CollectWallYIntervalsForCell(
+            TrapezoidCell cell,
+            List<WallColumnRect> wallColumns)
+        {
+            var intervals = new List<(double Bot, double Top)>();
+
+            foreach (var wall in wallColumns)
+            {
+                if (cell.X0 < wall.X0 - IntersectionEpsilon || cell.X1 > wall.X1 + IntersectionEpsilon)
+                    continue;
+
+                double yBot = Math.Max(wall.YBot, cell.MinBot);
+                double yTop = Math.Min(wall.YTop, cell.MaxTop);
+                if (yTop - yBot >= MinIntervalHeightMm)
+                    intervals.Add((yBot, yTop));
+            }
+
+            return intervals;
+        }
+
+        private static List<(double Bot, double Top)> MergeYIntervals(List<(double Bot, double Top)> intervals)
+        {
+            if (intervals.Count <= 1)
+                return intervals;
+
+            var sorted = intervals.OrderBy(i => i.Bot).ToList();
+            var merged = new List<(double Bot, double Top)> { sorted[0] };
+
+            for (int i = 1; i < sorted.Count; i++)
+            {
+                var last = merged[merged.Count - 1];
+                var cur = sorted[i];
+
+                if (cur.Bot <= last.Top + DedupeYToleranceMm)
+                {
+                    merged[merged.Count - 1] = (last.Bot, Math.Max(last.Top, cur.Top));
+                }
+                else
+                {
+                    merged.Add(cur);
+                }
+            }
+
+            return merged;
         }
 
         /// <summary>

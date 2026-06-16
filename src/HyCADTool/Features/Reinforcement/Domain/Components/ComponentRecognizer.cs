@@ -1,4 +1,5 @@
 using HyCAD.Geometry;
+using HyCAD.Geometry.Algorithms;
 using HyCADTool.Features.Reinforcement.Domain;
 using System;
 using System.Collections.Generic;
@@ -27,11 +28,24 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             IReadOnlyList<ReinRegion> regions,
             ComponentParameters parameters)
         {
+            return Recognize(regions, parameters, RecognizeOptions.Default);
+        }
+
+        /// <summary>整批识别（可选土气 cutY 与出口裁剪）。</summary>
+        public static List<ComponentRegion> Recognize(
+            IReadOnlyList<ReinRegion> regions,
+            ComponentParameters parameters,
+            RecognizeOptions options)
+        {
             var result = new List<ComponentRegion>();
             if (regions == null || regions.Count == 0 || parameters == null)
                 return result;
 
+            options = options ?? RecognizeOptions.Default;
             var globalBbox = ComputeGlobalBbox(regions);
+
+            if (options.UseVerticalEdgeWalls)
+                options.DetectedWallColumns.Clear();
 
             foreach (var region in regions)
             {
@@ -46,7 +60,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     continue;
                 }
 
-                result.AddRange(RecognizeLargeRegion(region, parameters, globalBbox.MinY));
+                result.AddRange(RecognizeLargeRegion(region, parameters, globalBbox.MinY, options));
             }
 
             return result;
@@ -114,7 +128,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         private static List<ComponentRegion> RecognizeLargeRegion(
             ReinRegion region,
             ComponentParameters parameters,
-            double groundY)
+            double groundY,
+            RecognizeOptions options)
         {
             var partitions = RegionPartitioner.Partition(
                 region,
@@ -125,13 +140,40 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 parameters.BeamMaxWidthMm,
                 parameters.LocalConcreteMaxHeightMm,
                 groundY,
-                parameters.MergeBumpsIntoBottomSlab);
+                parameters.MergeBumpsIntoBottomSlab,
+                options?.SoilCutY,
+                options?.UseVerticalEdgeWalls ?? false,
+                options?.WallMinHeightMm ?? 200.0,
+                parameters.ParallelAngleThresholdDeg,
+                parameters.ParallelLineRatioMin,
+                options?.UseVerticalEdgeWalls == true ? options.DetectedWallColumns : null);
             var result = new List<ComponentRegion>(partitions.Count);
 
             foreach (var part in partitions)
             {
                 if (part?.Polygon == null || part.Polygon.VertexCount < 3)
                     continue;
+
+                if (options != null && options.ClipToRegion)
+                {
+                    var clipped = PolygonBoolean.IntersectPolygonWithRegionAll(
+                        part.Polygon, region.Outer, region.Holes);
+                    foreach (var poly in clipped)
+                    {
+                        if (poly == null || poly.VertexCount < 3)
+                            continue;
+
+                        result.Add(new ComponentRegion
+                        {
+                            Type = part.Type,
+                            Polygon = new Polyline2D(poly.Vertices, isClosed: true),
+                            ThicknessMm = part.ThicknessMm,
+                            Priority = PriorityOf(part.Type)
+                        });
+                    }
+
+                    continue;
+                }
 
                 result.Add(new ComponentRegion
                 {
