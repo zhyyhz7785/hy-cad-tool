@@ -1,4 +1,5 @@
 using HyCAD.Geometry;
+using HyCADTool.Features.Reinforcement.Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,16 +7,18 @@ using System.Linq;
 namespace HyCADTool.Features.Reinforcement.Domain.Components
 {
     /// <summary>
-    /// 网格单元 → 构件类型：矩形按尺寸+位置判型，三角形并入相邻最大矩形构件。
+    /// 网格单元 → 构件类型：矩形按尺寸+位置判型，板需上下皆空；三角形并入相邻最大矩形构件。
     /// </summary>
     public static class MeshComponentClassifier
     {
         private const double AnchorYToleranceMm = 80.0;
         private const double EdgeToleranceMm = 1.0;
         private const double MinSegmentLengthMm = 200.0;
+        private const double ProbeOffsetMm = 1.0;
 
         public static List<ComponentRegion> Classify(
             IReadOnlyList<MeshCell> cells,
+            IReadOnlyList<ReinRegion> regions,
             double groupMinY,
             ComponentParameters parameters)
         {
@@ -36,6 +39,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 else
                     triangles.Add(cell);
             }
+
+            var snapshotTypes = rectRegions.Select(r => r.Type).ToList();
+            rectRegions = RefineSlabRegions(rectRegions, snapshotTypes, regions);
 
             result.AddRange(rectRegions);
 
@@ -114,6 +120,250 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 return ComponentType.Beam;
 
             return ComponentType.LocalConcrete;
+        }
+
+        private static List<ComponentRegion> RefineSlabRegions(
+            IReadOnlyList<ComponentRegion> rectRegions,
+            IReadOnlyList<ComponentType> snapshotTypes,
+            IReadOnlyList<ReinRegion> regions)
+        {
+            var refined = new List<ComponentRegion>();
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                var region = rectRegions[i];
+                if (region?.Polygon == null || region.Polygon.VertexCount < 3)
+                    continue;
+
+                if (snapshotTypes[i] != ComponentType.Slab)
+                {
+                    refined.Add(region);
+                    continue;
+                }
+
+                refined.AddRange(SplitSlabStrip(region, i, rectRegions, snapshotTypes, regions));
+            }
+
+            return refined;
+        }
+
+        private static List<ComponentRegion> SplitSlabStrip(
+            ComponentRegion strip,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes,
+            IReadOnlyList<ReinRegion> regions)
+        {
+            GetBounds(strip.Polygon, out double sMinX, out double sMaxX, out double sMinY, out double sMaxY);
+            double stripHeight = sMaxY - sMinY;
+
+            var breakpoints = new SortedSet<double> { sMinX, sMaxX };
+            for (int j = 0; j < allRects.Count; j++)
+            {
+                if (j == stripIndex || snapshotTypes[j] == ComponentType.Slab)
+                    continue;
+
+                var neighbor = allRects[j];
+                if (neighbor?.Polygon == null || neighbor.Polygon.VertexCount < 3)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double nMaxY);
+                bool isUpper = Math.Abs(nMinY - sMaxY) <= EdgeToleranceMm;
+                bool isLower = Math.Abs(nMaxY - sMinY) <= EdgeToleranceMm;
+                if (!isUpper && !isLower)
+                    continue;
+                if (nMaxX <= sMinX + EdgeToleranceMm || nMinX >= sMaxX - EdgeToleranceMm)
+                    continue;
+
+                breakpoints.Add(Math.Max(sMinX, nMinX));
+                breakpoints.Add(Math.Min(sMaxX, nMaxX));
+            }
+
+            var xs = breakpoints.ToList();
+            var segments = new List<(double X0, double X1, ComponentType Type)>();
+
+            for (int k = 0; k < xs.Count - 1; k++)
+            {
+                double xa = xs[k];
+                double xb = xs[k + 1];
+                if (xb - xa < EdgeToleranceMm)
+                    continue;
+
+                var type = ClassifySubSegment(xa, xb, sMinY, sMaxY, stripIndex, allRects, snapshotTypes, regions);
+                segments.Add((xa, xb, type));
+            }
+
+            segments = MergeAdjacentSegments(segments);
+
+            if (segments.Count == 1 && segments[0].Type == ComponentType.Slab)
+                return new List<ComponentRegion> { strip };
+
+            var result = new List<ComponentRegion>(segments.Count);
+            foreach (var seg in segments)
+            {
+                result.Add(CreateRectRegion(
+                    seg.X0,
+                    seg.X1,
+                    sMinY,
+                    sMaxY,
+                    seg.Type,
+                    Math.Min(seg.X1 - seg.X0, stripHeight)));
+            }
+
+            return result;
+        }
+
+        private static ComponentType ClassifySubSegment(
+            double xa,
+            double xb,
+            double sMinY,
+            double sMaxY,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes,
+            IReadOnlyList<ReinRegion> regions)
+        {
+            double midX = (xa + xb) / 2.0;
+            ComponentType? upperNeighborType = FindUpperNeighborTypeAt(
+                midX,
+                sMaxY,
+                stripIndex,
+                allRects,
+                snapshotTypes);
+
+            bool aboveConcrete = upperNeighborType.HasValue
+                || IsConcrete(new Point2D(midX, sMaxY + ProbeOffsetMm), regions);
+            bool belowConcrete = HasLowerNeighborAt(
+                    midX,
+                    sMinY,
+                    stripIndex,
+                    allRects,
+                    snapshotTypes)
+                || IsConcrete(new Point2D(midX, sMinY - ProbeOffsetMm), regions);
+
+            if (!belowConcrete)
+                return ComponentType.Slab;
+
+            if (aboveConcrete)
+                return upperNeighborType ?? ComponentType.MassConcrete;
+
+            return ComponentType.LocalConcrete;
+        }
+
+        private static bool HasLowerNeighborAt(
+            double midX,
+            double stripBottomY,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes)
+        {
+            for (int j = 0; j < allRects.Count; j++)
+            {
+                if (j == stripIndex || snapshotTypes[j] == ComponentType.Slab)
+                    continue;
+
+                var neighbor = allRects[j];
+                if (neighbor?.Polygon == null || neighbor.Polygon.VertexCount < 3)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double _, out double nMaxY);
+                if (Math.Abs(nMaxY - stripBottomY) > EdgeToleranceMm)
+                    continue;
+                if (midX < nMinX - EdgeToleranceMm || midX > nMaxX + EdgeToleranceMm)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static ComponentType? FindUpperNeighborTypeAt(
+            double midX,
+            double stripTopY,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes)
+        {
+            for (int j = 0; j < allRects.Count; j++)
+            {
+                if (j == stripIndex || snapshotTypes[j] == ComponentType.Slab)
+                    continue;
+
+                var neighbor = allRects[j];
+                if (neighbor?.Polygon == null || neighbor.Polygon.VertexCount < 3)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double _);
+                if (Math.Abs(nMinY - stripTopY) > EdgeToleranceMm)
+                    continue;
+                if (midX < nMinX - EdgeToleranceMm || midX > nMaxX + EdgeToleranceMm)
+                    continue;
+
+                return snapshotTypes[j];
+            }
+
+            return null;
+        }
+
+        private static List<(double X0, double X1, ComponentType Type)> MergeAdjacentSegments(
+            List<(double X0, double X1, ComponentType Type)> segments)
+        {
+            if (segments.Count == 0)
+                return segments;
+
+            var merged = new List<(double X0, double X1, ComponentType Type)> { segments[0] };
+            for (int i = 1; i < segments.Count; i++)
+            {
+                var cur = segments[i];
+                var last = merged[merged.Count - 1];
+                if (cur.Type == last.Type && Math.Abs(cur.X0 - last.X1) <= EdgeToleranceMm)
+                {
+                    merged[merged.Count - 1] = (last.X0, cur.X1, last.Type);
+                }
+                else
+                {
+                    merged.Add(cur);
+                }
+            }
+
+            return merged;
+        }
+
+        private static ComponentRegion CreateRectRegion(
+            double x0,
+            double x1,
+            double yBot,
+            double yTop,
+            ComponentType type,
+            double thicknessMm)
+        {
+            return new ComponentRegion
+            {
+                Type = type,
+                Polygon = new Polyline2D(new[]
+                {
+                    new Point2D(x0, yBot),
+                    new Point2D(x1, yBot),
+                    new Point2D(x1, yTop),
+                    new Point2D(x0, yTop)
+                }, isClosed: true),
+                ThicknessMm = thicknessMm,
+                Priority = PriorityOf(type)
+            };
+        }
+
+        private static bool IsConcrete(Point2D point, IReadOnlyList<ReinRegion> regions)
+        {
+            if (regions == null || regions.Count == 0)
+                return false;
+
+            foreach (var region in regions)
+            {
+                if (region?.IsValidRebarPoint(point) == true)
+                    return true;
+            }
+
+            return false;
         }
 
         private static ComponentType ResolveTriangleType(MeshCell triangle, IReadOnlyList<ComponentRegion> rectRegions)

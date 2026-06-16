@@ -97,7 +97,7 @@ namespace HyCADTool.Features.Reinforcement
                     groupCells.AddRange(RegionMeshDecomposer.Decompose(region));
                 }
 
-                var groupComponents = MeshComponentClassifier.Classify(groupCells, groupMinY, parameters);
+                var groupComponents = MeshComponentClassifier.Classify(groupCells, group, groupMinY, parameters);
                 allComponents.AddRange(groupComponents);
 
                 sb.AppendLine(
