@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("N15区域网格化", () =>
+            SimpleLogger.LogElapsedTime("N16网格构件划分", () =>
             {
-                new MeshConcreteRegionCommand().Execute();
+                new MeshComponentDivideCommand().Execute();
             });
         }
     }
