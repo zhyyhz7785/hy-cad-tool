@@ -42,6 +42,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
             var snapshotTypes = rectRegions.Select(r => r.Type).ToList();
             rectRegions = RefineSlabRegions(rectRegions, snapshotTypes, regions);
+            var snapshotAfterSlab = rectRegions.Select(r => r.Type).ToList();
+            rectRegions = RefineLocalUnderlay(rectRegions, snapshotAfterSlab);
+            DowngradeSmallMassConcrete(rectRegions, parameters);
 
             result.AddRange(rectRegions);
 
@@ -144,6 +147,156 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
 
             return refined;
+        }
+
+        private static List<ComponentRegion> RefineLocalUnderlay(
+            IReadOnlyList<ComponentRegion> rectRegions,
+            IReadOnlyList<ComponentType> snapshotTypes)
+        {
+            var refined = new List<ComponentRegion>();
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                var region = rectRegions[i];
+                if (region?.Polygon == null || region.Polygon.VertexCount < 3)
+                    continue;
+
+                var snap = snapshotTypes[i];
+                if (snap != ComponentType.BottomSlab && snap != ComponentType.MassConcrete)
+                {
+                    refined.Add(region);
+                    continue;
+                }
+
+                refined.AddRange(SplitLocalUnderlayStrip(region, i, rectRegions, snapshotTypes, snap));
+            }
+
+            return refined;
+        }
+
+        private static void DowngradeSmallMassConcrete(
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters)
+        {
+            foreach (var region in rectRegions)
+            {
+                if (region?.Polygon == null || region.Type != ComponentType.MassConcrete)
+                    continue;
+
+                GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                double minSide = Math.Min(maxX - minX, maxY - minY);
+                if (minSide < parameters.MassConcreteMinSizeMm)
+                {
+                    region.Type = ComponentType.LocalConcrete;
+                    region.Priority = PriorityOf(ComponentType.LocalConcrete);
+                }
+            }
+        }
+
+        private static List<ComponentRegion> SplitLocalUnderlayStrip(
+            ComponentRegion strip,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes,
+            ComponentType originalType)
+        {
+            GetBounds(strip.Polygon, out double sMinX, out double sMaxX, out double sMinY, out double sMaxY);
+            double stripHeight = sMaxY - sMinY;
+
+            var breakpoints = new SortedSet<double> { sMinX, sMaxX };
+            bool hasUpperLocal = false;
+            for (int j = 0; j < allRects.Count; j++)
+            {
+                if (j == stripIndex || snapshotTypes[j] != ComponentType.LocalConcrete)
+                    continue;
+
+                var neighbor = allRects[j];
+                if (neighbor?.Polygon == null || neighbor.Polygon.VertexCount < 3)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double _);
+                if (Math.Abs(nMinY - sMaxY) > EdgeToleranceMm)
+                    continue;
+                if (nMaxX <= sMinX + EdgeToleranceMm || nMinX >= sMaxX - EdgeToleranceMm)
+                    continue;
+
+                hasUpperLocal = true;
+                breakpoints.Add(Math.Max(sMinX, nMinX));
+                breakpoints.Add(Math.Min(sMaxX, nMaxX));
+            }
+
+            if (!hasUpperLocal)
+                return new List<ComponentRegion> { strip };
+
+            var xs = breakpoints.ToList();
+            var segments = new List<(double X0, double X1, ComponentType Type)>();
+
+            for (int k = 0; k < xs.Count - 1; k++)
+            {
+                double xa = xs[k];
+                double xb = xs[k + 1];
+                if (xb - xa < EdgeToleranceMm)
+                    continue;
+
+                var type = ClassifyUnderlaySubSegment(
+                    xa,
+                    xb,
+                    sMinY,
+                    sMaxY,
+                    stripIndex,
+                    allRects,
+                    snapshotTypes,
+                    originalType);
+                segments.Add((xa, xb, type));
+            }
+
+            segments = MergeAdjacentSegments(segments);
+
+            if (segments.Count == 1 && segments[0].Type == originalType)
+                return new List<ComponentRegion> { strip };
+
+            var result = new List<ComponentRegion>(segments.Count);
+            foreach (var seg in segments)
+            {
+                result.Add(CreateRectRegion(
+                    seg.X0,
+                    seg.X1,
+                    sMinY,
+                    sMaxY,
+                    seg.Type,
+                    Math.Min(seg.X1 - seg.X0, stripHeight)));
+            }
+
+            return result;
+        }
+
+        private static ComponentType ClassifyUnderlaySubSegment(
+            double xa,
+            double xb,
+            double sMinY,
+            double sMaxY,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes,
+            ComponentType originalType)
+        {
+            double midX = (xa + xb) / 2.0;
+            ComponentType? upType = FindUpperNeighborTypeAt(
+                midX,
+                sMaxY,
+                stripIndex,
+                allRects,
+                snapshotTypes);
+            ComponentType? downType = FindLowerNeighborTypeAt(
+                midX,
+                sMinY,
+                stripIndex,
+                allRects,
+                snapshotTypes);
+
+            if (upType == ComponentType.LocalConcrete && downType == ComponentType.BottomSlab)
+                return ComponentType.LocalConcrete;
+
+            return originalType;
         }
 
         private static List<ComponentRegion> SplitSlabStrip(
@@ -295,6 +448,34 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
                 GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double _);
                 if (Math.Abs(nMinY - stripTopY) > EdgeToleranceMm)
+                    continue;
+                if (midX < nMinX - EdgeToleranceMm || midX > nMaxX + EdgeToleranceMm)
+                    continue;
+
+                return snapshotTypes[j];
+            }
+
+            return null;
+        }
+
+        private static ComponentType? FindLowerNeighborTypeAt(
+            double midX,
+            double stripBottomY,
+            int stripIndex,
+            IReadOnlyList<ComponentRegion> allRects,
+            IReadOnlyList<ComponentType> snapshotTypes)
+        {
+            for (int j = 0; j < allRects.Count; j++)
+            {
+                if (j == stripIndex || snapshotTypes[j] == ComponentType.Slab)
+                    continue;
+
+                var neighbor = allRects[j];
+                if (neighbor?.Polygon == null || neighbor.Polygon.VertexCount < 3)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double _, out double nMaxY);
+                if (Math.Abs(nMaxY - stripBottomY) > EdgeToleranceMm)
                     continue;
                 if (midX < nMinX - EdgeToleranceMm || midX > nMaxX + EdgeToleranceMm)
                     continue;
