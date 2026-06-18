@@ -44,7 +44,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             return profile.GroupMinY;
         }
 
-        /// <summary>底边 [minX,maxX]×yBot 与土接触（N13 边 + 各区域本地底面外探）。</summary>
+        /// <summary>底边 [minX,maxX]×yBot 与土接触（仅 N13 Soil 边）。</summary>
         public static bool BottomContactsSoil(
             double minX,
             double maxX,
@@ -110,9 +110,6 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             IReadOnlyList<ReinRegion> regions,
             GroupBoundaryProfile profile)
         {
-            if (IsLocalBottomExteriorSoil(x, yBot, regions))
-                return true;
-
             var edges = GetAllRegionEdges(profile);
             if (edges == null || edges.Count == 0)
                 return false;
@@ -135,48 +132,6 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
 
             return false;
-        }
-
-        private static bool IsLocalBottomExteriorSoil(
-            double x,
-            double yBot,
-            IReadOnlyList<ReinRegion> regions)
-        {
-            if (regions == null)
-                return false;
-
-            foreach (var region in regions)
-            {
-                if (region?.Outer == null || region.Outer.VertexCount < 3)
-                    continue;
-
-                if (!TryGetExteriorBottomYAtX(region, x, out double localBottomY))
-                    continue;
-
-                if (Math.Abs(yBot - localBottomY) > AnchorYToleranceMm)
-                    continue;
-
-                var probe = new Point2D(x, yBot - ProbeOffsetMm);
-                if (!region.IsValidRebarPoint(probe))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static bool TryGetExteriorBottomYAtX(
-            ReinRegion region,
-            double x,
-            out double bottomY)
-        {
-            bottomY = double.NaN;
-            var segments = StripGeometry.CollectSegments(region);
-            var intervals = StripGeometry.GetInsideIntervalsAt(region, segments, x);
-            if (intervals == null || intervals.Count == 0)
-                return false;
-
-            bottomY = intervals[intervals.Count - 1].Bottom;
-            return !double.IsNaN(bottomY);
         }
 
         public static bool ContactsAirAt(
@@ -229,6 +184,193 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
 
             return true;
+        }
+
+        /// <summary>N29：水平面沿 X 存在有效空气接触段（不要求全长每点皆气）。</summary>
+        public static bool HasAirContactAlongSpan(
+            double minX,
+            double maxX,
+            double y,
+            bool isAbove,
+            IReadOnlyList<ReinRegion> regions,
+            GroupBoundaryProfile profile)
+        {
+            double span = maxX - minX;
+            if (span <= EdgeToleranceMm)
+                return ContactsAirAt((minX + maxX) / 2.0, y, isAbove, regions, profile);
+
+            double minLen = Math.Min(MinSegmentLengthMm, span * 0.15);
+            var intervals = CollectAirContactXIntervals(minX, maxX, y, isAbove, regions, profile);
+            return HasEffectiveAirInterval(intervals, minX, maxX, minLen);
+        }
+
+        private static List<(double X0, double X1)> CollectAirContactXIntervals(
+            double minX,
+            double maxX,
+            double y,
+            bool isAbove,
+            IReadOnlyList<ReinRegion> regions,
+            GroupBoundaryProfile profile)
+        {
+            var intervals = new List<(double X0, double X1)>();
+            intervals.AddRange(GetHorizontalAirEdgeIntervals(minX, maxX, y, profile));
+            intervals.AddRange(GetHoleFaceAirIntervals(minX, maxX, y, isAbove, regions));
+            intervals.AddRange(ScanAirContactIntervals(minX, maxX, y, isAbove, regions, profile));
+            return MergeXIntervals(intervals);
+        }
+
+        private static List<(double X0, double X1)> GetHorizontalAirEdgeIntervals(
+            double minX,
+            double maxX,
+            double y,
+            GroupBoundaryProfile profile)
+        {
+            var intervals = new List<(double X0, double X1)>();
+            var edges = GetAllRegionEdges(profile);
+            if (edges == null)
+                return intervals;
+
+            foreach (var ce in edges)
+            {
+                if (ce?.Edge == null || ce.Role != BoundaryEdgeRole.Air)
+                    continue;
+
+                var e = ce.Edge;
+                if (Math.Abs(e.StartPoint.Y - e.EndPoint.Y) > EdgeToleranceMm)
+                    continue;
+
+                double edgeY = (e.StartPoint.Y + e.EndPoint.Y) / 2.0;
+                if (Math.Abs(edgeY - y) > AnchorYToleranceMm)
+                    continue;
+
+                double ex0 = Math.Max(minX, Math.Min(e.StartPoint.X, e.EndPoint.X));
+                double ex1 = Math.Min(maxX, Math.Max(e.StartPoint.X, e.EndPoint.X));
+                if (ex1 - ex0 > EdgeToleranceMm)
+                    intervals.Add((ex0, ex1));
+            }
+
+            return intervals;
+        }
+
+        private static List<(double X0, double X1)> GetHoleFaceAirIntervals(
+            double minX,
+            double maxX,
+            double y,
+            bool isAbove,
+            IReadOnlyList<ReinRegion> regions)
+        {
+            var intervals = new List<(double X0, double X1)>();
+            if (regions == null)
+                return intervals;
+
+            foreach (var region in regions)
+            {
+                if (region?.Holes == null)
+                    continue;
+
+                foreach (var hole in region.Holes)
+                {
+                    if (hole?.Vertices == null || hole.VertexCount < 3)
+                        continue;
+
+                    GetPolylineBounds(hole, out double hMinX, out double hMaxX, out double hMinY, out double hMaxY);
+
+                    double overlapX0 = Math.Max(minX, hMinX);
+                    double overlapX1 = Math.Min(maxX, hMaxX);
+                    if (overlapX1 - overlapX0 < EdgeToleranceMm)
+                        continue;
+
+                    bool faceOnHoleTop = !isAbove && Math.Abs(hMaxY - y) <= EdgeToleranceMm;
+                    bool faceOnHoleBottom = isAbove && Math.Abs(hMinY - y) <= EdgeToleranceMm;
+                    if (!faceOnHoleTop && !faceOnHoleBottom)
+                        continue;
+
+                    intervals.Add((overlapX0, overlapX1));
+                }
+            }
+
+            return intervals;
+        }
+
+        private static List<(double X0, double X1)> ScanAirContactIntervals(
+            double minX,
+            double maxX,
+            double y,
+            bool isAbove,
+            IReadOnlyList<ReinRegion> regions,
+            GroupBoundaryProfile profile)
+        {
+            var intervals = new List<(double X0, double X1)>();
+            double span = maxX - minX;
+            double step = Math.Max(50.0, span / 40.0);
+
+            bool inAir = false;
+            double segStart = minX;
+
+            for (double x = minX; x <= maxX + EdgeToleranceMm; x += step)
+            {
+                double sampleX = Math.Min(x, maxX);
+                bool air = ContactsAirAt(sampleX, y, isAbove, regions, profile);
+
+                if (air && !inAir)
+                {
+                    segStart = sampleX;
+                    inAir = true;
+                }
+                else if (!air && inAir)
+                {
+                    intervals.Add((segStart, sampleX));
+                    inAir = false;
+                }
+
+                if (Math.Abs(sampleX - maxX) <= EdgeToleranceMm)
+                    break;
+            }
+
+            if (inAir)
+                intervals.Add((segStart, maxX));
+
+            return intervals;
+        }
+
+        private static bool HasEffectiveAirInterval(
+            List<(double X0, double X1)> intervals,
+            double minX,
+            double maxX,
+            double minLen)
+        {
+            foreach (var iv in intervals)
+            {
+                double s = Math.Max(minX, iv.X0);
+                double e = Math.Min(maxX, iv.X1);
+                if (e - s >= minLen - EdgeToleranceMm)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static List<(double X0, double X1)> MergeXIntervals(List<(double X0, double X1)> intervals)
+        {
+            if (intervals == null || intervals.Count == 0)
+                return new List<(double X0, double X1)>();
+
+            if (intervals.Count == 1)
+                return intervals;
+
+            intervals.Sort((a, b) => a.X0.CompareTo(b.X0));
+            var merged = new List<(double X0, double X1)> { intervals[0] };
+            for (int i = 1; i < intervals.Count; i++)
+            {
+                var cur = intervals[i];
+                var last = merged[merged.Count - 1];
+                if (cur.X0 <= last.X1 + EdgeToleranceMm)
+                    merged[merged.Count - 1] = (last.X0, Math.Max(last.X1, cur.X1));
+                else
+                    merged.Add(cur);
+            }
+
+            return merged;
         }
 
         private static IEnumerable<double> GetSpanSampleXs(double minX, double maxX)

@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("N27网格底板判型", () =>
+            SimpleLogger.LogElapsedTime("N29网格底板+楼板判型V3", () =>
             {
-                new MeshComponentDivideCommand().ExecuteBottomSlabClassify();
+                new MeshComponentDivideCommand().ExecuteBottomSlabAndSlabClassifyV3();
             });
         }
     }

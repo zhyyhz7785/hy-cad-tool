@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace HyCADTool.Features.Reinforcement.Domain.Components
 {
-    /// <summary>网格构件判型阶段（N22 初判 / N25 上部 X 打断 / N26 简化 / N27 仅底板 / N16 完整精修）。</summary>
+    /// <summary>网格构件判型阶段（N22 初判 / N25 上部 X 打断 / N26 简化 / N27 仅底板 / N28 底板清版 / N16 完整精修）。</summary>
     public enum MeshClassifyStage
     {
         Initial,
@@ -16,6 +16,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         InitialSimple,
         /// <summary>N27：仅底板判型（横条+贴组底+土接触）。</summary>
         BottomSlabOnly,
+        /// <summary>N28：仅底板判型(清版，横条+h≤1500+下侧土接触，不限标高)。</summary>
+        BottomSlabOnlyV2,
+        /// <summary>N29：N28 底板 + 楼板判型(横条+h≤300+上下皆气接触→楼板)。</summary>
+        BottomSlabAndSlabV3,
         Complete
     }
 
@@ -52,7 +56,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 if (cell.Kind == MeshCellKind.Rectangle && cell.Orientation != MeshCellOrientation.None)
                 {
                     if (stage == MeshClassifyStage.InitialSimple
-                        || stage == MeshClassifyStage.BottomSlabOnly)
+                        || stage == MeshClassifyStage.BottomSlabOnly
+                        || stage == MeshClassifyStage.BottomSlabOnlyV2
+                        || stage == MeshClassifyStage.BottomSlabAndSlabV3)
                         rectRegions.Add(ToRectangleRegionShell(cell));
                     else
                         rectRegions.Add(ToRectangleRegion(cell, groupMinY, parameters));
@@ -65,6 +71,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 ClassifySimple(rectRegions, regions, groupMinY, parameters, boundaryProfile);
             else if (stage == MeshClassifyStage.BottomSlabOnly)
                 ClassifyBottomSlabOnly(rectRegions, regions, groupMinY, parameters, boundaryProfile);
+            else if (stage == MeshClassifyStage.BottomSlabOnlyV2)
+                ClassifyBottomSlabV2(rectRegions, regions, groupMinY, parameters, boundaryProfile);
+            else if (stage == MeshClassifyStage.BottomSlabAndSlabV3)
+                ClassifyBottomSlabAndSlabV3(rectRegions, regions, groupMinY, parameters, boundaryProfile);
             else if (stage == MeshClassifyStage.InitialUpperSplit)
             {
                 var snapshotTypes = rectRegions.Select(r => r.Type).ToList();
@@ -119,6 +129,73 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 ThicknessMm = Math.Min(w, h),
                 Priority = PriorityOf(type)
             };
+        }
+
+        /// <summary>N28：仅底板(清版) — 横条 w>=2h w>=200 + h<=1500 + 下侧土接触 -> 底板，余者大体积。</summary>
+        private static void ClassifyBottomSlabV2(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            double groupMinY,
+            ComponentParameters parameters,
+            GroupBoundaryProfile boundaryProfile)
+        {
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                var region = rectRegions[i];
+                GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                double w = maxX - minX;
+                double h = maxY - minY;
+
+                bool horizontalStrip = w >= 2.0 * h && w >= MinSegmentLengthMm;
+                bool withinThickness = h <= parameters.BottomSlabMaxThicknessMm;
+
+                var type = ComponentType.MassConcrete;
+                if (horizontalStrip && withinThickness
+                    && BoundaryContactProbe.BottomContactsSoil(minX, maxX, minY, regions, boundaryProfile))
+                {
+                    type = ComponentType.BottomSlab;
+                }
+
+                region.Type = type;
+                region.Priority = PriorityOf(type);
+            }
+        }
+
+        /// <summary>N29：底板(同 N28) + 楼板 — 横条 w≥2h w≥200 + h≤300 + 上下皆气接触 → 楼板(青)。</summary>
+        private static void ClassifyBottomSlabAndSlabV3(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            double groupMinY,
+            ComponentParameters parameters,
+            GroupBoundaryProfile boundaryProfile)
+        {
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                var region = rectRegions[i];
+                GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                double w = maxX - minX;
+                double h = maxY - minY;
+
+                bool horizontalStrip = w >= 2.0 * h && w >= MinSegmentLengthMm;
+
+                var type = ComponentType.MassConcrete;
+                if (horizontalStrip
+                    && h <= parameters.BottomSlabMaxThicknessMm
+                    && BoundaryContactProbe.BottomContactsSoil(minX, maxX, minY, regions, boundaryProfile))
+                {
+                    type = ComponentType.BottomSlab;
+                }
+                else if (horizontalStrip
+                    && h <= parameters.SlabMaxThicknessMm
+                    && BoundaryContactProbe.HasAirContactAlongSpan(minX, maxX, maxY, isAbove: true, regions, boundaryProfile)
+                    && BoundaryContactProbe.HasAirContactAlongSpan(minX, maxX, minY, isAbove: false, regions, boundaryProfile))
+                {
+                    type = ComponentType.Slab;
+                }
+
+                region.Type = type;
+                region.Priority = PriorityOf(type);
+            }
         }
 
         /// <summary>N27：仅底板 — 横条 w≥2h w≥200 贴组底 h≤1500 下侧土接触。</summary>
