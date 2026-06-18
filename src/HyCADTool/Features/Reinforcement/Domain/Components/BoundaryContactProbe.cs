@@ -18,6 +18,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         private const double IntersectionEpsilon = 1e-6;
         private const double HitDedupeYToleranceMm = 0.5;
         private const double MinSegmentLengthMm = 200.0;
+        private const double BandProbeStepMm = 5.0;
 
         public static bool IsHorizontalStrip(double widthMm, double heightMm)
             => widthMm >= 2.0 * heightMm && widthMm >= MinSegmentLengthMm;
@@ -202,6 +203,178 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             double minLen = Math.Min(MinSegmentLengthMm, span * 0.15);
             var intervals = CollectAirContactXIntervals(minX, maxX, y, isAbove, regions, profile);
             return HasEffectiveAirInterval(intervals, minX, maxX, minLen);
+        }
+
+        /// <summary>N29：楼板——上下面气接触段 X 重叠；底面仅用探针(不含 N13 Air 边误匹配)。</summary>
+        public static bool IsSlabSandwichCandidate(
+            double minX,
+            double maxX,
+            double minY,
+            double maxY,
+            IReadOnlyList<ReinRegion> regions,
+            GroupBoundaryProfile profile)
+        {
+            double span = maxX - minX;
+            if (span <= EdgeToleranceMm)
+            {
+                double mid = (minX + maxX) / 2.0;
+                return ContactsAirAt(mid, maxY, isAbove: true, regions, profile)
+                    && ContactsAirAt(mid, minY, isAbove: false, regions, profile);
+            }
+
+            double minLen = Math.Min(MinSegmentLengthMm, span * 0.15);
+            var topIntervals = CollectAirContactXIntervals(minX, maxX, maxY, isAbove: true, regions, profile);
+            var bottomIntervals = CollectProbeOnlyAirContactXIntervals(
+                minX, maxX, minY, isAbove: false, regions, profile);
+            return HasOverlappingEffectiveAirInterval(topIntervals, bottomIntervals, minX, maxX, minLen);
+        }
+
+        /// <summary>
+        /// N29：单元是否处于薄气-气混凝土带内（凹角把楼板切成上下两片时，单片顶/底不全气，但整带顶底气段仍重叠）。
+        /// </summary>
+        public static bool IsThinAirToAirBand(
+            double minX,
+            double maxX,
+            double cellMinY,
+            double cellMaxY,
+            double maxThicknessMm,
+            IReadOnlyList<ReinRegion> regions,
+            GroupBoundaryProfile profile)
+        {
+            double startY = (cellMinY + cellMaxY) / 2.0;
+            var validBands = new List<(double YLo, double YHi)>();
+
+            foreach (double sampleX in GetSpanSampleXs(minX, maxX))
+            {
+                if (!IsConcrete(new Point2D(sampleX, startY), regions))
+                    continue;
+
+                if (!TryMeasureThinBandAtColumn(
+                        sampleX, startY, maxThicknessMm, regions, out double yLo, out double yHi))
+                    continue;
+
+                if (yHi - yLo > maxThicknessMm + EdgeToleranceMm)
+                    continue;
+
+                validBands.Add((yLo, yHi));
+            }
+
+            if (validBands.Count == 0)
+                return false;
+
+            double refYLo = MedianBandY(validBands, hi: false);
+            double refYHi = MedianBandY(validBands, hi: true);
+            if (refYHi - refYLo > maxThicknessMm + EdgeToleranceMm)
+                return false;
+
+            double span = maxX - minX;
+            if (span <= EdgeToleranceMm)
+            {
+                double midX = (minX + maxX) / 2.0;
+                return ContactsAirAt(midX, refYHi, isAbove: true, regions, profile)
+                    && ContactsAirAt(midX, refYLo, isAbove: false, regions, profile);
+            }
+
+            double minLen = Math.Min(MinSegmentLengthMm, span * 0.15);
+            var topIntervals = CollectAirContactXIntervals(
+                minX, maxX, refYHi, isAbove: true, regions, profile);
+            var bottomIntervals = CollectProbeOnlyAirContactXIntervals(
+                minX, maxX, refYLo, isAbove: false, regions, profile);
+            return HasOverlappingEffectiveAirInterval(topIntervals, bottomIntervals, minX, maxX, minLen);
+        }
+
+        /// <summary>从列内起点双向扩张薄带：遇非混凝土即停，带高不超过 maxThicknessMm。</summary>
+        private static bool TryMeasureThinBandAtColumn(
+            double x,
+            double startY,
+            double maxThicknessMm,
+            IReadOnlyList<ReinRegion> regions,
+            out double yLo,
+            out double yHi)
+        {
+            yLo = startY;
+            yHi = startY;
+
+            if (!IsConcrete(new Point2D(x, startY), regions))
+                return false;
+
+            while (true)
+            {
+                double nextY = yHi + BandProbeStepMm;
+                if (!IsConcrete(new Point2D(x, nextY), regions))
+                    break;
+                if (nextY - yLo > maxThicknessMm + EdgeToleranceMm)
+                    break;
+                yHi = nextY;
+            }
+
+            while (true)
+            {
+                double nextY = yLo - BandProbeStepMm;
+                if (!IsConcrete(new Point2D(x, nextY), regions))
+                    break;
+                if (yHi - nextY > maxThicknessMm + EdgeToleranceMm)
+                    break;
+                yLo = nextY;
+            }
+
+            return yHi > yLo + EdgeToleranceMm;
+        }
+
+        private static double MedianBandY(IReadOnlyList<(double YLo, double YHi)> bands, bool hi)
+        {
+            var values = new List<double>(bands.Count);
+            foreach (var band in bands)
+                values.Add(hi ? band.YHi : band.YLo);
+
+            values.Sort();
+            int n = values.Count;
+            if (n == 0)
+                return 0;
+
+            if (n % 2 == 1)
+                return values[n / 2];
+
+            return (values[n / 2 - 1] + values[n / 2]) / 2.0;
+        }
+
+        /// <summary>底面气接触：仅探针扫描 + 孔洞开口，不用 N13 水平 Air 边(避免蹭到邻近空腔边)。</summary>
+        private static List<(double X0, double X1)> CollectProbeOnlyAirContactXIntervals(
+            double minX,
+            double maxX,
+            double y,
+            bool isAbove,
+            IReadOnlyList<ReinRegion> regions,
+            GroupBoundaryProfile profile)
+        {
+            var intervals = new List<(double X0, double X1)>();
+            intervals.AddRange(GetHoleFaceAirIntervals(minX, maxX, y, isAbove, regions));
+            intervals.AddRange(ScanAirContactIntervals(minX, maxX, y, isAbove, regions, profile));
+            return MergeXIntervals(intervals);
+        }
+
+        private static bool HasOverlappingEffectiveAirInterval(
+            List<(double X0, double X1)> topIntervals,
+            List<(double X0, double X1)> bottomIntervals,
+            double minX,
+            double maxX,
+            double minLen)
+        {
+            if (topIntervals == null || bottomIntervals == null)
+                return false;
+
+            foreach (var top in topIntervals)
+            {
+                foreach (var bottom in bottomIntervals)
+                {
+                    double s = Math.Max(minX, Math.Max(top.X0, bottom.X0));
+                    double e = Math.Min(maxX, Math.Min(top.X1, bottom.X1));
+                    if (e - s >= minLen - EdgeToleranceMm)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private static List<(double X0, double X1)> CollectAirContactXIntervals(

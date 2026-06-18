@@ -161,7 +161,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
         }
 
-        /// <summary>N29：底板(同 N28) + 楼板 — 横条 w≥2h w≥200 + h≤300 + 上下皆气接触 → 楼板(青)。</summary>
+        /// <summary>N29：底板(同 N28) + 楼板 — 横条 w≥2h w≥200 + h≤300 + 上下气段重叠(底面探针) → 楼板(青)。</summary>
         private static void ClassifyBottomSlabAndSlabV3(
             List<ComponentRegion> rectRegions,
             IReadOnlyList<ReinRegion> regions,
@@ -187,8 +187,11 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 }
                 else if (horizontalStrip
                     && h <= parameters.SlabMaxThicknessMm
-                    && BoundaryContactProbe.HasAirContactAlongSpan(minX, maxX, maxY, isAbove: true, regions, boundaryProfile)
-                    && BoundaryContactProbe.HasAirContactAlongSpan(minX, maxX, minY, isAbove: false, regions, boundaryProfile))
+                    && (BoundaryContactProbe.IsSlabSandwichCandidate(
+                            minX, maxX, minY, maxY, regions, boundaryProfile)
+                        || BoundaryContactProbe.IsThinAirToAirBand(
+                            minX, maxX, minY, maxY, parameters.SlabMaxThicknessMm,
+                            regions, boundaryProfile)))
                 {
                     type = ComponentType.Slab;
                 }

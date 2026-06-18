@@ -222,7 +222,8 @@
         "N27": { "type": "HyCADTool.Features.Reinforcement.MeshComponentDivideCommand", "method": "ExecuteBottomSlabClassify", "category": "钢筋", "displayName": "网格底板判型(N27)", "tooltip": "N21网格+仅底板：横条贴组底h≤1500下侧土接触", "order": 147 },
         "N28": { "type": "HyCADTool.Features.Reinforcement.MeshComponentDivideCommand", "method": "ExecuteBottomSlabClassifyV2", "category": "钢筋", "displayName": "网格底板判型V2(N28)", "tooltip": "N21网格+仅底板(清版)：横条h≤1500下侧土接触(不限标高)；余者大体积", "order": 148 },
         "N29": { "type": "HyCADTool.Features.Reinforcement.MeshComponentDivideCommand", "method": "ExecuteBottomSlabAndSlabClassifyV3", "category": "钢筋", "displayName": "网格底板+楼板判型V3(N29)", "tooltip": "N28底板+楼板：横条h≤300上下皆气接触→青楼板；余沿用N28", "order": 149 },
-        "N30": null, "N31": null, "N32": null, "N33": null, "N34": null, "N35": null,
+        "N30": { "type": "HyCADTool.Features.Reinforcement.MeshDecomposeStageCommand", "method": "ExecuteReflexPartition", "category": "钢筋", "displayName": "有限弦延长线剖分(N30)", "tooltip": "夹平斜边切三角+全顶点四向延长线裁至第一交点，仅沿有限弦分割(不合并)", "order": 150 },
+        "N31": null, "N32": null, "N33": null, "N34": null, "N35": null,
         "N36": null, "N37": null, "N38": null, "N39": null, "N40": null,
         "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
         "N46": null, "N47": null, "N48": null, "N49": null, "N50": null

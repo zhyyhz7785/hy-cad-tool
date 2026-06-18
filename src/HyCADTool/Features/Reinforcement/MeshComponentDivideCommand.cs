@@ -154,7 +154,7 @@ namespace HyCADTool.Features.Reinforcement
             else if (stage == MeshClassifyStage.BottomSlabOnlyV2)
                 sb.AppendLine("  仅底板(清版)：横条+h≤1500+下侧土接触→蓝(不限标高)；其余红；上游=N21网格");
             else if (stage == MeshClassifyStage.BottomSlabAndSlabV3)
-                sb.AppendLine("  底板+楼板：横条+h≤1500+下侧土→蓝；横条+h≤300+上下有效气接触段→青；其余红；上游=N21网格");
+                sb.AppendLine("  底板+楼板：横条+h≤1500+下侧土→蓝；横条+h≤300+上下气段重叠(底面探针)→青；其余红；上游=N21网格");
             else if (isInitial)
                 sb.AppendLine("  局部混凝土需 N16 精修后显现；下一步执行 N16");
 

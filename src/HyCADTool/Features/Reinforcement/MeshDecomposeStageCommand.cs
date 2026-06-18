@@ -55,6 +55,14 @@ namespace HyCADTool.Features.Reinforcement
             "  青=竖向  绿=横向  洋红=近方形  黄=三角形",
             "  合并顺序：竖→横  对比 N21/N15（横→竖），单元数/形状可能不同");
 
+        /// <summary>N30：夹平三角 + 全顶点延长线裁至第一交点有限弦分割。</summary>
+        public void ExecuteReflexPartition() => ExecuteStage(
+            RegionMeshDecomposeStage.ReflexRectPartition,
+            "N30",
+            "有限弦延长线剖分",
+            "  青=竖向  绿=横向  洋红=近方形  黄=三角形",
+            "  先夹平斜边切三角；全顶点四向延长线裁至第一交点，仅沿有限弦分割(不合并)");
+
         private static void ExecuteStage(
             RegionMeshDecomposeStage stage,
             string commandTag,

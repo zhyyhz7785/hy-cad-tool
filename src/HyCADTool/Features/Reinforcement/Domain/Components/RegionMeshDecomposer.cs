@@ -17,7 +17,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         /// <summary>C.2 竖向合并（对比 N20 横先）。</summary>
         VerticalMerge,
         /// <summary>C.3 先竖后横合并+方向（对比 N21 先横后竖）。</summary>
-        CompleteVerticalFirst
+        CompleteVerticalFirst,
+        /// <summary>N30：夹平三角 + 全顶点延长线裁至第一交点有限弦分割。</summary>
+        ReflexRectPartition
     }
 
     /// <summary>
@@ -31,6 +33,12 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         private const double AspectRatioThreshold = 1.5;
         private const double AxisAlignToleranceMm = 0.5;
         private const double InteriorProbeEpsMm = 0.5;
+        private const double IncidentSegmentDotTolerance = 0.999;
+        private const double MinRayParameterMm = 1e-6;
+        private const double RayParallelTolerance = 1e-10;
+
+        private static readonly Vector2D NegUnitX = new Vector2D(-1, 0);
+        private static readonly Vector2D NegUnitY = new Vector2D(0, -1);
 
         private sealed class TrapezoidPiece
         {
@@ -41,6 +49,14 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         private sealed class RectPiece
         {
             public double X0, X1, YBot, YTop;
+        }
+
+        private sealed class AxisSegment
+        {
+            public bool IsVertical;
+            public double FixedCoord;
+            public double Span0;
+            public double Span1;
         }
 
         /// <summary>分解 ReinRegion 为矩形 + 三角形网格单元（纯几何，不按 cutY 切分）。</summary>
@@ -63,6 +79,12 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 trapResult.AddRange(trapPieces.Select(CreateTrapezoidCell));
                 trapResult.AddRange(clampTriangles);
                 return trapResult;
+            }
+
+            if (stage == RegionMeshDecomposeStage.ReflexRectPartition)
+            {
+                var gridRects = PartitionByClippedExtension(clampedRegion);
+                return BuildRectAndTriangleCells(gridRects, clampTriangles);
             }
 
             var trapezoids = CollectTrapezoidPieces(clampedRegion);
@@ -586,6 +608,484 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             return heightMm > widthMm
                 ? MeshCellOrientation.Vertical
                 : MeshCellOrientation.Horizontal;
+        }
+
+        /// <summary>N30：全顶点延长线裁至第一交点，有限弦分割（原子矩形，不合并）。</summary>
+        private static List<RectPiece> PartitionByClippedExtension(ReinRegion region)
+        {
+            if (region == null)
+                return new List<RectPiece>();
+
+            var chords = BuildExtensionChords(region);
+            var boundary = BuildBoundarySegments(region);
+            var segments = new List<AxisSegment>(boundary.Count + chords.Count);
+            segments.AddRange(boundary);
+            segments.AddRange(chords);
+            return PartitionBySegmentGrid(region, segments);
+        }
+
+        private static List<AxisSegment> BuildBoundarySegments(ReinRegion region)
+        {
+            var segments = new List<AxisSegment>();
+            if (region?.AllRings == null)
+                return segments;
+
+            foreach (var ring in region.AllRings)
+            {
+                if (ring == null)
+                    continue;
+
+                for (int i = 0; i < ring.SegmentCount; i++)
+                {
+                    var seg = ring.GetSegmentAt(i);
+                    double dx = Math.Abs(seg.StartPoint.X - seg.EndPoint.X);
+                    double dy = Math.Abs(seg.StartPoint.Y - seg.EndPoint.Y);
+
+                    if (dy <= AxisAlignToleranceMm && dx > AxisAlignToleranceMm)
+                    {
+                        segments.Add(new AxisSegment
+                        {
+                            IsVertical = false,
+                            FixedCoord = (seg.StartPoint.Y + seg.EndPoint.Y) / 2.0,
+                            Span0 = Math.Min(seg.StartPoint.X, seg.EndPoint.X),
+                            Span1 = Math.Max(seg.StartPoint.X, seg.EndPoint.X)
+                        });
+                    }
+                    else if (dx <= AxisAlignToleranceMm && dy > AxisAlignToleranceMm)
+                    {
+                        segments.Add(new AxisSegment
+                        {
+                            IsVertical = true,
+                            FixedCoord = (seg.StartPoint.X + seg.EndPoint.X) / 2.0,
+                            Span0 = Math.Min(seg.StartPoint.Y, seg.EndPoint.Y),
+                            Span1 = Math.Max(seg.StartPoint.Y, seg.EndPoint.Y)
+                        });
+                    }
+                }
+            }
+
+            return segments;
+        }
+
+        private static List<AxisSegment> BuildExtensionChords(ReinRegion region)
+        {
+            var chords = new List<AxisSegment>();
+            if (region == null)
+                return chords;
+
+            double eps = InteriorProbeEpsMm;
+            foreach (var v in CollectAllVertices(region))
+            {
+                if (region.IsValidRebarPoint(new Point2D(v.X + eps, v.Y)))
+                {
+                    if (TryClipInteriorAxisRay(region, v, Vector2D.UnitX, out Point2D hit))
+                    {
+                        chords.Add(new AxisSegment
+                        {
+                            IsVertical = false,
+                            FixedCoord = v.Y,
+                            Span0 = Math.Min(v.X, hit.X),
+                            Span1 = Math.Max(v.X, hit.X)
+                        });
+                    }
+                }
+
+                if (region.IsValidRebarPoint(new Point2D(v.X - eps, v.Y)))
+                {
+                    if (TryClipInteriorAxisRay(region, v, NegUnitX, out Point2D hit))
+                    {
+                        chords.Add(new AxisSegment
+                        {
+                            IsVertical = false,
+                            FixedCoord = v.Y,
+                            Span0 = Math.Min(v.X, hit.X),
+                            Span1 = Math.Max(v.X, hit.X)
+                        });
+                    }
+                }
+
+                if (region.IsValidRebarPoint(new Point2D(v.X, v.Y + eps)))
+                {
+                    if (TryClipInteriorAxisRay(region, v, Vector2D.UnitY, out Point2D hit))
+                    {
+                        chords.Add(new AxisSegment
+                        {
+                            IsVertical = true,
+                            FixedCoord = v.X,
+                            Span0 = Math.Min(v.Y, hit.Y),
+                            Span1 = Math.Max(v.Y, hit.Y)
+                        });
+                    }
+                }
+
+                if (region.IsValidRebarPoint(new Point2D(v.X, v.Y - eps)))
+                {
+                    if (TryClipInteriorAxisRay(region, v, NegUnitY, out Point2D hit))
+                    {
+                        chords.Add(new AxisSegment
+                        {
+                            IsVertical = true,
+                            FixedCoord = v.X,
+                            Span0 = Math.Min(v.Y, hit.Y),
+                            Span1 = Math.Max(v.Y, hit.Y)
+                        });
+                    }
+                }
+            }
+
+            return chords;
+        }
+
+        private static List<RectPiece> PartitionBySegmentGrid(ReinRegion region, IReadOnlyList<AxisSegment> segments)
+        {
+            var ySeeds = BuildSortedAxis(CollectHorizontalChordYs(segments));
+            if (ySeeds.Count < 2)
+                return new List<RectPiece>();
+
+            var rects = new List<RectPiece>();
+            for (int iy = 0; iy < ySeeds.Count - 1; iy++)
+            {
+                double y0 = ySeeds[iy];
+                double y1 = ySeeds[iy + 1];
+                if (y1 - y0 < YToleranceMm)
+                    continue;
+
+                double yMid = (y0 + y1) / 2.0;
+                var localXs = BuildSortedAxis(
+                    CollectVerticalChordXs(segments, y0, y1)
+                        .Concat(CollectPolygonXsAtY(region?.Outer, yMid)));
+                if (localXs.Count < 2)
+                    continue;
+
+                for (int ix = 0; ix < localXs.Count - 1; ix++)
+                {
+                    double x0 = localXs[ix];
+                    double x1 = localXs[ix + 1];
+                    if (x1 - x0 < YToleranceMm)
+                        continue;
+
+                    var localYs = BuildSortedAxis(
+                        CollectHorizontalChordYs(segments, x0, x1)
+                            .Concat(new[] { y0, y1 }));
+                    if (localYs.Count < 2)
+                        continue;
+
+                    for (int jy = 0; jy < localYs.Count - 1; jy++)
+                    {
+                        double yc0 = localYs[jy];
+                        double yc1 = localYs[jy + 1];
+                        if (yc1 - yc0 < YToleranceMm)
+                            continue;
+
+                        if (!RangesOverlap(yc0, yc1, y0, y1))
+                            continue;
+
+                        double cy0 = Math.Max(yc0, y0);
+                        double cy1 = Math.Min(yc1, y1);
+                        if (cy1 - cy0 < YToleranceMm)
+                            continue;
+
+                        double cx = (x0 + x1) / 2.0;
+                        double cy = (cy0 + cy1) / 2.0;
+                        if (!region.IsValidRebarPoint(new Point2D(cx, cy)))
+                            continue;
+
+                        rects.Add(new RectPiece { X0 = x0, X1 = x1, YBot = cy0, YTop = cy1 });
+                    }
+                }
+            }
+
+            return rects;
+        }
+
+        /// <summary>水平线 y 与外环边的交点/端点 X，用于补全条带内竖弦不足时的 X 轴。</summary>
+        private static IEnumerable<double> CollectPolygonXsAtY(Polyline2D ring, double y)
+        {
+            if (ring == null)
+                yield break;
+
+            for (int i = 0; i < ring.SegmentCount; i++)
+            {
+                var seg = ring.GetSegmentAt(i);
+                double sy = seg.StartPoint.Y;
+                double ey = seg.EndPoint.Y;
+                double sx = seg.StartPoint.X;
+                double ex = seg.EndPoint.X;
+
+                if (Math.Abs(sy - ey) <= AxisAlignToleranceMm)
+                {
+                    if (Math.Abs(y - sy) <= AxisAlignToleranceMm)
+                    {
+                        yield return sx;
+                        yield return ex;
+                    }
+
+                    continue;
+                }
+
+                double ymin = Math.Min(sy, ey);
+                double ymax = Math.Max(sy, ey);
+                if (y < ymin - AxisAlignToleranceMm || y > ymax + AxisAlignToleranceMm)
+                    continue;
+
+                double t = (y - sy) / (ey - sy);
+                if (t < -1e-6 || t > 1.0 + 1e-6)
+                    continue;
+
+                yield return sx + t * (ex - sx);
+            }
+        }
+
+        private static IEnumerable<double> CollectHorizontalChordYs(IReadOnlyList<AxisSegment> segments)
+        {
+            if (segments == null)
+                yield break;
+
+            foreach (var seg in segments)
+            {
+                if (!seg.IsVertical)
+                    yield return seg.FixedCoord;
+            }
+        }
+
+        private static IEnumerable<double> CollectHorizontalChordYs(IReadOnlyList<AxisSegment> segments, double x0, double x1)
+        {
+            if (segments == null)
+                yield break;
+
+            foreach (var seg in segments)
+            {
+                if (seg.IsVertical)
+                    continue;
+
+                if (RangesOverlap(x0, x1, seg.Span0, seg.Span1))
+                    yield return seg.FixedCoord;
+            }
+        }
+
+        private static IEnumerable<double> CollectVerticalChordXs(IReadOnlyList<AxisSegment> segments, double y0, double y1)
+        {
+            if (segments == null)
+                yield break;
+
+            foreach (var seg in segments)
+            {
+                if (!seg.IsVertical)
+                    continue;
+
+                if (RangesOverlap(y0, y1, seg.Span0, seg.Span1))
+                    yield return seg.FixedCoord;
+            }
+        }
+
+        private static bool RangesOverlap(double a0, double a1, double b0, double b1)
+        {
+            if (a0 > a1)
+                (a0, a1) = (a1, a0);
+            if (b0 > b1)
+                (b0, b1) = (b1, b0);
+
+            return a0 < b1 - YToleranceMm && b0 < a1 - YToleranceMm;
+        }
+
+        private static IEnumerable<Point2D> CollectAllVertices(ReinRegion region)
+        {
+            if (region?.Outer != null)
+            {
+                for (int i = 0; i < region.Outer.VertexCount; i++)
+                    yield return region.Outer.GetPointAt(i);
+            }
+
+            if (region?.Holes == null)
+                yield break;
+
+            foreach (var hole in region.Holes)
+            {
+                if (hole == null)
+                    continue;
+                for (int i = 0; i < hole.VertexCount; i++)
+                    yield return hole.GetPointAt(i);
+            }
+        }
+
+        private static bool TryClipInteriorAxisRay(
+            ReinRegion region,
+            Point2D origin,
+            Vector2D direction,
+            out Point2D hit)
+        {
+            hit = default;
+            if (region?.AllRings == null || !direction.TryNormalize(out Vector2D dir))
+                return false;
+
+            double best = double.MaxValue;
+            bool found = false;
+
+            foreach (var ring in region.AllRings)
+            {
+                if (ring == null)
+                    continue;
+
+                if (TryNearestHitOnRing(origin, dir, ring, out Point2D ringHit, out double t) && t < best)
+                {
+                    best = t;
+                    hit = ringHit;
+                    found = true;
+                }
+            }
+
+            return found;
+        }
+
+        private static bool TryNearestHitOnRing(
+            Point2D origin,
+            Vector2D dir,
+            Polyline2D ring,
+            out Point2D hit,
+            out double rayParameter)
+        {
+            hit = origin;
+            rayParameter = 0;
+
+            Point2D nearest = origin;
+            double nearestDist = double.MaxValue;
+            bool found = false;
+
+            for (int i = 0; i < ring.SegmentCount; i++)
+            {
+                var seg = ring.GetSegmentAt(i);
+                if (ShouldSkipIncidentSegment(origin, dir, seg))
+                    continue;
+
+                if (TryRayHitSegment(origin, dir, seg.StartPoint, seg.EndPoint, out Point2D segHit, out double t)
+                    && t < nearestDist)
+                {
+                    nearestDist = t;
+                    nearest = segHit;
+                    found = true;
+                }
+            }
+
+            if (found)
+            {
+                hit = nearest;
+                rayParameter = nearestDist;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool ShouldSkipIncidentSegment(Point2D origin, Vector2D dir, Line2D seg)
+        {
+            Vector2D segDir = seg.StartPoint.VectorTo(seg.EndPoint);
+            if (!segDir.TryNormalize(out Vector2D nSegDir))
+                return true;
+
+            if (origin.DistanceTo(seg.StartPoint) <= AxisAlignToleranceMm
+                && nSegDir.Dot(dir) > IncidentSegmentDotTolerance)
+                return true;
+
+            if (origin.DistanceTo(seg.EndPoint) <= AxisAlignToleranceMm
+                && (-nSegDir).Dot(dir) > IncidentSegmentDotTolerance)
+                return true;
+
+            return false;
+        }
+
+        private static bool TryRayHitSegment(
+            Point2D origin,
+            Vector2D dir,
+            Point2D segStart,
+            Point2D segEnd,
+            out Point2D hit,
+            out double rayParameter)
+        {
+            hit = Point2D.Origin;
+            rayParameter = 0;
+
+            double sx = segEnd.X - segStart.X;
+            double sy = segEnd.Y - segStart.Y;
+            double cross = dir.X * sy - dir.Y * sx;
+
+            if (Math.Abs(cross) < RayParallelTolerance)
+                return TryRayHitCollinearSegment(origin, dir, segStart, segEnd, out hit, out rayParameter);
+
+            double ox = segStart.X - origin.X;
+            double oy = segStart.Y - origin.Y;
+            rayParameter = (ox * sy - oy * sx) / cross;
+            double u = (ox * dir.Y - oy * dir.X) / cross;
+
+            if (rayParameter < MinRayParameterMm || u < -1e-6 || u > 1.0 + 1e-6)
+                return false;
+
+            hit = new Point2D(origin.X + rayParameter * dir.X, origin.Y + rayParameter * dir.Y);
+            return true;
+        }
+
+        private static bool TryRayHitCollinearSegment(
+            Point2D origin,
+            Vector2D dir,
+            Point2D segStart,
+            Point2D segEnd,
+            out Point2D hit,
+            out double rayParameter)
+        {
+            hit = Point2D.Origin;
+            rayParameter = 0;
+
+            bool hasStart = IsPointOnRayForward(origin, dir, segStart, out double tStart);
+            bool hasEnd = IsPointOnRayForward(origin, dir, segEnd, out double tEnd);
+
+            if (!hasStart && !hasEnd)
+                return false;
+
+            if (hasStart && hasEnd)
+            {
+                if (tStart <= tEnd)
+                {
+                    rayParameter = tStart;
+                    hit = segStart;
+                }
+                else
+                {
+                    rayParameter = tEnd;
+                    hit = segEnd;
+                }
+            }
+            else if (hasStart)
+            {
+                rayParameter = tStart;
+                hit = segStart;
+            }
+            else
+            {
+                rayParameter = tEnd;
+                hit = segEnd;
+            }
+
+            return rayParameter >= MinRayParameterMm;
+        }
+
+        private static bool IsPointOnRayForward(
+            Point2D origin,
+            Vector2D dir,
+            Point2D point,
+            out double rayParameter)
+        {
+            rayParameter = 0;
+            Vector2D offset = origin.VectorTo(point);
+            if (offset.IsZero())
+                return false;
+
+            if (!offset.TryNormalize(out Vector2D offsetDir))
+                return false;
+
+            if (offsetDir.Dot(dir) < IncidentSegmentDotTolerance)
+                return false;
+
+            rayParameter = origin.DistanceTo(point);
+            return rayParameter >= MinRayParameterMm;
         }
 
         private static void AddTriangle(
