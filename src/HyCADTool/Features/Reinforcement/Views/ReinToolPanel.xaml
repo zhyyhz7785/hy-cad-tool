@@ -248,6 +248,11 @@
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
                                  Text="{Binding ReinVm.CompMassMinSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
+                    <bc:PropertyRow Label="局部高≤mm" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 ToolTip="N16 网格划分：局部混凝土最大高度（mm），默认 200"
+                                 Text="{Binding ReinVm.CompLocalBumpMaxHeight, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                    </bc:PropertyRow>
                     <bc:PropertyRow Label="梁宽≤mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
                                  Text="{Binding ReinVm.CompBeamMaxWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>

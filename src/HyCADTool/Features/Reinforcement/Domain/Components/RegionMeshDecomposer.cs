@@ -6,6 +6,20 @@ using System.Linq;
 
 namespace HyCADTool.Features.Reinforcement.Domain.Components
 {
+    /// <summary>区域网格化分步阶段（N17–N21 调试用；N23–N24 为合并顺序对比）。</summary>
+    public enum RegionMeshDecomposeStage
+    {
+        Trapezoids,
+        RawParts,
+        YSplit,
+        HorizontalMerge,
+        Complete,
+        /// <summary>C.2 竖向合并（对比 N20 横先）。</summary>
+        VerticalMerge,
+        /// <summary>C.3 先竖后横合并+方向（对比 N21 先横后竖）。</summary>
+        CompleteVerticalFirst
+    }
+
     /// <summary>
     /// 混凝土区域网格化：先沿每条斜边切出 1 个三角形（斜线为斜边）把区域夹平成正交多边形，
     /// 再对正交区域做竖直条带矩形分解 + 横/竖向合并。每条斜边只产 1 个三角形。
@@ -31,30 +45,92 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
         /// <summary>分解 ReinRegion 为矩形 + 三角形网格单元（纯几何，不按 cutY 切分）。</summary>
         public static List<MeshCell> Decompose(ReinRegion region)
+            => DecomposeToStage(region, RegionMeshDecomposeStage.Complete);
+
+        /// <summary>分解到指定阶段（N17–N21 分步预览）。</summary>
+        public static List<MeshCell> DecomposeToStage(ReinRegion region, RegionMeshDecomposeStage stage)
         {
             if (region?.Outer == null || region.Outer.VertexCount < 3)
                 return new List<MeshCell>();
 
-            // 1. 先沿每条斜边切出 1 个三角形，并把区域夹平为正交多边形。
-            var triangles = new List<MeshCell>();
-            var clampedRegion = BuildClampedRegion(region, triangles);
+            var clampTriangles = new List<MeshCell>();
+            var clampedRegion = BuildClampedRegion(region, clampTriangles);
 
-            // 2. 对夹平后的正交区域做条带矩形分解（理论上不再产生三角形，
-            //    残留斜边由 SplitTrapezoidIntoParts 兜底）。
+            if (stage == RegionMeshDecomposeStage.Trapezoids)
+            {
+                var trapPieces = CollectTrapezoidPieces(clampedRegion);
+                var trapResult = new List<MeshCell>(trapPieces.Count + clampTriangles.Count);
+                trapResult.AddRange(trapPieces.Select(CreateTrapezoidCell));
+                trapResult.AddRange(clampTriangles);
+                return trapResult;
+            }
+
             var trapezoids = CollectTrapezoidPieces(clampedRegion);
             var rectPieces = new List<RectPiece>();
+            var triangles = new List<MeshCell>(clampTriangles);
             foreach (var trap in trapezoids)
                 SplitTrapezoidIntoParts(trap, rectPieces, triangles);
 
-            // 3. 按全局 Y 断点切格，再 H→V 两趟合并（横向优先：梁/板满宽贯通）。
-            rectPieces = SplitRectPiecesByGlobalYs(rectPieces);
-            var mergedRects = MergeRectanglesHorizontally(rectPieces);
-            mergedRects = MergeRectanglesVertically(mergedRects);
+            if (stage == RegionMeshDecomposeStage.RawParts)
+                return BuildRectAndTriangleCells(rectPieces, triangles);
 
-            var result = new List<MeshCell>(mergedRects.Count + triangles.Count);
-            result.AddRange(mergedRects.Select(r => CreateRectangleCell(r.X0, r.X1, r.YBot, r.YTop)));
+            rectPieces = SplitRectPiecesByGlobalYs(rectPieces);
+
+            if (stage == RegionMeshDecomposeStage.YSplit)
+                return BuildRectAndTriangleCells(rectPieces, triangles);
+
+            if (stage == RegionMeshDecomposeStage.HorizontalMerge
+                || stage == RegionMeshDecomposeStage.Complete)
+            {
+                var mergedH = MergeRectanglesHorizontally(rectPieces);
+                if (stage == RegionMeshDecomposeStage.HorizontalMerge)
+                    return BuildRectAndTriangleCells(mergedH, triangles);
+
+                var mergedV = MergeRectanglesVertically(mergedH);
+                return BuildRectAndTriangleCells(mergedV, triangles);
+            }
+
+            if (stage == RegionMeshDecomposeStage.VerticalMerge
+                || stage == RegionMeshDecomposeStage.CompleteVerticalFirst)
+            {
+                var mergedV = MergeRectanglesVertically(rectPieces);
+                if (stage == RegionMeshDecomposeStage.VerticalMerge)
+                    return BuildRectAndTriangleCells(mergedV, triangles);
+
+                var mergedH = MergeRectanglesHorizontally(mergedV);
+                return BuildRectAndTriangleCells(mergedH, triangles);
+            }
+
+            return new List<MeshCell>();
+        }
+
+        private static List<MeshCell> BuildRectAndTriangleCells(
+            IReadOnlyList<RectPiece> rectPieces,
+            IReadOnlyList<MeshCell> triangles)
+        {
+            var result = new List<MeshCell>(rectPieces.Count + triangles.Count);
+            result.AddRange(rectPieces.Select(r => CreateRectangleCell(r.X0, r.X1, r.YBot, r.YTop)));
             result.AddRange(triangles);
             return result;
+        }
+
+        private static MeshCell CreateTrapezoidCell(TrapezoidPiece t)
+        {
+            var poly = new Polygon2D(new[]
+            {
+                new Point2D(t.X0, t.BotL),
+                new Point2D(t.X1, t.BotR),
+                new Point2D(t.X1, t.TopR),
+                new Point2D(t.X0, t.TopL)
+            }, isClosed: true);
+
+            return new MeshCell
+            {
+                Kind = MeshCellKind.Rectangle,
+                Orientation = MeshCellOrientation.None,
+                Polygon = poly,
+                AreaMm2 = poly.GetArea()
+            };
         }
 
         /// <summary>把区域所有环的斜边夹平为正交折线，每条斜边切出 1 个三角形单元。</summary>

@@ -17,6 +17,7 @@ namespace HyCADTool.Features.Reinforcement.Services
         private const short HorizontalColor = 3;
         private const short SquareColor = 6;
         private const short TriangleColor = 2;
+        private const short TrapezoidColor = 7;
 
         public static int Draw(IReadOnlyList<MeshCell> cells)
         {
@@ -80,6 +81,9 @@ namespace HyCADTool.Features.Reinforcement.Services
 
             if (cell.Kind == MeshCellKind.Triangle)
                 return TriangleColor;
+
+            if (cell.Orientation == MeshCellOrientation.None)
+                return TrapezoidColor;
 
             switch (cell.Orientation)
             {

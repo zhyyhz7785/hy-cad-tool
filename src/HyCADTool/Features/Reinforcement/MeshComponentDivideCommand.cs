@@ -1,11 +1,6 @@
-using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.EditorInput;
-using HyCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.Reinforcement.Services;
-using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -20,72 +15,81 @@ namespace HyCADTool.Features.Reinforcement
     public sealed class MeshComponentDivideCommand
     {
         public void Execute()
+            => RunClassify(MeshClassifyStage.Complete, "N16", "网格构件划分", isInitial: false, isUpperSplit: false, useBoundaryProfile: false);
+
+        /// <summary>N22：构件初判（ClassifyRectangle，无 Slab 精修）。</summary>
+        public void ExecuteInitialClassify()
+            => RunClassify(MeshClassifyStage.Initial, "N22", "网格构件初判", isInitial: true, isUpperSplit: false, useBoundaryProfile: false);
+
+        /// <summary>N25：N22 初判 + 上下皆实横条按上部结构 X 断点打断分段。</summary>
+        public void ExecuteInitialClassifyUpperSplit()
+            => RunClassify(
+                MeshClassifyStage.InitialUpperSplit,
+                "N25",
+                "网格构件初判+上部X打断",
+                isInitial: true,
+                isUpperSplit: true,
+                useBoundaryProfile: false);
+
+        /// <summary>N26：5 级简化判型 + 土/气边界接触。</summary>
+        public void ExecuteSimpleClassify()
+            => RunClassify(
+                MeshClassifyStage.InitialSimple,
+                "N26",
+                "网格构件简化判型",
+                isInitial: true,
+                isUpperSplit: false,
+                useBoundaryProfile: true);
+
+        /// <summary>N27：N21 网格 + 仅底板判型（土接触）。</summary>
+        public void ExecuteBottomSlabClassify()
+            => RunClassify(
+                MeshClassifyStage.BottomSlabOnly,
+                "N27",
+                "网格底板判型",
+                isInitial: true,
+                isUpperSplit: false,
+                useBoundaryProfile: true);
+
+        private static void RunClassify(
+            MeshClassifyStage stage,
+            string commandTag,
+            string stageTitle,
+            bool isInitial,
+            bool isUpperSplit,
+            bool useBoundaryProfile)
         {
-            var doc = Application.DocumentManager.MdiActiveDocument;
-            var db = doc.Database;
-            var ed = doc.Editor;
+            var ctx = MeshRegionPipelineHelper.TrySelectAndGroup(
+                $"\n选择混凝土边界多段线（{commandTag} {stageTitle}）: ");
+            if (ctx == null)
+                return;
 
-            SettingsPanelViewModel.CommitFocusedTextBoxValue();
-            var vm = SettingsPanelViewModel.Current;
-            var parameters = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
-            vm?.SaveSettings();
-
-            double groupDistanceMm = parameters.RegionGroupDistanceMm;
-
+            var ed = ctx.Editor;
             ed.WriteMessage(
-                $"\n[N16] 网格构件划分  分组距离={groupDistanceMm:F0}mm");
+                $"\n[{commandTag}] {stageTitle}  分组距离={ctx.GroupDistanceMm:F0}mm");
 
-            var filter = new SelectionFilter(new[]
+            List<GroupBoundaryProfile> groupProfiles = null;
+            if (useBoundaryProfile)
             {
-                new TypedValue((int)DxfCode.Start, "LWPOLYLINE")
-            });
-            var selResult = ed.GetSelection(
-                new PromptSelectionOptions { MessageForAdding = "\n选择混凝土边界多段线（N16 网格构件划分）: " },
-                filter);
-            if (selResult.Status != PromptStatus.OK)
-                return;
-
-            var rawBoundaries = new List<Polyline2D>();
-            using (var tr = db.TransactionManager.StartTransaction())
-            {
-                foreach (var oid in selResult.Value.GetObjectIds())
-                {
-                    var entity = tr.GetObject(oid, OpenMode.ForRead) as Polyline;
-                    if (entity == null)
-                        continue;
-
-                    var boundary = entity.ToDomainPolyline();
-                    boundary.RemoveDuplicateVertices();
-                    boundary.IsClosed = true;
-                    rawBoundaries.Add(boundary);
-                }
-
-                tr.Commit();
-            }
-
-            if (rawBoundaries.Count == 0)
-            {
-                ed.WriteMessage("\n未找到有效多段线。");
-                return;
-            }
-
-            var classified = ReinRegionBuilder.ClassifyBoundaries(rawBoundaries);
-            var groups = ReinRegionBuilder.BuildGroupedIndependentRegions(classified, groupDistanceMm);
-            if (groups.Count == 0)
-            {
-                ed.WriteMessage("\n未识别到外轮廓。");
-                return;
+                SettingsPanelViewModel.CommitFocusedTextBoxValue();
+                var vm = SettingsPanelViewModel.Current;
+                double foundationElevation = vm?.CompFoundationBottomElevation ?? ctx.Parameters.FoundationBottomElevationMm;
+                double embedmentDepth = vm?.CompEmbedmentDepth ?? ctx.Parameters.EmbedmentDepthMm;
+                groupProfiles = RegionBoundaryAnalyzer.AnalyzeAllGroups(
+                    ctx.Groups, embedmentDepth, foundationElevation);
+                ed.WriteMessage(
+                    $"\n  土气边界：埋深={embedmentDepth:F2}m  基础底标={foundationElevation:F2}m");
             }
 
             var reinRegionList = new List<ReinRegion>();
             var allComponents = new List<ComponentRegion>();
             var sb = new StringBuilder();
-            sb.AppendLine("\n── N16 网格构件划分 ──");
+            sb.AppendLine($"\n── {commandTag} {stageTitle} ──");
 
-            for (int g = 0; g < groups.Count; g++)
+            for (int g = 0; g < ctx.Groups.Count; g++)
             {
-                var group = groups[g];
-                double groupMinY = ComputeGroupMinY(group);
+                var group = ctx.Groups[g];
+                double groupMinY = MeshRegionPipelineHelper.ComputeGroupMinY(group);
                 var groupCells = new List<MeshCell>();
 
                 foreach (var region in group)
@@ -94,10 +98,19 @@ namespace HyCADTool.Features.Reinforcement
                         continue;
 
                     reinRegionList.Add(region);
-                    groupCells.AddRange(RegionMeshDecomposer.Decompose(region));
+                    groupCells.AddRange(RegionMeshDecomposer.DecomposeToStage(
+                        region, RegionMeshDecomposeStage.Complete));
                 }
 
-                var groupComponents = MeshComponentClassifier.Classify(groupCells, group, groupMinY, parameters);
+                var groupComponents = MeshComponentClassifier.Classify(
+                    groupCells,
+                    group,
+                    groupMinY,
+                    ctx.Parameters,
+                    stage,
+                    useBoundaryProfile && groupProfiles != null && g < groupProfiles.Count
+                        ? groupProfiles[g]
+                        : null);
                 allComponents.AddRange(groupComponents);
 
                 sb.AppendLine(
@@ -112,6 +125,14 @@ namespace HyCADTool.Features.Reinforcement
 
             sb.AppendLine($"  合计  构件={allComponents.Count}  {FormatTypeCounts(allComponents)}");
             sb.AppendLine("  青=楼板  绿=墙体  蓝=底板  红=大体积  黄=梁  洋红=局部  N9可切换类型");
+            if (isUpperSplit)
+                sb.AppendLine("  上下皆实之横条已按上部结构 X 断点打断分段（侧段保留）；对比 N22 看差异");
+            else if (stage == MeshClassifyStage.InitialSimple)
+                sb.AppendLine("  5级简化：底板(土)/楼板(上下气)/墙/梁(上板下气)/大体积；无局部混凝土；对比 N13/N22");
+            else if (stage == MeshClassifyStage.BottomSlabOnly)
+                sb.AppendLine("  仅底板：横条+贴组底+h≤1500+下侧土接触→蓝；其余红；上游=N21网格");
+            else if (isInitial)
+                sb.AppendLine("  局部混凝土需 N16 精修后显现；下一步执行 N16");
 
             var sessionId = Guid.NewGuid();
             if (ComponentSession.CurrentSessionId != Guid.Empty)
@@ -122,21 +143,6 @@ namespace HyCADTool.Features.Reinforcement
             sb.AppendLine($"  预览实体={drawn}  图层「{ComponentPreviewService.PreviewLayerName}」");
 
             ed.WriteMessage(sb.ToString());
-        }
-
-        private static double ComputeGroupMinY(IReadOnlyList<ReinRegion> group)
-        {
-            double minY = double.MaxValue;
-            foreach (var region in group)
-            {
-                if (region?.Outer == null)
-                    continue;
-
-                for (int i = 0; i < region.Outer.VertexCount; i++)
-                    minY = Math.Min(minY, region.Outer.GetPointAt(i).Y);
-            }
-
-            return minY == double.MaxValue ? 0 : minY;
         }
 
         private static string FormatTypeCounts(IEnumerable<ComponentRegion> regions)

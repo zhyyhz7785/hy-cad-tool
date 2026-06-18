@@ -25,6 +25,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
         /// <summary>局部混凝土高差上限（mm）：基础上凸低于该值 → 局部混凝土，否则进墙/大体积判型。</summary>
         public double LocalConcreteMaxHeightMm { get; set; } = 1000.0;
+
+        /// <summary>N16 网格划分：局部混凝土最大高度（mm），上方空且下方为底板/楼板时生效。</summary>
+        public double LocalBumpMaxHeightMm { get; set; } = 200.0;
         public double BeamMaxWidthMm { get; set; } = 800.0;
         public double BeamMaxHeightMm { get; set; } = 1500.0;
         public bool BeamSkipReinforcement { get; set; }

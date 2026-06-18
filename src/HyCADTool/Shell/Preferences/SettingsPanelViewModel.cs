@@ -739,6 +739,10 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>局部混凝土高差上限（mm）。</summary>
         public double CompLocalConcreteMaxHeight { get => _compLocalConcreteMaxHeight; set => SetProperty(ref _compLocalConcreteMaxHeight, value); }
 
+        private double _compLocalBumpMaxHeight = 200.0;
+        /// <summary>N16 网格划分：局部混凝土最大高度（mm）。</summary>
+        public double CompLocalBumpMaxHeight { get => _compLocalBumpMaxHeight; set => SetProperty(ref _compLocalBumpMaxHeight, value); }
+
         private double _compGroupClusterDistance = 1500.0;
         /// <summary>区域分组聚类距离（mm，同 hymbr）。</summary>
         public double CompGroupClusterDistance { get => _compGroupClusterDistance; set => SetProperty(ref _compGroupClusterDistance, value); }
@@ -1430,7 +1434,7 @@ namespace HyCADTool.Shell.ViewModels
             CompParallelAngleThreshold = 15.0;
             CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompBottomSlabMaxThickness = 1500.0;
             CompBottomSlabMarchStep = 10.0;
-            CompMassMinSize = 1000.0; CompLocalConcreteMaxHeight = 1000.0; CompGroupClusterDistance = 1500.0; CompMergeBumpsIntoBottomSlab = true; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
+            CompMassMinSize = 1000.0; CompLocalConcreteMaxHeight = 1000.0; CompLocalBumpMaxHeight = 200.0; CompGroupClusterDistance = 1500.0; CompMergeBumpsIntoBottomSlab = true; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
             CompBeamSkipRein = false; CompParallelLineRatio = 0.6;
             CompSlabRebarDiameter = CompWallRebarDiameter = CompBottomRebarDiameter = CompMassRebarDiameter = CompBeamRebarDiameter = 14.0;
             CompSlabRebarSpacing = CompWallRebarSpacing = CompBottomRebarSpacing = CompMassRebarSpacing = CompBeamRebarSpacing = 200.0;
@@ -1613,6 +1617,7 @@ namespace HyCADTool.Shell.ViewModels
                 MergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
                 MassConcreteMinSizeMm = CompMassMinSize,
                 LocalConcreteMaxHeightMm = CompLocalConcreteMaxHeight,
+                LocalBumpMaxHeightMm = CompLocalBumpMaxHeight,
                 RegionGroupDistanceMm = CompGroupClusterDistance,
                 FoundationBottomElevationMm = CompFoundationBottomElevation,
                 EmbedmentDepthMm = CompEmbedmentDepth,
@@ -1725,6 +1730,7 @@ namespace HyCADTool.Shell.ViewModels
                     CompMergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
                     CompMassMinSize = CompMassMinSize,
                     CompLocalConcreteMaxHeight = CompLocalConcreteMaxHeight,
+                    CompLocalBumpMaxHeight = CompLocalBumpMaxHeight,
                     CompGroupClusterDistance = CompGroupClusterDistance,
                     CompFoundationBottomElevation = double.IsNaN(CompFoundationBottomElevation)
                         ? (double?)null
@@ -1912,6 +1918,7 @@ namespace HyCADTool.Shell.ViewModels
                 CompMergeBumpsIntoBottomSlab = data.CompMergeBumpsIntoBottomSlab;
                 if (data.CompMassMinSize > 0) CompMassMinSize = data.CompMassMinSize;
                 if (data.CompLocalConcreteMaxHeight > 0) CompLocalConcreteMaxHeight = data.CompLocalConcreteMaxHeight;
+                if (data.CompLocalBumpMaxHeight > 0) CompLocalBumpMaxHeight = data.CompLocalBumpMaxHeight;
                 if (data.CompGroupClusterDistance > 0) CompGroupClusterDistance = data.CompGroupClusterDistance;
                 if (data.CompFoundationBottomElevation.HasValue)
                     CompFoundationBottomElevation = data.CompFoundationBottomElevation.Value;
@@ -2113,6 +2120,7 @@ namespace HyCADTool.Shell.ViewModels
             public bool CompMergeBumpsIntoBottomSlab { get; set; } = true;
             public double CompMassMinSize { get; set; } = 1000.0;
             public double CompLocalConcreteMaxHeight { get; set; } = 1000.0;
+            public double CompLocalBumpMaxHeight { get; set; } = 200.0;
             public double CompGroupClusterDistance { get; set; } = 1500.0;
             public double? CompFoundationBottomElevation { get; set; } = -8.1;
             public double CompEmbedmentDepth { get; set; } = 3.0;
