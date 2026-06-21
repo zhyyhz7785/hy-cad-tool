@@ -721,6 +721,10 @@ namespace HyCADTool.Shell.ViewModels
         private double _compWallMaxThickness = 500.0;
         public double CompWallMaxThickness { get => _compWallMaxThickness; set => SetProperty(ref _compWallMaxThickness, value); }
 
+        private double _compStripMinAspectRatio = 2.0;
+        /// <summary>条带最小高宽比 k：竖条 h≥k·w，横条 w≥k·h。</summary>
+        public double CompStripMinAspectRatio { get => _compStripMinAspectRatio; set => SetProperty(ref _compStripMinAspectRatio, value); }
+
         private double _compBottomSlabMaxThickness = 1500.0;
         public double CompBottomSlabMaxThickness { get => _compBottomSlabMaxThickness; set => SetProperty(ref _compBottomSlabMaxThickness, value); }
 
@@ -1432,7 +1436,7 @@ namespace HyCADTool.Shell.ViewModels
             DimensionDistanceInside = 6.0; DimensionDistanceOutside = 14.0;
             DimensionDistanceWithDim = 6.0; MleaderDistance = 6.0;             DimDistanceTolerance = 30.0;
             CompParallelAngleThreshold = 15.0;
-            CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompBottomSlabMaxThickness = 1500.0;
+            CompSlabMaxThickness = 300.0; CompWallMaxThickness = 500.0; CompStripMinAspectRatio = 2.0; CompBottomSlabMaxThickness = 1500.0;
             CompBottomSlabMarchStep = 10.0;
             CompMassMinSize = 1000.0; CompLocalConcreteMaxHeight = 1000.0; CompLocalBumpMaxHeight = 200.0; CompGroupClusterDistance = 1500.0; CompMergeBumpsIntoBottomSlab = true; CompBeamMaxWidth = 800.0; CompBeamMaxHeight = 1500.0;
             CompBeamSkipRein = false; CompParallelLineRatio = 0.6;
@@ -1612,6 +1616,7 @@ namespace HyCADTool.Shell.ViewModels
                 ParallelAngleThresholdDeg = CompParallelAngleThreshold,
                 SlabMaxThicknessMm = CompSlabMaxThickness,
                 WallMaxThicknessMm = CompWallMaxThickness,
+                StripMinAspectRatio = CompStripMinAspectRatio,
                 BottomSlabMaxThicknessMm = CompBottomSlabMaxThickness,
                 BottomSlabMarchStepMm = CompBottomSlabMarchStep,
                 MergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
@@ -1725,6 +1730,7 @@ namespace HyCADTool.Shell.ViewModels
                     CompParallelAngleThreshold = CompParallelAngleThreshold,
                     CompSlabMaxThickness = CompSlabMaxThickness,
                     CompWallMaxThickness = CompWallMaxThickness,
+                    CompStripMinAspectRatio = CompStripMinAspectRatio,
                     CompBottomSlabMaxThickness = CompBottomSlabMaxThickness,
                     CompBottomSlabMarchStep = CompBottomSlabMarchStep,
                     CompMergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
@@ -1913,6 +1919,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (data.CompParallelAngleThreshold > 0) CompParallelAngleThreshold = data.CompParallelAngleThreshold;
                 if (data.CompSlabMaxThickness > 0) CompSlabMaxThickness = data.CompSlabMaxThickness;
                 if (data.CompWallMaxThickness > 0) CompWallMaxThickness = data.CompWallMaxThickness;
+                if (data.CompStripMinAspectRatio > 0) CompStripMinAspectRatio = data.CompStripMinAspectRatio;
                 if (data.CompBottomSlabMaxThickness > 0) CompBottomSlabMaxThickness = data.CompBottomSlabMaxThickness;
                 if (data.CompBottomSlabMarchStep > 0) CompBottomSlabMarchStep = data.CompBottomSlabMarchStep;
                 CompMergeBumpsIntoBottomSlab = data.CompMergeBumpsIntoBottomSlab;
@@ -2115,6 +2122,7 @@ namespace HyCADTool.Shell.ViewModels
             public double CompParallelAngleThreshold { get; set; } = 15.0;
             public double CompSlabMaxThickness { get; set; } = 300.0;
             public double CompWallMaxThickness { get; set; } = 500.0;
+            public double CompStripMinAspectRatio { get; set; } = 2.0;
             public double CompBottomSlabMaxThickness { get; set; } = 1500.0;
             public double CompBottomSlabMarchStep { get; set; } = 10.0;
             public bool CompMergeBumpsIntoBottomSlab { get; set; } = true;

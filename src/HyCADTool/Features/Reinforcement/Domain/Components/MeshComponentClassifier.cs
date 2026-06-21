@@ -20,6 +20,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         BottomSlabOnlyV2,
         /// <summary>N29：N28 底板 + 楼板判型(横条+h≤300+上下皆气接触→楼板)。</summary>
         BottomSlabAndSlabV3,
+        /// <summary>N30：N29 + 竖条墙判型(h≥2w w≤500 h≥200→墙)。</summary>
+        BottomSlabAndSlabAndWallV4,
+        /// <summary>N32：N30 + 梁判型(w≤800 h≤1500 非横竖条、上板下气→梁)。</summary>
+        BottomSlabAndSlabAndWallAndBeamV5,
         Complete
     }
 
@@ -58,7 +62,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     if (stage == MeshClassifyStage.InitialSimple
                         || stage == MeshClassifyStage.BottomSlabOnly
                         || stage == MeshClassifyStage.BottomSlabOnlyV2
-                        || stage == MeshClassifyStage.BottomSlabAndSlabV3)
+                        || stage == MeshClassifyStage.BottomSlabAndSlabV3
+                        || stage == MeshClassifyStage.BottomSlabAndSlabAndWallV4
+                        || stage == MeshClassifyStage.BottomSlabAndSlabAndWallAndBeamV5)
                         rectRegions.Add(ToRectangleRegionShell(cell));
                     else
                         rectRegions.Add(ToRectangleRegion(cell, groupMinY, parameters));
@@ -75,6 +81,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 ClassifyBottomSlabV2(rectRegions, regions, groupMinY, parameters, boundaryProfile);
             else if (stage == MeshClassifyStage.BottomSlabAndSlabV3)
                 ClassifyBottomSlabAndSlabV3(rectRegions, regions, groupMinY, parameters, boundaryProfile);
+            else if (stage == MeshClassifyStage.BottomSlabAndSlabAndWallV4)
+                ClassifyBottomSlabAndSlabAndWallV4(rectRegions, regions, groupMinY, parameters, boundaryProfile);
+            else if (stage == MeshClassifyStage.BottomSlabAndSlabAndWallAndBeamV5)
+                ClassifyBottomSlabAndSlabAndWallAndBeamV5(rectRegions, regions, groupMinY, parameters, boundaryProfile);
             else if (stage == MeshClassifyStage.InitialUpperSplit)
             {
                 var snapshotTypes = rectRegions.Select(r => r.Type).ToList();
@@ -90,7 +100,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
             foreach (var tri in triangles)
             {
-                var type = ResolveTriangleType(tri, rectRegions);
+                var type = ResolveTriangleType(tri, rectRegions, parameters);
                 result.Add(ToTriangleRegion(tri, type));
             }
 
@@ -146,7 +156,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 double w = maxX - minX;
                 double h = maxY - minY;
 
-                bool horizontalStrip = w >= 2.0 * h && w >= MinSegmentLengthMm;
+                bool horizontalStrip = BoundaryContactProbe.IsHorizontalStrip(w, h, parameters);
                 bool withinThickness = h <= parameters.BottomSlabMaxThicknessMm;
 
                 var type = ComponentType.MassConcrete;
@@ -176,7 +186,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 double w = maxX - minX;
                 double h = maxY - minY;
 
-                bool horizontalStrip = w >= 2.0 * h && w >= MinSegmentLengthMm;
+                bool horizontalStrip = BoundaryContactProbe.IsHorizontalStrip(w, h, parameters);
 
                 var type = ComponentType.MassConcrete;
                 if (horizontalStrip
@@ -199,6 +209,658 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 region.Type = type;
                 region.Priority = PriorityOf(type);
             }
+        }
+
+        /// <summary>N30：N29 + 竖条 h≥2w w≤500 h≥200 → 墙(绿)。</summary>
+        private static void ClassifyBottomSlabAndSlabAndWallV4(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            double groupMinY,
+            ComponentParameters parameters,
+            GroupBoundaryProfile boundaryProfile)
+        {
+            ClassifyBottomSlabAndSlabV3(rectRegions, regions, groupMinY, parameters, boundaryProfile);
+
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                var region = rectRegions[i];
+                if (region.Type != ComponentType.MassConcrete)
+                    continue;
+
+                GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                double w = maxX - minX;
+                double h = maxY - minY;
+
+                if (!BoundaryContactProbe.IsVerticalStrip(w, h, parameters))
+                    continue;
+
+                region.Type = ComponentType.Wall;
+                region.Priority = PriorityOf(ComponentType.Wall);
+            }
+
+            ExtendWallsThroughThinMassAboveFoundation(rectRegions, parameters);
+            ExtendMassConcreteThroughThinGapAboveFoundation(rectRegions, parameters);
+        }
+
+        /// <summary>N32：N30 + 梁判型(w≤800 h≤1500 非横竖条、上邻楼板、下侧气接触→梁)。</summary>
+        private static void ClassifyBottomSlabAndSlabAndWallAndBeamV5(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            double groupMinY,
+            ComponentParameters parameters,
+            GroupBoundaryProfile boundaryProfile)
+        {
+            ClassifyBottomSlabAndSlabAndWallV4(rectRegions, regions, groupMinY, parameters, boundaryProfile);
+            var snapshotTypes = rectRegions.Select(r => r.Type).ToList();
+            ClassifyBeamsFromMass(rectRegions, regions, snapshotTypes, parameters, boundaryProfile);
+        }
+
+        /// <summary>将 MassConcrete 中满足梁尺寸与上下邻接条件的单元升级为 Beam。</summary>
+        private static void ClassifyBeamsFromMass(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            List<ComponentType> snapshotTypes,
+            ComponentParameters parameters,
+            GroupBoundaryProfile boundaryProfile)
+        {
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                if (snapshotTypes[i] != ComponentType.MassConcrete)
+                    continue;
+
+                var region = rectRegions[i];
+                GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                double w = maxX - minX;
+                double h = maxY - minY;
+
+                if (w > parameters.BeamMaxWidthMm || h > parameters.BeamMaxHeightMm)
+                    continue;
+                if (BoundaryContactProbe.IsHorizontalStrip(w, h, parameters)
+                    || BoundaryContactProbe.IsVerticalStrip(w, h, parameters))
+                    continue;
+
+                double midX = (minX + maxX) / 2.0;
+                var upperType = FindUpperNeighborTypeAt(midX, maxY, i, rectRegions, snapshotTypes);
+                if (upperType != ComponentType.Slab)
+                    continue;
+                if (!BoundaryContactProbe.ContactsAirAt(midX, minY, isAbove: false, regions, boundaryProfile))
+                    continue;
+
+                snapshotTypes[i] = ComponentType.Beam;
+                region.Type = ComponentType.Beam;
+                region.Priority = PriorityOf(ComponentType.Beam);
+            }
+        }
+
+        /// <summary>N30 Pass3：墙下 h≤局部高 且贴底板 的 MassConcrete → Wall（墙延伸到基础）。</summary>
+        private static void ExtendWallsThroughThinMassAboveFoundation(
+            List<ComponentRegion> rectRegions,
+            ComponentParameters parameters)
+        {
+            if (rectRegions == null || rectRegions.Count == 0 || parameters == null)
+                return;
+
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < rectRegions.Count;)
+                {
+                    var region = rectRegions[i];
+                    if (region?.Polygon == null || region.Type != ComponentType.MassConcrete)
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                    double h = maxY - minY;
+                    if (h > parameters.LocalBumpMaxHeightMm + EdgeToleranceMm)
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    if (!HasBottomSlabDirectlyBelow(minX, maxX, minY, rectRegions))
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    if (!TryPromoteMassUnderWallProjections(region, rectRegions, parameters, out var split))
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    if (split != null)
+                    {
+                        rectRegions.RemoveAt(i);
+                        rectRegions.InsertRange(i, split);
+                        i += split.Count;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+
+                    changed = true;
+                }
+            }
+        }
+
+        /// <summary>按上部墙 X 投影打断薄 mass，仅投影内升格为墙。</summary>
+        private static bool TryPromoteMassUnderWallProjections(
+            ComponentRegion mass,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters,
+            out List<ComponentRegion> split)
+        {
+            split = null;
+            GetBounds(mass.Polygon, out double sMinX, out double sMaxX, out double sMinY, out double sMaxY);
+
+            var breakpoints = CollectWallProjectionBreakpoints(sMinX, sMaxX, sMaxY, rectRegions, parameters);
+            if (breakpoints == null || breakpoints.Count < 2)
+                return false;
+
+            double stripHeight = sMaxY - sMinY;
+            var segments = new List<(double X0, double X1, ComponentType Type)>();
+            for (int k = 0; k < breakpoints.Count - 1; k++)
+            {
+                double xa = breakpoints[k];
+                double xb = breakpoints[k + 1];
+                if (xb - xa < EdgeToleranceMm)
+                    continue;
+
+                double segMid = (xa + xb) / 2.0;
+                bool underWall = IsColumnUnderWall(segMid, sMaxY, rectRegions, parameters);
+                bool onFoundation = HasBottomSlabDirectlyBelow(xa, xb, sMinY, rectRegions);
+                var type = underWall && onFoundation ? ComponentType.Wall : ComponentType.MassConcrete;
+                segments.Add((xa, xb, type));
+            }
+
+            if (segments.Count == 0)
+                return false;
+
+            segments = MergeAdjacentSegments(segments);
+            if (segments.Count == 1
+                && segments[0].Type == mass.Type
+                && Math.Abs(segments[0].X0 - sMinX) <= EdgeToleranceMm
+                && Math.Abs(segments[0].X1 - sMaxX) <= EdgeToleranceMm)
+            {
+                return false;
+            }
+
+            if (segments.Count == 1 && segments[0].Type == ComponentType.Wall)
+            {
+                mass.Type = ComponentType.Wall;
+                mass.Priority = PriorityOf(ComponentType.Wall);
+                return true;
+            }
+
+            split = new List<ComponentRegion>(segments.Count);
+            foreach (var seg in segments)
+            {
+                split.Add(CreateRectRegion(
+                    seg.X0, seg.X1, sMinY, sMaxY, seg.Type,
+                    Math.Min(seg.X1 - seg.X0, stripHeight)));
+            }
+
+            return true;
+        }
+
+        private static List<double> CollectWallProjectionBreakpoints(
+            double massMinX,
+            double massMaxX,
+            double massTopY,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters)
+        {
+            var breakpoints = new SortedSet<double> { massMinX, massMaxX };
+            bool hasWall = false;
+            double maxGapMm = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
+
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.Wall)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double _);
+                if (nMaxX <= massMinX + EdgeToleranceMm || nMinX >= massMaxX - EdgeToleranceMm)
+                    continue;
+
+                double gap = nMinY - massTopY;
+                if (gap < -EdgeToleranceMm || gap > maxGapMm)
+                    continue;
+
+                hasWall = true;
+                breakpoints.Add(Math.Max(massMinX, nMinX));
+                breakpoints.Add(Math.Min(massMaxX, nMaxX));
+            }
+
+            return hasWall ? breakpoints.ToList() : null;
+        }
+
+        private static bool IsColumnUnderWall(
+            double columnMidX,
+            double massTopY,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters)
+        {
+            double maxGapMm = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.Wall)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double _);
+                if (columnMidX < nMinX - EdgeToleranceMm || columnMidX > nMaxX + EdgeToleranceMm)
+                    continue;
+
+                double gap = nMinY - massTopY;
+                if (gap < -EdgeToleranceMm || gap > maxGapMm)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool HasBottomSlabDirectlyBelow(
+            double massMinX,
+            double massMaxX,
+            double massBottomY,
+            IReadOnlyList<ComponentRegion> rectRegions)
+        {
+            double midX = (massMinX + massMaxX) / 2.0;
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.BottomSlab)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double _, out double nMaxY);
+                if (midX < nMinX - EdgeToleranceMm || midX > nMaxX + EdgeToleranceMm)
+                    continue;
+                if (Math.Abs(nMaxY - massBottomY) > EdgeToleranceMm)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>N30 Pass4：大体积与底板间隔层 h≤局部高 → 向下延伸至基础顶（吸收薄大体积/空腔）。</summary>
+        private static void ExtendMassConcreteThroughThinGapAboveFoundation(
+            List<ComponentRegion> rectRegions,
+            ComponentParameters parameters)
+        {
+            if (rectRegions == null || rectRegions.Count == 0 || parameters == null)
+                return;
+
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < rectRegions.Count;)
+                {
+                    var region = rectRegions[i];
+                    if (region?.Polygon == null || region.Type != ComponentType.MassConcrete)
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
+                    double h = maxY - minY;
+                    double maxGap = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
+
+                    if (h > maxGap
+                        && !HasBottomSlabDirectlyBelow(minX, maxX, minY, rectRegions)
+                        && TryExtendMassDownToFoundation(i, rectRegions, parameters, out var split, out var removeIndices))
+                    {
+                        ApplyMassExtensionChanges(i, rectRegions, split, removeIndices, out int nextIndex);
+                        i = nextIndex;
+                        changed = true;
+                        continue;
+                    }
+
+                    if (h <= maxGap
+                        && HasBottomSlabDirectlyBelow(minX, maxX, minY, rectRegions)
+                        && TryAbsorbThinMassIntoUpperMass(i, rectRegions, parameters, out var upperIndex, out removeIndices))
+                    {
+                        ApplyMassExtensionChanges(upperIndex, rectRegions, null, removeIndices, out _);
+                        changed = true;
+                        continue;
+                    }
+
+                    i++;
+                }
+            }
+        }
+
+        private static void ApplyMassExtensionChanges(
+            int primaryIndex,
+            List<ComponentRegion> rectRegions,
+            List<ComponentRegion> split,
+            List<int> removeIndices,
+            out int nextIndex)
+        {
+            nextIndex = primaryIndex;
+            if (removeIndices != null && removeIndices.Count > 0)
+            {
+                foreach (int ri in removeIndices
+                             .Where(idx => idx >= 0 && idx < rectRegions.Count && idx != primaryIndex)
+                             .Distinct()
+                             .OrderByDescending(idx => idx))
+                {
+                    rectRegions.RemoveAt(ri);
+                    if (ri < primaryIndex)
+                        primaryIndex--;
+                }
+            }
+
+            if (split != null && split.Count > 0)
+            {
+                rectRegions.RemoveAt(primaryIndex);
+                rectRegions.InsertRange(primaryIndex, split);
+                nextIndex = primaryIndex + split.Count;
+                return;
+            }
+
+            nextIndex = primaryIndex + 1;
+        }
+
+        /// <summary>大块 Mass 经薄隔层向下延伸至底板顶；按 X 子段处理。</summary>
+        private static bool TryExtendMassDownToFoundation(
+            int massIndex,
+            List<ComponentRegion> rectRegions,
+            ComponentParameters parameters,
+            out List<ComponentRegion> split,
+            out List<int> removeIndices)
+        {
+            split = null;
+            removeIndices = new List<int>();
+            var mass = rectRegions[massIndex];
+            GetBounds(mass.Polygon, out double sMinX, out double sMaxX, out double sMinY, out double sMaxY);
+            double stripHeight = sMaxY - sMinY;
+
+            var breakpoints = CollectFoundationOverlapBreakpoints(sMinX, sMaxX, rectRegions);
+            if (breakpoints == null || breakpoints.Count < 2)
+                return false;
+
+            var segments = new List<(double X0, double X1, double YBot, bool Extended)>();
+            var absorbSet = new HashSet<int>();
+
+            for (int k = 0; k < breakpoints.Count - 1; k++)
+            {
+                double xa = breakpoints[k];
+                double xb = breakpoints[k + 1];
+                if (xb - xa < EdgeToleranceMm)
+                    continue;
+
+                if (TryMeasureThinGapToFoundation(
+                        xa, xb, sMinY, massIndex, rectRegions, parameters,
+                        out double foundationTopY, out var absorbIndices))
+                {
+                    segments.Add((xa, xb, foundationTopY, true));
+                    foreach (int idx in absorbIndices)
+                        absorbSet.Add(idx);
+                }
+                else
+                {
+                    segments.Add((xa, xb, sMinY, false));
+                }
+            }
+
+            if (segments.Count == 0 || segments.All(s => !s.Extended))
+                return false;
+
+            segments = MergeExtensionSegments(segments);
+            removeIndices = absorbSet.ToList();
+
+            if (segments.Count == 1 && segments[0].Extended)
+            {
+                mass.Polygon = CreateRectRegion(
+                    segments[0].X0, segments[0].X1, segments[0].YBot, sMaxY,
+                    ComponentType.MassConcrete,
+                    Math.Min(segments[0].X1 - segments[0].X0, stripHeight)).Polygon;
+                mass.Type = ComponentType.MassConcrete;
+                mass.Priority = PriorityOf(ComponentType.MassConcrete);
+                return true;
+            }
+
+            split = new List<ComponentRegion>(segments.Count);
+            foreach (var seg in segments)
+            {
+                split.Add(CreateRectRegion(
+                    seg.X0, seg.X1, seg.YBot, sMaxY, ComponentType.MassConcrete,
+                    Math.Min(seg.X1 - seg.X0, stripHeight)));
+            }
+
+            removeIndices.Add(massIndex);
+            return true;
+        }
+
+        /// <summary>贴底板薄 Mass 在上方大块 Mass 投影下被吸收（上块下延）。</summary>
+        private static bool TryAbsorbThinMassIntoUpperMass(
+            int thinIndex,
+            List<ComponentRegion> rectRegions,
+            ComponentParameters parameters,
+            out int upperMassIndex,
+            out List<int> removeIndices)
+        {
+            upperMassIndex = -1;
+            removeIndices = null;
+            var thin = rectRegions[thinIndex];
+            GetBounds(thin.Polygon, out double tMinX, out double tMaxX, out double tMinY, out double tMaxY);
+
+            double midX = (tMinX + tMaxX) / 2.0;
+            if (!TryFindLargeMassAbove(midX, tMaxY, thinIndex, rectRegions, parameters, out upperMassIndex))
+                return false;
+
+            var upper = rectRegions[upperMassIndex];
+            GetBounds(upper.Polygon, out double uMinX, out double uMaxX, out _, out double uMaxY);
+            if (tMinX < uMinX - EdgeToleranceMm || tMaxX > uMaxX + EdgeToleranceMm)
+                return false;
+
+            upper.Polygon = CreateRectRegion(
+                uMinX, uMaxX, tMinY, uMaxY, ComponentType.MassConcrete,
+                Math.Min(uMaxX - uMinX, uMaxY - tMinY)).Polygon;
+            upper.Type = ComponentType.MassConcrete;
+            upper.Priority = PriorityOf(ComponentType.MassConcrete);
+
+            removeIndices = new List<int> { thinIndex };
+            return true;
+        }
+
+        private static bool TryMeasureThinGapToFoundation(
+            double xa,
+            double xb,
+            double massBottomY,
+            int excludeIndex,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters,
+            out double foundationTopY,
+            out List<int> absorbIndices)
+        {
+            foundationTopY = double.NaN;
+            absorbIndices = new List<int>();
+            double maxGap = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
+            double segMidX = (xa + xb) / 2.0;
+
+            int foundationIndex = -1;
+            double bestSlabTop = double.NegativeInfinity;
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                if (j == excludeIndex)
+                    continue;
+
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.BottomSlab)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out _, out double nMaxY);
+                if (!SpansOverlap(xa, xb, nMinX, nMaxX))
+                    continue;
+                if (segMidX < nMinX - EdgeToleranceMm || segMidX > nMaxX + EdgeToleranceMm)
+                    continue;
+                if (nMaxY >= massBottomY - EdgeToleranceMm)
+                    continue;
+                if (nMaxY <= bestSlabTop)
+                    continue;
+
+                bestSlabTop = nMaxY;
+                foundationIndex = j;
+            }
+
+            if (foundationIndex < 0)
+                return false;
+
+            foundationTopY = bestSlabTop;
+            double gapDepth = massBottomY - foundationTopY;
+            if (gapDepth <= EdgeToleranceMm || gapDepth > maxGap + EdgeToleranceMm)
+                return false;
+
+            double occupiedHeight = 0.0;
+            var absorbed = new HashSet<int>();
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                if (j == excludeIndex || j == foundationIndex)
+                    continue;
+
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double nMaxY);
+                if (!SpansOverlap(xa, xb, nMinX, nMaxX))
+                    continue;
+                if (segMidX < nMinX - EdgeToleranceMm || segMidX > nMaxX + EdgeToleranceMm)
+                    continue;
+                if (nMaxY <= foundationTopY + EdgeToleranceMm || nMinY >= massBottomY - EdgeToleranceMm)
+                    continue;
+
+                if (neighbor.Type == ComponentType.MassConcrete)
+                {
+                    double cellH = nMaxY - nMinY;
+                    if (cellH > maxGap + EdgeToleranceMm)
+                        return false;
+                    if (nMinY < foundationTopY - EdgeToleranceMm || nMaxY > massBottomY + EdgeToleranceMm)
+                        return false;
+
+                    occupiedHeight += cellH;
+                    absorbed.Add(j);
+                    continue;
+                }
+
+                return false;
+            }
+
+            if (gapDepth - occupiedHeight < -EdgeToleranceMm)
+                return false;
+
+            absorbIndices = absorbed.OrderByDescending(i => i).ToList();
+            return true;
+        }
+
+        private static List<double> CollectFoundationOverlapBreakpoints(
+            double massMinX,
+            double massMaxX,
+            IReadOnlyList<ComponentRegion> rectRegions)
+        {
+            var breakpoints = new SortedSet<double> { massMinX, massMaxX };
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.BottomSlab)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out _, out _);
+                if (nMaxX <= massMinX + EdgeToleranceMm || nMinX >= massMaxX - EdgeToleranceMm)
+                    continue;
+
+                breakpoints.Add(Math.Max(massMinX, nMinX));
+                breakpoints.Add(Math.Min(massMaxX, nMaxX));
+            }
+
+            return breakpoints.Count >= 2 ? breakpoints.ToList() : null;
+        }
+
+        private static bool TryFindLargeMassAbove(
+            double midX,
+            double layerTopY,
+            int excludeIndex,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters,
+            out int upperIndex)
+        {
+            upperIndex = -1;
+            double maxGap = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
+            double bestGap = double.MaxValue;
+
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                if (j == excludeIndex)
+                    continue;
+
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.MassConcrete)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double nMaxY);
+                double nH = nMaxY - nMinY;
+                if (nH <= maxGap)
+                    continue;
+                if (midX < nMinX - EdgeToleranceMm || midX > nMaxX + EdgeToleranceMm)
+                    continue;
+
+                double gap = nMinY - layerTopY;
+                if (gap < -EdgeToleranceMm || gap > maxGap)
+                    continue;
+                if (gap >= bestGap)
+                    continue;
+
+                bestGap = gap;
+                upperIndex = j;
+            }
+
+            return upperIndex >= 0;
+        }
+
+        private static List<(double X0, double X1, double YBot, bool Extended)> MergeExtensionSegments(
+            List<(double X0, double X1, double YBot, bool Extended)> segments)
+        {
+            if (segments.Count == 0)
+                return segments;
+
+            var merged = new List<(double X0, double X1, double YBot, bool Extended)> { segments[0] };
+            for (int i = 1; i < segments.Count; i++)
+            {
+                var cur = segments[i];
+                var last = merged[merged.Count - 1];
+                if (last.Extended == cur.Extended
+                    && Math.Abs(last.YBot - cur.YBot) <= EdgeToleranceMm
+                    && Math.Abs(last.X1 - cur.X0) <= EdgeToleranceMm)
+                {
+                    merged[merged.Count - 1] = (last.X0, cur.X1, last.YBot, last.Extended);
+                }
+                else
+                {
+                    merged.Add(cur);
+                }
+            }
+
+            return merged;
+        }
+
+        private static bool SpansOverlap(double aMinX, double aMaxX, double bMinX, double bMaxX)
+        {
+            return aMaxX > bMinX + EdgeToleranceMm && aMinX < bMaxX - EdgeToleranceMm;
         }
 
         /// <summary>N27：仅底板 — 横条 w≥2h w≥200 贴组底 h≤1500 下侧土接触。</summary>
@@ -234,7 +896,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             ComponentParameters parameters,
             GroupBoundaryProfile boundaryProfile)
         {
-            if (!BoundaryContactProbe.IsHorizontalStrip(w, h)
+            if (!BoundaryContactProbe.IsHorizontalStrip(w, h, parameters)
                 || h > parameters.BottomSlabMaxThicknessMm)
             {
                 return ComponentType.MassConcrete;
@@ -271,33 +933,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 region.Priority = PriorityOf(type);
             }
 
-            for (int i = 0; i < rectRegions.Count; i++)
-            {
-                if (types[i] != ComponentType.MassConcrete)
-                    continue;
-
-                var region = rectRegions[i];
-                GetBounds(region.Polygon, out double minX, out double maxX, out double minY, out double maxY);
-                double w = maxX - minX;
-                double h = maxY - minY;
-
-                if (w > parameters.BeamMaxWidthMm || h > parameters.BeamMaxHeightMm)
-                    continue;
-                if (BoundaryContactProbe.IsHorizontalStrip(w, h)
-                    || BoundaryContactProbe.IsVerticalStrip(w, h, parameters))
-                    continue;
-
-                double midX = (minX + maxX) / 2.0;
-                var upperType = FindUpperNeighborTypeAt(midX, maxY, i, rectRegions, types);
-                if (upperType != ComponentType.Slab)
-                    continue;
-                if (!BoundaryContactProbe.ContactsAirAt(midX, minY, isAbove: false, regions, boundaryProfile))
-                    continue;
-
-                types[i] = ComponentType.Beam;
-                region.Type = ComponentType.Beam;
-                region.Priority = PriorityOf(ComponentType.Beam);
-            }
+            ClassifyBeamsFromMass(rectRegions, regions, types, parameters, boundaryProfile);
         }
 
         private static ComponentType ClassifySimplePhase1(
@@ -312,7 +948,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             ComponentParameters parameters,
             GroupBoundaryProfile boundaryProfile)
         {
-            if (BoundaryContactProbe.IsHorizontalStrip(w, h))
+            if (BoundaryContactProbe.IsHorizontalStrip(w, h, parameters))
             {
                 if (TryClassifyBottomSlab(
                         minX, maxX, yBot, w, h, groupMinY, regions, parameters, boundaryProfile)
@@ -800,7 +1436,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             return false;
         }
 
-        private static ComponentType ResolveTriangleType(MeshCell triangle, IReadOnlyList<ComponentRegion> rectRegions)
+        private static ComponentType ResolveTriangleType(
+            MeshCell triangle,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            ComponentParameters parameters)
         {
             if (rectRegions == null || rectRegions.Count == 0)
                 return ComponentType.LocalConcrete;
@@ -829,7 +1468,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
 
             if (bestAdjacent != null)
-                return bestAdjacent.Type;
+            {
+                return CoerceTriangleInheritedType(
+                    bestAdjacent.Type, tMinX, tMaxX, tMinY, tMaxY, parameters);
+            }
 
             ComponentRegion nearest = null;
             double nearestDist = double.MaxValue;
@@ -846,7 +1488,30 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                 }
             }
 
-            return nearest?.Type ?? ComponentType.LocalConcrete;
+            if (nearest == null)
+                return ComponentType.LocalConcrete;
+
+            return CoerceTriangleInheritedType(
+                nearest.Type, tMinX, tMaxX, tMinY, tMaxY, parameters);
+        }
+
+        private static ComponentType CoerceTriangleInheritedType(
+            ComponentType inheritedType,
+            double tMinX,
+            double tMaxX,
+            double tMinY,
+            double tMaxY,
+            ComponentParameters parameters)
+        {
+            if (inheritedType != ComponentType.Wall || parameters == null)
+                return inheritedType;
+
+            double w = tMaxX - tMinX;
+            double h = tMaxY - tMinY;
+            if (BoundaryContactProbe.IsVerticalStrip(w, h, parameters))
+                return ComponentType.Wall;
+
+            return ComponentType.MassConcrete;
         }
 
         private static bool AreBoundsAdjacent(

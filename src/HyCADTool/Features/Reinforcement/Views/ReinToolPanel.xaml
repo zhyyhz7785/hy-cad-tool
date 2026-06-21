@@ -229,6 +229,12 @@
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
                                  Text="{Binding ReinVm.CompWallMaxThickness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </bc:PropertyRow>
+                    <bc:PropertyRow Label="条带高宽比≥" Style="{StaticResource ReinPanelPropertyRow}">
+                        <TextBox Style="{StaticResource ReinPanelInputBox}"
+                                 helper:TextBoxHelper.EnableCustomHandlers="True"
+                                 ToolTip="竖条 h≥k·w 判墙；横条 w≥k·h 判板/底板；默认 2"
+                                 Text="{Binding ReinVm.CompStripMinAspectRatio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </bc:PropertyRow>
                     <bc:PropertyRow Label="底板厚≤mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
                                  helper:TextBoxHelper.EnableCustomHandlers="True"
@@ -250,7 +256,7 @@
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="局部高≤mm" Style="{StaticResource ReinPanelPropertyRow}">
                         <TextBox Style="{StaticResource ReinPanelInputBox}"
-                                 ToolTip="N16 网格划分：局部混凝土最大高度（mm），默认 200"
+                                 ToolTip="N16 局部混凝土最大高度；N30 墙下 h≤本值且贴底板之大体积并入墙（默认 200）"
                                  Text="{Binding ReinVm.CompLocalBumpMaxHeight, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </bc:PropertyRow>
                     <bc:PropertyRow Label="梁宽≤mm" Style="{StaticResource ReinPanelPropertyRow}">

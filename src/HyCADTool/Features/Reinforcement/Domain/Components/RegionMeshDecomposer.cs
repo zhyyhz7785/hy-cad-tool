@@ -18,7 +18,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         VerticalMerge,
         /// <summary>C.3 先竖后横合并+方向（对比 N21 先横后竖）。</summary>
         CompleteVerticalFirst,
-        /// <summary>N30：夹平三角 + 全顶点延长线裁至第一交点有限弦分割。</summary>
+        /// <summary>N31：夹平三角 + 全顶点延长线裁至第一交点有限弦分割。</summary>
         ReflexRectPartition
     }
 

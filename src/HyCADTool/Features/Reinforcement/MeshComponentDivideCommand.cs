@@ -71,6 +71,26 @@ namespace HyCADTool.Features.Reinforcement
                 isUpperSplit: false,
                 useBoundaryProfile: true);
 
+        /// <summary>N30：N29 + 竖条墙判型(h≥2w w≤500 h≥200→墙)。</summary>
+        public void ExecuteBottomSlabAndSlabAndWallClassifyV4()
+            => RunClassify(
+                MeshClassifyStage.BottomSlabAndSlabAndWallV4,
+                "N30",
+                "网格底板+楼板+墙判型V4",
+                isInitial: true,
+                isUpperSplit: false,
+                useBoundaryProfile: true);
+
+        /// <summary>N32：N30 + 梁判型(w≤800 h≤1500 非横竖条、上板下气→黄梁)。</summary>
+        public void ExecuteBottomSlabAndSlabAndWallAndBeamClassifyV5()
+            => RunClassify(
+                MeshClassifyStage.BottomSlabAndSlabAndWallAndBeamV5,
+                "N32",
+                "网格底板+楼板+墙+梁判型V5",
+                isInitial: true,
+                isUpperSplit: false,
+                useBoundaryProfile: true);
+
         private static void RunClassify(
             MeshClassifyStage stage,
             string commandTag,
@@ -155,6 +175,10 @@ namespace HyCADTool.Features.Reinforcement
                 sb.AppendLine("  仅底板(清版)：横条+h≤1500+下侧土接触→蓝(不限标高)；其余红；上游=N21网格");
             else if (stage == MeshClassifyStage.BottomSlabAndSlabV3)
                 sb.AppendLine("  底板+楼板：横条+h≤1500+下侧土→蓝；横条+h≤300+上下气段重叠(底面探针)→青；其余红；上游=N21网格");
+            else if (stage == MeshClassifyStage.BottomSlabAndSlabAndWallV4)
+                sb.AppendLine("  N29底板+楼板；竖条 h≥k·w w≤墙厚 h≥200→绿墙；墙下/大体积下 h≤局部高且贴底板→延伸至基础；余者红");
+            else if (stage == MeshClassifyStage.BottomSlabAndSlabAndWallAndBeamV5)
+                sb.AppendLine("  N30底板+楼板+墙+延伸；w≤800 h≤1500 非横竖条、上板下气→黄梁；余者红");
             else if (isInitial)
                 sb.AppendLine("  局部混凝土需 N16 精修后显现；下一步执行 N16");
 

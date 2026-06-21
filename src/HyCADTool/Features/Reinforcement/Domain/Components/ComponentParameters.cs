@@ -12,6 +12,8 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
         public double SlabMaxThicknessMm { get; set; } = 300.0;
         public double WallMaxThicknessMm { get; set; } = 500.0;
+        /// <summary>条带最小高宽比 k：竖条 h≥k·w，横条 w≥k·h。默认 2。</summary>
+        public double StripMinAspectRatio { get; set; } = 2.0;
         /// <summary>基础底板高度上限（mm）：超出部分归大体积混凝土。</summary>
         public double BottomSlabMaxThicknessMm { get; set; } = 1500.0;
 

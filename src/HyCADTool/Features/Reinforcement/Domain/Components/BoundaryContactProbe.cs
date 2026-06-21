@@ -20,13 +20,29 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         private const double MinSegmentLengthMm = 200.0;
         private const double BandProbeStepMm = 5.0;
 
-        public static bool IsHorizontalStrip(double widthMm, double heightMm)
-            => widthMm >= 2.0 * heightMm && widthMm >= MinSegmentLengthMm;
+        public static bool IsHorizontalStrip(
+            double widthMm,
+            double heightMm,
+            ComponentParameters parameters)
+        {
+            double k = GetStripMinAspectRatio(parameters);
+            return widthMm >= k * heightMm && widthMm >= MinSegmentLengthMm;
+        }
 
         public static bool IsVerticalStrip(double widthMm, double heightMm, ComponentParameters parameters)
-            => heightMm >= 2.0 * widthMm
-               && widthMm <= parameters.WallMaxThicknessMm
-               && heightMm >= MinSegmentLengthMm;
+        {
+            double k = GetStripMinAspectRatio(parameters);
+            return heightMm >= k * widthMm
+                   && widthMm <= parameters.WallMaxThicknessMm
+                   && heightMm >= MinSegmentLengthMm;
+        }
+
+        private static double GetStripMinAspectRatio(ComponentParameters parameters)
+        {
+            if (parameters == null || parameters.StripMinAspectRatio <= 0)
+                return 2.0;
+            return parameters.StripMinAspectRatio;
+        }
 
         public static double GetFoundationGraphicMinY(GroupBoundaryProfile profile)
         {
