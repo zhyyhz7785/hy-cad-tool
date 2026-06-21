@@ -166,8 +166,29 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
                 closed: p.Closed,
                 elevation: p.Elevation,
                 nx: p.Normal.X, ny: p.Normal.Y, nz: p.Normal.Z,
-                constantWidth: p.ConstantWidth,
+                constantWidth: ResolvePolylineStoredWidth(p),
                 vertices: verts);
+        }
+
+        /// <summary>
+        /// 读取多段线有效全局线宽：优先 ConstantWidth；getter 不可用时回退首段 Start/End 宽。
+        /// </summary>
+        private static double ResolvePolylineStoredWidth(Polyline p)
+        {
+            try
+            {
+                if (p.ConstantWidth > 0) return p.ConstantWidth;
+            }
+            catch { }
+
+            if (p.NumberOfVertices > 0)
+            {
+                double w = p.GetStartWidthAt(0);
+                if (w > 0) return w;
+                w = p.GetEndWidthAt(0);
+                if (w > 0) return w;
+            }
+            return 0;
         }
 
         // ------------------------------------------------------------ Typed builders (M3)

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Codec;
 using HyCADTool.Features.DataExchange.Hyob.Domain.Models;
@@ -136,7 +137,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
 
     internal static class HyobSelfCheck
     {
-        public static (int Pass, int Fail) Run(Editor ed)
+        public static (int Pass, int Fail) Run(Editor ed, Database db = null)
         {
             int passed = 0, failed = 0;
             void Report(string name, bool ok, string detail = null)
@@ -880,6 +881,10 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
             // ---- M9-B 反向 converter Polyline/DBText/MText Decode→Build ----
             try
             {
+                // #region agent log
+                HyobDebugLog.Write("H0", "M9-B", "block_enter");
+                // #endregion
+
                 var verts = new System.Collections.Generic.List<HyobPolylineVertex>
                 {
                     new HyobPolylineVertex(0, 0, 0),
@@ -887,31 +892,60 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
                     new HyobPolylineVertex(10, 10, 0),
                 };
                 var polyHy = new HyobPolyline("0", "P1", true, 1.5, 0, 0, 1, 0.2, verts);
-                bool okP = HyobToEntityConverter.TryBuild(polyHy.EncodeBlob(), null, null, out var entP, out var lyP);
+                var polyBlob = polyHy.EncodeBlob();
+
+                // #region agent log
+                HyobDebugLog.Write("H-A", "M9-B", "before_poly_trybuild", "poly_trybuild");
+                // #endregion
+                bool okP = HyobToEntityConverter.TryBuild(polyBlob, null, null, out var entP, out var lyP);
+                // #region agent log
+                HyobDebugLog.Write("H-A", "M9-B", "after_poly_trybuild", "poly_trybuild");
+                // #endregion
+
                 bool dataP = false;
                 using (entP as IDisposable)
                 {
-                    var p = entP as Autodesk.AutoCAD.DatabaseServices.Polyline;
+                    // #region agent log
+                    HyobDebugLog.Write("H-B", "M9-B", "before_poly_assert", "poly_assert");
+                    // #endregion
+                    var p = entP as Polyline;
+                    double bulge1 = 0;
+                    try { bulge1 = p?.GetBulgeAt(1) ?? 0; } catch { }
                     dataP = p != null && p.Closed && p.NumberOfVertices == 3
-                            && System.Math.Abs(p.Elevation - 1.5) < 1e-9
-                            && System.Math.Abs(p.GetBulgeAt(1) - 0.5) < 1e-9
-                            && System.Math.Abs(p.ConstantWidth - 0.2) < 1e-9
+                            && System.Math.Abs(bulge1 - 0.5) < 1e-9
                             && lyP == "0";
+                    // #region agent log
+                    HyobDebugLog.Write("H-B", "M9-B", "after_poly_assert", "poly_assert", dataP ? null : "dataP=false");
+                    // #endregion
                 }
 
                 var dbHy = new HyobDBText("0", "T1", "你好AB", "STANDARD",
                     1, 2, 0, 2.5, 0.7, 0.9, 0.0, 0,
                     0, 0, 1, (byte)0, (byte)0, 0, 0, 0, (byte)0);
+
+                // #region agent log
+                HyobDebugLog.Write("H-C", "M9-B", "before_dbtext_trybuild", "dbtext_trybuild");
+                // #endregion
                 bool okT = HyobToEntityConverter.TryBuild(dbHy.EncodeBlob(), null, null, out var entT, out var lyT);
+                // #region agent log
+                HyobDebugLog.Write("H-C", "M9-B", "after_dbtext_trybuild", "dbtext_trybuild");
+                // #endregion
+
                 bool dataT = false;
                 using (entT as IDisposable)
                 {
-                    var t = entT as Autodesk.AutoCAD.DatabaseServices.DBText;
+                    // #region agent log
+                    HyobDebugLog.Write("H-C", "M9-B", "before_dbtext_assert", "dbtext_assert");
+                    // #endregion
+                    var t = entT as DBText;
                     dataT = t != null && t.TextString == "你好AB"
                             && System.Math.Abs(t.Height - 2.5) < 1e-9
                             && System.Math.Abs(t.Rotation - 0.7) < 1e-9
                             && System.Math.Abs(t.Position.X - 1) < 1e-9
                             && lyT == "0";
+                    // #region agent log
+                    HyobDebugLog.Write("H-C", "M9-B", "after_dbtext_assert", "dbtext_assert");
+                    // #endregion
                 }
 
                 var mtHy = new HyobMText("0", "M1", "abc{\\fSimSun;ABC}", "STANDARD",
@@ -919,22 +953,110 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
                     0, 0, 1, 1, 0, 0,
                     (byte)1, (byte)0, (byte)0, 1.0,
                     (byte)0, 0u, 1.5);
-                bool okM = HyobToEntityConverter.TryBuild(mtHy.EncodeBlob(), null, null, out var entM, out var lyM);
+                var mtBlob = mtHy.EncodeBlob();
+
+                // #region agent log
+                HyobDebugLog.Write("H-D", "M9-B", "before_mtext_trybuild", "mtext_trybuild");
+                // #endregion
+                bool okM = HyobToEntityConverter.TryBuild(mtBlob, null, null, out var entM, out var lyM);
+                // #region agent log
+                HyobDebugLog.Write("H-D", "M9-B", "after_mtext_trybuild", "mtext_trybuild");
+                // #endregion
+
                 bool dataM = false;
                 using (entM as IDisposable)
                 {
-                    var m = entM as Autodesk.AutoCAD.DatabaseServices.MText;
+                    // #region agent log
+                    HyobDebugLog.Write("H-D", "M9-B", "before_mtext_assert", "mtext_assert");
+                    // #endregion
+                    var m = entM as MText;
                     dataM = m != null && m.Contents == "abc{\\fSimSun;ABC}"
                             && System.Math.Abs(m.TextHeight - 3.0) < 1e-9
-                            && System.Math.Abs(m.Width - 100.0) < 1e-9
                             && System.Math.Abs(m.Rotation - 0.5) < 1e-9
                             && lyM == "0";
+                    // #region agent log
+                    HyobDebugLog.Write("H-D", "M9-B", "after_mtext_assert", "mtext_assert");
+                    // #endregion
                 }
 
+                // Append 后属性（线宽 / MText Width / 背景）在命令态写活动 DWG 会 eNotApplicable，用临时 Database 验
+                bool postAppendOk = false;
+                // #region agent log
+                HyobDebugLog.Write("H-E", "M9-B", "before_tmpdb", "tmpdb_block");
+                // #endregion
+                using (var tmpDb = new Database(true, true))
+                using (var tx = tmpDb.TransactionManager.StartTransaction())
+                {
+                    // #region agent log
+                    HyobDebugLog.Write("H-E", "M9-B", "tmpdb_tx_started", "tmpdb_block");
+                    // #endregion
+                    var bt = (BlockTable)tx.GetObject(tmpDb.BlockTableId, OpenMode.ForRead);
+                    var ms = (BlockTableRecord)tx.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+
+                    bool polyWidthOk = false;
+                    // #region agent log
+                    HyobDebugLog.Write("H-E", "M9-B", "before_poly_postappend", "poly_postappend");
+                    // #endregion
+                    if (HyobToEntityConverter.TryBuild(polyBlob, tmpDb, tx, out var entPoly, out _))
+                    {
+                        entPoly.SetDatabaseDefaults(tmpDb);
+                        ms.AppendEntity(entPoly);
+                        tx.AddNewlyCreatedDBObject(entPoly, true);
+                        HyobToEntityConverter.ApplyPostAppend(entPoly, polyBlob, tmpDb, tx);
+                        if (entPoly is Polyline pl)
+                        {
+                            double w = pl.GetStartWidthAt(0);
+                            polyWidthOk = System.Math.Abs(w - 0.2) < 1e-9
+                                          && System.Math.Abs(pl.Elevation - 1.5) < 1e-9;
+                        }
+                    }
+                    // #region agent log
+                    HyobDebugLog.Write("H-E", "M9-B", "after_poly_postappend", "poly_postappend", polyWidthOk ? null : "polyWidthOk=false");
+                    // #endregion
+
+                    bool mtextPostOk = false;
+                    // #region agent log
+                    HyobDebugLog.Write("H-F", "M9-B", "before_mtext_postappend", "mtext_postappend");
+                    // #endregion
+                    if (HyobToEntityConverter.TryBuild(mtBlob, tmpDb, tx, out var entMt, out _))
+                    {
+                        entMt.SetDatabaseDefaults(tmpDb);
+                        ms.AppendEntity(entMt);
+                        tx.AddNewlyCreatedDBObject(entMt, true);
+                        HyobToEntityConverter.ApplyPostAppend(entMt, mtBlob, tmpDb, tx);
+                        if (entMt is MText mt)
+                        {
+                            mtextPostOk = mt.BackgroundFill
+                                          && System.Math.Abs(mt.Width - 100.0) < 1e-9;
+                        }
+                    }
+                    // #region agent log
+                    HyobDebugLog.Write("H-F", "M9-B", "after_mtext_postappend", "mtext_postappend", mtextPostOk ? null : "mtextPostOk=false");
+                    // #endregion
+
+                    postAppendOk = polyWidthOk && mtextPostOk;
+                    tx.Commit();
+                    // #region agent log
+                    HyobDebugLog.Write("H-E", "M9-B", "tmpdb_committed", "tmpdb_block");
+                    // #endregion
+                }
+
+                // #region agent log
+                HyobDebugLog.Write("H0", "M9-B", "block_ok", null, null);
+                HyobDebugLog.Write("H0", "M9-B", "result", null,
+                    $"okP={okP} dataP={dataP} okT={okT} dataT={dataT} okM={okM} dataM={dataM} post={postAppendOk}");
+                // #endregion
+
                 Report("HyobToEntityConverter Polyline/DBText/MText Decode→Build",
-                    okP && dataP && okT && dataT && okM && dataM);
+                    okP && dataP && okT && dataT && okM && dataM && postAppendOk);
             }
-            catch (Exception ex) { Report("M9-B 反向 converter", false, ex.Message); }
+            catch (Exception ex)
+            {
+                // #region agent log
+                HyobDebugLog.Write("H0", "M9-B", "block_exception", "catch", ex.Message);
+                // #endregion
+                Report("M9-B 反向 converter", false, ex.Message);
+            }
 
             // ---- M9-C-1 LayerReverseMirror 线宽 mm ↔ LineWeight 枚举 ----
             try
@@ -982,7 +1104,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
             var ed  = doc?.Editor;
             ed?.WriteMessage("\n[hyob] hyobI: 启动 —— 先跑 Domain 自检");
 
-            var (pass, fail) = HyobSelfCheck.Run(ed);
+            var (pass, fail) = HyobSelfCheck.Run(ed, doc?.Database);
             ed?.WriteMessage($"\n[hyob] 自检：PASS {pass} / FAIL {fail}");
             if (fail > 0)
             {

@@ -127,6 +127,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
                             ApplyLayerSafely(newEnt, layer, db, tx);
                             ms.AppendEntity(newEnt);
                             tx.AddNewlyCreatedDBObject(newEnt, true);
+                            HyobToEntityConverter.ApplyPostAppend(newEnt, blob, db, tx);
                             stats.Modified++;
                             IncKind(stats.ModifiedByKind, kind);
                         }
@@ -138,6 +139,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
                             ApplyLayerSafely(newEnt, layer, db, tx);
                             ms.AppendEntity(newEnt);
                             tx.AddNewlyCreatedDBObject(newEnt, true);
+                            HyobToEntityConverter.ApplyPostAppend(newEnt, blob, db, tx);
                             stats.Added++;
                             IncKind(stats.AddedByKind, kind);
                         }

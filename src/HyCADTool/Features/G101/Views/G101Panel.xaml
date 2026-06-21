@@ -30,7 +30,7 @@
             </Style>
 
             <HierarchicalDataTemplate DataType="{x:Type vm:CatalogTreeItemVm}" ItemsSource="{Binding Children}">
-                <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource Brush_TextPrimary}"/>
+                <TextBlock Text="{Binding DisplayName}"/>
             </HierarchicalDataTemplate>
 
             <DataTemplate DataType="{x:Type vm:ParamValueVm}">
@@ -119,6 +119,7 @@
             <Expander Style="{StaticResource BlenderExpander}" Header="构件目录（22G101）" IsExpanded="True" Margin="0,2,0,3">
                 <TreeView ItemsSource="{Binding CatalogTree}"
                           SelectedItemChanged="TreeView_SelectedItemChanged"
+                          Style="{StaticResource BlenderOutliner}"
                           Background="Transparent"
                           BorderThickness="0"
                           MaxHeight="200"

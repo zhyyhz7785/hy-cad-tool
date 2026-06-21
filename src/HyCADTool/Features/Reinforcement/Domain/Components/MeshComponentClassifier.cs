@@ -240,6 +240,7 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 
             ExtendWallsThroughThinMassAboveFoundation(rectRegions, parameters);
             ExtendMassConcreteThroughThinGapAboveFoundation(rectRegions, parameters);
+            FillReentrantNotchesBetweenColumns(rectRegions, regions, parameters);
         }
 
         /// <summary>N32：N30 + 梁判型(w≤800 h≤1500 非横竖条、上邻楼板、下侧气接触→梁)。</summary>
@@ -520,7 +521,6 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
                     double maxGap = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
 
                     if (h > maxGap
-                        && !HasBottomSlabDirectlyBelow(minX, maxX, minY, rectRegions)
                         && TryExtendMassDownToFoundation(i, rectRegions, parameters, out var split, out var removeIndices))
                     {
                         ApplyMassExtensionChanges(i, rectRegions, split, removeIndices, out int nextIndex);
@@ -856,6 +856,585 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
 
             return merged;
+        }
+
+        /// <summary>N30 Pass5：柱间基础顶凹角 h≤局部高 → 补填大体积。</summary>
+        private static void FillReentrantNotchesBetweenColumns(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            ComponentParameters parameters)
+        {
+            if (rectRegions == null || rectRegions.Count < 2 || parameters == null)
+                return;
+
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < rectRegions.Count && !changed; i++)
+                {
+                    if (!IsColumnRegion(rectRegions[i]))
+                        continue;
+
+                    for (int j = i + 1; j < rectRegions.Count && !changed; j++)
+                    {
+                        if (!IsColumnRegion(rectRegions[j]))
+                            continue;
+
+                        if (!TryFillNotchBetweenPair(
+                                i, j, rectRegions, regions, parameters,
+                                out var fillRegion, out var removeIndices))
+                            continue;
+
+                        ApplyNotchFill(rectRegions, fillRegion, removeIndices);
+                        changed = true;
+                    }
+                }
+
+                if (!changed && FillFoundationTopGaps(rectRegions, regions, parameters))
+                    changed = true;
+            }
+        }
+
+        private static void ApplyNotchFill(
+            List<ComponentRegion> rectRegions,
+            ComponentRegion fillRegion,
+            List<int> removeIndices)
+        {
+            if (removeIndices != null)
+            {
+                foreach (int ri in removeIndices.Distinct().OrderByDescending(idx => idx))
+                    rectRegions.RemoveAt(ri);
+            }
+
+            if (fillRegion != null)
+                rectRegions.Add(fillRegion);
+        }
+
+        private static bool IsColumnRegion(ComponentRegion region)
+        {
+            if (region?.Polygon == null)
+                return false;
+
+            return region.Type == ComponentType.MassConcrete || region.Type == ComponentType.Wall;
+        }
+
+        private static bool TryFillNotchBetweenPair(
+            int indexA,
+            int indexB,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            ComponentParameters parameters,
+            out ComponentRegion fillRegion,
+            out List<int> removeIndices)
+        {
+            fillRegion = null;
+            removeIndices = null;
+
+            GetBounds(rectRegions[indexA].Polygon, out double aMinX, out double aMaxX, out _, out _);
+            GetBounds(rectRegions[indexB].Polygon, out double bMinX, out double bMaxX, out _, out _);
+
+            int leftIdx;
+            int rightIdx;
+            double gapX0;
+            double gapX1;
+
+            if (aMaxX <= bMinX + EdgeToleranceMm)
+            {
+                leftIdx = indexA;
+                rightIdx = indexB;
+                gapX0 = aMaxX;
+                gapX1 = bMinX;
+            }
+            else if (bMaxX <= aMinX + EdgeToleranceMm)
+            {
+                leftIdx = indexB;
+                rightIdx = indexA;
+                gapX0 = bMaxX;
+                gapX1 = aMinX;
+            }
+            else
+            {
+                return false;
+            }
+
+            return TryFillNotchAtGap(
+                gapX0, gapX1, leftIdx, rightIdx, rectRegions, regions, parameters,
+                out fillRegion, out removeIndices);
+        }
+
+        private static bool TryFillNotchAtGap(
+            double gapX0,
+            double gapX1,
+            int leftIdx,
+            int rightIdx,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            ComponentParameters parameters,
+            out ComponentRegion fillRegion,
+            out List<int> removeIndices)
+        {
+            fillRegion = null;
+            removeIndices = null;
+
+            double gapWidth = gapX1 - gapX0;
+            if (gapWidth < EdgeToleranceMm || gapWidth > parameters.BeamMaxWidthMm + EdgeToleranceMm)
+                return false;
+
+            if (!TryGetFoundationTopY(gapX0, gapX1, rectRegions, out double foundationTopY))
+                return false;
+
+            double maxGap = parameters.LocalBumpMaxHeightMm + EdgeToleranceMm;
+
+            if (!TryResolveNotchTopY(
+                    gapX0, gapX1, foundationTopY, leftIdx, rightIdx,
+                    rectRegions, regions, maxGap, out double notchTopY))
+                return false;
+
+            double notchH = notchTopY - foundationTopY;
+            if (notchH <= EdgeToleranceMm || notchH > maxGap + EdgeToleranceMm)
+                return false;
+
+            if (IsNotchGapAlreadyFilled(gapX0, gapX1, foundationTopY, notchTopY, rectRegions, leftIdx, rightIdx))
+                return false;
+
+            var inGap = FindRegionsInBox(gapX0, gapX1, foundationTopY, notchTopY, rectRegions, leftIdx, rightIdx);
+            removeIndices = new List<int>();
+            foreach (int idx in inGap)
+            {
+                if (IsAbsorbableNotchGapType(rectRegions[idx].Type))
+                {
+                    removeIndices.Add(idx);
+                    continue;
+                }
+
+                return false;
+            }
+
+            fillRegion = CreateRectRegion(
+                gapX0, gapX1, foundationTopY, notchTopY,
+                ComponentType.MassConcrete,
+                Math.Min(gapWidth, notchH));
+            return true;
+        }
+
+        private static bool IsAbsorbableNotchGapType(ComponentType type)
+        {
+            return type == ComponentType.MassConcrete
+                || type == ComponentType.Wall
+                || type == ComponentType.LocalConcrete;
+        }
+
+        private static bool TryResolveNotchTopY(
+            double gapX0,
+            double gapX1,
+            double foundationTopY,
+            int leftIdx,
+            int rightIdx,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            double maxGap,
+            out double notchTopY)
+        {
+            notchTopY = double.NaN;
+            var candidates = new List<double>();
+
+            if (TryComputePocketTopFromAdjacentTierHeight(
+                    gapX0, gapX1, foundationTopY, leftIdx, rightIdx, rectRegions, maxGap, out double tierTop))
+            {
+                candidates.Add(tierTop);
+            }
+
+            if (TryComputePocketTopY(gapX0, gapX1, foundationTopY, rectRegions, out double lintelTop))
+            {
+                candidates.Add(lintelTop);
+            }
+
+            if (TryComputePocketTopFromOutline(
+                    gapX0, gapX1, foundationTopY, maxGap, regions, out double outlineTop))
+            {
+                candidates.Add(outlineTop);
+            }
+
+            if (candidates.Count == 0)
+                return false;
+
+            notchTopY = candidates.Min();
+            double notchH = notchTopY - foundationTopY;
+            return notchH > EdgeToleranceMm && notchH <= maxGap + EdgeToleranceMm;
+        }
+
+        /// <summary>基础顶 X 轴扫描：补填非严格柱对/角部在底板顶的残留薄层。</summary>
+        private static bool FillFoundationTopGaps(
+            List<ComponentRegion> rectRegions,
+            IReadOnlyList<ReinRegion> regions,
+            ComponentParameters parameters)
+        {
+            if (rectRegions == null || rectRegions.Count < 2 || parameters == null)
+                return false;
+
+            var foundationTops = new List<double>();
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.BottomSlab)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out _, out _, out _, out double nMaxY);
+                if (!foundationTops.Any(y => Math.Abs(y - nMaxY) <= EdgeToleranceMm))
+                    foundationTops.Add(nMaxY);
+            }
+
+            if (foundationTops.Count == 0)
+                return false;
+
+            bool anyFilled = false;
+            foreach (double foundationTopY in foundationTops)
+            {
+                var columnEdges = new SortedSet<double>();
+                for (int i = 0; i < rectRegions.Count; i++)
+                {
+                    if (!IsColumnRegion(rectRegions[i]))
+                        continue;
+
+                    GetBounds(rectRegions[i].Polygon, out double nMinX, out double nMaxX, out double nMinY, out _);
+                    if (nMinY > foundationTopY + EdgeToleranceMm)
+                        continue;
+
+                    columnEdges.Add(nMinX);
+                    columnEdges.Add(nMaxX);
+                }
+
+                if (columnEdges.Count < 2)
+                    continue;
+
+                var xs = columnEdges.ToList();
+                for (int k = 0; k < xs.Count - 1; k++)
+                {
+                    double gapX0 = xs[k];
+                    double gapX1 = xs[k + 1];
+                    if (gapX1 - gapX0 < EdgeToleranceMm)
+                        continue;
+
+                    if (!TryFindColumnIndexAtEdge(rectRegions, gapX0, isRightEdge: true, foundationTopY, out int leftIdx))
+                        continue;
+                    if (!TryFindColumnIndexAtEdge(rectRegions, gapX1, isRightEdge: false, foundationTopY, out int rightIdx))
+                        continue;
+                    if (leftIdx == rightIdx)
+                        continue;
+
+                    if (!TryFillNotchAtGap(
+                            gapX0, gapX1, leftIdx, rightIdx, rectRegions, regions, parameters,
+                            out var fillRegion, out var removeIndices))
+                        continue;
+
+                    ApplyNotchFill(rectRegions, fillRegion, removeIndices);
+                    anyFilled = true;
+                }
+            }
+
+            return anyFilled;
+        }
+
+        private static bool TryFindColumnIndexAtEdge(
+            IReadOnlyList<ComponentRegion> rectRegions,
+            double x,
+            bool isRightEdge,
+            double foundationTopY,
+            out int index)
+        {
+            index = -1;
+            for (int i = 0; i < rectRegions.Count; i++)
+            {
+                if (!IsColumnRegion(rectRegions[i]))
+                    continue;
+
+                GetBounds(rectRegions[i].Polygon, out double nMinX, out double nMaxX, out double nMinY, out _);
+                if (nMinY > foundationTopY + EdgeToleranceMm)
+                    continue;
+
+                if (isRightEdge)
+                {
+                    if (Math.Abs(nMaxX - x) <= EdgeToleranceMm)
+                    {
+                        index = i;
+                        return true;
+                    }
+                }
+                else if (Math.Abs(nMinX - x) <= EdgeToleranceMm)
+                {
+                    index = i;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>邻接基础层单元最小层高 → 凹角顶（合并残留薄层高度）。</summary>
+        private static bool TryComputePocketTopFromAdjacentTierHeight(
+            double gapX0,
+            double gapX1,
+            double foundationTopY,
+            int leftIdx,
+            int rightIdx,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            double maxGap,
+            out double pocketTopY)
+        {
+            pocketTopY = double.NaN;
+            GetBounds(rectRegions[leftIdx].Polygon, out double lMinX, out double lMaxX, out _, out _);
+            GetBounds(rectRegions[rightIdx].Polygon, out double rMinX, out double rMaxX, out _, out _);
+
+            double leftWidth = lMaxX - lMinX;
+            double rightWidth = rMaxX - rMinX;
+            double searchMinX = gapX0 - leftWidth;
+            double searchMaxX = gapX1 + rightWidth;
+
+            double minCellH = double.PositiveInfinity;
+            for (int k = 0; k < rectRegions.Count; k++)
+            {
+                var region = rectRegions[k];
+                if (region?.Polygon == null)
+                    continue;
+                if (region.Type != ComponentType.MassConcrete && region.Type != ComponentType.Wall)
+                    continue;
+
+                GetBounds(region.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double nMaxY);
+                if (!SpansOverlap(searchMinX, searchMaxX, nMinX, nMaxX))
+                    continue;
+                if (Math.Abs(nMinY - foundationTopY) > EdgeToleranceMm)
+                    continue;
+
+                double cellH = nMaxY - nMinY;
+                if (cellH <= EdgeToleranceMm)
+                    continue;
+
+                minCellH = Math.Min(minCellH, cellH);
+            }
+
+            if (double.IsPositiveInfinity(minCellH) || minCellH > maxGap + EdgeToleranceMm)
+                return false;
+
+            pocketTopY = foundationTopY + minCellH;
+            return true;
+        }
+
+        private static bool TryGetFoundationTopY(
+            double xa,
+            double xb,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            out double foundationTopY)
+        {
+            foundationTopY = double.NaN;
+            double segMidX = (xa + xb) / 2.0;
+            double bestSlabTop = double.NegativeInfinity;
+
+            for (int j = 0; j < rectRegions.Count; j++)
+            {
+                var neighbor = rectRegions[j];
+                if (neighbor?.Polygon == null || neighbor.Type != ComponentType.BottomSlab)
+                    continue;
+
+                GetBounds(neighbor.Polygon, out double nMinX, out double nMaxX, out _, out double nMaxY);
+                if (!SpansOverlap(xa, xb, nMinX, nMaxX))
+                    continue;
+                if (segMidX < nMinX - EdgeToleranceMm || segMidX > nMaxX + EdgeToleranceMm)
+                    continue;
+                if (nMaxY <= bestSlabTop)
+                    continue;
+
+                bestSlabTop = nMaxY;
+            }
+
+            if (double.IsNegativeInfinity(bestSlabTop))
+                return false;
+
+            foundationTopY = bestSlabTop;
+            return true;
+        }
+
+        private static bool IsNotchGapAlreadyFilled(
+            double gapX0,
+            double gapX1,
+            double foundationTopY,
+            double notchTopY,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            int leftIdx,
+            int rightIdx)
+        {
+            for (int k = 0; k < rectRegions.Count; k++)
+            {
+                if (k == leftIdx || k == rightIdx)
+                    continue;
+
+                var region = rectRegions[k];
+                if (region?.Polygon == null || region.Type != ComponentType.MassConcrete)
+                    continue;
+
+                GetBounds(region.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double nMaxY);
+                if (nMinX <= gapX0 + EdgeToleranceMm
+                    && nMaxX >= gapX1 - EdgeToleranceMm
+                    && nMinY <= foundationTopY + EdgeToleranceMm
+                    && nMaxY >= notchTopY - EdgeToleranceMm)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>凹角顶：缺口 X 范围内高于基础顶的最低构件底边（midX 探针 + 跨缺口 lintel）。</summary>
+        private static bool TryComputePocketTopY(
+            double gapX0,
+            double gapX1,
+            double foundationTopY,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            out double pocketTopY)
+        {
+            pocketTopY = double.PositiveInfinity;
+            double midX = (gapX0 + gapX1) / 2.0;
+
+            for (int k = 0; k < rectRegions.Count; k++)
+            {
+                var region = rectRegions[k];
+                if (region?.Polygon == null)
+                    continue;
+                if (region.Type != ComponentType.MassConcrete && region.Type != ComponentType.Wall)
+                    continue;
+
+                GetBounds(region.Polygon, out double nMinX, out double nMaxX, out double nMinY, out _);
+                if (nMinY <= foundationTopY + EdgeToleranceMm)
+                    continue;
+
+                bool spansGap = SpansOverlap(gapX0, gapX1, nMinX, nMaxX);
+                bool coversMid = midX >= nMinX - EdgeToleranceMm && midX <= nMaxX + EdgeToleranceMm;
+                if (!spansGap && !coversMid)
+                    continue;
+
+                pocketTopY = Math.Min(pocketTopY, nMinY);
+            }
+
+            if (double.IsPositiveInfinity(pocketTopY))
+                return false;
+
+            return true;
+        }
+
+        /// <summary>沿缺口内缘/中心向上探针，首个混凝土点 Y 作为凹角顶（取各探针最低值）。</summary>
+        private static bool TryComputePocketTopFromOutline(
+            double gapX0,
+            double gapX1,
+            double foundationTopY,
+            double maxGap,
+            IReadOnlyList<ReinRegion> regions,
+            out double pocketTopY)
+        {
+            pocketTopY = double.PositiveInfinity;
+            var probeXs = new List<double>();
+            if (gapX1 - gapX0 > 2.0 * ProbeOffsetMm + EdgeToleranceMm)
+            {
+                probeXs.Add(gapX0 + ProbeOffsetMm);
+                probeXs.Add(gapX1 - ProbeOffsetMm);
+            }
+
+            probeXs.Add((gapX0 + gapX1) / 2.0);
+
+            foreach (double probeX in probeXs)
+            {
+                if (TryProbeOutlineTopAt(probeX, foundationTopY, maxGap, regions, out double yAtProbe))
+                    pocketTopY = Math.Min(pocketTopY, yAtProbe);
+            }
+
+            if (double.IsPositiveInfinity(pocketTopY))
+                return false;
+
+            return pocketTopY - foundationTopY <= maxGap + EdgeToleranceMm;
+        }
+
+        private static bool TryProbeOutlineTopAt(
+            double probeX,
+            double foundationTopY,
+            double maxGap,
+            IReadOnlyList<ReinRegion> regions,
+            out double pocketTopY)
+        {
+            pocketTopY = double.NaN;
+            const double stepMm = 5.0;
+
+            for (double y = foundationTopY + EdgeToleranceMm;
+                 y <= foundationTopY + maxGap + EdgeToleranceMm;
+                 y += stepMm)
+            {
+                if (!IsConcreteRebarPoint(new Point2D(probeX, y), regions))
+                    continue;
+
+                pocketTopY = y;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static List<int> FindRegionsInBox(
+            double x0,
+            double x1,
+            double y0,
+            double y1,
+            IReadOnlyList<ComponentRegion> rectRegions,
+            int excludeLeftIdx,
+            int excludeRightIdx)
+        {
+            var indices = new List<int>();
+            for (int k = 0; k < rectRegions.Count; k++)
+            {
+                if (k == excludeLeftIdx || k == excludeRightIdx)
+                    continue;
+
+                var region = rectRegions[k];
+                if (region?.Polygon == null)
+                    continue;
+
+                GetBounds(region.Polygon, out double nMinX, out double nMaxX, out double nMinY, out double nMaxY);
+                if (!SpansOverlap(x0, x1, nMinX, nMaxX))
+                    continue;
+                if (!RangesOverlap(y0, y1, nMinY, nMaxY))
+                    continue;
+
+                double overlapW = Math.Min(x1, nMaxX) - Math.Max(x0, nMinX);
+                double overlapH = Math.Min(y1, nMaxY) - Math.Max(y0, nMinY);
+                if (overlapW < EdgeToleranceMm || overlapH < EdgeToleranceMm)
+                    continue;
+
+                indices.Add(k);
+            }
+
+            return indices;
+        }
+
+        private static bool RangesOverlap(double a0, double a1, double b0, double b1)
+        {
+            if (a0 > a1)
+                (a0, a1) = (a1, a0);
+            if (b0 > b1)
+                (b0, b1) = (b1, b0);
+
+            return a0 < b1 - EdgeToleranceMm && b0 < a1 - EdgeToleranceMm;
+        }
+
+        private static bool IsConcreteRebarPoint(Point2D point, IReadOnlyList<ReinRegion> regions)
+        {
+            if (regions == null || regions.Count == 0)
+                return true;
+
+            foreach (var region in regions)
+            {
+                if (region?.IsValidRebarPoint(point) == true)
+                    return true;
+            }
+
+            return false;
         }
 
         private static bool SpansOverlap(double aMinX, double aMaxX, double bMinX, double bMaxX)
