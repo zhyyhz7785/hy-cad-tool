@@ -7,13 +7,13 @@ namespace HyCADTool.Features.G16.Domain.Tables
     /// <summary>16G101 全局查表设定（面板顶部共享）。</summary>
     public class G16GlobalSettings : INotifyPropertyChanged
     {
-        private ConcreteGrade _concreteGrade = ConcreteGrade.C30;
+        private G16ConcreteGrade _concreteGrade = G16ConcreteGrade.C30;
         private RebarGrade _rebarGrade = RebarGrade.HRB400;
         private SeismicGrade _seismicGrade = SeismicGrade.Grade2;
         private EnvironmentClass _environmentClass = EnvironmentClass.ClassI;
         private int _rebarDiameter = 16;
 
-        public ConcreteGrade ConcreteGrade
+        public G16ConcreteGrade ConcreteGrade
         {
             get => _concreteGrade;
             set { if (_concreteGrade == value) return; _concreteGrade = value; OnPropertyChanged(); }

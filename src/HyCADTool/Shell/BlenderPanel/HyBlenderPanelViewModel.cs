@@ -62,6 +62,8 @@ namespace HyCADTool.Shell.ViewModels
                 OnPropertyChanged(nameof(ShowScalePanel));
                 OnPropertyChanged(nameof(BreadcrumbText));
                 RefreshFilterNow("tab-switch");
+                if (value?.Key == G16TabKey)
+                    HyCADTool.Features.G16.ViewModels.G16PanelViewModel.Current?.RefreshCatalogTree();
             }
         }
 

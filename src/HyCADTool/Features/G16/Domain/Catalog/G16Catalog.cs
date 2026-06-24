@@ -4,6 +4,7 @@ using HyCADTool.Features.G101.Domain.Catalog;
 using HyCADTool.Features.G101.Domain.Geometry;
 using HyCADTool.Features.G101.Domain.Tables;
 using HyCADTool.Features.G16.Domain.Components.Column;
+using HyCADTool.Features.G16.Domain.Components.Tables;
 using HyCADTool.Features.G16.Domain.Components.Wall;
 using HyCADTool.Features.G16.Domain.Tables;
 
@@ -49,6 +50,9 @@ namespace HyCADTool.Features.G16.Domain.Catalog
         {
             var atlas = new G16CatalogAtlas { AtlasId = "16G101-1", Name = "框架/剪力墙/梁/板" };
 
+            var lookup = new G16CatalogGroup { Name = "查表" };
+            lookup.Items.Add(CreatePage53Tables());
+
             var col = new G16CatalogGroup { Name = "柱" };
             col.Items.Add(CreateKzStirrup());
             col.Items.Add(CreateKzTopBar());
@@ -71,11 +75,30 @@ namespace HyCADTool.Features.G16.Domain.Catalog
             slab.Items.Add(Placeholder("slab-hole", "板开洞 BD 加强", "16G101-1", "99", false));
             slab.Items.Add(Placeholder("hjd", "后浇带 HJD 钢筋", "16G101-1", "101", false));
 
+            atlas.Groups.Add(lookup);
             atlas.Groups.Add(col);
             atlas.Groups.Add(wall);
             atlas.Groups.Add(beam);
             atlas.Groups.Add(slab);
             return atlas;
+        }
+
+        private static G16CatalogItem CreatePage53Tables()
+        {
+            var item = new G16CatalogItem
+            {
+                Id = "page53-anchor",
+                Name = "第53页 lab/labE/la/ζ_a 查表",
+                AtlasRef = new AtlasRef("16G101-1", "53", "受拉钢筋基本锚固长度 lab/labE/la/ζ_a"),
+                IsImplemented = true,
+                Build = Page53AnchorTableBuilder.Build
+            };
+            item.Parameters.Add(new ParamDescriptor { Key = "textHeight", Label = "单元格字高", Kind = ParamKind.Number, DefaultNumber = 250, Unit = "mm" });
+            item.Parameters.Add(new ParamDescriptor { Key = "drawTable1", Label = "绘制表1 lab/labE", Kind = ParamKind.Boolean, DefaultBool = true });
+            item.Parameters.Add(new ParamDescriptor { Key = "drawTable2", Label = "绘制表2 la/laE 公式", Kind = ParamKind.Boolean, DefaultBool = true });
+            item.Parameters.Add(new ParamDescriptor { Key = "drawTable3", Label = "绘制表3 ζ_a", Kind = ParamKind.Boolean, DefaultBool = true });
+            item.Parameters.Add(new ParamDescriptor { Key = "highlightSelection", Label = "高亮当前查表单元", Kind = ParamKind.Boolean, DefaultBool = true });
+            return item;
         }
 
         private static G16CatalogAtlas BuildAtlas101_2()

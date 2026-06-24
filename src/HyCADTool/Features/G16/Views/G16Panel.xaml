@@ -122,8 +122,14 @@
                           Style="{StaticResource BlenderOutliner}"
                           Background="Transparent"
                           BorderThickness="0"
-                          MaxHeight="200"
-                          Margin="0,4,0,0"/>
+                          MaxHeight="320"
+                          Margin="0,4,0,0">
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="{x:Type TreeViewItem}">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                </TreeView>
             </Expander>
 
             <Expander Style="{StaticResource BlenderExpander}" Header="构件参数" IsExpanded="True" Margin="0,2,0,3">

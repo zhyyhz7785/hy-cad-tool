@@ -57,7 +57,10 @@ namespace HyCADTool.Shell.Commands
 
         /// <summary>显示 16G101 参数化构造大样 Tab。</summary>
         public static void ShowG16Panel()
-            => OpenTab(HyBlenderPanelViewModel.G16TabKey, "显示 16G101 面板失败");
+        {
+            OpenTab(HyBlenderPanelViewModel.G16TabKey, "显示 16G101 面板失败");
+            HyCADTool.Features.G16.ViewModels.G16PanelViewModel.Current?.RefreshCatalogTree();
+        }
 
         /// <summary>显示 3D结构（HY3 工作流）Tab。</summary>
         public static void ShowStructure3DPanel()

@@ -14,8 +14,10 @@ namespace HyCADTool.Features.G16.Views
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext == null)
-                DataContext = G16PanelViewModel.Current;
+            var vm = G16PanelViewModel.Current;
+            if (vm == null) return;
+            vm.RefreshCatalogTree();
+            DataContext = vm;
         }
 
         private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)

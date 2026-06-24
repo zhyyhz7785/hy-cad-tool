@@ -64,6 +64,7 @@ namespace HyCADTool.Features.G16.ViewModels
         public string DisplayName { get; set; }
         public bool IsImplemented { get; set; }
         public bool IsGroup { get; set; }
+        public bool IsExpanded { get; set; } = true;
         public G16CatalogItem Item { get; set; }
         public ObservableCollection<G16CatalogTreeItemVm> Children { get; } = new ObservableCollection<G16CatalogTreeItemVm>();
     }
@@ -92,7 +93,7 @@ namespace HyCADTool.Features.G16.ViewModels
         public ObservableCollection<G16CatalogTreeItemVm> CatalogTree { get; } = new ObservableCollection<G16CatalogTreeItemVm>();
         public ObservableCollection<G16ParamValueVm> Parameters { get; } = new ObservableCollection<G16ParamValueVm>();
 
-        public Array ConcreteGradeChoices => Enum.GetValues(typeof(ConcreteGrade));
+        public Array ConcreteGradeChoices => Enum.GetValues(typeof(G16ConcreteGrade));
         public Array RebarGradeChoices => Enum.GetValues(typeof(RebarGrade));
         public Array SeismicGradeChoices => Enum.GetValues(typeof(SeismicGrade));
         public Array EnvironmentClassChoices => Enum.GetValues(typeof(EnvironmentClass));
@@ -155,6 +156,32 @@ namespace HyCADTool.Features.G16.ViewModels
             RefreshLookupSummary();
         }
 
+        /// <summary>C2 热重载后面板仍缓存旧目录时，重新从 <see cref="G16Catalog"/> 构建树。</summary>
+        public void RefreshCatalogTree()
+        {
+            var prevId = SelectedNode?.Item?.Id;
+            BuildCatalogTree();
+            SelectedNode = string.IsNullOrEmpty(prevId)
+                ? null
+                : FindItemNode(prevId);
+        }
+
+        private G16CatalogTreeItemVm FindItemNode(string itemId)
+        {
+            foreach (var atlas in CatalogTree)
+            {
+                foreach (var group in atlas.Children)
+                {
+                    foreach (var leaf in group.Children)
+                    {
+                        if (leaf.Item?.Id == itemId)
+                            return leaf;
+                    }
+                }
+            }
+            return null;
+        }
+
         private void BuildCatalogTree()
         {
             CatalogTree.Clear();
@@ -163,14 +190,16 @@ namespace HyCADTool.Features.G16.ViewModels
                 var atlasNode = new G16CatalogTreeItemVm
                 {
                     DisplayName = atlas.AtlasId + " " + atlas.Name,
-                    IsGroup = true
+                    IsGroup = true,
+                    IsExpanded = true
                 };
                 foreach (var group in atlas.Groups)
                 {
                     var groupNode = new G16CatalogTreeItemVm
                     {
                         DisplayName = group.Name,
-                        IsGroup = true
+                        IsGroup = true,
+                        IsExpanded = true
                     };
                     foreach (var item in group.Items)
                     {
