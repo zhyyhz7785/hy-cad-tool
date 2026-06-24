@@ -46,8 +46,8 @@ public sealed class FormulaServiceRecalcTests
 
         var result = FormulaService.Recalculate(grid);
 
-        GridEditor.GetValue(result, new CellAddr(0, 0)).Text.Should().Be("#REF!");
-        GridEditor.GetValue(result, new CellAddr(0, 1)).Text.Should().Be("#REF!");
+        GridEditor.GetValue(result, new CellAddr(0, 0)).Text.Should().Be("#CIRCULAR!");
+        GridEditor.GetValue(result, new CellAddr(0, 1)).Text.Should().Be("#CIRCULAR!");
         GridInvariants.Validate(result).IsValid.Should().BeTrue();
     }
 

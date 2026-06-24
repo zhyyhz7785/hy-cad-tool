@@ -42,12 +42,15 @@ internal sealed class UnaryNode : FormulaNode
 
     public override FormulaResult Evaluate(IFormulaContext? context)
     {
-        var value = Operand.Evaluate(context).GetValueOrThrow();
+        var operand = Operand.Evaluate(context);
+        if (operand.IsError)
+            return operand;
+
         return Operator switch
         {
-            "+" => FormulaResult.FromValue(value),
-            "-" => FormulaResult.FromValue(-value),
-            _ => throw new FormulaException(FormulaErrorCode.Value)
+            "+" => FormulaResult.FromValue(operand.Value),
+            "-" => FormulaResult.FromValue(-operand.Value),
+            _ => FormulaResult.FromError(FormulaErrorCode.Value)
         };
     }
 
@@ -70,18 +73,24 @@ internal sealed class BinaryNode : FormulaNode
 
     public override FormulaResult Evaluate(IFormulaContext? context)
     {
-        var left = Left.Evaluate(context).GetValueOrThrow();
-        var right = Right.Evaluate(context).GetValueOrThrow();
+        var left = Left.Evaluate(context);
+        if (left.IsError)
+            return left;
+
+        var right = Right.Evaluate(context);
+        if (right.IsError)
+            return right;
+
         return Operator switch
         {
-            "+" => FormulaResult.FromValue(left + right),
-            "-" => FormulaResult.FromValue(left - right),
-            "*" => FormulaResult.FromValue(left * right),
-            "/" => right == 0
+            "+" => FormulaMath.FromDouble(left.Value + right.Value),
+            "-" => FormulaMath.FromDouble(left.Value - right.Value),
+            "*" => FormulaMath.FromDouble(left.Value * right.Value),
+            "/" => right.Value == 0
                 ? FormulaResult.FromError(FormulaErrorCode.DivByZero)
-                : FormulaResult.FromValue(left / right),
-            "^" => FormulaResult.FromValue(Math.Pow(left, right)),
-            _ => throw new FormulaException(FormulaErrorCode.Value)
+                : FormulaMath.FromDouble(left.Value / right.Value),
+            "^" => FormulaMath.FromDouble(Math.Pow(left.Value, right.Value)),
+            _ => FormulaResult.FromError(FormulaErrorCode.Value)
         };
     }
 
@@ -99,8 +108,11 @@ internal sealed class PercentNode : FormulaNode
 
     public override FormulaResult Evaluate(IFormulaContext? context)
     {
-        var value = Operand.Evaluate(context).GetValueOrThrow();
-        return FormulaResult.FromValue(value / 100.0);
+        var operand = Operand.Evaluate(context);
+        if (operand.IsError)
+            return operand;
+
+        return FormulaMath.FromDouble(operand.Value / 100.0);
     }
 
     public override void CollectReferences(List<CellAddr> references) =>
@@ -114,15 +126,19 @@ internal sealed class FactorialNode : FormulaNode
 
     public override FormulaResult Evaluate(IFormulaContext? context)
     {
-        var value = Operand.Evaluate(context).GetValueOrThrow();
+        var operand = Operand.Evaluate(context);
+        if (operand.IsError)
+            return operand;
+
+        var value = operand.Value;
         if (value < 0 || Math.Abs(value - Math.Round(value)) > 1e-12)
-            throw new FormulaException(FormulaErrorCode.Num);
+            return FormulaResult.FromError(FormulaErrorCode.Num);
 
         var n = (int)Math.Round(value);
         double result = 1;
         for (var i = 2; i <= n; i++)
             result *= i;
-        return FormulaResult.FromValue(result);
+        return FormulaMath.FromDouble(result);
     }
 
     public override void CollectReferences(List<CellAddr> references) =>
@@ -139,7 +155,14 @@ internal sealed class CellRefNode : FormulaNode
         if (context == null)
             return FormulaResult.FromError(FormulaErrorCode.Ref);
 
-        return FormulaResult.FromValue(context.GetNumber(Address));
+        try
+        {
+            return FormulaMath.FromDouble(context.GetNumber(Address));
+        }
+        catch (FormulaException ex)
+        {
+            return FormulaResult.FromError(ex.Code);
+        }
     }
 
     public override void CollectReferences(List<CellAddr> references) =>

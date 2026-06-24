@@ -14,7 +14,7 @@ public static class FormulaError
             FormulaErrorCode.Ref => "#REF!",
             FormulaErrorCode.Num => "#NUM!",
             FormulaErrorCode.NA => "#N/A",
-            FormulaErrorCode.Circular => "#REF!",
+            FormulaErrorCode.Circular => "#CIRCULAR!",
             _ => "#VALUE!"
         };
 
@@ -43,6 +43,9 @@ public static class FormulaError
                 return true;
             case "#N/A":
                 code = FormulaErrorCode.NA;
+                return true;
+            case "#CIRCULAR!":
+                code = FormulaErrorCode.Circular;
                 return true;
             default:
                 return false;

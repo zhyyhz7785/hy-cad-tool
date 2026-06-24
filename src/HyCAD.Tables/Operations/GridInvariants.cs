@@ -27,7 +27,10 @@ public static class GridInvariants
         ValidateMerges(structure.Merges, rowCount, colCount, violations);
         ValidateDiagonals(structure, violations);
         ValidateFieldKeys(structure, violations);
+        ValidateFieldIndexAnchors(structure, violations);
         ValidateCellValues(structure, data, violations);
+        ValidateDataPlacement(structure, data, violations);
+        ValidateSameValueMirrors(structure, data, violations);
 
         return violations.Count == 0
             ? TableValidationReport.Valid
@@ -160,6 +163,91 @@ public static class GridInvariants
             }
         }
     }
+
+    private static void ValidateFieldIndexAnchors(
+        GridStructure structure,
+        List<TableViolation> violations)
+    {
+        foreach (var entry in structure.FieldIndex)
+        {
+            var addr = entry.Value;
+            if (structure.IsHidden(addr))
+            {
+                violations.Add(new TableViolation(
+                    TableInvariantCode.FieldKeyNotOnAnchor,
+                    $"FieldKey \"{entry.Key}\" 绑定到被合并隐藏格 {addr}，应绑定 Anchor {structure.GetAnchorOf(addr)}。",
+                    addr));
+            }
+        }
+    }
+
+    private static void ValidateDataPlacement(
+        GridStructure structure,
+        GridData data,
+        List<TableViolation> violations)
+    {
+        foreach (var addr in data.Cells.Keys)
+        {
+            if (!structure.IsHidden(addr))
+                continue;
+
+            if (structure.TryGetMergeAt(addr, out var merge)
+                && merge.ValuePolicy == MergeValuePolicy.SameValue)
+                continue;
+
+            violations.Add(new TableViolation(
+                TableInvariantCode.DataOnHiddenCell,
+                $"Data.Cells 在隐藏格 {addr} 存有数据，应仅保留 Anchor {structure.GetAnchorOf(addr)}。",
+                addr));
+        }
+    }
+
+    private static void ValidateSameValueMirrors(
+        GridStructure structure,
+        GridData data,
+        List<TableViolation> violations)
+    {
+        foreach (var merge in structure.Merges)
+        {
+            if (merge.ValuePolicy != MergeValuePolicy.SameValue)
+                continue;
+
+            if (!data.Cells.TryGetValue(merge.Anchor, out var anchorValue))
+                continue;
+
+            var endRow = merge.TopLeft.Row + merge.RowSpan;
+            var endCol = merge.TopLeft.Col + merge.ColSpan;
+            for (var row = merge.TopLeft.Row; row < endRow; row++)
+            {
+                for (var col = merge.TopLeft.Col; col < endCol; col++)
+                {
+                    var addr = new CellAddr(row, col);
+                    if (!data.Cells.TryGetValue(addr, out var memberValue))
+                    {
+                        violations.Add(new TableViolation(
+                            TableInvariantCode.SameValueMirrorMismatch,
+                            $"SameValue 合并区 Anchor={merge.Anchor} 的 member {addr} 缺少镜像值。",
+                            addr));
+                        continue;
+                    }
+
+                    if (!CellValuesEqual(anchorValue, memberValue))
+                    {
+                        violations.Add(new TableViolation(
+                            TableInvariantCode.SameValueMirrorMismatch,
+                            $"SameValue 合并区 Anchor={merge.Anchor} 与 member {addr} 值不一致。",
+                            addr));
+                    }
+                }
+            }
+        }
+    }
+
+    private static bool CellValuesEqual(CellValue left, CellValue right) =>
+        left.Kind == right.Kind
+        && left.Text == right.Text
+        && left.Formula == right.Formula
+        && left.BindingExpr == right.BindingExpr;
 
     private static void ValidateCellValues(
         GridStructure structure,

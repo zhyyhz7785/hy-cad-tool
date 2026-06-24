@@ -207,6 +207,58 @@ public sealed class GridInvariantsTests
         merge.Covers(new CellAddr(0, 2)).Should().BeFalse();
     }
 
+    [Fact]
+    public void Validate_data_on_hidden_cell_reports_DataOnHiddenCell()
+    {
+        var anchor = new CellAddr(0, 0);
+        var member = new CellAddr(1, 1);
+        var structure = BuildStructure(
+            merges: new[] { new MergeRegion(anchor, 2, 2) });
+        var data = new GridData(new Dictionary<CellAddr, CellValue>
+        {
+            [anchor] = new CellValue("anchor"),
+            [member] = new CellValue("stale")
+        });
+
+        var report = GridInvariants.Validate(structure, data);
+
+        report.Violations.Should().Contain(v =>
+            v.Code == TableInvariantCode.DataOnHiddenCell && v.Cell == member);
+    }
+
+    [Fact]
+    public void Validate_field_key_on_hidden_cell_reports_FieldKeyNotOnAnchor()
+    {
+        var hidden = new CellAddr(1, 1);
+        var structure = BuildStructure(
+            merges: new[] { new MergeRegion(new CellAddr(0, 0), 2, 2) },
+            fieldIndex: new Dictionary<string, CellAddr> { ["name"] = hidden });
+
+        var report = GridInvariants.Validate(structure, GridData.Empty);
+
+        report.Violations.Should().Contain(v =>
+            v.Code == TableInvariantCode.FieldKeyNotOnAnchor && v.Cell == hidden);
+    }
+
+    [Fact]
+    public void Validate_same_value_mirror_mismatch_reports_violation()
+    {
+        var anchor = new CellAddr(0, 0);
+        var member = new CellAddr(1, 1);
+        var structure = BuildStructure(
+            merges: new[] { new MergeRegion(anchor, 2, 2, MergeValuePolicy.SameValue) });
+        var data = new GridData(new Dictionary<CellAddr, CellValue>
+        {
+            [anchor] = new CellValue("a"),
+            [member] = new CellValue("b")
+        });
+
+        var report = GridInvariants.Validate(structure, data);
+
+        report.Violations.Should().Contain(v =>
+            v.Code == TableInvariantCode.SameValueMirrorMismatch && v.Cell == member);
+    }
+
     private static GridStructure BuildStructure(
         IReadOnlyList<MergeRegion>? merges = null,
         IReadOnlyDictionary<CellAddr, DiagonalSplit>? diagonals = null,

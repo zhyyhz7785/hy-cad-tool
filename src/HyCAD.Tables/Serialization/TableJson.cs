@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using HyCAD.Tables.Formulas;
 
 namespace HyCAD.Tables.Serialization;
 
@@ -18,7 +19,7 @@ public static class TableJson
         return JsonSerializer.Serialize(dto, CreateOptions(indented));
     }
 
-    /// <summary>反序列化文档（加载后重建 SameValue 镜像）。</summary>
+    /// <summary>反序列化文档（加载后重建 SameValue 镜像并重算公式）。</summary>
     public static TableDocument Deserialize(string json)
     {
         if (json == null)
@@ -30,7 +31,7 @@ public static class TableJson
         var document = TableJsonMapper.FromDto(dto);
         var tables = new TableGrid[document.Tables.Count];
         for (var i = 0; i < document.Tables.Count; i++)
-            tables[i] = TableJsonMapper.RebuildMirrors(document.Tables[i]);
+            tables[i] = FormulaService.Recalculate(TableJsonMapper.RebuildMirrors(document.Tables[i]));
 
         return document with { Tables = tables };
     }
@@ -45,7 +46,7 @@ public static class TableJson
         return JsonSerializer.Serialize(dto, CreateOptions(indented));
     }
 
-    /// <summary>反序列化单张表（加载后重建 SameValue 镜像）。</summary>
+    /// <summary>反序列化单张表（加载后重建 SameValue 镜像并重算公式）。</summary>
     public static TableGrid DeserializeGrid(string json)
     {
         if (json == null)
@@ -54,7 +55,7 @@ public static class TableJson
         var dto = JsonSerializer.Deserialize<TableGridDto>(json, CreateOptions(false))
             ?? throw new JsonException("JSON 反序列化结果为 null。");
 
-        return TableJsonMapper.RebuildMirrors(TableJsonMapper.FromDto(dto));
+        return FormulaService.Recalculate(TableJsonMapper.RebuildMirrors(TableJsonMapper.FromDto(dto)));
     }
 
     private static JsonSerializerOptions CreateOptions(bool indented)

@@ -57,16 +57,24 @@ public static class GridEditor
         var newStructure = WithMerges(structure, merges);
 
         if (policy == MergeValuePolicy.AnchorOnly)
-            return grid with { Structure = newStructure };
+        {
+            var cells = CloneCells(grid.Data.Cells);
+            ClearHiddenMemberData(cells, newRegion);
+            return grid with
+            {
+                Structure = newStructure,
+                Data = new GridData(cells)
+            };
+        }
 
-        var cells = CloneCells(grid.Data.Cells);
+        var sameValueCells = CloneCells(grid.Data.Cells);
         grid.Data.Cells.TryGetValue(topLeft, out var anchorValue);
-        MirrorRegion(cells, newRegion, IsEmptyValue(anchorValue) ? null : anchorValue);
+        MirrorRegion(sameValueCells, newRegion, IsEmptyValue(anchorValue) ? null : anchorValue);
 
         return grid with
         {
             Structure = newStructure,
-            Data = new GridData(cells)
+            Data = new GridData(sameValueCells)
         };
     }
 
@@ -556,6 +564,24 @@ public static class GridEditor
             && sameValueMerge.ValuePolicy == MergeValuePolicy.SameValue)
         {
             MirrorRegion(cells, sameValueMerge, value);
+        }
+    }
+
+    private static void ClearHiddenMemberData(
+        Dictionary<CellAddr, CellValue> cells,
+        MergeRegion region)
+    {
+        var endRow = region.TopLeft.Row + region.RowSpan;
+        var endCol = region.TopLeft.Col + region.ColSpan;
+
+        for (var row = region.TopLeft.Row; row < endRow; row++)
+        {
+            for (var col = region.TopLeft.Col; col < endCol; col++)
+            {
+                var addr = new CellAddr(row, col);
+                if (addr != region.Anchor)
+                    cells.Remove(addr);
+            }
         }
     }
 

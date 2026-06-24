@@ -69,38 +69,61 @@ internal static class FormulaFunctions
         var scalars = RequireScalars(args, context);
         return name.ToUpperInvariant() switch
         {
-            "SIN" => FormulaResult.FromValue(Math.Sin(scalars[0])),
-            "COS" => FormulaResult.FromValue(Math.Cos(scalars[0])),
-            "TAN" => FormulaResult.FromValue(Math.Tan(scalars[0])),
-            "ASIN" => FormulaResult.FromValue(Math.Asin(scalars[0])),
-            "ACOS" => FormulaResult.FromValue(Math.Acos(scalars[0])),
-            "ATAN" => FormulaResult.FromValue(Math.Atan(scalars[0])),
-            "ATAN2" => FormulaResult.FromValue(Math.Atan2(scalars[0], scalars[1])),
-            "SINH" => FormulaResult.FromValue(Math.Sinh(scalars[0])),
-            "COSH" => FormulaResult.FromValue(Math.Cosh(scalars[0])),
-            "TANH" => FormulaResult.FromValue(Math.Tanh(scalars[0])),
-            "EXP" => FormulaResult.FromValue(Math.Exp(scalars[0])),
-            "LN" => FormulaResult.FromValue(Math.Log(scalars[0])),
-            "LOG10" => FormulaResult.FromValue(Math.Log10(scalars[0])),
+            "SIN" => FormulaMath.FromDouble(Math.Sin(scalars[0])),
+            "COS" => FormulaMath.FromDouble(Math.Cos(scalars[0])),
+            "TAN" => FormulaMath.FromDouble(Math.Tan(scalars[0])),
+            "ASIN" => FormulaMath.FromDouble(Math.Asin(scalars[0])),
+            "ACOS" => FormulaMath.FromDouble(Math.Acos(scalars[0])),
+            "ATAN" => FormulaMath.FromDouble(Math.Atan(scalars[0])),
+            "ATAN2" => FormulaMath.FromDouble(Math.Atan2(scalars[0], scalars[1])),
+            "SINH" => FormulaMath.FromDouble(Math.Sinh(scalars[0])),
+            "COSH" => FormulaMath.FromDouble(Math.Cosh(scalars[0])),
+            "TANH" => FormulaMath.FromDouble(Math.Tanh(scalars[0])),
+            "EXP" => FormulaMath.FromDouble(Math.Exp(scalars[0])),
+            "LN" => LogNatural(scalars[0]),
+            "LOG10" => LogBase(scalars[0], 10),
             "LOG" => scalars.Count >= 2
-                ? FormulaResult.FromValue(Math.Log(scalars[0], scalars[1]))
-                : FormulaResult.FromValue(Math.Log10(scalars[0])),
-            "SQRT" => FormulaResult.FromValue(Math.Sqrt(scalars[0])),
+                ? LogBase(scalars[0], scalars[1])
+                : LogBase(scalars[0], 10),
+            "SQRT" => FormulaMath.FromDouble(Math.Sqrt(scalars[0])),
             "ABS" => FormulaResult.FromValue(Math.Abs(scalars[0])),
             "SIGN" => FormulaResult.FromValue(Math.Sign(scalars[0])),
             "ROUND" => FormulaResult.FromValue(
                 Math.Round(scalars[0], scalars.Count >= 2 ? (int)scalars[1] : 0)),
             "FLOOR" => FormulaResult.FromValue(Math.Floor(scalars[0])),
             "CEILING" => FormulaResult.FromValue(Math.Ceiling(scalars[0])),
-            "TRUNC" => FormulaResult.FromValue(
-                Math.Truncate(scalars[0])),
-            "MOD" => FormulaResult.FromValue(scalars[0] % scalars[1]),
-            "POWER" => FormulaResult.FromValue(Math.Pow(scalars[0], scalars[1])),
+            "TRUNC" => FormulaResult.FromValue(Math.Truncate(scalars[0])),
+            "MOD" => Mod(scalars[0], scalars[1]),
+            "POWER" => FormulaMath.FromDouble(Math.Pow(scalars[0], scalars[1])),
             "FACT" => Fact(scalars[0]),
             "DEGREES" => FormulaResult.FromValue(scalars[0] * 180.0 / Math.PI),
             "RADIANS" => FormulaResult.FromValue(scalars[0] * Math.PI / 180.0),
             _ => FormulaResult.FromError(FormulaErrorCode.Name)
         };
+    }
+
+    private static FormulaResult LogNatural(double value)
+    {
+        if (value <= 0)
+            return FormulaResult.FromError(FormulaErrorCode.Num);
+
+        return FormulaMath.FromDouble(Math.Log(value));
+    }
+
+    private static FormulaResult LogBase(double value, double logBase)
+    {
+        if (value <= 0 || logBase <= 0 || Math.Abs(logBase - 1) < 1e-15)
+            return FormulaResult.FromError(FormulaErrorCode.Num);
+
+        return FormulaMath.FromDouble(Math.Log(value, logBase));
+    }
+
+    private static FormulaResult Mod(double dividend, double divisor)
+    {
+        if (Math.Abs(divisor) < 1e-15)
+            return FormulaResult.FromError(FormulaErrorCode.DivByZero);
+
+        return FormulaMath.FromDouble(dividend % divisor);
     }
 
     private static FormulaResult Aggregate(
@@ -164,7 +187,7 @@ internal static class FormulaFunctions
         double result = 1;
         for (var i = 2; i <= n; i++)
             result *= i;
-        return FormulaResult.FromValue(result);
+        return FormulaMath.FromDouble(result);
     }
 
     private static IEnumerable<CellAddr> ExpandRange(CellAddr from, CellAddr to)

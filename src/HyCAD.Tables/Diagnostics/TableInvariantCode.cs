@@ -30,5 +30,14 @@ public enum TableInvariantCode
     FormulaMissing,
 
     /// <summary>Kind=Bound 但 BindingExpr 为空。</summary>
-    BindingMissing
+    BindingMissing,
+
+    /// <summary>FieldIndex 指向被合并覆盖的非 Anchor 格。</summary>
+    FieldKeyNotOnAnchor,
+
+    /// <summary>Data.Cells 键落在被合并隐藏格。</summary>
+    DataOnHiddenCell,
+
+    /// <summary>SameValue 合并区 member 与 Anchor 值不一致。</summary>
+    SameValueMirrorMismatch
 }

@@ -1,5 +1,9 @@
 using FluentAssertions;
+using HyCAD.Tables;
+using HyCAD.Tables.Data;
 using HyCAD.Tables.Formulas;
+using HyCAD.Tables.Operations;
+using HyCAD.Tables.Structure;
 using Xunit;
 
 namespace HyCAD.Tables.Tests;
@@ -35,5 +39,23 @@ public sealed class FormulaCalculatorTests
         FormulaEvaluator.Evaluate("UNKNOWN(1)").ToDisplay().Should().Be("#NAME?");
         FormulaEvaluator.Evaluate("1+").ToDisplay().Should().Be("#VALUE!");
         FormulaEvaluator.Evaluate("(-1)!").ToDisplay().Should().Be("#NUM!");
+        FormulaEvaluator.Evaluate("MOD(1,0)").ToDisplay().Should().Be("#DIV/0!");
+        FormulaEvaluator.Evaluate("LN(-1)").ToDisplay().Should().Be("#NUM!");
+    }
+
+    [Fact]
+    public void Recalculate_propagates_dependency_error_without_throwing()
+    {
+        var grid = TableGrid.CreateEmpty(2, 2);
+        grid = GridEditor.SetValue(grid, new CellAddr(0, 0), new CellValue("#VALUE!"));
+        grid = GridEditor.SetValue(
+            grid,
+            new CellAddr(0, 1),
+            new CellValue("", Kind: CellValueKind.Formula, Formula: "A1+1"));
+
+        var act = () => FormulaService.Recalculate(grid);
+
+        act.Should().NotThrow();
+        GridEditor.GetValue(act(), new CellAddr(0, 1)).Text.Should().Be("#VALUE!");
     }
 }

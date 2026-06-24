@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HyCAD.Tables.Data;
+using HyCAD.Tables.Formulas;
 using HyCAD.Tables.Operations;
 using HyCAD.Tables.Serialization;
 using HyCAD.Tables.Structure;
@@ -76,7 +77,7 @@ public sealed class TableJsonTests
     [Fact]
     public void Complex_grid_round_trip_is_equivalent_and_valid()
     {
-        var original = CreateComplexGrid();
+        var original = FormulaService.Recalculate(CreateComplexGrid());
 
         var json = TableJson.SerializeGrid(original, indented: true);
         var restored = TableJson.DeserializeGrid(json);

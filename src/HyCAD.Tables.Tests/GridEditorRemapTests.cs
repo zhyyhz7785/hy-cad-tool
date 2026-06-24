@@ -126,17 +126,15 @@ public sealed class GridEditorRemapTests
     }
 
     [Fact]
-    public void DeleteRow_on_anchor_row_shifts_anchor_and_discards_old_anchor_data()
+    public void DeleteRow_on_anchor_row_shifts_merge_and_discards_deleted_row_data()
     {
         var anchor = new CellAddr(1, 1);
-        var member = new CellAddr(2, 1);
         var grid = GridEditor.Merge(
             TableGrid.CreateEmpty(5, 4) with
             {
                 Data = new GridData(new Dictionary<CellAddr, CellValue>
                 {
-                    [anchor] = new CellValue("anchor"),
-                    [member] = new CellValue("member")
+                    [anchor] = new CellValue("anchor")
                 })
             },
             anchor,
@@ -148,8 +146,8 @@ public sealed class GridEditorRemapTests
         var merge = SingleMerge(result);
         merge.TopLeft.Should().Be(new CellAddr(1, 1));
         merge.RowSpan.Should().Be(2);
-        result.Data.Cells[merge.Anchor].Text.Should().Be("member");
-        result.Data.Cells.Values.Should().NotContain(v => v.Text == "anchor");
+        result.Data.Cells.Should().NotContainKey(merge.Anchor);
+        GridEditor.GetValue(result, merge.Anchor).Text.Should().BeEmpty();
         GridInvariants.Validate(result).IsValid.Should().BeTrue();
     }
 

@@ -22,7 +22,29 @@ public sealed class GridEditorTests
     }
 
     [Fact]
-    public void Merge_then_unmerge_preserves_structure_and_data_without_loss()
+    public void Merge_anchor_only_clears_hidden_member_data()
+    {
+        var anchor = new CellAddr(0, 0);
+        var member = new CellAddr(1, 1);
+        var original = TableGrid.CreateEmpty(3, 3) with
+        {
+            Data = new GridData(new Dictionary<CellAddr, CellValue>
+            {
+                [anchor] = new CellValue("anchor"),
+                [member] = new CellValue("member")
+            })
+        };
+
+        var merged = GridEditor.Merge(original, anchor, 2, 2);
+
+        merged.Data.Cells.Should().ContainKey(anchor);
+        merged.Data.Cells.Should().NotContainKey(member);
+        GridEditor.GetValue(merged, member).Text.Should().Be("anchor");
+        GridInvariants.Validate(merged).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Merge_then_unmerge_preserves_anchor_data()
     {
         var anchor = new CellAddr(0, 0);
         var member = new CellAddr(1, 1);
@@ -39,7 +61,8 @@ public sealed class GridEditorTests
         var restored = GridEditor.Unmerge(merged, anchor);
 
         restored.Structure.Should().BeEquivalentTo(original.Structure);
-        restored.Data.Should().BeEquivalentTo(original.Data);
+        restored.Data.Cells[anchor].Text.Should().Be("anchor");
+        restored.Data.Cells.Should().NotContainKey(member);
         GridInvariants.Validate(restored).IsValid.Should().BeTrue();
     }
 

@@ -47,9 +47,8 @@ public static class FormulaService
         if (formulaCells.Count == 0)
             return grid;
 
-        var addrSet = new HashSet<CellAddr>();
-        foreach (var item in formulaCells)
-            addrSet.Add(item.Addr);
+        var formulaByAddr = formulaCells.ToDictionary(x => x.Addr);
+        var addrSet = new HashSet<CellAddr>(formulaByAddr.Keys);
 
         var dependencies = new Dictionary<CellAddr, HashSet<CellAddr>>();
         foreach (var item in formulaCells)
@@ -76,23 +75,35 @@ public static class FormulaService
             if (computed.ContainsKey(addr))
                 continue;
 
-            var item = formulaCells.First(x => x.Addr == addr);
+            var item = formulaByAddr[addr];
             var context = new GridFormulaContext(resultGrid, computed);
-            var evalResult = item.Node.Evaluate(context);
+            var evalResult = EvaluateSafely(item.Node, context);
             computed[addr] = evalResult;
             resultGrid = WriteFormulaResult(resultGrid, item.Addr, item.Value, evalResult);
         }
 
         foreach (var addr in cyclic)
         {
-            if (computed.TryGetValue(addr, out var evalResult))
-            {
-                var item = formulaCells.First(x => x.Addr == addr);
-                resultGrid = WriteFormulaResult(resultGrid, item.Addr, item.Value, evalResult);
-            }
+            if (!computed.TryGetValue(addr, out var evalResult))
+                continue;
+
+            var item = formulaByAddr[addr];
+            resultGrid = WriteFormulaResult(resultGrid, item.Addr, item.Value, evalResult);
         }
 
         return resultGrid;
+    }
+
+    private static FormulaResult EvaluateSafely(FormulaNode node, IFormulaContext context)
+    {
+        try
+        {
+            return node.Evaluate(context);
+        }
+        catch (FormulaException ex)
+        {
+            return FormulaResult.FromError(ex.Code);
+        }
     }
 
     private static TableGrid WriteFormulaResult(
@@ -143,9 +154,10 @@ public static class FormulaService
 
         if (order.Count < nodes.Count)
         {
+            var ordered = new HashSet<CellAddr>(order);
             foreach (var node in nodes)
             {
-                if (!order.Contains(node))
+                if (!ordered.Contains(node))
                     cyclic.Add(node);
             }
         }
