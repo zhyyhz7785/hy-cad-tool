@@ -227,24 +227,62 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.AutoCadMirror
             }
             catch { }
 
+            // 图集/TSSD 图纸里大量 MText 仅设 Rotation、未设 Direction；
+            // Direction getter 会抛 eNotApplicable，导致整段 BuildMText 失败并降级 Opaque。
+            double lx = 0, ly = 0, lz = 0;
+            try { var p = m.Location; lx = p.X; ly = p.Y; lz = p.Z; } catch { }
+
+            double textHeight = 0, width = 0, rotationRad = 0;
+            try { textHeight = m.TextHeight; } catch { }
+            try { width = m.Width; } catch { }
+            try { rotationRad = m.Rotation; } catch { }
+
+            double nx = 0, ny = 0, nz = 1;
+            try { var n = m.Normal; nx = n.X; ny = n.Y; nz = n.Z; } catch { }
+
+            double dx = 1, dy = 0, dz = 0;
+            try
+            {
+                var d = m.Direction;
+                dx = d.X; dy = d.Y; dz = d.Z;
+            }
+            catch
+            {
+                dx = Math.Cos(rotationRad);
+                dy = Math.Sin(rotationRad);
+            }
+
+            byte attachment = 0;
+            try { attachment = (byte)m.Attachment; } catch { }
+
+            byte lineSpacingStyle = 0;
+            double lineSpacingFactor = 1;
+            try { lineSpacingStyle = (byte)m.LineSpacingStyle; } catch { }
+            try { lineSpacingFactor = m.LineSpacingFactor; } catch { }
+
+            byte backgroundFill = 0;
+            double backgroundScaleFactor = 1;
+            try { backgroundFill = (byte)(m.BackgroundFill ? 1 : 0); } catch { }
+            try { backgroundScaleFactor = m.BackgroundScaleFactor; } catch { }
+
             return new HyobMText(
                 layer: m.Layer ?? string.Empty,
                 handleHex: handle,
                 contents: m.Contents ?? string.Empty,
                 textStyleName: ReadTextStyleName(reader, m.TextStyleId),
-                lx: m.Location.X, ly: m.Location.Y, lz: m.Location.Z,
-                textHeight: m.TextHeight,
-                width: m.Width,
-                rotationRad: m.Rotation,
-                nx: m.Normal.X, ny: m.Normal.Y, nz: m.Normal.Z,
-                dx: m.Direction.X, dy: m.Direction.Y, dz: m.Direction.Z,
-                attachment: (byte)m.Attachment,
+                lx: lx, ly: ly, lz: lz,
+                textHeight: textHeight,
+                width: width,
+                rotationRad: rotationRad,
+                nx: nx, ny: ny, nz: nz,
+                dx: dx, dy: dy, dz: dz,
+                attachment: attachment,
                 drawDirection: 0,  // MText 无此属性；schema 保留占位（M5+ 由 BackgroundFlags 填充）
-                lineSpacingStyle: (byte)m.LineSpacingStyle,
-                lineSpacingFactor: m.LineSpacingFactor,
-                backgroundFill: (byte)(m.BackgroundFill ? 1 : 0),
+                lineSpacingStyle: lineSpacingStyle,
+                lineSpacingFactor: lineSpacingFactor,
+                backgroundFill: backgroundFill,
                 backgroundColorArgb: argb,
-                backgroundScaleFactor: m.BackgroundScaleFactor);
+                backgroundScaleFactor: backgroundScaleFactor);
         }
 
         private static HyobBlockReference BuildBlockRef(BlockReference br, string handle, ObjectReader reader)

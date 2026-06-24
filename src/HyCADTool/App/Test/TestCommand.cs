@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Features.Reinforcement;
+using HyCADTool.Shell.Commands;
 using System;
 using System.Reflection;
 
@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("N32网格底板+楼板+墙+梁判型V5", () =>
+            SimpleLogger.LogElapsedTime("16G101 参数化大样面板", () =>
             {
-                new MeshComponentDivideCommand().ExecuteBottomSlabAndSlabAndWallAndBeamClassifyV5();
+                ShowPanelCommand.ShowG16Panel();
             });
         }
     }

@@ -7,6 +7,7 @@
              xmlns:sponge="clr-namespace:HyCADTool.Features.SpongeCity.Views"
              xmlns:rein="clr-namespace:HyCADTool.Features.Reinforcement.Views"
              xmlns:g101="clr-namespace:HyCADTool.Features.G101.Views"
+             xmlns:g16="clr-namespace:HyCADTool.Features.G16.Views"
              xmlns:elev3d="clr-namespace:HyCADTool.Features.Elevation.Views"
              xmlns:pile="clr-namespace:HyCADTool.Features.Pile.Views"
              xmlns:baserein="clr-namespace:HyCADTool.Features.BaseRein.Views"
@@ -342,6 +343,20 @@
                         </Style>
                     </g101:G101Panel.Style>
                 </g101:G101Panel>
+
+                <!-- 16G101 参数化构造大样面板 -->
+                <g16:G16Panel DataContext="{Binding G16Vm}">
+                    <g16:G16Panel.Style>
+                        <Style TargetType="{x:Type g16:G16Panel}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataContext.IsG16Mode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </g16:G16Panel.Style>
+                </g16:G16Panel>
 
                 <!-- 3D结构（HY3 工作流）面板 -->
                 <elev3d:Structure3DPanel DataContext="{Binding Structure3DVm}">

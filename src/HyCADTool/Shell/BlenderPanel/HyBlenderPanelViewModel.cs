@@ -52,6 +52,7 @@ namespace HyCADTool.Shell.ViewModels
                 OnPropertyChanged(nameof(SelectedTabIndex));
                 OnPropertyChanged(nameof(IsReinMode));
                 OnPropertyChanged(nameof(IsG101Mode));
+                OnPropertyChanged(nameof(IsG16Mode));
                 OnPropertyChanged(nameof(IsStructure3DMode));
                 OnPropertyChanged(nameof(IsPileMode));
                 OnPropertyChanged(nameof(PilePanelHost));
@@ -124,7 +125,10 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>当前选中的是否为「结构构件」伪分类 Tab（钢筋之后）。</summary>
         public bool IsG101Mode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == G101TabKey;
 
-        /// <summary>当前选中的是否为「3D结构」伪分类 Tab（结构构件之后）。</summary>
+        /// <summary>当前选中的是否为「16G101」伪分类 Tab（结构构件之后）。</summary>
+        public bool IsG16Mode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == G16TabKey;
+
+        /// <summary>当前选中的是否为「3D结构」伪分类 Tab（16G101 之后）。</summary>
         public bool IsStructure3DMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == Structure3DTabKey;
 
         /// <summary>当前选中的是否为「桩基」业务分类 Tab。</summary>
@@ -137,7 +141,7 @@ namespace HyCADTool.Shell.ViewModels
         public bool IsClusterMode => _selectedEditorKey == ClusterTabKey;
 
         /// <summary>命令编辑器内：普通命令列表（非钢筋/结构构件/3D结构/桩基/过滤独立面板）。</summary>
-        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsG101Mode && !IsStructure3DMode && !IsPileMode && !IsFilterMode;
+        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsG101Mode && !IsG16Mode && !IsStructure3DMode && !IsPileMode && !IsFilterMode;
 
         /// <summary>出图比例区仅在「命令 · 常用」Tab 顶部显示。</summary>
         public bool ShowScalePanel => IsCommandListMode && _selectedTab != null && _selectedTab.Key == CommonTabKey;
@@ -158,6 +162,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (IsClusterMode) return "螺栓聚类与基础标注";
                 if (IsReinMode) return "命令 · 钢筋";
                 if (IsG101Mode) return "命令 · 结构构件";
+                if (IsG16Mode) return "命令 · 16G101";
                 if (IsStructure3DMode) return "命令 · 3D结构";
                 if (IsPileMode) return "命令 · 桩基";
                 if (_selectedTab != null) return $"命令 · {_selectedTab.Name}";
@@ -215,6 +220,10 @@ namespace HyCADTool.Shell.ViewModels
         public HyCADTool.Features.G101.ViewModels.G101PanelViewModel G101Vm
             => HyCADTool.Features.G101.ViewModels.G101PanelViewModel.Current;
 
+        /// <summary>16G101 参数化大样面板 ViewModel。</summary>
+        public HyCADTool.Features.G16.ViewModels.G16PanelViewModel G16Vm
+            => HyCADTool.Features.G16.ViewModels.G16PanelViewModel.Current;
+
         /// <summary>3D结构（HY3 工作流）面板 ViewModel。</summary>
         public HyCADTool.Features.Elevation.ViewModels.Structure3DPanelViewModel Structure3DVm
             => HyCADTool.Features.Elevation.ViewModels.Structure3DPanelViewModel.Current;
@@ -245,6 +254,9 @@ namespace HyCADTool.Shell.ViewModels
 
         /// <summary>「结构构件」伪分类的稳定 Key（22G101 参数化大样）。</summary>
         public const string G101TabKey = "__g101__";
+
+        /// <summary>「16G101」伪分类的稳定 Key。</summary>
+        public const string G16TabKey = "__g16__";
 
         /// <summary>「3D结构」伪分类的稳定 Key（HY3 三维基础模型工作流）。</summary>
         public const string Structure3DTabKey = "__structure3d__";
@@ -333,6 +345,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(IsSpongeCityMode));
             OnPropertyChanged(nameof(IsReinMode));
             OnPropertyChanged(nameof(IsG101Mode));
+            OnPropertyChanged(nameof(IsG16Mode));
             OnPropertyChanged(nameof(IsStructure3DMode));
             OnPropertyChanged(nameof(IsPileMode));
             OnPropertyChanged(nameof(IsBaseReinMode));
@@ -396,6 +409,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(SpongeCityVm));
             OnPropertyChanged(nameof(ReinVm));
             OnPropertyChanged(nameof(G101Vm));
+            OnPropertyChanged(nameof(G16Vm));
             OnPropertyChanged(nameof(Structure3DVm));
             OnPropertyChanged(nameof(PileVm));
             OnPropertyChanged(nameof(BaseReinVm));
@@ -532,8 +546,17 @@ namespace HyCADTool.Shell.ViewModels
                     Name = "3D结构",
                     Icon = "⬢",
                 };
+                var g16Tab = new CategoryTabVm
+                {
+                    Key  = G16TabKey,
+                    Name = "16G101",
+                    Icon = "▤",
+                };
                 int g101Idx = normalTabs.IndexOf(g101Tab);
-                normalTabs.Insert(g101Idx >= 0 ? g101Idx + 1 : normalTabs.Count, structure3DTab);
+                normalTabs.Insert(g101Idx >= 0 ? g101Idx + 1 : normalTabs.Count, g16Tab);
+
+                int g16Idx = normalTabs.IndexOf(g16Tab);
+                normalTabs.Insert(g16Idx >= 0 ? g16Idx + 1 : normalTabs.Count, structure3DTab);
 
                 var mergedTab = mergedBuckets.Count > 0
                     ? CreateMergedDrawingToolsTab(mergedBuckets)
@@ -636,7 +659,7 @@ namespace HyCADTool.Shell.ViewModels
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
             }
-            if (IsReinMode || IsG101Mode || IsStructure3DMode || IsPileMode || IsFilterMode)
+            if (IsReinMode || IsG101Mode || IsG16Mode || IsStructure3DMode || IsPileMode || IsFilterMode)
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;

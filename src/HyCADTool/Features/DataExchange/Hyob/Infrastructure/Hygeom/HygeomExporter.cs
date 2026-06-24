@@ -703,7 +703,36 @@ namespace HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom
             w.WritePropertyName("raw_dxf_size");     w.WriteValue(o.RawDxf?.Length ?? 0);
             w.WritePropertyName("raw_xdata_size");   w.WriteValue(o.RawXData?.Length ?? 0);
             w.WritePropertyName("raw_extdict_size"); w.WriteValue(o.RawExtensionDictionary?.Length ?? 0);
+            WriteOpaqueSnapshotFields(w, o.RawDxf);
             w.WriteEndObject();
+        }
+
+        /// <summary>从 Opaque RawDxf（EntitySnapshot v1）提取 layer / 包围盒，便于 AI 定位。</summary>
+        private static void WriteOpaqueSnapshotFields(JsonWriter w, byte[] rawDxf)
+        {
+            if (rawDxf == null || rawDxf.Length == 0) return;
+            try
+            {
+                using (var ms = new MemoryStream(rawDxf))
+                using (var r = new BinaryReader(ms))
+                {
+                    string rx = HyobBinary.ReadUtf8(r);
+                    string layer = HyobBinary.ReadUtf8(r);
+                    if (!string.IsNullOrEmpty(layer))
+                    {
+                        w.WritePropertyName("layer");
+                        w.WriteValue(layer);
+                    }
+                    if (r.BaseStream.Position >= r.BaseStream.Length) return;
+                    byte hasBounds = r.ReadByte();
+                    if (hasBounds == 0) return;
+                    w.WritePropertyName("bounds_min");
+                    WritePoint(w, r.ReadDouble(), r.ReadDouble(), r.ReadDouble());
+                    w.WritePropertyName("bounds_max");
+                    WritePoint(w, r.ReadDouble(), r.ReadDouble(), r.ReadDouble());
+                }
+            }
+            catch { /* snapshot 解码失败不阻断导出 */ }
         }
 
         // ============================================================
