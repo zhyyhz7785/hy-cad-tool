@@ -9,7 +9,8 @@ public sealed record GridStructure(
     IReadOnlyDictionary<CellAddr, DiagonalSplit> Diagonals,
     IReadOnlyDictionary<CellAddr, CellStyle> Styles,
     IReadOnlyDictionary<CellAddr, CellRole> Roles,
-    IReadOnlyDictionary<string, CellAddr> FieldIndex)
+    IReadOnlyDictionary<string, CellAddr> FieldIndex,
+    IReadOnlyDictionary<CellAddr, CellOverflowFlags> CellOverflow)
 {
     /// <summary>
     /// 创建空覆盖层的结构（仅拓扑）。
@@ -21,7 +22,8 @@ public sealed record GridStructure(
             new Dictionary<CellAddr, DiagonalSplit>(),
             new Dictionary<CellAddr, CellStyle>(),
             new Dictionary<CellAddr, CellRole>(),
-            new Dictionary<string, CellAddr>());
+            new Dictionary<string, CellAddr>(),
+            new Dictionary<CellAddr, CellOverflowFlags>());
 
     /// <summary>
     /// 查找覆盖指定地址的合并区。

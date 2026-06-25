@@ -176,6 +176,22 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Features\Tables\Views\TableEditorRibbon.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Tables\Views\TableEditorHomeTab.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Tables\Views\TableEditorAddressBar.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Tables\Views\TableEditorInspector.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Features\Tables\Views\TableEditorLayoutRibbon.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

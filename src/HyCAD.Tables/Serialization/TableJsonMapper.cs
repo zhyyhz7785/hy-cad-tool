@@ -113,7 +113,8 @@ internal static class TableJsonMapper
             FromAddrDictionary(dto.Diagonals, FromDto),
             FromAddrDictionary(dto.Styles, FromDto),
             FromAddrDictionary(dto.Roles, role => role),
-            FromFieldIndexDto(dto.FieldIndex));
+            FromFieldIndexDto(dto.FieldIndex),
+            new Dictionary<CellAddr, CellOverflowFlags>());
     }
 
     private static GridTopologyDto ToDto(GridTopology topology) =>

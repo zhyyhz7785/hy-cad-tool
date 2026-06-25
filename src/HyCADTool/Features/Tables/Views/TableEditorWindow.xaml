@@ -85,6 +85,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -113,16 +114,24 @@
             </Border>
 
             <tables:TableEditorPaperBar Grid.Row="1" DataContext="{Binding}" />
-            <tables:TableEditorLayoutRibbon Grid.Row="2" DataContext="{Binding}" />
+            <tables:TableEditorRibbon Grid.Row="2" DataContext="{Binding}" />
+            <tables:TableEditorAddressBar Grid.Row="3" DataContext="{Binding}" />
 
-            <Border Grid.Row="3"
-                    Margin="8,4"
-                    BorderBrush="#4c566a"
-                    BorderThickness="1">
-                <tables:TableExcelGridView DataContext="{Binding}" />
-            </Border>
+            <Grid Grid.Row="4" Margin="8,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="200" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        BorderBrush="#4c566a"
+                        BorderThickness="1">
+                    <tables:TableExcelGridView DataContext="{Binding}" />
+                </Border>
+                <tables:TableEditorInspector Grid.Column="1"
+                                             DataContext="{Binding}" />
+            </Grid>
 
-            <Border Grid.Row="4"
+            <Border Grid.Row="5"
                     Padding="{DynamicResource Metric_Padding_8_6}"
                     Background="#3b4453"
                     BorderBrush="#4c566a"
@@ -134,6 +143,9 @@
                                Text="{Binding StatusMessage}"
                                TextTrimming="CharacterEllipsis" />
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Command="{Binding PickCommand}"
+                                Content="拾取表"
+                                Style="{StaticResource ActionBtn}" />
                         <Button Command="{Binding PublishCommand}"
                                 Content="插入图面"
                                 IsEnabled="{Binding HasTable}"

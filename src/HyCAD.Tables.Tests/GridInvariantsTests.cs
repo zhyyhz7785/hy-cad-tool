@@ -32,7 +32,8 @@ public sealed class GridInvariantsTests
             new Dictionary<string, CellAddr>
             {
                 ["name"] = new CellAddr(0, 2)
-            });
+            },
+            new Dictionary<CellAddr, CellOverflowFlags>());
 
         var data = new GridData(new Dictionary<CellAddr, CellValue>
         {
@@ -264,7 +265,8 @@ public sealed class GridInvariantsTests
         IReadOnlyDictionary<CellAddr, DiagonalSplit>? diagonals = null,
         IReadOnlyDictionary<CellAddr, CellStyle>? styles = null,
         IReadOnlyDictionary<CellAddr, CellRole>? roles = null,
-        IReadOnlyDictionary<string, CellAddr>? fieldIndex = null)
+        IReadOnlyDictionary<string, CellAddr>? fieldIndex = null,
+        IReadOnlyDictionary<CellAddr, CellOverflowFlags>? cellOverflow = null)
     {
         var topology = GridTopology.CreateUniform(3, 3, 10, 25);
         return new GridStructure(
@@ -273,6 +275,7 @@ public sealed class GridInvariantsTests
             diagonals ?? new Dictionary<CellAddr, DiagonalSplit>(),
             styles ?? new Dictionary<CellAddr, CellStyle>(),
             roles ?? new Dictionary<CellAddr, CellRole>(),
-            fieldIndex ?? new Dictionary<string, CellAddr>());
+            fieldIndex ?? new Dictionary<string, CellAddr>(),
+            cellOverflow ?? new Dictionary<CellAddr, CellOverflowFlags>());
     }
 }

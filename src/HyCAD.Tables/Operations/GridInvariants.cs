@@ -66,6 +66,9 @@ public static class GridInvariants
         foreach (var addr in structure.Roles.Keys)
             CheckInBounds(addr, rowCount, colCount, "Roles", violations);
 
+        foreach (var addr in structure.CellOverflow.Keys)
+            CheckInBounds(addr, rowCount, colCount, "CellOverflow", violations);
+
         foreach (var addr in structure.FieldIndex.Values)
             CheckInBounds(addr, rowCount, colCount, "FieldIndex", violations);
 

@@ -341,6 +341,79 @@ public static class GridEditor
         return GetValue(grid, addr);
     }
 
+    /// <summary>
+    /// 读取单元格样式（merge 从属地址归 anchor；无则返回默认样式）。
+    /// </summary>
+    public static CellStyle GetCellStyle(TableGrid grid, CellAddr addr)
+    {
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+
+        if (!InBounds(addr, topology.RowCount, topology.ColCount))
+            throw new ArgumentOutOfRangeException(nameof(addr), $"地址 {addr} 超出网格。");
+
+        var anchor = structure.GetAnchorOf(addr);
+        return structure.Styles.TryGetValue(anchor, out var style) ? style : new CellStyle();
+    }
+
+    /// <summary>
+    /// 读取单元格 AllowWrap（012 子集；无记录则 false）。
+    /// </summary>
+    public static bool GetCellAllowWrap(TableGrid grid, CellAddr addr)
+    {
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+
+        if (!InBounds(addr, topology.RowCount, topology.ColCount))
+            throw new ArgumentOutOfRangeException(nameof(addr), $"地址 {addr} 超出网格。");
+
+        var anchor = structure.GetAnchorOf(addr);
+        return structure.CellOverflow.TryGetValue(anchor, out var flags) && flags.AllowWrap;
+    }
+
+    /// <summary>
+    /// 写入单元格样式（写 merge anchor）。
+    /// </summary>
+    public static TableGrid SetCellStyle(TableGrid grid, CellAddr addr, CellStyle style)
+    {
+        if (style == null)
+            throw new ArgumentNullException(nameof(style));
+
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+
+        if (!InBounds(addr, topology.RowCount, topology.ColCount))
+            throw new ArgumentOutOfRangeException(nameof(addr), $"地址 {addr} 超出网格。");
+
+        var anchor = structure.GetAnchorOf(addr);
+        var styles = CloneStyles(structure.Styles);
+        styles[anchor] = style;
+
+        return grid with { Structure = structure with { Styles = styles } };
+    }
+
+    /// <summary>
+    /// 设置单元格 AllowWrap（012 子集；false 时移除记录）。
+    /// </summary>
+    public static TableGrid SetCellWrap(TableGrid grid, CellAddr addr, bool allowWrap)
+    {
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+
+        if (!InBounds(addr, topology.RowCount, topology.ColCount))
+            throw new ArgumentOutOfRangeException(nameof(addr), $"地址 {addr} 超出网格。");
+
+        var anchor = structure.GetAnchorOf(addr);
+        var overflow = CloneCellOverflow(structure.CellOverflow);
+
+        if (allowWrap)
+            overflow[anchor] = new CellOverflowFlags(true);
+        else
+            overflow.Remove(anchor);
+
+        return grid with { Structure = structure with { CellOverflow = overflow } };
+    }
+
     private static int FindMergeIndexByAnchor(IReadOnlyList<MergeRegion> merges, CellAddr anchor)
     {
         for (var i = 0; i < merges.Count; i++)
@@ -374,6 +447,24 @@ public static class GridEditor
         return clone;
     }
 
+    private static Dictionary<CellAddr, CellStyle> CloneStyles(
+        IReadOnlyDictionary<CellAddr, CellStyle> source)
+    {
+        var clone = new Dictionary<CellAddr, CellStyle>(source.Count);
+        foreach (var entry in source)
+            clone[entry.Key] = entry.Value;
+        return clone;
+    }
+
+    private static Dictionary<CellAddr, CellOverflowFlags> CloneCellOverflow(
+        IReadOnlyDictionary<CellAddr, CellOverflowFlags> source)
+    {
+        var clone = new Dictionary<CellAddr, CellOverflowFlags>(source.Count);
+        foreach (var entry in source)
+            clone[entry.Key] = entry.Value;
+        return clone;
+    }
+
     private static GridStructure WithMerges(GridStructure structure, IReadOnlyList<MergeRegion> merges) =>
         structure with { Merges = merges };
 
@@ -401,6 +492,7 @@ public static class GridEditor
         var diagonals = RemapKeys(structure.Diagonals, mapAddr);
         var styles = RemapKeys(structure.Styles, mapAddr);
         var roles = RemapKeys(structure.Roles, mapAddr);
+        var cellOverflow = RemapKeys(structure.CellOverflow, mapAddr);
         var fieldIndex = RemapFieldIndex(structure.FieldIndex, mapAddr);
         var dataCells = RemapKeys(grid.Data.Cells, mapAddr);
 
@@ -411,6 +503,7 @@ public static class GridEditor
             Diagonals = diagonals,
             Styles = styles,
             Roles = roles,
+            CellOverflow = cellOverflow,
             FieldIndex = fieldIndex
         };
 

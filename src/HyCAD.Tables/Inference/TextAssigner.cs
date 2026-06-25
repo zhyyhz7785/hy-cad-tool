@@ -100,7 +100,8 @@ internal static class TextAssigner
             new Dictionary<CellAddr, DiagonalSplit>(),
             new Dictionary<CellAddr, CellStyle>(),
             new Dictionary<CellAddr, CellRole>(),
-            new Dictionary<string, CellAddr>());
+            new Dictionary<string, CellAddr>(),
+            new Dictionary<CellAddr, CellOverflowFlags>());
     }
 
     private static bool TryResolveAnchor(

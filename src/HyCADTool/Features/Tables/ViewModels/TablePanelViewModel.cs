@@ -141,7 +141,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
             get => _statusMessage;
 
-            private set
+            protected set
 
             {
 
@@ -593,6 +593,8 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 RefreshSummary();
 
+                OnAfterCellCommitted(addr);
+
             }
 
             catch (Exception ex)
@@ -611,6 +613,26 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         protected TableGrid CurrentGrid => _opLog?.Current;
 
+        protected TableOpLog OpLog => _opLog;
+
+        protected virtual void OnAfterApplyGrid()
+        {
+        }
+
+        protected virtual void OnAfterCellCommitted(CellAddr addr)
+        {
+        }
+
+        protected void ApplyOperation(TableOperation op)
+        {
+            if (_opLog == null)
+                return;
+
+            _opLog.Apply(op);
+            RefreshRows();
+            RefreshSummary();
+        }
+
 
 
         private void ApplyGrid(TableGrid grid, TablePublishContext context)
@@ -628,6 +650,8 @@ namespace HyCADTool.Features.Tables.ViewModels
             RefreshRows();
 
             RefreshSummary();
+
+            OnAfterApplyGrid();
 
         }
 

@@ -99,3 +99,19 @@ public sealed record SetFieldKeyOp(CellAddr Addr, string? FieldKey) : TableOpera
     public override TableGrid Apply(TableGrid grid) =>
         GridEditor.SetFieldKey(grid, Addr, FieldKey);
 }
+
+/// <summary>写入单元格样式（对齐等）。</summary>
+public sealed record SetStyleOp(CellAddr Addr, CellStyle Style) : TableOperation
+{
+    /// <inheritdoc />
+    public override TableGrid Apply(TableGrid grid) =>
+        GridEditor.SetCellStyle(grid, Addr, Style);
+}
+
+/// <summary>设置单元格 AllowWrap（012 子集）。</summary>
+public sealed record SetCellWrapOp(CellAddr Addr, bool AllowWrap) : TableOperation
+{
+    /// <inheritdoc />
+    public override TableGrid Apply(TableGrid grid) =>
+        GridEditor.SetCellWrap(grid, Addr, AllowWrap);
+}

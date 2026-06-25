@@ -11,11 +11,13 @@ namespace HyCADTool.Features.Tables.Views
     {
         private TableEditorViewModel _editorVm;
         private int _builtColCount = -1;
+        private bool _suppressGridSelectionSync;
 
         public TableExcelGridView()
         {
             InitializeComponent();
             DataContextChanged += OnDataContextChanged;
+            MatrixGrid.CurrentCellChanged += OnCurrentCellChanged;
         }
 
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -28,13 +30,63 @@ namespace HyCADTool.Features.Tables.Views
             {
                 _editorVm.PropertyChanged += OnViewModelPropertyChanged;
                 RebuildColumnsIfNeeded(_editorVm.MatrixColCount);
+                SyncGridSelectionFromViewModel();
             }
         }
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(TableEditorViewModel.MatrixColCount) && _editorVm != null)
+            if (_editorVm == null)
+                return;
+
+            if (e.PropertyName == nameof(TableEditorViewModel.MatrixColCount))
                 RebuildColumnsIfNeeded(_editorVm.MatrixColCount);
+
+            if (e.PropertyName == nameof(TableEditorViewModel.SelectedRow)
+                || e.PropertyName == nameof(TableEditorViewModel.SelectedCol))
+            {
+                SyncGridSelectionFromViewModel();
+            }
+        }
+
+        private void OnCurrentCellChanged(object sender, System.EventArgs e)
+        {
+            if (_suppressGridSelectionSync || _editorVm == null)
+                return;
+
+            if (MatrixGrid.CurrentCell.Item == null || MatrixGrid.CurrentCell.Column == null)
+                return;
+
+            var row = MatrixGrid.Items.IndexOf(MatrixGrid.CurrentCell.Item);
+            var col = MatrixGrid.CurrentCell.Column.DisplayIndex;
+            if (row < 0 || col < 0)
+                return;
+
+            _editorVm.SetSelectedCell(row, col);
+        }
+
+        private void SyncGridSelectionFromViewModel()
+        {
+            if (_editorVm == null || !_editorVm.HasSelection || MatrixGrid.Items.Count == 0)
+                return;
+
+            var row = _editorVm.SelectedRow;
+            var col = _editorVm.SelectedCol;
+            if (row < 0 || row >= MatrixGrid.Items.Count || col < 0 || col >= MatrixGrid.Columns.Count)
+                return;
+
+            _suppressGridSelectionSync = true;
+            try
+            {
+                var item = MatrixGrid.Items[row];
+                var column = MatrixGrid.Columns[col];
+                MatrixGrid.CurrentCell = new DataGridCellInfo(item, column);
+                MatrixGrid.ScrollIntoView(item, column);
+            }
+            finally
+            {
+                _suppressGridSelectionSync = false;
+            }
         }
 
         private void RebuildColumnsIfNeeded(int colCount)
@@ -70,6 +122,7 @@ namespace HyCADTool.Features.Tables.Views
             }
 
             _builtColCount = colCount;
+            SyncGridSelectionFromViewModel();
         }
 
         private void OnLoadingRow(object sender, DataGridRowEventArgs e)

@@ -92,7 +92,8 @@ public sealed class TableInferEngine
             new Dictionary<CellAddr, DiagonalSplit>(),
             new Dictionary<CellAddr, CellStyle>(),
             new Dictionary<CellAddr, CellRole>(),
-            new Dictionary<string, CellAddr>());
+            new Dictionary<string, CellAddr>(),
+            new Dictionary<CellAddr, CellOverflowFlags>());
 
         var assign = TextAssigner.Assign(gridLines, mergeResult.Merges, input.Texts ?? Array.Empty<TextBox2d>(), _options);
         messages.AddRange(assign.Messages);
