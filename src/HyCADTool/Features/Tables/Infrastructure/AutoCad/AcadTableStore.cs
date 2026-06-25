@@ -209,5 +209,42 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
 
         public static string BuildGroupName(Guid tableId) =>
             "*HyTable-" + tableId.ToString("N");
+
+        /// <summary>
+        /// 删除 HyTable 组内全部实体及组本身（AC11 原位再发布）。
+        /// </summary>
+        public static bool TryEraseTable(Transaction tr, Database db, Guid tableId, out string error)
+        {
+            error = null;
+            if (tr == null)
+                throw new ArgumentNullException(nameof(tr));
+            if (db == null)
+                throw new ArgumentNullException(nameof(db));
+
+            var groupName = BuildGroupName(tableId);
+            var groupDict = tr.GetObject(db.GroupDictionaryId, OpenMode.ForRead) as DBDictionary;
+            if (groupDict == null || !groupDict.Contains(groupName))
+            {
+                error = "找不到表格组 " + groupName + "。";
+                return false;
+            }
+
+            var group = tr.GetObject(groupDict.GetAt(groupName), OpenMode.ForWrite) as Group;
+            if (group == null)
+            {
+                error = "表格组无效。";
+                return false;
+            }
+
+            foreach (ObjectId id in group.GetAllEntityIds())
+            {
+                var obj = tr.GetObject(id, OpenMode.ForWrite, false);
+                if (obj != null && !obj.IsErased)
+                    obj.Erase();
+            }
+
+            group.Erase();
+            return true;
+        }
     }
 }

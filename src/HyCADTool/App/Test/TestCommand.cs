@@ -1,8 +1,5 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Features.Tables.Commands;
-using System;
-using System.Reflection;
+using HyCADTool.Shell.Commands;
 
 namespace HyCADTool.App.Test
 {
@@ -19,14 +16,15 @@ namespace HyCADTool.App.Test
     {
         public static void Run()
         {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            var ver = Assembly.GetExecutingAssembly().GetName().Version;
-            var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var ed = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument?.Editor;
+            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            var ts = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("HyTable 线框识别 AC9", () =>
+            SimpleLogger.LogElapsedTime("HyTable 016 Step1 表格操作", () =>
             {
-                new InferTableCommand().Execute();
+                ShowPanelCommand.ShowHyBlenderPanel();
+                ShowPanelCommand.ShowHyTablePanel();
             });
         }
     }

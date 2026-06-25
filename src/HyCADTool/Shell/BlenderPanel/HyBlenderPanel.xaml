@@ -10,6 +10,7 @@
              xmlns:g16="clr-namespace:HyCADTool.Features.G16.Views"
              xmlns:elev3d="clr-namespace:HyCADTool.Features.Elevation.Views"
              xmlns:pile="clr-namespace:HyCADTool.Features.Pile.Views"
+             xmlns:tables="clr-namespace:HyCADTool.Features.Tables.Views"
              xmlns:baserein="clr-namespace:HyCADTool.Features.BaseRein.Views"
              xmlns:vm="clr-namespace:HyCADTool.Shell.ViewModels"
              xmlns:bc="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
@@ -387,6 +388,25 @@
                     <ContentControl.ContentTemplate>
                         <DataTemplate DataType="{x:Type vm:HyBlenderPanelViewModel}">
                             <pile:PilePanel DataContext="{Binding PileVm}"/>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+
+                <!-- HyTable 填值面板（AC11） -->
+                <ContentControl Content="{Binding HyTablePanelHost}">
+                    <ContentControl.Style>
+                        <Style TargetType="{x:Type ContentControl}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsHyTableMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContentControl.Style>
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="{x:Type vm:HyBlenderPanelViewModel}">
+                            <tables:TablePanel DataContext="{Binding TablePanelVm}"/>
                         </DataTemplate>
                     </ContentControl.ContentTemplate>
                 </ContentControl>

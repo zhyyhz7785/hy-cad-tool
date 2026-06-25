@@ -1,0 +1,197 @@
+using System;
+using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
+using HyCAD.Tables;
+using HyCAD.Tables.Samples;
+using HyCADTool.Features.Tables.Infrastructure.AutoCad;
+using HyCADTool.Features.Tables.Presentation;
+
+namespace HyCADTool.Features.Tables.TableApp
+{
+    /// <summary>
+    /// AC11 面板侧 Pick / Publish / 样表加载编排。
+    /// </summary>
+    public sealed class TablePanelService
+    {
+        private readonly Database _database;
+
+        public TablePanelService(Database database)
+        {
+            _database = database ?? throw new ArgumentNullException(nameof(database));
+        }
+
+        public TableGrid LoadPersonnelSample() => TableSamples.BuildPersonnelTable();
+
+        public TableGrid LoadFamilySample() => TableSamples.BuildFamilyTable();
+
+        public TablePanelPickResult TryPick(Editor ed)
+        {
+            var pickService = new TablePickService(_database);
+            var result = pickService.TryPickSummary(ed);
+            if (result == null)
+                return null;
+
+            if (!TryResolveInsertionPoint(result.CarrierId, out var insertionPoint, out var error))
+            {
+                ed.WriteMessage("\n[HyTable] 无法解析插入点：" + error);
+                return null;
+            }
+
+            return new TablePanelPickResult(result.Grid, result.Summary, result.CarrierId, insertionPoint);
+        }
+
+        public TablePublishResult TryPublish(
+            Editor ed,
+            TableGrid grid,
+            TablePublishContext existingContext)
+        {
+            if (grid == null)
+                throw new ArgumentNullException(nameof(grid));
+
+            Point3d insertionPoint;
+            if (existingContext != null)
+            {
+                insertionPoint = existingContext.InsertionPoint;
+            }
+            else
+            {
+                var ppr = ed.GetPoint("\n[HyTable] 指定表格左上角插入点: ");
+                if (ppr.Status != PromptStatus.OK)
+                    return TablePublishResult.Cancelled;
+
+                insertionPoint = ppr.Value;
+            }
+
+            using (var docLock = Autodesk.AutoCAD.ApplicationServices.Application
+                       .DocumentManager.MdiActiveDocument.LockDocument())
+            using (var tr = _database.TransactionManager.StartTransaction())
+            {
+                if (existingContext != null)
+                {
+                    if (!AcadTableStore.TryEraseTable(tr, _database, existingContext.TableId, out var eraseError))
+                    {
+                        ed.WriteMessage("\n[HyTable] 删除旧表失败：" + eraseError);
+                        return TablePublishResult.Failed;
+                    }
+                }
+
+                tr.Commit();
+            }
+
+            var renderer = new AcadTableRenderer(_database);
+            TableCadHandle handle;
+            try
+            {
+                handle = renderer.RenderAndAttach(grid, insertionPoint);
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage("\n[HyTable] 渲染失败：" + ex.Message);
+                return TablePublishResult.Failed;
+            }
+
+            var context = new TablePublishContext(
+                grid.Id,
+                insertionPoint,
+                handle.CarrierId.Handle.ToString());
+
+            ed.WriteMessage(
+                $"\n[HyTable] 已写入 {handle.EntityCount} 个实体 @ ({insertionPoint.X:F1}, {insertionPoint.Y:F1})");
+
+            return new TablePublishResult(context, handle);
+        }
+
+        public bool TryResolveInsertionPoint(ObjectId carrierId, out Point3d insertionPoint, out string error)
+        {
+            insertionPoint = Point3d.Origin;
+            error = null;
+
+            if (carrierId.IsNull)
+            {
+                error = "载体无效。";
+                return false;
+            }
+
+            using (var tr = _database.TransactionManager.StartTransaction())
+            {
+                var entity = tr.GetObject(carrierId, OpenMode.ForRead) as Entity;
+                if (entity == null)
+                {
+                    error = "载体不是实体。";
+                    return false;
+                }
+
+                if (entity is Polyline polyline && polyline.NumberOfVertices > 0)
+                {
+                    var pt = polyline.GetPoint3dAt(0);
+                    insertionPoint = pt;
+                    tr.Commit();
+                    return true;
+                }
+
+                var ext = entity.GeometricExtents;
+                insertionPoint = new Point3d(ext.MinPoint.X, ext.MaxPoint.Y, 0);
+                tr.Commit();
+                return true;
+            }
+        }
+    }
+
+    public sealed class TablePanelPickResult
+    {
+        public TablePanelPickResult(
+            TableGrid grid,
+            TableSummary summary,
+            ObjectId carrierId,
+            Point3d insertionPoint)
+        {
+            Grid = grid ?? throw new ArgumentNullException(nameof(grid));
+            Summary = summary ?? throw new ArgumentNullException(nameof(summary));
+            CarrierId = carrierId;
+            InsertionPoint = insertionPoint;
+        }
+
+        public TableGrid Grid { get; }
+
+        public TableSummary Summary { get; }
+
+        public ObjectId CarrierId { get; }
+
+        public Point3d InsertionPoint { get; }
+    }
+
+    public sealed class TablePublishResult
+    {
+        public static TablePublishResult Cancelled { get; } = new TablePublishResult(null, null, true, false);
+
+        public static TablePublishResult Failed { get; } = new TablePublishResult(null, null, false, true);
+
+        private TablePublishResult(
+            TablePublishContext context,
+            TableCadHandle handle,
+            bool cancelled,
+            bool failed)
+        {
+            Context = context;
+            Handle = handle;
+            IsCancelled = cancelled;
+            IsFailed = failed;
+        }
+
+        public TablePublishResult(TablePublishContext context, TableCadHandle handle)
+            : this(context, handle, false, false)
+        {
+        }
+
+        public TablePublishContext Context { get; }
+
+        public TableCadHandle Handle { get; }
+
+        public bool IsCancelled { get; }
+
+        public bool IsFailed { get; }
+
+        public bool IsSuccess => !IsCancelled && !IsFailed && Context != null;
+    }
+}

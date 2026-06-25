@@ -56,6 +56,8 @@ namespace HyCADTool.Shell.ViewModels
                 OnPropertyChanged(nameof(IsStructure3DMode));
                 OnPropertyChanged(nameof(IsPileMode));
                 OnPropertyChanged(nameof(PilePanelHost));
+                OnPropertyChanged(nameof(IsHyTableMode));
+                OnPropertyChanged(nameof(HyTablePanelHost));
                 OnPropertyChanged(nameof(IsFilterMode));
                 OnPropertyChanged(nameof(FilterPanelHost));
                 OnPropertyChanged(nameof(IsCommandListMode));
@@ -136,6 +138,9 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>当前选中的是否为「桩基」业务分类 Tab。</summary>
         public bool IsPileMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == PileTabKey;
 
+        /// <summary>当前选中的是否为「表格」业务分类 Tab（AC11 填值面板）。</summary>
+        public bool IsHyTableMode => IsCommandEditorMode && _selectedTab != null && _selectedTab.Key == HyTableTabKey;
+
         /// <summary>当前选中的是否为「基础钢筋」编辑器。</summary>
         public bool IsBaseReinMode => _selectedEditorKey == BaseReinTabKey;
 
@@ -143,7 +148,7 @@ namespace HyCADTool.Shell.ViewModels
         public bool IsClusterMode => _selectedEditorKey == ClusterTabKey;
 
         /// <summary>命令编辑器内：普通命令列表（非钢筋/结构构件/3D结构/桩基/过滤独立面板）。</summary>
-        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsG101Mode && !IsG16Mode && !IsStructure3DMode && !IsPileMode && !IsFilterMode;
+        public bool IsCommandListMode => IsCommandEditorMode && !IsReinMode && !IsG101Mode && !IsG16Mode && !IsStructure3DMode && !IsPileMode && !IsHyTableMode && !IsFilterMode;
 
         /// <summary>出图比例区仅在「命令 · 常用」Tab 顶部显示。</summary>
         public bool ShowScalePanel => IsCommandListMode && _selectedTab != null && _selectedTab.Key == CommonTabKey;
@@ -167,6 +172,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (IsG16Mode) return "命令 · 16G101";
                 if (IsStructure3DMode) return "命令 · 3D结构";
                 if (IsPileMode) return "命令 · 桩基";
+                if (IsHyTableMode) return "命令 · 表格";
                 if (_selectedTab != null) return $"命令 · {_selectedTab.Name}";
                 return "命令";
             }
@@ -182,6 +188,7 @@ namespace HyCADTool.Shell.ViewModels
         public HyBlenderPanelViewModel FilterPanelHost => IsFilterMode ? this : null;
         public HyBlenderPanelViewModel SpongeCityPanelHost => IsSpongeCityMode ? this : null;
         public HyBlenderPanelViewModel PilePanelHost => IsPileMode ? this : null;
+        public HyBlenderPanelViewModel HyTablePanelHost => IsHyTableMode ? this : null;
         public HyBlenderPanelViewModel BaseReinPanelHost => IsBaseReinMode ? this : null;
         public HyBlenderPanelViewModel ClusterPanelHost => IsClusterMode ? this : null;
 
@@ -242,6 +249,11 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>螺栓聚类与基础标注面板的 ViewModel。</summary>
         public ClusterPanelViewModel ClusterVm => ClusterPanelViewModel.Current;
 
+        /// <summary>HyTable 填值面板 ViewModel（AC11）。</summary>
+        private HyCADTool.Features.Tables.ViewModels.TablePanelViewModel _tablePanelVm;
+        public HyCADTool.Features.Tables.ViewModels.TablePanelViewModel TablePanelVm
+            => _tablePanelVm ?? (_tablePanelVm = ResolveTablePanelVm());
+
         /// <summary>「设置」伪分类的稳定 Key。</summary>
         public const string PreferencesTabKey = "__preferences__";
 
@@ -265,6 +277,9 @@ namespace HyCADTool.Shell.ViewModels
 
         /// <summary>「桩基」业务分类的稳定 Key（来自 commands.json 的 category）。</summary>
         public const string PileTabKey = "桩基";
+
+        /// <summary>「表格」业务分类的稳定 Key（commands.json category）。</summary>
+        public const string HyTableTabKey = "表格";
 
         /// <summary>「基础钢筋」伪分类的稳定 Key。</summary>
         public const string BaseReinTabKey = "__baserein__";
@@ -350,6 +365,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(IsG16Mode));
             OnPropertyChanged(nameof(IsStructure3DMode));
             OnPropertyChanged(nameof(IsPileMode));
+            OnPropertyChanged(nameof(IsHyTableMode));
             OnPropertyChanged(nameof(IsBaseReinMode));
             OnPropertyChanged(nameof(IsClusterMode));
             OnPropertyChanged(nameof(IsCommandListMode));
@@ -360,6 +376,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(FilterPanelHost));
             OnPropertyChanged(nameof(SpongeCityPanelHost));
             OnPropertyChanged(nameof(PilePanelHost));
+            OnPropertyChanged(nameof(HyTablePanelHost));
             OnPropertyChanged(nameof(BaseReinPanelHost));
             OnPropertyChanged(nameof(ClusterPanelHost));
         }
@@ -414,6 +431,7 @@ namespace HyCADTool.Shell.ViewModels
             OnPropertyChanged(nameof(G16Vm));
             OnPropertyChanged(nameof(Structure3DVm));
             OnPropertyChanged(nameof(PileVm));
+            OnPropertyChanged(nameof(TablePanelVm));
             OnPropertyChanged(nameof(BaseReinVm));
             OnPropertyChanged(nameof(ClusterVm));
             _preferencesVm?.RefreshSettingsBindingsFromDocument();
@@ -661,7 +679,7 @@ namespace HyCADTool.Shell.ViewModels
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
             }
-            if (IsReinMode || IsG101Mode || IsG16Mode || IsStructure3DMode || IsPileMode || IsFilterMode)
+            if (IsReinMode || IsG101Mode || IsG16Mode || IsStructure3DMode || IsPileMode || IsHyTableMode || IsFilterMode)
             {
                 LogFilterPerf(reason, sw.ElapsedMilliseconds, 0, 0);
                 return;
@@ -753,6 +771,21 @@ namespace HyCADTool.Shell.ViewModels
             return null;
         }
 
+        private static HyCADTool.Features.Tables.ViewModels.TablePanelViewModel ResolveTablePanelVm()
+        {
+            try
+            {
+                var container = ServiceLocator.Container;
+                if (container != null)
+                    return container.Resolve<HyCADTool.Features.Tables.ViewModels.TablePanelViewModel>();
+            }
+            catch
+            {
+                // 设计器或容器未初始化时忽略
+            }
+            return new HyCADTool.Features.Tables.ViewModels.TablePanelViewModel();
+        }
+
         private static string PickCategoryIcon(string category)
         {
             switch (category)
@@ -771,6 +804,7 @@ namespace HyCADTool.Shell.ViewModels
                 case "道路":       return "≋";
                 case "块引线":     return "⎋";
                 case "导出说明":   return "⇪";
+                case "表格":       return "⊞";
                 case "多段线垫层": return "▥";
                 case "绘图工具":   return "⚒";
                 case "测试":       return "✎";

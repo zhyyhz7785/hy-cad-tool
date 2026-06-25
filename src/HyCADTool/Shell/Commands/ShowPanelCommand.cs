@@ -69,6 +69,9 @@ namespace HyCADTool.Shell.Commands
         /// <summary>显示桩基分类 Tab。</summary>
         public static void ShowPilePanel()      => OpenTab("桩基", "显示桩基面板失败");
 
+        /// <summary>显示表格填值面板 Tab（AC11）。</summary>
+        public static void ShowHyTablePanel()   => OpenTab(HyBlenderPanelViewModel.HyTableTabKey, "显示表格面板失败");
+
         /// <summary>显示底板配筋分类 Tab。</summary>
         public static void ShowBaseReinPanel()  => OpenTab(HyBlenderPanelViewModel.BaseReinTabKey, "显示基础配筋面板失败");
 

@@ -131,6 +131,9 @@ namespace HyCADTool.App.Bootstrap
             builder.RegisterType<HyCADTool.Shell.ViewModels.ClusterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Features.Tables.ViewModels.TablePanelViewModel>()
+                .AsSelf()
+                .InstancePerDependency();
 
             // 子面板注册（独立使用或嵌入 HyBlenderPanel 的过滤 Tab 等）
             builder.RegisterType<HyCADTool.Features.BaseRein.Views.BaseReinPanel>()
@@ -143,6 +146,9 @@ namespace HyCADTool.App.Bootstrap
                 .AsSelf()
                 .InstancePerDependency();
             builder.RegisterType<HyCADTool.Shell.Views.FilterPanel>()
+                .AsSelf()
+                .InstancePerDependency();
+            builder.RegisterType<HyCADTool.Features.Tables.Views.TablePanel>()
                 .AsSelf()
                 .InstancePerDependency();
 
