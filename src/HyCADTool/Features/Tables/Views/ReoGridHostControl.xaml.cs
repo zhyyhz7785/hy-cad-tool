@@ -17,6 +17,10 @@ namespace HyCADTool.Features.Tables.Views
         private Worksheet _sheet;
         private bool _suppressEvents;
         private int _lastRevision = -1;
+        private int _savedSelRowStart = -1;
+        private int _savedSelColStart = -1;
+        private int _savedSelRowEnd = -1;
+        private int _savedSelColEnd = -1;
 
         public ReoGridHostControl()
         {
@@ -71,6 +75,14 @@ namespace HyCADTool.Features.Tables.Views
             if (!force && _lastRevision == _vm.GridRevision)
                 return;
 
+            if (_vm.HasSelection)
+            {
+                _savedSelRowStart = _vm.SelRowStart;
+                _savedSelColStart = _vm.SelColStart;
+                _savedSelRowEnd = _vm.SelRowEnd;
+                _savedSelColEnd = _vm.SelColEnd;
+            }
+
             _lastRevision = _vm.GridRevision;
             var grid = _vm.EditorGrid;
             if (grid == null)
@@ -83,11 +95,34 @@ namespace HyCADTool.Features.Tables.Views
             try
             {
                 TableGridReoGridAdapter.Load(grid, _sheet);
+                RestoreSelectionIfValid(grid.Structure.Topology.RowCount, grid.Structure.Topology.ColCount);
             }
             finally
             {
                 _suppressEvents = false;
             }
+        }
+
+        private void RestoreSelectionIfValid(int rowCount, int colCount)
+        {
+            if (_savedSelRowStart < 0 || _savedSelColStart < 0)
+                return;
+
+            if (_savedSelRowStart >= rowCount || _savedSelColStart >= colCount)
+                return;
+
+            var endRow = System.Math.Min(_savedSelRowEnd, rowCount - 1);
+            var endCol = System.Math.Min(_savedSelColEnd, colCount - 1);
+            if (endRow < 0)
+                endRow = _savedSelRowStart;
+            if (endCol < 0)
+                endCol = _savedSelColStart;
+
+            _sheet.SelectionRange = new RangePosition(
+                _savedSelRowStart,
+                _savedSelColStart,
+                endRow - _savedSelRowStart + 1,
+                endCol - _savedSelColStart + 1);
         }
 
         private void OnSelectionRangeChanged(object sender, RangeEventArgs e)
@@ -115,6 +150,14 @@ namespace HyCADTool.Features.Tables.Views
                 return;
 
             var text = e.Cell.DisplayText ?? string.Empty;
+            var grid = _vm.EditorGrid;
+            if (grid != null)
+            {
+                var style = HyCAD.Tables.Operations.GridEditor.GetCellStyle(grid, anchor);
+                if (style.Orientation == TextOrientation.VerticalStacked)
+                    text = text.Replace("\r", string.Empty).Replace("\n", string.Empty);
+            }
+
             _vm.CommitCell(anchor, text);
         }
     }

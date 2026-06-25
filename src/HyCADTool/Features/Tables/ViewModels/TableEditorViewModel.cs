@@ -48,6 +48,8 @@ namespace HyCADTool.Features.Tables.ViewModels
         private CellRole? _selectedRole;
         private PaperOrientation _paperOrientation = PaperOrientation.Landscape;
         private double _marginMm = PaperPresetCatalog.DefaultMarginMm;
+        private TableEditorClipboardData _clipboardData;
+        private TableStylePreset _selectedStylePreset = TableStylePreset.EngineeringDefault;
 
         private const double BorderPresetWidthMm = 0.35;
 
@@ -86,6 +88,18 @@ namespace HyCADTool.Features.Tables.ViewModels
             DeleteColumnCommand = new RelayCommand(DeleteSelectedColumns, () => HasTable && IsStructureMode && HasSelection);
             MergeSelectionCommand = new RelayCommand(MergeSelection, () => HasTable && IsStructureMode && HasSelection);
             UnmergeCommand = new RelayCommand(UnmergeActiveCell, () => HasTable && IsStructureMode && HasSelection);
+            CopySelectionCommand = new RelayCommand(CopySelection, () => HasSelection);
+            PasteSelectionCommand = new RelayCommand(PasteSelection, () => HasSelection && _clipboardData != null);
+            ApplyTableStylePresetCommand = new RelayCommand(ApplyTableStylePreset, () => HasTable);
+            FitColumnsToPaperCommand = new RelayCommand(FitColumnsToPaper, () => HasTable);
+
+            StylePresetOptions = new ObservableCollection<TableStylePreset>
+            {
+                TableStylePreset.EngineeringDefault,
+                TableStylePreset.PersonnelOuterBold,
+                TableStylePreset.NoBorder,
+            };
+            _selectedStylePreset = StylePresetOptions[0];
         }
 
         public ObservableCollection<CellRoleOption> RoleOptions { get; }
@@ -111,6 +125,31 @@ namespace HyCADTool.Features.Tables.ViewModels
         public ICommand MergeSelectionCommand { get; }
 
         public ICommand UnmergeCommand { get; }
+
+        public ICommand CopySelectionCommand { get; }
+
+        public ICommand PasteSelectionCommand { get; }
+
+        public ICommand ApplyTableStylePresetCommand { get; }
+
+        public ICommand FitColumnsToPaperCommand { get; }
+
+        public ObservableCollection<TableStylePreset> StylePresetOptions { get; }
+
+        public TableStylePreset SelectedStylePreset
+        {
+            get => _selectedStylePreset;
+            set
+            {
+                if (_selectedStylePreset == value)
+                    return;
+
+                _selectedStylePreset = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool CanPaste => _clipboardData != null;
 
         public bool IsStructureMode
         {
@@ -299,6 +338,27 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 _selectedCellPreviewText = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(EditableCellPreviewText));
+            }
+        }
+
+        /// <summary>地址栏可编辑单元格内容（提交到 OpLog）。</summary>
+        public string EditableCellPreviewText
+        {
+            get => _selectedCellPreviewText;
+            set
+            {
+                if (_suppressSelectionSync || !HasSelection)
+                    return;
+
+                var normalized = value ?? string.Empty;
+                if (_selectedCellPreviewText == normalized)
+                    return;
+
+                _selectedCellPreviewText = normalized;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedCellPreviewText));
+                CommitActiveCellPreview(normalized);
             }
         }
 
@@ -1130,6 +1190,204 @@ namespace HyCADTool.Features.Tables.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = "拆分失败：" + ex.Message;
+            }
+        }
+
+        private void CommitActiveCellPreview(string text)
+        {
+            if (!HasSelection || OpLog == null)
+                return;
+
+            var grid = OpLog.Current;
+            var anchor = grid.Structure.GetAnchorOf(new CellAddr(SelectedRow, SelectedCol));
+            CommitCell(anchor, text);
+        }
+
+        private void CopySelection()
+        {
+            if (!HasSelection || OpLog == null)
+                return;
+
+            var grid = OpLog.Current;
+            var rowCount = SelRowEnd - SelRowStart + 1;
+            var colCount = SelColEnd - SelColStart + 1;
+            var cells = new System.Collections.Generic.List<TableEditorClipboardCell>();
+
+            foreach (var anchor in EnumerateSelectedAnchors())
+            {
+                var rowOffset = anchor.Row - SelRowStart;
+                var colOffset = anchor.Col - SelColStart;
+                var text = TableSummaryBuilder.FormatCellValue(HyCAD.Tables.Operations.GridEditor.GetValue(grid, anchor));
+                var style = HyCAD.Tables.Operations.GridEditor.GetCellStyle(grid, anchor);
+                var allowWrap = HyCAD.Tables.Operations.GridEditor.GetCellAllowWrap(grid, anchor);
+                cells.Add(new TableEditorClipboardCell(rowOffset, colOffset, text, style, allowWrap));
+            }
+
+            _clipboardData = new TableEditorClipboardData(rowCount, colCount, cells);
+            OnPropertyChanged(nameof(CanPaste));
+            ((RelayCommand)PasteSelectionCommand).RaiseCanExecuteChanged();
+            StatusMessage = $"已复制 {cells.Count} 个单元格";
+        }
+
+        private void PasteSelection()
+        {
+            if (!HasSelection || OpLog == null || _clipboardData == null)
+                return;
+
+            if (_clipboardData.RowCount != (SelRowEnd - SelRowStart + 1)
+                || _clipboardData.ColCount != (SelColEnd - SelColStart + 1))
+            {
+                StatusMessage = "粘贴失败：目标选区尺寸须与复制时一致";
+                return;
+            }
+
+            try
+            {
+                var grid = OpLog.Current;
+                var topology = grid.Structure.Topology;
+                var ops = new System.Collections.Generic.List<TableOperation>();
+
+                foreach (var cell in _clipboardData.Cells)
+                {
+                    var row = SelRowStart + cell.RowOffset;
+                    var col = SelColStart + cell.ColOffset;
+                    if (row >= topology.RowCount || col >= topology.ColCount)
+                        continue;
+
+                    var addr = new CellAddr(row, col);
+                    var anchor = grid.Structure.GetAnchorOf(addr);
+                    ops.Add(new SetValueOp(anchor, new HyCAD.Tables.Data.CellValue(cell.Text)));
+                    ops.Add(new SetStyleOp(anchor, cell.Style));
+                    ops.Add(new SetCellWrapOp(anchor, cell.AllowWrap));
+                }
+
+                ApplyOperations(ops);
+                StatusMessage = $"已粘贴 { _clipboardData.Cells.Count} 个单元格";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "粘贴失败：" + ex.Message;
+            }
+        }
+
+        private void ApplyTableStylePreset()
+        {
+            if (!HasTable || OpLog == null || SelectedStylePreset == null)
+                return;
+
+            try
+            {
+                var grid = OpLog.Current;
+                var topology = grid.Structure.Topology;
+                var ops = new System.Collections.Generic.List<TableOperation>();
+                var preset = SelectedStylePreset;
+
+                if (preset.Id == "personnel-outer")
+                {
+                    var r0 = 0;
+                    var r1 = topology.RowCount - 1;
+                    var c0 = 0;
+                    var c1 = topology.ColCount - 1;
+                    foreach (var anchor in EnumerateAllAnchors(grid))
+                    {
+                        var style = HyCAD.Tables.Operations.GridEditor.GetCellStyle(grid, anchor);
+                        var rowSpan = 1;
+                        var colSpan = 1;
+                        if (grid.Structure.TryGetMergeAt(anchor, out var merge))
+                        {
+                            rowSpan = merge.RowSpan;
+                            colSpan = merge.ColSpan;
+                        }
+
+                        var top = anchor.Row == r0 ? 0.7 : BorderPresetWidthMm;
+                        var left = anchor.Col == c0 ? 0.7 : BorderPresetWidthMm;
+                        var bottom = anchor.Row + rowSpan - 1 == r1 ? 0.7 : BorderPresetWidthMm;
+                        var right = anchor.Col + colSpan - 1 == c1 ? 0.7 : BorderPresetWidthMm;
+                        var borders = new BorderSet(top, right, bottom, left);
+                        ops.Add(new SetStyleOp(anchor, new CellStyle(
+                            style.Orientation,
+                            style.HAlign,
+                            style.VAlign,
+                            preset.DefaultTextHeightMm,
+                            style.FontKey,
+                            borders,
+                            style.BackColor)));
+                    }
+                }
+                else
+                {
+                    var borders = preset.DefaultBorder;
+                    foreach (var anchor in EnumerateAllAnchors(grid))
+                    {
+                        var style = HyCAD.Tables.Operations.GridEditor.GetCellStyle(grid, anchor);
+                        ops.Add(new SetStyleOp(anchor, new CellStyle(
+                            style.Orientation,
+                            style.HAlign,
+                            style.VAlign,
+                            preset.DefaultTextHeightMm,
+                            style.FontKey,
+                            borders,
+                            style.BackColor)));
+                    }
+                }
+
+                ApplyOperations(ops);
+                StatusMessage = $"已应用表样式「{preset.DisplayName}」";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "表样式应用失败：" + ex.Message;
+            }
+        }
+
+        private void FitColumnsToPaper()
+        {
+            if (!HasTable || OpLog == null)
+                return;
+
+            var grid = OpLog.Current;
+            var topology = grid.Structure.Topology;
+            var usable = TargetWidthMm - 2 * _marginMm;
+            if (usable <= 0)
+            {
+                StatusMessage = "可用纸宽无效";
+                return;
+            }
+
+            var total = 0.0;
+            for (var c = 0; c < topology.ColCount; c++)
+                total += topology.Cols[c].Size;
+
+            if (total <= 0)
+                return;
+
+            var scale = usable / total;
+            var ops = new System.Collections.Generic.List<TableOperation>();
+            for (var c = 0; c < topology.ColCount; c++)
+            {
+                var next = topology.Cols[c].Size * scale;
+                ops.Add(new SetTrackSizeOp(false, c, next));
+            }
+
+            ApplyOperations(ops);
+            StatusMessage = $"列宽已缩放至纸宽 {TargetWidthMm:F0} mm（边距 {_marginMm:F0}）";
+        }
+
+        private static System.Collections.Generic.IEnumerable<CellAddr> EnumerateAllAnchors(TableGrid grid)
+        {
+            var structure = grid.Structure;
+            var topology = structure.Topology;
+            for (var row = 0; row < topology.RowCount; row++)
+            {
+                for (var col = 0; col < topology.ColCount; col++)
+                {
+                    var addr = new CellAddr(row, col);
+                    if (structure.IsHidden(addr))
+                        continue;
+                    if (addr != structure.GetAnchorOf(addr))
+                        continue;
+                    yield return addr;
+                }
             }
         }
     }

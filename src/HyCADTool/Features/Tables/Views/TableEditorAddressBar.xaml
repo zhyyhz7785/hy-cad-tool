@@ -43,8 +43,8 @@
                      Background="#ffffff"
                      BorderBrush="#d8dee9"
                      Foreground="#2e3440"
-                     IsReadOnly="True"
-                     Text="{Binding SelectedCellPreviewText, Mode=OneWay}" />
+                     IsEnabled="{Binding HasSelection}"
+                     Text="{Binding EditableCellPreviewText, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
     </Border>
 </UserControl>

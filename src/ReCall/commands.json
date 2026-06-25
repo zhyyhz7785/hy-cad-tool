@@ -265,6 +265,14 @@
             "tooltip": "打开独立表格编辑器窗口（纸张优先 + 宽网格）",
             "order": 159
         },
+        "N38": {
+            "type": "HyCADTool.Features.Tables.Commands.OpenUniverTableEditorCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "Univer 表格编辑器(N38)",
+            "tooltip": "打开 Univer WebView2 表格编辑器 PoC（插件模式基础示例）",
+            "order": 160
+        },
         "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
         "N46": null, "N47": null, "N48": null, "N49": null, "N50": null
     }

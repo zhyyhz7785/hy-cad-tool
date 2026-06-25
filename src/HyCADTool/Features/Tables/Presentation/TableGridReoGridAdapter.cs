@@ -8,7 +8,6 @@ namespace HyCADTool.Features.Tables.Presentation
 {
     /// <summary>
     /// <see cref="TableGrid"/> ↔ ReoGrid <see cref="Worksheet"/> 单向加载与 Cell.Tag 元数据规范。
-    /// 编辑回写由宿主控件经 ViewModel.OpLog 完成，ReoGrid 不作第二真相源。
     /// </summary>
     public static class TableGridReoGridAdapter
     {
@@ -18,6 +17,7 @@ namespace HyCADTool.Features.Tables.Presentation
         private const ushort MaxColPx = 260;
         private const ushort MinRowPx = 22;
         private const ushort MaxRowPx = 140;
+        private const double MmToPoint = 72.0 / 25.4;
 
         /// <summary>将 Domain 表格加载到 ReoGrid 工作表（会 Reset 工作表）。</summary>
         public static void Load(TableGrid grid, Worksheet sheet)
@@ -48,8 +48,9 @@ namespace HyCADTool.Features.Tables.Presentation
             {
                 var row = cell.Anchor.Row;
                 var col = cell.Anchor.Col;
+                var displayText = FormatDisplayText(cell);
                 var reoCell = sheet.CreateAndGetCell(row, col);
-                reoCell.Data = cell.Text;
+                reoCell.Data = displayText;
 
                 CellRole? role = null;
                 if (structure.Roles.TryGetValue(cell.Anchor, out var roleValue))
@@ -61,19 +62,28 @@ namespace HyCADTool.Features.Tables.Presentation
                     reoCell.IsReadOnly = true;
 
                 var style = BuildRangeStyle(cell);
-                if (cell.RowSpan > 1 || cell.ColSpan > 1)
-                {
-                    sheet.MergeRange(row, col, cell.RowSpan, cell.ColSpan);
-                    sheet.SetRangeStyles(row, col, cell.RowSpan, cell.ColSpan, style);
-                }
-                else
-                {
-                    sheet.SetRangeStyles(row, col, 1, 1, style);
-                }
+                var rowSpan = cell.RowSpan;
+                var colSpan = cell.ColSpan;
+                if (rowSpan > 1 || colSpan > 1)
+                    sheet.MergeRange(row, col, rowSpan, colSpan);
+
+                sheet.SetRangeStyles(row, col, rowSpan, colSpan, style);
+                ApplyBorders(sheet, row, col, rowSpan, colSpan, cell.Borders);
             }
         }
 
-        /// <summary>从 ReoGrid 单元格解析 anchor 地址（合并格取 Tag 或合并左上角）。</summary>
+        /// <summary>竖排格在 ReoGrid 无原生竖排时用换行堆字预览。</summary>
+        public static string FormatDisplayText(ExcelCellRender cell)
+        {
+            if (cell == null)
+                return string.Empty;
+
+            if (cell.Orientation != TextOrientation.VerticalStacked || string.IsNullOrEmpty(cell.Text))
+                return cell.Text;
+
+            return string.Join("\n", cell.Text.ToCharArray());
+        }
+
         public static bool TryGetAnchor(Worksheet sheet, int row, int col, out CellAddr anchor)
         {
             anchor = default;
@@ -124,25 +134,65 @@ namespace HyCADTool.Features.Tables.Presentation
             }
         }
 
+        public static double MmToPointSize(double textHeightMm)
+        {
+            var mm = textHeightMm <= 0 ? 3.5 : textHeightMm;
+            return mm * MmToPoint;
+        }
+
         private static WorksheetRangeStyle BuildRangeStyle(ExcelCellRender cell)
         {
             var style = new WorksheetRangeStyle
             {
                 HAlign = ToReoGridHorAlign(cell.HAlign),
                 VAlign = ToReoGridVerAlign(cell.VAlign),
-                TextWrapMode = TextWrapMode.WordBreak,
+                TextWrapMode = cell.AllowWrap ? TextWrapMode.WordBreak : TextWrapMode.NoWrap,
+                FontSize = (float)MmToPointSize(cell.TextHeightMm),
             };
 
-            if (cell.IsPhotoSlot)
-                style.BackColor = new SolidColor(255, 0xF7, 0xF2, 0xE8);
-
-            style.Flag = PlainStyleFlag.HorizontalAlign
+            var flags = PlainStyleFlag.HorizontalAlign
                 | PlainStyleFlag.VerticalAlign
                 | PlainStyleFlag.TextWrap
-                | (cell.IsPhotoSlot ? PlainStyleFlag.BackColor : PlainStyleFlag.None);
+                | PlainStyleFlag.FontSize;
 
+            if (cell.IsPhotoSlot)
+            {
+                style.BackColor = new SolidColor(255, 0xF7, 0xF2, 0xE8);
+                flags |= PlainStyleFlag.BackColor;
+            }
+            else if (cell.Orientation == TextOrientation.VerticalStacked)
+            {
+                style.BackColor = new SolidColor(255, 0xF0, 0xF4, 0xF8);
+                flags |= PlainStyleFlag.BackColor;
+            }
+
+            style.Flag = flags;
             return style;
         }
+
+        private static void ApplyBorders(
+            Worksheet sheet,
+            int row,
+            int col,
+            int rowSpan,
+            int colSpan,
+            BorderSet borders)
+        {
+            if (borders == null || borders == BorderSet.None)
+                return;
+
+            if (borders.Top > 0)
+                sheet.SetRangeBorders(row, col, rowSpan, colSpan, BorderPositions.Top, PickBorderStyle(borders.Top));
+            if (borders.Bottom > 0)
+                sheet.SetRangeBorders(row, col, rowSpan, colSpan, BorderPositions.Bottom, PickBorderStyle(borders.Bottom));
+            if (borders.Left > 0)
+                sheet.SetRangeBorders(row, col, rowSpan, colSpan, BorderPositions.Left, PickBorderStyle(borders.Left));
+            if (borders.Right > 0)
+                sheet.SetRangeBorders(row, col, rowSpan, colSpan, BorderPositions.Right, PickBorderStyle(borders.Right));
+        }
+
+        private static RangeBorderStyle PickBorderStyle(double widthMm) =>
+            widthMm >= 0.5 ? RangeBorderStyle.BlackBoldSolid : RangeBorderStyle.BlackSolid;
 
         private static ushort MmToColPx(double mm) =>
             (ushort)Math.Max(MinColPx, Math.Min(MaxColPx, mm * ColScale));

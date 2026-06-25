@@ -272,6 +272,8 @@ namespace HyCADTool.ReCall
                 _currentDependenciesPath = loadDepsPath;
                 _currentNugetPackagesPath = nugetPath;
                 _lastLoadDir = loadDepsPath;
+                AppDomain.CurrentDomain.SetData("HyCADTool.ReCall.DependenciesPath", loadDepsPath);
+                AppDomain.CurrentDomain.SetData("HyCADTool.ReCall.SourceBinPath", depsPath);
 
                 if (!_unhandledExceptionRegistered)
                 {

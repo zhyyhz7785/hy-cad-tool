@@ -86,6 +86,11 @@
       <Project>{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}</Project>
       <Name>HyCAD.BlenderUI</Name>
     </ProjectReference>
+    <!-- 仅触发 net8 子工程编译并复制到 bin\Debug\net8，供 C2 递归复制；不引用程序集 -->
+    <ProjectReference Include="..\HyCADTool.UniverEditor\HyCADTool.UniverEditor.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+    </ProjectReference>
   </ItemGroup>
 
   <!-- 配置文件复制到输出目录 -->

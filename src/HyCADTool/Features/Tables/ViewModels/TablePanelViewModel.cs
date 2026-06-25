@@ -136,26 +136,19 @@ namespace HyCADTool.Features.Tables.ViewModels
 
 
         public string StatusMessage
-
         {
-
             get => _statusMessage;
-
             protected set
-
             {
-
                 if (_statusMessage == value)
-
                     return;
 
                 _statusMessage = value;
-
                 OnPropertyChanged();
-
             }
-
         }
+
+        public void SetStatusMessage(string message) => StatusMessage = message;
 
 
 
@@ -614,6 +607,26 @@ namespace HyCADTool.Features.Tables.ViewModels
         protected TableGrid CurrentGrid => _opLog?.Current;
 
         protected TableOpLog OpLog => _opLog;
+
+        /// <summary>供 Univer 宿主加载外部 TableGrid（xlsx 导入等）。</summary>
+        public void ApplyExternalGrid(TableGrid grid, TablePublishContext context)
+        {
+            if (grid == null)
+                throw new ArgumentNullException(nameof(grid));
+
+            ApplyGrid(grid, context);
+        }
+
+        /// <summary>将 Univer 导出的文本快照合并进当前 OpLog。</summary>
+        public void ApplyUniverSnapshot(UniverGridSnapshot snapshot)
+        {
+            if (_opLog == null || snapshot == null)
+                return;
+
+            UniverGridSnapshotMapper.ApplyTextValues(_opLog, snapshot);
+            RefreshRows();
+            RefreshSummary();
+        }
 
         protected virtual void OnAfterApplyGrid()
         {

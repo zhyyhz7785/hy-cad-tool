@@ -1,0 +1,328 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
+using Newtonsoft.Json.Linq;
+
+namespace HyCADTool.UniverEditor.Services
+{
+    internal sealed class UniverSessionLifecycle : IDisposable
+    {
+        private const string VirtualHostName = "univer.local";
+        private const string EntryUrl = "https://univer.local/index.html";
+        private const string Net8DirKey = "HyCADTool.UniverEditorLoader.Net8Dir";
+        private const string WebDistPathKey = "HyCADTool.UniverEditor.WebDistPath";
+        private const string ReCallDepsPathKey = "HyCADTool.ReCall.DependenciesPath";
+        private const string ReCallSourceBinPathKey = "HyCADTool.ReCall.SourceBinPath";
+
+        private readonly WebView2 _webView;
+        private readonly Action<string> _setStatus;
+        private readonly UniverEditorHostContext _hostContext;
+        private bool _ready;
+        private bool _disposed;
+        private int _exportRequestId;
+
+        public UniverSessionLifecycle(
+            WebView2 webView,
+            Action<string> setStatus,
+            UniverEditorHostContext hostContext)
+        {
+            _webView = webView;
+            _setStatus = setStatus;
+            _hostContext = hostContext;
+        }
+
+        public bool IsReady => _ready;
+
+        public event Action Ready;
+
+        public async Task InitializeAsync()
+        {
+            _setStatus?.Invoke("初始化 WebView2...");
+
+            string distPath = ResolveDistPath();
+            if (!Directory.Exists(distPath))
+                throw new DirectoryNotFoundException($"未找到 Univer 前端资源目录: {distPath}");
+
+            string indexPath = Path.Combine(distPath, "index.html");
+            if (!File.Exists(indexPath))
+                throw new FileNotFoundException($"未找到 Univer 入口页: {indexPath}");
+
+            string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
+            if (string.IsNullOrWhiteSpace(runtimeVersion))
+                throw new InvalidOperationException("未检测到 WebView2 Runtime，请先安装 Microsoft Edge WebView2 Runtime。");
+
+            var env = await WebView2EnvironmentProvider.GetOrCreateAsync();
+            await _webView.EnsureCoreWebView2Async(env);
+
+            _setStatus?.Invoke("加载 Univer 页面...");
+
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+            _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                VirtualHostName,
+                distPath,
+                CoreWebView2HostResourceAccessKind.Allow);
+            _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+            _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+            _webView.CoreWebView2.Navigate(EntryUrl);
+        }
+
+        public Task LoadSnapshotAsync(string snapshotJson)
+        {
+            if (!_ready || string.IsNullOrWhiteSpace(snapshotJson))
+                return Task.CompletedTask;
+
+            return PostCommandAsync("loadSnapshot", JToken.Parse(snapshotJson));
+        }
+
+        public Task ExportSnapshotAsync()
+        {
+            if (!_ready)
+                return Task.CompletedTask;
+
+            _exportRequestId++;
+            return PostCommandAsync("exportSnapshot", null);
+        }
+
+        private Task PostCommandAsync(string type, JToken payload)
+        {
+            var message = new JObject { ["type"] = type };
+            if (payload != null)
+                message["payload"] = payload;
+
+            if (_webView?.CoreWebView2 == null)
+                return Task.CompletedTask;
+
+            _webView.CoreWebView2.PostWebMessageAsString(message.ToString());
+            return Task.CompletedTask;
+        }
+
+        private static string ResolveDistPath()
+        {
+            string cached = AppDomain.CurrentDomain.GetData(WebDistPathKey) as string;
+            if (IsValidDistPath(cached))
+                return Path.GetFullPath(cached);
+
+            foreach (string distPath in EnumerateDistCandidates())
+            {
+                if (IsValidDistPath(distPath))
+                {
+                    AppDomain.CurrentDomain.SetData(WebDistPathKey, distPath);
+                    return distPath;
+                }
+            }
+
+            throw new DirectoryNotFoundException(
+                "未找到 Univer Web/dist。"
+                + " 请在 src\\HyCADTool.UniverEditor\\Web 执行 npm run build，"
+                + "再 dotnet build 并 C2 重载。");
+        }
+
+        private static IEnumerable<string> EnumerateDistCandidates()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            string net8Dir = AppDomain.CurrentDomain.GetData(Net8DirKey) as string;
+            if (!string.IsNullOrWhiteSpace(net8Dir))
+                TryAddDistCandidate(seen, Path.Combine(net8Dir, "Web", "dist"));
+
+            string depsPath = AppDomain.CurrentDomain.GetData(ReCallDepsPathKey) as string;
+            if (!string.IsNullOrWhiteSpace(depsPath))
+            {
+                TryAddDistCandidate(seen, Path.Combine(depsPath, "net8", "Web", "dist"));
+                TryAddDistCandidate(seen, Path.Combine(depsPath, "Web", "dist"));
+            }
+
+            string sourceBin = AppDomain.CurrentDomain.GetData(ReCallSourceBinPathKey) as string;
+            if (!string.IsNullOrWhiteSpace(sourceBin))
+                TryAddDistCandidate(seen, Path.Combine(sourceBin, "net8", "Web", "dist"));
+
+            foreach (string baseDir in EnumerateDevOutputCandidates())
+                TryAddDistCandidate(seen, Path.Combine(baseDir, "net8", "Web", "dist"));
+
+            string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (!string.IsNullOrWhiteSpace(assemblyDir))
+                TryAddDistCandidate(seen, Path.Combine(assemblyDir, "Web", "dist"));
+
+            foreach (string candidate in seen)
+                yield return candidate;
+        }
+
+        private static IEnumerable<string> EnumerateDevOutputCandidates()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            string sourceBin = AppDomain.CurrentDomain.GetData(ReCallSourceBinPathKey) as string;
+            if (!string.IsNullOrWhiteSpace(sourceBin))
+            {
+                string full = Path.GetFullPath(sourceBin.Trim());
+                if (Directory.Exists(full) && seen.Add(full))
+                    yield return full;
+            }
+
+            Assembly recall = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => string.Equals(a.GetName().Name, "ReCall", StringComparison.OrdinalIgnoreCase));
+            if (recall != null && !string.IsNullOrEmpty(recall.Location))
+            {
+                string recallDir = Path.GetDirectoryName(recall.Location);
+                if (!string.IsNullOrEmpty(recallDir))
+                {
+                    string[] relatives =
+                    {
+                        Path.Combine(recallDir, "..", "..", "..", "HyCADTool", "bin", "Debug"),
+                        Path.Combine(recallDir, "..", "..", "HyCADTool", "bin", "Debug"),
+                    };
+
+                    foreach (string relative in relatives)
+                    {
+                        string full = Path.GetFullPath(relative);
+                        if (Directory.Exists(full) && seen.Add(full))
+                            yield return full;
+                    }
+                }
+            }
+
+            string env = Environment.GetEnvironmentVariable("HYCAD_TOOL_BIN");
+            if (!string.IsNullOrWhiteSpace(env))
+            {
+                string full = Path.GetFullPath(env.Trim());
+                if (Directory.Exists(full) && seen.Add(full))
+                    yield return full;
+            }
+        }
+
+        private static void TryAddDistCandidate(ISet<string> seen, string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            seen.Add(Path.GetFullPath(path));
+        }
+
+        private static bool IsValidDistPath(string path)
+        {
+            return !string.IsNullOrWhiteSpace(path)
+                && Directory.Exists(path)
+                && File.Exists(Path.Combine(path, "index.html"));
+        }
+
+        private void OnNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            if (e.IsSuccess)
+            {
+                _setStatus?.Invoke("初始化表格引擎...");
+                return;
+            }
+
+            _setStatus?.Invoke($"Univer 页面加载失败: {e.WebErrorStatus}");
+        }
+
+        private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                string raw = e.TryGetWebMessageAsString();
+                if (string.IsNullOrWhiteSpace(raw))
+                    return;
+
+                JObject message = JObject.Parse(raw);
+                string type = message.Value<string>("type");
+                if (string.Equals(type, "ready", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ready = true;
+                    _setStatus?.Invoke("Univer 已就绪");
+                    Ready?.Invoke();
+                    await PushInitialSnapshotAsync();
+                    return;
+                }
+
+                if (string.Equals(type, "cellChanged", StringComparison.OrdinalIgnoreCase))
+                {
+                    int row = message.Value<int?>("row") ?? -1;
+                    int col = message.Value<int?>("col") ?? -1;
+                    string text = message.Value<string>("text") ?? string.Empty;
+                    if (row >= 0 && col >= 0)
+                        _hostContext?.OnCellChanged?.Invoke(row, col, text);
+                    return;
+                }
+
+                if (string.Equals(type, "snapshot", StringComparison.OrdinalIgnoreCase))
+                {
+                    string json = message["payload"]?.ToString();
+                    _hostContext?.OnSnapshotExported?.Invoke(json);
+                    SnapshotExported?.Invoke(json);
+                    return;
+                }
+
+                if (string.Equals(type, "hyCadAction", StringComparison.OrdinalIgnoreCase))
+                {
+                    string action = message.Value<string>("action");
+                    HandleHyCadAction(action);
+                    return;
+                }
+
+                if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
+                {
+                    string detail = message.Value<string>("message") ?? "未知错误";
+                    _setStatus?.Invoke($"Univer 错误: {detail}");
+                }
+            }
+            catch
+            {
+                // ignore malformed host messages
+            }
+        }
+
+        public event Action<string> SnapshotExported;
+
+        private void HandleHyCadAction(string action)
+        {
+            switch (action)
+            {
+                case "pick":
+                    _hostContext?.InvokeSafe(_hostContext.RequestPick, _setStatus);
+                    break;
+                case "publish":
+                    _hostContext?.InvokeSafe(_hostContext.RequestPublish, _setStatus);
+                    break;
+            }
+        }
+
+        private async Task PushInitialSnapshotAsync()
+        {
+            string json = _hostContext?.TryGetLoadSnapshotJson();
+            if (string.IsNullOrWhiteSpace(json))
+                return;
+
+            await LoadSnapshotAsync(json);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
+            try
+            {
+                if (_webView?.CoreWebView2 != null)
+                {
+                    _webView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
+                    _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            try { _webView?.Dispose(); } catch { }
+        }
+    }
+}

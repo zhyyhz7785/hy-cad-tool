@@ -21,6 +21,14 @@
                 <Setter Property="HorizontalAlignment" Value="Center" />
                 <Setter Property="Margin" Value="0,3,0,0" />
             </Style>
+
+            <Style x:Key="RibbonBtn" TargetType="Button" BasedOn="{StaticResource BlenderButtonFlat}">
+                <Setter Property="MinWidth" Value="36" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="Padding" Value="6,0" />
+                <Setter Property="Margin" Value="1" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -58,6 +66,36 @@
                      helper:TextBoxHelper.EnableCustomHandlers="True"
                      Text="{Binding MarginMm, UpdateSourceTrigger=PropertyChanged}" />
             <TextBlock Style="{StaticResource GroupCaption}" Text="边距 mm" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <StackPanel Margin="0,0,12,0">
+            <StackPanel Orientation="Horizontal">
+                <ComboBox MinWidth="100"
+                          Margin="0,0,4,0"
+                          DisplayMemberPath="DisplayName"
+                          ItemsSource="{Binding StylePresetOptions}"
+                          SelectedItem="{Binding SelectedStylePreset}"
+                          Style="{StaticResource BlenderComboBox}" />
+                <Button Padding="8,4"
+                        Command="{Binding ApplyTableStylePresetCommand}"
+                        Content="应用样式"
+                        Style="{StaticResource RibbonBtn}" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="表样式" />
+        </StackPanel>
+
+        <StackPanel>
+            <Button Command="{Binding FitColumnsToPaperCommand}"
+                    Content="列宽适配纸宽"
+                    Style="{StaticResource RibbonBtn}"
+                    ToolTip="按目标纸宽与边距等比缩放全部列宽" />
+            <TextBlock Style="{StaticResource GroupCaption}" Text="缩放" />
         </StackPanel>
     </StackPanel>
 </UserControl>

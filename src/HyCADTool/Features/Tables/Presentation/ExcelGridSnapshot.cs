@@ -49,7 +49,11 @@ namespace HyCADTool.Features.Tables.Presentation
             bool isEditable,
             TextAlign hAlign,
             TextAlign vAlign,
-            bool isPhotoSlot)
+            bool isPhotoSlot,
+            double textHeightMm,
+            bool allowWrap,
+            TextOrientation orientation,
+            BorderSet borders)
         {
             Anchor = anchor;
             RowSpan = rowSpan;
@@ -59,6 +63,10 @@ namespace HyCADTool.Features.Tables.Presentation
             HAlign = hAlign;
             VAlign = vAlign;
             IsPhotoSlot = isPhotoSlot;
+            TextHeightMm = textHeightMm;
+            AllowWrap = allowWrap;
+            Orientation = orientation;
+            Borders = borders ?? BorderSet.None;
         }
 
         public CellAddr Anchor { get; }
@@ -76,6 +84,14 @@ namespace HyCADTool.Features.Tables.Presentation
         public TextAlign VAlign { get; }
 
         public bool IsPhotoSlot { get; }
+
+        public double TextHeightMm { get; }
+
+        public bool AllowWrap { get; }
+
+        public TextOrientation Orientation { get; }
+
+        public BorderSet Borders { get; }
     }
 
     /// <summary>
@@ -128,6 +144,8 @@ namespace HyCADTool.Features.Tables.Presentation
                     var style = GridEditor.GetCellStyle(grid, anchor);
                     var isPhoto = structure.Roles.TryGetValue(anchor, out var role)
                         && role == CellRole.PhotoSlot;
+                    var borders = style.Borders ?? topology.DefaultBorder ?? BorderSet.None;
+                    var allowWrap = GridEditor.GetCellAllowWrap(grid, anchor);
 
                     cells.Add(new ExcelCellRender(
                         anchor,
@@ -137,7 +155,11 @@ namespace HyCADTool.Features.Tables.Presentation
                         editable,
                         style.HAlign,
                         style.VAlign,
-                        isPhoto));
+                        isPhoto,
+                        style.TextHeight,
+                        allowWrap,
+                        style.Orientation,
+                        borders));
                 }
             }
 

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCAD.Geometry", "src\HyCAD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor", "src\HyCADTool.MarkdownEditor\HyCADTool.MarkdownEditor.csproj", "{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.UniverEditor", "src\HyCADTool.UniverEditor\HyCADTool.UniverEditor.csproj", "{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.MarkdownEditor.TestHost", "src\HyCADTool.MarkdownEditor.TestHost\HyCADTool.MarkdownEditor.TestHost.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HyCADTool.TextLayout", "src\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj", "{3FCA9908-BA84-44AA-B3CE-79E64DE0A46C}"
@@ -99,6 +101,18 @@ Global
 		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x64.Build.0 = Release|Any CPU
 		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x86.ActiveCfg = Release|Any CPU
 		{B2C7D4E5-F6A8-4B9C-8D1E-2F3A4B5C6D7E}.Release|x86.Build.0 = Release|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Debug|x64.Build.0 = Debug|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Debug|x86.Build.0 = Debug|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Release|x64.ActiveCfg = Release|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Release|x64.Build.0 = Release|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Release|x86.ActiveCfg = Release|Any CPU
+		{E4D8F2A1-6B3C-4D9E-8F7A-2C1B5E9D0A4F}.Release|x86.Build.0 = Release|Any CPU
 		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.ActiveCfg = Debug|x64
