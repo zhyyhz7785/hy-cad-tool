@@ -633,6 +633,26 @@ namespace HyCADTool.Features.Tables.ViewModels
             RefreshSummary();
         }
 
+        /// <summary>批量应用多个操作，结束后只刷新一次。</summary>
+        protected void ApplyOperations(System.Collections.Generic.IEnumerable<TableOperation> ops)
+        {
+            if (_opLog == null || ops == null)
+                return;
+
+            var applied = false;
+            foreach (var op in ops)
+            {
+                _opLog.Apply(op);
+                applied = true;
+            }
+
+            if (!applied)
+                return;
+
+            RefreshRows();
+            RefreshSummary();
+        }
+
 
 
         private void ApplyGrid(TableGrid grid, TablePublishContext context)

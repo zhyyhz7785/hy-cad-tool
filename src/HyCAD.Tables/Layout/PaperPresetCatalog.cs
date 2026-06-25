@@ -12,7 +12,10 @@ public static class PaperPresetCatalog
     /// <summary>Custom 未指定宽时的占位默认（mm）。</summary>
     public const double CustomFallbackWidthMm = 400.0;
 
-    public static double ResolveTargetWidthMm(PaperPreset preset, double marginMm = DefaultMarginMm)
+    public static double ResolveTargetWidthMm(
+        PaperPreset preset,
+        double marginMm = DefaultMarginMm,
+        PaperOrientation orientation = PaperOrientation.Landscape)
     {
         if (marginMm < 0)
             throw new ArgumentOutOfRangeException(nameof(marginMm));
@@ -20,16 +23,16 @@ public static class PaperPresetCatalog
         var horizontalMarginTotal = marginMm * 2.0;
         return preset switch
         {
-            PaperPreset.A4 => 297.0 - horizontalMarginTotal,
-            PaperPreset.A3 => 420.0 - horizontalMarginTotal,
-            PaperPreset.A2 => 594.0 - horizontalMarginTotal,
+            PaperPreset.A4 => (orientation == PaperOrientation.Landscape ? 297.0 : 210.0) - horizontalMarginTotal,
+            PaperPreset.A3 => (orientation == PaperOrientation.Landscape ? 420.0 : 297.0) - horizontalMarginTotal,
+            PaperPreset.A2 => (orientation == PaperOrientation.Landscape ? 594.0 : 420.0) - horizontalMarginTotal,
             PaperPreset.Custom => CustomFallbackWidthMm,
             _ => throw new ArgumentOutOfRangeException(nameof(preset), preset, null),
         };
     }
 
     public static double DefaultTargetWidthMm(PaperPreset preset) =>
-        ResolveTargetWidthMm(preset, DefaultMarginMm);
+        ResolveTargetWidthMm(preset, DefaultMarginMm, PaperOrientation.Landscape);
 
     public static string GetDisplayName(PaperPreset preset) => preset switch
     {

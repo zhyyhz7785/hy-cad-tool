@@ -2,7 +2,9 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pres="clr-namespace:HyCADTool.Features.Tables.Presentation"
              mc:Ignorable="d"
              d:DesignHeight="400"
              d:DesignWidth="200">
@@ -12,6 +14,7 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <pres:EnumMatchConverter x:Key="EnumMatch" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -25,19 +28,25 @@
                            Text="Inspector" />
 
                 <Expander Margin="0,0,0,4"
-                          Header="角色"
+                          Header="Role"
                           IsExpanded="True">
-                    <TextBlock Margin="4,2,0,4"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               Text="{Binding SelectedRoleText, Mode=OneWay}" />
+                    <ComboBox Margin="4,2,0,4"
+                              DisplayMemberPath="DisplayName"
+                              IsEnabled="{Binding HasSelection}"
+                              ItemsSource="{Binding RoleOptions}"
+                              SelectedValuePath="Role"
+                              SelectedValue="{Binding SelectedRole}"
+                              Style="{StaticResource BlenderComboBox}" />
                 </Expander>
 
                 <Expander Margin="0,0,0,4"
                           Header="FieldKey"
                           IsExpanded="True">
-                    <TextBlock Margin="4,2,0,4"
-                               Foreground="{DynamicResource Brush_TextSecondary}"
-                               Text="{Binding SelectedFieldKey, Mode=OneWay}" />
+                    <TextBox Margin="4,2,0,4"
+                             Style="{StaticResource BlenderTextBox}"
+                             helper:TextBoxHelper.EnableCustomHandlers="True"
+                             IsEnabled="{Binding HasSelection}"
+                             Text="{Binding EditableFieldKey, UpdateSourceTrigger=PropertyChanged}" />
                 </Expander>
 
                 <Expander Margin="0,0,0,4"
@@ -55,21 +64,54 @@
                     </StackPanel>
                 </Expander>
 
-                <Expander Header="对齐（只读预览）"
-                          IsExpanded="False">
+                <Expander Header="对齐"
+                          IsExpanded="True">
                     <StackPanel Margin="4,2,0,4">
-                        <TextBlock Foreground="{DynamicResource Brush_TextSecondary}">
-                            <Run Text="HAlign=" />
-                            <Run Text="{Binding SelectedHAlign, Mode=OneWay}" />
-                        </TextBlock>
-                        <TextBlock Foreground="{DynamicResource Brush_TextSecondary}">
-                            <Run Text="VAlign=" />
-                            <Run Text="{Binding SelectedVAlign, Mode=OneWay}" />
-                        </TextBlock>
-                        <TextBlock Foreground="{DynamicResource Brush_TextSecondary}">
-                            <Run Text="Wrap=" />
-                            <Run Text="{Binding SelectedAllowWrap, Mode=OneWay}" />
-                        </TextBlock>
+                        <TextBlock Margin="0,0,0,4"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="水平" />
+                        <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                            <ToggleButton Margin="0,0,2,0"
+                                          Content="左"
+                                          IsChecked="{Binding SelectedHAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Start, Mode=TwoWay}"
+                                          IsEnabled="{Binding HasSelection}"
+                                          Style="{StaticResource BlenderToggleButton}" />
+                            <ToggleButton Margin="0,0,2,0"
+                                          Content="中"
+                                          IsChecked="{Binding SelectedHAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Center, Mode=TwoWay}"
+                                          IsEnabled="{Binding HasSelection}"
+                                          Style="{StaticResource BlenderToggleButton}" />
+                            <ToggleButton Content="右"
+                                          IsChecked="{Binding SelectedHAlign, Converter={StaticResource EnumMatch}, ConverterParameter=End, Mode=TwoWay}"
+                                          IsEnabled="{Binding HasSelection}"
+                                          Style="{StaticResource BlenderToggleButton}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,0,0,4"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="垂直" />
+                        <StackPanel Orientation="Horizontal">
+                            <ToggleButton Margin="0,0,2,0"
+                                          Content="上"
+                                          IsChecked="{Binding SelectedVAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Start, Mode=TwoWay}"
+                                          IsEnabled="{Binding HasSelection}"
+                                          Style="{StaticResource BlenderToggleButton}" />
+                            <ToggleButton Margin="0,0,2,0"
+                                          Content="中"
+                                          IsChecked="{Binding SelectedVAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Center, Mode=TwoWay}"
+                                          IsEnabled="{Binding HasSelection}"
+                                          Style="{StaticResource BlenderToggleButton}" />
+                            <ToggleButton Content="下"
+                                          IsChecked="{Binding SelectedVAlign, Converter={StaticResource EnumMatch}, ConverterParameter=End, Mode=TwoWay}"
+                                          IsEnabled="{Binding HasSelection}"
+                                          Style="{StaticResource BlenderToggleButton}" />
+                        </StackPanel>
+                        <CheckBox Margin="0,6,0,0"
+                                  Content="竖排"
+                                  IsChecked="{Binding SelectedIsVertical}"
+                                  IsEnabled="{Binding HasSelection}" />
+                        <CheckBox Content="Wrap"
+                                  IsChecked="{Binding SelectedAllowWrap}"
+                                  IsEnabled="{Binding HasSelection}" />
                     </StackPanel>
                 </Expander>
             </StackPanel>

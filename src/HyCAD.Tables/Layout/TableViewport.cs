@@ -13,5 +13,8 @@ public sealed class TableViewport
     /// <summary>左右边距合计的一半用于推导时的单边距（mm）。</summary>
     public double MarginMm { get; set; } = PaperPresetCatalog.DefaultMarginMm;
 
+    /// <summary>纸张方向；影响目标可用宽推导。</summary>
+    public PaperOrientation Orientation { get; set; } = PaperOrientation.Landscape;
+
     public static TableViewport CreateDefault() => new TableViewport();
 }

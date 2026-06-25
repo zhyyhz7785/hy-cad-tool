@@ -269,6 +269,12 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             if (string.IsNullOrEmpty(displayText) && !_options.DrawEmptyCellText)
                 return;
 
+            if (GridEditor.GetCellAllowWrap(grid, cell.Addr))
+            {
+                AppendWrappedHorizontalText(displayText, cell, effective, ms, tr, members);
+                return;
+            }
+
             var text = new DBText
             {
                 Height = effective.Style.TextHeight,
@@ -288,6 +294,108 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             ms.AppendEntity(text);
             tr.AddNewlyCreatedDBObject(text, true);
             members.Add((text.ObjectId, HyTableXdata.KindText, cell.Addr));
+        }
+
+        private void AppendWrappedHorizontalText(
+            string displayText,
+            VisibleCellLayout cell,
+            EffectiveCellStyle effective,
+            BlockTableRecord ms,
+            Transaction tr,
+            List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
+        {
+            var padding = _options.TextPaddingMm;
+            var maxWidth = Math.Max(cell.Bounds.Width - padding * 2, effective.Style.TextHeight);
+            var lines = WrapTextToLines(displayText, maxWidth, effective.Style.TextHeight, effective.WidthFactor);
+            if (lines.Count == 0)
+                return;
+
+            var lineHeight = effective.Style.TextHeight * 1.25;
+            var blockHeight = lines.Count * lineHeight;
+            var topY = cell.Bounds.Top - padding;
+            var startY = effective.Style.VAlign switch
+            {
+                TextAlign.Center => topY - (cell.Bounds.Height - blockHeight) / 2,
+                TextAlign.End => cell.Bounds.Bottom + padding + blockHeight - lineHeight,
+                _ => topY - lineHeight,
+            };
+
+            for (var i = 0; i < lines.Count; i++)
+            {
+                var line = lines[i];
+                var y = startY - i * lineHeight;
+                var lineStyle = new CellStyle(
+                    effective.Style.Orientation,
+                    effective.Style.HAlign,
+                    TextAlign.Start,
+                    effective.Style.TextHeight,
+                    effective.Style.FontKey,
+                    effective.Style.Borders,
+                    effective.Style.BackColor);
+
+                var lineBounds = new LayoutRect(
+                    cell.Bounds.Left + padding,
+                    y + lineHeight,
+                    cell.Bounds.Right - padding,
+                    y);
+
+                var text = new DBText
+                {
+                    Height = effective.Style.TextHeight,
+                    TextString = line,
+                    Layer = _options.TextLayerName,
+                    WidthFactor = effective.WidthFactor,
+                };
+
+                AcadTableTextMapper.ApplyAlignment(
+                    text,
+                    lineBounds,
+                    lineStyle,
+                    0,
+                    _options.ZElevation,
+                    _database);
+
+                ms.AppendEntity(text);
+                tr.AddNewlyCreatedDBObject(text, true);
+                members.Add((text.ObjectId, HyTableXdata.KindText, cell.Addr));
+            }
+        }
+
+        private static List<string> WrapTextToLines(
+            string text,
+            double maxWidthMm,
+            double textHeight,
+            double widthFactor)
+        {
+            var lines = new List<string>();
+            if (string.IsNullOrEmpty(text))
+                return lines;
+
+            var charWidth = Math.Max(textHeight * widthFactor * 0.85, 0.1);
+            var maxChars = Math.Max(1, (int)Math.Floor(maxWidthMm / charWidth));
+            var current = new StringBuilder();
+
+            foreach (var ch in text.Replace("\r", string.Empty))
+            {
+                if (ch == '\n')
+                {
+                    lines.Add(current.ToString());
+                    current.Clear();
+                    continue;
+                }
+
+                current.Append(ch);
+                if (current.Length >= maxChars)
+                {
+                    lines.Add(current.ToString());
+                    current.Clear();
+                }
+            }
+
+            if (current.Length > 0)
+                lines.Add(current.ToString());
+
+            return lines;
         }
 
         private Polyline CreateCellBorder(LayoutRect bounds)

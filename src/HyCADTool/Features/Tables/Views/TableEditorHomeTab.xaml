@@ -3,9 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
+             xmlns:pres="clr-namespace:HyCADTool.Features.Tables.Presentation"
              mc:Ignorable="d"
              d:DesignHeight="72"
-             d:DesignWidth="600">
+             d:DesignWidth="700">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -13,78 +15,192 @@
                 <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <Style x:Key="AlignBtn" TargetType="Button" BasedOn="{StaticResource BlenderButtonFlat}">
-                <Setter Property="Width" Value="28" />
+            <pres:EnumMatchConverter x:Key="EnumMatch" />
+
+            <Style x:Key="AlignToggle" TargetType="ToggleButton" BasedOn="{StaticResource BlenderToggleButton}">
+                <Setter Property="Width" Value="26" />
                 <Setter Property="Height" Value="24" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Margin" Value="1" />
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="IsEnabled" Value="{Binding HasSelection}" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="GroupCaption" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}" />
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="0,3,0,0" />
+            </Style>
+
+            <Style x:Key="RibbonBtn" TargetType="Button" BasedOn="{StaticResource BlenderButtonFlat}">
+                <Setter Property="MinWidth" Value="40" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="Padding" Value="6,0" />
+                <Setter Property="Margin" Value="1" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="IsEnabled" Value="{Binding HasSelection}" />
+            </Style>
+
+            <Style x:Key="VSep" TargetType="Border">
+                <Setter Property="Width" Value="1" />
+                <Setter Property="Background" Value="#4c566a" />
+                <Setter Property="Margin" Value="6,2" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <StackPanel Margin="0,6,0,4" Orientation="Horizontal">
-        <StackPanel Margin="0,0,16,0">
-            <TextBlock Margin="0,0,0,4"
-                       Foreground="{DynamicResource Brush_TextSecondary}"
-                       Text="对齐" />
-            <UniformGrid Columns="3" Rows="3">
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="Start,Start"
-                        Content="↖"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="左上" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="Center,Start"
-                        Content="↑"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="中上" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="End,Start"
-                        Content="↗"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="右上" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="Start,Center"
-                        Content="←"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="左中" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="Center,Center"
-                        Content="●"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="居中" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="End,Center"
-                        Content="→"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="右中" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="Start,End"
-                        Content="↙"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="左下" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="Center,End"
-                        Content="↓"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="中下" />
-                <Button Command="{Binding ApplyAlignmentCommand}"
-                        CommandParameter="End,End"
-                        Content="↘"
-                        Style="{StaticResource AlignBtn}"
-                        ToolTip="右下" />
-            </UniformGrid>
+    <StackPanel Margin="4,4,0,2" Orientation="Horizontal">
+        <!-- 对齐组 -->
+        <StackPanel Margin="0,0,8,0">
+            <StackPanel Orientation="Horizontal">
+                <!-- 垂直对齐 -->
+                <StackPanel Margin="0,0,6,0">
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton Style="{StaticResource AlignToggle}"
+                                      ToolTip="顶端对齐"
+                                      IsChecked="{Binding SelectedVAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Start, Mode=TwoWay}">
+                            <Canvas Width="14" Height="14">
+                                <Rectangle Canvas.Left="2" Canvas.Top="2" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="3" Canvas.Top="5" Width="3" Height="6" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="8" Canvas.Top="5" Width="3" Height="6" Fill="{DynamicResource Brush_TextPrimary}" />
+                            </Canvas>
+                        </ToggleButton>
+                        <ToggleButton Style="{StaticResource AlignToggle}"
+                                      ToolTip="垂直居中"
+                                      IsChecked="{Binding SelectedVAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Center, Mode=TwoWay}">
+                            <Canvas Width="14" Height="14">
+                                <Rectangle Canvas.Left="2" Canvas.Top="6" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="3" Canvas.Top="3" Width="3" Height="3" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="8" Canvas.Top="3" Width="3" Height="3" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="3" Canvas.Top="8" Width="3" Height="3" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="8" Canvas.Top="8" Width="3" Height="3" Fill="{DynamicResource Brush_TextPrimary}" />
+                            </Canvas>
+                        </ToggleButton>
+                        <ToggleButton Style="{StaticResource AlignToggle}"
+                                      ToolTip="底端对齐"
+                                      IsChecked="{Binding SelectedVAlign, Converter={StaticResource EnumMatch}, ConverterParameter=End, Mode=TwoWay}">
+                            <Canvas Width="14" Height="14">
+                                <Rectangle Canvas.Left="3" Canvas.Top="3" Width="3" Height="6" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="8" Canvas.Top="3" Width="3" Height="6" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="2" Canvas.Top="10" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                            </Canvas>
+                        </ToggleButton>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource GroupCaption}" Text="垂直" />
+                </StackPanel>
+
+                <!-- 水平对齐 -->
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton Style="{StaticResource AlignToggle}"
+                                      ToolTip="左对齐"
+                                      IsChecked="{Binding SelectedHAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Start, Mode=TwoWay}">
+                            <Canvas Width="14" Height="14">
+                                <Rectangle Canvas.Left="2" Canvas.Top="3" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="2" Canvas.Top="6" Width="6" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="2" Canvas.Top="9" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                            </Canvas>
+                        </ToggleButton>
+                        <ToggleButton Style="{StaticResource AlignToggle}"
+                                      ToolTip="水平居中"
+                                      IsChecked="{Binding SelectedHAlign, Converter={StaticResource EnumMatch}, ConverterParameter=Center, Mode=TwoWay}">
+                            <Canvas Width="14" Height="14">
+                                <Rectangle Canvas.Left="2" Canvas.Top="3" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="4" Canvas.Top="6" Width="6" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="2" Canvas.Top="9" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                            </Canvas>
+                        </ToggleButton>
+                        <ToggleButton Style="{StaticResource AlignToggle}"
+                                      ToolTip="右对齐"
+                                      IsChecked="{Binding SelectedHAlign, Converter={StaticResource EnumMatch}, ConverterParameter=End, Mode=TwoWay}">
+                            <Canvas Width="14" Height="14">
+                                <Rectangle Canvas.Left="2" Canvas.Top="3" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="6" Canvas.Top="6" Width="6" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                                <Rectangle Canvas.Left="2" Canvas.Top="9" Width="10" Height="2" Fill="{DynamicResource Brush_TextPrimary}" />
+                            </Canvas>
+                        </ToggleButton>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource GroupCaption}" Text="水平" />
+                </StackPanel>
+            </StackPanel>
         </StackPanel>
 
-        <StackPanel VerticalAlignment="Bottom">
-            <CheckBox Margin="0,0,0,4"
-                      Content="自动换行 (Wrap)"
+        <Separator Margin="2,2,8,2"
+                   Background="#4c566a"
+                   Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 换行组 -->
+        <StackPanel VerticalAlignment="Top" Margin="0,2,8,0">
+            <CheckBox Content="自动换行"
                       IsChecked="{Binding SelectedAllowWrap}"
                       IsEnabled="{Binding HasSelection}" />
-            <TextBlock Foreground="{DynamicResource Brush_TextSecondary}"
-                       Text="M1：Wrap 写入 Domain，落图渲染留 M2"
-                       TextWrapping="Wrap" />
+            <TextBlock Style="{StaticResource GroupCaption}"
+                       HorizontalAlignment="Left"
+                       Text="Wrap" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 字体组 -->
+        <StackPanel Margin="0,0,12,0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Margin="0,0,4,0" VerticalAlignment="Center" Text="字高" />
+                <TextBox Width="44"
+                         Margin="0,0,8,0"
+                         Style="{StaticResource BlenderTextBox}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                         IsEnabled="{Binding HasSelection}"
+                         Text="{Binding SelectedTextHeight, UpdateSourceTrigger=PropertyChanged}" />
+                <CheckBox Content="竖排"
+                          IsChecked="{Binding SelectedIsVertical}"
+                          IsEnabled="{Binding HasSelection}"
+                          VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="字体" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 边框组 -->
+        <StackPanel VerticalAlignment="Top">
+            <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding ApplyBorderPresetCommand}"
+                        CommandParameter="outer"
+                        Content="外框"
+                        Style="{StaticResource RibbonBtn}"
+                        ToolTip="选区外框" />
+                <Button Command="{Binding ApplyBorderPresetCommand}"
+                        CommandParameter="all"
+                        Content="全框"
+                        Style="{StaticResource RibbonBtn}"
+                        ToolTip="每格四边" />
+                <Button Command="{Binding ApplyBorderPresetCommand}"
+                        CommandParameter="none"
+                        Content="无"
+                        Style="{StaticResource RibbonBtn}"
+                        ToolTip="清除边框" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="边框" />
         </StackPanel>
     </StackPanel>
 </UserControl>

@@ -1,0 +1,140 @@
+<UserControl x:Class="HyCADTool.Features.Tables.Views.TableEditorLayoutTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="120"
+             d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="RibbonBtn" TargetType="Button" BasedOn="{StaticResource BlenderButtonFlat}">
+                <Setter Property="MinWidth" Value="36" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="Padding" Value="6,0" />
+                <Setter Property="Margin" Value="1" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="GroupCaption" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}" />
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="0,3,0,0" />
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel Margin="4,4,0,2" Orientation="Horizontal">
+        <!-- 模式 -->
+        <StackPanel Margin="0,0,12,0">
+            <CheckBox Content="结构模式"
+                      IsChecked="{Binding IsStructureMode}"
+                      ToolTip="关闭后禁用插删行列/合并等结构操作" />
+            <TextBlock Style="{StaticResource GroupCaption}" Text="结构/填值" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 新建 / 模板 -->
+        <StackPanel Margin="0,0,12,0">
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="36" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="36" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Margin="0,0,4,0" VerticalAlignment="Center" Text="行" />
+                <TextBox Grid.Column="1" Margin="0,0,8,0" Style="{StaticResource BlenderTextBox}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                         Text="{Binding RowCount, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Column="2" Margin="0,0,4,0" VerticalAlignment="Center" Text="列" />
+                <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                         Text="{Binding ColCount, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <StackPanel Orientation="Horizontal">
+                <Button Margin="0,0,4,0" Padding="8,4" Command="{Binding NewEmptyTableCommand}"
+                        Content="新建空表" Style="{StaticResource RibbonBtn}" />
+                <ComboBox MinWidth="72" Margin="0,0,4,0" DisplayMemberPath="DisplayName"
+                          ItemsSource="{Binding TemplateOptions}" SelectedItem="{Binding SelectedTemplate}"
+                          Style="{StaticResource BlenderComboBox}" />
+                <Button Padding="8,4" Command="{Binding LoadTemplateCommand}"
+                        Content="从模板加载" Style="{StaticResource RibbonBtn}" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="表格" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 行列 -->
+        <StackPanel Margin="0,0,12,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding InsertRowCommand}" Content="+行" Style="{StaticResource RibbonBtn}" ToolTip="在选区下方插入行" />
+                <Button Command="{Binding DeleteRowCommand}" Content="-行" Style="{StaticResource RibbonBtn}" ToolTip="删除选区行" />
+                <Button Command="{Binding InsertColumnCommand}" Content="+列" Style="{StaticResource RibbonBtn}" ToolTip="在选区右侧插入列" />
+                <Button Command="{Binding DeleteColumnCommand}" Content="-列" Style="{StaticResource RibbonBtn}" ToolTip="删除选区列" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="单元格" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 合并 -->
+        <StackPanel Margin="0,0,12,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding MergeSelectionCommand}" Content="合并" Style="{StaticResource RibbonBtn}" />
+                <Button Command="{Binding UnmergeCommand}" Content="拆分" Style="{StaticResource RibbonBtn}" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="合并" />
+        </StackPanel>
+
+        <Separator Margin="2,2,8,2" Background="#4c566a" Style="{x:Null}">
+            <Separator.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </Separator.LayoutTransform>
+        </Separator>
+
+        <!-- 尺寸 -->
+        <StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="48" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="48" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Margin="0,0,4,0" VerticalAlignment="Center" Text="行高" />
+                <TextBox Grid.Column="1" Margin="0,0,8,0" Style="{StaticResource BlenderTextBox}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                         IsEnabled="{Binding HasSelection}"
+                         Text="{Binding SelectedRowHeightMm, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Column="2" Margin="0,0,4,0" VerticalAlignment="Center" Text="列宽" />
+                <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
+                         helper:TextBoxHelper.EnableCustomHandlers="True"
+                         IsEnabled="{Binding HasSelection}"
+                         Text="{Binding SelectedColWidthMm, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+            <TextBlock Style="{StaticResource GroupCaption}" Text="单元格大小 mm" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

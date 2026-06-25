@@ -1,3 +1,4 @@
+using System.Linq;
 using HyCAD.Tables.Data;
 using HyCAD.Tables.Structure;
 
@@ -414,6 +415,68 @@ public static class GridEditor
         return grid with { Structure = structure with { CellOverflow = overflow } };
     }
 
+    /// <summary>
+    /// 设置单元格 Role；null 时移除记录。
+    /// </summary>
+    public static TableGrid SetCellRole(TableGrid grid, CellAddr addr, CellRole? role)
+    {
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+
+        if (!InBounds(addr, topology.RowCount, topology.ColCount))
+            throw new ArgumentOutOfRangeException(nameof(addr), $"地址 {addr} 超出网格。");
+
+        var anchor = structure.GetAnchorOf(addr);
+        var roles = CloneRoles(structure.Roles);
+
+        if (role == null)
+            roles.Remove(anchor);
+        else
+            roles[anchor] = role.Value;
+
+        return grid with { Structure = structure with { Roles = roles } };
+    }
+
+    /// <summary>
+    /// 设置单行轨道高度（mm）。
+    /// </summary>
+    public static TableGrid SetRowHeight(TableGrid grid, int rowIndex, double sizeMm)
+    {
+        if (sizeMm <= 0)
+            throw new ArgumentOutOfRangeException(nameof(sizeMm), "行高须大于 0。");
+
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+        if (rowIndex < 0 || rowIndex >= topology.RowCount)
+            throw new ArgumentOutOfRangeException(nameof(rowIndex));
+
+        var rows = topology.Rows.ToList();
+        rows[rowIndex] = new GridTrack(sizeMm, rows[rowIndex].Mode);
+        var newTopology = topology with { Rows = rows };
+
+        return grid with { Structure = structure with { Topology = newTopology } };
+    }
+
+    /// <summary>
+    /// 设置单列轨道宽度（mm）。
+    /// </summary>
+    public static TableGrid SetColWidth(TableGrid grid, int colIndex, double sizeMm)
+    {
+        if (sizeMm <= 0)
+            throw new ArgumentOutOfRangeException(nameof(sizeMm), "列宽须大于 0。");
+
+        var structure = grid.Structure;
+        var topology = structure.Topology;
+        if (colIndex < 0 || colIndex >= topology.ColCount)
+            throw new ArgumentOutOfRangeException(nameof(colIndex));
+
+        var cols = topology.Cols.ToList();
+        cols[colIndex] = new GridTrack(sizeMm, cols[colIndex].Mode);
+        var newTopology = topology with { Cols = cols };
+
+        return grid with { Structure = structure with { Topology = newTopology } };
+    }
+
     private static int FindMergeIndexByAnchor(IReadOnlyList<MergeRegion> merges, CellAddr anchor)
     {
         for (var i = 0; i < merges.Count; i++)
@@ -460,6 +523,15 @@ public static class GridEditor
         IReadOnlyDictionary<CellAddr, CellOverflowFlags> source)
     {
         var clone = new Dictionary<CellAddr, CellOverflowFlags>(source.Count);
+        foreach (var entry in source)
+            clone[entry.Key] = entry.Value;
+        return clone;
+    }
+
+    private static Dictionary<CellAddr, CellRole> CloneRoles(
+        IReadOnlyDictionary<CellAddr, CellRole> source)
+    {
+        var clone = new Dictionary<CellAddr, CellRole>(source.Count);
         foreach (var entry in source)
             clone[entry.Key] = entry.Value;
         return clone;

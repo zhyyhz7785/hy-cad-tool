@@ -115,3 +115,21 @@ public sealed record SetCellWrapOp(CellAddr Addr, bool AllowWrap) : TableOperati
     public override TableGrid Apply(TableGrid grid) =>
         GridEditor.SetCellWrap(grid, Addr, AllowWrap);
 }
+
+/// <summary>设置单元格 Role；null 表示清除。</summary>
+public sealed record SetRoleOp(CellAddr Addr, CellRole? Role) : TableOperation
+{
+    /// <inheritdoc />
+    public override TableGrid Apply(TableGrid grid) =>
+        GridEditor.SetCellRole(grid, Addr, Role);
+}
+
+/// <summary>设置单行高或单列宽（mm）。</summary>
+public sealed record SetTrackSizeOp(bool IsRow, int Index, double SizeMm) : TableOperation
+{
+    /// <inheritdoc />
+    public override TableGrid Apply(TableGrid grid) =>
+        IsRow
+            ? GridEditor.SetRowHeight(grid, Index, SizeMm)
+            : GridEditor.SetColWidth(grid, Index, SizeMm);
+}

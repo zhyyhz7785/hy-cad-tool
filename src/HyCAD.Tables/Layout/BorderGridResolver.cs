@@ -121,6 +121,7 @@ public static class BorderGridResolver
         structure.Styles.TryGetValue(anchor, out var style);
 
         var borders = style?.Borders ?? structure.Topology.DefaultBorder ?? BorderSet.None;
+        var hasExplicitStyle = structure.Styles.ContainsKey(anchor);
         var width = edge switch
         {
             BorderEdge.Top => borders.Top,
@@ -128,6 +129,9 @@ public static class BorderGridResolver
             BorderEdge.Bottom => borders.Bottom,
             _ => borders.Left,
         };
+
+        if (hasExplicitStyle && style!.Borders != null)
+            return width;
 
         return width > 0 ? width : fallbackWidthMm;
     }
