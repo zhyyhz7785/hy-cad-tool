@@ -1,0 +1,61 @@
+<UserControl x:Class="HyCADTool.Features.Tables.Views.TableFillGridView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:helper="clr-namespace:HyCADTool.Shared.UI.Helpers"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="400"
+             d:DesignWidth="600">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/HyCADTool;component/Shell/Resources/BlenderTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <DataGrid AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserDeleteRows="False"
+              CanUserReorderColumns="False"
+              CanUserResizeRows="False"
+              GridLinesVisibility="Horizontal"
+              HeadersVisibility="Column"
+              IsReadOnly="False"
+              ItemsSource="{Binding Rows}"
+              BeginningEdit="OnBeginningEdit"
+              SelectionMode="Single">
+        <DataGrid.Columns>
+            <DataGridTextColumn Width="52"
+                                Binding="{Binding AddressText}"
+                                Header="地址"
+                                IsReadOnly="True" />
+            <DataGridTextColumn Width="56"
+                                Binding="{Binding RoleText}"
+                                Header="角色"
+                                IsReadOnly="True" />
+            <DataGridTextColumn Width="*"
+                                MinWidth="80"
+                                Binding="{Binding Text, UpdateSourceTrigger=LostFocus, Mode=TwoWay}"
+                                Header="内容">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="{x:Type TextBlock}">
+                        <Setter Property="TextWrapping" Value="Wrap" />
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+                <DataGridTextColumn.EditingElementStyle>
+                    <Style TargetType="{x:Type TextBox}">
+                        <Setter Property="helper:TextBoxHelper.EnableCustomHandlers" Value="True" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsReadOnly}" Value="True">
+                                <Setter Property="IsReadOnly" Value="True" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGridTextColumn.EditingElementStyle>
+            </DataGridTextColumn>
+        </DataGrid.Columns>
+    </DataGrid>
+</UserControl>

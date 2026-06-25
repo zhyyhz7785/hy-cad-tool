@@ -257,6 +257,14 @@
             "tooltip": "框选线+文字，反推表格结构（AC9 V1）",
             "order": 156
         },
+        "N37": {
+            "type": "HyCADTool.Features.Tables.Commands.OpenTableEditorCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "表格编辑器(N37)",
+            "tooltip": "打开独立表格编辑器窗口（纸张优先 + 宽网格）",
+            "order": 159
+        },
         "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
         "N46": null, "N47": null, "N48": null, "N49": null, "N50": null
     }

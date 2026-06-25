@@ -1,5 +1,5 @@
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.Commands;
+using HyCADTool.Features.Tables.Commands;
 
 namespace HyCADTool.App.Test
 {
@@ -21,10 +21,9 @@ namespace HyCADTool.App.Test
             var ts = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("HyTable 016 Step1 表格操作", () =>
+            SimpleLogger.LogElapsedTime("HyTable 018 M0 表格编辑器", () =>
             {
-                ShowPanelCommand.ShowHyBlenderPanel();
-                ShowPanelCommand.ShowHyTablePanel();
+                new OpenTableEditorCommand().Execute();
             });
         }
     }

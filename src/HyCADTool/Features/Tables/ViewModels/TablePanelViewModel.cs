@@ -39,7 +39,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
     /// </summary>
 
-    public sealed class TablePanelViewModel : INotifyPropertyChanged
+    public class TablePanelViewModel : INotifyPropertyChanged
 
     {
 
@@ -609,6 +609,10 @@ namespace HyCADTool.Features.Tables.ViewModels
 
 
 
+        protected TableGrid CurrentGrid => _opLog?.Current;
+
+
+
         private void ApplyGrid(TableGrid grid, TablePublishContext context)
 
         {
@@ -751,7 +755,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
 
 
-        private void RefreshRows()
+        protected virtual void RefreshRows()
 
         {
 
@@ -775,7 +779,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
 
 
-        private void RefreshSummary()
+        protected virtual void RefreshSummary()
 
         {
 
@@ -889,7 +893,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
 
 
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null) =>
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null) =>
 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
