@@ -76,6 +76,7 @@
   <ItemGroup>
     <ProjectReference Include="..\HYFEA\HYFEA.Core\HYFEA.Core.csproj" />
     <ProjectReference Include="..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
+    <ProjectReference Include="..\HyCAD.Tables\HyCAD.Tables.csproj" />
     <ProjectReference Include="..\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />
   </ItemGroup>
   <ItemGroup>

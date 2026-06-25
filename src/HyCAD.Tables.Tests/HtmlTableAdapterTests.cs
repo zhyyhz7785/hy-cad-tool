@@ -2,6 +2,7 @@ using FluentAssertions;
 using HyCAD.Tables.Adapters;
 using HyCAD.Tables.Data;
 using HyCAD.Tables.Operations;
+using HyCAD.Tables.Samples;
 using HyCAD.Tables.Structure;
 using Xunit;
 
@@ -116,7 +117,7 @@ public sealed class HtmlTableAdapterTests
     [Fact]
     public void Export_family_table_has_correct_row_count_and_header()
     {
-        var grid = SampleTablesEndToEndTests.BuildFamilyTable();
+        var grid = TableSamples.BuildFamilyTable();
         var html = Adapter.Export(grid, new HtmlTableExportOptions { Title = "家庭成员表" });
 
         CountOccurrences(html, "<tr").Should().Be(7);
@@ -128,7 +129,7 @@ public sealed class HtmlTableAdapterTests
     [Fact]
     public void Export_personnel_table_has_title_vertical_and_photo_slot()
     {
-        var grid = SampleTablesEndToEndTests.BuildPersonnelTable();
+        var grid = TableSamples.BuildPersonnelTable();
         var html = Adapter.Export(grid, new HtmlTableExportOptions { Title = "人员基本情况表" });
 
         CountOccurrences(html, "<tr").Should().Be(7);
@@ -155,8 +156,8 @@ public sealed class HtmlTableAdapterTests
         var outputDir = Path.Combine(AppContext.BaseDirectory, "html-samples");
         Directory.CreateDirectory(outputDir);
 
-        var family = SampleTablesEndToEndTests.BuildFamilyTable();
-        var personnel = SampleTablesEndToEndTests.BuildPersonnelTable();
+        var family = TableSamples.BuildFamilyTable();
+        var personnel = TableSamples.BuildPersonnelTable();
 
         var familyPath = Path.Combine(outputDir, "family.html");
         var personnelPath = Path.Combine(outputDir, "personnel.html");

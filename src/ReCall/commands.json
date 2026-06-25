@@ -225,7 +225,23 @@
         "N30": { "type": "HyCADTool.Features.Reinforcement.MeshComponentDivideCommand", "method": "ExecuteBottomSlabAndSlabAndWallClassifyV4", "category": "钢筋", "displayName": "网格底板+楼板+墙判型(N30)", "tooltip": "N29底板+楼板；竖条 h≥2w w≤500 h≥200→绿墙；余者红", "order": 150 },
         "N31": { "type": "HyCADTool.Features.Reinforcement.MeshDecomposeStageCommand", "method": "ExecuteReflexPartition", "category": "钢筋", "displayName": "有限弦延长线剖分(N31)", "tooltip": "夹平斜边切三角+全顶点四向延长线裁至第一交点，仅沿有限弦分割(不合并)", "order": 151 },
         "N32": { "type": "HyCADTool.Features.Reinforcement.MeshComponentDivideCommand", "method": "ExecuteBottomSlabAndSlabAndWallAndBeamClassifyV5", "category": "钢筋", "displayName": "网格底板+楼板+墙+梁判型(N32)", "tooltip": "N30底板+楼板+墙；w≤800 h≤1500 非横竖条、上板下气→黄梁；余者红", "order": 152 },
-        "N33": null, "N34": null, "N35": null,
+        "N33": {
+            "type": "HyCADTool.Features.Tables.Commands.InsertSampleTableCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "插入黄金样表(N33)",
+            "tooltip": "插入人员样表并写入 HyTable 真相源",
+            "order": 160
+        },
+        "N34": {
+            "type": "HyCADTool.Features.Tables.Commands.ReadTableBackCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "读回 HyTable(N34)",
+            "tooltip": "选择表格实体，读回 TableGrid 并校验",
+            "order": 161
+        },
+        "N35": null,
         "N36": null, "N37": null, "N38": null, "N39": null, "N40": null,
         "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
         "N46": null, "N47": null, "N48": null, "N49": null, "N50": null

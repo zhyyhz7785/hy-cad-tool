@@ -1,6 +1,6 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.Commands;
+using HyCADTool.Features.Tables.Commands;
 using System;
 using System.Reflection;
 
@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("16G101 参数化大样面板", () =>
+            SimpleLogger.LogElapsedTime("HyTable 插入样表 AC6", () =>
             {
-                ShowPanelCommand.ShowG16Panel();
+                new InsertSampleTableCommand().ExecuteFamilyAtOrigin();
             });
         }
     }
