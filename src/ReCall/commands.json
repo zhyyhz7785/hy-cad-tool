@@ -249,7 +249,14 @@
             "tooltip": "点选 HY_TABLE 实体，摘要 + 可选再渲染",
             "order": 162
         },
-        "N36": null, "N37": null, "N38": null, "N39": null, "N40": null,
+        "N36": {
+            "type": "HyCADTool.Features.Tables.Commands.InferTableCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "线框识别(N36)",
+            "tooltip": "框选线+文字，反推表格结构（AC9 V1）",
+            "order": 156
+        },
         "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
         "N46": null, "N47": null, "N48": null, "N49": null, "N50": null
     }

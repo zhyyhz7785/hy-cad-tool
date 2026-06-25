@@ -24,9 +24,9 @@ namespace HyCADTool.App.Test
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("HyTable 人员表 PhotoSlot AC8", () =>
+            SimpleLogger.LogElapsedTime("HyTable 线框识别 AC9", () =>
             {
-                new InsertSampleTableCommand().ExecutePersonnelAtOrigin();
+                new InferTableCommand().Execute();
             });
         }
     }
