@@ -133,7 +133,13 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             var structure = grid.Structure;
             if (structure.Roles.TryGetValue(cell.Addr, out var role))
             {
-                if (role == CellRole.PhotoSlot || role == CellRole.Spacer)
+                if (role == CellRole.PhotoSlot)
+                {
+                    AppendPhotoSlotPlaceholder(cell, ms, tr, members);
+                    return;
+                }
+
+                if (role == CellRole.Spacer)
                     return;
             }
 
@@ -152,6 +158,30 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             }
 
             AppendHorizontalText(grid, cell, effective, ms, tr, members);
+        }
+
+        private void AppendPhotoSlotPlaceholder(
+            VisibleCellLayout cell,
+            BlockTableRecord ms,
+            Transaction tr,
+            List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
+        {
+            var placeholder = AcadTablePhotoSlotRenderer.CreatePlaceholder(
+                cell.Bounds,
+                _options,
+                _database,
+                tr);
+
+            if (placeholder.InnerFrame != null)
+            {
+                ms.AppendEntity(placeholder.InnerFrame);
+                tr.AddNewlyCreatedDBObject(placeholder.InnerFrame, true);
+                members.Add((placeholder.InnerFrame.ObjectId, HyTableXdata.KindGrid, cell.Addr));
+            }
+
+            ms.AppendEntity(placeholder.Label);
+            tr.AddNewlyCreatedDBObject(placeholder.Label, true);
+            members.Add((placeholder.Label.ObjectId, HyTableXdata.KindText, cell.Addr));
         }
 
         private void AppendDiagonalCell(

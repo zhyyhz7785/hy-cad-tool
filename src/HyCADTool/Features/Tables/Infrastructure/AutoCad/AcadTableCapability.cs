@@ -12,7 +12,8 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             VerticalStacked = AdapterFeatureLevel.Full,
             DiagonalSplit = AdapterFeatureLevel.Degraded,
             RichStyles = AdapterFeatureLevel.Degraded,
-            PhotoSlot = AdapterFeatureLevel.NotSupported,
+            // 内线框 + 居中标签；无图片/OLE/Hatch（Html role-photoslot 的 Degraded 含灰底填色）
+            PhotoSlot = AdapterFeatureLevel.Degraded,
         };
 
         public AdapterFeatureLevel VerticalStacked { get; set; }

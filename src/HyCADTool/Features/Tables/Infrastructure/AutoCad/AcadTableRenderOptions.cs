@@ -71,5 +71,40 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
 
         /// <summary>Line.ConstantWidth 下限（mm）。</summary>
         public double MinBorderWidthMm { get; set; } = 0.05;
+
+        // --- AC8 PhotoSlot ---
+
+        /// <summary>PhotoSlot 占位居中标签。</summary>
+        public string PhotoSlotLabelText { get; set; } = "照片";
+
+        /// <summary>PhotoSlot 内框相对格边界内缩（mm）。</summary>
+        public double PhotoSlotInsetMm { get; set; } = 2.0;
+
+        /// <summary>PhotoSlot 内线框图层；空则同 <see cref="GridLayerName"/>。</summary>
+        public string PhotoSlotInnerLayerName { get; set; }
+
+        /// <summary>PhotoSlot 标签文字图层；空则同 <see cref="TextLayerName"/>。</summary>
+        public string PhotoSlotTextLayerName { get; set; }
+
+        /// <summary>PhotoSlot 标签字高（mm）；0 = <see cref="DefaultTextHeightMm"/>。</summary>
+        public double PhotoSlotLabelTextHeightMm { get; set; }
+
+        /// <summary>PhotoSlot 内框是否尝试虚线线型。</summary>
+        public bool PhotoSlotUseDashedInnerBorder { get; set; }
+
+        /// <summary>PhotoSlot 内框线宽（mm）；0 = <see cref="DefaultInnerBorderWidthMm"/>。</summary>
+        public double PhotoSlotInnerBorderWidthMm { get; set; }
+
+        /// <summary>PhotoSlot 内线框图层（有效值）。</summary>
+        public string EffectivePhotoSlotInnerLayerName =>
+            string.IsNullOrEmpty(PhotoSlotInnerLayerName) ? GridLayerName : PhotoSlotInnerLayerName;
+
+        /// <summary>PhotoSlot 标签图层（有效值）。</summary>
+        public string EffectivePhotoSlotTextLayerName =>
+            string.IsNullOrEmpty(PhotoSlotTextLayerName) ? TextLayerName : PhotoSlotTextLayerName;
+
+        /// <summary>PhotoSlot 内框线宽（有效值，mm）。</summary>
+        public double EffectivePhotoSlotInnerBorderWidthMm =>
+            PhotoSlotInnerBorderWidthMm > 0 ? PhotoSlotInnerBorderWidthMm : DefaultInnerBorderWidthMm;
     }
 }
