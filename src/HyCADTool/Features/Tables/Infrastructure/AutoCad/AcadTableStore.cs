@@ -103,6 +103,19 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             }
         }
 
+        /// <summary>
+        /// 解析 HyTable 载体 ObjectId（Carrier / 成员 / Group）。
+        /// </summary>
+        public static bool TryResolveCarrierId(
+            Transaction tr,
+            Database db,
+            DBObject picked,
+            out ObjectId carrierId)
+        {
+            carrierId = ResolveCarrierId(tr, db, picked);
+            return !carrierId.IsNull;
+        }
+
         private static ObjectId ResolveCarrierId(Transaction tr, Database db, DBObject picked)
         {
             if (picked is Group group)

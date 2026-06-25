@@ -52,4 +52,23 @@ public sealed record TableGrid : IDocumentNode
             Data = GridData.Empty
         };
     }
+
+    /// <summary>深拷贝结构/数据并分配新 Id（AC7 再渲染）。</summary>
+    public TableGrid CloneWithNewId() =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Structure = Structure,
+            Data = Data,
+            Metadata = Metadata,
+        };
+
+    /// <summary>从已有结构层构造表格（测试 / 诊断）。</summary>
+    public static TableGrid FromStructure(GridStructure structure, GridData? data = null) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Structure = structure,
+            Data = data ?? GridData.Empty,
+        };
 }
