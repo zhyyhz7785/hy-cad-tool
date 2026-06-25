@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
+using HyCAD.Tables;
 using HyCAD.Tables.Layout;
 using HyCAD.Tables.Operations;
 using HyCAD.Tables.Structure;
@@ -476,6 +477,9 @@ namespace HyCADTool.Features.Tables.ViewModels
             var grid = CurrentGrid;
             return grid == null ? null : ExcelGridSnapshotBuilder.Build(grid);
         }
+
+        /// <summary>供 ReoGrid 宿主读取当前 Domain 网格（Presentation 层只读）。</summary>
+        public TableGrid EditorGrid => CurrentGrid;
 
         /// <summary>由视图提交单元格文本（公开 internal CommitCellText）。</summary>
         public void CommitCell(CellAddr addr, string text) => CommitCellText(addr, text);

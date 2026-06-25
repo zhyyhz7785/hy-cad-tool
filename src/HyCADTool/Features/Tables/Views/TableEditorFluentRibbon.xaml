@@ -1,0 +1,38 @@
+<UserControl x:Class="HyCADTool.Features.Tables.Views.TableEditorFluentRibbon"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:fluent="clr-namespace:Fluent;assembly=Fluent"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:tables="clr-namespace:HyCADTool.Features.Tables.Views"
+             mc:Ignorable="d"
+             d:DesignHeight="120"
+             d:DesignWidth="900">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Fluent;component/Themes/Generic.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <fluent:Ribbon CanMinimize="False">
+        <fluent:RibbonTabItem Header="开始">
+            <fluent:RibbonGroupBox Header="对齐与格式">
+                <tables:TableEditorHomeTab DataContext="{Binding}" />
+            </fluent:RibbonGroupBox>
+        </fluent:RibbonTabItem>
+
+        <fluent:RibbonTabItem Header="布局">
+            <fluent:RibbonGroupBox Header="结构与尺寸">
+                <tables:TableEditorLayoutTab DataContext="{Binding}" />
+            </fluent:RibbonGroupBox>
+        </fluent:RibbonTabItem>
+
+        <fluent:RibbonTabItem Header="页面">
+            <fluent:RibbonGroupBox Header="纸张">
+                <tables:TableEditorPageTab DataContext="{Binding}" />
+            </fluent:RibbonGroupBox>
+        </fluent:RibbonTabItem>
+    </fluent:Ribbon>
+</UserControl>

@@ -21,7 +21,7 @@ namespace HyCADTool.App.Test
             var ts = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             ed?.WriteMessage($"\n[C1] v{ver} @ {ts}");
 
-            SimpleLogger.LogElapsedTime("HyTable 019 Excel化表格编辑器", () =>
+            SimpleLogger.LogElapsedTime("HyTable 020 ReoGrid+Fluent.Ribbon 表格编辑器", () =>
             {
                 new OpenTableEditorCommand().Execute();
             });

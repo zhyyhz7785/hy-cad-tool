@@ -118,7 +118,7 @@
             </Border>
 
             <tables:TableEditorPaperBar Grid.Row="1" DataContext="{Binding}" />
-            <tables:TableEditorRibbon Grid.Row="2" DataContext="{Binding}" />
+            <tables:TableEditorFluentRibbon Grid.Row="2" DataContext="{Binding}" />
             <tables:TableEditorAddressBar Grid.Row="3" DataContext="{Binding}" />
 
             <Grid Grid.Row="4" Margin="8,4">
@@ -130,7 +130,7 @@
                         BorderBrush="#4c566a"
                         BorderThickness="1">
                     <Grid>
-                        <tables:ExcelGridControl DataContext="{Binding}" />
+                        <tables:ReoGridHostControl DataContext="{Binding}" />
                         <Border Background="#252b34"
                                 Visibility="{Binding HasTable, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                             <StackPanel HorizontalAlignment="Center"

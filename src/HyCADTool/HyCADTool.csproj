@@ -60,6 +60,7 @@
 
   <!-- AutoCAD 和其他 NuGet 包引用 -->
   <ItemGroup>
+    <PackageReference Include="Fluent.Ribbon" Version="11.0.2" />
     <PackageReference Include="QRCoder" Version="1.4.3" />
     <PackageReference Include="AutoCAD.NET" Version="24.3.0">
       <ExcludeAssets>runtime</ExcludeAssets>
@@ -70,6 +71,7 @@
     <PackageReference Include="NetTopologySuite" Version="2.5.0" />
     <PackageReference Include="Markdig" Version="0.37.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="unvell.ReoGridWPF.dll" Version="3.3.0" />
   </ItemGroup>
 
   <!-- 引用 Blender WPF 控件库（主题 + NumericSlider / PropertyRow / IconTabBar 等） -->
@@ -201,6 +203,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Features\Tables\Views\ExcelGridControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Tables\Views\ReoGridHostControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Tables\Views\TableEditorFluentRibbon.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
