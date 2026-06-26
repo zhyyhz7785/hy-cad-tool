@@ -76,10 +76,6 @@ function injectFileTab(postHostMessage: (payload: Record<string, unknown>) => vo
       closeHyCadDropdown();
   });
 
-  // #region agent log
-  fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'UI-PORTAL', location: 'file-tab-inject.inject', message: 'file tab injected', data: { itemCount: FILE_MENU_ITEMS.length }, timestamp: Date.now(), runId: 'post-fix-2' }) }).catch(() => {});
-  // #endregion
-
   return true;
 }
 

@@ -497,9 +497,6 @@ export function installHyCadBridge(univerAPI: ReturnType<typeof FUniver.newAPI>)
         }
 
         const snapshot = exportRegion(sheet, exportRect, { rebase: true });
-        // #region agent log
-        fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'H1,H2,H3', location: 'univer-bridge.exportSnapshotForPublish', message: 'range export', data: { mode, sheetMaxRows, sheetMaxCols, selection, exportRect, snapshotRowCount: snapshot.rowCount, snapshotColCount: snapshot.colCount }, timestamp: Date.now() }) }).catch(() => {});
-        // #endregion
 
         return {
           snapshot,
@@ -526,9 +523,6 @@ export function handleHostCommand(
     switch (message.type) {
       case 'loadSnapshot': {
         const ok = window.hyCadBridge?.loadSnapshot(message.payload as HyCadGridSnapshot | string) ?? false;
-        // #region agent log
-        fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'H6', location: 'univer-bridge.loadSnapshot', message: ok ? 'workbook rebuilt' : 'failed', data: { ok, rowCount: (message.payload as HyCadGridSnapshot)?.rowCount }, timestamp: Date.now(), runId: 'post-fix-4' }) }).catch(() => {});
-        // #endregion
         postHostMessage({ type: ok ? 'snapshotLoaded' : 'error', message: ok ? undefined : 'loadSnapshot failed' });
         break;
       }

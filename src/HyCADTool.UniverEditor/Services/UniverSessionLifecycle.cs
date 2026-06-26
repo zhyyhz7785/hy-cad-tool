@@ -121,17 +121,6 @@ namespace HyCADTool.UniverEditor.Services
             else
                 _webView.Dispatcher.Invoke(Post);
 
-            // #region agent log
-            if (string.Equals(type, "loadSnapshot", StringComparison.OrdinalIgnoreCase))
-            {
-                AgentDebugLog646873.Write("H6,H7", "UniverSessionLifecycle.PostCommandAsync", "loadSnapshot posted", new
-                {
-                    payloadLength = payload?.ToString()?.Length ?? 0,
-                    onUiThread = _webView.Dispatcher.CheckAccess(),
-                });
-            }
-            // #endregion
-
             return Task.CompletedTask;
         }
 
@@ -315,9 +304,6 @@ namespace HyCADTool.UniverEditor.Services
 
                 if (string.Equals(type, "snapshotLoaded", StringComparison.OrdinalIgnoreCase))
                 {
-                    // #region agent log
-                    AgentDebugLog646873.Write("H6,H7", "UniverSessionLifecycle.OnWebMessageReceived", "snapshotLoaded", new { });
-                    // #endregion
                     return;
                 }
 
@@ -338,22 +324,6 @@ namespace HyCADTool.UniverEditor.Services
 
         private void HandleHyCadAction(string action)
         {
-            // #region agent log
-            AgentDebugLog646873.Write("H2,H5", "UniverSessionLifecycle.HandleHyCadAction", "action received", new
-            {
-                action,
-                hasHost = Host != null,
-                hasDelegate = action switch
-                {
-                    "pick" => Host?.RequestPick != null,
-                    "publish" => Host?.RequestPublish != null,
-                    "publishRangeFull" => Host?.RequestPublishRangeFull != null,
-                    "publishRangeContent" => Host?.RequestPublishRangeContent != null,
-                    _ => (bool?)null,
-                },
-            });
-            // #endregion
-
             switch (action)
             {
                 case "pick":
@@ -373,18 +343,6 @@ namespace HyCADTool.UniverEditor.Services
 
         private void HandleHyCadFileAction(string action)
         {
-            // #region agent log
-            AgentDebugLog646873.Write("H9,H10", "UniverSessionLifecycle.HandleHyCadFileAction", "action received", new
-            {
-                action,
-                hasHost = Host != null,
-                hasImport = Host?.ImportXlsx != null,
-                hasExportXlsx = Host?.ExportXlsx != null,
-                hasExportJson = Host?.ExportJsonSnapshot != null,
-                onUiThread = _webView?.Dispatcher?.CheckAccess(),
-            });
-            // #endregion
-
             switch (action)
             {
                 case "newEmpty":

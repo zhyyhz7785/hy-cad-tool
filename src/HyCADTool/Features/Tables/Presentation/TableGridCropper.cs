@@ -38,20 +38,6 @@ namespace HyCADTool.Features.Tables.Presentation
             var rows = source.Structure.Topology.RowCount;
             var cols = source.Structure.Topology.ColCount;
 
-            // #region agent log
-            DebugAgentLog646873.Write("H1,H4,H5", "TableGridCropper.ValidateBounds", "crop bounds check", new
-            {
-                gridRows = rows,
-                gridCols = cols,
-                startRow,
-                startCol,
-                endRow,
-                endCol,
-                endRowInRange = endRow < rows,
-                endColInRange = endCol < cols,
-            });
-            // #endregion
-
             if (startRow < 0 || startCol < 0 || endRow < startRow || endCol < startCol)
                 throw new ArgumentOutOfRangeException(nameof(startRow), "裁剪区域无效。");
 

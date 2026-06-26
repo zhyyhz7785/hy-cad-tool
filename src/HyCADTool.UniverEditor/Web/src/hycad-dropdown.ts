@@ -41,10 +41,6 @@ export function closeHyCadDropdown(): void {
   const host = ensurePortalHost();
   host.replaceChildren();
   host.style.pointerEvents = 'none';
-
-  // #region agent log
-  fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'H8', location: 'hycad-dropdown.close', message: 'dropdown closed', data: { hostPointerEvents: host.style.pointerEvents }, timestamp: Date.now(), runId: 'post-fix-5' }) }).catch(() => {});
-  // #endregion
 }
 
 function openHyCadDropdown(root: HTMLElement, button: HTMLElement, dropdown: HTMLElement): void {
@@ -69,10 +65,6 @@ function openHyCadDropdown(root: HTMLElement, button: HTMLElement, dropdown: HTM
 
   root.classList.add('hycad-file-tab-root--open');
   button.setAttribute('aria-expanded', 'true');
-
-  // #region agent log
-  fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'UI-PORTAL', location: 'hycad-dropdown.open', message: 'dropdown opened', data: { itemCount: dropdown.querySelectorAll('.hycad-file-dropdown-item').length, top: rect.bottom, left: rect.left }, timestamp: Date.now(), runId: 'post-fix-2' }) }).catch(() => {});
-  // #endregion
 }
 
 export function createHyCadDropdownRoot(
@@ -113,9 +105,6 @@ export function createHyCadDropdownRoot(
     menuItem.setAttribute('role', 'menuitem');
     const runSelect = () => {
       closeHyCadDropdown();
-      // #region agent log
-      fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'H1', location: 'hycad-dropdown.select', message: 'item selected', data: { rootId, itemId: item.id }, timestamp: Date.now(), runId: 'post-fix-3' }) }).catch(() => {});
-      // #endregion
       item.onSelect();
     };
 

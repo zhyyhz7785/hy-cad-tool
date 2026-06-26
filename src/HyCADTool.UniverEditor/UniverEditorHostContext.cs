@@ -56,9 +56,6 @@ namespace HyCADTool.UniverEditor
         {
             if (action == null)
             {
-                // #region agent log
-                AgentDebugLog646873.Write("H5", "UniverEditorHostContext.InvokeSafe", "action is null", new { });
-                // #endregion
                 return;
             }
 

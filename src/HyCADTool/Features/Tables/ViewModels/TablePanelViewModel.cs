@@ -695,20 +695,6 @@ namespace HyCADTool.Features.Tables.ViewModels
                     return;
                 }
 
-                // #region agent log
-                DebugAgentLog646873.Write("H1,H4", "TablePanelViewModel.RequestPublishFromSnapshot", "before crop", new
-                {
-                    gridRows = _opLog.Current.Structure.Topology.RowCount,
-                    gridCols = _opLog.Current.Structure.Topology.ColCount,
-                    clipStartRow = clipRect.StartRow,
-                    clipStartCol = clipRect.StartCol,
-                    clipEndRow = clipRect.EndRow,
-                    clipEndCol = clipRect.EndCol,
-                    snapshotRows = snapshot.RowCount,
-                    snapshotCols = snapshot.ColCount,
-                });
-                // #endregion
-
                 var extendOpLog = new TableOpLog(_opLog.Current);
                 UniverGridSnapshotMapper.EnsureGridFits(extendOpLog, new UniverGridSnapshot
                 {

@@ -112,26 +112,8 @@ namespace HyCADTool.Features.Tables.Services
 
         public void NewEmptyTable()
         {
-            // #region agent log
-            DebugAgentLog646873.Write("H3,H4", "UniverTableEditorHostBridge.NewEmptyTable", "enter", new
-            {
-                hasTableBefore = _viewModel.HasTable,
-                rowCount = _viewModel.RowCount,
-                colCount = _viewModel.ColCount,
-            });
-            // #endregion
-
             _viewModel.NewEmptyTable();
             NotifyStatusChanged();
-
-            // #region agent log
-            DebugAgentLog646873.Write("H3,H4", "UniverTableEditorHostBridge.NewEmptyTable", "done", new
-            {
-                hasTableAfter = _viewModel.HasTable,
-                jsonLength = BuildLoadSnapshotJson()?.Length ?? 0,
-                status = _viewModel.StatusMessage,
-            });
-            // #endregion
         }
 
         public void LoadPersonnelSample()
@@ -182,9 +164,6 @@ namespace HyCADTool.Features.Tables.Services
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9", "UniverTableEditorHostBridge.ExportJsonSnapshot", "dialog cancelled", new { });
-                    // #endregion
                     return;
                 }
 
@@ -194,9 +173,6 @@ namespace HyCADTool.Features.Tables.Services
                 File.WriteAllText(dialog.FileName, json);
                 _viewModel.SetStatusMessage("已导出 JSON：" + dialog.FileName);
                 NotifyStatusChanged();
-                // #region agent log
-                DebugAgentLog646873.Write("H9", "UniverTableEditorHostBridge.ExportJsonSnapshot", "saved", new { path = dialog.FileName });
-                // #endregion
             }));
         }
 
@@ -210,9 +186,6 @@ namespace HyCADTool.Features.Tables.Services
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9", "UniverTableEditorHostBridge.ImportXlsx", "dialog cancelled", new { });
-                    // #endregion
                     return;
                 }
 
@@ -235,27 +208,11 @@ namespace HyCADTool.Features.Tables.Services
                     GridChanged?.Invoke();
                     _viewModel.SetStatusMessage("已导入 xlsx：" + dialog.FileName);
                     NotifyStatusChanged();
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9,H11", "UniverTableEditorHostBridge.ImportXlsx", "imported", new
-                    {
-                        path = dialog.FileName,
-                        openXmlAssemblyCount = OpenXmlAssemblyBootstrap.CountLoadedOpenXmlAssemblies(),
-                        openXmlAssemblies = OpenXmlAssemblyBootstrap.GetLoadedOpenXmlAssemblies(),
-                    });
-                    // #endregion
                 }
                 catch (Exception ex)
                 {
                     _viewModel.SetStatusMessage("导入 xlsx 失败：" + ex.Message);
                     NotifyStatusChanged();
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9,H11", "UniverTableEditorHostBridge.ImportXlsx", "failed", new
-                    {
-                        error = ex.Message,
-                        openXmlAssemblyCount = OpenXmlAssemblyBootstrap.CountLoadedOpenXmlAssemblies(),
-                        openXmlAssemblies = OpenXmlAssemblyBootstrap.GetLoadedOpenXmlAssemblies(),
-                    });
-                    // #endregion
                 }
             });
         }
@@ -280,9 +237,6 @@ namespace HyCADTool.Features.Tables.Services
                 };
                 if (dialog.ShowDialog() != true)
                 {
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9", "UniverTableEditorHostBridge.ExportXlsx", "dialog cancelled", new { });
-                    // #endregion
                     return;
                 }
 
@@ -291,27 +245,11 @@ namespace HyCADTool.Features.Tables.Services
                     TableGridXlsxAdapter.Export(grid, dialog.FileName);
                     _viewModel.SetStatusMessage("已导出 xlsx：" + dialog.FileName);
                     NotifyStatusChanged();
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9,H11", "UniverTableEditorHostBridge.ExportXlsx", "saved", new
-                    {
-                        path = dialog.FileName,
-                        openXmlAssemblyCount = OpenXmlAssemblyBootstrap.CountLoadedOpenXmlAssemblies(),
-                        openXmlAssemblies = OpenXmlAssemblyBootstrap.GetLoadedOpenXmlAssemblies(),
-                    });
-                    // #endregion
                 }
                 catch (Exception ex)
                 {
                     _viewModel.SetStatusMessage("导出 xlsx 失败：" + ex.Message);
                     NotifyStatusChanged();
-                    // #region agent log
-                    DebugAgentLog646873.Write("H9,H11", "UniverTableEditorHostBridge.ExportXlsx", "failed", new
-                    {
-                        error = ex.Message,
-                        openXmlAssemblyCount = OpenXmlAssemblyBootstrap.CountLoadedOpenXmlAssemblies(),
-                        openXmlAssemblies = OpenXmlAssemblyBootstrap.GetLoadedOpenXmlAssemblies(),
-                    });
-                    // #endregion
                 }
             }));
         }
@@ -329,17 +267,6 @@ namespace HyCADTool.Features.Tables.Services
                 var exportMode = ResolveExportMode(metaJson);
                 var snapshot = string.IsNullOrWhiteSpace(json) ? null : UniverGridSnapshotMapper.Parse(json);
                 var clipRect = ParseClipRect(metaJson);
-
-                // #region agent log
-                DebugAgentLog646873.Write("H4", "UniverTableEditorHostBridge.CompleteExportSnapshot", "snapshot received", new
-                {
-                    exportMode = exportMode.ToString(),
-                    metaJson,
-                    clipRect,
-                    snapshotRows = snapshot?.RowCount,
-                    snapshotCols = snapshot?.ColCount,
-                });
-                // #endregion
 
                 if (exportMode == UniverPublishExportMode.RangeFull
                     || exportMode == UniverPublishExportMode.RangeContent)

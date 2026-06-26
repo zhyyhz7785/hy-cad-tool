@@ -41,10 +41,6 @@ function injectRangeDropdown(): boolean {
   toolbar.insertBefore(root, toolbar.firstChild);
   toolbar.setAttribute(INJECTED_FLAG, 'true');
 
-  // #region agent log
-  fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'UI-RIBBON-INJECT', location: 'ribbon-range-inject.inject', message: 'range dropdown injected', data: { toolbarClass: toolbar.className }, timestamp: Date.now(), runId: 'post-fix-2' }) }).catch(() => {});
-  // #endregion
-
   return true;
 }
 

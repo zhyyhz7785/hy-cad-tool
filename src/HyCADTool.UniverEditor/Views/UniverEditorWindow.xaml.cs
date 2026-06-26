@@ -189,14 +189,6 @@ namespace HyCADTool.UniverEditor.Views
                 return;
 
             string json = ActiveContext?.TryGetLoadSnapshotJson();
-            // #region agent log
-            AgentDebugLog646873.Write("H4", "UniverEditorWindow.ReloadGridAsync", "reload", new
-            {
-                hasJson = !string.IsNullOrWhiteSpace(json),
-                jsonLength = json?.Length ?? 0,
-            });
-            // #endregion
-
             if (string.IsNullOrWhiteSpace(json))
                 return;
 
