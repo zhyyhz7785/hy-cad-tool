@@ -1,6 +1,11 @@
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using HyCAD.Tables.Operations;
 using HyCAD.Tables.Samples;
+using HyCAD.Tables.Structure;
 using HyCADTool.Features.Tables.Presentation;
+using HyCADTool.Features.Tables.TableApp;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -24,10 +29,35 @@ namespace HyCADTool.Tests.Features.Tables
         }
 
         [Fact]
+        public void FromTableGrid_Personnel_PreservesMergeRegions()
+        {
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(TableSamples.BuildPersonnelTable());
+
+            Assert.Equal(7, snapshot.RowCount);
+            Assert.Equal(7, snapshot.ColCount);
+
+            var title = FindCell(snapshot, 0, 0);
+            Assert.NotNull(title);
+            Assert.Equal(7, title.ColSpan);
+            Assert.Equal(1, title.RowSpan);
+
+            var photo = FindCell(snapshot, 1, 6);
+            Assert.NotNull(photo);
+            Assert.Equal(3, photo.RowSpan);
+            Assert.Equal(1, photo.ColSpan);
+
+            var hometown = FindCell(snapshot, 3, 1);
+            Assert.NotNull(hometown);
+            Assert.Equal(3, hometown.ColSpan);
+
+            Assert.Equal(snapshot.Cells.Count, snapshot.Cells.Select(c => (c.Row, c.Col)).Distinct().Count());
+        }
+
+        [Fact]
         public void ApplyTextValues_UpdatesEditableCell()
         {
             var grid = TableSamples.BuildPersonnelTable();
-            var opLog = new HyCAD.Tables.Operations.TableOpLog(grid);
+            var opLog = new TableOpLog(grid);
             var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
             var target = snapshot.Cells.FirstOrDefault(c => c.Editable);
             Assert.NotNull(target);
@@ -35,16 +65,97 @@ namespace HyCADTool.Tests.Features.Tables
             target.Text = "UniverEdited";
             UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
 
-            var addr = new HyCAD.Tables.Structure.CellAddr(target.Row, target.Col);
-            var value = HyCAD.Tables.Operations.GridEditor.GetValue(opLog.Current, addr);
-            Assert.Equal("UniverEdited", HyCADTool.Features.Tables.TableApp.TableSummaryBuilder.FormatCellValue(value));
+            var addr = new CellAddr(target.Row, target.Col);
+            var value = GridEditor.GetValue(opLog.Current, addr);
+            Assert.Equal("UniverEdited", TableSummaryBuilder.FormatCellValue(value));
+        }
+
+        [Fact]
+        public void ApplyTextValues_SkipsNonEditableCells()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+            var label = FindCell(snapshot, 1, 0);
+            Assert.NotNull(label);
+            Assert.False(label.Editable);
+
+            var before = TableSummaryBuilder.FormatCellValue(GridEditor.GetValue(opLog.Current, new CellAddr(1, 0)));
+            label.Text = "篡改标签";
+            UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
+
+            var after = TableSummaryBuilder.FormatCellValue(GridEditor.GetValue(opLog.Current, new CellAddr(1, 0)));
+            Assert.Equal(before, after);
+            Assert.Equal("姓名", after);
+        }
+
+        [Fact]
+        public void ApplyTextValues_VerticalStacked_StripsNewlines()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            var addr = new CellAddr(1, 1);
+            opLog.Apply(new SetStyleOp(addr, new CellStyle(Orientation: TextOrientation.VerticalStacked)));
+
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+            var target = FindCell(snapshot, 1, 1);
+            Assert.NotNull(target);
+            Assert.True(target.Editable);
+
+            target.Text = "李\n四";
+            UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
+
+            var value = TableSummaryBuilder.FormatCellValue(GridEditor.GetValue(opLog.Current, addr));
+            Assert.Equal("李四", value);
+        }
+
+        [Fact]
+        public void RoundTrip_FromGrid_ApplySnapshot_MatchesEditableValues()
+        {
+            var opLog = new TableOpLog(TableSamples.BuildPersonnelTable());
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+
+            FindCell(snapshot, 1, 1).Text = "李四";
+            FindCell(snapshot, 1, 3).Text = "女";
+            FindCell(snapshot, 3, 1).Text = "上海市";
+
+            UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
+
+            Assert.Equal("李四", ReadCellText(opLog.Current, 1, 1));
+            Assert.Equal("女", ReadCellText(opLog.Current, 1, 3));
+            Assert.Equal("上海市", ReadCellText(opLog.Current, 3, 1));
+            Assert.Equal("姓名", ReadCellText(opLog.Current, 1, 0));
+        }
+
+        [Fact]
+        public void PersonnelFixture_IsInSyncWithDomain()
+        {
+            var expected = UniverGridSnapshotMapper.FromTableGrid(TableSamples.BuildPersonnelTable());
+            var fixturePath = GetPersonnelFixturePath();
+            Assert.True(File.Exists(fixturePath), $"fixture 不存在: {fixturePath}");
+
+            var actual = UniverGridSnapshotMapper.Parse(File.ReadAllText(fixturePath));
+            Assert.NotNull(actual);
+            AssertSnapshotCellsEquivalent(expected, actual);
+        }
+
+        [Fact(Skip = "手动：刷新 personnel fixture 时取消 Skip 并运行一次")]
+        public void ExportPersonnelUniverFixture()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var json = JsonConvert.SerializeObject(UniverGridSnapshotMapper.FromTableGrid(grid), Formatting.Indented);
+            var fixturePath = GetPersonnelFixturePath();
+            Directory.CreateDirectory(Path.GetDirectoryName(fixturePath));
+            File.WriteAllText(fixturePath, json);
+            Assert.True(File.Exists(fixturePath));
+            Assert.Contains("人员基本情况表", json);
         }
 
         [Fact]
         public void ExportImportXlsx_PersonnelTable_PreservesSampleText()
         {
             var grid = TableSamples.BuildPersonnelTable();
-            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "hytable-univer-test.xlsx");
+            var path = Path.Combine(Path.GetTempPath(), "hytable-univer-test.xlsx");
             try
             {
                 TableGridXlsxAdapter.Export(grid, path);
@@ -55,9 +166,54 @@ namespace HyCADTool.Tests.Features.Tables
             }
             finally
             {
-                if (System.IO.File.Exists(path))
-                    System.IO.File.Delete(path);
+                if (File.Exists(path))
+                    File.Delete(path);
             }
         }
+
+        private static UniverGridCellSnapshot FindCell(UniverGridSnapshot snapshot, int row, int col) =>
+            snapshot.Cells.FirstOrDefault(c => c.Row == row && c.Col == col);
+
+        private static string ReadCellText(HyCAD.Tables.TableGrid grid, int row, int col) =>
+            TableSummaryBuilder.FormatCellValue(GridEditor.GetValue(grid, new CellAddr(row, col)));
+
+        private static string GetPersonnelFixturePath()
+        {
+            var repoRoot = Path.GetFullPath(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+            return Path.Combine(
+                repoRoot,
+                "src",
+                "HyCADTool.UniverEditor",
+                "Web",
+                "public",
+                "fixtures",
+                "personnel-snapshot.json");
+        }
+
+        private static void AssertSnapshotCellsEquivalent(UniverGridSnapshot expected, UniverGridSnapshot actual)
+        {
+            Assert.Equal(expected.RowCount, actual.RowCount);
+            Assert.Equal(expected.ColCount, actual.ColCount);
+
+            var expectedCells = NormalizeCells(expected.Cells);
+            var actualCells = NormalizeCells(actual.Cells);
+            Assert.Equal(expectedCells.Count, actualCells.Count);
+
+            for (var i = 0; i < expectedCells.Count; i++)
+            {
+                var e = expectedCells[i];
+                var a = actualCells[i];
+                Assert.Equal(e.Row, a.Row);
+                Assert.Equal(e.Col, a.Col);
+                Assert.Equal(e.RowSpan, a.RowSpan);
+                Assert.Equal(e.ColSpan, a.ColSpan);
+                Assert.Equal(e.Text, a.Text);
+                Assert.Equal(e.Editable, a.Editable);
+            }
+        }
+
+        private static List<UniverGridCellSnapshot> NormalizeCells(IEnumerable<UniverGridCellSnapshot> cells) =>
+            cells.OrderBy(c => c.Row).ThenBy(c => c.Col).ToList();
     }
 }

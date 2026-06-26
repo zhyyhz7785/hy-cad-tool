@@ -52,15 +52,42 @@ function mmToColPx(mm: number): number {
   return Math.max(52, Math.min(260, value * 1.6));
 }
 
-function normalizeSnapshot(input: HyCadGridSnapshot | string): HyCadGridSnapshot | null {
+function readNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeCell(raw: Record<string, unknown>): HyCadCellSnapshot {
+  return {
+    row: readNumber(raw.row ?? raw.Row),
+    col: readNumber(raw.col ?? raw.Col),
+    rowSpan: readNumber(raw.rowSpan ?? raw.RowSpan, 1),
+    colSpan: readNumber(raw.colSpan ?? raw.ColSpan, 1),
+    text: String(raw.text ?? raw.Text ?? ''),
+    editable: Boolean(raw.editable ?? raw.Editable ?? true),
+  };
+}
+
+function normalizeSnapshot(input: HyCadGridSnapshot | string | Record<string, unknown>): HyCadGridSnapshot | null {
+  let raw: Record<string, unknown>;
   if (typeof input === 'string') {
     try {
-      return JSON.parse(input) as HyCadGridSnapshot;
+      raw = JSON.parse(input) as Record<string, unknown>;
     } catch {
       return null;
     }
+  } else {
+    raw = input as Record<string, unknown>;
   }
-  return input;
+
+  const cellsRaw = (raw.cells ?? raw.Cells ?? []) as Array<Record<string, unknown>>;
+  return {
+    rowCount: readNumber(raw.rowCount ?? raw.RowCount, 1),
+    colCount: readNumber(raw.colCount ?? raw.ColCount, 1),
+    rowHeightsMm: (raw.rowHeightsMm ?? raw.RowHeightsMm ?? []) as number[],
+    colWidthsMm: (raw.colWidthsMm ?? raw.ColWidthsMm ?? []) as number[],
+    cells: cellsRaw.map(normalizeCell),
+  };
 }
 
 function ensureSheetSize(univerAPI: ReturnType<typeof FUniver.newAPI>, rowCount: number, colCount: number): void {
@@ -226,28 +253,3 @@ export function handleHostCommand(
   }
 }
 
-export function registerHyCadRibbonMenus(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
-  const publish = univerAPI.createMenu({
-    id: 'hycad-menu-publish',
-    title: '落图',
-    action: () => {
-      window.chrome?.webview?.postMessage(JSON.stringify({ type: 'hyCadAction', action: 'publish' }));
-    },
-  });
-  publish.appendTo('ribbon.start.others');
-
-  const pick = univerAPI.createMenu({
-    id: 'hycad-menu-pick',
-    title: '拾取',
-    action: () => {
-      window.chrome?.webview?.postMessage(JSON.stringify({ type: 'hyCadAction', action: 'pick' }));
-    },
-  });
-  pick.appendTo('ribbon.start.others');
-
-  univerAPI
-    .createSubmenu({ id: 'hycad-submenu', title: 'HyCAD' })
-    .addSubmenu(publish)
-    .addSubmenu(pick)
-    .appendTo('ribbon.start.others');
-}

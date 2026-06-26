@@ -266,6 +266,13 @@ namespace HyCADTool.UniverEditor.Services
                     return;
                 }
 
+                if (string.Equals(type, "hyCadFileAction", StringComparison.OrdinalIgnoreCase))
+                {
+                    string action = message.Value<string>("action");
+                    HandleHyCadFileAction(action);
+                    return;
+                }
+
                 if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
                 {
                     string detail = message.Value<string>("message") ?? "未知错误";
@@ -284,6 +291,34 @@ namespace HyCADTool.UniverEditor.Services
         {
             switch (action)
             {
+                case "pick":
+                    _hostContext?.InvokeSafe(_hostContext.RequestPick, _setStatus);
+                    break;
+                case "publish":
+                    _hostContext?.InvokeSafe(_hostContext.RequestPublish, _setStatus);
+                    break;
+            }
+        }
+
+        private void HandleHyCadFileAction(string action)
+        {
+            switch (action)
+            {
+                case "newEmpty":
+                    _hostContext?.InvokeSafe(_hostContext.NewEmptyTable, _setStatus);
+                    break;
+                case "loadPersonnel":
+                    _hostContext?.InvokeSafe(_hostContext.LoadPersonnelSample, _setStatus);
+                    break;
+                case "importXlsx":
+                    _hostContext?.InvokeSafe(_hostContext.ImportXlsx, _setStatus);
+                    break;
+                case "exportXlsx":
+                    _hostContext?.InvokeSafe(_hostContext.ExportXlsx, _setStatus);
+                    break;
+                case "exportJson":
+                    _hostContext?.InvokeSafe(_hostContext.ExportJsonSnapshot, _setStatus);
+                    break;
                 case "pick":
                     _hostContext?.InvokeSafe(_hostContext.RequestPick, _setStatus);
                     break;

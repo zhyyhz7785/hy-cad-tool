@@ -6,3 +6,167 @@ body,
   margin: 0;
   padding: 0;
 }
+
+/* HyCAD 文件伪 Tab — 对齐 Univer ClassicMenu tab 行 */
+[data-u-comp='ribbon-header-menu'] [role='tablist'] {
+  justify-content: flex-start !important;
+}
+
+.hycad-file-tab-root {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.hycad-file-tab {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.25;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.hycad-file-tab::after {
+  content: '▾';
+  margin-left: 2px;
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.hycad-file-tab:hover {
+  background: #f3f4f6;
+}
+
+.hycad-file-tab--active,
+.hycad-file-tab-root--open .hycad-file-tab {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.hycad-file-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10000;
+  min-width: 180px;
+  padding: 4px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.hycad-file-dropdown--hidden {
+  display: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.hycad-file-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: #1f2937;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hycad-file-dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.hycad-file-dropdown-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: #e5e7eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hycad-file-tab {
+    color: #e5e7eb;
+  }
+
+  .hycad-file-tab:hover {
+    background: #374151;
+  }
+
+  .hycad-file-tab--active,
+  .hycad-file-tab-root--open .hycad-file-tab {
+    background: #1e3a8a;
+    color: #93c5fd;
+  }
+
+  .hycad-file-dropdown {
+    border-color: #374151;
+    background: #1f2937;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .hycad-file-dropdown-item {
+    color: #f3f4f6;
+  }
+
+  .hycad-file-dropdown-item:hover {
+    background: #374151;
+  }
+
+  .hycad-file-dropdown-separator {
+    background: #4b5563;
+  }
+}
+
+/* HyCAD 主题微调 — Univer ribbon 主色 */
+:root {
+  --hycad-accent: #2563eb;
+  --hycad-accent-soft: #eff6ff;
+}
+
+[data-u-comp='ribbon-header-menu'] [role='tab'][aria-selected='true'] {
+  color: var(--hycad-accent) !important;
+}
+
+.hycad-dev-status {
+  position: fixed;
+  right: 12px;
+  bottom: 36px;
+  z-index: 20000;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 6px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  background: rgba(239, 246, 255, 0.96);
+  color: #1e40af;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  .hycad-dev-status {
+    border-color: #1e3a8a;
+    background: rgba(30, 58, 138, 0.92);
+    color: #bfdbfe;
+  }
+}
