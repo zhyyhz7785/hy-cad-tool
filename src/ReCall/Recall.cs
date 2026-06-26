@@ -1256,7 +1256,8 @@ namespace HyCADTool.ReCall
             if (args.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            string shortName = new AssemblyName(args.Name).Name;
+            var requestedName = new AssemblyName(args.Name);
+            string shortName = requestedName.Name;
 
             // 宿主程序集：用 AppDomain 已加载的版本（短名匹配），杜绝双载入。
             if (AutoCadHostAssemblyNames.Contains(shortName, StringComparer.OrdinalIgnoreCase))

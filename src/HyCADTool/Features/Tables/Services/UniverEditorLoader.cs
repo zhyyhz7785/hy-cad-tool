@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using HyCADTool.Features.Tables.Presentation;
 
 namespace HyCADTool.Features.Tables.Services
 {
@@ -86,12 +87,28 @@ namespace HyCADTool.Features.Tables.Services
                 SetDelegate(context, "LoadPersonnelSample", (Action)bridge.LoadPersonnelSample);
                 SetDelegate(context, "RequestPick", (Action)bridge.RequestPick);
                 SetDelegate(context, "RequestPublish", (Action)bridge.RequestPublish);
+                SetDelegate(context, "RequestPublishRangeFull", (Action)bridge.RequestPublishRangeFull);
+                SetDelegate(context, "RequestPublishRangeContent", (Action)bridge.RequestPublishRangeContent);
                 SetDelegate(context, "ExportJsonSnapshot", (Action)bridge.ExportJsonSnapshot);
                 SetDelegate(context, "ImportXlsx", (Action)bridge.ImportXlsx);
                 SetDelegate(context, "ExportXlsx", (Action)bridge.ExportXlsx);
                 SetDelegate(context, "GetSummaryText", (Func<string>)bridge.GetSummaryText);
                 SetDelegate(context, "GetStatusMessage", (Func<string>)bridge.GetStatusMessage);
-                SetDelegate(context, "OnSnapshotExported", (Action<string>)bridge.CompleteExportSnapshot);
+                SetDelegate(context, "OnSnapshotExported", (Action<string, string>)bridge.CompleteExportSnapshot);
+                SetDelegate(context, "OnExportError", (Action<string>)bridge.CancelExportPending);
+                SetDelegate(context, "BindExportSnapshot", (Action<Action>)bridge.SetExportSnapshotHandler);
+                SetDelegate(context, "BindExportForPublish", (Action<Action<string>>)bridge.SetExportForPublishWebHandler);
+
+                bridge.PrepareForCadInteraction = () =>
+                {
+                    var prepare = launcherType.GetProperty("PrepareForCadInteraction");
+                    (prepare?.GetValue(null) as Action)?.Invoke();
+                };
+                bridge.RestoreAfterCadInteraction = () =>
+                {
+                    var restore = launcherType.GetProperty("RestoreAfterCadInteraction");
+                    (restore?.GetValue(null) as Action)?.Invoke();
+                };
 
                 if (ConfiguredBridges.Add(bridge))
                 {
@@ -99,6 +116,19 @@ namespace HyCADTool.Features.Tables.Services
                     {
                         var exportProp = launcherType.GetProperty("RequestExportSnapshot");
                         (exportProp?.GetValue(null) as Action)?.Invoke();
+                    };
+
+                    bridge.RequestExportSnapshotForPublish += mode =>
+                    {
+                        var exportProp = launcherType.GetProperty("RequestExportSnapshotForPublish");
+                        var handler = exportProp?.GetValue(null) as Action<string>;
+                        handler?.Invoke(MapPublishModeToWeb(mode));
+                    };
+
+                    bridge.StatusChanged += () =>
+                    {
+                        var ctx = launcherType.GetProperty("HostContext")?.GetValue(null);
+                        ctx?.GetType().GetMethod("NotifyStatusChanged")?.Invoke(ctx, null);
                     };
                 }
 
@@ -109,10 +139,26 @@ namespace HyCADTool.Features.Tables.Services
                 }
 
                 launcherType.GetProperty("HostContext")?.SetValue(null, context);
+
+                var rebind = launcherType.GetMethod("TryRebindExportSnapshot");
+                rebind?.Invoke(null, null);
             }
             catch (Exception ex)
             {
                 LastError = $"配置 Univer HostContext 失败: {ex.Message}";
+            }
+        }
+
+        private static string MapPublishModeToWeb(UniverPublishExportMode mode)
+        {
+            switch (mode)
+            {
+                case UniverPublishExportMode.RangeFull:
+                    return "full";
+                case UniverPublishExportMode.RangeContent:
+                    return "content";
+                default:
+                    return "default";
             }
         }
 

@@ -78,6 +78,8 @@ import { installHyCadFileTab } from './file-tab-inject';
 
 import { registerHyCadRibbonMenus } from './ribbon-hycad';
 
+import { installHyCadRibbonRangeMenu } from './ribbon-range-inject';
+
 import {
 
   handleHostCommand,
@@ -189,6 +191,8 @@ function bootstrap(): void {
   installHyCadBridge(univerAPI);
 
   registerHyCadRibbonMenus(univerAPI);
+
+  installHyCadRibbonRangeMenu();
 
 
 

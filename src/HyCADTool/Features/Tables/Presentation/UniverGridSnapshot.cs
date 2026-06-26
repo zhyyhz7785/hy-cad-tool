@@ -90,6 +90,28 @@ namespace HyCADTool.Features.Tables.Presentation
             return token.ToObject<UniverGridSnapshot>();
         }
 
+        /// <summary>若快照行列大于当前拓扑，在末尾插入行/列直至容纳快照尺寸。</summary>
+        public static void EnsureGridFits(TableOpLog opLog, UniverGridSnapshot snapshot)
+        {
+            if (opLog == null || snapshot == null)
+                return;
+
+            var rows = opLog.Current.Structure.Topology.RowCount;
+            var cols = opLog.Current.Structure.Topology.ColCount;
+
+            while (rows < snapshot.RowCount)
+            {
+                opLog.Apply(new InsertRowOp(rows));
+                rows++;
+            }
+
+            while (cols < snapshot.ColCount)
+            {
+                opLog.Apply(new InsertColumnOp(cols));
+                cols++;
+            }
+        }
+
         /// <summary>将 Univer 导出的文本写回 OpLog（仅 editable anchor 格）。</summary>
         public static void ApplyTextValues(TableOpLog opLog, UniverGridSnapshot snapshot)
         {
@@ -97,6 +119,8 @@ namespace HyCADTool.Features.Tables.Presentation
                 return;
 
             var grid = opLog.Current;
+            var rowCount = grid.Structure.Topology.RowCount;
+            var colCount = grid.Structure.Topology.ColCount;
             var lookup = snapshot.Cells.ToDictionary(
                 c => new CellAddr(c.Row, c.Col),
                 c => c.Text ?? string.Empty);
@@ -104,6 +128,9 @@ namespace HyCADTool.Features.Tables.Presentation
             foreach (var cell in snapshot.Cells)
             {
                 if (!cell.Editable)
+                    continue;
+
+                if (cell.Row < 0 || cell.Col < 0 || cell.Row >= rowCount || cell.Col >= colCount)
                     continue;
 
                 var anchor = new CellAddr(cell.Row, cell.Col);

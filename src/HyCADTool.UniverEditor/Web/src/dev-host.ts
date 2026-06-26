@@ -16,6 +16,8 @@ const CAD_ONLY_ACTIONS: HyCadFileAction[] = [
   'exportJson',
   'pick',
   'publish',
+  'publishRangeFull',
+  'publishRangeContent',
 ];
 
 const PERSONNEL_FIXTURE_URL = '/fixtures/personnel-snapshot.json';
@@ -118,6 +120,8 @@ function handleDevOutboundMessage(
       case 'exportJson':
       case 'pick':
       case 'publish':
+      case 'publishRangeFull':
+      case 'publishRangeContent':
         showDevStatus(`${action} 仅 CAD 宿主可用`);
         console.warn('[HyCAD dev]', action, 'requires AutoCAD WebView2 host');
         break;

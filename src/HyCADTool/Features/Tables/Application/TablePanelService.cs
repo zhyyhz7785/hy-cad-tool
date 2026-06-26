@@ -41,49 +41,23 @@ namespace HyCADTool.Features.Tables.TableApp
             return new TablePanelPickResult(result.Grid, result.Summary, result.CarrierId, insertionPoint);
         }
 
-        public TablePublishResult TryPublish(
-            Editor ed,
-            TableGrid grid,
-            TablePublishContext existingContext)
+        public TablePublishResult TryPublish(Editor ed, TableGrid grid)
         {
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
 
-            Point3d insertionPoint;
-            if (existingContext != null)
-            {
-                insertionPoint = existingContext.InsertionPoint;
-            }
-            else
-            {
-                var ppr = ed.GetPoint("\n[HyTable] 指定表格左上角插入点: ");
-                if (ppr.Status != PromptStatus.OK)
-                    return TablePublishResult.Cancelled;
+            var ppr = ed.GetPoint("\n[HyTable] 指定表格左上角插入点: ");
+            if (ppr.Status != PromptStatus.OK)
+                return TablePublishResult.Cancelled;
 
-                insertionPoint = ppr.Value;
-            }
-
-            using (var docLock = Autodesk.AutoCAD.ApplicationServices.Application
-                       .DocumentManager.MdiActiveDocument.LockDocument())
-            using (var tr = _database.TransactionManager.StartTransaction())
-            {
-                if (existingContext != null)
-                {
-                    if (!AcadTableStore.TryEraseTable(tr, _database, existingContext.TableId, out var eraseError))
-                    {
-                        ed.WriteMessage("\n[HyTable] 删除旧表失败：" + eraseError);
-                        return TablePublishResult.Failed;
-                    }
-                }
-
-                tr.Commit();
-            }
+            var insertionPoint = ppr.Value;
+            var instanceGrid = grid.CloneWithNewId();
 
             var renderer = new AcadTableRenderer(_database);
             TableCadHandle handle;
             try
             {
-                handle = renderer.RenderAndAttach(grid, insertionPoint);
+                handle = renderer.RenderAndAttach(instanceGrid, insertionPoint);
             }
             catch (Exception ex)
             {
@@ -92,7 +66,7 @@ namespace HyCADTool.Features.Tables.TableApp
             }
 
             var context = new TablePublishContext(
-                grid.Id,
+                instanceGrid.Id,
                 insertionPoint,
                 handle.CarrierId.Handle.ToString());
 
@@ -100,6 +74,17 @@ namespace HyCADTool.Features.Tables.TableApp
                 $"\n[HyTable] 已写入 {handle.EntityCount} 个实体 @ ({insertionPoint.X:F1}, {insertionPoint.Y:F1})");
 
             return new TablePublishResult(context, handle);
+        }
+
+        /// <summary>加载网格时丢弃与当前 TableId 不匹配的拾取/发布上下文。</summary>
+        internal static TablePublishContext CoalescePublishContext(
+            TablePublishContext context,
+            TableGrid grid)
+        {
+            if (context == null || grid == null)
+                return null;
+
+            return context.TableId == grid.Id ? context : null;
         }
 
         public bool TryResolveInsertionPoint(ObjectId carrierId, out Point3d insertionPoint, out string error)

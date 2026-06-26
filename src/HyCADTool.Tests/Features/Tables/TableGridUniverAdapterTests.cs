@@ -5,7 +5,9 @@ using HyCAD.Tables.Operations;
 using HyCAD.Tables.Samples;
 using HyCAD.Tables.Structure;
 using HyCADTool.Features.Tables.Presentation;
+using HyCADTool.Features.Tables.Services;
 using HyCADTool.Features.Tables.TableApp;
+using HyCADTool.Features.Tables.ViewModels;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -152,6 +154,108 @@ namespace HyCADTool.Tests.Features.Tables
         }
 
         [Fact]
+        public void RequestPublish_WithoutExportHandler_SetsStatusAndDoesNotHang()
+        {
+            var vm = new TableEditorViewModel();
+            using (var bridge = new UniverTableEditorHostBridge(vm))
+            {
+                bridge.RequestPublish();
+                Assert.Contains("未就绪", vm.StatusMessage);
+            }
+        }
+
+        [Fact]
+        public void RequestPublish_WithExportHandler_InvokesExport()
+        {
+            var vm = new TableEditorViewModel();
+            using (var bridge = new UniverTableEditorHostBridge(vm))
+            {
+                var invoked = false;
+                bridge.SetExportSnapshotHandler(() => invoked = true);
+
+                bridge.RequestPublish();
+
+                Assert.True(invoked);
+            }
+        }
+
+        [Fact]
+        public void RequestPublish_WithoutTable_SetsStatusAfterExport()
+        {
+            var vm = new TableEditorViewModel();
+            using (var bridge = new UniverTableEditorHostBridge(vm))
+            {
+                bridge.SetExportSnapshotHandler(() => { });
+                bridge.RequestPublish();
+                bridge.CompleteExportSnapshot(null);
+
+                Assert.Contains("请先加载或拾取表格", vm.StatusMessage);
+            }
+        }
+
+        [Fact]
+        public void ApplyTextValues_SkipsOutOfGridCells()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+            snapshot.Cells.Add(new UniverGridCellSnapshot
+            {
+                Row = 0,
+                Col = 7,
+                Text = "越界",
+                Editable = true,
+            });
+
+            UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
+
+            Assert.Equal("人员基本情况表", ReadCellText(opLog.Current, 0, 0));
+        }
+
+        [Fact]
+        public void EnsureGridFits_ExtendsTopology_ThenApplyTextValues_WritesExtendedCell()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            Assert.Equal(7, opLog.Current.Structure.Topology.RowCount);
+
+            var snapshot = new UniverGridSnapshot
+            {
+                RowCount = 10,
+                ColCount = 7,
+                Cells =
+                {
+                    new UniverGridCellSnapshot
+                    {
+                        Row = 8,
+                        Col = 1,
+                        Text = "扩展行文字",
+                        Editable = true,
+                    },
+                },
+            };
+
+            UniverGridSnapshotMapper.EnsureGridFits(opLog, snapshot);
+            Assert.Equal(10, opLog.Current.Structure.Topology.RowCount);
+
+            UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
+            Assert.Equal("扩展行文字", ReadCellText(opLog.Current, 8, 1));
+        }
+
+        [Fact]
+        public void Crop_PersonnelTable_PreservesSubRegionLabels()
+        {
+            var source = TableSamples.BuildPersonnelTable();
+            var cropped = TableGridCropper.Crop(source, 1, 0, 3, 2);
+
+            Assert.Equal(3, cropped.Structure.Topology.RowCount);
+            Assert.Equal(3, cropped.Structure.Topology.ColCount);
+            Assert.Equal("姓名", ReadCellText(cropped, 0, 0));
+            Assert.Equal("张三", ReadCellText(cropped, 0, 1));
+            Assert.Equal("北京市", ReadCellText(cropped, 2, 1));
+        }
+
+        [Fact]
         public void ExportImportXlsx_PersonnelTable_PreservesSampleText()
         {
             var grid = TableSamples.BuildPersonnelTable();
@@ -180,7 +284,7 @@ namespace HyCADTool.Tests.Features.Tables
         private static string GetPersonnelFixturePath()
         {
             var repoRoot = Path.GetFullPath(
-                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+                Path.Combine(System.AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
             return Path.Combine(
                 repoRoot,
                 "src",

@@ -8,8 +8,13 @@ body,
 }
 
 /* HyCAD 文件伪 Tab — 对齐 Univer ClassicMenu tab 行 */
+[data-u-comp='ribbon-header-menu'] {
+  overflow: visible !important;
+}
+
 [data-u-comp='ribbon-header-menu'] [role='tablist'] {
   justify-content: flex-start !important;
+  overflow: visible !important;
 }
 
 .hycad-file-tab-root {
@@ -18,6 +23,11 @@ body,
   flex-shrink: 0;
   align-items: center;
   margin-right: 4px;
+  z-index: 10001;
+}
+
+.hycad-file-tab-root--open {
+  z-index: 10002;
 }
 
 .hycad-file-tab {
@@ -133,6 +143,46 @@ body,
   .hycad-file-dropdown-separator {
     background: #4b5563;
   }
+}
+
+.hycad-ribbon-menu-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  margin: 0 2px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.25;
+  cursor: pointer;
+  appearance: none;
+  white-space: nowrap;
+}
+
+.hycad-ribbon-menu-btn::after {
+  content: '▾';
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.hycad-ribbon-menu-btn:hover {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.hycad-file-tab-root--open .hycad-ribbon-menu-btn {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+#hycad-dropdown-portal-host .hycad-file-dropdown {
+  pointer-events: auto;
 }
 
 /* HyCAD 主题微调 — Univer ribbon 主色 */

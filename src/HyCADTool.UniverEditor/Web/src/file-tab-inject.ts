@@ -1,3 +1,10 @@
+import {
+  closeHyCadDropdown,
+  createHyCadDropdownRoot,
+  installHyCadDropdownDismiss,
+  isInsideHyCadDropdown,
+} from './hycad-dropdown';
+
 export type HyCadFileAction =
   | 'newEmpty'
   | 'loadPersonnel'
@@ -5,7 +12,9 @@ export type HyCadFileAction =
   | 'exportXlsx'
   | 'exportJson'
   | 'pick'
-  | 'publish';
+  | 'publish'
+  | 'publishRangeFull'
+  | 'publishRangeContent';
 
 interface FileMenuItem {
   action: HyCadFileAction;
@@ -21,91 +30,29 @@ const FILE_MENU_ITEMS: FileMenuItem[] = [
   { action: 'exportJson', label: '导出 JSON 快照...' },
   { action: 'pick', label: '拾取 HyTable', separatorBefore: true },
   { action: 'publish', label: '落图到 CAD' },
+  { action: 'publishRangeFull', label: '落图范围：整个选区' },
+  { action: 'publishRangeContent', label: '落图范围：选区内仅有内容' },
 ];
 
 const ROOT_SELECTOR = '[data-u-comp="ribbon-header-menu"]';
-const FILE_ROOT_ATTR = 'data-hycad-comp';
 const FILE_ROOT_VALUE = 'file-tab-root';
 const INJECTED_FLAG = 'data-hycad-injected';
 
-let dropdownOpen = false;
 let teardown: (() => void) | null = null;
-
-function closeDropdown(): void {
-  dropdownOpen = false;
-  document.querySelectorAll(`[${FILE_ROOT_ATTR}="${FILE_ROOT_VALUE}"]`).forEach((root) => {
-    root.classList.remove('hycad-file-tab-root--open');
-    const btn = root.querySelector('[data-hycad-comp="file-tab"]');
-    btn?.classList.remove('hycad-file-tab--active');
-    root.querySelector('[data-hycad-comp="file-dropdown"]')?.classList.add('hycad-file-dropdown--hidden');
-  });
-}
-
-function toggleDropdown(root: HTMLElement, button: HTMLButtonElement): void {
-  const dropdown = root.querySelector('[data-hycad-comp="file-dropdown"]');
-  if (!dropdown)
-    return;
-
-  dropdownOpen = !dropdownOpen;
-  if (dropdownOpen) {
-    root.classList.add('hycad-file-tab-root--open');
-    button.classList.add('hycad-file-tab--active');
-    dropdown.classList.remove('hycad-file-dropdown--hidden');
-  } else {
-    closeDropdown();
-  }
-}
 
 function createFileTabRoot(
   postHostMessage: (payload: Record<string, unknown>) => void,
 ): HTMLElement {
-  const root = document.createElement('div');
-  root.setAttribute(FILE_ROOT_ATTR, FILE_ROOT_VALUE);
-  root.className = 'hycad-file-tab-root';
-
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.setAttribute('data-hycad-comp', 'file-tab');
-  button.className = 'hycad-file-tab';
-  button.textContent = '文件';
-  button.title = 'HyCAD 文件';
-  button.setAttribute('aria-haspopup', 'true');
-  button.setAttribute('aria-expanded', 'false');
-
-  const dropdown = document.createElement('div');
-  dropdown.setAttribute('data-hycad-comp', 'file-dropdown');
-  dropdown.className = 'hycad-file-dropdown hycad-file-dropdown--hidden';
-  dropdown.setAttribute('role', 'menu');
-
-  for (const item of FILE_MENU_ITEMS) {
-    if (item.separatorBefore) {
-      const sep = document.createElement('div');
-      sep.className = 'hycad-file-dropdown-separator';
-      sep.setAttribute('role', 'separator');
-      dropdown.appendChild(sep);
-    }
-
-    const menuItem = document.createElement('button');
-    menuItem.type = 'button';
-    menuItem.className = 'hycad-file-dropdown-item';
-    menuItem.textContent = item.label;
-    menuItem.setAttribute('role', 'menuitem');
-    menuItem.addEventListener('click', (event) => {
-      event.stopPropagation();
-      closeDropdown();
-      postHostMessage({ type: 'hyCadFileAction', action: item.action });
-    });
-    dropdown.appendChild(menuItem);
-  }
-
-  button.addEventListener('click', (event) => {
-    event.stopPropagation();
-    toggleDropdown(root, button);
-  });
-
-  root.appendChild(button);
-  root.appendChild(dropdown);
-  return root;
+  return createHyCadDropdownRoot(
+    FILE_ROOT_VALUE,
+    '文件',
+    FILE_MENU_ITEMS.map((item) => ({
+      id: item.action,
+      label: item.label,
+      separatorBefore: item.separatorBefore,
+      onSelect: () => postHostMessage({ type: 'hyCadFileAction', action: item.action }),
+    })),
+  );
 }
 
 function injectFileTab(postHostMessage: (payload: Record<string, unknown>) => void): boolean {
@@ -123,19 +70,15 @@ function injectFileTab(postHostMessage: (payload: Record<string, unknown>) => vo
 
   tablist.addEventListener('click', (event) => {
     const target = event.target as HTMLElement | null;
-    if (!target)
-      return;
-    if (target.closest(`[${FILE_ROOT_ATTR}="${FILE_ROOT_VALUE}"]`))
+    if (!target || isInsideHyCadDropdown(target))
       return;
     if (target.closest('[role="tab"]'))
-      closeDropdown();
+      closeHyCadDropdown();
   });
 
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement | null;
-    if (!target?.closest(`[${FILE_ROOT_ATTR}="${FILE_ROOT_VALUE}"]`))
-      closeDropdown();
-  });
+  // #region agent log
+  fetch('http://127.0.0.1:7417/ingest/b62f39af-ebab-4e9a-8fab-1bee8b67a4ba', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '646873' }, body: JSON.stringify({ sessionId: '646873', hypothesisId: 'UI-PORTAL', location: 'file-tab-inject.inject', message: 'file tab injected', data: { itemCount: FILE_MENU_ITEMS.length }, timestamp: Date.now(), runId: 'post-fix-2' }) }).catch(() => {});
+  // #endregion
 
   return true;
 }
@@ -143,6 +86,8 @@ function injectFileTab(postHostMessage: (payload: Record<string, unknown>) => vo
 export function installHyCadFileTab(
   postHostMessage: (payload: Record<string, unknown>) => void,
 ): void {
+  installHyCadDropdownDismiss();
+
   if (injectFileTab(postHostMessage))
     return;
 
@@ -165,9 +110,9 @@ export function installHyCadFileTab(
 }
 
 export function disposeHyCadFileTab(): void {
-  closeDropdown();
+  closeHyCadDropdown();
   teardown?.();
   teardown = null;
-  document.querySelector(`[${FILE_ROOT_ATTR}="${FILE_ROOT_VALUE}"]`)?.remove();
+  document.querySelector(`[data-hycad-dropdown-root="${FILE_ROOT_VALUE}"]`)?.remove();
   document.querySelector(ROOT_SELECTOR)?.removeAttribute(INJECTED_FLAG);
 }

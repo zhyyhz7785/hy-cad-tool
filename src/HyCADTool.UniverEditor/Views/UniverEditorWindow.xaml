@@ -88,6 +88,11 @@
                         Padding="10,4"
                         Click="OnPublishClick"
                         Content="落图" />
+                <Button Margin="0,0,6,0"
+                        Padding="10,4"
+                        Click="OnPublishRangeFullClick"
+                        Content="范围落图"
+                        ToolTip="请先在表格中框选单元格区域，再点此按钮；随后在 CAD 图面指定插入点" />
                 <Button Margin="0,0,12,0"
                         Padding="10,4"
                         Click="OnPickClick"

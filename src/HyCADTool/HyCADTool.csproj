@@ -67,7 +67,10 @@
     </PackageReference>
     <PackageReference Include="Autofac" Version="7.1.0" />
     <PackageReference Include="Clipper2" Version="1.4.0" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <!-- 必须与 AutoCAD 2025 进程自带的 DocumentFormat.OpenXml 2.16.0.0 同版本：
+         AutoCAD 会用自带 AssemblyResolve 抢先返回它的 2.16，若我们引用 3.x（拆成 OpenXml + OpenXml.Framework 两程序集），
+         运行时会出现 Sheet=2.16 / OpenXmlElement=3.5 的类型割裂 → 泛型约束失败。详见 OpenXmlAssemblyBootstrap 注释。 -->
+    <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
     <PackageReference Include="NetTopologySuite" Version="2.5.0" />
     <PackageReference Include="Markdig" Version="0.37.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

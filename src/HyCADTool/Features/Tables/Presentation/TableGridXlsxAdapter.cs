@@ -8,6 +8,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using HyCAD.Tables;
 using HyCAD.Tables.Operations;
+using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.SpongeCity.Infrastructure;
 
 namespace HyCADTool.Features.Tables.Presentation
@@ -19,6 +20,8 @@ namespace HyCADTool.Features.Tables.Presentation
     {
         public static void Export(TableGrid grid, string filePath)
         {
+            OpenXmlAssemblyBootstrap.EnsureLoaded();
+
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
             if (string.IsNullOrWhiteSpace(filePath))
@@ -85,6 +88,8 @@ namespace HyCADTool.Features.Tables.Presentation
 
         public static TableGrid Import(string filePath, double defaultRowHeightMm, double defaultColWidthMm)
         {
+            OpenXmlAssemblyBootstrap.EnsureLoaded();
+
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
                 throw new FileNotFoundException("未找到 xlsx 文件。", filePath);
 

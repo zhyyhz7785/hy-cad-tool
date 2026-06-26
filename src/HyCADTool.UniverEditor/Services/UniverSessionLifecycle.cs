@@ -21,7 +21,9 @@ namespace HyCADTool.UniverEditor.Services
 
         private readonly WebView2 _webView;
         private readonly Action<string> _setStatus;
-        private readonly UniverEditorHostContext _hostContext;
+        private readonly UniverEditorHostContext _fallbackHostContext;
+
+        private UniverEditorHostContext Host => EditorLauncher.HostContext ?? _fallbackHostContext;
         private bool _ready;
         private bool _disposed;
         private int _exportRequestId;
@@ -33,7 +35,7 @@ namespace HyCADTool.UniverEditor.Services
         {
             _webView = webView;
             _setStatus = setStatus;
-            _hostContext = hostContext;
+            _fallbackHostContext = hostContext;
         }
 
         public bool IsReady => _ready;
@@ -89,6 +91,16 @@ namespace HyCADTool.UniverEditor.Services
             return PostCommandAsync("exportSnapshot", null);
         }
 
+        public Task ExportSnapshotForPublishAsync(string mode)
+        {
+            if (!_ready)
+                return Task.CompletedTask;
+
+            _exportRequestId++;
+            var payload = new JObject { ["mode"] = mode };
+            return PostCommandAsync("exportSnapshotForPublish", payload);
+        }
+
         private Task PostCommandAsync(string type, JToken payload)
         {
             var message = new JObject { ["type"] = type };
@@ -98,7 +110,28 @@ namespace HyCADTool.UniverEditor.Services
             if (_webView?.CoreWebView2 == null)
                 return Task.CompletedTask;
 
-            _webView.CoreWebView2.PostWebMessageAsString(message.ToString());
+            string json = message.ToString();
+            void Post()
+            {
+                _webView.CoreWebView2.PostWebMessageAsString(json);
+            }
+
+            if (_webView.Dispatcher.CheckAccess())
+                Post();
+            else
+                _webView.Dispatcher.Invoke(Post);
+
+            // #region agent log
+            if (string.Equals(type, "loadSnapshot", StringComparison.OrdinalIgnoreCase))
+            {
+                AgentDebugLog646873.Write("H6,H7", "UniverSessionLifecycle.PostCommandAsync", "loadSnapshot posted", new
+                {
+                    payloadLength = payload?.ToString()?.Length ?? 0,
+                    onUiThread = _webView.Dispatcher.CheckAccess(),
+                });
+            }
+            // #endregion
+
             return Task.CompletedTask;
         }
 
@@ -247,35 +280,51 @@ namespace HyCADTool.UniverEditor.Services
                     int col = message.Value<int?>("col") ?? -1;
                     string text = message.Value<string>("text") ?? string.Empty;
                     if (row >= 0 && col >= 0)
-                        _hostContext?.OnCellChanged?.Invoke(row, col, text);
+                        Host?.OnCellChanged?.Invoke(row, col, text);
                     return;
                 }
 
                 if (string.Equals(type, "snapshot", StringComparison.OrdinalIgnoreCase))
                 {
-                    string json = message["payload"]?.ToString();
-                    _hostContext?.OnSnapshotExported?.Invoke(json);
-                    SnapshotExported?.Invoke(json);
+                    var exportMessage = new UniverWebSnapshotMessage
+                    {
+                        SnapshotJson = message["payload"]?.ToString(),
+                        PublishMode = message.Value<string>("publishMode"),
+                        ClipStartRow = message["clipRect"]?.Value<int?>("startRow"),
+                        ClipStartCol = message["clipRect"]?.Value<int?>("startCol"),
+                        ClipEndRow = message["clipRect"]?.Value<int?>("endRow"),
+                        ClipEndCol = message["clipRect"]?.Value<int?>("endCol"),
+                    };
+                    InvokeOnUiThread(() => SnapshotExported?.Invoke(exportMessage));
                     return;
                 }
 
                 if (string.Equals(type, "hyCadAction", StringComparison.OrdinalIgnoreCase))
                 {
                     string action = message.Value<string>("action");
-                    HandleHyCadAction(action);
+                    InvokeOnUiThread(() => HandleHyCadAction(action));
                     return;
                 }
 
                 if (string.Equals(type, "hyCadFileAction", StringComparison.OrdinalIgnoreCase))
                 {
                     string action = message.Value<string>("action");
-                    HandleHyCadFileAction(action);
+                    InvokeOnUiThread(() => HandleHyCadFileAction(action));
+                    return;
+                }
+
+                if (string.Equals(type, "snapshotLoaded", StringComparison.OrdinalIgnoreCase))
+                {
+                    // #region agent log
+                    AgentDebugLog646873.Write("H6,H7", "UniverSessionLifecycle.OnWebMessageReceived", "snapshotLoaded", new { });
+                    // #endregion
                     return;
                 }
 
                 if (string.Equals(type, "error", StringComparison.OrdinalIgnoreCase))
                 {
                     string detail = message.Value<string>("message") ?? "未知错误";
+                    Host?.OnExportError?.Invoke(detail);
                     _setStatus?.Invoke($"Univer 错误: {detail}");
                 }
             }
@@ -285,56 +334,107 @@ namespace HyCADTool.UniverEditor.Services
             }
         }
 
-        public event Action<string> SnapshotExported;
+        public event Action<UniverWebSnapshotMessage> SnapshotExported;
 
         private void HandleHyCadAction(string action)
         {
+            // #region agent log
+            AgentDebugLog646873.Write("H2,H5", "UniverSessionLifecycle.HandleHyCadAction", "action received", new
+            {
+                action,
+                hasHost = Host != null,
+                hasDelegate = action switch
+                {
+                    "pick" => Host?.RequestPick != null,
+                    "publish" => Host?.RequestPublish != null,
+                    "publishRangeFull" => Host?.RequestPublishRangeFull != null,
+                    "publishRangeContent" => Host?.RequestPublishRangeContent != null,
+                    _ => (bool?)null,
+                },
+            });
+            // #endregion
+
             switch (action)
             {
                 case "pick":
-                    _hostContext?.InvokeSafe(_hostContext.RequestPick, _setStatus);
+                    Host?.InvokeSafe(Host.RequestPick, _setStatus);
                     break;
                 case "publish":
-                    _hostContext?.InvokeSafe(_hostContext.RequestPublish, _setStatus);
+                    Host?.InvokeSafe(Host.RequestPublish, _setStatus);
+                    break;
+                case "publishRangeFull":
+                    Host?.InvokeSafe(Host.RequestPublishRangeFull, _setStatus);
+                    break;
+                case "publishRangeContent":
+                    Host?.InvokeSafe(Host.RequestPublishRangeContent, _setStatus);
                     break;
             }
         }
 
         private void HandleHyCadFileAction(string action)
         {
+            // #region agent log
+            AgentDebugLog646873.Write("H9,H10", "UniverSessionLifecycle.HandleHyCadFileAction", "action received", new
+            {
+                action,
+                hasHost = Host != null,
+                hasImport = Host?.ImportXlsx != null,
+                hasExportXlsx = Host?.ExportXlsx != null,
+                hasExportJson = Host?.ExportJsonSnapshot != null,
+                onUiThread = _webView?.Dispatcher?.CheckAccess(),
+            });
+            // #endregion
+
             switch (action)
             {
                 case "newEmpty":
-                    _hostContext?.InvokeSafe(_hostContext.NewEmptyTable, _setStatus);
+                    Host?.InvokeSafe(Host.NewEmptyTable, _setStatus);
                     break;
                 case "loadPersonnel":
-                    _hostContext?.InvokeSafe(_hostContext.LoadPersonnelSample, _setStatus);
+                    Host?.InvokeSafe(Host.LoadPersonnelSample, _setStatus);
                     break;
                 case "importXlsx":
-                    _hostContext?.InvokeSafe(_hostContext.ImportXlsx, _setStatus);
+                    Host?.InvokeSafe(Host.ImportXlsx, _setStatus);
                     break;
                 case "exportXlsx":
-                    _hostContext?.InvokeSafe(_hostContext.ExportXlsx, _setStatus);
+                    Host?.InvokeSafe(Host.ExportXlsx, _setStatus);
                     break;
                 case "exportJson":
-                    _hostContext?.InvokeSafe(_hostContext.ExportJsonSnapshot, _setStatus);
+                    Host?.InvokeSafe(Host.ExportJsonSnapshot, _setStatus);
                     break;
                 case "pick":
-                    _hostContext?.InvokeSafe(_hostContext.RequestPick, _setStatus);
+                    Host?.InvokeSafe(Host.RequestPick, _setStatus);
                     break;
                 case "publish":
-                    _hostContext?.InvokeSafe(_hostContext.RequestPublish, _setStatus);
+                    Host?.InvokeSafe(Host.RequestPublish, _setStatus);
+                    break;
+                case "publishRangeFull":
+                    Host?.InvokeSafe(Host.RequestPublishRangeFull, _setStatus);
+                    break;
+                case "publishRangeContent":
+                    Host?.InvokeSafe(Host.RequestPublishRangeContent, _setStatus);
                     break;
             }
         }
 
         private async Task PushInitialSnapshotAsync()
         {
-            string json = _hostContext?.TryGetLoadSnapshotJson();
+            string json = Host?.TryGetLoadSnapshotJson();
             if (string.IsNullOrWhiteSpace(json))
                 return;
 
             await LoadSnapshotAsync(json);
+        }
+
+        private void InvokeOnUiThread(Action action)
+        {
+            if (action == null || _webView?.Dispatcher == null)
+                return;
+
+            if (_webView.Dispatcher.CheckAccess())
+                action();
+            else
+                _webView.Dispatcher.Invoke(action);
         }
 
         public void Dispose()

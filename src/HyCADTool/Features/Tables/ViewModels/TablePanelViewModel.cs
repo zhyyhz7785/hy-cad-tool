@@ -150,7 +150,8 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         public void SetStatusMessage(string message) => StatusMessage = message;
 
-
+        /// <summary>Pick/Publish 经 _HyExec 完成后回调（Univer 宿主用于恢复 Topmost 等）。</summary>
+        public Action CadInteractionCompleted { get; set; }
 
         public int RowCount
 
@@ -436,7 +437,13 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 if (ed == null)
 
+                {
+
+                    RunOnUi(InvokeCadInteractionCompleted);
+
                     return;
+
+                }
 
 
 
@@ -448,7 +455,11 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 {
 
-                    RunOnUi(() => StatusMessage = "拾取已取消或非 HyTable");
+                    RunOnUi(() =>
+                    {
+                        StatusMessage = "拾取已取消或非 HyTable";
+                        InvokeCadInteractionCompleted();
+                    });
 
                     return;
 
@@ -474,6 +485,8 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                     StatusMessage = "已拾取：" + result.Summary.DisplayTitle;
 
+                    InvokeCadInteractionCompleted();
+
                 });
 
             });
@@ -492,6 +505,8 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 StatusMessage = "请先加载或拾取表格";
 
+                InvokeCadInteractionCompleted();
+
                 return;
 
             }
@@ -508,19 +523,29 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 if (ed == null)
 
+                {
+
+                    RunOnUi(InvokeCadInteractionCompleted);
+
                     return;
+
+                }
 
 
 
                 var service = new TablePanelService(doc.Database);
 
-                var result = service.TryPublish(ed, _opLog.Current, _publishContext);
+                var result = service.TryPublish(ed, _opLog.Current);
 
                 if (result.IsCancelled)
 
                 {
 
-                    RunOnUi(() => StatusMessage = "写入已取消");
+                    RunOnUi(() =>
+                    {
+                        StatusMessage = "写入已取消";
+                        InvokeCadInteractionCompleted();
+                    });
 
                     return;
 
@@ -532,7 +557,11 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 {
 
-                    RunOnUi(() => StatusMessage = "写入图面失败");
+                    RunOnUi(() =>
+                    {
+                        StatusMessage = "写入图面失败";
+                        InvokeCadInteractionCompleted();
+                    });
 
                     return;
 
@@ -544,11 +573,11 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 {
 
-                    _publishContext = result.Context;
-
                     StatusMessage = "已写入图面";
 
                     RefreshSummary();
+
+                    InvokeCadInteractionCompleted();
 
                 });
 
@@ -623,9 +652,123 @@ namespace HyCADTool.Features.Tables.ViewModels
             if (_opLog == null || snapshot == null)
                 return;
 
+            UniverGridSnapshotMapper.EnsureGridFits(_opLog, snapshot);
             UniverGridSnapshotMapper.ApplyTextValues(_opLog, snapshot);
             RefreshRows();
             RefreshSummary();
+        }
+
+        /// <summary>
+        /// 从 Univer 快照落图。<paramref name="mutateEditor"/> 为 false 时不写回编辑器 OpLog（范围落图）。
+        /// </summary>
+        public void RequestPublishFromSnapshot(
+            UniverGridSnapshot snapshot,
+            UniverClipRect clipRect,
+            bool mutateEditor = true)
+        {
+            if (_opLog == null)
+            {
+                StatusMessage = "请先加载或拾取表格";
+                InvokeCadInteractionCompleted();
+                return;
+            }
+
+            if (snapshot == null)
+            {
+                StatusMessage = "exportSnapshot 返回空数据";
+                InvokeCadInteractionCompleted();
+                return;
+            }
+
+            TableGrid publishGrid;
+            if (mutateEditor)
+            {
+                ApplyUniverSnapshot(snapshot);
+                publishGrid = _opLog.Current;
+            }
+            else
+            {
+                if (clipRect == null)
+                {
+                    StatusMessage = "范围落图缺少选区信息";
+                    InvokeCadInteractionCompleted();
+                    return;
+                }
+
+                // #region agent log
+                DebugAgentLog646873.Write("H1,H4", "TablePanelViewModel.RequestPublishFromSnapshot", "before crop", new
+                {
+                    gridRows = _opLog.Current.Structure.Topology.RowCount,
+                    gridCols = _opLog.Current.Structure.Topology.ColCount,
+                    clipStartRow = clipRect.StartRow,
+                    clipStartCol = clipRect.StartCol,
+                    clipEndRow = clipRect.EndRow,
+                    clipEndCol = clipRect.EndCol,
+                    snapshotRows = snapshot.RowCount,
+                    snapshotCols = snapshot.ColCount,
+                });
+                // #endregion
+
+                var extendOpLog = new TableOpLog(_opLog.Current);
+                UniverGridSnapshotMapper.EnsureGridFits(extendOpLog, new UniverGridSnapshot
+                {
+                    RowCount = clipRect.EndRow + 1,
+                    ColCount = clipRect.EndCol + 1,
+                });
+
+                var cropped = TableGridCropper.Crop(
+                    extendOpLog.Current,
+                    clipRect.StartRow,
+                    clipRect.StartCol,
+                    clipRect.EndRow,
+                    clipRect.EndCol);
+
+                var tempOpLog = new TableOpLog(cropped);
+                UniverGridSnapshotMapper.EnsureGridFits(tempOpLog, snapshot);
+                UniverGridSnapshotMapper.ApplyTextValues(tempOpLog, snapshot);
+                publishGrid = tempOpLog.Current;
+            }
+
+            var gridToPublish = publishGrid;
+            SendCadCommand(() =>
+            {
+                var doc = AcApp.DocumentManager.MdiActiveDocument;
+                var ed = doc?.Editor;
+                if (ed == null)
+                {
+                    RunOnUi(InvokeCadInteractionCompleted);
+                    return;
+                }
+
+                var service = new TablePanelService(doc.Database);
+                var result = service.TryPublish(ed, gridToPublish);
+                if (result.IsCancelled)
+                {
+                    RunOnUi(() =>
+                    {
+                        StatusMessage = "写入已取消";
+                        InvokeCadInteractionCompleted();
+                    });
+                    return;
+                }
+
+                if (result.IsFailed)
+                {
+                    RunOnUi(() =>
+                    {
+                        StatusMessage = "写入图面失败";
+                        InvokeCadInteractionCompleted();
+                    });
+                    return;
+                }
+
+                RunOnUi(() =>
+                {
+                    StatusMessage = "已写入图面";
+                    RefreshSummary();
+                    InvokeCadInteractionCompleted();
+                });
+            });
         }
 
         protected virtual void OnAfterApplyGrid()
@@ -674,7 +817,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
             _opLog = new TableOpLog(grid);
 
-            _publishContext = context;
+            _publishContext = TablePanelService.CoalescePublishContext(context, grid);
 
             SyncTopologyFromGrid(grid);
 
@@ -898,6 +1041,8 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                     SettingsPanelViewModel.PendingCommand = null;
 
+                    InvokeCadInteractionCompleted();
+
                     return;
 
                 }
@@ -915,6 +1060,30 @@ namespace HyCADTool.Features.Tables.ViewModels
                 SettingsPanelViewModel.PendingCommand = null;
 
                 StatusMessage = "发送命令失败：" + ex.Message;
+
+            }
+
+        }
+
+
+
+        private void InvokeCadInteractionCompleted()
+
+        {
+
+            try
+
+            {
+
+                CadInteractionCompleted?.Invoke();
+
+            }
+
+            catch
+
+            {
+
+                // ignore host callback failures
 
             }
 

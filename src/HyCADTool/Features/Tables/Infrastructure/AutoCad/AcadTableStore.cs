@@ -225,8 +225,8 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             var groupDict = tr.GetObject(db.GroupDictionaryId, OpenMode.ForRead) as DBDictionary;
             if (groupDict == null || !groupDict.Contains(groupName))
             {
-                error = "找不到表格组 " + groupName + "。";
-                return false;
+                // 组已不存在视为已删除（原位再发布 / 外部擦除）
+                return true;
             }
 
             var group = tr.GetObject(groupDict.GetAt(groupName), OpenMode.ForWrite) as Group;

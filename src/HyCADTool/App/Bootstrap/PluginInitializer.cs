@@ -94,6 +94,15 @@ namespace HyCADTool.App.Bootstrap
             }
             long msWpfStub = swWpf.ElapsedMilliseconds;
 
+            try
+            {
+                OpenXmlAssemblyBootstrap.EnsureLoaded();
+            }
+            catch
+            {
+                // 仅注册 Resolve handler，失败不阻断插件启动；xlsx 路径会再次 EnsureLoaded
+            }
+
 #if HYCAD_PRODUCTION
             try
             {
