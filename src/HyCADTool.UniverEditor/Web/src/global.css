@@ -13,7 +13,8 @@ body,
 }
 
 [data-u-comp='ribbon-header-menu'] [role='tablist'] {
-  justify-content: flex-start !important;
+  position: relative;
+  justify-content: center !important;
   overflow: visible !important;
 }
 
@@ -22,8 +23,16 @@ body,
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  margin-right: 4px;
   z-index: 10001;
+}
+
+/* 仅「文件」伪 Tab 绝对定位贴最左，脱离居中流；主题/落图范围下拉仍按流式排布 */
+[data-u-comp='ribbon-header-menu'] [role='tablist'] [data-hycad-dropdown-root='file-tab-root'] {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  margin: 0;
+  transform: translateY(-50%);
 }
 
 .hycad-file-tab-root--open {
@@ -183,6 +192,67 @@ body,
 
 #hycad-dropdown-portal-host .hycad-file-dropdown {
   pointer-events: auto;
+}
+
+/* HyCAD 窗口控制按钮 — 固定在 ribbon 头部右侧 */
+[data-u-comp='ribbon-header-menu'] {
+  position: relative;
+}
+
+.hycad-window-controls {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  z-index: 10003;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  transform: translateY(-50%);
+}
+
+.hycad-window-control {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.hycad-window-control:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.hycad-window-control--close:hover {
+  background: #e81123;
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hycad-window-control {
+    color: #d1d5db;
+  }
+
+  .hycad-window-control:hover {
+    background: #374151;
+    color: #f9fafb;
+  }
+
+  .hycad-window-control--close:hover {
+    background: #e81123;
+    color: #ffffff;
+  }
 }
 
 /* HyCAD 主题微调 — Univer ribbon 主色 */

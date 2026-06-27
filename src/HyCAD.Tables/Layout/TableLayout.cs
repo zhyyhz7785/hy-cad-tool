@@ -12,18 +12,19 @@ public sealed class TableLayout
     private readonly double[] _columnBoundariesX;
     private readonly double[] _rowBoundariesY;
 
-    private TableLayout(TableGrid grid, LayoutPoint origin, GrowDirection direction)
+    private TableLayout(TableGrid grid, LayoutPoint origin, GrowDirection direction, double scale)
     {
         Grid = grid ?? throw new ArgumentNullException(nameof(grid));
         Origin = origin;
         Direction = direction;
+        Scale = scale;
 
         var topology = grid.Structure.Topology;
-        _columnLefts = BuildColumnLefts(topology, origin.X);
-        _rowTops = BuildRowTops(topology, origin.Y, direction);
+        _columnLefts = BuildColumnLefts(topology, origin.X, scale);
+        _rowTops = BuildRowTops(topology, origin.Y, direction, scale);
 
-        TotalWidth = SumTrackSizes(topology.Cols);
-        TotalHeight = SumTrackSizes(topology.Rows);
+        TotalWidth = SumTrackSizes(topology.Cols, scale);
+        TotalHeight = SumTrackSizes(topology.Rows, scale);
         TableBounds = new LayoutRect(
             origin.X,
             origin.Y,
@@ -43,6 +44,9 @@ public sealed class TableLayout
     /// <summary>生长方向。</summary>
     public GrowDirection Direction { get; }
 
+    /// <summary>几何放大比例（口径 B：纸面 mm × Scale = 模型空间 mm）。</summary>
+    public double Scale { get; }
+
     /// <summary>表总宽（mm）。</summary>
     public double TotalWidth { get; }
 
@@ -59,16 +63,21 @@ public sealed class TableLayout
     /// <param name="originX">原点 X（mm）。</param>
     /// <param name="originY">原点 Y（mm）。</param>
     /// <param name="direction">生长方向；AC1 仅支持 <see cref="GrowDirection.Down"/>。</param>
+    /// <param name="scale">几何放大比例（口径 B；默认 1.0 即纸面 mm）。</param>
     public static TableLayout Create(
         TableGrid grid,
         double originX,
         double originY,
-        GrowDirection direction = GrowDirection.Down)
+        GrowDirection direction = GrowDirection.Down,
+        double scale = 1.0)
     {
         if (direction != GrowDirection.Down)
             throw new NotSupportedException("TableLayout AC1 仅支持 GrowDirection.Down；Up 见 008 V2。");
 
-        return new TableLayout(grid, new LayoutPoint(originX, originY), direction);
+        if (scale <= 0)
+            scale = 1.0;
+
+        return new TableLayout(grid, new LayoutPoint(originX, originY), direction, scale);
     }
 
     /// <summary>第 col 列左边缘 X（mm）。</summary>
@@ -194,21 +203,21 @@ public sealed class TableLayout
             throw new ArgumentOutOfRangeException(nameof(row));
     }
 
-    private static double[] BuildColumnLefts(GridTopology topology, double originX)
+    private static double[] BuildColumnLefts(GridTopology topology, double originX, double scale)
     {
         var result = new double[topology.ColCount + 1];
         var x = originX;
         for (var col = 0; col < topology.ColCount; col++)
         {
             result[col] = x;
-            x += topology.Cols[col].Size;
+            x += topology.Cols[col].Size * scale;
         }
 
         result[topology.ColCount] = x;
         return result;
     }
 
-    private static double[] BuildRowTops(GridTopology topology, double originY, GrowDirection direction)
+    private static double[] BuildRowTops(GridTopology topology, double originY, GrowDirection direction, double scale)
     {
         var result = new double[topology.RowCount + 1];
         if (direction == GrowDirection.Down)
@@ -217,7 +226,7 @@ public sealed class TableLayout
             for (var row = 0; row < topology.RowCount; row++)
             {
                 result[row] = y;
-                y -= topology.Rows[row].Size;
+                y -= topology.Rows[row].Size * scale;
             }
 
             result[topology.RowCount] = y;
@@ -227,11 +236,11 @@ public sealed class TableLayout
         throw new NotSupportedException("TableLayout AC1 仅支持 GrowDirection.Down。");
     }
 
-    private static double SumTrackSizes(IReadOnlyList<GridTrack> tracks)
+    private static double SumTrackSizes(IReadOnlyList<GridTrack> tracks, double scale)
     {
         var sum = 0.0;
         for (var i = 0; i < tracks.Count; i++)
-            sum += tracks[i].Size;
+            sum += tracks[i].Size * scale;
         return sum;
     }
 

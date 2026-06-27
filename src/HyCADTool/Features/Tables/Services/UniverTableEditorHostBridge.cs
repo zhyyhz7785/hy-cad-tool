@@ -258,6 +258,66 @@ namespace HyCADTool.Features.Tables.Services
 
         public string GetStatusMessage() => _viewModel.StatusMessage;
 
+        /// <summary>读取当前落图比例（口径 B）。</summary>
+        public double GetScale() => _viewModel.Scale;
+
+        /// <summary>布局 Tab 改比例：仅改 VM.Scale，不动 grid、不回灌。</summary>
+        public void SetScale(double scale)
+        {
+            _viewModel.Scale = scale;
+            NotifyStatusChanged();
+        }
+
+        /// <summary>网页选区变化 → 同步到 VM 选区（布局/尺寸操作以此为准）。</summary>
+        public void OnSelectionChanged(int startRow, int startCol, int endRow, int endCol)
+        {
+            _viewModel.SetSelectedRange(startRow, startCol, endRow, endCol);
+        }
+
+        /// <summary>
+        /// 布局 Tab 行列/合并/尺寸操作。结构变更经 VM 命令 → GridRevision++ → GridChanged 回灌。
+        /// 尺寸操作作用于当前选区（须先 OnSelectionChanged）。
+        /// </summary>
+        public void OnLayoutOp(string op, double value)
+        {
+            if (string.IsNullOrEmpty(op))
+                return;
+
+            switch (op)
+            {
+                case "insertRow":
+                    Execute(_viewModel.InsertRowCommand);
+                    break;
+                case "deleteRow":
+                    Execute(_viewModel.DeleteRowCommand);
+                    break;
+                case "insertCol":
+                    Execute(_viewModel.InsertColumnCommand);
+                    break;
+                case "deleteCol":
+                    Execute(_viewModel.DeleteColumnCommand);
+                    break;
+                case "merge":
+                    Execute(_viewModel.MergeSelectionCommand);
+                    break;
+                case "unmerge":
+                    Execute(_viewModel.UnmergeCommand);
+                    break;
+                case "setRowHeight":
+                    _viewModel.SelectedRowHeightMm = value;
+                    break;
+                case "setColWidth":
+                    _viewModel.SelectedColWidthMm = value;
+                    break;
+            }
+        }
+
+        private static void Execute(System.Windows.Input.ICommand command)
+        {
+            if (command != null && command.CanExecute(null))
+                command.Execute(null);
+        }
+
         public void CompleteExportSnapshot(string json, string metaJson = null)
         {
             ClearExportTimeout();

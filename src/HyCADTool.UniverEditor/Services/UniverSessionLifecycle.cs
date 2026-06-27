@@ -295,10 +295,37 @@ namespace HyCADTool.UniverEditor.Services
                     return;
                 }
 
+                if (string.Equals(type, "selectionChanged", StringComparison.OrdinalIgnoreCase))
+                {
+                    int startRow = message.Value<int?>("startRow") ?? -1;
+                    int startCol = message.Value<int?>("startCol") ?? -1;
+                    int endRow = message.Value<int?>("endRow") ?? startRow;
+                    int endCol = message.Value<int?>("endCol") ?? startCol;
+                    if (startRow >= 0 && startCol >= 0)
+                        InvokeOnUiThread(() => Host?.OnSelectionChanged?.Invoke(startRow, startCol, endRow, endCol));
+                    return;
+                }
+
+                if (string.Equals(type, "hyCadLayout", StringComparison.OrdinalIgnoreCase))
+                {
+                    string op = message.Value<string>("op");
+                    double value = message.Value<double?>("value") ?? 0.0;
+                    if (!string.IsNullOrEmpty(op))
+                        InvokeOnUiThread(() => HandleHyCadLayout(op, value));
+                    return;
+                }
+
                 if (string.Equals(type, "hyCadFileAction", StringComparison.OrdinalIgnoreCase))
                 {
                     string action = message.Value<string>("action");
                     InvokeOnUiThread(() => HandleHyCadFileAction(action));
+                    return;
+                }
+
+                if (string.Equals(type, "hyCadWindowControl", StringComparison.OrdinalIgnoreCase))
+                {
+                    string action = message.Value<string>("action");
+                    InvokeOnUiThread(() => WindowControlRequested?.Invoke(action));
                     return;
                 }
 
@@ -322,6 +349,8 @@ namespace HyCADTool.UniverEditor.Services
 
         public event Action<UniverWebSnapshotMessage> SnapshotExported;
 
+        public event Action<string> WindowControlRequested;
+
         private void HandleHyCadAction(string action)
         {
             switch (action)
@@ -339,6 +368,21 @@ namespace HyCADTool.UniverEditor.Services
                     Host?.InvokeSafe(Host.RequestPublishRangeContent, _setStatus);
                     break;
             }
+        }
+
+        private void HandleHyCadLayout(string op, double value)
+        {
+            // setScale 仅改 VM.Scale（不改 grid、不回灌）；其余结构/尺寸 op 经 OnLayoutOp → VM 命令 → GridChanged 回灌。
+            if (string.Equals(op, "setScale", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Host?.SetScale != null)
+                    Host.InvokeSafe(() => Host.SetScale(value), _setStatus);
+                return;
+            }
+
+            var layoutOp = Host?.OnLayoutOp;
+            if (layoutOp != null)
+                Host.InvokeSafe(() => layoutOp(op, value), _setStatus);
         }
 
         private void HandleHyCadFileAction(string action)
@@ -377,11 +421,36 @@ namespace HyCADTool.UniverEditor.Services
 
         private async Task PushInitialSnapshotAsync()
         {
+            await PushScaleAsync();
+
             string json = Host?.TryGetLoadSnapshotJson();
             if (string.IsNullOrWhiteSpace(json))
                 return;
 
             await LoadSnapshotAsync(json);
+        }
+
+        /// <summary>把当前 VM.Scale 下发网页布局 Tab（口径 B 初始化/恢复 hy 值）。</summary>
+        public Task PushScaleAsync()
+        {
+            if (!_ready)
+                return Task.CompletedTask;
+
+            double scale;
+            try
+            {
+                scale = Host?.GetScale?.Invoke() ?? 1.0;
+            }
+            catch
+            {
+                scale = 1.0;
+            }
+
+            if (scale <= 0)
+                scale = 1.0;
+
+            var payload = new JObject { ["scale"] = scale };
+            return PostCommandAsync("setScale", payload);
         }
 
         private void InvokeOnUiThread(Action action)

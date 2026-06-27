@@ -76,9 +76,17 @@ import { installDevHostIfNeeded } from './dev-host';
 
 import { installHyCadFileTab } from './file-tab-inject';
 
-import { registerHyCadRibbonMenus } from './ribbon-hycad';
+import {
+  installHyCadLayoutTab,
+  updateLayoutTabScale,
+  updateLayoutTabSelection,
+} from './layout-tab-inject';
 
 import { installHyCadRibbonRangeMenu } from './ribbon-range-inject';
+
+import { installHyCadWindowControls } from './window-controls-inject';
+
+import { installHyCadThemeTab } from './theme-menu-inject';
 
 import {
 
@@ -99,6 +107,31 @@ declare global {
     univer?: Univer;
 
     univerAPI?: ReturnType<typeof FUniver.newAPI>;
+
+  }
+
+}
+
+
+
+function handleLayoutHostCommand(raw: string): void {
+
+  try {
+
+    const message = JSON.parse(raw) as { type?: string; payload?: { scale?: number } };
+
+    if (message.type === 'setScale') {
+
+      const scale = message.payload?.scale;
+
+      if (typeof scale === 'number')
+        updateLayoutTabScale(scale);
+
+    }
+
+  } catch {
+
+    // ignore malformed host messages
 
   }
 
@@ -190,8 +223,7 @@ function bootstrap(): void {
 
   installHyCadBridge(univerAPI);
 
-  registerHyCadRibbonMenus(univerAPI);
-
+  // 落图/拾取已迁入布局 Tab（installHyCadLayoutTab）；此处仅保留范围落图下拉。
   installHyCadRibbonRangeMenu();
 
 
@@ -216,7 +248,37 @@ function bootstrap(): void {
 
 
 
+  const selectionChanged = univerAPI.Event?.SelectionChanged;
+
+  if (selectionChanged) {
+
+    univerAPI.addEvent(selectionChanged, (params: { selections?: Array<{ startRow: number; startColumn: number; endRow: number; endColumn: number }> }) => {
+
+      const ranges = params.selections;
+
+      if (!ranges || ranges.length === 0)
+        return;
+
+      const range = ranges[ranges.length - 1];
+
+      const startRow = range.startRow ?? 0;
+      const startCol = range.startColumn ?? 0;
+      const endRow = range.endRow ?? startRow;
+      const endCol = range.endColumn ?? startCol;
+
+      postHostMessage({ type: 'selectionChanged', startRow, startCol, endRow, endCol });
+
+      updateLayoutTabSelection(startRow, startCol, endRow, endCol);
+
+    });
+
+  }
+
+
+
   window.chrome?.webview?.addEventListener?.('message', (event: MessageEvent<string>) => {
+
+    handleLayoutHostCommand(event.data);
 
     handleHostCommand(univerAPI, postHostMessage, event.data);
 
@@ -225,6 +287,12 @@ function bootstrap(): void {
 
 
   installHyCadFileTab(postHostMessage);
+
+  installHyCadLayoutTab(postHostMessage);
+
+  installHyCadThemeTab(univerAPI);
+
+  installHyCadWindowControls(postHostMessage);
 
   postHostMessage({ type: 'ready' });
 

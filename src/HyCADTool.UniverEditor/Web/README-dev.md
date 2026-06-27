@@ -21,7 +21,7 @@ npm run dev
 |---|---|---|
 | 入口 / 插件栈 | `src/main.ts` | Univer 注册、dev 宿主接线 |
 | 文件伪 Tab | `src/file-tab-inject.ts` | 「文件▾」菜单与 `hyCadFileAction` |
-| HyCAD Ribbon | `src/ribbon-hycad.ts` | 开始 Tab 内落图/拾取等 |
+| 布局 Tab | `src/layout-tab-inject.ts` | 行高列宽 mm / 比例 / 行列合并 / 落图拾取 / 角色占位 |
 | CAD 桥接 | `src/univer-bridge.ts` | `loadSnapshot` / `exportSnapshot` |
 | 浏览器 mock | `src/dev-host.ts` | 无 WebView2 时本地处理文件菜单 |
 | 样式 | `src/global.css` | 伪 Tab、主题色、dev 状态条 |

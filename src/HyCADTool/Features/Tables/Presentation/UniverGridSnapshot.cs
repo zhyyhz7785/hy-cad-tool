@@ -40,6 +40,47 @@ namespace HyCADTool.Features.Tables.Presentation
         public string Text { get; set; } = string.Empty;
 
         public bool Editable { get; set; } = true;
+
+        // ---- v2 富快照（可选，向后兼容；export 不反推这些字段）----
+
+        /// <summary>水平对齐：start|center|end。</summary>
+        public string HAlign { get; set; }
+
+        /// <summary>垂直对齐：start|center|end。</summary>
+        public string VAlign { get; set; }
+
+        /// <summary>字高（mm）。</summary>
+        public double? TextHeightMm { get; set; }
+
+        /// <summary>是否允许自动换行。</summary>
+        public bool? AllowWrap { get; set; }
+
+        /// <summary>文本方向：horizontal|verticalStacked。</summary>
+        public string Orientation { get; set; }
+
+        /// <summary>四边边框线宽（mm）。</summary>
+        public UniverGridBorders Borders { get; set; }
+
+        /// <summary>单元格角色：title|header|label|value|photoSlot|spacer。</summary>
+        public string Role { get; set; }
+
+        /// <summary>稳定字段键（FieldIndex 反查）。</summary>
+        public string FieldKey { get; set; }
+
+        /// <summary>是否照片占位格。</summary>
+        public bool? IsPhotoSlot { get; set; }
+    }
+
+    /// <summary>单元格四边边框线宽（mm）。</summary>
+    public sealed class UniverGridBorders
+    {
+        public double TopMm { get; set; }
+
+        public double RightMm { get; set; }
+
+        public double BottomMm { get; set; }
+
+        public double LeftMm { get; set; }
     }
 
     public static class UniverGridSnapshotMapper
@@ -53,6 +94,7 @@ namespace HyCADTool.Features.Tables.Presentation
                 throw new ArgumentNullException(nameof(grid));
 
             var excel = ExcelGridSnapshotBuilder.Build(grid);
+            var structure = grid.Structure;
             return new UniverGridSnapshot
             {
                 RowCount = excel.RowCount,
@@ -67,8 +109,85 @@ namespace HyCADTool.Features.Tables.Presentation
                     ColSpan = c.ColSpan,
                     Text = TableGridReoGridAdapter.FormatDisplayText(c),
                     Editable = c.IsEditable,
+                    HAlign = ToAlignString(c.HAlign),
+                    VAlign = ToAlignString(c.VAlign),
+                    TextHeightMm = c.TextHeightMm,
+                    AllowWrap = c.AllowWrap,
+                    Orientation = ToOrientationString(c.Orientation),
+                    Borders = ToBorders(c.Borders),
+                    IsPhotoSlot = c.IsPhotoSlot,
+                    Role = ResolveRole(structure, c.Anchor),
+                    FieldKey = ResolveFieldKey(structure, c.Anchor),
                 }).ToList(),
             };
+        }
+
+        private static string ToAlignString(TextAlign align)
+        {
+            switch (align)
+            {
+                case TextAlign.Center:
+                    return "center";
+                case TextAlign.End:
+                    return "end";
+                default:
+                    return "start";
+            }
+        }
+
+        private static string ToOrientationString(TextOrientation orientation) =>
+            orientation == TextOrientation.VerticalStacked ? "verticalStacked" : "horizontal";
+
+        private static UniverGridBorders ToBorders(BorderSet borders)
+        {
+            if (borders == null || borders == BorderSet.None)
+                return null;
+
+            if (borders.Top <= 0 && borders.Right <= 0 && borders.Bottom <= 0 && borders.Left <= 0)
+                return null;
+
+            return new UniverGridBorders
+            {
+                TopMm = borders.Top,
+                RightMm = borders.Right,
+                BottomMm = borders.Bottom,
+                LeftMm = borders.Left,
+            };
+        }
+
+        private static string ResolveRole(GridStructure structure, CellAddr anchor) =>
+            structure.Roles.TryGetValue(anchor, out var role) ? ToRoleString(role) : null;
+
+        private static string ToRoleString(CellRole role)
+        {
+            switch (role)
+            {
+                case CellRole.Title:
+                    return "title";
+                case CellRole.Header:
+                    return "header";
+                case CellRole.Label:
+                    return "label";
+                case CellRole.Value:
+                    return "value";
+                case CellRole.PhotoSlot:
+                    return "photoSlot";
+                case CellRole.Spacer:
+                    return "spacer";
+                default:
+                    return null;
+            }
+        }
+
+        private static string ResolveFieldKey(GridStructure structure, CellAddr anchor)
+        {
+            foreach (var entry in structure.FieldIndex)
+            {
+                if (entry.Value == anchor)
+                    return entry.Key;
+            }
+
+            return null;
         }
 
         public static string ToJson(TableGrid grid) =>

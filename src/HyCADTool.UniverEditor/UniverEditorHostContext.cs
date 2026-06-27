@@ -33,6 +33,20 @@ namespace HyCADTool.UniverEditor
 
         public Func<string> GetStatusMessage { get; set; }
 
+        /// <summary>读取当前落图比例（口径 B）。</summary>
+        public Func<double> GetScale { get; set; }
+
+        /// <summary>网页布局 Tab 修改比例时回传（仅改 VM.Scale，不改 grid）。</summary>
+        public Action<double> SetScale { get; set; }
+
+        /// <summary>网页选区变化（startRow, startCol, endRow, endCol）。</summary>
+        public Action<int, int, int, int> OnSelectionChanged { get; set; }
+
+        /// <summary>
+        /// 布局 Tab 行列/合并/尺寸操作；op 见 UniverSessionLifecycle.HandleHyCadLayout，value 视 op 而定。
+        /// </summary>
+        public Action<string, double> OnLayoutOp { get; set; }
+
         public event Action GridChanged;
 
         public void NotifyGridChanged() => GridChanged?.Invoke();

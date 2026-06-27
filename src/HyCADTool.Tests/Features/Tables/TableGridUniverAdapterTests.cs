@@ -56,6 +56,64 @@ namespace HyCADTool.Tests.Features.Tables
         }
 
         [Fact]
+        public void FromTableGrid_Personnel_PopulatesRoleAndFieldKey()
+        {
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(TableSamples.BuildPersonnelTable());
+
+            Assert.Equal("title", FindCell(snapshot, 0, 0).Role);
+            Assert.Equal("label", FindCell(snapshot, 1, 0).Role);
+
+            var nameValue = FindCell(snapshot, 1, 1);
+            Assert.Equal("value", nameValue.Role);
+            Assert.Equal("name", nameValue.FieldKey);
+
+            Assert.Equal("photoSlot", FindCell(snapshot, 1, 6).Role);
+            Assert.True(FindCell(snapshot, 1, 6).IsPhotoSlot);
+        }
+
+        [Fact]
+        public void FromTableGrid_Personnel_PopulatesStyleFields()
+        {
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(TableSamples.BuildPersonnelTable());
+
+            foreach (var cell in snapshot.Cells)
+            {
+                Assert.NotNull(cell.HAlign);
+                Assert.NotNull(cell.VAlign);
+                Assert.NotNull(cell.TextHeightMm);
+                Assert.NotNull(cell.AllowWrap);
+                Assert.NotNull(cell.Orientation);
+            }
+
+            var vertical = FindCell(snapshot, 4, 0);
+            Assert.Equal("verticalStacked", vertical.Orientation);
+        }
+
+        [Fact]
+        public void ApplyTextValues_DoesNotReverseInferStyleOrRole()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+
+            var nameCell = FindCell(snapshot, 1, 1);
+            nameCell.Text = "李四";
+            nameCell.Role = "label";
+            nameCell.FieldKey = "tampered";
+            nameCell.HAlign = "end";
+            nameCell.IsPhotoSlot = true;
+
+            UniverGridSnapshotMapper.ApplyTextValues(opLog, snapshot);
+
+            var after = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+            var afterName = FindCell(after, 1, 1);
+            Assert.Equal("李四", afterName.Text);
+            Assert.Equal("value", afterName.Role);
+            Assert.Equal("name", afterName.FieldKey);
+            Assert.False(afterName.IsPhotoSlot);
+        }
+
+        [Fact]
         public void ApplyTextValues_UpdatesEditableCell()
         {
             var grid = TableSamples.BuildPersonnelTable();
@@ -314,6 +372,10 @@ namespace HyCADTool.Tests.Features.Tables
                 Assert.Equal(e.ColSpan, a.ColSpan);
                 Assert.Equal(e.Text, a.Text);
                 Assert.Equal(e.Editable, a.Editable);
+                Assert.Equal(e.Role, a.Role);
+                Assert.Equal(e.FieldKey, a.FieldKey);
+                Assert.Equal(e.HAlign, a.HAlign);
+                Assert.Equal(e.VAlign, a.VAlign);
             }
         }
 

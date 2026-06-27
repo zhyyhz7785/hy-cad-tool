@@ -132,6 +132,12 @@ function handleDevOutboundMessage(
     return;
   }
 
+  if (type === 'hyCadWindowControl') {
+    const action = String(payload.action ?? '');
+    showDevStatus(`\u7a97\u53e3\u63a7\u5236: ${action}\uff08\u4ec5 CAD \u5bbf\u4e3b\u53ef\u7528\uff09`);
+    return;
+  }
+
   if (type === 'hyCadAction') {
     const action = String(payload.action ?? '');
     if (CAD_ONLY_ACTIONS.includes(action as HyCadFileAction)) {

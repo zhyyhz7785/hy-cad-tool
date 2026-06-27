@@ -41,7 +41,7 @@ namespace HyCADTool.Features.Tables.TableApp
             return new TablePanelPickResult(result.Grid, result.Summary, result.CarrierId, insertionPoint);
         }
 
-        public TablePublishResult TryPublish(Editor ed, TableGrid grid)
+        public TablePublishResult TryPublish(Editor ed, TableGrid grid, double scale = 1.0)
         {
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
@@ -53,7 +53,7 @@ namespace HyCADTool.Features.Tables.TableApp
             var insertionPoint = ppr.Value;
             var instanceGrid = grid.CloneWithNewId();
 
-            var renderer = new AcadTableRenderer(_database);
+            var renderer = new AcadTableRenderer(_database, null, scale);
             TableCadHandle handle;
             try
             {

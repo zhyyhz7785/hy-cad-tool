@@ -33,6 +33,7 @@ namespace HyCADTool.UniverEditor.Views
                 _session = new UniverSessionLifecycle(UniverWebView, SetStatus, ActiveContext);
                 _session.Ready += OnSessionReady;
                 _session.SnapshotExported += OnSnapshotExported;
+                _session.WindowControlRequested += OnWindowControlRequested;
                 await _session.InitializeAsync();
             }
             catch (Exception ex)
@@ -282,6 +283,30 @@ namespace HyCADTool.UniverEditor.Views
         private void OnExportXlsxClick(object sender, RoutedEventArgs e)
         {
             ActiveContext?.InvokeSafe(ActiveContext.ExportXlsx, SetStatus);
+        }
+
+        private void OnWindowControlRequested(string action)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action<string>(OnWindowControlRequested), action);
+                return;
+            }
+
+            switch (action)
+            {
+                case "minimize":
+                    WindowState = WindowState.Minimized;
+                    break;
+                case "maximize":
+                    WindowState = WindowState == WindowState.Maximized
+                        ? WindowState.Normal
+                        : WindowState.Maximized;
+                    break;
+                case "close":
+                    Hide();
+                    break;
+            }
         }
 
         private void OnMinimizeClick(object sender, RoutedEventArgs e)

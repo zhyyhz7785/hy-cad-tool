@@ -67,6 +67,8 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         private TableTemplateOption _selectedTemplate;
 
+        private double _scale = ResolveDefaultScale();
+
 
 
         public TablePanelViewModel()
@@ -99,6 +101,31 @@ namespace HyCADTool.Features.Tables.ViewModels
 
             PublishCommand = new RelayCommand(RequestPublish);
 
+        }
+
+
+
+        /// <summary>
+        /// 落图比例（口径 B：纸面 mm × Scale = 模型空间 mm）。
+        /// 默认取 hy 面板 Scale；布局 Tab 可改，不持久化（重开恢复 hy 值）。
+        /// </summary>
+        public double Scale
+        {
+            get => _scale;
+            set
+            {
+                var v = value > 0 ? value : 1.0;
+                if (Math.Abs(_scale - v) < 1e-9)
+                    return;
+                _scale = v;
+                OnPropertyChanged();
+            }
+        }
+
+        private static double ResolveDefaultScale()
+        {
+            var s = SettingsPanelViewModel.Current?.Scale ?? 1.0;
+            return s > 0 ? s : 1.0;
         }
 
 
@@ -535,7 +562,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                 var service = new TablePanelService(doc.Database);
 
-                var result = service.TryPublish(ed, _opLog.Current);
+                var result = service.TryPublish(ed, _opLog.Current, Scale);
 
                 if (result.IsCancelled)
 
@@ -727,7 +754,7 @@ namespace HyCADTool.Features.Tables.ViewModels
                 }
 
                 var service = new TablePanelService(doc.Database);
-                var result = service.TryPublish(ed, gridToPublish);
+                var result = service.TryPublish(ed, gridToPublish, Scale);
                 if (result.IsCancelled)
                 {
                     RunOnUi(() =>

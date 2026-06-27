@@ -94,6 +94,10 @@ namespace HyCADTool.Features.Tables.Services
                 SetDelegate(context, "ExportXlsx", (Action)bridge.ExportXlsx);
                 SetDelegate(context, "GetSummaryText", (Func<string>)bridge.GetSummaryText);
                 SetDelegate(context, "GetStatusMessage", (Func<string>)bridge.GetStatusMessage);
+                SetDelegate(context, "GetScale", (Func<double>)bridge.GetScale);
+                SetDelegate(context, "SetScale", (Action<double>)bridge.SetScale);
+                SetDelegate(context, "OnSelectionChanged", (Action<int, int, int, int>)bridge.OnSelectionChanged);
+                SetDelegate(context, "OnLayoutOp", (Action<string, double>)bridge.OnLayoutOp);
                 SetDelegate(context, "OnSnapshotExported", (Action<string, string>)bridge.CompleteExportSnapshot);
                 SetDelegate(context, "OnExportError", (Action<string>)bridge.CancelExportPending);
                 SetDelegate(context, "BindExportSnapshot", (Action<Action>)bridge.SetExportSnapshotHandler);

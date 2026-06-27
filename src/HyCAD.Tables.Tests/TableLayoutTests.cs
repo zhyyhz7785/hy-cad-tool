@@ -29,6 +29,37 @@ public sealed class TableLayoutTests
     }
 
     [Fact]
+    public void Create_with_scale_magnifies_geometry_uniformly()
+    {
+        var grid = TableGrid.CreateEmpty(3, 3, rowHeight: 12, colWidth: 30);
+
+        var baseLayout = TableLayout.Create(grid, 0, 0);
+        var scaledLayout = TableLayout.Create(grid, 0, 0, GrowDirection.Down, 50.0);
+
+        // 口径 B：scale=50 时几何应为 1:1 的 50 倍。
+        scaledLayout.Scale.Should().Be(50.0);
+        scaledLayout.TotalWidth.Should().BeApproximately(baseLayout.TotalWidth * 50.0, 1e-6);
+        scaledLayout.TotalHeight.Should().BeApproximately(baseLayout.TotalHeight * 50.0, 1e-6);
+
+        baseLayout.TryGetCellRect(new CellAddr(1, 1), out var baseRect, out _).Should().BeTrue();
+        scaledLayout.TryGetCellRect(new CellAddr(1, 1), out var scaledRect, out _).Should().BeTrue();
+        scaledRect.Width.Should().BeApproximately(baseRect.Width * 50.0, 1e-6);
+        scaledRect.Height.Should().BeApproximately(baseRect.Height * 50.0, 1e-6);
+        scaledRect.Left.Should().BeApproximately(baseRect.Left * 50.0, 1e-6);
+        scaledRect.Top.Should().BeApproximately(baseRect.Top * 50.0, 1e-6);
+    }
+
+    [Fact]
+    public void Create_with_nonpositive_scale_falls_back_to_one()
+    {
+        var grid = TableGrid.CreateEmpty(2, 2, rowHeight: 10, colWidth: 20);
+        var layout = TableLayout.Create(grid, 0, 0, GrowDirection.Down, 0);
+
+        layout.Scale.Should().Be(1.0);
+        layout.TotalWidth.Should().Be(40);
+    }
+
+    [Fact]
     public void RowTop_decreases_with_row_index_Down()
     {
         var grid = TableGrid.CreateEmpty(3, 3);

@@ -23,11 +23,21 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
 
         private readonly Database _database;
         private readonly AcadTableRenderOptions _options;
+        private readonly double _scale;
+        private readonly AcadTableRenderOptions _scaledOptions;
 
-        public AcadTableRenderer(Database database, AcadTableRenderOptions options = null)
+        /// <param name="database">目标数据库。</param>
+        /// <param name="options">渲染选项（mm 量值为纸面值）。</param>
+        /// <param name="scale">
+        /// 落图放大比例（口径 B：纸面 mm × Scale = 模型空间 mm）；默认 1.0。
+        /// 几何、字高、padding、边框线宽统一 ×Scale，TableGrid 本身不变。
+        /// </param>
+        public AcadTableRenderer(Database database, AcadTableRenderOptions options = null, double scale = 1.0)
         {
             _database = database ?? throw new ArgumentNullException(nameof(database));
             _options = options ?? AcadTableRenderOptions.Default;
+            _scale = scale > 0 ? scale : 1.0;
+            _scaledOptions = _options.WithScale(_scale);
         }
 
         /// <summary>
@@ -38,7 +48,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
 
-            var layout = TableLayout.Create(grid, insertionPoint.X, insertionPoint.Y);
+            var layout = TableLayout.Create(grid, insertionPoint.X, insertionPoint.Y, GrowDirection.Down, _scale);
             var doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("无活动文档。");
@@ -85,6 +95,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             Transaction tr,
             List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
         {
+            // 边框宽走纸面 mm 解析（fallback 用未缩放值），统一在 CreateBorderSegment ×Scale，避免回退值被双重缩放。
             var segments = BorderGridResolver.Resolve(layout, _options.DefaultInnerBorderWidthMm);
             var z = _options.ZElevation;
 
@@ -113,7 +124,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                 p1 = new Point2d(seg.End, seg.FixedCoord);
             }
 
-            var width = Math.Max(seg.WidthMm, _options.MinBorderWidthMm);
+            var width = Math.Max(seg.WidthMm * _scale, _scaledOptions.MinBorderWidthMm);
             var polyline = new Polyline(2);
             polyline.AddVertexAt(0, p0, 0, 0, 0);
             polyline.AddVertexAt(1, p1, 0, 0, 0);
@@ -149,7 +160,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                 return;
             }
 
-            var effective = AcadTableRoleStyle.ResolveEffectiveStyle(structure, cell.Addr, _options);
+            var effective = ResolveScaledEffective(structure, cell.Addr);
 
             if (effective.Style.Orientation == TextOrientation.VerticalStacked)
             {
@@ -160,6 +171,28 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             AppendHorizontalText(grid, cell, effective, ms, tr, members);
         }
 
+        /// <summary>
+        /// 解析有效样式（CellStyle + Role）并把字高 ×Scale（口径 B）。
+        /// 几何/padding 走 <see cref="_scaledOptions"/>，字高在此统一缩放。
+        /// </summary>
+        private EffectiveCellStyle ResolveScaledEffective(GridStructure structure, CellAddr addr)
+        {
+            var effective = AcadTableRoleStyle.ResolveEffectiveStyle(structure, addr, _options);
+            if (_scale == 1.0)
+                return effective;
+
+            var s = effective.Style;
+            var scaled = new CellStyle(
+                s.Orientation,
+                s.HAlign,
+                s.VAlign,
+                s.TextHeight * _scale,
+                s.FontKey,
+                s.Borders,
+                s.BackColor);
+            return new EffectiveCellStyle(scaled, effective.WidthFactor);
+        }
+
         private void AppendPhotoSlotPlaceholder(
             VisibleCellLayout cell,
             BlockTableRecord ms,
@@ -168,7 +201,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
         {
             var placeholder = AcadTablePhotoSlotRenderer.CreatePlaceholder(
                 cell.Bounds,
-                _options,
+                _scaledOptions,
                 _database,
                 tr);
 
@@ -192,12 +225,12 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             Transaction tr,
             List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
         {
-            var effective = AcadTableRoleStyle.ResolveEffectiveStyle(structure, cell.Addr, _options);
+            var effective = ResolveScaledEffective(structure, cell.Addr);
 
             var diagonalLine = AcadTableDiagonalRenderer.CreateDiagonalLine(
                 cell.Bounds,
                 split.Direction,
-                _options);
+                _scaledOptions);
             ms.AppendEntity(diagonalLine);
             tr.AddNewlyCreatedDBObject(diagonalLine, true);
             members.Add((diagonalLine.ObjectId, HyTableXdata.KindGrid, null));
@@ -206,7 +239,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                          split,
                          cell.Bounds,
                          effective,
-                         _options,
+                         _scaledOptions,
                          _database))
             {
                 ms.AppendEntity(text);
@@ -224,14 +257,14 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
         {
             var displayText = GetDisplayText(GridEditor.GetValue(grid, cell.Addr));
-            if (string.IsNullOrEmpty(displayText) && !_options.DrawEmptyCellText)
+            if (string.IsNullOrEmpty(displayText) && !_scaledOptions.DrawEmptyCellText)
                 return;
 
             var positions = AcadTableVerticalText.ComputePositions(
                 displayText,
                 cell.Bounds,
                 effective.Style,
-                _options);
+                _scaledOptions);
 
             foreach (var (character, x, y) in positions)
             {
@@ -239,7 +272,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                 {
                     Height = effective.Style.TextHeight,
                     TextString = character.ToString(),
-                    Layer = _options.TextLayerName,
+                    Layer = _scaledOptions.TextLayerName,
                     WidthFactor = effective.WidthFactor,
                 };
 
@@ -248,7 +281,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                     x,
                     y,
                     TextAlign.Center,
-                    _options.ZElevation,
+                    _scaledOptions.ZElevation,
                     _database);
 
                 ms.AppendEntity(text);
@@ -266,7 +299,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
         {
             var displayText = GetDisplayText(GridEditor.GetValue(grid, cell.Addr));
-            if (string.IsNullOrEmpty(displayText) && !_options.DrawEmptyCellText)
+            if (string.IsNullOrEmpty(displayText) && !_scaledOptions.DrawEmptyCellText)
                 return;
 
             if (GridEditor.GetCellAllowWrap(grid, cell.Addr))
@@ -279,7 +312,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             {
                 Height = effective.Style.TextHeight,
                 TextString = displayText,
-                Layer = _options.TextLayerName,
+                Layer = _scaledOptions.TextLayerName,
                 WidthFactor = effective.WidthFactor,
             };
 
@@ -287,8 +320,8 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                 text,
                 cell.Bounds,
                 effective.Style,
-                _options.TextPaddingMm,
-                _options.ZElevation,
+                _scaledOptions.TextPaddingMm,
+                _scaledOptions.ZElevation,
                 _database);
 
             ms.AppendEntity(text);
@@ -304,7 +337,7 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             Transaction tr,
             List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
         {
-            var padding = _options.TextPaddingMm;
+            var padding = _scaledOptions.TextPaddingMm;
             var maxWidth = Math.Max(cell.Bounds.Width - padding * 2, effective.Style.TextHeight);
             var lines = WrapTextToLines(displayText, maxWidth, effective.Style.TextHeight, effective.WidthFactor);
             if (lines.Count == 0)

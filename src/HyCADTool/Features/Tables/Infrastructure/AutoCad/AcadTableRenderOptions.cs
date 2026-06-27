@@ -106,5 +106,44 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
         /// <summary>PhotoSlot 内框线宽（有效值，mm）。</summary>
         public double EffectivePhotoSlotInnerBorderWidthMm =>
             PhotoSlotInnerBorderWidthMm > 0 ? PhotoSlotInnerBorderWidthMm : DefaultInnerBorderWidthMm;
+
+        /// <summary>
+        /// 返回所有 mm 量值 ×scale 的副本（口径 B 落图放大用）。
+        /// 不缩放：图层名/颜色/Z 高程（绝对坐标）/乘数（Title/Header 字高比例、WidthFactor）/对齐/布尔。
+        /// </summary>
+        public AcadTableRenderOptions WithScale(double scale)
+        {
+            if (scale <= 0 || scale == 1.0)
+                return this;
+
+            return new AcadTableRenderOptions
+            {
+                GridLayerName = GridLayerName,
+                TextLayerName = TextLayerName,
+                GridLayerColor = GridLayerColor,
+                TextLayerColor = TextLayerColor,
+                DefaultTextHeightMm = DefaultTextHeightMm * scale,
+                TextPaddingMm = TextPaddingMm * scale,
+                DrawEmptyCellText = DrawEmptyCellText,
+                ZElevation = ZElevation,
+                VerticalCharGapMm = VerticalCharGapMm * scale,
+                VerticalStackAlign = VerticalStackAlign,
+                VerticalBlockVAlign = VerticalBlockVAlign,
+                TitleTextHeightScale = TitleTextHeightScale,
+                HeaderTextHeightScale = HeaderTextHeightScale,
+                HeaderWidthFactor = HeaderWidthFactor,
+                TitleForceCenter = TitleForceCenter,
+                DiagonalLayerName = DiagonalLayerName,
+                DefaultInnerBorderWidthMm = DefaultInnerBorderWidthMm * scale,
+                MinBorderWidthMm = MinBorderWidthMm * scale,
+                PhotoSlotLabelText = PhotoSlotLabelText,
+                PhotoSlotInsetMm = PhotoSlotInsetMm * scale,
+                PhotoSlotInnerLayerName = PhotoSlotInnerLayerName,
+                PhotoSlotTextLayerName = PhotoSlotTextLayerName,
+                PhotoSlotLabelTextHeightMm = PhotoSlotLabelTextHeightMm * scale,
+                PhotoSlotUseDashedInnerBorder = PhotoSlotUseDashedInnerBorder,
+                PhotoSlotInnerBorderWidthMm = PhotoSlotInnerBorderWidthMm * scale,
+            };
+        }
     }
 }

@@ -1,5 +1,25 @@
 import type { FUniver } from '@univerjs/core/facade';
-import { BooleanNumber, LocaleType, type IWorkbookData } from '@univerjs/core';
+import {
+  BooleanNumber,
+  BorderStyleTypes,
+  HorizontalAlign,
+  LocaleType,
+  VerticalAlign,
+  WrapStrategy,
+  type IBorderData,
+  type IStyleData,
+  type IWorkbookData,
+} from '@univerjs/core';
+
+export interface HyCadCellBorders {
+  topMm: number;
+  rightMm: number;
+  bottomMm: number;
+  leftMm: number;
+}
+
+export type HyCadCellAlign = 'start' | 'center' | 'end';
+export type HyCadCellOrientation = 'horizontal' | 'verticalStacked';
 
 export interface HyCadCellSnapshot {
   row: number;
@@ -8,6 +28,16 @@ export interface HyCadCellSnapshot {
   colSpan: number;
   text: string;
   editable: boolean;
+  // ---- v2 富快照（可选；缺省时回退 v1 行为）----
+  hAlign?: HyCadCellAlign;
+  vAlign?: HyCadCellAlign;
+  textHeightMm?: number;
+  allowWrap?: boolean;
+  orientation?: HyCadCellOrientation;
+  borders?: HyCadCellBorders;
+  role?: string;
+  fieldKey?: string;
+  isPhotoSlot?: boolean;
 }
 export interface HyCadGridSnapshot {
   rowCount: number;
@@ -25,6 +55,21 @@ export interface HyCadRect {
 }
 
 export type HyCadPublishExportMode = 'default' | 'full' | 'content';
+
+/** 布局 Tab 用：最近一次加载快照的纸面 mm 尺寸（口径 B，非像素夹值）。 */
+export interface HyCadSnapshotDims {
+  rowCount: number;
+  colCount: number;
+  rowHeightsMm: number[];
+  colWidthsMm: number[];
+}
+
+let lastSnapshotDims: HyCadSnapshotDims | null = null;
+
+/** 读取最近加载快照的纸面 mm 尺寸（供布局 Tab 显示真值）。 */
+export function getLastSnapshotDims(): HyCadSnapshotDims | null {
+  return lastSnapshotDims;
+}
 
 declare global {
   interface Window {
@@ -72,6 +117,50 @@ function readNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function readOptionalAlign(value: unknown): HyCadCellAlign | undefined {
+  if (value === 'start' || value === 'center' || value === 'end')
+    return value;
+  return undefined;
+}
+
+function readOptionalOrientation(value: unknown): HyCadCellOrientation | undefined {
+  if (value === 'horizontal' || value === 'verticalStacked')
+    return value;
+  return undefined;
+}
+
+function readOptionalBool(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean')
+    return value;
+  return undefined;
+}
+
+function readOptionalNumber(value: unknown): number | undefined {
+  if (value == null)
+    return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  if (typeof value === 'string' && value !== '')
+    return value;
+  return undefined;
+}
+
+function readBorders(raw: unknown): HyCadCellBorders | undefined {
+  if (!raw || typeof raw !== 'object')
+    return undefined;
+  const b = raw as Record<string, unknown>;
+  const top = readNumber(b.topMm ?? b.TopMm);
+  const right = readNumber(b.rightMm ?? b.RightMm);
+  const bottom = readNumber(b.bottomMm ?? b.BottomMm);
+  const left = readNumber(b.leftMm ?? b.LeftMm);
+  if (top <= 0 && right <= 0 && bottom <= 0 && left <= 0)
+    return undefined;
+  return { topMm: top, rightMm: right, bottomMm: bottom, leftMm: left };
+}
+
 function normalizeCell(raw: Record<string, unknown>): HyCadCellSnapshot {
   return {
     row: readNumber(raw.row ?? raw.Row),
@@ -80,6 +169,15 @@ function normalizeCell(raw: Record<string, unknown>): HyCadCellSnapshot {
     colSpan: readNumber(raw.colSpan ?? raw.ColSpan, 1),
     text: String(raw.text ?? raw.Text ?? ''),
     editable: Boolean(raw.editable ?? raw.Editable ?? true),
+    hAlign: readOptionalAlign(raw.hAlign ?? raw.HAlign),
+    vAlign: readOptionalAlign(raw.vAlign ?? raw.VAlign),
+    textHeightMm: readOptionalNumber(raw.textHeightMm ?? raw.TextHeightMm),
+    allowWrap: readOptionalBool(raw.allowWrap ?? raw.AllowWrap),
+    orientation: readOptionalOrientation(raw.orientation ?? raw.Orientation),
+    borders: readBorders(raw.borders ?? raw.Borders),
+    role: readOptionalString(raw.role ?? raw.Role),
+    fieldKey: readOptionalString(raw.fieldKey ?? raw.FieldKey),
+    isPhotoSlot: readOptionalBool(raw.isPhotoSlot ?? raw.IsPhotoSlot),
   };
 }
 
@@ -336,18 +434,121 @@ function resolveDefaultExportRect(sheet: SheetLike, maxRows: number, maxCols: nu
   };
 }
 
+const MM_TO_POINT = 72 / 25.4;
+
+function mmToPoint(textHeightMm: number | undefined): number {
+  const mm = !textHeightMm || textHeightMm <= 0 ? 3.5 : textHeightMm;
+  return Math.round(mm * MM_TO_POINT * 100) / 100;
+}
+
+function toHorizontalAlign(align: HyCadCellAlign | undefined): HorizontalAlign {
+  switch (align) {
+    case 'center':
+      return HorizontalAlign.CENTER;
+    case 'end':
+      return HorizontalAlign.RIGHT;
+    default:
+      return HorizontalAlign.LEFT;
+  }
+}
+
+function toVerticalAlign(align: HyCadCellAlign | undefined): VerticalAlign {
+  switch (align) {
+    case 'start':
+      return VerticalAlign.TOP;
+    case 'end':
+      return VerticalAlign.BOTTOM;
+    default:
+      return VerticalAlign.MIDDLE;
+  }
+}
+
+function toBorderStyleType(widthMm: number): BorderStyleTypes {
+  if (widthMm <= 0)
+    return BorderStyleTypes.NONE;
+  return widthMm >= 0.5 ? BorderStyleTypes.MEDIUM : BorderStyleTypes.THIN;
+}
+
+function buildBorderData(borders: HyCadCellBorders | undefined): IBorderData | undefined {
+  if (!borders)
+    return undefined;
+  const black = { rgb: '#000000' };
+  const bd: IBorderData = {};
+  if (borders.topMm > 0)
+    bd.t = { s: toBorderStyleType(borders.topMm), cl: black };
+  if (borders.bottomMm > 0)
+    bd.b = { s: toBorderStyleType(borders.bottomMm), cl: black };
+  if (borders.leftMm > 0)
+    bd.l = { s: toBorderStyleType(borders.leftMm), cl: black };
+  if (borders.rightMm > 0)
+    bd.r = { s: toBorderStyleType(borders.rightMm), cl: black };
+  return Object.keys(bd).length > 0 ? bd : undefined;
+}
+
+/**
+ * 把 v2 富快照字段烘焙成 Univer IStyleData。
+ * 无任何可渲染语义时返回 null（保持 v1 行为，不写 style）。
+ * 注：不再自动写背景底纹（颜色交由用户在 Univer 中自行设置）。
+ */
+function buildCellStyle(cell: HyCadCellSnapshot): IStyleData | null {
+  const hasV2 = cell.hAlign !== undefined
+    || cell.vAlign !== undefined
+    || cell.textHeightMm !== undefined
+    || cell.allowWrap !== undefined
+    || cell.orientation !== undefined
+    || cell.borders !== undefined
+    || cell.role !== undefined
+    || cell.isPhotoSlot !== undefined;
+  if (!hasV2)
+    return null;
+
+  const style: IStyleData = {
+    ht: toHorizontalAlign(cell.hAlign),
+    vt: toVerticalAlign(cell.vAlign),
+    fs: mmToPoint(cell.textHeightMm),
+  };
+
+  const wrap = cell.allowWrap === true || cell.orientation === 'verticalStacked';
+  style.tb = wrap ? WrapStrategy.WRAP : WrapStrategy.CLIP;
+
+  const border = buildBorderData(cell.borders);
+  if (border)
+    style.bd = border;
+
+  return style;
+}
+
 function snapshotToWorkbookData(snapshot: HyCadGridSnapshot): IWorkbookData {
   const rowCount = Math.max(snapshot.rowCount, 1);
   const colCount = Math.max(snapshot.colCount, 1);
   const cellData: NonNullable<IWorkbookData['sheets'][string]['cellData']> = {};
   const mergeData: NonNullable<IWorkbookData['sheets'][string]['mergeData']> = [];
+  const styles: NonNullable<IWorkbookData['styles']> = {};
+  const styleIdByKey = new Map<string, string>();
+
+  const internStyle = (style: IStyleData): string => {
+    const key = JSON.stringify(style);
+    const existing = styleIdByKey.get(key);
+    if (existing)
+      return existing;
+    const id = `s${styleIdByKey.size + 1}`;
+    styleIdByKey.set(key, id);
+    styles[id] = style;
+    return id;
+  };
 
   for (const cell of snapshot.cells ?? []) {
     const text = cell.text ?? '';
-    if (text !== '') {
+    const style = buildCellStyle(cell);
+    if (text !== '' || style) {
       if (!cellData[cell.row])
         cellData[cell.row] = {};
-      cellData[cell.row][cell.col] = { v: text };
+      const cellObj: { v?: string; s?: string } = {};
+      if (text !== '')
+        cellObj.v = text;
+      if (style)
+        cellObj.s = internStyle(style);
+      cellData[cell.row][cell.col] = cellObj;
     }
 
     const rowSpan = cell.rowSpan ?? 1;
@@ -368,7 +569,7 @@ function snapshotToWorkbookData(snapshot: HyCadGridSnapshot): IWorkbookData {
     appVersion: '0.25.0',
     locale: LocaleType.ZH_CN,
     sheetOrder: ['sheet-01'],
-    styles: {},
+    styles,
     sheets: {
       'sheet-01': {
         id: 'sheet-01',
@@ -425,6 +626,13 @@ export function installHyCadBridge(univerAPI: ReturnType<typeof FUniver.newAPI>)
       const snapshot = normalizeSnapshot(raw);
       if (!snapshot)
         return false;
+
+      lastSnapshotDims = {
+        rowCount: snapshot.rowCount,
+        colCount: snapshot.colCount,
+        rowHeightsMm: snapshot.rowHeightsMm ?? [],
+        colWidthsMm: snapshot.colWidthsMm ?? [],
+      };
 
       pendingSnapshot = snapshot;
       const token = ++coalesceToken;
