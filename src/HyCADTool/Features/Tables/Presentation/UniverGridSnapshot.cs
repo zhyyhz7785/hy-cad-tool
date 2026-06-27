@@ -85,8 +85,14 @@ namespace HyCADTool.Features.Tables.Presentation
 
     public static class UniverGridSnapshotMapper
     {
-        private const double ColScale = 1.6;
-        private const double RowScale = 2.0;
+        /// <summary>与 Web <c>mm-display.ts</c> 的 DISPLAY_PX_PER_MM 一致（96/25.4）。</summary>
+        public const double DisplayPxPerMm = 96.0 / 25.4;
+
+        public const double MaxDisplayPx = 800;
+
+        public const double DefaultRowHeightMm = 10.0;
+
+        public const double DefaultColWidthMm = 25.0;
 
         public static UniverGridSnapshot FromTableGrid(TableGrid grid)
         {
@@ -273,14 +279,30 @@ namespace HyCADTool.Features.Tables.Presentation
 
         public static double MmToRowPx(double mm)
         {
-            var value = mm <= 0 ? 10 : mm;
-            return Math.Max(22, Math.Min(140, value * RowScale));
+            return MmToDisplayPx(mm, DefaultRowHeightMm);
         }
 
         public static double MmToColPx(double mm)
         {
-            var value = mm <= 0 ? 25 : mm;
-            return Math.Max(52, Math.Min(260, value * ColScale));
+            return MmToDisplayPx(mm, DefaultColWidthMm);
+        }
+
+        public static double DisplayPxToMm(double px, double fallbackMm)
+        {
+            if (px <= 0 || double.IsNaN(px) || double.IsInfinity(px))
+                return fallbackMm;
+
+            var mm = px / DisplayPxPerMm;
+            return Math.Round(mm, 2);
+        }
+
+        private static double MmToDisplayPx(double mm, double fallbackMm)
+        {
+            var value = mm > 0 ? mm : fallbackMm;
+            var px = value * DisplayPxPerMm;
+            if (px > MaxDisplayPx)
+                px = MaxDisplayPx;
+            return Math.Round(px, 2);
         }
     }
 }

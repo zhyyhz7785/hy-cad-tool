@@ -3,18 +3,23 @@ import { getLastSnapshotDims } from './univer-bridge';
 /**
  * 布局 Tab（口径 B）。
  *
- * DOM 工具条保底实现：Univer 0.25 OSS 是否能注册原生顶层 Tab 未证，
- * 这里用一个固定浮动工具条承载「行高/列宽 mm」「比例」「行列/合并」「落图/拾取/角色」。
- *
- * 全部尺寸为纸面 mm（与 AutoCAD 落图对齐）；只有 CAD 落图按比例 ×Scale 放大。
+ * 注入到 Univer Ribbon 顶栏：「数据」Tab 右侧，工具条显示在 Ribbon 第二行。
  */
 
 type PostHostMessage = (payload: Record<string, unknown>) => void;
 
-const PANEL_ID = 'hycad-layout-tab';
+const ROOT_SELECTOR = '[data-u-comp="ribbon-header-menu"]';
+const LAYOUT_TAB_ROOT_ATTR = 'data-hycad-layout-tab-root';
+const LAYOUT_PANEL_ID = 'hycad-layout-ribbon-panel';
+const INJECTED_FLAG = 'data-hycad-layout-injected';
 
 let post: PostHostMessage | null = null;
 let suppressInput = false;
+let layoutActive = false;
+
+let layoutTabButton: HTMLButtonElement | null = null;
+let layoutRibbonPanel: HTMLElement | null = null;
+let univerToolbarRow: HTMLElement | null = null;
 
 let rowHeightInput: HTMLInputElement | null = null;
 let colWidthInput: HTMLInputElement | null = null;
@@ -65,129 +70,230 @@ function makeLabel(text: string): HTMLSpanElement {
   return span;
 }
 
-function makeSeparator(): HTMLSpanElement {
-  const sep = document.createElement('span');
-  sep.className = 'hycad-layout-sep';
-  return sep;
+
+function makeGroup(caption: string, ...children: HTMLElement[]): HTMLDivElement {
+  const group = document.createElement('div');
+  group.className = 'hycad-layout-group';
+  const row = document.createElement('div');
+  row.className = 'hycad-layout-group-row';
+  for (const child of children)
+    row.appendChild(child);
+  const cap = document.createElement('span');
+  cap.className = 'hycad-layout-group-caption';
+  cap.textContent = caption;
+  group.appendChild(row);
+  group.appendChild(cap);
+  return group;
 }
 
-function buildPanel(): HTMLElement {
+function buildRibbonPanel(): HTMLElement {
   const panel = document.createElement('div');
-  panel.id = PANEL_ID;
-  panel.className = 'hycad-layout-tab';
+  panel.id = LAYOUT_PANEL_ID;
+  panel.className = 'hycad-layout-ribbon-panel';
+  panel.setAttribute('data-hycad-comp', 'layout-ribbon-panel');
 
-  const title = document.createElement('span');
-  title.textContent = '布局';
-  title.className = 'hycad-layout-title';
-  panel.appendChild(title);
-
-  // 行高 / 列宽（纸面 mm）
-  panel.appendChild(makeLabel('行高'));
-  rowHeightInput = makeNumberInput(56);
+  rowHeightInput = makeNumberInput(52);
   rowHeightInput.title = '当前选区行高（纸面 mm）';
   rowHeightInput.addEventListener('change', () => {
     if (suppressInput)
       return;
     sendLayoutOp('setRowHeight', num(rowHeightInput, 10));
   });
-  panel.appendChild(rowHeightInput);
 
-  panel.appendChild(makeLabel('列宽'));
-  colWidthInput = makeNumberInput(56);
+  colWidthInput = makeNumberInput(52);
   colWidthInput.title = '当前选区列宽（纸面 mm）';
   colWidthInput.addEventListener('change', () => {
     if (suppressInput)
       return;
     sendLayoutOp('setColWidth', num(colWidthInput, 25));
   });
-  panel.appendChild(colWidthInput);
 
-  panel.appendChild(makeSeparator());
+  panel.appendChild(makeGroup(
+    '单元格大小 mm',
+    makeLabel('行高'),
+    rowHeightInput,
+    makeLabel('列宽'),
+    colWidthInput,
+  ));
 
-  // 行列 / 合并
-  panel.appendChild(makeButton('+行', '在选区下方插入行', () => sendLayoutOp('insertRow')));
-  panel.appendChild(makeButton('-行', '删除选中行', () => sendLayoutOp('deleteRow')));
-  panel.appendChild(makeButton('+列', '在选区右侧插入列', () => sendLayoutOp('insertCol')));
-  panel.appendChild(makeButton('-列', '删除选中列', () => sendLayoutOp('deleteCol')));
-  panel.appendChild(makeButton('合并', '合并选区', () => sendLayoutOp('merge')));
-  panel.appendChild(makeButton('拆分', '拆分合并区', () => sendLayoutOp('unmerge')));
+  panel.appendChild(makeGroup(
+    '单元格',
+    makeButton('+行', '在选区下方插入行', () => sendLayoutOp('insertRow')),
+    makeButton('-行', '删除选中行', () => sendLayoutOp('deleteRow')),
+    makeButton('+列', '在选区右侧插入列', () => sendLayoutOp('insertCol')),
+    makeButton('-列', '删除选中列', () => sendLayoutOp('deleteCol')),
+  ));
 
-  panel.appendChild(makeSeparator());
+  panel.appendChild(makeGroup(
+    '合并',
+    makeButton('合并', '合并选区', () => sendLayoutOp('merge')),
+    makeButton('拆分', '拆分合并区', () => sendLayoutOp('unmerge')),
+  ));
 
-  // 比例（默认取 hy 面板 Scale；可改，不持久化）
-  panel.appendChild(makeLabel('比例'));
-  scaleInput = makeNumberInput(56);
+  scaleInput = makeNumberInput(52);
   scaleInput.title = '落图比例（纸面 mm × 比例 = 模型 mm）；重开恢复 hy 面板值';
   scaleInput.addEventListener('change', () => {
     if (suppressInput)
       return;
     sendLayoutOp('setScale', num(scaleInput, 1));
   });
-  panel.appendChild(scaleInput);
 
-  panel.appendChild(makeSeparator());
+  panel.appendChild(makeGroup(
+    '比例',
+    makeLabel('Scale'),
+    scaleInput,
+  ));
 
-  // HyCAD 命令归位
-  panel.appendChild(makeButton('落图', '落图到 AutoCAD（按比例放大）', () => sendFileAction('publish')));
-  panel.appendChild(makeButton('拾取', '从图面拾取 HyTable', () => sendFileAction('pick')));
-  panel.appendChild(makeButton('角色', '单元格角色（R6，后期开放）', () => {
-    post?.({ type: 'error', message: 'R6 角色功能后期开放' });
-  }));
+  panel.appendChild(makeGroup(
+    'HyCAD',
+    makeButton('落图', '落图到 AutoCAD（按比例放大）', () => sendFileAction('publish')),
+    makeButton('拾取', '从图面拾取 HyTable', () => sendFileAction('pick')),
+    makeButton('角色', '单元格角色（R6，后期开放）', () => {
+      post?.({ type: 'error', message: 'R6 角色功能后期开放' });
+    }),
+  ));
 
   return panel;
 }
 
-function ensureStyles(): void {
-  if (document.getElementById('hycad-layout-tab-style'))
-    return;
-  const style = document.createElement('style');
-  style.id = 'hycad-layout-tab-style';
-  style.textContent = `
-.hycad-layout-tab {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 9000;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  background: var(--hycad-layout-bg, #2b2b2b);
-  color: var(--hycad-layout-fg, #eee);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-  font-size: 12px;
-  user-select: none;
-}
-.hycad-layout-title { font-weight: 600; margin-right: 6px; opacity: 0.85; }
-.hycad-layout-label { opacity: 0.8; }
-.hycad-layout-num {
-  background: #1e1e1e; color: #eee; border: 1px solid #555;
-  border-radius: 3px; padding: 2px 4px; font-size: 12px;
-}
-.hycad-layout-btn {
-  background: #3a3a3a; color: #eee; border: 1px solid #555;
-  border-radius: 3px; padding: 2px 8px; font-size: 12px; cursor: pointer;
-}
-.hycad-layout-btn:hover { background: #4a4a4a; }
-.hycad-layout-sep {
-  width: 1px; align-self: stretch; margin: 0 4px;
-  background: rgba(255,255,255,0.15);
-}
-`;
-  document.head.appendChild(style);
+function findTabByLabel(tablist: Element, label: string): HTMLElement | null {
+  for (const tab of tablist.querySelectorAll('[role="tab"]')) {
+    if (tab instanceof HTMLElement && tab.textContent?.trim() === label)
+      return tab;
+  }
+  return null;
 }
 
-/** 安装布局 Tab 工具条（幂等）。 */
+function findUniverToolbarRow(headerMenu: HTMLElement): HTMLElement | null {
+  const parent = headerMenu.parentElement;
+  if (!parent)
+    return null;
+
+  const siblings = Array.from(parent.children);
+  const index = siblings.indexOf(headerMenu);
+  if (index < 0 || index + 1 >= siblings.length)
+    return null;
+
+  const next = siblings[index + 1];
+  return next instanceof HTMLElement ? next : null;
+}
+
+function setLayoutTabSelected(selected: boolean): void {
+  layoutTabButton?.setAttribute('aria-selected', selected ? 'true' : 'false');
+  layoutTabButton?.classList.toggle('hycad-layout-ribbon-tab--active', selected);
+}
+
+function activateLayoutTab(): void {
+  if (!layoutRibbonPanel || !univerToolbarRow)
+    return;
+
+  layoutActive = true;
+  setLayoutTabSelected(true);
+
+  const tablist = layoutTabButton?.closest('[role="tablist"]');
+  tablist?.querySelectorAll('[role="tab"]').forEach((tab) => {
+    if (tab !== layoutTabButton)
+      tab.setAttribute('aria-selected', 'false');
+  });
+
+  univerToolbarRow.hidden = true;
+  layoutRibbonPanel.classList.add('hycad-layout-ribbon-panel--active');
+}
+
+function deactivateLayoutTab(): void {
+  if (!layoutActive)
+    return;
+
+  layoutActive = false;
+  setLayoutTabSelected(false);
+
+  if (univerToolbarRow)
+    univerToolbarRow.hidden = false;
+  layoutRibbonPanel?.classList.remove('hycad-layout-ribbon-panel--active');
+}
+
+function createLayoutTabRoot(): HTMLElement {
+  const root = document.createElement('div');
+  root.className = 'hycad-layout-tab-root';
+  root.setAttribute(LAYOUT_TAB_ROOT_ATTR, 'true');
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.role = 'tab';
+  button.textContent = '布局';
+  button.title = '行高列宽 mm / 比例 / 行列合并 / 落图拾取';
+  button.className = 'hycad-layout-ribbon-tab';
+  button.setAttribute('aria-selected', 'false');
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    activateLayoutTab();
+  });
+
+  layoutTabButton = button;
+  root.appendChild(button);
+  return root;
+}
+
+function injectLayoutTab(): boolean {
+  const headerMenu = document.querySelector(ROOT_SELECTOR);
+  if (!headerMenu || !(headerMenu instanceof HTMLElement))
+    return false;
+  if (headerMenu.getAttribute(INJECTED_FLAG) === 'true')
+    return true;
+
+  const tablist = headerMenu.querySelector('[role="tablist"]');
+  if (!tablist)
+    return false;
+
+  const toolbarRow = findUniverToolbarRow(headerMenu);
+  if (!toolbarRow)
+    return false;
+
+  univerToolbarRow = toolbarRow;
+  layoutRibbonPanel = buildRibbonPanel();
+  toolbarRow.insertAdjacentElement('afterend', layoutRibbonPanel);
+
+  const dataTab = findTabByLabel(tablist, '数据');
+  const tabRoot = createLayoutTabRoot();
+  if (dataTab?.parentElement === tablist)
+    tablist.insertBefore(tabRoot, dataTab.nextSibling);
+  else
+    tablist.appendChild(tabRoot);
+
+  tablist.addEventListener('click', (event) => {
+    if (!layoutActive)
+      return;
+    const target = event.target as HTMLElement | null;
+    if (!target || target.closest(`[${LAYOUT_TAB_ROOT_ATTR}]`))
+      return;
+    deactivateLayoutTab();
+  });
+
+  headerMenu.setAttribute(INJECTED_FLAG, 'true');
+  return true;
+}
+
+/** 安装布局 Tab（幂等）。 */
 export function installHyCadLayoutTab(postHostMessage: PostHostMessage): void {
   post = postHostMessage;
-  if (document.getElementById(PANEL_ID))
+  if (document.getElementById(LAYOUT_PANEL_ID))
     return;
 
-  ensureStyles();
-  const panel = buildPanel();
-  document.body.appendChild(panel);
+  if (injectLayoutTab())
+    return;
+
+  const observer = new MutationObserver(() => {
+    if (injectLayoutTab())
+      observer.disconnect();
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  window.setTimeout(() => {
+    if (injectLayoutTab())
+      observer.disconnect();
+  }, 3000);
 }
 
 /** 由 main.ts 在 SelectionChanged 时调用：刷新行高/列宽 mm 框为当前选区真值。 */

@@ -1,5 +1,11 @@
 import type { FUniver } from '@univerjs/core/facade';
 import {
+  mmToColDisplayPx,
+  mmToRowDisplayPx,
+  colDisplayPxToMm,
+  rowDisplayPxToMm,
+} from './mm-display';
+import {
   BooleanNumber,
   BorderStyleTypes,
   HorizontalAlign,
@@ -100,16 +106,6 @@ function toRangeAddress(row: number, col: number, rowSpan: number, colSpan: numb
   const start = `${colToLetter(col)}${row + 1}`;
   const end = `${colToLetter(col + colSpan - 1)}${row + rowSpan}`;
   return rowSpan === 1 && colSpan === 1 ? start : `${start}:${end}`;
-}
-
-function mmToRowPx(mm: number): number {
-  const value = mm <= 0 ? 10 : mm;
-  return Math.max(22, Math.min(140, value * 2));
-}
-
-function mmToColPx(mm: number): number {
-  const value = mm <= 0 ? 25 : mm;
-  return Math.max(52, Math.min(260, value * 1.6));
 }
 
 function readNumber(value: unknown, fallback = 0): number {
@@ -366,9 +362,9 @@ function exportRegion(
   const mergedSeen = new Set<string>();
 
   for (let r = exportRect.startRow; r <= exportRect.endRow; r++)
-    rowHeightsMm.push((sheet.getRowHeight?.(r) ?? 22) / 2);
+    rowHeightsMm.push(rowDisplayPxToMm(sheet.getRowHeight?.(r) ?? 0));
   for (let c = exportRect.startCol; c <= exportRect.endCol; c++)
-    colWidthsMm.push((sheet.getColumnWidth?.(c) ?? 52) / 1.6);
+    colWidthsMm.push(colDisplayPxToMm(sheet.getColumnWidth?.(c) ?? 0));
 
   for (let r = exportRect.startRow; r <= exportRect.endRow; r++) {
     for (let c = exportRect.startCol; c <= exportRect.endCol; c++) {
@@ -576,8 +572,8 @@ function snapshotToWorkbookData(snapshot: HyCadGridSnapshot): IWorkbookData {
         name: 'Sheet1',
         rowCount: Math.max(rowCount, 64),
         columnCount: Math.max(colCount, 16),
-        defaultRowHeight: mmToRowPx(snapshot.rowHeightsMm?.[0] ?? 10),
-        defaultColumnWidth: mmToColPx(snapshot.colWidthsMm?.[0] ?? 25),
+        defaultRowHeight: mmToRowDisplayPx(snapshot.rowHeightsMm?.[0] ?? 10),
+        defaultColumnWidth: mmToColDisplayPx(snapshot.colWidthsMm?.[0] ?? 25),
         showGridlines: BooleanNumber.TRUE,
         freeze: { xSplit: 0, ySplit: 0, startRow: 0, startColumn: 0 },
         mergeData,
@@ -589,12 +585,15 @@ function snapshotToWorkbookData(snapshot: HyCadGridSnapshot): IWorkbookData {
 
 function applySnapshotDimensions(sheet: SheetLike, snapshot: HyCadGridSnapshot): void {
   for (let r = 0; r < snapshot.rowCount; r++) {
-    const height = mmToRowPx(snapshot.rowHeightsMm?.[r] ?? 10);
-    sheet.setRowHeight?.(r, height);
+    const height = mmToRowDisplayPx(snapshot.rowHeightsMm?.[r] ?? 10);
+    if (sheet.setRowHeightsForced)
+      sheet.setRowHeightsForced(r, 1, height);
+    else
+      sheet.setRowHeight?.(r, height);
   }
 
   for (let c = 0; c < snapshot.colCount; c++) {
-    const width = mmToColPx(snapshot.colWidthsMm?.[c] ?? 25);
+    const width = mmToColDisplayPx(snapshot.colWidthsMm?.[c] ?? 25);
     sheet.setColumnWidth?.(c, width);
   }
 }

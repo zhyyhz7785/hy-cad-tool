@@ -31,6 +31,52 @@ namespace HyCADTool.Tests.Features.Tables
         }
 
         [Fact]
+        public void MmToDisplayPx_PreservesRowColAspectRatio()
+        {
+            const double rowMm = 10;
+            const double colMm = 25;
+
+            var rowPx = UniverGridSnapshotMapper.MmToRowPx(rowMm);
+            var colPx = UniverGridSnapshotMapper.MmToColPx(colMm);
+
+            Assert.Equal(rowMm / colMm, rowPx / colPx, 6);
+        }
+
+        [Theory]
+        [InlineData(12.5)]
+        [InlineData(30.25)]
+        [InlineData(10)]
+        [InlineData(25)]
+        public void MmToDisplayPx_RoundTripsWithinTolerance(double mm)
+        {
+            var rowPx = UniverGridSnapshotMapper.MmToRowPx(mm);
+            var colPx = UniverGridSnapshotMapper.MmToColPx(mm);
+
+            var rowBack = UniverGridSnapshotMapper.DisplayPxToMm(rowPx, mm);
+            var colBack = UniverGridSnapshotMapper.DisplayPxToMm(colPx, mm);
+
+            Assert.InRange(rowBack, mm - 0.01, mm + 0.01);
+            Assert.InRange(colBack, mm - 0.01, mm + 0.01);
+        }
+
+        [Fact]
+        public void MmToDisplayPx_PersonnelTable_UniformAspectRatio()
+        {
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(TableSamples.BuildPersonnelTable());
+            const double expectedRatio = 10.0 / 25.0;
+
+            foreach (var rowMm in snapshot.RowHeightsMm)
+            {
+                foreach (var colMm in snapshot.ColWidthsMm)
+                {
+                    var rowPx = UniverGridSnapshotMapper.MmToRowPx(rowMm);
+                    var colPx = UniverGridSnapshotMapper.MmToColPx(colMm);
+                    Assert.Equal(expectedRatio, rowPx / colPx, 6);
+                }
+            }
+        }
+
+        [Fact]
         public void FromTableGrid_Personnel_PreservesMergeRegions()
         {
             var snapshot = UniverGridSnapshotMapper.FromTableGrid(TableSamples.BuildPersonnelTable());
