@@ -34,14 +34,15 @@ import {
   marginsToPaddingPx,
   type PageMarginsMm,
 } from './page-margins';
+import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
 
-/** 图纸（白底 sheetBox）与画布（gridHost 内容区）四边固定间距 mm */
-export const CANVAS_SHEET_GAP_MM = 10;
+/** @deprecated 用 layout-view-state.canvasSheetGapMm */
+export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
 
 /**
  * Word 式页面：
  *   U7 gridHost = 灰底画布
- *   U7a sheetBox = 图纸，左上角距画布四边各 CANVAS_SHEET_GAP_MM，缩放后不得超出画布
+ *   U7a sheetBox = 图纸，左上角距画布四边各 canvasSheetGapMm，缩放后不得超出画布
  */
 const PAGE_HOST_CLASS = 'hycad-page-grid-host';
 const PAGE_SHEET_CLASS = 'hycad-page-sheet-box';
@@ -90,12 +91,16 @@ function resolveCanvasContentSize(nodes: PageNodes): { width: number; height: nu
   };
 }
 
+function resolveCanvasSheetGapMm(): number {
+  return getLayoutViewState().canvasSheetGapMm;
+}
+
 /** 在当前画布尺寸下，图纸四边各留 gapMm 时的最大 px/mm */
 export function computeMaxPxPerMm(
   nodes: PageNodes,
   sheetWidthMm: number,
   sheetHeightMm: number,
-  gapMm = CANVAS_SHEET_GAP_MM,
+  gapMm = resolveCanvasSheetGapMm(),
 ): number {
   const canvas = resolveCanvasContentSize(nodes);
   if (canvas.width <= 0 || canvas.height <= 0 || sheetWidthMm <= 0 || sheetHeightMm <= 0)
@@ -198,7 +203,7 @@ function applySheetBoxSizing(
   pageMargins: PageMarginsMm,
 ): boolean {
   const canvas = resolveCanvasContentSize(nodes);
-  const gapPx = Math.round(CANVAS_SHEET_GAP_MM * ppm);
+  const gapPx = Math.round(resolveCanvasSheetGapMm() * ppm);
   const maxBoxW = Math.max(0, canvas.width - 2 * gapPx);
   const maxBoxH = Math.max(0, canvas.height - 2 * gapPx);
 

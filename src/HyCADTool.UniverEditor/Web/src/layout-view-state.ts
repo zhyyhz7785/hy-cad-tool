@@ -5,6 +5,10 @@ import {
   syncAllMarginsFromOutline,
   type PageMarginsMm,
 } from './page-margins';
+import {
+  DEFAULT_CANVAS_SHEET_GAP_MM,
+  normalizeCanvasSheetGapMm,
+} from './page-canvas-gap';
 
 export type { PageMarginsMm };
 
@@ -35,6 +39,8 @@ export interface LayoutViewState {
   orientation: number;
   targetWidthMm: number;
   pageMargins: PageMarginsMm;
+  /** 图纸外框与画布/标尺四边间距 mm */
+  canvasSheetGapMm: number;
 }
 
 const DEFAULT_STATE: LayoutViewState = {
@@ -45,9 +51,13 @@ const DEFAULT_STATE: LayoutViewState = {
   orientation: 0,
   targetWidthMm: 400,
   pageMargins: { ...DEFAULT_PAGE_MARGINS },
+  canvasSheetGapMm: DEFAULT_CANVAS_SHEET_GAP_MM,
 };
 
-let state: LayoutViewState = { ...DEFAULT_STATE, pageMargins: { ...DEFAULT_PAGE_MARGINS } };
+let state: LayoutViewState = {
+  ...DEFAULT_STATE,
+  pageMargins: { ...DEFAULT_PAGE_MARGINS },
+};
 const listeners = new Set<(s: LayoutViewState) => void>();
 
 function emit(): void {
@@ -93,6 +103,14 @@ export function setShowPaperBoundary(on: boolean): void {
 
 export function setPageMargins(margins: PageMarginsMm): void {
   state = { ...state, pageMargins: margins };
+  emit();
+}
+
+export function setCanvasSheetGapMm(gapMm: number): void {
+  const next = normalizeCanvasSheetGapMm(gapMm);
+  if (state.canvasSheetGapMm === next)
+    return;
+  state = { ...state, canvasSheetGapMm: next };
   emit();
 }
 

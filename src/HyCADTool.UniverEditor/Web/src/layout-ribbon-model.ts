@@ -1,6 +1,7 @@
 import { subscribeLayoutViewState } from './layout-view-state';
 import type { PageMarginsMm } from './page-margins';
 import { DEFAULT_PAGE_MARGINS } from './page-margins';
+import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
 
 export const PAPER_PRESETS = ['A4', 'A3', 'A2', '自定义'] as const;
 export const ORIENTATION_OPTIONS = ['横向', '纵向'] as const;
@@ -15,6 +16,7 @@ export interface LayoutRibbonModelState {
   orientation: number;
   targetWidthMm: number;
   pageMargins: PageMarginsMm;
+  canvasSheetGapMm: number;
   rowCount: number;
   colCount: number;
   templateIndex: number;
@@ -32,6 +34,7 @@ const DEFAULT_STATE: LayoutRibbonModelState = {
   orientation: 0,
   targetWidthMm: 400,
   pageMargins: { ...DEFAULT_PAGE_MARGINS },
+  canvasSheetGapMm: DEFAULT_CANVAS_SHEET_GAP_MM,
   rowCount: 5,
   colCount: 4,
   templateIndex: 0,
@@ -79,5 +82,6 @@ subscribeLayoutViewState((view) => {
     orientation: view.orientation,
     targetWidthMm: view.targetWidthMm,
     pageMargins: view.pageMargins,
+    canvasSheetGapMm: view.canvasSheetGapMm,
   });
 });

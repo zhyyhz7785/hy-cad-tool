@@ -16,8 +16,10 @@ import {
   resolveSheetSizeMm,
 } from './paper-sheet';
 import { LayoutMarginPopover } from './layout-margin-popover';
+import { LayoutCanvasGapPopover } from './layout-canvas-gap-popover';
 import type { PageMarginsMm } from './page-margins';
 import { marginsToDomainUniformMm } from './page-margins';
+import { setCanvasSheetGapMm } from './layout-view-state';
 
 const RIBBON_GROUP_CLASS = `
   univer-grid univer-shrink-0 univer-grid-flow-col univer-gap-1.5 univer-px-1.5
@@ -226,6 +228,13 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
         <LayoutMarginPopover
           margins={model.pageMargins}
           onChange={applyMargins}
+        />
+        <LayoutCanvasGapPopover
+          gapMm={model.canvasSheetGapMm}
+          onChange={(gapMm) => {
+            setCanvasSheetGapMm(gapMm);
+            patchLayoutRibbonModel({ canvasSheetGapMm: gapMm });
+          }}
         />
         {isCustomPaperPreset(model.paperPresetIndex) ? (
           <>
