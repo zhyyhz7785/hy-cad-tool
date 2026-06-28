@@ -35,7 +35,6 @@ import {
   type PageMarginsMm,
 } from './page-margins';
 import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
-import { GRID_COL_HEADER_H, GRID_ROW_HEADER_W } from './sheet-headers';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
 export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
@@ -220,15 +219,12 @@ function applySheetBoxSizing(
   const maxPadTop = Math.max(0, Math.floor(boxH / 2) - 1);
   const maxPadBottom = Math.max(0, Math.floor(boxH / 2) - 1);
 
-  // 网格 = 图纸位置 + 尺寸 − 边距。原生行列头固定 46/20 屏幕像素占内边距区，
-  // 开行列头时从 padding 扣掉同等 px，开关行列头网格不漂移。
-  const showHeaders = getLayoutViewState().showHeaders;
-  const headerPadL = showHeaders ? GRID_ROW_HEADER_W : 0;
-  const headerPadT = showHeaders ? GRID_COL_HEADER_H : 0;
-
-  const padLeft = Math.min(Math.max(0, pad.padLeft - headerPadL), maxPadLeft);
+  // 网格 = 图纸位置 + 尺寸 − 边距，先把网格定死（与图2 关闭行列头时一致），
+  // 再让原生行列头落进左/上边距区（不挤占网格、不偏移 A1）。故 padding 只取边距，
+  // 不为行列头做任何扣减——开关行列头时网格纹丝不动。
+  const padLeft = Math.min(pad.padLeft, maxPadLeft);
   const padRight = Math.min(pad.padRight, maxPadRight);
-  const padTop = Math.min(Math.max(0, pad.padTop - headerPadT), maxPadTop);
+  const padTop = Math.min(pad.padTop, maxPadTop);
   const padBottom = Math.min(pad.padBottom, maxPadBottom);
 
   nodes.gridHost.classList.add(PAGE_HOST_CLASS);
