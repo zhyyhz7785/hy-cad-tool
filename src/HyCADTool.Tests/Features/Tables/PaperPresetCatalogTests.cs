@@ -22,6 +22,23 @@ namespace HyCADTool.Tests.Features.Tables
             Assert.Equal(PaperPresetCatalog.CustomFallbackWidthMm, width);
         }
 
+        [Theory]
+        [InlineData(PaperPreset.A4, 190)]
+        [InlineData(PaperPreset.A3, 277)]
+        [InlineData(PaperPreset.A2, 400)]
+        public void ResolveTargetHeightMm_standardPresets(PaperPreset preset, double expected)
+        {
+            var height = PaperPresetCatalog.ResolveTargetHeightMm(preset);
+            Assert.Equal(expected, height, 3);
+        }
+
+        [Fact]
+        public void ResolveTargetHeightMm_custom_returnsFallback()
+        {
+            var height = PaperPresetCatalog.ResolveTargetHeightMm(PaperPreset.Custom);
+            Assert.Equal(PaperPresetCatalog.CustomFallbackHeightMm, height);
+        }
+
         [Fact]
         public void TableViewport_CreateDefault_usesA3()
         {

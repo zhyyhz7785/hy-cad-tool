@@ -45,7 +45,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         private const int MinDimension = 1;
 
-        private const int MaxDimension = 64;
+        private const int MaxDimension = 256;
 
 
 
@@ -332,7 +332,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
 
 
-        public void NewEmptyTable()
+        public virtual void NewEmptyTable()
 
         {
 

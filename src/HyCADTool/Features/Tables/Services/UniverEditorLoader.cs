@@ -98,6 +98,9 @@ namespace HyCADTool.Features.Tables.Services
                 SetDelegate(context, "SetScale", (Action<double>)bridge.SetScale);
                 SetDelegate(context, "OnSelectionChanged", (Action<int, int, int, int>)bridge.OnSelectionChanged);
                 SetDelegate(context, "OnLayoutOp", (Action<string, double>)bridge.OnLayoutOp);
+                SetDelegate(context, "GetStructureMode", (Func<bool>)bridge.GetStructureMode);
+                SetDelegate(context, "GetViewportJson", (Func<string>)bridge.GetViewportJson);
+                SetDelegate(context, "SetTrackSizesMm", (Action<bool, int, double[]>)bridge.SetTrackSizesMm);
                 SetDelegate(context, "OnSnapshotExported", (Action<string, string>)bridge.CompleteExportSnapshot);
                 SetDelegate(context, "OnExportError", (Action<string>)bridge.CancelExportPending);
                 SetDelegate(context, "BindExportSnapshot", (Action<Action>)bridge.SetExportSnapshotHandler);

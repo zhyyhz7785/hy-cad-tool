@@ -1,3 +1,5 @@
+import { applyRibbonTabVisual, RIBBON_DROPDOWN_TAB_CLASS } from './ribbon-tab-style';
+
 export interface HyCadDropdownItem {
   id: string;
   label: string;
@@ -33,6 +35,7 @@ export function closeHyCadDropdown(): void {
     dropdown.style.pointerEvents = '';
     openRoot.appendChild(dropdown);
     anchor.setAttribute('aria-expanded', 'false');
+    applyRibbonTabVisual(anchor, false, true);
   }
 
   openRoot.classList.remove('hycad-file-tab-root--open');
@@ -65,13 +68,14 @@ function openHyCadDropdown(root: HTMLElement, button: HTMLElement, dropdown: HTM
 
   root.classList.add('hycad-file-tab-root--open');
   button.setAttribute('aria-expanded', 'true');
+  applyRibbonTabVisual(button, true, true);
 }
 
 export function createHyCadDropdownRoot(
   rootId: string,
   buttonLabel: string,
   items: HyCadDropdownItem[],
-  buttonClassName = 'hycad-file-tab',
+  buttonClassName = RIBBON_DROPDOWN_TAB_CLASS,
 ): HTMLElement {
   const root = document.createElement('div');
   root.setAttribute(ROOT_ATTR, rootId);
@@ -82,6 +86,7 @@ export function createHyCadDropdownRoot(
   button.setAttribute('data-hycad-comp', 'dropdown-button');
   button.className = buttonClassName;
   button.textContent = buttonLabel;
+  applyRibbonTabVisual(button, false, true);
   button.setAttribute('aria-haspopup', 'true');
   button.setAttribute('aria-expanded', 'false');
 

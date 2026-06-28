@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HyCAD Univer Sheets</title>
+    <title>HyCAD Univer Dev · 5174</title>
     <style>
-      html, body, #app {
+      html, body, #hycad-editor-root, #app {
         margin: 0;
         padding: 0;
         width: 100%;
@@ -15,7 +15,12 @@
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="hycad-editor-root">
+      <div id="app"></div>
+      <div id="hycad-ruler-corner" aria-hidden="true"></div>
+      <canvas id="hycad-hruler" aria-hidden="true"></canvas>
+      <canvas id="hycad-vruler" aria-hidden="true"></canvas>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

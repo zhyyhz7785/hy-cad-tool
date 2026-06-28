@@ -104,25 +104,27 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="2" Background="#ffffff">
-            <wv2:WebView2 x:Name="UniverWebView" />
-            <Border x:Name="LoadingOverlay"
-                    Background="#eef2f7"
-                    Visibility="Visible">
-                <StackPanel HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock HorizontalAlignment="Center"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="#2e3440"
-                               Text="正在加载 Univer Sheets..." />
-                    <TextBlock x:Name="StatusTextBlock"
-                               Margin="0,8,0,0"
-                               HorizontalAlignment="Center"
-                               Foreground="#5e6775"
-                               Text="初始化 WebView2..." />
-                </StackPanel>
-            </Border>
+        <Grid Grid.Row="2" Background="#eceff4">
+            <Grid Background="#ffffff">
+                <wv2:WebView2 x:Name="UniverWebView" />
+                <Border x:Name="LoadingOverlay"
+                        Background="#eef2f7"
+                        Visibility="Visible">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <TextBlock HorizontalAlignment="Center"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2e3440"
+                                   Text="正在加载 Univer Sheets..." />
+                        <TextBlock x:Name="StatusTextBlock"
+                                   Margin="0,8,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="#5e6775"
+                                   Text="初始化 WebView2..." />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
 
         <Border Grid.Row="3"

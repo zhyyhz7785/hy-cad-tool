@@ -53,6 +53,14 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         private const double BorderPresetWidthMm = 0.35;
 
+        /// <summary>推导行列数的种子行高（mm）。</summary>
+        public const double SeedRowHeightMm = 5.0;
+
+        /// <summary>推导行列数的种子列宽（mm）。</summary>
+        public const double SeedColWidthMm = 25.0;
+
+        private const int MaxPaperDimension = 256;
+
         public TableEditorViewModel()
         {
             PaperPresetOptions = new ObservableCollection<PaperPresetOption>(
@@ -100,6 +108,10 @@ namespace HyCADTool.Features.Tables.ViewModels
                 TableStylePreset.NoBorder,
             };
             _selectedStylePreset = StylePresetOptions[0];
+
+            DefaultRowHeightMm = SeedRowHeightMm;
+            DefaultColWidthMm = SeedColWidthMm;
+            RegenerateToPaper(reseedCounts: true);
         }
 
         public ObservableCollection<CellRoleOption> RoleOptions { get; }
@@ -1372,6 +1384,138 @@ namespace HyCADTool.Features.Tables.ViewModels
             ApplyOperations(ops);
             StatusMessage = $"列宽已缩放至纸宽 {TargetWidthMm:F0} mm（边距 {_marginMm:F0}）";
         }
+
+        /// <summary>网页自动调整行/列高宽后批量写回 Domain track（mm）。</summary>
+        public void ApplyTrackSizesBatch(bool isRow, int startIndex, System.Collections.Generic.IReadOnlyList<double> sizesMm)
+        {
+            if (!HasTable || sizesMm == null || sizesMm.Count == 0)
+                return;
+
+            var ops = new System.Collections.Generic.List<TableOperation>();
+            for (var i = 0; i < sizesMm.Count; i++)
+            {
+                var mm = sizesMm[i];
+                if (mm <= 0)
+                    continue;
+                ops.Add(new SetTrackSizeOp(isRow, startIndex + i, mm));
+            }
+
+            if (ops.Count == 0)
+                return;
+
+            ApplyOperations(ops);
+            StatusMessage = isRow
+                ? $"已自动调整 {sizesMm.Count} 行行高"
+                : $"已自动调整 {sizesMm.Count} 列列宽";
+        }
+
+        /// <summary>解析纸面可用宽高（口径 B，已扣边距，mm）。</summary>
+        public void ResolvePaperAvailable(out double availW, out double availH)
+        {
+            availW = TargetWidthMm;
+            var preset = SelectedPaperPresetOption?.Preset ?? _viewport.PaperPreset;
+            availH = PaperPresetCatalog.ResolveTargetHeightMm(preset, _marginMm, _paperOrientation);
+        }
+
+        /// <summary>
+        /// 按纸面尺寸重算网格：reseedCounts 时以 5×25 推导行列数；否则保持当前行列数并均分铺满。
+        /// </summary>
+        public void RegenerateToPaper(bool reseedCounts)
+        {
+            ResolvePaperAvailable(out var availW, out var availH);
+            if (availW <= 0 || availH <= 0)
+            {
+                StatusMessage = "可用纸面尺寸无效";
+                return;
+            }
+
+            if (reseedCounts)
+            {
+                RowCount = ClampPaperDimension((int)Math.Round(availH / SeedRowHeightMm));
+                ColCount = ClampPaperDimension((int)Math.Round(availW / SeedColWidthMm));
+            }
+
+            var targetRows = RowCount;
+            var targetCols = ColCount;
+            var rowH = availH / targetRows;
+            var colW = availW / targetCols;
+
+            DefaultRowHeightMm = rowH;
+            DefaultColWidthMm = colW;
+
+            if (!HasTable || OpLog == null)
+            {
+                UpdatePaperSummaryText();
+                return;
+            }
+
+            try
+            {
+                var ops = new System.Collections.Generic.List<TableOperation>();
+                var topology = OpLog.Current.Structure.Topology;
+                var currentRows = topology.RowCount;
+                var currentCols = topology.ColCount;
+
+                while (currentRows > targetRows)
+                {
+                    ops.Add(new DeleteRowOp(currentRows - 1));
+                    currentRows--;
+                }
+
+                while (currentRows < targetRows)
+                {
+                    ops.Add(new InsertRowOp(currentRows));
+                    currentRows++;
+                }
+
+                while (currentCols > targetCols)
+                {
+                    ops.Add(new DeleteColumnOp(currentCols - 1));
+                    currentCols--;
+                }
+
+                while (currentCols < targetCols)
+                {
+                    ops.Add(new InsertColumnOp(currentCols));
+                    currentCols++;
+                }
+
+                for (var r = 0; r < targetRows; r++)
+                    ops.Add(new SetTrackSizeOp(true, r, rowH));
+                for (var c = 0; c < targetCols; c++)
+                    ops.Add(new SetTrackSizeOp(false, c, colW));
+
+                ApplyOperations(ops);
+
+                if (HasSelection)
+                {
+                    var grid = CurrentGrid;
+                    var topo = grid.Structure.Topology;
+                    if (SelectedRow >= topo.RowCount || SelectedCol >= topo.ColCount)
+                        SetSelectedCell(0, 0);
+                    else
+                        RefreshSelectionProperties();
+                }
+
+                UpdatePaperSummaryText();
+                StatusMessage = reseedCounts
+                    ? $"已按纸面重算 {targetRows}×{targetCols}（{rowH:0.##}×{colW:0.##} mm）"
+                    : $"已按 {targetRows}×{targetCols} 均分纸面（{rowH:0.##}×{colW:0.##} mm）";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "纸面重算失败：" + ex.Message;
+            }
+        }
+
+        public override void NewEmptyTable()
+        {
+            RegenerateToPaper(reseedCounts: true);
+            base.NewEmptyTable();
+        }
+
+        private static int ClampPaperDimension(int value) =>
+            value < 1 ? 1 : value > MaxPaperDimension ? MaxPaperDimension : value;
 
         private static System.Collections.Generic.IEnumerable<CellAddr> EnumerateAllAnchors(TableGrid grid)
         {

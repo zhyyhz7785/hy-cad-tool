@@ -1,10 +1,174 @@
 html,
 body,
+#hycad-editor-root,
 #app {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+}
+
+#hycad-editor-root {
+  position: relative;
+}
+
+#hycad-ruler-corner,
+#hycad-hruler,
+#hycad-vruler {
+  display: none;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+#hycad-editor-root.hycad-rulers-on #hycad-ruler-corner,
+#hycad-editor-root.hycad-rulers-on #hycad-hruler,
+#hycad-editor-root.hycad-rulers-on #hycad-vruler {
+  z-index: 20000;
+}
+
+#hycad-vruler {
+  background: #3b4252;
+}
+
+.dark #hycad-vruler {
+  background: #161b22;
+}
+
+#hycad-hruler {
+  background: #3b4252;
+}
+
+.dark #hycad-hruler {
+  background: #161b22;
+}
+
+#hycad-ruler-corner {
+  background: #3b4252;
+}
+
+.dark #hycad-ruler-corner {
+  background: #161b22;
+}
+
+/* 行列头关闭时隐藏左上角占位（Univer LEFT_TOP） */
+#app.hycad-headers-hidden canvas[data-u-comp='__SpreadsheetLeftTopPlaceholder__'],
+#app.hycad-headers-hidden [class*='LeftTop'] {
+  visibility: hidden !important;
+}
+
+/*
+ * SheetBar 根因：section 内主内容 div 带 univer-h-full（height:100%），
+ * 在 flex-col 里会占满含 footer 在内的整段高度，footer 被推到视口外。
+ * 仅约束 section 内 flex，勿改 workbench 根（header 有 3 个子节点）。
+ */
+#app [data-u-comp='workbench-layout'] > section.univer-flex-1 {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#app [data-u-comp='workbench-layout'] > section.univer-flex-1 > div.univer-grid.univer-h-full {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+#app [data-u-comp='workbench-layout'] > section.univer-flex-1 > footer {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  position: relative;
+  z-index: 30;
+  min-height: 36px !important;
+  height: auto !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+}
+
+#app [data-u-comp='workbench-layout'] > section.univer-flex-1 > footer > section {
+  min-height: 36px;
+}
+
+.dark #app [data-u-comp='workbench-layout'] > section.univer-flex-1 > footer {
+  background: #111827;
+  border-top-color: #374151;
+}
+
+/* U7 区域划分：外层 gridHost 灰底（画布），内层 sheetBox 为图纸（见 page-viewport.ts） */
+#app .hycad-page-grid-host {
+  background-color: #eceff4 !important;
+  box-sizing: border-box;
+  overflow: hidden !important;
+  align-content: start !important;
+  justify-content: start !important;
+}
+
+.dark #app .hycad-page-grid-host {
+  background-color: #2e3440 !important;
+}
+
+#app .hycad-page-sheet-box {
+  overflow: hidden !important;
+  position: relative;
+  box-sizing: border-box;
+  justify-self: start !important;
+  align-self: start !important;
+}
+
+/* U4 公式栏：U3 下方独立槽，左对齐；U7 不再包含公式栏 */
+.hycad-u4-formula-slot {
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
+  min-height: 28px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .hycad-u4-formula-slot {
+  background: #1f2937;
+  border-bottom-color: #374151;
+}
+
+.hycad-u4-formula-bar {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  width: min(100%, 960px);
+  min-width: 280px;
+  max-width: 100%;
+}
+
+#app section.hycad-u7-section {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+#app section.hycad-u7-section > section[data-range-selector] {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+}
+
+/* 布局 Tab：面板插入 [role=toolbar] 内，与「开始」Ribbon 同槽位；仅隐藏原生工具条内容 */
+header [role='toolbar'].hycad-layout-toolbar-mode > :not(.hycad-layout-ribbon-host) {
+  display: none !important;
+}
+
+.hycad-layout-ribbon-host {
+  display: contents;
+}
+
+header [role='toolbar'] {
+  position: relative;
+  box-sizing: border-box;
 }
 
 /* HyCAD 文件伪 Tab — 对齐 Univer ClassicMenu tab 行 */
@@ -39,40 +203,11 @@ body,
   z-index: 10002;
 }
 
-.hycad-file-tab {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 28px;
-  padding: 4px 8px;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  color: #374151;
-  font-size: 14px;
-  line-height: 1.25;
-  cursor: pointer;
-  appearance: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.hycad-file-tab::after {
+.hycad-ribbon-dropdown-tab::after {
   content: '▾';
   margin-left: 2px;
   font-size: 10px;
   opacity: 0.75;
-}
-
-.hycad-file-tab:hover {
-  background: #f3f4f6;
-}
-
-.hycad-file-tab--active,
-.hycad-file-tab-root--open .hycad-file-tab {
-  background: #eff6ff;
-  color: #2563eb;
-  font-weight: 600;
 }
 
 .hycad-file-dropdown {
@@ -120,38 +255,22 @@ body,
   background: #e5e7eb;
 }
 
-@media (prefers-color-scheme: dark) {
-  .hycad-file-tab {
-    color: #e5e7eb;
-  }
+.dark .hycad-file-dropdown {
+  border-color: #374151;
+  background: #1f2937;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
 
-  .hycad-file-tab:hover {
-    background: #374151;
-  }
+.dark .hycad-file-dropdown-item {
+  color: #f3f4f6;
+}
 
-  .hycad-file-tab--active,
-  .hycad-file-tab-root--open .hycad-file-tab {
-    background: #1e3a8a;
-    color: #93c5fd;
-  }
+.dark .hycad-file-dropdown-item:hover {
+  background: #374151;
+}
 
-  .hycad-file-dropdown {
-    border-color: #374151;
-    background: #1f2937;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  }
-
-  .hycad-file-dropdown-item {
-    color: #f3f4f6;
-  }
-
-  .hycad-file-dropdown-item:hover {
-    background: #374151;
-  }
-
-  .hycad-file-dropdown-separator {
-    background: #4b5563;
-  }
+.dark .hycad-file-dropdown-separator {
+  background: #4b5563;
 }
 
 .hycad-ribbon-menu-btn {
@@ -255,193 +374,254 @@ body,
   }
 }
 
-/* HyCAD 主题微调 — Univer ribbon 主色 */
+/* HyCAD 主题微调 — Univer ribbon 主色（仅 CSS 变量，Tab 色随 Univer .dark） */
 :root {
   --hycad-accent: #2563eb;
   --hycad-accent-soft: #eff6ff;
 }
 
-[data-u-comp='ribbon-header-menu'] [role='tab'][aria-selected='true'] {
-  color: var(--hycad-accent) !important;
+/*
+ * 布局 Tab 激活时：Univer React 仍认为 ribbon.start 等处于 activatedTab，
+ * 必须用互斥类覆盖原生 Tab 高亮，避免与「布局」同时点亮。
+ */
+[data-u-comp='ribbon-header-menu'].hycad-layout-tablit [role='tablist'] > button[role='tab'] {
+  background: transparent !important;
+  box-shadow: none !important;
+  font-weight: normal !important;
+  color: rgb(55 65 81) !important;
 }
 
-/* HyCAD 布局 Ribbon Tab — 插在「数据」右侧 */
+.dark [data-u-comp='ribbon-header-menu'].hycad-layout-tablit [role='tablist'] > button[role='tab'] {
+  color: rgb(229 231 235) !important;
+}
+
+/* HyCAD 布局 Ribbon Tab — 插在「数据」右侧（外观由 ribbon-tab-style.ts 控制） */
 .hycad-layout-tab-root {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
 }
 
-.hycad-layout-ribbon-tab {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 28px;
-  padding: 4px 8px;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  color: #374151;
-  font-size: 14px;
-  line-height: 1.25;
-  cursor: pointer;
-  appearance: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.hycad-layout-ribbon-tab:hover {
-  background: #f3f4f6;
-}
-
-.hycad-layout-ribbon-tab--active,
-.hycad-layout-ribbon-tab[aria-selected='true'] {
-  background: var(--hycad-accent-soft);
-  color: var(--hycad-accent);
-  font-weight: 600;
-}
-
 .hycad-layout-ribbon-panel {
   box-sizing: border-box;
   display: none;
-  align-items: flex-end;
-  gap: 12px;
-  height: 40px;
-  padding: 2px 12px 0;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex: 1 1 auto;
   overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  scrollbar-width: thin;
 }
 
 .hycad-layout-ribbon-panel--active {
   display: flex;
 }
 
-.hycad-layout-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
+/* 布局 Ribbon：Select 勿被 univer-flex-1 撑满（图纸下拉 hymd MinWidth≈56px） */
+.hycad-layout-ribbon-panel .hycad-compact-select {
+  flex: 0 0 auto !important;
+  height: 22px;
+  min-height: 22px;
 }
 
-.hycad-layout-group-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 24px;
+.hycad-layout-ribbon-panel .hycad-paper-select {
+  width: 56px;
+  max-width: 56px;
+  min-width: 56px;
 }
 
-.hycad-layout-group-caption {
-  margin-top: 2px;
-  color: #6b7280;
-  font-size: 10px;
-  line-height: 1;
-  white-space: nowrap;
+.hycad-layout-ribbon-panel .hycad-template-select {
+  width: 52px;
+  max-width: 52px;
+  min-width: 52px;
 }
 
-.hycad-layout-label {
-  color: #374151;
-  font-size: 12px;
-  white-space: nowrap;
+.hycad-layout-ribbon-panel .hycad-compact-select > button,
+.hycad-layout-ribbon-panel .hycad-compact-select > div[role='combobox'] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding-left: 4px !important;
+  padding-right: 2px !important;
+  font-size: 11px !important;
 }
 
-.hycad-layout-num {
-  box-sizing: border-box;
-  height: 24px;
-  padding: 2px 6px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #111827;
-  font-size: 12px;
+.hycad-layout-ribbon-panel .hycad-compact-select .univer-flex-1 {
+  flex: 0 1 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  font-size: 11px !important;
+  line-height: 20px !important;
 }
 
-.hycad-layout-btn {
-  box-sizing: border-box;
-  height: 24px;
-  min-width: 36px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background: transparent;
-  color: #374151;
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.hycad-layout-btn:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-}
-
-.hycad-layout-sep {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .hycad-layout-ribbon-tab {
-    color: #e5e7eb;
-  }
-
-  .hycad-layout-ribbon-tab:hover {
-    background: #374151;
-  }
-
-  .hycad-layout-ribbon-tab--active,
-  .hycad-layout-ribbon-tab[aria-selected='true'] {
-    background: #1e3a8a;
-    color: #93c5fd;
-  }
-
-  .hycad-layout-ribbon-panel {
-    border-bottom-color: #374151;
-    background: #1f2937;
-  }
-
-  .hycad-layout-group-caption,
-  .hycad-layout-label {
-    color: #9ca3af;
-  }
-
-  .hycad-layout-num {
-    border-color: #4b5563;
-    background: #111827;
-    color: #f3f4f6;
-  }
-
-  .hycad-layout-btn {
-    color: #e5e7eb;
-  }
-
-  .hycad-layout-btn:hover {
-    background: #374151;
-    border-color: #4b5563;
-  }
-}
-
-.hycad-dev-status {
+.hycad-dev-panel {
   position: fixed;
-  right: 12px;
-  bottom: 36px;
+  left: 12px;
+  bottom: 48px;
   z-index: 20000;
-  max-width: min(420px, calc(100vw - 24px));
-  padding: 6px 12px;
+  width: min(420px, calc(100vw - 24px));
   border: 1px solid #dbeafe;
-  border-radius: 6px;
-  background: rgba(239, 246, 255, 0.96);
-  color: #1e40af;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  color: #1e293b;
   font-family: 'Segoe UI', system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.4;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
+  pointer-events: auto;
+}
+
+.hycad-dev-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #eff6ff;
+  border-radius: 8px 8px 0 0;
+}
+
+.hycad-dev-panel-title {
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.hycad-dev-panel-hint {
+  flex: 1;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.hycad-dev-panel-toggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.hycad-dev-panel-toggle:hover {
+  background: #dbeafe;
+}
+
+.hycad-dev-panel-body {
+  padding: 8px 10px 10px;
+}
+
+.hycad-dev-panel--collapsed .hycad-dev-panel-body {
+  display: none;
+}
+
+.hycad-dev-panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.hycad-dev-panel-row button {
+  padding: 4px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #1e40af;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.hycad-dev-panel-row button:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.hycad-dev-panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: 11px;
+}
+
+.hycad-dev-panel-meta strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.hycad-dev-checklist {
+  margin: 0;
+}
+
+.hycad-dev-checklist summary {
+  cursor: pointer;
+  color: #334155;
+  font-weight: 500;
+  user-select: none;
+}
+
+.hycad-dev-checklist ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #64748b;
+}
+
+.hycad-dev-checklist li {
+  margin: 2px 0;
 }
 
 @media (prefers-color-scheme: dark) {
-  .hycad-dev-status {
+  .hycad-dev-panel {
     border-color: #1e3a8a;
-    background: rgba(30, 58, 138, 0.92);
+    background: rgba(15, 23, 42, 0.96);
+    color: #e2e8f0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .hycad-dev-panel-header {
+    border-bottom-color: #334155;
+    background: #1e3a8a;
+  }
+
+  .hycad-dev-panel-title {
     color: #bfdbfe;
+  }
+
+  .hycad-dev-panel-hint {
+    color: #94a3b8;
+  }
+
+  .hycad-dev-panel-row button {
+    border-color: #334155;
+    background: #1e293b;
+    color: #bfdbfe;
+  }
+
+  .hycad-dev-panel-row button:hover {
+    background: #334155;
+  }
+
+  .hycad-dev-panel-meta {
+    color: #94a3b8;
+  }
+
+  .hycad-dev-panel-meta strong {
+    color: #f1f5f9;
+  }
+
+  .hycad-dev-checklist summary {
+    color: #cbd5e1;
+  }
+
+  .hycad-dev-checklist ul {
+    color: #94a3b8;
   }
 }

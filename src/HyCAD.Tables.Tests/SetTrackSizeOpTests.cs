@@ -27,6 +27,21 @@ public sealed class SetTrackSizeOpTests
 
         log.Current.Structure.Topology.Cols[2].Size.Should().Be(40);
     }
+
+    [Fact]
+    public void BatchSetTrackSizeOp_updates_row_range_for_auto_fit()
+    {
+        var grid = TableGrid.CreateEmpty(4, 3, rowHeight: 10, colWidth: 25);
+        var log = new TableOpLog(grid);
+        var sizes = new[] { 12.5, 15.0, 18.25 };
+        for (var i = 0; i < sizes.Length; i++)
+            log.Apply(new SetTrackSizeOp(true, 1 + i, sizes[i]));
+
+        log.Current.Structure.Topology.Rows[1].Size.Should().Be(12.5);
+        log.Current.Structure.Topology.Rows[2].Size.Should().Be(15.0);
+        log.Current.Structure.Topology.Rows[3].Size.Should().Be(18.25);
+        log.Current.Structure.Topology.Rows[0].Size.Should().Be(10);
+    }
 }
 
 public sealed class SetRoleOpTests

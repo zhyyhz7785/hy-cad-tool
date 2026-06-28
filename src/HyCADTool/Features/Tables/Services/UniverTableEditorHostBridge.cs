@@ -268,6 +268,42 @@ namespace HyCADTool.Features.Tables.Services
             NotifyStatusChanged();
         }
 
+        public bool GetStructureMode() => _viewModel.IsStructureMode;
+
+        public string GetViewportJson()
+        {
+            var paperIndex = _viewModel.PaperPresetOptions.IndexOf(_viewModel.SelectedPaperPresetOption);
+            if (paperIndex < 0)
+                paperIndex = 1;
+
+            var templateIndex = _viewModel.TemplateOptions.IndexOf(_viewModel.SelectedTemplate);
+            if (templateIndex < 0)
+                templateIndex = 0;
+
+            var obj = new JObject
+            {
+                ["paperPresetIndex"] = paperIndex,
+                ["orientation"] = (int)_viewModel.PaperOrientation,
+                ["targetWidthMm"] = _viewModel.TargetWidthMm,
+                ["marginMm"] = _viewModel.MarginMm,
+                ["rowCount"] = _viewModel.RowCount,
+                ["colCount"] = _viewModel.ColCount,
+                ["templateIndex"] = templateIndex,
+                ["structureMode"] = _viewModel.IsStructureMode,
+            };
+            return obj.ToString(Newtonsoft.Json.Formatting.None);
+        }
+
+        /// <summary>网页自动调整行/列高宽后回写 Domain（axis: row=true/col=false）。</summary>
+        public void SetTrackSizesMm(bool isRow, int startIndex, double[] sizesMm)
+        {
+            if (sizesMm == null || sizesMm.Length == 0)
+                return;
+
+            _viewModel.ApplyTrackSizesBatch(isRow, startIndex, sizesMm);
+            NotifyStatusChanged();
+        }
+
         /// <summary>网页选区变化 → 同步到 VM 选区（布局/尺寸操作以此为准）。</summary>
         public void OnSelectionChanged(int startRow, int startCol, int endRow, int endCol)
         {
@@ -309,7 +345,78 @@ namespace HyCADTool.Features.Tables.Services
                 case "setColWidth":
                     _viewModel.SelectedColWidthMm = value;
                     break;
+                case "setStructureMode":
+                    _viewModel.IsStructureMode = value > 0.5;
+                    break;
+                case "setRowCount":
+                    _viewModel.RowCount = (int)value;
+                    _viewModel.RegenerateToPaper(reseedCounts: false);
+                    break;
+                case "setColCount":
+                    _viewModel.ColCount = (int)value;
+                    _viewModel.RegenerateToPaper(reseedCounts: false);
+                    break;
+                case "setPaperPreset":
+                    ApplyPaperPresetByIndex((int)value);
+                    _viewModel.RegenerateToPaper(reseedCounts: true);
+                    break;
+                case "setOrientation":
+                    _viewModel.PaperOrientation = value > 0.5
+                        ? HyCAD.Tables.Layout.PaperOrientation.Portrait
+                        : HyCAD.Tables.Layout.PaperOrientation.Landscape;
+                    _viewModel.RegenerateToPaper(reseedCounts: true);
+                    break;
+                case "setTargetWidth":
+                    _viewModel.TargetWidthMm = value;
+                    _viewModel.RegenerateToPaper(reseedCounts: false);
+                    break;
+                case "setMargin":
+                    _viewModel.MarginMm = value;
+                    _viewModel.RegenerateToPaper(reseedCounts: true);
+                    break;
+                case "fitColumnsToPaper":
+                    Execute(_viewModel.FitColumnsToPaperCommand);
+                    break;
+                case "setTemplate":
+                    ApplyTemplateByIndex((int)value);
+                    break;
+                case "newTable":
+                    _viewModel.NewEmptyTable();
+                    NotifyStatusChanged();
+                    break;
+                case "loadTemplate":
+                    _viewModel.LoadTemplate();
+                    NotifyStatusChanged();
+                    break;
             }
+        }
+
+        private void ApplyPaperPresetByIndex(int index)
+        {
+            var options = _viewModel.PaperPresetOptions;
+            if (options == null || options.Count == 0)
+                return;
+
+            if (index < 0)
+                index = 0;
+            if (index >= options.Count)
+                index = options.Count - 1;
+
+            _viewModel.SelectedPaperPresetOption = options[index];
+        }
+
+        private void ApplyTemplateByIndex(int index)
+        {
+            var options = _viewModel.TemplateOptions;
+            if (options == null || options.Count == 0)
+                return;
+
+            if (index < 0)
+                index = 0;
+            if (index >= options.Count)
+                index = options.Count - 1;
+
+            _viewModel.SelectedTemplate = options[index];
         }
 
         private static void Execute(System.Windows.Input.ICommand command)

@@ -71,6 +71,28 @@ export interface HyCadSnapshotDims {
 }
 
 let lastSnapshotDims: HyCadSnapshotDims | null = null;
+const snapshotDimListeners = new Set<() => void>();
+
+function emitSnapshotDims(): void {
+  for (const fn of snapshotDimListeners)
+    fn();
+}
+
+/** 快照纸面 mm 尺寸变更（loadSnapshot 后触发，供 page-viewport 重算页面框）。 */
+export function subscribeSnapshotDims(listener: () => void): () => void {
+  snapshotDimListeners.add(listener);
+  return () => snapshotDimListeners.delete(listener);
+}
+
+let autoFitUniverAPI: ReturnType<typeof FUniver.newAPI> | null = null;
+let autoFitPostHost: ((payload: Record<string, unknown>) => void) | null = null;
+
+/** 供布局 Tab「自动调整行高/列宽」使用：注册 postHostMessage。 */
+export function configureHyCadAutoFitPost(
+  postHostMessage: (payload: Record<string, unknown>) => void,
+): void {
+  autoFitPostHost = postHostMessage;
+}
 
 /** 读取最近加载快照的纸面 mm 尺寸（供布局 Tab 显示真值）。 */
 export function getLastSnapshotDims(): HyCadSnapshotDims | null {
@@ -616,7 +638,87 @@ function rebuildWorkbookFromSnapshot(
     applySnapshotDimensions(sheet, snapshot);
 }
 
+type AutoFitSheetLike = SheetLike & {
+  autoResizeRows?: (startRow: number, numRows: number) => void;
+  autoResizeColumns?: (startColumn: number, numColumns: number) => void;
+  getRowHeight?: (row: number) => number;
+  getColumnWidth?: (col: number) => number;
+  getMaxRows?: () => number;
+  getMaxColumns?: () => number;
+};
+
+/** Excel 式：按内容自动调整行高 → px→mm 回写 Domain。 */
+export function autoFitRowHeights(): void {
+  const univerAPI = autoFitUniverAPI;
+  const postHost = autoFitPostHost;
+  if (!univerAPI || !postHost)
+    return;
+
+  const sheet = univerAPI.getActiveWorkbook()?.getActiveSheet() as AutoFitSheetLike | null | undefined;
+  if (!sheet) {
+    postHost({ type: 'error', message: '无活动工作表' });
+    return;
+  }
+
+  const selection = readSelectionBounds(sheet);
+  const startRow = selection?.startRow ?? 0;
+  const endRow = selection?.endRow ?? ((lastSnapshotDims?.rowCount ?? sheet.getMaxRows?.() ?? 1) - 1);
+  const numRows = Math.max(1, endRow - startRow + 1);
+
+  try {
+    sheet.autoResizeRows?.(startRow, numRows);
+    const sizesMm: number[] = [];
+    for (let i = 0; i < numRows; i++) {
+      const px = sheet.getRowHeight?.(startRow + i) ?? 0;
+      sizesMm.push(rowDisplayPxToMm(px));
+    }
+    postHost({ type: 'hyCadTrackSizes', axis: 'row', start: startRow, sizesMm });
+  } catch (error) {
+    console.error('[HyCAD] autoFitRowHeights failed', error);
+    postHost({
+      type: 'error',
+      message: error instanceof Error ? error.message : '自动调整行高失败',
+    });
+  }
+}
+
+/** Excel 式：按内容自动调整列宽 → px→mm 回写 Domain。 */
+export function autoFitColWidths(): void {
+  const univerAPI = autoFitUniverAPI;
+  const postHost = autoFitPostHost;
+  if (!univerAPI || !postHost)
+    return;
+
+  const sheet = univerAPI.getActiveWorkbook()?.getActiveSheet() as AutoFitSheetLike | null | undefined;
+  if (!sheet) {
+    postHost({ type: 'error', message: '无活动工作表' });
+    return;
+  }
+
+  const selection = readSelectionBounds(sheet);
+  const startCol = selection?.startCol ?? 0;
+  const endCol = selection?.endCol ?? ((lastSnapshotDims?.colCount ?? sheet.getMaxColumns?.() ?? 1) - 1);
+  const numCols = Math.max(1, endCol - startCol + 1);
+
+  try {
+    sheet.autoResizeColumns?.(startCol, numCols);
+    const sizesMm: number[] = [];
+    for (let i = 0; i < numCols; i++) {
+      const px = sheet.getColumnWidth?.(startCol + i) ?? 0;
+      sizesMm.push(colDisplayPxToMm(px));
+    }
+    postHost({ type: 'hyCadTrackSizes', axis: 'col', start: startCol, sizesMm });
+  } catch (error) {
+    console.error('[HyCAD] autoFitColWidths failed', error);
+    postHost({
+      type: 'error',
+      message: error instanceof Error ? error.message : '自动调整列宽失败',
+    });
+  }
+}
+
 export function installHyCadBridge(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
+  autoFitUniverAPI = univerAPI;
   let pendingSnapshot: HyCadGridSnapshot | null = null;
   let coalesceToken = 0;
 
@@ -632,6 +734,7 @@ export function installHyCadBridge(univerAPI: ReturnType<typeof FUniver.newAPI>)
         rowHeightsMm: snapshot.rowHeightsMm ?? [],
         colWidthsMm: snapshot.colWidthsMm ?? [],
       };
+      emitSnapshotDims();
 
       pendingSnapshot = snapshot;
       const token = ++coalesceToken;

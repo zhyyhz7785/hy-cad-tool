@@ -1,7 +1,28 @@
-import { getLastSnapshotDims } from './univer-bridge';
+import { applyRibbonTabVisual } from './ribbon-tab-style';
+import { createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+
+import { autoFitColWidths, autoFitRowHeights, getLastSnapshotDims } from './univer-bridge';
+import {
+  patchLayoutRibbonModel,
+  PAPER_PRESETS,
+  TEMPLATE_OPTIONS,
+  type LayoutRibbonModelState,
+} from './layout-ribbon-model';
+import { LayoutRibbonPanel, type LayoutRibbonActions } from './layout-ribbon-panel';
+import {
+  setShowHeaders,
+  setShowPaperBoundary,
+  setShowRulers,
+  syncPaperFromLayoutInputs,
+  updateLayoutViewFromViewport,
+  type HyCadViewportPayload,
+} from './layout-view-state';
+
+export type { HyCadViewportPayload };
 
 /**
- * 布局 Tab（口径 B）。
+ * 布局 Tab（012 结构优先 + 内容驱动，口径 B）。
  *
  * 注入到 Univer Ribbon 顶栏：「数据」Tab 右侧，工具条显示在 Ribbon 第二行。
  */
@@ -13,17 +34,32 @@ const LAYOUT_TAB_ROOT_ATTR = 'data-hycad-layout-tab-root';
 const LAYOUT_PANEL_ID = 'hycad-layout-ribbon-panel';
 const INJECTED_FLAG = 'data-hycad-layout-injected';
 
+const LAYOUT_TOOLBAR_MODE_CLASS = 'hycad-layout-toolbar-mode';
+const LAYOUT_TABLIT_CLASS = 'hycad-layout-tablit';
+
 let post: PostHostMessage | null = null;
-let suppressInput = false;
 let layoutActive = false;
+const layoutTabActiveListeners = new Set<(active: boolean) => void>();
 
 let layoutTabButton: HTMLButtonElement | null = null;
-let layoutRibbonPanel: HTMLElement | null = null;
-let univerToolbarRow: HTMLElement | null = null;
+let layoutRibbonHost: HTMLElement | null = null;
+let layoutRibbonRoot: Root | null = null;
 
-let rowHeightInput: HTMLInputElement | null = null;
-let colWidthInput: HTMLInputElement | null = null;
-let scaleInput: HTMLInputElement | null = null;
+function emitLayoutTabActive(): void {
+  for (const fn of layoutTabActiveListeners)
+    fn(layoutActive);
+}
+
+/** 布局 Tab 是否处于激活态（仅此时启用 U7 页面视图）。 */
+export function isLayoutTabActive(): boolean {
+  return layoutActive;
+}
+
+export function subscribeLayoutTabActive(listener: (active: boolean) => void): () => void {
+  layoutTabActiveListeners.add(listener);
+  listener(layoutActive);
+  return () => layoutTabActiveListeners.delete(listener);
+}
 
 function sendLayoutOp(op: string, value = 0): void {
   post?.({ type: 'hyCadLayout', op, value });
@@ -33,127 +69,39 @@ function sendFileAction(action: string): void {
   post?.({ type: 'hyCadFileAction', action });
 }
 
-function num(input: HTMLInputElement | null, fallback: number): number {
-  if (!input)
-    return fallback;
-  const v = Number(input.value);
-  return Number.isFinite(v) && v > 0 ? v : fallback;
+function formatMm(value: number): number {
+  if (!Number.isFinite(value))
+    return 0;
+  return Math.round(value * 100) / 100;
 }
 
-function makeButton(label: string, title: string, onClick: () => void): HTMLButtonElement {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.textContent = label;
-  btn.title = title;
-  btn.className = 'hycad-layout-btn';
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    onClick();
-  });
-  return btn;
+function createLayoutActions(): LayoutRibbonActions {
+  return {
+    sendLayoutOp,
+    sendFileAction,
+    autoFitRowHeights,
+    autoFitColWidths,
+    postError: (message) => post?.({ type: 'error', message }),
+    setShowRulers,
+    setShowHeaders,
+    setShowPaperBoundary,
+    syncPaperFromLayoutInputs,
+  };
 }
 
-function makeNumberInput(width: number): HTMLInputElement {
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.min = '0';
-  input.step = '1';
-  input.className = 'hycad-layout-num';
-  input.style.width = `${width}px`;
-  return input;
+function mountLayoutRibbonPanel(host: HTMLElement): void {
+  if (layoutRibbonRoot)
+    return;
+
+  layoutRibbonRoot = createRoot(host);
+  layoutRibbonRoot.render(createElement(LayoutRibbonPanel, { actions: createLayoutActions() }));
 }
 
-function makeLabel(text: string): HTMLSpanElement {
-  const span = document.createElement('span');
-  span.textContent = text;
-  span.className = 'hycad-layout-label';
-  return span;
-}
-
-
-function makeGroup(caption: string, ...children: HTMLElement[]): HTMLDivElement {
-  const group = document.createElement('div');
-  group.className = 'hycad-layout-group';
-  const row = document.createElement('div');
-  row.className = 'hycad-layout-group-row';
-  for (const child of children)
-    row.appendChild(child);
-  const cap = document.createElement('span');
-  cap.className = 'hycad-layout-group-caption';
-  cap.textContent = caption;
-  group.appendChild(row);
-  group.appendChild(cap);
-  return group;
-}
-
-function buildRibbonPanel(): HTMLElement {
-  const panel = document.createElement('div');
-  panel.id = LAYOUT_PANEL_ID;
-  panel.className = 'hycad-layout-ribbon-panel';
-  panel.setAttribute('data-hycad-comp', 'layout-ribbon-panel');
-
-  rowHeightInput = makeNumberInput(52);
-  rowHeightInput.title = '当前选区行高（纸面 mm）';
-  rowHeightInput.addEventListener('change', () => {
-    if (suppressInput)
-      return;
-    sendLayoutOp('setRowHeight', num(rowHeightInput, 10));
-  });
-
-  colWidthInput = makeNumberInput(52);
-  colWidthInput.title = '当前选区列宽（纸面 mm）';
-  colWidthInput.addEventListener('change', () => {
-    if (suppressInput)
-      return;
-    sendLayoutOp('setColWidth', num(colWidthInput, 25));
-  });
-
-  panel.appendChild(makeGroup(
-    '单元格大小 mm',
-    makeLabel('行高'),
-    rowHeightInput,
-    makeLabel('列宽'),
-    colWidthInput,
-  ));
-
-  panel.appendChild(makeGroup(
-    '单元格',
-    makeButton('+行', '在选区下方插入行', () => sendLayoutOp('insertRow')),
-    makeButton('-行', '删除选中行', () => sendLayoutOp('deleteRow')),
-    makeButton('+列', '在选区右侧插入列', () => sendLayoutOp('insertCol')),
-    makeButton('-列', '删除选中列', () => sendLayoutOp('deleteCol')),
-  ));
-
-  panel.appendChild(makeGroup(
-    '合并',
-    makeButton('合并', '合并选区', () => sendLayoutOp('merge')),
-    makeButton('拆分', '拆分合并区', () => sendLayoutOp('unmerge')),
-  ));
-
-  scaleInput = makeNumberInput(52);
-  scaleInput.title = '落图比例（纸面 mm × 比例 = 模型 mm）；重开恢复 hy 面板值';
-  scaleInput.addEventListener('change', () => {
-    if (suppressInput)
-      return;
-    sendLayoutOp('setScale', num(scaleInput, 1));
-  });
-
-  panel.appendChild(makeGroup(
-    '比例',
-    makeLabel('Scale'),
-    scaleInput,
-  ));
-
-  panel.appendChild(makeGroup(
-    'HyCAD',
-    makeButton('落图', '落图到 AutoCAD（按比例放大）', () => sendFileAction('publish')),
-    makeButton('拾取', '从图面拾取 HyTable', () => sendFileAction('pick')),
-    makeButton('角色', '单元格角色（R6，后期开放）', () => {
-      post?.({ type: 'error', message: 'R6 角色功能后期开放' });
-    }),
-  ));
-
-  return panel;
+function buildRibbonPanelHost(): HTMLElement {
+  const host = document.createElement('div');
+  host.className = 'hycad-layout-ribbon-host';
+  mountLayoutRibbonPanel(host);
+  return host;
 }
 
 function findTabByLabel(tablist: Element, label: string): HTMLElement | null {
@@ -165,39 +113,49 @@ function findTabByLabel(tablist: Element, label: string): HTMLElement | null {
 }
 
 function findUniverToolbarRow(headerMenu: HTMLElement): HTMLElement | null {
-  const parent = headerMenu.parentElement;
-  if (!parent)
+  const header = headerMenu.closest('header');
+  if (!header)
     return null;
 
-  const siblings = Array.from(parent.children);
-  const index = siblings.indexOf(headerMenu);
-  if (index < 0 || index + 1 >= siblings.length)
-    return null;
-
-  const next = siblings[index + 1];
-  return next instanceof HTMLElement ? next : null;
+  const toolbar = header.querySelector('[role="toolbar"]');
+  return toolbar instanceof HTMLElement ? toolbar : null;
 }
 
 function setLayoutTabSelected(selected: boolean): void {
-  layoutTabButton?.setAttribute('aria-selected', selected ? 'true' : 'false');
-  layoutTabButton?.classList.toggle('hycad-layout-ribbon-tab--active', selected);
+  if (layoutTabButton)
+    applyRibbonTabVisual(layoutTabButton, selected);
+}
+
+/** 布局 Tab 激活时压制 Univer 原生 Tab 高亮（React 仍保留 activatedTab，需 CSS 互斥）。 */
+function setLayoutTablistLit(active: boolean): void {
+  const headerMenu = document.querySelector(ROOT_SELECTOR);
+  if (headerMenu instanceof HTMLElement)
+    headerMenu.classList.toggle(LAYOUT_TABLIT_CLASS, active);
+}
+
+function setRibbonToolbarHidden(hidden: boolean): void {
+  const headerMenu = document.querySelector(ROOT_SELECTOR);
+  if (!(headerMenu instanceof HTMLElement))
+    return;
+
+  const toolbar = findUniverToolbarRow(headerMenu);
+  if (!toolbar)
+    return;
+
+  toolbar.classList.toggle(LAYOUT_TOOLBAR_MODE_CLASS, hidden);
 }
 
 function activateLayoutTab(): void {
-  if (!layoutRibbonPanel || !univerToolbarRow)
+  if (!layoutRibbonHost)
     return;
 
   layoutActive = true;
   setLayoutTabSelected(true);
+  setLayoutTablistLit(true);
 
-  const tablist = layoutTabButton?.closest('[role="tablist"]');
-  tablist?.querySelectorAll('[role="tab"]').forEach((tab) => {
-    if (tab !== layoutTabButton)
-      tab.setAttribute('aria-selected', 'false');
-  });
-
-  univerToolbarRow.hidden = true;
-  layoutRibbonPanel.classList.add('hycad-layout-ribbon-panel--active');
+  setRibbonToolbarHidden(true);
+  document.getElementById(LAYOUT_PANEL_ID)?.classList.add('hycad-layout-ribbon-panel--active');
+  emitLayoutTabActive();
 }
 
 function deactivateLayoutTab(): void {
@@ -206,10 +164,11 @@ function deactivateLayoutTab(): void {
 
   layoutActive = false;
   setLayoutTabSelected(false);
+  setLayoutTablistLit(false);
 
-  if (univerToolbarRow)
-    univerToolbarRow.hidden = false;
-  layoutRibbonPanel?.classList.remove('hycad-layout-ribbon-panel--active');
+  setRibbonToolbarHidden(false);
+  document.getElementById(LAYOUT_PANEL_ID)?.classList.remove('hycad-layout-ribbon-panel--active');
+  emitLayoutTabActive();
 }
 
 function createLayoutTabRoot(): HTMLElement {
@@ -221,9 +180,8 @@ function createLayoutTabRoot(): HTMLElement {
   button.type = 'button';
   button.role = 'tab';
   button.textContent = '布局';
-  button.title = '行高列宽 mm / 比例 / 行列合并 / 落图拾取';
-  button.className = 'hycad-layout-ribbon-tab';
-  button.setAttribute('aria-selected', 'false');
+  button.title = '纸张 L0 / 内容驱动 / 行列合并 / 落图拾取';
+  applyRibbonTabVisual(button, false);
   button.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -250,9 +208,8 @@ function injectLayoutTab(): boolean {
   if (!toolbarRow)
     return false;
 
-  univerToolbarRow = toolbarRow;
-  layoutRibbonPanel = buildRibbonPanel();
-  toolbarRow.insertAdjacentElement('afterend', layoutRibbonPanel);
+  layoutRibbonHost = buildRibbonPanelHost();
+  toolbarRow.appendChild(layoutRibbonHost);
 
   const dataTab = findTabByLabel(tablist, '数据');
   const tabRoot = createLayoutTabRoot();
@@ -262,13 +219,12 @@ function injectLayoutTab(): boolean {
     tablist.appendChild(tabRoot);
 
   tablist.addEventListener('click', (event) => {
-    if (!layoutActive)
-      return;
     const target = event.target as HTMLElement | null;
     if (!target || target.closest(`[${LAYOUT_TAB_ROOT_ATTR}]`))
       return;
-    deactivateLayoutTab();
-  });
+    if (target.closest('[role="tab"]') && layoutActive)
+      deactivateLayoutTab();
+  }, true);
 
   headerMenu.setAttribute(INJECTED_FLAG, 'true');
   return true;
@@ -310,25 +266,50 @@ export function updateLayoutTabSelection(
   const r = Math.min(startRow, endRow);
   const c = Math.min(startCol, endCol);
 
-  suppressInput = true;
-  if (rowHeightInput && dims.rowHeightsMm.length > r && r >= 0)
-    rowHeightInput.value = formatMm(dims.rowHeightsMm[r]);
-  if (colWidthInput && dims.colWidthsMm.length > c && c >= 0)
-    colWidthInput.value = formatMm(dims.colWidthsMm[c]);
-  suppressInput = false;
+  const patch: { rowHeightMm?: number; colWidthMm?: number } = {};
+  if (dims.rowHeightsMm.length > r && r >= 0)
+    patch.rowHeightMm = formatMm(dims.rowHeightsMm[r]);
+  if (dims.colWidthsMm.length > c && c >= 0)
+    patch.colWidthMm = formatMm(dims.colWidthsMm[c]);
+  patchLayoutRibbonModel(patch);
 }
 
 /** 由 main.ts 在收到宿主 setScale 时调用：回填比例框。 */
 export function updateLayoutTabScale(scale: number): void {
-  if (!scaleInput || !(scale > 0))
+  if (!(scale > 0))
     return;
-  suppressInput = true;
-  scaleInput.value = formatMm(scale);
-  suppressInput = false;
+  patchLayoutRibbonModel({ scale: formatMm(scale) });
 }
 
-function formatMm(value: number): string {
-  if (!Number.isFinite(value))
-    return '';
-  return Math.round(value * 100) / 100 + '';
+/** 由 main.ts 在收到宿主 setViewport 时调用：回填纸张/行列/模板初值。 */
+export function updateLayoutTabViewport(payload: HyCadViewportPayload): void {
+  const patch: Partial<LayoutRibbonModelState> = {};
+
+  if (typeof payload.paperPresetIndex === 'number') {
+    patch.paperPresetIndex = Math.max(0, Math.min(PAPER_PRESETS.length - 1, payload.paperPresetIndex));
+  }
+  if (typeof payload.orientation === 'number') {
+    patch.orientation = payload.orientation > 0 ? 1 : 0;
+  }
+  if (typeof payload.targetWidthMm === 'number')
+    patch.targetWidthMm = formatMm(payload.targetWidthMm);
+  if (typeof payload.marginMm === 'number')
+    patch.marginMm = formatMm(payload.marginMm);
+  if (typeof payload.rowCount === 'number')
+    patch.rowCount = Math.round(payload.rowCount);
+  if (typeof payload.colCount === 'number')
+    patch.colCount = Math.round(payload.colCount);
+  if (typeof payload.templateIndex === 'number') {
+    patch.templateIndex = Math.max(0, Math.min(TEMPLATE_OPTIONS.length - 1, payload.templateIndex));
+  }
+  if (typeof payload.structureMode === 'boolean')
+    patch.structureMode = payload.structureMode;
+
+  patchLayoutRibbonModel(patch);
+  updateLayoutViewFromViewport(payload);
+}
+
+/** 由 main.ts 在收到宿主 setStructureMode 时调用。 */
+export function updateLayoutTabStructureMode(on: boolean): void {
+  patchLayoutRibbonModel({ structureMode: on });
 }

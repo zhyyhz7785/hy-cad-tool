@@ -80,6 +80,9 @@ import {
   installHyCadLayoutTab,
   updateLayoutTabScale,
   updateLayoutTabSelection,
+  updateLayoutTabStructureMode,
+  updateLayoutTabViewport,
+  type HyCadViewportPayload,
 } from './layout-tab-inject';
 
 import { installHyCadRibbonRangeMenu } from './ribbon-range-inject';
@@ -90,15 +93,23 @@ import { installHyCadThemeTab } from './theme-menu-inject';
 
 import {
 
+  configureHyCadAutoFitPost,
+
   handleHostCommand,
 
   installHyCadBridge,
 
 } from './univer-bridge';
 
+import { installFormulaBarLayout } from './formula-bar-layout';
+import { installSheetBarGuard } from './sheet-bar-guard';
+import { installRulerOverlay } from './ruler-overlay';
+import { registerPaperBoundaryExtension } from './paper-extension';
+import { installPageViewport } from './page-viewport';
+import { installHeadersToggle } from './sheet-headers';
+import { subscribeLayoutViewState } from './layout-view-state';
+
 import './global.css';
-
-
 
 declare global {
 
@@ -118,7 +129,10 @@ function handleLayoutHostCommand(raw: string): void {
 
   try {
 
-    const message = JSON.parse(raw) as { type?: string; payload?: { scale?: number } };
+    const message = JSON.parse(raw) as {
+      type?: string;
+      payload?: HyCadViewportPayload & { scale?: number; on?: boolean };
+    };
 
     if (message.type === 'setScale') {
 
@@ -126,6 +140,22 @@ function handleLayoutHostCommand(raw: string): void {
 
       if (typeof scale === 'number')
         updateLayoutTabScale(scale);
+
+    }
+
+    if (message.type === 'setViewport') {
+
+      const payload = message.payload;
+      if (payload)
+        updateLayoutTabViewport(payload);
+
+    }
+
+    if (message.type === 'setStructureMode') {
+
+      const on = message.payload?.on ?? message.payload?.structureMode;
+      if (typeof on === 'boolean')
+        updateLayoutTabStructureMode(on);
 
     }
 
@@ -138,6 +168,29 @@ function handleLayoutHostCommand(raw: string): void {
 }
 
 
+
+function installViewportResizeFix(): void {
+  let lastW = 0;
+  let lastH = 0;
+  let timer: number | undefined;
+
+  const notify = (): void => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (w === lastW && h === lastH)
+      return;
+    lastW = w;
+    lastH = h;
+
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 120);
+  };
+
+  window.addEventListener('resize', notify);
+  window.setTimeout(notify, 300);
+}
 
 function bootstrap(): void {
 
@@ -179,6 +232,12 @@ function bootstrap(): void {
 
     container: 'app',
 
+    footer: true,
+
+    header: true,
+
+    toolbar: true,
+
   });
 
   univer.registerPlugin(UniverDocsPlugin);
@@ -187,7 +246,21 @@ function bootstrap(): void {
 
   univer.registerPlugin(UniverSheetsPlugin);
 
-  univer.registerPlugin(UniverSheetsUIPlugin);
+  univer.registerPlugin(UniverSheetsUIPlugin, {
+
+    footer: {
+
+      sheetBar: true,
+
+      statisticBar: true,
+
+      menus: true,
+
+      zoomSlider: true,
+
+    },
+
+  });
 
   univer.registerPlugin(UniverSheetsFormulaPlugin);
 
@@ -222,6 +295,7 @@ function bootstrap(): void {
 
 
   installHyCadBridge(univerAPI);
+  configureHyCadAutoFitPost(postHostMessage);
 
   // 落图/拾取已迁入布局 Tab（installHyCadLayoutTab）；此处仅保留范围落图下拉。
   installHyCadRibbonRangeMenu();
@@ -293,6 +367,18 @@ function bootstrap(): void {
   installHyCadThemeTab(univerAPI);
 
   installHyCadWindowControls(postHostMessage);
+
+  installViewportResizeFix();
+
+  installFormulaBarLayout();
+  installSheetBarGuard();
+
+  installRulerOverlay(univerAPI);
+  registerPaperBoundaryExtension(univerAPI);
+  installPageViewport(univerAPI);
+  installHeadersToggle(univerAPI, (listener) => {
+    return subscribeLayoutViewState((s) => listener(s.showHeaders));
+  });
 
   postHostMessage({ type: 'ready' });
 

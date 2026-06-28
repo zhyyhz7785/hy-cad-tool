@@ -47,6 +47,15 @@ namespace HyCADTool.UniverEditor
         /// </summary>
         public Action<string, double> OnLayoutOp { get; set; }
 
+        /// <summary>读取结构模式开关初值。</summary>
+        public Func<bool> GetStructureMode { get; set; }
+
+        /// <summary>读取纸张视口/行列/模板初值 JSON（供网页布局 Tab 回填）。</summary>
+        public Func<string> GetViewportJson { get; set; }
+
+        /// <summary>网页自动调整行/列高宽后回写 Domain（isRow, startIndex, sizesMm[]）。</summary>
+        public Action<bool, int, double[]> SetTrackSizesMm { get; set; }
+
         public event Action GridChanged;
 
         public void NotifyGridChanged() => GridChanged?.Invoke();

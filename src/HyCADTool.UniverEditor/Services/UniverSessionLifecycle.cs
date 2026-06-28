@@ -315,6 +315,18 @@ namespace HyCADTool.UniverEditor.Services
                     return;
                 }
 
+                if (string.Equals(type, "hyCadTrackSizes", StringComparison.OrdinalIgnoreCase))
+                {
+                    string axis = message.Value<string>("axis");
+                    int start = message.Value<int?>("start") ?? 0;
+                    var sizesToken = message["sizesMm"];
+                    double[] sizes = sizesToken?.ToObject<double[]>();
+                    bool isRow = string.Equals(axis, "row", StringComparison.OrdinalIgnoreCase);
+                    if (sizes != null && sizes.Length > 0)
+                        InvokeOnUiThread(() => HandleHyCadTrackSizes(isRow, start, sizes));
+                    return;
+                }
+
                 if (string.Equals(type, "hyCadFileAction", StringComparison.OrdinalIgnoreCase))
                 {
                     string action = message.Value<string>("action");
@@ -385,6 +397,13 @@ namespace HyCADTool.UniverEditor.Services
                 Host.InvokeSafe(() => layoutOp(op, value), _setStatus);
         }
 
+        private void HandleHyCadTrackSizes(bool isRow, int startIndex, double[] sizesMm)
+        {
+            var handler = Host?.SetTrackSizesMm;
+            if (handler != null)
+                Host.InvokeSafe(() => handler(isRow, startIndex, sizesMm), _setStatus);
+        }
+
         private void HandleHyCadFileAction(string action)
         {
             switch (action)
@@ -422,12 +441,45 @@ namespace HyCADTool.UniverEditor.Services
         private async Task PushInitialSnapshotAsync()
         {
             await PushScaleAsync();
+            await PushViewportAsync();
 
             string json = Host?.TryGetLoadSnapshotJson();
             if (string.IsNullOrWhiteSpace(json))
                 return;
 
             await LoadSnapshotAsync(json);
+        }
+
+        /// <summary>把当前 VM 纸张视口/结构模式下发网页布局 Tab。</summary>
+        public Task PushViewportAsync()
+        {
+            if (!_ready)
+                return Task.CompletedTask;
+
+            JObject payload;
+            try
+            {
+                string json = Host?.GetViewportJson?.Invoke();
+                payload = string.IsNullOrWhiteSpace(json)
+                    ? new JObject()
+                    : JObject.Parse(json);
+            }
+            catch
+            {
+                payload = new JObject();
+            }
+
+            try
+            {
+                if (Host?.GetStructureMode != null)
+                    payload["structureMode"] = Host.GetStructureMode();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            return PostCommandAsync("setViewport", payload);
         }
 
         /// <summary>把当前 VM.Scale 下发网页布局 Tab（口径 B 初始化/恢复 hy 值）。</summary>

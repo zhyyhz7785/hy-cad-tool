@@ -17,6 +17,23 @@ namespace HyCADTool.UniverEditor.Views
             InitializeComponent();
             Loaded += OnLoadedAsync;
             Closed += OnClosed;
+            SizeChanged += OnWindowSizeChanged;
+        }
+
+        private async void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (_session == null || !_session.IsReady || UniverWebView?.CoreWebView2 == null)
+                return;
+
+            try
+            {
+                await UniverWebView.CoreWebView2.ExecuteScriptAsync(
+                    "window.dispatchEvent(new Event('resize'));");
+            }
+            catch
+            {
+                // ignore resize notify failures
+            }
         }
 
         private async void OnLoadedAsync(object sender, RoutedEventArgs e)
@@ -144,6 +161,8 @@ namespace HyCADTool.UniverEditor.Views
         private async System.Threading.Tasks.Task ReloadGridThenRefreshAsync()
         {
             await ReloadGridAsync();
+            if (_session != null && _session.IsReady)
+                await _session.PushViewportAsync();
             RefreshSummary();
         }
 
@@ -206,6 +225,7 @@ namespace HyCADTool.UniverEditor.Views
 
         private void OnClosed(object sender, EventArgs e)
         {
+            SizeChanged -= OnWindowSizeChanged;
             var ctx = ActiveContext;
             if (ctx != null)
             {
