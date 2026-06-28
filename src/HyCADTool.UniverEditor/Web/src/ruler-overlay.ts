@@ -13,6 +13,7 @@ import { subscribePagePreviewScale } from './page-preview-scale';
 
 import { resolvePageBoxLayout, resolveViewportRulerBand, resolvePixelsPerMm } from './page-box-layout';
 import { getPagePreviewScalePxPerMm } from './page-preview-scale';
+import { parseMarginDataset } from './page-margins';
 
 import { installViewportProbe, type UniverViewportMetrics } from './univer-viewport';
 
@@ -314,6 +315,14 @@ function drawHorizontalRuler(
 
 
 
+  const boundaryPxH = (typeof options.boundaryMm === 'number' && options.boundaryMm > 0)
+
+    ? originPx + options.boundaryMm * ppm
+
+    : Number.NaN;
+
+
+
   for (let i = startMinor; i <= endMinor; i++) {
 
     const px = originPx + i * minorPx;
@@ -353,6 +362,10 @@ function drawHorizontalRuler(
     }
 
     else if (isMajor) {
+
+      // 与图纸尺寸数字重合时，仅保留图纸尺寸数字
+      if (Number.isFinite(boundaryPxH) && Math.abs(px - boundaryPxH) < 20)
+        continue;
 
       const mmVal = i * 4;
 
@@ -470,6 +483,14 @@ function drawVerticalRuler(
 
 
 
+  const boundaryPxV = (typeof options.boundaryMm === 'number' && options.boundaryMm > 0)
+
+    ? originPx + options.boundaryMm * ppm
+
+    : Number.NaN;
+
+
+
   for (let i = startMinor; i <= endMinor; i++) {
 
     const px = originPx + i * minorPx;
@@ -514,6 +535,10 @@ function drawVerticalRuler(
 
     else if (isMajor) {
 
+      // 与图纸尺寸数字重合时，仅保留图纸尺寸数字
+      if (Number.isFinite(boundaryPxV) && Math.abs(px - boundaryPxV) < 14)
+        continue;
+
       const mmVal = i * 4;
 
       ctx.fillStyle = colors.label;
@@ -550,9 +575,24 @@ function drawVerticalRuler(
 
 
 
+/** 读取 page-viewport 写入图纸内白边像素（四边 mm × ppm）。 */
+function resolveSheetPaddingPx(): {
+  padLeft: number;
+  padTop: number;
+  padRight: number;
+  padBottom: number;
+} {
+  const content = document.querySelector('#app [data-range-selector]');
+  const sheetBox = content?.parentElement;
+  if (sheetBox instanceof HTMLElement)
+    return parseMarginDataset(sheetBox.dataset.hycadMarginPx);
+  return { padLeft: 0, padTop: 0, padRight: 0, padBottom: 0 };
+}
+
 /**
- * 标尺贴图纸外缘（上/左），但测量原点 = 图纸内 A1 左上角（扣除行/列头）。
- * 行表头宽、列表头高仅用于把 0 点推到 A1，不计入图纸刻度范围。
+ * 标尺条固定锚定在画布工作区（gridHost）上/左，位置与宽度不随缩放变化；
+ * 仅测量原点（0 = 图纸 A1，扣除行/列头）与刻度间距随缩放变化。
+ * 竖标尺左移出窗口时做 clamp，避免数字被裁。
  */
 function layoutRulersOnPaper(
   pageBox: NonNullable<ReturnType<typeof resolvePageBoxLayout>>,
@@ -574,7 +614,7 @@ function layoutRulersOnPaper(
   vTickClipStart: number;
   vTickClipEnd: number;
 } {
-  const { rect, pageWidthPx, pageHeightPx, widthMm } = pageBox;
+  const { rect: paperRect, pageWidthPx, pageHeightPx, widthMm } = pageBox;
   const ppm = getPagePreviewScalePxPerMm() > 0
     ? getPagePreviewScalePxPerMm()
     : (widthMm > 0 && pageWidthPx > 0 ? pageWidthPx / widthMm : DISPLAY_PX_PER_MM);
@@ -583,22 +623,47 @@ function layoutRulersOnPaper(
   const rowW = showHeaders ? DEFAULT_ROW_HEADER_W * zoom : 0;
   const colH = showHeaders ? DEFAULT_COL_HEADER_H * zoom : 0;
 
+  // 图纸内白边（边距）：网格相对纸边内缩 padX/padY（与 page-viewport 写入值一致）
+  const { padLeft, padTop, padRight, padBottom } = resolveSheetPaddingPx();
+
+  // A1（图纸内，扣除内白边与行/列头）在视口中的坐标
+  const a1Left = paperRect.left + padLeft + rowW;
+  const a1Top = paperRect.top + padTop + colH;
+  const paperRight = paperRect.right - padRight;
+  const paperBottom = paperRect.bottom - padBottom;
+
+  // 标尺条锚在画布工作区，固定不随缩放移动
+  const band = resolveViewportRulerBand();
+  const formulaBottom = getFormulaBarBottomPx();
+  const canvasLeft = band ? band.contentLeft : paperRect.left;
+  const canvasRight = band ? band.rect.right : paperRect.right;
+  const canvasTop = band ? band.contentTop : paperRect.top;
+  const canvasBottom = band ? band.rect.bottom : paperRect.bottom;
+
+  const cornerLeft = Math.max(0, canvasLeft - RULER_THICKNESS);
+  const cornerTop = Math.max(0, formulaBottom > 0 ? formulaBottom : canvasTop - RULER_THICKNESS);
+
+  const hLeft = cornerLeft + RULER_THICKNESS;
+  const hWidth = Math.max(0, canvasRight - hLeft);
+  const vTop = cornerTop + RULER_THICKNESS;
+  const vHeight = Math.max(0, canvasBottom - vTop);
+
   return {
-    cornerLeft: rect.left - RULER_THICKNESS,
-    cornerTop: rect.top - RULER_THICKNESS,
-    hLeft: rect.left,
-    hWidth: pageWidthPx,
-    vTop: rect.top,
-    vHeight: pageHeightPx,
-    hOrigin: rowW,
-    vOrigin: colH,
+    cornerLeft,
+    cornerTop,
+    hLeft,
+    hWidth,
+    vTop,
+    vHeight,
+    hOrigin: a1Left - hLeft,
+    vOrigin: a1Top - vTop,
     ppm,
-    boundaryWidthMm: Math.max(0, (pageWidthPx - rowW) / ppm),
-    boundaryHeightMm: Math.max(0, (pageHeightPx - colH) / ppm),
-    hTickClipStart: rowW,
-    hTickClipEnd: pageWidthPx,
-    vTickClipStart: colH,
-    vTickClipEnd: pageHeightPx,
+    boundaryWidthMm: Math.max(0, (paperRight - a1Left) / ppm),
+    boundaryHeightMm: Math.max(0, (paperBottom - a1Top) / ppm),
+    hTickClipStart: Math.max(0, a1Left - hLeft),
+    hTickClipEnd: Math.min(hWidth, paperRight - hLeft),
+    vTickClipStart: Math.max(0, a1Top - vTop),
+    vTickClipEnd: Math.min(vHeight, paperBottom - vTop),
   };
 }
 

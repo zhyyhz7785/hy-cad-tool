@@ -34,13 +34,15 @@ export function resolvePaperAvailableMm(state: LayoutViewState): { widthMm: numb
     widthMm: resolvePaperWidthMm(
       state.paperPresetIndex,
       state.orientation,
-      state.marginMm,
+      state.pageMargins.left,
+      state.pageMargins.right,
       state.targetWidthMm,
     ),
     heightMm: resolvePaperHeightMm(
       state.paperPresetIndex,
       state.orientation,
-      state.marginMm,
+      state.pageMargins.top,
+      state.pageMargins.bottom,
     ),
   };
 }

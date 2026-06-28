@@ -29,6 +29,11 @@ import { resolveSheetSizeMm } from './paper-sheet';
 import { subscribeSnapshotDims } from './univer-bridge';
 
 import { findScrollElement, installViewportProbe } from './univer-viewport';
+import {
+  formatMarginDataset,
+  marginsToPaddingPx,
+  type PageMarginsMm,
+} from './page-margins';
 
 /** 图纸（白底 sheetBox）与画布（gridHost 内容区）四边固定间距 mm */
 export const CANVAS_SHEET_GAP_MM = 10;
@@ -125,6 +130,7 @@ function clearPageStyles(nodes: PageNodes): void {
   box.removeProperty('max-height');
   box.removeProperty('margin-left');
   box.removeProperty('margin-top');
+  box.removeProperty('padding');
   box.removeProperty('justify-self');
   box.removeProperty('align-self');
   box.removeProperty('box-shadow');
@@ -134,6 +140,7 @@ function clearPageStyles(nodes: PageNodes): void {
 
   delete nodes.sheetBox.dataset.hycadPaperMm;
   delete nodes.sheetBox.dataset.hycadSheetMm;
+  delete nodes.sheetBox.dataset.hycadMarginPx;
   delete nodes.sheetBox.dataset.hycadGridCount;
 }
 
@@ -188,6 +195,7 @@ function applySheetBoxSizing(
   sheetWidthMm: number,
   sheetHeightMm: number,
   ppm: number,
+  pageMargins: PageMarginsMm,
 ): boolean {
   const canvas = resolveCanvasContentSize(nodes);
   const gapPx = Math.round(CANVAS_SHEET_GAP_MM * ppm);
@@ -200,12 +208,28 @@ function applySheetBoxSizing(
   if (boxW <= 0 || boxH <= 0)
     return false;
 
+  const pad = marginsToPaddingPx(pageMargins, ppm);
+  const maxPadLeft = Math.max(0, Math.floor(boxW / 2) - 1);
+  const maxPadRight = Math.max(0, Math.floor(boxW / 2) - 1);
+  const maxPadTop = Math.max(0, Math.floor(boxH / 2) - 1);
+  const maxPadBottom = Math.max(0, Math.floor(boxH / 2) - 1);
+  const padLeft = Math.min(pad.padLeft, maxPadLeft);
+  const padRight = Math.min(pad.padRight, maxPadRight);
+  const padTop = Math.min(pad.padTop, maxPadTop);
+  const padBottom = Math.min(pad.padBottom, maxPadBottom);
+
   nodes.gridHost.classList.add(PAGE_HOST_CLASS);
   nodes.gridHost.style.overflow = 'hidden';
 
   nodes.sheetBox.classList.add(PAGE_SHEET_CLASS);
   nodes.sheetBox.dataset.hycadSheetMm = `${Math.round(sheetWidthMm)}x${Math.round(sheetHeightMm)}`;
   nodes.sheetBox.dataset.hycadPaperMm = nodes.sheetBox.dataset.hycadSheetMm;
+  nodes.sheetBox.dataset.hycadMarginPx = formatMarginDataset({
+    padLeft,
+    padTop,
+    padRight,
+    padBottom,
+  });
 
   const box = nodes.sheetBox.style;
   box.flex = 'none';
@@ -215,6 +239,7 @@ function applySheetBoxSizing(
   box.maxHeight = `${maxBoxH}px`;
   box.marginLeft = `${gapPx}px`;
   box.marginTop = `${gapPx}px`;
+  box.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
   box.justifySelf = 'start';
   box.alignSelf = 'start';
   box.background = '#ffffff';
@@ -261,7 +286,7 @@ function applyPageViewport(
   if (Math.abs(clampedPpm - getPagePreviewScalePxPerMm()) > 0.0001)
     setPagePreviewScalePxPerMm(clampedPpm);
 
-  if (!applySheetBoxSizing(nodes, sheet.widthMm, sheet.heightMm, clampedPpm))
+  if (!applySheetBoxSizing(nodes, sheet.widthMm, sheet.heightMm, clampedPpm, state.pageMargins))
     return;
 
   applyZoom(univerAPI, clampedPpm / DISPLAY_PX_PER_MM);

@@ -293,8 +293,6 @@ export function updateLayoutTabViewport(payload: HyCadViewportPayload): void {
   }
   if (typeof payload.targetWidthMm === 'number')
     patch.targetWidthMm = formatMm(payload.targetWidthMm);
-  if (typeof payload.marginMm === 'number')
-    patch.marginMm = formatMm(payload.marginMm);
   if (typeof payload.rowCount === 'number')
     patch.rowCount = Math.round(payload.rowCount);
   if (typeof payload.colCount === 'number')

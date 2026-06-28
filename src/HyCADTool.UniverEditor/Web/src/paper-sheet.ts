@@ -42,10 +42,15 @@ export function nextOrientation(orientation: number): number {
 export function resolveContentTargetWidthMm(
   paperPresetIndex: number,
   orientation: number,
-  marginMm: number,
+  pageMargins: { left: number; right: number },
   currentTargetWidthMm: number,
 ): number {
   if (isCustomPaperPreset(paperPresetIndex))
     return currentTargetWidthMm > 0 ? currentTargetWidthMm : 400;
-  return resolvePaperWidthMm(paperPresetIndex, orientation, marginMm);
+  return resolvePaperWidthMm(
+    paperPresetIndex,
+    orientation,
+    pageMargins.left,
+    pageMargins.right,
+  );
 }

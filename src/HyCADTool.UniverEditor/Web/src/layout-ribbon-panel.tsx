@@ -15,6 +15,9 @@ import {
   resolveContentTargetWidthMm,
   resolveSheetSizeMm,
 } from './paper-sheet';
+import { LayoutMarginPopover } from './layout-margin-popover';
+import type { PageMarginsMm } from './page-margins';
+import { marginsToDomainUniformMm } from './page-margins';
 
 const RIBBON_GROUP_CLASS = `
   univer-grid univer-shrink-0 univer-grid-flow-col univer-gap-1.5 univer-px-1.5
@@ -52,7 +55,7 @@ export interface LayoutRibbonActions {
     paperPresetIndex: number,
     orientation: number,
     targetWidthMm: number,
-    marginMm: number,
+    pageMargins: PageMarginsMm,
   ) => void;
 }
 
@@ -108,9 +111,9 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
     paperPresetIndex = model.paperPresetIndex,
     orientation = model.orientation,
     targetWidthMm = model.targetWidthMm,
-    marginMm = model.marginMm,
+    pageMargins = model.pageMargins,
   ): void => {
-    actions.syncPaperFromLayoutInputs(paperPresetIndex, orientation, targetWidthMm, marginMm);
+    actions.syncPaperFromLayoutInputs(paperPresetIndex, orientation, targetWidthMm, pageMargins);
   };
 
   const sheetSize = resolveSheetSizeMm(model.paperPresetIndex, model.orientation);
@@ -118,17 +121,22 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
   const applyPaperState = (
     paperPresetIndex: number,
     orientation: number,
-    marginMm: number,
+    pageMargins: PageMarginsMm,
     currentTargetWidthMm: number,
   ): void => {
     const targetWidthMm = resolveContentTargetWidthMm(
       paperPresetIndex,
       orientation,
-      marginMm,
+      pageMargins,
       currentTargetWidthMm,
     );
-    patchLayoutRibbonModel({ paperPresetIndex, orientation, targetWidthMm, marginMm });
-    pushPaper(paperPresetIndex, orientation, targetWidthMm, marginMm);
+    patchLayoutRibbonModel({ paperPresetIndex, orientation, targetWidthMm, pageMargins });
+    pushPaper(paperPresetIndex, orientation, targetWidthMm, pageMargins);
+  };
+
+  const applyMargins = (pageMargins: PageMarginsMm): void => {
+    applyPaperState(model.paperPresetIndex, model.orientation, pageMargins, model.targetWidthMm);
+    actions.sendLayoutOp('setMargin', marginsToDomainUniformMm(pageMargins));
   };
 
   return (
@@ -195,7 +203,7 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
           options={PAPER_PRESETS.map((label) => ({ label, value: label }))}
           onChange={(value) => {
             const idx = indexOfPreset(value);
-            applyPaperState(idx, model.orientation, model.marginMm, model.targetWidthMm);
+            applyPaperState(idx, model.orientation, model.pageMargins, model.targetWidthMm);
             actions.sendLayoutOp('setPaperPreset', idx);
           }}
         />
@@ -206,7 +214,7 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
           title="切换横向/竖向（hymd 同款）"
           onClick={() => {
             const next = nextOrientation(model.orientation);
-            applyPaperState(model.paperPresetIndex, next, model.marginMm, model.targetWidthMm);
+            applyPaperState(model.paperPresetIndex, next, model.pageMargins, model.targetWidthMm);
             actions.sendLayoutOp('setOrientation', next);
           }}
         >
@@ -215,18 +223,9 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
             {sheetSize.label}
           </span>
         </Button>
-        <RibbonLabel>边距</RibbonLabel>
-        <InputNumber
-          className={COMPACT_NUMBER_CLASS}
-          size="mini"
-          controls={false}
-          min={0}
-          value={model.marginMm}
-          onChange={(value) => {
-            const next = positiveNumber(value, model.marginMm);
-            applyPaperState(model.paperPresetIndex, model.orientation, next, model.targetWidthMm);
-            actions.sendLayoutOp('setMargin', next);
-          }}
+        <LayoutMarginPopover
+          margins={model.pageMargins}
+          onChange={applyMargins}
         />
         {isCustomPaperPreset(model.paperPresetIndex) ? (
           <>
@@ -240,7 +239,7 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
               onChange={(value) => {
                 const next = positiveNumber(value, model.targetWidthMm);
                 patchLayoutRibbonModel({ targetWidthMm: next });
-                pushPaper(model.paperPresetIndex, model.orientation, next, model.marginMm);
+                pushPaper(model.paperPresetIndex, model.orientation, next, model.pageMargins);
                 actions.sendLayoutOp('setTargetWidth', next);
               }}
             />

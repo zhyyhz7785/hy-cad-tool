@@ -1,4 +1,6 @@
 import { subscribeLayoutViewState } from './layout-view-state';
+import type { PageMarginsMm } from './page-margins';
+import { DEFAULT_PAGE_MARGINS } from './page-margins';
 
 export const PAPER_PRESETS = ['A4', 'A3', 'A2', '自定义'] as const;
 export const ORIENTATION_OPTIONS = ['横向', '纵向'] as const;
@@ -12,7 +14,7 @@ export interface LayoutRibbonModelState {
   paperPresetIndex: number;
   orientation: number;
   targetWidthMm: number;
-  marginMm: number;
+  pageMargins: PageMarginsMm;
   rowCount: number;
   colCount: number;
   templateIndex: number;
@@ -29,7 +31,7 @@ const DEFAULT_STATE: LayoutRibbonModelState = {
   paperPresetIndex: 1,
   orientation: 0,
   targetWidthMm: 400,
-  marginMm: 10,
+  pageMargins: { ...DEFAULT_PAGE_MARGINS },
   rowCount: 5,
   colCount: 4,
   templateIndex: 0,
@@ -76,6 +78,6 @@ subscribeLayoutViewState((view) => {
     paperPresetIndex: view.paperPresetIndex,
     orientation: view.orientation,
     targetWidthMm: view.targetWidthMm,
-    marginMm: view.marginMm,
+    pageMargins: view.pageMargins,
   });
 });
