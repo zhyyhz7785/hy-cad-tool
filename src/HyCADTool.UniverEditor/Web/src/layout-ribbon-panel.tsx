@@ -19,7 +19,7 @@ import { LayoutMarginPopover } from './layout-margin-popover';
 import { LayoutCanvasGapPopover } from './layout-canvas-gap-popover';
 import type { PageMarginsMm } from './page-margins';
 import { marginsToDomainUniformMm } from './page-margins';
-import { setCanvasSheetGapMm } from './layout-view-state';
+import { setCanvasSheetGapMm, setShowGridSize } from './layout-view-state';
 
 const RIBBON_GROUP_CLASS = `
   univer-grid univer-shrink-0 univer-grid-flow-col univer-gap-1.5 univer-px-1.5
@@ -171,6 +171,21 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
         >
           行列头
         </Checkbox>
+        <Button
+          variant="text"
+          size="small"
+          className={clsx(
+            TOOLBAR_BUTTON_CLASS,
+            model.showGridSize && model.showHeaders
+              ? '!univer-bg-gray-200 dark:!univer-bg-gray-600'
+              : '',
+          )}
+          title="在行列头中显示每格的宽/高（mm），替代 A/B/C·1/2/3"
+          disabled={!model.showHeaders}
+          onClick={() => setShowGridSize(!model.showGridSize)}
+        >
+          尺寸
+        </Button>
         <Checkbox
           checked={model.showPaperBoundary}
           onChange={(checked) => {

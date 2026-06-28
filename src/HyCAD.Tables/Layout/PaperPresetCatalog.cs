@@ -7,7 +7,7 @@ namespace HyCAD.Tables.Layout;
 /// </summary>
 public static class PaperPresetCatalog
 {
-    public const double DefaultMarginMm = 10.0;
+    public const double DefaultMarginMm = 30.0;
 
     /// <summary>Custom 未指定宽时的占位默认（mm）。</summary>
     public const double CustomFallbackWidthMm = 400.0;

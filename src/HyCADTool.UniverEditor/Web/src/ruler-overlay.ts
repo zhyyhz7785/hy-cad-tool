@@ -13,7 +13,6 @@ import { subscribePagePreviewScale } from './page-preview-scale';
 
 import { resolvePageBoxLayout, resolveViewportRulerBand, resolvePixelsPerMm } from './page-box-layout';
 import { getPagePreviewScalePxPerMm } from './page-preview-scale';
-import { parseMarginDataset } from './page-margins';
 
 import { installViewportProbe, type UniverViewportMetrics } from './univer-viewport';
 
@@ -24,10 +23,6 @@ const RULER_THICKNESS = 24;
 const MINOR_MM = 4;
 
 const FONT = '8px Segoe UI, system-ui, sans-serif';
-
-/** 与 sheet-headers.ts 默认一致；× zoom 得到行/列头像素，用于把标尺 0 点推到 A1。 */
-const DEFAULT_ROW_HEADER_W = 46;
-const DEFAULT_COL_HEADER_H = 20;
 
 const COLORS = {
 
@@ -576,27 +571,12 @@ function drawVerticalRuler(
 
 
 /** 读取 page-viewport 写入图纸内白边像素（四边 mm × ppm）。 */
-function resolveSheetPaddingPx(): {
-  padLeft: number;
-  padTop: number;
-  padRight: number;
-  padBottom: number;
-} {
-  const content = document.querySelector('#app [data-range-selector]');
-  const sheetBox = content?.parentElement;
-  if (sheetBox instanceof HTMLElement)
-    return parseMarginDataset(sheetBox.dataset.hycadMarginPx);
-  return { padLeft: 0, padTop: 0, padRight: 0, padBottom: 0 };
-}
-
 /**
  * 标尺条固定锚定在画布工作区（gridHost）上/左，位置与宽度不随缩放变化；
- * 仅测量原点（0 = 图纸 A1，扣除行/列头）与刻度间距随缩放变化。
- * 竖标尺左移出窗口时做 clamp，避免数字被裁。
+ * 测量原点 (0,0) = 图纸外框左上角；刻度间距随缩放变化。
  */
 function layoutRulersOnPaper(
   pageBox: NonNullable<ReturnType<typeof resolvePageBoxLayout>>,
-  showHeaders: boolean,
 ): {
   cornerLeft: number;
   cornerTop: number;
@@ -614,23 +594,16 @@ function layoutRulersOnPaper(
   vTickClipStart: number;
   vTickClipEnd: number;
 } {
-  const { rect: paperRect, pageWidthPx, pageHeightPx, widthMm } = pageBox;
+  const { rect: paperRect, pageWidthPx, widthMm, heightMm } = pageBox;
   const ppm = getPagePreviewScalePxPerMm() > 0
     ? getPagePreviewScalePxPerMm()
     : (widthMm > 0 && pageWidthPx > 0 ? pageWidthPx / widthMm : DISPLAY_PX_PER_MM);
 
-  const zoom = ppm / DISPLAY_PX_PER_MM;
-  const rowW = showHeaders ? DEFAULT_ROW_HEADER_W * zoom : 0;
-  const colH = showHeaders ? DEFAULT_COL_HEADER_H * zoom : 0;
-
-  // 图纸内白边（边距）：网格相对纸边内缩 padX/padY（与 page-viewport 写入值一致）
-  const { padLeft, padTop, padRight, padBottom } = resolveSheetPaddingPx();
-
-  // A1（图纸内，扣除内白边与行/列头）在视口中的坐标
-  const a1Left = paperRect.left + padLeft + rowW;
-  const a1Top = paperRect.top + padTop + colH;
-  const paperRight = paperRect.right - padRight;
-  const paperBottom = paperRect.bottom - padBottom;
+  // 图纸外框左上角（sheetBox 视口坐标）
+  const paperLeft = paperRect.left;
+  const paperTop = paperRect.top;
+  const paperRight = paperRect.right;
+  const paperBottom = paperRect.bottom;
 
   // 标尺条锚在画布工作区，固定不随缩放移动
   const band = resolveViewportRulerBand();
@@ -655,14 +628,14 @@ function layoutRulersOnPaper(
     hWidth,
     vTop,
     vHeight,
-    hOrigin: a1Left - hLeft,
-    vOrigin: a1Top - vTop,
+    hOrigin: paperLeft - hLeft,
+    vOrigin: paperTop - vTop,
     ppm,
-    boundaryWidthMm: Math.max(0, (paperRight - a1Left) / ppm),
-    boundaryHeightMm: Math.max(0, (paperBottom - a1Top) / ppm),
-    hTickClipStart: Math.max(0, a1Left - hLeft),
+    boundaryWidthMm: widthMm,
+    boundaryHeightMm: heightMm,
+    hTickClipStart: Math.max(0, paperLeft - hLeft),
     hTickClipEnd: Math.min(hWidth, paperRight - hLeft),
-    vTickClipStart: Math.max(0, a1Top - vTop),
+    vTickClipStart: Math.max(0, paperTop - vTop),
     vTickClipEnd: Math.min(vHeight, paperBottom - vTop),
   };
 }
@@ -751,7 +724,7 @@ function positionAndDraw(
 
   if (pageBox) {
 
-    const layout = layoutRulersOnPaper(pageBox, showHeaders);
+    const layout = layoutRulersOnPaper(pageBox);
 
     cornerLeft = layout.cornerLeft;
 
@@ -857,7 +830,7 @@ function positionAndDraw(
 
   corner.style.height = `${RULER_THICKNESS}px`;
 
-  corner.style.zIndex = '10000';
+  corner.style.zIndex = '900';
 
 
 
@@ -873,7 +846,7 @@ function positionAndDraw(
 
   hCanvas.style.height = `${RULER_THICKNESS}px`;
 
-  hCanvas.style.zIndex = '10000';
+  hCanvas.style.zIndex = '900';
 
 
 
@@ -889,7 +862,7 @@ function positionAndDraw(
 
   vCanvas.style.height = `${vHeight}px`;
 
-  vCanvas.style.zIndex = '10000';
+  vCanvas.style.zIndex = '900';
 
 
 

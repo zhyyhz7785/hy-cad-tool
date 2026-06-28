@@ -35,6 +35,8 @@ export interface LayoutViewState {
   showRulers: boolean;
   showHeaders: boolean;
   showPaperBoundary: boolean;
+  /** 尺寸开关：行列头开启时，把行列头文字显示为每格宽/高（mm） */
+  showGridSize: boolean;
   paperPresetIndex: number;
   orientation: number;
   targetWidthMm: number;
@@ -47,6 +49,7 @@ const DEFAULT_STATE: LayoutViewState = {
   showRulers: true,
   showHeaders: true,
   showPaperBoundary: true,
+  showGridSize: false,
   paperPresetIndex: 1,
   orientation: 0,
   targetWidthMm: 400,
@@ -98,6 +101,13 @@ export function setShowPaperBoundary(on: boolean): void {
   if (state.showPaperBoundary === on)
     return;
   state = { ...state, showPaperBoundary: on };
+  emit();
+}
+
+export function setShowGridSize(on: boolean): void {
+  if (state.showGridSize === on)
+    return;
+  state = { ...state, showGridSize: on };
   emit();
 }
 

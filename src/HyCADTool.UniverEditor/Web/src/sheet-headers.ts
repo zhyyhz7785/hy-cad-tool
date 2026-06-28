@@ -3,9 +3,15 @@ import {
   SetColumnHeaderHeightCommand,
   SetRowHeaderWidthCommand,
 } from '@univerjs/sheets-ui';
+import { subscribeLayoutTabActive } from './layout-tab-inject';
+import { getLayoutViewState, subscribeLayoutViewState } from './layout-view-state';
 
-const DEFAULT_ROW_HEADER_W = 46;
-const DEFAULT_COL_HEADER_H = 20;
+/** 原生行头宽 / 列头高（屏幕像素，不随缩放变化） */
+export const GRID_ROW_HEADER_W = 46;
+export const GRID_COL_HEADER_H = 20;
+
+const DEFAULT_ROW_HEADER_W = GRID_ROW_HEADER_W;
+const DEFAULT_COL_HEADER_H = GRID_COL_HEADER_H;
 
 let lastRowW = DEFAULT_ROW_HEADER_W;
 let lastColH = DEFAULT_COL_HEADER_H;
@@ -62,9 +68,16 @@ export async function setHeadersVisible(
 
 export function installHeadersToggle(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
-  subscribe: (listener: (show: boolean) => void) => () => void,
 ): () => void {
-  return subscribe((show) => {
-    void setHeadersVisible(univerAPI, show);
-  });
+  const apply = (): void => {
+    void setHeadersVisible(univerAPI, getLayoutViewState().showHeaders);
+  };
+
+  const unsubView = subscribeLayoutViewState(apply);
+  const unsubTab = subscribeLayoutTabActive(apply);
+
+  return () => {
+    unsubView();
+    unsubTab();
+  };
 }

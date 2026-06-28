@@ -11,6 +11,7 @@ export interface LayoutRibbonModelState {
   showRulers: boolean;
   showHeaders: boolean;
   showPaperBoundary: boolean;
+  showGridSize: boolean;
   structureMode: boolean;
   paperPresetIndex: number;
   orientation: number;
@@ -29,6 +30,7 @@ const DEFAULT_STATE: LayoutRibbonModelState = {
   showRulers: true,
   showHeaders: true,
   showPaperBoundary: true,
+  showGridSize: false,
   structureMode: true,
   paperPresetIndex: 1,
   orientation: 0,
@@ -78,6 +80,7 @@ subscribeLayoutViewState((view) => {
     showRulers: view.showRulers,
     showHeaders: view.showHeaders,
     showPaperBoundary: view.showPaperBoundary,
+    showGridSize: view.showGridSize,
     paperPresetIndex: view.paperPresetIndex,
     orientation: view.orientation,
     targetWidthMm: view.targetWidthMm,

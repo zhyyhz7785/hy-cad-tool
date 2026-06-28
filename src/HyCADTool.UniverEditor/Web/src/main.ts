@@ -104,10 +104,10 @@ import {
 import { installFormulaBarLayout } from './formula-bar-layout';
 import { installSheetBarGuard } from './sheet-bar-guard';
 import { installRulerOverlay } from './ruler-overlay';
+import { installGridRulerOverlay } from './grid-ruler-overlay';
 import { registerPaperBoundaryExtension } from './paper-extension';
 import { installPageViewport } from './page-viewport';
 import { installHeadersToggle } from './sheet-headers';
-import { subscribeLayoutViewState } from './layout-view-state';
 
 import './global.css';
 
@@ -374,11 +374,10 @@ function bootstrap(): void {
   installSheetBarGuard();
 
   installRulerOverlay(univerAPI);
+  installGridRulerOverlay(univerAPI);
   registerPaperBoundaryExtension(univerAPI);
   installPageViewport(univerAPI);
-  installHeadersToggle(univerAPI, (listener) => {
-    return subscribeLayoutViewState((s) => listener(s.showHeaders));
-  });
+  installHeadersToggle(univerAPI);
 
   postHostMessage({ type: 'ready' });
 

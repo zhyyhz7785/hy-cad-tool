@@ -24,7 +24,7 @@ body,
 #hycad-editor-root.hycad-rulers-on #hycad-ruler-corner,
 #hycad-editor-root.hycad-rulers-on #hycad-hruler,
 #hycad-editor-root.hycad-rulers-on #hycad-vruler {
-  z-index: 20000;
+  z-index: 900;
 }
 
 #hycad-vruler {
@@ -49,6 +49,16 @@ body,
 
 .dark #hycad-ruler-corner {
   background: #161b22;
+}
+
+/* 网格标尺（关闭行列头时显示，标注各网格非默认宽高，颜色与图纸标尺区分） */
+#hycad-grid-ruler-corner,
+#hycad-grid-hruler,
+#hycad-grid-vruler {
+  display: none;
+  position: fixed;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 /* 行列头关闭时隐藏左上角占位（Univer LEFT_TOP） */

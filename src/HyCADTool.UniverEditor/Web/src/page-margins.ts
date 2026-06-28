@@ -9,11 +9,11 @@ export interface PageMarginsMm {
 }
 
 export const DEFAULT_PAGE_MARGINS: PageMarginsMm = {
-  outlineMm: 10,
-  top: 10,
-  bottom: 10,
-  left: 10,
-  right: 10,
+  outlineMm: 30,
+  top: 30,
+  bottom: 30,
+  left: 30,
+  right: 30,
 };
 
 export function normalizeMarginMm(value: number, fallback = 0): number {
