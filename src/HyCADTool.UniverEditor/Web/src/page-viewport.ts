@@ -35,6 +35,7 @@ import {
   type PageMarginsMm,
 } from './page-margins';
 import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
+import { GRID_COL_HEADER_H, GRID_ROW_HEADER_W } from './sheet-headers';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
 export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
@@ -201,6 +202,7 @@ function applySheetBoxSizing(
   sheetHeightMm: number,
   ppm: number,
   pageMargins: PageMarginsMm,
+  showHeaders: boolean,
 ): boolean {
   const canvas = resolveCanvasContentSize(nodes);
   const gapPx = Math.round(resolveCanvasSheetGapMm() * ppm);
@@ -219,12 +221,15 @@ function applySheetBoxSizing(
   const maxPadTop = Math.max(0, Math.floor(boxH / 2) - 1);
   const maxPadBottom = Math.max(0, Math.floor(boxH / 2) - 1);
 
-  // 网格 = 图纸位置 + 尺寸 − 边距，先把网格定死（与图2 关闭行列头时一致），
-  // 再让原生行列头落进左/上边距区（不挤占网格、不偏移 A1）。故 padding 只取边距，
-  // 不为行列头做任何扣减——开关行列头时网格纹丝不动。
-  const padLeft = Math.min(pad.padLeft, maxPadLeft);
+  // 网格 = 图纸位置 + 尺寸 − 边距；原生行列头随 zoom 占屏幕像素，开启时从上/左 padding 扣减，
+  // 使 A1 钉在边距处，行列头落进网格外侧的内边距区。
+  const zoom = ppm / DISPLAY_PX_PER_MM;
+  const rowHeaderPx = showHeaders ? GRID_ROW_HEADER_W * zoom : 0;
+  const colHeaderPx = showHeaders ? GRID_COL_HEADER_H * zoom : 0;
+
+  const padLeft = Math.min(Math.max(0, Math.round(pad.padLeft - rowHeaderPx)), maxPadLeft);
+  const padTop = Math.min(Math.max(0, Math.round(pad.padTop - colHeaderPx)), maxPadTop);
   const padRight = Math.min(pad.padRight, maxPadRight);
-  const padTop = Math.min(pad.padTop, maxPadTop);
   const padBottom = Math.min(pad.padBottom, maxPadBottom);
 
   nodes.gridHost.classList.add(PAGE_HOST_CLASS);
@@ -295,7 +300,14 @@ function applyPageViewport(
   if (Math.abs(clampedPpm - getPagePreviewScalePxPerMm()) > 0.0001)
     setPagePreviewScalePxPerMm(clampedPpm);
 
-  if (!applySheetBoxSizing(nodes, sheet.widthMm, sheet.heightMm, clampedPpm, state.pageMargins))
+  if (!applySheetBoxSizing(
+    nodes,
+    sheet.widthMm,
+    sheet.heightMm,
+    clampedPpm,
+    state.pageMargins,
+    state.showHeaders,
+  ))
     return;
 
   applyZoom(univerAPI, clampedPpm / DISPLAY_PX_PER_MM);
