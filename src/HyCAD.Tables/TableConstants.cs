@@ -6,8 +6,8 @@ namespace HyCAD.Tables;
 public static class TableConstants
 {
     /// <summary>默认行高（mm）。</summary>
-    public const double DefaultRowHeight = 10.0;
+    public const double DefaultRowHeight = TableMmDefaults.FallbackRowHeightMm;
 
     /// <summary>默认列宽（mm）。</summary>
-    public const double DefaultColWidth = 25.0;
+    public const double DefaultColWidth = TableMmDefaults.FallbackColWidthMm;
 }

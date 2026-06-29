@@ -53,11 +53,11 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         private const double BorderPresetWidthMm = 0.35;
 
-        /// <summary>推导行列数的种子行高（mm）。</summary>
-        public const double SeedRowHeightMm = 5.0;
+        /// <summary>推导行列数的种子行高（mm）：列数=可用宽/23.3，行数=可用高/6.4。</summary>
+        public const double SeedRowHeightMm = 6.4;
 
-        /// <summary>推导行列数的种子列宽（mm）。</summary>
-        public const double SeedColWidthMm = 25.0;
+        /// <summary>推导行列数的种子列宽（mm）：列数=可用宽/23.3，行数=可用高/6.4。</summary>
+        public const double SeedColWidthMm = 23.3;
 
         private const int MaxPaperDimension = 256;
 

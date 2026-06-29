@@ -10,6 +10,9 @@
     <OutputPath>..\HyCADTool\bin\$(Configuration)\net8\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <WebProjectDir>$(MSBuildProjectDirectory)\Web</WebProjectDir>
+    <WebDistDir>$(WebProjectDir)\dist</WebDistDir>
+    <WebDistIndex>$(WebDistDir)\index.html</WebDistIndex>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -30,12 +33,35 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <!-- dist 由 BuildWebAssets 目标生成后再纳入 Content -->
   <ItemGroup>
-    <Content Include="Web\dist\**\*.*">
+    <Content Include="Web\dist\**\*.*" Condition="Exists('$(WebDistIndex)')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>Web\dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
+
+  <Target Name="BuildWebAssets"
+          BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems"
+          Inputs="@(WebSourceFiles)"
+          Outputs="$(WebDistIndex)">
+    <ItemGroup>
+      <WebSourceFiles Include="$(WebProjectDir)\src\**\*.*" />
+      <WebSourceFiles Include="$(WebProjectDir)\index.html" />
+      <WebSourceFiles Include="$(WebProjectDir)\vite.config.ts" />
+      <WebSourceFiles Include="$(WebProjectDir)\package.json" />
+      <WebSourceFiles Include="$(WebProjectDir)\package-lock.json" Condition="Exists('$(WebProjectDir)\package-lock.json')" />
+      <WebSourceFiles Include="$(WebProjectDir)\tsconfig.json" Condition="Exists('$(WebProjectDir)\tsconfig.json')" />
+    </ItemGroup>
+    <Message Importance="high" Text="[HyCADTool.UniverEditor] npm run build → $(WebDistDir)" />
+    <Exec WorkingDirectory="$(WebProjectDir)" Command="npm run build" />
+    <ItemGroup>
+      <Content Include="Web\dist\**\*.*">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Link>Web\dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      </Content>
+    </ItemGroup>
+  </Target>
 
   <Target Name="CopyWebView2NativeLoader" AfterTargets="Build">
     <Copy SourceFiles="$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll"

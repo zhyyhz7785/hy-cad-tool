@@ -20,8 +20,8 @@ public sealed class HtmlTableExportOptions
     /// <summary>尺寸单位使用 mm（true）或 px（false，按 <see cref="MmToPxRatio"/> 换算）。</summary>
     public bool UseMillimeters { get; init; } = true;
 
-    /// <summary>mm → px 换算比（96dpi 下约 3.7795）。</summary>
-    public double MmToPxRatio { get; init; } = 96.0 / 25.4;
+    /// <summary>mm → px 换算比（与 <see cref="TableMmDefaults.DisplayPxPerMm"/> 同源）。</summary>
+    public double MmToPxRatio { get; init; } = TableMmDefaults.DisplayPxPerMm;
 
     /// <summary>默认单元格边框线宽（mm），当格样式与拓扑默认边框均为 0 时使用。</summary>
     public double DefaultBorderWidthMm { get; init; } = 0.15;

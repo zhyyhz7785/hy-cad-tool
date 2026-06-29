@@ -123,18 +123,18 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="48" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Margin="0,0,4,0" VerticalAlignment="Center" Text="行高" />
+                <TextBlock Grid.Column="0" Margin="0,0,4,0" VerticalAlignment="Center" Text="行高(mm)" />
                 <TextBox Grid.Column="1" Margin="0,0,8,0" Style="{StaticResource BlenderTextBox}"
                          helper:TextBoxHelper.EnableCustomHandlers="True"
                          IsEnabled="{Binding HasSelection}"
                          Text="{Binding SelectedRowHeightMm, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Grid.Column="2" Margin="0,0,4,0" VerticalAlignment="Center" Text="列宽" />
+                <TextBlock Grid.Column="2" Margin="0,0,4,0" VerticalAlignment="Center" Text="列宽(mm)" />
                 <TextBox Grid.Column="3" Style="{StaticResource BlenderTextBox}"
                          helper:TextBoxHelper.EnableCustomHandlers="True"
                          IsEnabled="{Binding HasSelection}"
                          Text="{Binding SelectedColWidthMm, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
-            <TextBlock Style="{StaticResource GroupCaption}" Text="单元格大小 mm" />
+            <TextBlock Style="{StaticResource GroupCaption}" Text="单元格大小 (mm)" />
         </StackPanel>
     </StackPanel>
 </UserControl>

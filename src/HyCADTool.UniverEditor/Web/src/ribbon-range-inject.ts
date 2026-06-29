@@ -1,27 +1,9 @@
 import { createHyCadDropdownRoot, installHyCadDropdownDismiss } from './hycad-dropdown';
 import { postHyCadAction } from './dev-host';
+import { findRibbonToolbar } from './ribbon-toolbar-locate';
 
 const ROOT_ID = 'ribbon-range-root';
 const INJECTED_FLAG = 'data-hycad-range-injected';
-
-function findRibbonToolbar(): HTMLElement | null {
-  const header = document.querySelector('[data-u-comp="ribbon-header-menu"]');
-  let node: Element | null = header;
-  for (let depth = 0; depth < 8 && node; depth++) {
-    const toolbar = node.querySelector?.('[role="toolbar"]');
-    if (toolbar instanceof HTMLElement)
-      return toolbar;
-    node = node.parentElement;
-  }
-
-  const toolbars = document.querySelectorAll('[role="toolbar"]');
-  for (const toolbar of toolbars) {
-    if (toolbar instanceof HTMLElement && toolbar.querySelector('[class*="ribbon"], [data-u-comp]'))
-      return toolbar;
-  }
-
-  return toolbars.item(0) instanceof HTMLElement ? toolbars.item(0) as HTMLElement : null;
-}
 
 function injectRangeDropdown(): boolean {
   const toolbar = findRibbonToolbar();

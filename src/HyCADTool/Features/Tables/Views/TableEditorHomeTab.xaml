@@ -183,7 +183,7 @@
         <!-- 字体组 -->
         <StackPanel Margin="0,0,12,0">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Margin="0,0,4,0" VerticalAlignment="Center" Text="字高" />
+                <TextBlock Margin="0,0,4,0" VerticalAlignment="Center" Text="字高(mm)" />
                 <TextBox Width="44"
                          Margin="0,0,8,0"
                          Style="{StaticResource BlenderTextBox}"

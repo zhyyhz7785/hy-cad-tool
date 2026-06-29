@@ -49,7 +49,7 @@
             <TextBlock Grid.Column="4"
                        Margin="0,0,4,0"
                        VerticalAlignment="Center"
-                       Text="行高" />
+                       Text="行高(mm)" />
             <TextBox Grid.Column="5"
                      Margin="0,0,8,0"
                      Style="{StaticResource BlenderTextBox}"
@@ -58,7 +58,7 @@
             <TextBlock Grid.Column="6"
                        Margin="0,0,4,0"
                        VerticalAlignment="Center"
-                       Text="列宽" />
+                       Text="列宽(mm)" />
             <TextBox Grid.Column="7"
                      Style="{StaticResource BlenderTextBox}"
                      helper:TextBoxHelper.EnableCustomHandlers="True"

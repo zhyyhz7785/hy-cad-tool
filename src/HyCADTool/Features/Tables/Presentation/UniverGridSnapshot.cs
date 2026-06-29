@@ -85,14 +85,14 @@ namespace HyCADTool.Features.Tables.Presentation
 
     public static class UniverGridSnapshotMapper
     {
-        /// <summary>与 Web <c>mm-display.ts</c> 的 DISPLAY_PX_PER_MM 一致（96/25.4）。</summary>
-        public const double DisplayPxPerMm = 96.0 / 25.4;
+        /// <summary>与 Web <c>mm-display.ts</c> 的 DISPLAY_PX_PER_MM 一致。</summary>
+        public const double DisplayPxPerMm = TableMmDefaults.DisplayPxPerMm;
 
         public const double MaxDisplayPx = 800;
 
-        public const double DefaultRowHeightMm = 10.0;
+        public const double DefaultRowHeightMm = TableMmDefaults.FallbackRowHeightMm;
 
-        public const double DefaultColWidthMm = 25.0;
+        public const double DefaultColWidthMm = TableMmDefaults.FallbackColWidthMm;
 
         public static UniverGridSnapshot FromTableGrid(TableGrid grid)
         {

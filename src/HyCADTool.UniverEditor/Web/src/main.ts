@@ -107,7 +107,10 @@ import { installRulerOverlay } from './ruler-overlay';
 import { installGridRulerOverlay } from './grid-ruler-overlay';
 import { registerPaperBoundaryExtension } from './paper-extension';
 import { installPageViewport } from './page-viewport';
+import { installLayoutGridFit } from './layout-grid-fit';
 import { installHeadersToggle } from './sheet-headers';
+import { installFontSizeMmControl, updateFontSizeMmFromSelection } from './font-size-mm-inject';
+import { installNativeRowColMmGuard } from './native-units-guard';
 
 import './global.css';
 
@@ -343,6 +346,7 @@ function bootstrap(): void {
       postHostMessage({ type: 'selectionChanged', startRow, startCol, endRow, endCol });
 
       updateLayoutTabSelection(startRow, startCol, endRow, endCol);
+      updateFontSizeMmFromSelection(univerAPI);
 
     });
 
@@ -377,7 +381,10 @@ function bootstrap(): void {
   installGridRulerOverlay(univerAPI);
   registerPaperBoundaryExtension(univerAPI);
   installPageViewport(univerAPI);
+  installLayoutGridFit(univerAPI);
   installHeadersToggle(univerAPI);
+  installFontSizeMmControl(univerAPI);
+  installNativeRowColMmGuard();
 
   postHostMessage({ type: 'ready' });
 

@@ -19,6 +19,7 @@ namespace HyCADTool.UniverEditor.Views.Controls
 
         public static readonly DependencyProperty PixelsPerMmProperty =
             DependencyProperty.Register(nameof(PixelsPerMm), typeof(double), typeof(RulerControl),
+                // 同源 HyCAD.Tables.TableMmDefaults.DisplayPxPerMm（96/25.4）
                 new FrameworkPropertyMetadata(96.0 / 25.4, FrameworkPropertyMetadataOptions.AffectsRender));
 
         public static readonly DependencyProperty OriginOffsetPxProperty =

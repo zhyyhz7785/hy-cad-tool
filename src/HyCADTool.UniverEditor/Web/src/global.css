@@ -720,3 +720,25 @@ header [role='toolbar'] {
     color: #94a3b8;
   }
 }
+
+/* mm 单位模式：隐藏 Univer 原生 pt/px 尺寸控件 */
+.hycad-hidden-native-pt-control,
+.hycad-hidden-native-px-control {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.hycad-font-size-mm-host {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.hycad-font-size-select {
+  min-width: 3.5rem;
+}
+
+.hycad-font-size-mm {
+  height: 100%;
+}
+
