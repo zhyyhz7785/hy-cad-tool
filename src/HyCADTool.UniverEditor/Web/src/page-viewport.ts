@@ -28,7 +28,7 @@ import { resolveSheetSizeMm } from './paper-sheet';
 
 import { subscribeSnapshotDims } from './univer-bridge';
 
-import { findScrollElement, installViewportProbe } from './univer-viewport';
+import { findScrollElement, installViewportProbe, readZoom } from './univer-viewport';
 import {
   formatMarginDataset,
   marginsToPaddingPx,
@@ -36,6 +36,7 @@ import {
 } from './page-margins';
 import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
 import { GRID_COL_HEADER_H, GRID_ROW_HEADER_W } from './sheet-headers';
+import { resetLayoutSheetScrollbars, setLayoutSheetScrollbarsVisible } from './layout-sheet-scrollbars';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
 export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
@@ -53,6 +54,10 @@ const MAX_PREVIEW_SCALE = 5.0;
 
 let lastZoom = 0;
 let wheelInstalled = false;
+/** 是否处于布局页视图（纸张边界 + 布局 Tab）。 */
+let pageModeActive = false;
+/** 进入布局页面前 Univer 原生缩放，离开时还原。 */
+let zoomBeforeLayout = 1;
 
 interface PageNodes {
   gridHost: HTMLElement;
@@ -170,15 +175,20 @@ function applyZoom(univerAPI: ReturnType<typeof FUniver.newAPI>, zoom: number): 
 function clearPageViewport(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
   nodes: PageNodes,
-  restoreZoom = true,
+  restoreZoom = false,
 ): void {
-  nodes.gridHost.classList.remove(PAGE_HOST_CLASS);
   clearPageStyles(nodes);
+  nodes.gridHost.classList.remove(PAGE_HOST_CLASS);
 
   if (restoreZoom) {
     lastZoom = 0;
-    applyZoom(univerAPI, 1);
+    applyZoom(univerAPI, zoomBeforeLayout > 0 ? zoomBeforeLayout : 1);
+    resetLayoutSheetScrollbars(univerAPI);
   }
+}
+
+function isLayoutPageViewActive(): boolean {
+  return isLayoutTabActive() && getLayoutViewState().showPaperBoundary;
 }
 
 function computeFitPxPerMm(nodes: PageNodes, sheetWidthMm: number, sheetHeightMm: number): number {
@@ -272,17 +282,24 @@ function applyPageViewport(
   if (!nodes)
     return;
 
-  if (!isLayoutTabActive()) {
-    clearPageViewport(univerAPI, nodes);
+  const layoutActive = isLayoutPageViewActive();
+
+  if (!layoutActive) {
+    if (pageModeActive) {
+      clearPageViewport(univerAPI, nodes, true);
+      pageModeActive = false;
+    } else if (nodes.gridHost.classList.contains(PAGE_HOST_CLASS)) {
+      clearPageViewport(univerAPI, nodes, false);
+    }
     return;
+  }
+
+  if (!pageModeActive) {
+    zoomBeforeLayout = readZoom(univerAPI);
+    pageModeActive = true;
   }
 
   const state = getLayoutViewState();
-  if (!state.showPaperBoundary) {
-    clearPageViewport(univerAPI, nodes);
-    return;
-  }
-
   const sheet = resolveSheetSizeMm(state.paperPresetIndex, state.orientation);
   if (sheet.widthMm <= 0 || sheet.heightMm <= 0)
     return;
@@ -312,6 +329,7 @@ function applyPageViewport(
 
   applyZoom(univerAPI, clampedPpm / DISPLAY_PX_PER_MM);
   resetSheetScroll();
+  setLayoutSheetScrollbarsVisible(univerAPI, false);
 }
 
 function installPageWheelZoom(univerAPI: ReturnType<typeof FUniver.newAPI>): () => void {
@@ -349,16 +367,28 @@ export function installPageViewport(
 ): () => void {
   const schedule = (resetScale = false): void => applyPageViewport(univerAPI, resetScale);
 
-  const unsubLayout = subscribeLayoutViewState(() => schedule(true));
-  const unsubRibbon = subscribeLayoutRibbonModel(() => schedule(true));
-  const unsubSnapshot = subscribeSnapshotDims(() => schedule(false));
+  const unsubLayout = subscribeLayoutViewState(() => {
+    if (isLayoutPageViewActive() || pageModeActive)
+      schedule(true);
+  });
+  const unsubRibbon = subscribeLayoutRibbonModel(() => {
+    if (isLayoutPageViewActive())
+      schedule(true);
+  });
+  const unsubSnapshot = subscribeSnapshotDims(() => {
+    if (isLayoutPageViewActive())
+      schedule(false);
+  });
   const unsubTab = subscribeLayoutTabActive(() => schedule(true));
-  const unsubScale = subscribePagePreviewScale(() => schedule(false));
-  const unsubProbe = installViewportProbe(univerAPI, () => schedule(false));
+  const unsubScale = subscribePagePreviewScale(() => {
+    if (isLayoutPageViewActive())
+      schedule(false);
+  });
+  const unsubProbe = installViewportProbe(univerAPI, () => {
+    if (isLayoutPageViewActive())
+      schedule(false);
+  });
   const unsubWheel = installPageWheelZoom(univerAPI);
-
-  window.setTimeout(() => schedule(true), 500);
-  window.setTimeout(() => schedule(true), 1500);
 
   return () => {
     unsubLayout();
@@ -372,5 +402,6 @@ export function installPageViewport(
     const nodes = resolveNodes();
     if (nodes)
       clearPageViewport(univerAPI, nodes, false);
+    pageModeActive = false;
   };
 }

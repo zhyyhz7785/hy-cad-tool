@@ -9,17 +9,17 @@ import { getLayoutViewState, subscribeLayoutViewState } from './layout-view-stat
 import { isLayoutTabActive, subscribeLayoutTabActive } from './layout-tab-inject';
 import { resolveSheetSizeMm } from './paper-sheet';
 import { getLastSnapshotDims, subscribeSnapshotDims } from './univer-bridge';
+import { resetLayoutSheetScrollbars, setLayoutSheetScrollbarsVisible } from './layout-sheet-scrollbars';
 
 /**
  * 布局窗口「网格铺满纸面、无滚动条」。
  *
- * 行列数与格距一一对应：列数 = 可用宽 / 23.3 取整，行数 = 可用高 / 6.4 取整（见
- * mm-display.SEED_*），均分后合计 = 纸面可用区像素，网格与纸面等大 → 自然无滚动条
- * （不是锁定滚动条，而是裁掉超出纸面的多余行列）。仅在布局 Tab 激活 + 显示纸张边界时生效，
- * 其它 Tab 行为不变。
+ * 仅在布局 Tab + 显示纸张边界时临时裁剪/均分网格；切回「开始」等其它 Tab 时
+ * 恢复进入布局前的行列规模，与 Univer 默认行为一致（可有滚动条）。
  */
 
 type FitSheet = {
+  getSheet?: () => { getConfig?: () => { defaultRowHeight?: number; defaultColumnWidth?: number } };
   getMaxColumns?: () => number;
   getMaxRows?: () => number;
   setColumnCount?: (count: number) => unknown;
@@ -28,11 +28,25 @@ type FitSheet = {
   setColumnWidth?: (column: number, width: number) => unknown;
   setRowHeightsForced?: (startRow: number, numRows: number, height: number) => unknown;
   setRowHeight?: (row: number, height: number) => unknown;
+  refreshCanvas?: () => void;
 };
 
-let lastSig = '';
+interface SavedSheetBaseline {
+  rowCount: number;
+  colCount: number;
+  defaultRowHeight: number;
+  defaultColumnWidth: number;
+}
 
-/** 纸面可用区（mm）= 整纸 − 上下左右边距，与 page-viewport 的纸张框口径一致。 */
+let lastSig = '';
+let savedBaseline: SavedSheetBaseline | null = null;
+/** 本次布局会话是否改过 dev 模式下的格距（需完整恢复默认格距）。 */
+let devSizesApplied = false;
+
+function shouldApplyLayoutFit(): boolean {
+  return isLayoutTabActive() && getLayoutViewState().showPaperBoundary;
+}
+
 function resolveAvailableMm(): { widthMm: number; heightMm: number } {
   const state = getLayoutViewState();
   const sheet = resolveSheetSizeMm(state.paperPresetIndex, state.orientation);
@@ -43,11 +57,69 @@ function resolveAvailableMm(): { widthMm: number; heightMm: number } {
   };
 }
 
+function captureBaseline(sheet: FitSheet): SavedSheetBaseline {
+  const config = sheet.getSheet?.()?.getConfig?.();
+  return {
+    rowCount: sheet.getMaxRows?.() ?? 200,
+    colCount: sheet.getMaxColumns?.() ?? 26,
+    defaultRowHeight: config?.defaultRowHeight ?? 24,
+    defaultColumnWidth: config?.defaultColumnWidth ?? 88,
+  };
+}
+
+function setLayoutScrollLock(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+  lock: boolean,
+): void {
+  setLayoutSheetScrollbarsVisible(univerAPI, !lock);
+}
+
+function restoreBaseline(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
+  if (!savedBaseline)
+    return;
+
+  const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
+  if (!sheet)
+    return;
+
+  const { rowCount, colCount, defaultRowHeight, defaultColumnWidth } = savedBaseline;
+
+  try {
+    if ((sheet.getMaxColumns?.() ?? colCount) !== colCount)
+      sheet.setColumnCount?.(colCount);
+    if ((sheet.getMaxRows?.() ?? rowCount) !== rowCount)
+      sheet.setRowCount?.(rowCount);
+
+    if (devSizesApplied) {
+      if (sheet.setColumnWidths)
+        sheet.setColumnWidths(0, colCount, defaultColumnWidth);
+      else if (sheet.setColumnWidth)
+        for (let c = 0; c < colCount; c++)
+          sheet.setColumnWidth(c, defaultColumnWidth);
+
+      if (sheet.setRowHeightsForced)
+        sheet.setRowHeightsForced(0, rowCount, defaultRowHeight);
+      else if (sheet.setRowHeight)
+        for (let r = 0; r < rowCount; r++)
+          sheet.setRowHeight(r, defaultRowHeight);
+    }
+
+    devSizesApplied = false;
+    lastSig = '';
+    setLayoutScrollLock(univerAPI, false);
+    sheet.refreshCanvas?.();
+  } catch (error) {
+    console.warn('[HyCAD] layout grid restore failed', error);
+  }
+}
+
 function applyGridFit(univerAPI: ReturnType<typeof FUniver.newAPI>, force = false): void {
-  if (!isLayoutTabActive())
+  const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
+  if (!sheet)
     return;
-  if (!getLayoutViewState().showPaperBoundary)
-    return;
+
+  if (!savedBaseline)
+    savedBaseline = captureBaseline(sheet);
 
   const avail = resolveAvailableMm();
   const snapshot = getLastSnapshotDims();
@@ -59,18 +131,14 @@ function applyGridFit(univerAPI: ReturnType<typeof FUniver.newAPI>, force = fals
   if (rowCount < 1 || colCount < 1)
     return;
 
-  // dev（无快照）：均分铺满；prod（有快照）：尺寸已由 applySnapshotDimensions 铺满，
-  // 仅把行列数裁到与快照一致 → 去掉 Math.max(rowCount,64) 的补白空行 → 无滚动条。
   const colWidthPx = hasSnapshot ? 0 : mmToColDisplayPx(avail.widthMm / colCount);
   const rowHeightPx = hasSnapshot ? 0 : mmToRowDisplayPx(avail.heightMm / rowCount);
 
   const sig = `${hasSnapshot ? 'S' : 'D'}:${rowCount}x${colCount}@${colWidthPx}x${rowHeightPx}`;
-  if (!force && sig === lastSig)
+  if (!force && sig === lastSig) {
+    setLayoutScrollLock(univerAPI, true);
     return;
-
-  const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
-  if (!sheet)
-    return;
+  }
 
   try {
     if ((sheet.getMaxColumns?.() ?? colCount) !== colCount)
@@ -79,6 +147,7 @@ function applyGridFit(univerAPI: ReturnType<typeof FUniver.newAPI>, force = fals
       sheet.setRowCount?.(rowCount);
 
     if (!hasSnapshot) {
+      devSizesApplied = true;
       if (sheet.setColumnWidths)
         sheet.setColumnWidths(0, colCount, colWidthPx);
       else if (sheet.setColumnWidth)
@@ -90,36 +159,44 @@ function applyGridFit(univerAPI: ReturnType<typeof FUniver.newAPI>, force = fals
       else if (sheet.setRowHeight)
         for (let r = 0; r < rowCount; r++)
           sheet.setRowHeight(r, rowHeightPx);
+    } else {
+      devSizesApplied = false;
     }
 
     lastSig = sig;
+    setLayoutScrollLock(univerAPI, true);
+    sheet.refreshCanvas?.();
   } catch (error) {
     console.warn('[HyCAD] layout grid fit failed', error);
   }
 }
 
-/** 安装布局网格铺满（幂等）：布局 Tab 激活 / 纸张/边距变化 / 快照加载时重算。 */
+function syncLayoutGrid(univerAPI: ReturnType<typeof FUniver.newAPI>, force = false): void {
+  if (shouldApplyLayoutFit())
+    applyGridFit(univerAPI, force);
+  else
+    restoreBaseline(univerAPI);
+}
+
+/** 安装布局网格铺满（幂等）：仅布局 Tab 临时生效，离开即恢复 Univer 默认网格。 */
 export function installLayoutGridFit(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
 ): () => void {
-  const run = (force = false): void => applyGridFit(univerAPI, force);
+  const run = (force = false): void => syncLayoutGrid(univerAPI, force);
 
-  const unsubTab = subscribeLayoutTabActive(() => {
-    lastSig = '';
-    run(true);
-  });
+  const unsubTab = subscribeLayoutTabActive(() => run(true));
   const unsubView = subscribeLayoutViewState(() => run(false));
   const unsubSnapshot = subscribeSnapshotDims(() => {
+    savedBaseline = null;
     lastSig = '';
     run(true);
   });
-
-  window.setTimeout(() => run(true), 700);
-  window.setTimeout(() => run(true), 1800);
 
   return () => {
     unsubTab();
     unsubView();
     unsubSnapshot();
+    restoreBaseline(univerAPI);
+    resetLayoutSheetScrollbars(univerAPI);
   };
 }
