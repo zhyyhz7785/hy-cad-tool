@@ -36,7 +36,7 @@ import {
 } from './page-margins';
 import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
 import { GRID_COL_HEADER_H, GRID_ROW_HEADER_W } from './sheet-headers';
-import { resetLayoutSheetScrollbars, setLayoutSheetScrollbarsVisible } from './layout-sheet-scrollbars';
+import { resetLayoutSheetScrollbars, setLayoutScrollLock } from './layout-sheet-scrollbars';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
 export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
@@ -329,7 +329,8 @@ function applyPageViewport(
 
   applyZoom(univerAPI, clampedPpm / DISPLAY_PX_PER_MM);
   resetSheetScroll();
-  setLayoutSheetScrollbarsVisible(univerAPI, false);
+  // 与 layout-grid-fit 一致：布局页锁定 scroll=0 并隐藏 canvas 滚动条
+  setLayoutScrollLock(univerAPI, true);
 }
 
 function installPageWheelZoom(univerAPI: ReturnType<typeof FUniver.newAPI>): () => void {

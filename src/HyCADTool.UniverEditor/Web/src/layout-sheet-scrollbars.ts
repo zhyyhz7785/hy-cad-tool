@@ -1,7 +1,9 @@
 import type { FUniver } from '@univerjs/core/facade';
 import { IRenderManagerService, SHEET_VIEWPORT_KEY } from '@univerjs/engine-render';
 
-/** 布局页（纸张边界）隐藏 Univer 原生 canvas 滚动条；切回其它 Tab 恢复。 */
+import { findMainSheetCanvas } from './univer-viewport';
+
+/** 布局页（纸张边界）隐藏 canvas 滚动条并锁定视口 scroll=0。 */
 
 interface ScrollBarLike {
   enableHorizontal?: boolean;
@@ -10,6 +12,8 @@ interface ScrollBarLike {
 
 interface ViewportLike {
   getScrollBar?: () => ScrollBarLike | null;
+  scrollToViewportPos?: (pos: { viewportScrollX?: number; viewportScrollY?: number }) => unknown;
+  scrollToBarPos?: (pos: { x?: number; y?: number }) => unknown;
 }
 
 interface SceneLike {
@@ -26,9 +30,12 @@ const RETRY_MS = 50;
 const MAX_RETRIES = 20;
 
 let scrollbarsHidden = false;
+let scrollLocked = false;
 let savedEnableHorizontal = true;
 let savedEnableVertical = true;
 let retryTimer: number | undefined;
+let clampFrame = 0;
+let wheelInstalled = false;
 
 function getRenderManager(): IRenderManagerService | null {
   try {
@@ -53,20 +60,19 @@ function resolveActiveRender(
   return (render as RenderUnitLike | undefined) ?? null;
 }
 
-function resolveMainScrollBar(
+function resolveMainViewport(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
-): { scrollBar: ScrollBarLike; scene: SceneLike } | null {
+): { viewport: ViewportLike; scene: SceneLike } | null {
   const render = resolveActiveRender(univerAPI);
   const scene = render?.scene;
   if (!scene?.getViewport)
     return null;
 
   const viewport = scene.getViewport(SHEET_VIEWPORT_KEY.VIEW_MAIN);
-  const scrollBar = viewport?.getScrollBar?.();
-  if (!scrollBar)
+  if (!viewport)
     return null;
 
-  return { scrollBar, scene };
+  return { viewport, scene };
 }
 
 function refreshAfterScrollChange(
@@ -78,15 +84,30 @@ function refreshAfterScrollChange(
   sheet?.refreshCanvas?.();
 }
 
+function clampViewportScrollOrigin(univerAPI: ReturnType<typeof FUniver.newAPI>): boolean {
+  const resolved = resolveMainViewport(univerAPI);
+  if (!resolved)
+    return false;
+
+  const { viewport, scene } = resolved;
+  viewport.scrollToViewportPos?.({ viewportScrollX: 0, viewportScrollY: 0 });
+  viewport.scrollToBarPos?.({ x: 0, y: 0 });
+  refreshAfterScrollChange(univerAPI, scene);
+  return true;
+}
+
 function applyScrollBarVisibility(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
   visible: boolean,
 ): boolean {
-  const resolved = resolveMainScrollBar(univerAPI);
+  const resolved = resolveMainViewport(univerAPI);
   if (!resolved)
     return false;
 
-  const { scrollBar, scene } = resolved;
+  const { viewport, scene } = resolved;
+  const scrollBar = viewport.getScrollBar?.();
+  if (!scrollBar)
+    return false;
 
   if (!visible) {
     if (!scrollbarsHidden) {
@@ -96,6 +117,7 @@ function applyScrollBarVisibility(
     }
     scrollBar.enableHorizontal = false;
     scrollBar.enableVertical = false;
+    clampViewportScrollOrigin(univerAPI);
   } else if (scrollbarsHidden) {
     scrollBar.enableHorizontal = savedEnableHorizontal;
     scrollBar.enableVertical = savedEnableVertical;
@@ -122,20 +144,88 @@ function scheduleScrollBarVisibility(
   );
 }
 
-/** 布局页隐藏/恢复 Univer 主视口滚动条（viewMain）。 */
+function isLayoutScrollLocked(): boolean {
+  return document.getElementById('app')?.classList.contains(APP_LAYOUT_FIT_CLASS) ?? false;
+}
+
+function installLayoutWheelBlock(): void {
+  if (wheelInstalled)
+    return;
+  wheelInstalled = true;
+
+  window.addEventListener('wheel', (ev: WheelEvent) => {
+    if (!isLayoutScrollLocked())
+      return;
+
+    const host = document.querySelector('#app .hycad-page-grid-host');
+    const canvas = findMainSheetCanvas();
+    const target = ev.target;
+    if (!(target instanceof Node))
+      return;
+
+    const inSheet = (canvas?.contains(target) ?? false)
+      || (host?.contains(target) ?? false);
+    if (!inSheet)
+      return;
+
+    // Ctrl+滚轮留给 page-viewport 纸张预览缩放
+    if (ev.ctrlKey)
+      return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+  }, { passive: false, capture: true });
+}
+
+function startScrollClampLoop(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
+  stopScrollClampLoop();
+  const tick = (): void => {
+    if (scrollLocked && isLayoutScrollLocked())
+      clampViewportScrollOrigin(univerAPI);
+    clampFrame = window.requestAnimationFrame(tick);
+  };
+  clampFrame = window.requestAnimationFrame(tick);
+}
+
+function stopScrollClampLoop(): void {
+  if (clampFrame) {
+    window.cancelAnimationFrame(clampFrame);
+    clampFrame = 0;
+  }
+}
+
+function setLayoutScrollLock(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+  lock: boolean,
+): void {
+  document.getElementById('app')?.classList.toggle(APP_LAYOUT_FIT_CLASS, lock);
+  scrollLocked = lock;
+
+  if (lock) {
+    installLayoutWheelBlock();
+    scheduleScrollBarVisibility(univerAPI, false);
+    clampViewportScrollOrigin(univerAPI);
+    startScrollClampLoop(univerAPI);
+  } else {
+    stopScrollClampLoop();
+    scheduleScrollBarVisibility(univerAPI, true);
+  }
+}
+
+/** @deprecated 用 setLayoutScrollLock */
 export function setLayoutSheetScrollbarsVisible(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
   visible: boolean,
 ): void {
-  document.getElementById('app')?.classList.toggle(APP_LAYOUT_FIT_CLASS, !visible);
-  scheduleScrollBarVisibility(univerAPI, visible);
+  setLayoutScrollLock(univerAPI, !visible);
 }
 
 export function resetLayoutSheetScrollbars(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
 ): void {
   window.clearTimeout(retryTimer);
-  document.getElementById('app')?.classList.remove(APP_LAYOUT_FIT_CLASS);
-  applyScrollBarVisibility(univerAPI, true);
+  setLayoutScrollLock(univerAPI, false);
   scrollbarsHidden = false;
 }
+
+export { setLayoutScrollLock };

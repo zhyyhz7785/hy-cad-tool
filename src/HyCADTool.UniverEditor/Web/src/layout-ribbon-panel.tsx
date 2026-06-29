@@ -286,7 +286,11 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
           precision={0}
           step={1}
           value={model.rowCount}
-          onChange={(value) => actions.sendLayoutOp('setRowCount', positiveInt(value, model.rowCount))}
+          onChange={(value) => {
+            const next = positiveInt(value, model.rowCount);
+            patchLayoutRibbonModel({ rowCount: next });
+            actions.sendLayoutOp('setRowCount', next);
+          }}
         />
         <RibbonLabel>列</RibbonLabel>
         <InputNumber
@@ -297,7 +301,11 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
           precision={0}
           step={1}
           value={model.colCount}
-          onChange={(value) => actions.sendLayoutOp('setColCount', positiveInt(value, model.colCount))}
+          onChange={(value) => {
+            const next = positiveInt(value, model.colCount);
+            patchLayoutRibbonModel({ colCount: next });
+            actions.sendLayoutOp('setColCount', next);
+          }}
         />
         <Button
           variant="text"
