@@ -171,21 +171,17 @@ export function LayoutRibbonPanel(props: { actions: LayoutRibbonActions }): JSX.
         >
           行列头
         </Checkbox>
-        <Button
-          variant="text"
-          size="small"
-          className={clsx(
-            TOOLBAR_BUTTON_CLASS,
-            model.showGridSize && model.showHeaders
-              ? '!univer-bg-gray-200 dark:!univer-bg-gray-600'
-              : '',
-          )}
-          title="在行列头中显示每格的宽/高（mm），替代 A/B/C·1/2/3"
+        <Checkbox
+          checked={model.showGridSize}
           disabled={!model.showHeaders}
-          onClick={() => setShowGridSize(!model.showGridSize)}
+          title="在行列头中显示每格的宽/高（mm），替代 A/B/C·1/2/3"
+          onChange={(checked) => {
+            if (typeof checked === 'boolean')
+              setShowGridSize(checked);
+          }}
         >
           尺寸
-        </Button>
+        </Checkbox>
         <Checkbox
           checked={model.showPaperBoundary}
           onChange={(checked) => {

@@ -5,6 +5,7 @@ import {
 } from '@univerjs/sheets-ui';
 import { subscribeLayoutTabActive } from './layout-tab-inject';
 import { getLayoutViewState, subscribeLayoutViewState } from './layout-view-state';
+import { refreshGridHeaderLabels } from './grid-ruler-overlay';
 
 /** 原生行头宽 / 列头高（屏幕像素，不随缩放变化） */
 export const GRID_ROW_HEADER_W = 46;
@@ -61,6 +62,9 @@ export async function setHeadersVisible(
 
   const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as { refreshCanvas?: () => void } | null | undefined;
   sheet?.refreshCanvas?.();
+
+  if (visible)
+    refreshGridHeaderLabels(univerAPI);
 
   const root = document.getElementById('app');
   root?.classList.toggle('hycad-headers-hidden', !visible);
