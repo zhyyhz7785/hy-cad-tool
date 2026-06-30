@@ -85,7 +85,7 @@ namespace HyCADTool.UniverEditor.Services
         public Task ExportSnapshotAsync()
         {
             if (!_ready)
-                return Task.CompletedTask;
+                throw new InvalidOperationException("会话未就绪，请稍后重试");
 
             _exportRequestId++;
             return PostCommandAsync("exportSnapshot", null);
@@ -94,7 +94,7 @@ namespace HyCADTool.UniverEditor.Services
         public Task ExportSnapshotForPublishAsync(string mode)
         {
             if (!_ready)
-                return Task.CompletedTask;
+                throw new InvalidOperationException("会话未就绪，请稍后重试");
 
             _exportRequestId++;
             var payload = new JObject { ["mode"] = mode };

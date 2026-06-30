@@ -92,12 +92,50 @@ namespace HyCADTool.UniverEditor.Views
                 return;
 
             var ctx = ActiveContext;
-            ctx?.BindExportSnapshot?.Invoke(() => _ = _session.ExportSnapshotAsync());
+            ctx?.BindExportSnapshot?.Invoke(() =>
+            {
+                try
+                {
+                    _ = _session.ExportSnapshotAsync();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    SetStatus($"导出失败：{ex.Message}");
+                }
+            });
             ctx?.BindExportForPublish?.Invoke(mode =>
-                _ = _session.ExportSnapshotForPublishAsync(mode ?? "default"));
-            EditorLauncher.RequestExportSnapshot = () => _ = _session.ExportSnapshotAsync();
+            {
+                try
+                {
+                    _ = _session.ExportSnapshotForPublishAsync(mode ?? "default");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    SetStatus($"导出失败：{ex.Message}");
+                }
+            });
+            EditorLauncher.RequestExportSnapshot = () =>
+            {
+                try
+                {
+                    _ = _session.ExportSnapshotAsync();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    SetStatus($"导出失败：{ex.Message}");
+                }
+            };
             EditorLauncher.RequestExportSnapshotForPublish = mode =>
-                _ = _session.ExportSnapshotForPublishAsync(mode ?? "default");
+            {
+                try
+                {
+                    _ = _session.ExportSnapshotForPublishAsync(mode ?? "default");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    SetStatus($"导出失败：{ex.Message}");
+                }
+            };
         }
 
         private void PrepareForCadInteraction()

@@ -41,6 +41,7 @@ interface SavedSheetBaseline {
   colCount: number;
   defaultRowHeight: number;
   defaultColumnWidth: number;
+  zoomRatio: number;
 }
 
 let lastSig = '';
@@ -67,13 +68,35 @@ export function deriveLayoutGridCounts(): { rowCount: number; colCount: number }
   return deriveGridCountsFromPaper(avail.widthMm, avail.heightMm);
 }
 
-function captureBaseline(sheet: FitSheet): SavedSheetBaseline {
+function captureBaseline(sheet: FitSheet, univerAPI: ReturnType<typeof FUniver.newAPI>): SavedSheetBaseline {
   const config = sheet.getSheet?.()?.getConfig?.();
+
+  // 保存当前缩放比例
+  let zoomRatio = 1;
+  try {
+    const api = univerAPI as unknown as {
+      getZoomRatio?: () => number;
+      getActiveWorkbook?: () => { getZoomRatio?: () => number } | null;
+    };
+    const direct = api.getZoomRatio?.();
+    if (typeof direct === 'number' && direct > 0) {
+      zoomRatio = direct;
+    } else {
+      const wb = api.getActiveWorkbook?.();
+      const fromWb = wb?.getZoomRatio?.();
+      if (typeof fromWb === 'number' && fromWb > 0)
+        zoomRatio = fromWb;
+    }
+  } catch {
+    // ignore
+  }
+
   return {
     rowCount: sheet.getMaxRows?.() ?? 200,
     colCount: sheet.getMaxColumns?.() ?? 26,
     defaultRowHeight: config?.defaultRowHeight ?? 24,
     defaultColumnWidth: config?.defaultColumnWidth ?? 88,
+    zoomRatio,
   };
 }
 
@@ -110,9 +133,21 @@ function restoreBaseline(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
   if (!sheet)
     return;
 
-  const { rowCount, colCount, defaultRowHeight, defaultColumnWidth } = savedBaseline;
+  const { rowCount, colCount, defaultRowHeight, defaultColumnWidth, zoomRatio } = savedBaseline;
 
   try {
+    // 恢复原始缩放比例
+    const api = univerAPI as unknown as {
+      setZoomRatio?: (ratio: number) => unknown;
+      getActiveWorkbook?: () => { setZoomRatio?: (ratio: number) => unknown } | null;
+    };
+    if (api.setZoomRatio) {
+      api.setZoomRatio(zoomRatio);
+    } else {
+      const wb = api.getActiveWorkbook?.();
+      wb?.setZoomRatio?.(zoomRatio);
+    }
+
     if ((sheet.getMaxColumns?.() ?? colCount) !== colCount)
       sheet.setColumnCount?.(colCount);
     if ((sheet.getMaxRows?.() ?? rowCount) !== rowCount)
@@ -144,7 +179,7 @@ function applyGridFit(univerAPI: ReturnType<typeof FUniver.newAPI>, force = fals
     return;
 
   if (!savedBaseline)
-    savedBaseline = captureBaseline(sheet);
+    savedBaseline = captureBaseline(sheet, univerAPI);
 
   const avail = resolveAvailableMm();
   const { rowCount, colCount } = resolveTargetCounts();

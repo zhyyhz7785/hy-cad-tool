@@ -659,26 +659,42 @@ namespace HyCADTool.Features.Tables.Services
         private void BeginCadInteraction()
         {
             _viewModel.CadInteractionCompleted = EndCadInteraction;
+
+            if (PrepareForCadInteraction == null)
+            {
+                _viewModel.LastError = "编辑器窗口交互未初始化，无法进行 CAD 交互";
+                return;
+            }
+
             try
             {
-                PrepareForCadInteraction?.Invoke();
+                PrepareForCadInteraction.Invoke();
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore host prepare failures
+                _viewModel.LastError = $"准备 CAD 交互时出错：{ex.Message}";
             }
         }
 
         private void EndCadInteraction()
         {
             _viewModel.CadInteractionCompleted = null;
-            try
+
+            if (RestoreAfterCadInteraction == null)
             {
-                RestoreAfterCadInteraction?.Invoke();
+                // 不是致命错误，只记录日志
+                System.Diagnostics.Debug.WriteLine("RestoreAfterCadInteraction 未初始化");
             }
-            catch
+            else
             {
-                // ignore host restore failures
+                try
+                {
+                    RestoreAfterCadInteraction.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"恢复窗口状态时出错：{ex.Message}");
+                }
             }
 
             NotifyStatusChanged();

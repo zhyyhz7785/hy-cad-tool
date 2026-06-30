@@ -4,6 +4,7 @@ import {
   mmToRowDisplayPx,
   colDisplayPxToMm,
   rowDisplayPxToMm,
+  mmToPoint as mmToPointUtil,
 } from './mm-display';
 import {
   BooleanNumber,
@@ -452,11 +453,9 @@ function resolveDefaultExportRect(sheet: SheetLike, maxRows: number, maxCols: nu
   };
 }
 
-const MM_TO_POINT = 72 / 25.4;
-
+// 移除本地重复实现，使用 mm-display.ts 中的统一实现
 function mmToPoint(textHeightMm: number | undefined): number {
-  const mm = !textHeightMm || textHeightMm <= 0 ? 3.5 : textHeightMm;
-  return Math.round(mm * MM_TO_POINT * 100) / 100;
+  return mmToPointUtil(textHeightMm);
 }
 
 function toHorizontalAlign(align: HyCadCellAlign | undefined): HorizontalAlign {

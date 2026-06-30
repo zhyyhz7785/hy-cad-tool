@@ -128,6 +128,14 @@ body,
   box-sizing: border-box;
   justify-self: start !important;
   align-self: start !important;
+  /* 添加网格边界：右边和下边的边框 */
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark #app .hycad-page-sheet-box {
+  border-color: #4b5563;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* U4 公式栏：U3 下方独立槽，左对齐；U7 不再包含公式栏 */
@@ -727,6 +735,18 @@ header [role='toolbar'] {
   display: none !important;
   pointer-events: none !important;
 }
+
+/* 布局模式：禁用网格内的触摸缩放，防止网格独立于图纸缩放 */
+#app.hycad-layout-grid-fit canvas,
+#app.hycad-layout-grid-fit .univer-render-canvas {
+  touch-action: pan-x pan-y !important;
+}
+
+#app.hycad-layout-grid-fit .hycad-page-sheet-box {
+  /* 完全禁用触摸缩放手势 */
+  touch-action: none !important;
+}
+
 
 .hycad-font-size-mm-host {
   display: inline-flex;

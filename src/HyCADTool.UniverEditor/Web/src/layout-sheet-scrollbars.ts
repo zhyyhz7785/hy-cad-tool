@@ -168,10 +168,16 @@ function installLayoutWheelBlock(): void {
     if (!inSheet)
       return;
 
-    // Ctrl+滚轮留给 page-viewport 纸张预览缩放
-    if (ev.ctrlKey)
+    // Ctrl+滚轮：让 page-viewport 处理整体视图缩放
+    // 不阻止传播，让事件继续到 page-viewport 的监听器
+    if (ev.ctrlKey) {
+      // 只阻止 Univer 的默认缩放行为
+      ev.preventDefault();
+      // 不调用 stopPropagation()，让 page-viewport 能接收到事件
       return;
+    }
 
+    // 阻止普通滚轮滚动
     ev.preventDefault();
     ev.stopPropagation();
   }, { passive: false, capture: true });
