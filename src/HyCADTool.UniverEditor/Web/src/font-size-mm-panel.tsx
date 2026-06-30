@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from 'react';
-import { InputNumber, Select } from '@univerjs/design';
+import { Button, InputNumber, Select } from '@univerjs/design';
 import type { FUniver } from '@univerjs/core/facade';
 
 import {
   applyFontSizeMmToSelection,
   getFontSizeMm,
   setFontSizeMm,
+  stepFontSizeMm,
   subscribeFontSizeMm,
 } from './font-size-mm-model';
 import { CAD_TEXT_HEIGHTS_MM, positiveMm, TEXT_HEIGHT_MM } from './mm-display';
@@ -16,6 +17,7 @@ const LABEL_CLASS = `
 
 const COMPACT_NUMBER_CLASS = '!univer-w-[3.25rem]';
 const COMPACT_SELECT_CLASS = 'hycad-compact-select hycad-font-size-select';
+const STEP_BTN_CLASS = 'hycad-font-size-step !univer-min-w-0 !univer-px-1';
 
 function toSelectValue(mm: number | null): string {
   if (mm == null)
@@ -41,6 +43,14 @@ export function FontSizeMmPanel(props: { univerAPI: ReturnType<typeof FUniver.ne
       data-hycad-comp="font-size-mm"
     >
       <span className={LABEL_CLASS} title="纸面字高（毫米）">字高(mm)</span>
+      <Button
+        className={STEP_BTN_CLASS}
+        size="mini"
+        title="减小字高"
+        onClick={() => applyMm(stepFontSizeMm(mm, -1))}
+      >
+        −
+      </Button>
       <Select
         className={COMPACT_SELECT_CLASS}
         value={selectValue || String(TEXT_HEIGHT_MM)}
@@ -72,6 +82,14 @@ export function FontSizeMmPanel(props: { univerAPI: ReturnType<typeof FUniver.ne
           }}
         />
       ) : null}
+      <Button
+        className={STEP_BTN_CLASS}
+        size="mini"
+        title="增大字高"
+        onClick={() => applyMm(stepFontSizeMm(mm, 1))}
+      >
+        +
+      </Button>
     </div>
   );
 }

@@ -1,6 +1,13 @@
 import type { FUniver } from '@univerjs/core/facade';
 
-import { formatMm, pointToMm, TEXT_HEIGHT_MM } from './mm-display';
+import {
+  CAD_TEXT_HEIGHTS_MM,
+  formatMm,
+  mmToPoint,
+  pointToMm,
+  positiveMm,
+  TEXT_HEIGHT_MM,
+} from './mm-display';
 
 let textHeightMm: number | null = null;
 const listeners = new Set<() => void>();
@@ -67,7 +74,19 @@ export function applyFontSizeMmToSelection(
   if (!range?.setFontSize)
     return;
 
-  const pt = formatMm(normalized * (72 / 25.4));
-  range.setFontSize(pt);
+  range.setFontSize(mmToPoint(normalized));
   setFontSizeMm(normalized);
+}
+
+/** 在 CAD 预设字高档或自定义 0.5mm 步长上增减。 */
+export function stepFontSizeMm(current: number | null, delta: 1 | -1): number {
+  const base = positiveMm(current, TEXT_HEIGHT_MM);
+  const idx = CAD_TEXT_HEIGHTS_MM.findIndex(v => Math.abs(v - base) < 0.001);
+  if (idx >= 0) {
+    const nextIdx = idx + delta;
+    if (nextIdx >= 0 && nextIdx < CAD_TEXT_HEIGHTS_MM.length)
+      return CAD_TEXT_HEIGHTS_MM[nextIdx];
+    return base;
+  }
+  return Math.max(0.1, formatMm(base + delta * 0.5));
 }

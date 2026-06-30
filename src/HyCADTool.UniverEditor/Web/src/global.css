@@ -742,3 +742,9 @@ header [role='toolbar'] {
   height: 100%;
 }
 
+.hycad-font-size-step {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
