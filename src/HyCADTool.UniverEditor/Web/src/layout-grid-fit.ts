@@ -5,15 +5,14 @@ import {
   mmToColDisplayPx,
   mmToRowDisplayPx,
 } from './mm-display';
-import { getLayoutViewState, subscribeLayoutViewState } from './layout-view-state';
-import { isLayoutTabActive, subscribeLayoutTabActive } from './layout-tab-inject';
+import { getLayoutViewState } from './layout-view-state';
+import { isLayoutTabActive } from './layout-tab-inject';
 import {
   getLayoutRibbonModelState,
   patchLayoutRibbonModel,
-  subscribeLayoutRibbonModel,
 } from './layout-ribbon-model';
 import { resolveSheetSizeMm } from './paper-sheet';
-import { getLastSnapshotDims, subscribeSnapshotDims } from './univer-bridge';
+import { getLastSnapshotDims } from './univer-bridge';
 import { resetLayoutSheetScrollbars, setLayoutScrollLock } from './layout-sheet-scrollbars';
 
 /**
@@ -27,6 +26,8 @@ type FitSheet = {
   getSheet?: () => { getConfig?: () => { defaultRowHeight?: number; defaultColumnWidth?: number } };
   getMaxColumns?: () => number;
   getMaxRows?: () => number;
+  getColumnWidth?: (col: number) => number;
+  getRowHeight?: (row: number) => number;
   setColumnCount?: (count: number) => unknown;
   setRowCount?: (count: number) => unknown;
   setColumnWidths?: (startColumn: number, numColumn: number, width: number) => unknown;
@@ -41,13 +42,42 @@ interface SavedSheetBaseline {
   colCount: number;
   defaultRowHeight: number;
   defaultColumnWidth: number;
-  zoomRatio: number;
 }
+
+/** Univer 写入粒度：0.01px */
+const TRACK_PX_PRECISION = 2;
 
 let lastSig = '';
 let savedBaseline: SavedSheetBaseline | null = null;
 let reseedingRibbon = false;
 let lastRibbonCounts = { rowCount: 0, colCount: 0 };
+
+function roundTrackPx(px: number): number {
+  const factor = 10 ** TRACK_PX_PRECISION;
+  return Math.round(px * factor) / factor;
+}
+
+/**
+ * 高精度均分 totalPx；最后一格吸收余量，保证 sum === roundTrackPx(totalPx)。
+ */
+export function distributePx(totalPx: number, count: number): number[] {
+  if (count < 1)
+    return [];
+  const target = roundTrackPx(totalPx);
+  if (count === 1)
+    return [target];
+
+  const base = totalPx / count;
+  const tracks: number[] = [];
+  let sum = 0;
+  for (let i = 0; i < count - 1; i++) {
+    const w = roundTrackPx(base);
+    tracks.push(w);
+    sum += w;
+  }
+  tracks.push(roundTrackPx(target - sum));
+  return tracks;
+}
 
 function shouldApplyLayoutFit(): boolean {
   return isLayoutTabActive() && getLayoutViewState().showPaperBoundary;
@@ -68,35 +98,13 @@ export function deriveLayoutGridCounts(): { rowCount: number; colCount: number }
   return deriveGridCountsFromPaper(avail.widthMm, avail.heightMm);
 }
 
-function captureBaseline(sheet: FitSheet, univerAPI: ReturnType<typeof FUniver.newAPI>): SavedSheetBaseline {
+function captureBaseline(sheet: FitSheet): SavedSheetBaseline {
   const config = sheet.getSheet?.()?.getConfig?.();
-
-  // 保存当前缩放比例
-  let zoomRatio = 1;
-  try {
-    const api = univerAPI as unknown as {
-      getZoomRatio?: () => number;
-      getActiveWorkbook?: () => { getZoomRatio?: () => number } | null;
-    };
-    const direct = api.getZoomRatio?.();
-    if (typeof direct === 'number' && direct > 0) {
-      zoomRatio = direct;
-    } else {
-      const wb = api.getActiveWorkbook?.();
-      const fromWb = wb?.getZoomRatio?.();
-      if (typeof fromWb === 'number' && fromWb > 0)
-        zoomRatio = fromWb;
-    }
-  } catch {
-    // ignore
-  }
-
   return {
     rowCount: sheet.getMaxRows?.() ?? 200,
     colCount: sheet.getMaxColumns?.() ?? 26,
     defaultRowHeight: config?.defaultRowHeight ?? 24,
     defaultColumnWidth: config?.defaultColumnWidth ?? 88,
-    zoomRatio,
   };
 }
 
@@ -125,6 +133,82 @@ function resolveTargetCounts(): { rowCount: number; colCount: number } {
   return { rowCount, colCount };
 }
 
+function applyColumnWidths(sheet: FitSheet, widths: number[]): void {
+  const colCount = widths.length;
+  if (colCount === 0)
+    return;
+
+  if (colCount > 1 && sheet.setColumnWidths) {
+    sheet.setColumnWidths(0, colCount - 1, widths[0]);
+    if (sheet.setColumnWidth)
+      sheet.setColumnWidth(colCount - 1, widths[colCount - 1]);
+    return;
+  }
+
+  if (sheet.setColumnWidth) {
+    for (let c = 0; c < colCount; c++)
+      sheet.setColumnWidth(c, widths[c]);
+  }
+  else if (sheet.setColumnWidths && colCount === 1) {
+    sheet.setColumnWidths(0, 1, widths[0]);
+  }
+}
+
+function applyRowHeights(sheet: FitSheet, heights: number[]): void {
+  const rowCount = heights.length;
+  if (rowCount === 0)
+    return;
+
+  if (rowCount > 1 && sheet.setRowHeightsForced) {
+    sheet.setRowHeightsForced(0, rowCount - 1, heights[0]);
+    if (sheet.setRowHeight)
+      sheet.setRowHeight(rowCount - 1, heights[rowCount - 1]);
+    return;
+  }
+
+  if (sheet.setRowHeightsForced && rowCount === 1) {
+    sheet.setRowHeightsForced(0, 1, heights[0]);
+    return;
+  }
+
+  if (sheet.setRowHeight) {
+    for (let r = 0; r < rowCount; r++)
+      sheet.setRowHeight(r, heights[r]);
+  }
+}
+
+/** 从 sheet 读回真实列宽/行高总和（zoom=1 基线 px）。 */
+export function measureGridSumPx(
+  sheet: FitSheet,
+  rowCount: number,
+  colCount: number,
+): { colSumPx: number; rowSumPx: number; colWidths: number[]; rowHeights: number[] } {
+  const colWidths: number[] = [];
+  const rowHeights: number[] = [];
+  let colSumPx = 0;
+  let rowSumPx = 0;
+
+  const config = sheet.getSheet?.()?.getConfig?.();
+  const defaultCol = config?.defaultColumnWidth ?? 88;
+  const defaultRow = config?.defaultRowHeight ?? 24;
+
+  for (let c = 0; c < colCount; c++) {
+    const w = sheet.getColumnWidth?.(c);
+    const px = (typeof w === 'number' && w > 0) ? w : defaultCol;
+    colWidths.push(px);
+    colSumPx += px;
+  }
+
+  for (let r = 0; r < rowCount; r++) {
+    const h = sheet.getRowHeight?.(r);
+    const px = (typeof h === 'number' && h > 0) ? h : defaultRow;
+    rowHeights.push(px);
+    rowSumPx += px;
+  }
+
+  return { colSumPx, rowSumPx, colWidths, rowHeights };
+}
+
 function restoreBaseline(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
   if (!savedBaseline)
     return;
@@ -133,21 +217,9 @@ function restoreBaseline(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
   if (!sheet)
     return;
 
-  const { rowCount, colCount, defaultRowHeight, defaultColumnWidth, zoomRatio } = savedBaseline;
+  const { rowCount, colCount, defaultRowHeight, defaultColumnWidth } = savedBaseline;
 
   try {
-    // 恢复原始缩放比例
-    const api = univerAPI as unknown as {
-      setZoomRatio?: (ratio: number) => unknown;
-      getActiveWorkbook?: () => { setZoomRatio?: (ratio: number) => unknown } | null;
-    };
-    if (api.setZoomRatio) {
-      api.setZoomRatio(zoomRatio);
-    } else {
-      const wb = api.getActiveWorkbook?.();
-      wb?.setZoomRatio?.(zoomRatio);
-    }
-
     if ((sheet.getMaxColumns?.() ?? colCount) !== colCount)
       sheet.setColumnCount?.(colCount);
     if ((sheet.getMaxRows?.() ?? rowCount) !== rowCount)
@@ -173,113 +245,150 @@ function restoreBaseline(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
   }
 }
 
-function applyGridFit(univerAPI: ReturnType<typeof FUniver.newAPI>, force = false): void {
+export interface GridFitResult {
+  colSumPx: number;
+  rowSumPx: number;
+  colWidths: number[];
+  rowHeights: number[];
+  rowCount: number;
+  colCount: number;
+}
+
+/**
+ * 有界二次校正：微调最后一列/行使 colSum/rowSum 贴近 target（zoom=1 基线 px）。
+ * 返回校正后的测量结果；若无法校正则返回 null。
+ */
+export function correctLastGridTracks(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+  targets: { targetColSumPx: number; targetRowSumPx: number },
+): GridFitResult | null {
   const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
   if (!sheet)
-    return;
+    return null;
+
+  const { rowCount, colCount } = resolveTargetCounts();
+  if (rowCount < 1 || colCount < 1)
+    return null;
+
+  let measured = measureGridSumPx(sheet, rowCount, colCount);
+  const colDelta = targets.targetColSumPx - measured.colSumPx;
+  const rowDelta = targets.targetRowSumPx - measured.rowSumPx;
+
+  if (Math.abs(colDelta) <= 1 && Math.abs(rowDelta) <= 1)
+    return { ...measured, rowCount, colCount };
+
+  try {
+    if (Math.abs(colDelta) > 1 && colCount > 0 && measured.colWidths.length > 0) {
+      const last = colCount - 1;
+      const next = roundTrackPx(Math.max(0.01, measured.colWidths[last] + colDelta));
+      sheet.setColumnWidth?.(last, next);
+    }
+    if (Math.abs(rowDelta) > 1 && rowCount > 0 && measured.rowHeights.length > 0) {
+      const last = rowCount - 1;
+      const next = roundTrackPx(Math.max(0.01, measured.rowHeights[last] + rowDelta));
+      sheet.setRowHeight?.(last, next);
+    }
+    sheet.refreshCanvas?.();
+    measured = measureGridSumPx(sheet, rowCount, colCount);
+  } catch (error) {
+    console.warn('[HyCAD] layout grid last-track correction failed', error);
+  }
+
+  return { ...measured, rowCount, colCount };
+}
+
+function applyGridFit(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+  force = false,
+): GridFitResult | null {
+  const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
+  if (!sheet)
+    return null;
 
   if (!savedBaseline)
-    savedBaseline = captureBaseline(sheet, univerAPI);
+    savedBaseline = captureBaseline(sheet);
 
   const avail = resolveAvailableMm();
   const { rowCount, colCount } = resolveTargetCounts();
   if (rowCount < 1 || colCount < 1)
-    return;
+    return null;
 
-  const colWidthPx = mmToColDisplayPx(avail.widthMm / colCount);
-  const rowHeightPx = mmToRowDisplayPx(avail.heightMm / rowCount);
+  const totalColPx = mmToColDisplayPx(avail.widthMm);
+  const totalRowPx = mmToRowDisplayPx(avail.heightMm);
+  const colWidths = distributePx(totalColPx, colCount);
+  const rowHeights = distributePx(totalRowPx, rowCount);
 
-  const sig = `${rowCount}x${colCount}@${colWidthPx}x${rowHeightPx}@${Math.round(avail.widthMm)}x${Math.round(avail.heightMm)}`;
-  if (!force && sig === lastSig) {
+  const sig = `${rowCount}x${colCount}@${colWidths.join(',')}@${rowHeights.join(',')}@${Math.round(avail.widthMm)}x${Math.round(avail.heightMm)}`;
+  const skipWrite = !force && sig === lastSig;
+
+  if (!skipWrite) {
+    try {
+      if ((sheet.getMaxColumns?.() ?? colCount) !== colCount)
+        sheet.setColumnCount?.(colCount);
+      if ((sheet.getMaxRows?.() ?? rowCount) !== rowCount)
+        sheet.setRowCount?.(rowCount);
+
+      applyColumnWidths(sheet, colWidths);
+      applyRowHeights(sheet, rowHeights);
+
+      lastSig = sig;
+      sheet.refreshCanvas?.();
+      setLayoutScrollLock(univerAPI, true);
+      window.requestAnimationFrame(() => setLayoutScrollLock(univerAPI, true));
+    } catch (error) {
+      console.warn('[HyCAD] layout grid fit failed', error);
+    }
+  } else {
     setLayoutScrollLock(univerAPI, true);
-    return;
   }
 
-  try {
-    if ((sheet.getMaxColumns?.() ?? colCount) !== colCount)
-      sheet.setColumnCount?.(colCount);
-    if ((sheet.getMaxRows?.() ?? rowCount) !== rowCount)
-      sheet.setRowCount?.(rowCount);
-
-    if (sheet.setColumnWidths)
-      sheet.setColumnWidths(0, colCount, colWidthPx);
-    else if (sheet.setColumnWidth)
-      for (let c = 0; c < colCount; c++)
-        sheet.setColumnWidth(c, colWidthPx);
-
-    if (sheet.setRowHeightsForced)
-      sheet.setRowHeightsForced(0, rowCount, rowHeightPx);
-    else if (sheet.setRowHeight)
-      for (let r = 0; r < rowCount; r++)
-        sheet.setRowHeight(r, rowHeightPx);
-
-    lastSig = sig;
-    sheet.refreshCanvas?.();
-    // refreshCanvas 可能重建 ScrollBar，下一帧再隐藏
-    setLayoutScrollLock(univerAPI, true);
-    window.requestAnimationFrame(() => setLayoutScrollLock(univerAPI, true));
-  } catch (error) {
-    console.warn('[HyCAD] layout grid fit failed', error);
-  }
+  const measured = measureGridSumPx(sheet, rowCount, colCount);
+  return { ...measured, rowCount, colCount };
 }
 
-function syncLayoutGrid(univerAPI: ReturnType<typeof FUniver.newAPI>, force = false, reseed = false): void {
-  if (!shouldApplyLayoutFit()) {
-    restoreBaseline(univerAPI);
-    return;
-  }
-
-  if (reseed)
+/**
+ * 编排步骤（供 page-viewport 在固定顺序中调用）：可选 reseed 行列数 → 设置格子尺寸，
+ * 返回读回的真实列宽/行高总和（zoom=1 基线 px）。不订阅事件、不设置 zoom。
+ */
+export function applyGridFitStep(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+  options: { reseed?: boolean; force?: boolean } = {},
+): GridFitResult | null {
+  if (!shouldApplyLayoutFit())
+    return null;
+  if (options.reseed)
     reseedRibbonGridCounts();
-
-  applyGridFit(univerAPI, force);
+  return applyGridFit(univerAPI, options.reseed === true || options.force === true);
 }
 
-/** 安装布局网格铺满（幂等）：仅布局 Tab 临时生效，离开即恢复 Univer 默认网格。 */
+/** 仅读回当前网格 colSum/rowSum（缩放变化、sig 未变时仍须刷新 zoom）。 */
+export function measureGridFitStep(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+): GridFitResult | null {
+  if (!shouldApplyLayoutFit())
+    return null;
+
+  const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
+  if (!sheet)
+    return null;
+
+  const { rowCount, colCount } = resolveTargetCounts();
+  if (rowCount < 1 || colCount < 1)
+    return null;
+
+  const measured = measureGridSumPx(sheet, rowCount, colCount);
+  return { ...measured, rowCount, colCount };
+}
+
+/** 离开布局模式时恢复 Univer 默认网格（供 page-viewport 调用）。 */
+export function restoreGridBaseline(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
+  restoreBaseline(univerAPI);
+}
+
 export function installLayoutGridFit(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
 ): () => void {
-  const run = (force = false, reseed = false): void => syncLayoutGrid(univerAPI, force, reseed);
-
-  const unsubTab = subscribeLayoutTabActive((active) => {
-    if (active)
-      run(true, true);
-    else
-      run(true, false);
-  });
-
-  const unsubView = subscribeLayoutViewState(() => {
-    if (shouldApplyLayoutFit())
-      run(true, true);
-    else if (savedBaseline)
-      run(true, false);
-  });
-
-  const unsubRibbon = subscribeLayoutRibbonModel(() => {
-    if (!shouldApplyLayoutFit() || reseedingRibbon)
-      return;
-
-    const model = getLayoutRibbonModelState();
-    if (model.rowCount === lastRibbonCounts.rowCount
-      && model.colCount === lastRibbonCounts.colCount)
-      return;
-
-    lastRibbonCounts = { rowCount: model.rowCount, colCount: model.colCount };
-    applyGridFit(univerAPI, true);
-  });
-
-  const unsubSnapshot = subscribeSnapshotDims(() => {
-    savedBaseline = null;
-    lastSig = '';
-    if (shouldApplyLayoutFit())
-      run(true, true);
-  });
-
   return () => {
-    unsubTab();
-    unsubView();
-    unsubRibbon();
-    unsubSnapshot();
     restoreBaseline(univerAPI);
     resetLayoutSheetScrollbars(univerAPI);
   };

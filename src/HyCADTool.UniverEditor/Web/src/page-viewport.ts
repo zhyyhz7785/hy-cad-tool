@@ -2,7 +2,7 @@ import type { FUniver } from '@univerjs/core/facade';
 
 import { SetZoomRatioCommand } from '@univerjs/sheets-ui';
 
-import { DISPLAY_PX_PER_MM } from './mm-display';
+import { DISPLAY_PX_PER_MM, mmToColDisplayPx, mmToRowDisplayPx } from './mm-display';
 
 import { getLayoutViewState, subscribeLayoutViewState } from './layout-view-state';
 
@@ -20,15 +20,13 @@ import {
 
   setPagePreviewScalePxPerMm,
 
-  subscribePagePreviewScale,
-
 } from './page-preview-scale';
 
 import { resolveSheetSizeMm } from './paper-sheet';
 
 import { subscribeSnapshotDims } from './univer-bridge';
 
-import { findScrollElement, installViewportProbe, readZoom } from './univer-viewport';
+import { findScrollElement, readZoom } from './univer-viewport';
 import {
   formatMarginDataset,
   marginsToPaddingPx,
@@ -37,15 +35,15 @@ import {
 import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
 import { GRID_COL_HEADER_H, GRID_ROW_HEADER_W } from './sheet-headers';
 import { resetLayoutSheetScrollbars, setLayoutScrollLock } from './layout-sheet-scrollbars';
+import {
+  applyGridFitStep,
+  correctLastGridTracks,
+  restoreGridBaseline,
+} from './layout-grid-fit';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
 export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
 
-/**
- * Word 式页面：
- *   U7 gridHost = 灰底画布
- *   U7a sheetBox = 图纸，左上角距画布四边各 canvasSheetGapMm，缩放后不得超出画布
- */
 const PAGE_HOST_CLASS = 'hycad-page-grid-host';
 const PAGE_SHEET_CLASS = 'hycad-page-sheet-box';
 const ZOOM_EPSILON = 0.004;
@@ -53,17 +51,38 @@ const MIN_PREVIEW_SCALE = 0.1;
 const MAX_PREVIEW_SCALE = 5.0;
 
 let lastZoom = 0;
+let orchestrating = false;
+/** 编排器正在写入 SetZoomRatio，用于区分 footer slider 等外部 zoom。 */
+let orchestratorApplyingZoom = false;
+let lastSheetBoxSig = '';
 let wheelInstalled = false;
-/** 是否处于布局页视图（纸张边界 + 布局 Tab）。 */
 let pageModeActive = false;
-/** 进入布局页面前 Univer 原生缩放，离开时还原。 */
 let zoomBeforeLayout = 1;
+let settleFrame = 0;
+let lastSettleSize = '';
+
+export interface SheetBoxLayout {
+  boxW: number;
+  boxH: number;
+  maxBoxW: number;
+  maxBoxH: number;
+  gapPx: number;
+  padLeft: number;
+  padTop: number;
+  padRight: number;
+  padBottom: number;
+  contentW: number;
+  contentH: number;
+  headerRowPx: number;
+  headerColPx: number;
+  /** 单元格区目标宽（content − 行头，zoom=1 基线 px 总和应 × zoom 贴齐） */
+  cellAreaW: number;
+  cellAreaH: number;
+}
 
 interface PageNodes {
   gridHost: HTMLElement;
   sheetBox: HTMLElement;
-  leftAsideW: number;
-  rightAsideW: number;
 }
 
 function resolveNodes(): PageNodes | null {
@@ -79,20 +98,15 @@ function resolveNodes(): PageNodes | null {
   if (!(gridHost instanceof HTMLElement))
     return null;
 
-  const leftAside = gridHost.querySelector(':scope > aside[data-u-comp="left-sidebar"]');
-  const rightAside = gridHost.querySelector(':scope > aside[data-u-comp="right-sidebar"]');
-
   return {
     gridHost,
     sheetBox,
-    leftAsideW: leftAside instanceof HTMLElement ? leftAside.offsetWidth : 0,
-    rightAsideW: rightAside instanceof HTMLElement ? rightAside.offsetWidth : 0,
   };
 }
 
 function resolveCanvasContentSize(nodes: PageNodes): { width: number; height: number } {
   return {
-    width: Math.max(0, nodes.gridHost.clientWidth - nodes.leftAsideW - nodes.rightAsideW),
+    width: Math.max(0, nodes.gridHost.clientWidth),
     height: Math.max(0, nodes.gridHost.clientHeight),
   };
 }
@@ -101,7 +115,6 @@ function resolveCanvasSheetGapMm(): number {
   return getLayoutViewState().canvasSheetGapMm;
 }
 
-/** 在当前画布尺寸下，图纸四边各留 gapMm 时的最大 px/mm */
 export function computeMaxPxPerMm(
   nodes: PageNodes,
   sheetWidthMm: number,
@@ -155,8 +168,8 @@ function clearPageStyles(nodes: PageNodes): void {
   delete nodes.sheetBox.dataset.hycadGridCount;
 }
 
-function applyZoom(univerAPI: ReturnType<typeof FUniver.newAPI>, zoom: number): void {
-  if (Math.abs(zoom - lastZoom) < ZOOM_EPSILON)
+function applyZoom(univerAPI: ReturnType<typeof FUniver.newAPI>, zoom: number, force = false): void {
+  if (!force && Math.abs(zoom - lastZoom) < ZOOM_EPSILON)
     return;
 
   const wb = univerAPI.getActiveWorkbook?.();
@@ -164,12 +177,22 @@ function applyZoom(univerAPI: ReturnType<typeof FUniver.newAPI>, zoom: number): 
   if (!wb || !sheet)
     return;
 
-  lastZoom = zoom;
-  void univerAPI.executeCommand(SetZoomRatioCommand.id, {
-    unitId: wb.getId(),
-    subUnitId: sheet.getSheetId(),
-    zoomRatio: Math.round(zoom * 100) / 100,
-  });
+  const quantized = Math.round(zoom * 100) / 100;
+  if (force && Math.abs(quantized - lastZoom) < 0.0001)
+    return;
+  lastZoom = quantized;
+  orchestratorApplyingZoom = true;
+  try {
+    void univerAPI.executeCommand(SetZoomRatioCommand.id, {
+      unitId: wb.getId(),
+      subUnitId: sheet.getSheetId(),
+      zoomRatio: quantized,
+    });
+  } finally {
+    window.setTimeout(() => {
+      orchestratorApplyingZoom = false;
+    }, 0);
+  }
 }
 
 function clearPageViewport(
@@ -179,6 +202,7 @@ function clearPageViewport(
 ): void {
   clearPageStyles(nodes);
   nodes.gridHost.classList.remove(PAGE_HOST_CLASS);
+  lastSheetBoxSig = '';
 
   if (restoreZoom) {
     lastZoom = 0;
@@ -206,14 +230,14 @@ function resetSheetScroll(): void {
     scroller.scrollTop = 0;
 }
 
-function applySheetBoxSizing(
+function computeSheetBoxLayout(
   nodes: PageNodes,
   sheetWidthMm: number,
   sheetHeightMm: number,
   ppm: number,
   pageMargins: PageMarginsMm,
   showHeaders: boolean,
-): boolean {
+): SheetBoxLayout | null {
   const canvas = resolveCanvasContentSize(nodes);
   const gapPx = Math.round(resolveCanvasSheetGapMm() * ppm);
   const maxBoxW = Math.max(0, canvas.width - 2 * gapPx);
@@ -223,7 +247,7 @@ function applySheetBoxSizing(
   const boxH = Math.min(Math.round(sheetHeightMm * ppm), maxBoxH);
 
   if (boxW <= 0 || boxH <= 0)
-    return false;
+    return null;
 
   const pad = marginsToPaddingPx(pageMargins, ppm);
   const maxPadLeft = Math.max(0, Math.floor(boxW / 2) - 1);
@@ -231,16 +255,48 @@ function applySheetBoxSizing(
   const maxPadTop = Math.max(0, Math.floor(boxH / 2) - 1);
   const maxPadBottom = Math.max(0, Math.floor(boxH / 2) - 1);
 
-  // 网格 = 图纸位置 + 尺寸 − 边距；原生行列头随 zoom 占屏幕像素，开启时从上/左 padding 扣减，
-  // 使 A1 钉在边距处，行列头落进网格外侧的内边距区。
-  const zoom = ppm / DISPLAY_PX_PER_MM;
-  const rowHeaderPx = showHeaders ? GRID_ROW_HEADER_W * zoom : 0;
-  const colHeaderPx = showHeaders ? GRID_COL_HEADER_H * zoom : 0;
+  const headerRowPx = showHeaders ? GRID_ROW_HEADER_W : 0;
+  const headerColPx = showHeaders ? GRID_COL_HEADER_H : 0;
 
-  const padLeft = Math.min(Math.max(0, Math.round(pad.padLeft - rowHeaderPx)), maxPadLeft);
-  const padTop = Math.min(Math.max(0, Math.round(pad.padTop - colHeaderPx)), maxPadTop);
+  const padLeft = Math.min(Math.max(0, Math.round(pad.padLeft - headerRowPx)), maxPadLeft);
+  const padTop = Math.min(Math.max(0, Math.round(pad.padTop - headerColPx)), maxPadTop);
   const padRight = Math.min(pad.padRight, maxPadRight);
   const padBottom = Math.min(pad.padBottom, maxPadBottom);
+
+  const contentW = Math.max(0, boxW - padLeft - padRight);
+  const contentH = Math.max(0, boxH - padTop - padBottom);
+  const cellAreaW = Math.max(1, contentW - headerRowPx);
+  const cellAreaH = Math.max(1, contentH - headerColPx);
+
+  return {
+    boxW,
+    boxH,
+    maxBoxW,
+    maxBoxH,
+    gapPx,
+    padLeft,
+    padTop,
+    padRight,
+    padBottom,
+    contentW,
+    contentH,
+    headerRowPx,
+    headerColPx,
+    cellAreaW,
+    cellAreaH,
+  };
+}
+
+function applySheetBoxSizing(
+  nodes: PageNodes,
+  layout: SheetBoxLayout,
+  sheetWidthMm: number,
+  sheetHeightMm: number,
+): boolean {
+  const sig = `${layout.boxW}x${layout.boxH}|${layout.gapPx}|${layout.padTop},${layout.padRight},${layout.padBottom},${layout.padLeft}|${Math.round(sheetWidthMm)}x${Math.round(sheetHeightMm)}`;
+  if (sig === lastSheetBoxSig)
+    return true;
+  lastSheetBoxSig = sig;
 
   nodes.gridHost.classList.add(PAGE_HOST_CLASS);
   nodes.gridHost.style.overflow = 'hidden';
@@ -249,21 +305,21 @@ function applySheetBoxSizing(
   nodes.sheetBox.dataset.hycadSheetMm = `${Math.round(sheetWidthMm)}x${Math.round(sheetHeightMm)}`;
   nodes.sheetBox.dataset.hycadPaperMm = nodes.sheetBox.dataset.hycadSheetMm;
   nodes.sheetBox.dataset.hycadMarginPx = formatMarginDataset({
-    padLeft,
-    padTop,
-    padRight,
-    padBottom,
+    padLeft: layout.padLeft,
+    padTop: layout.padTop,
+    padRight: layout.padRight,
+    padBottom: layout.padBottom,
   });
 
   const box = nodes.sheetBox.style;
   box.flex = 'none';
-  box.width = `${boxW}px`;
-  box.height = `${boxH}px`;
-  box.maxWidth = `${maxBoxW}px`;
-  box.maxHeight = `${maxBoxH}px`;
-  box.marginLeft = `${gapPx}px`;
-  box.marginTop = `${gapPx}px`;
-  box.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
+  box.width = `${layout.boxW}px`;
+  box.height = `${layout.boxH}px`;
+  box.maxWidth = `${layout.maxBoxW}px`;
+  box.maxHeight = `${layout.maxBoxH}px`;
+  box.marginLeft = `${layout.gapPx}px`;
+  box.marginTop = `${layout.gapPx}px`;
+  box.padding = `${layout.padTop}px ${layout.padRight}px ${layout.padBottom}px ${layout.padLeft}px`;
   box.justifySelf = 'start';
   box.alignSelf = 'start';
   box.background = '#ffffff';
@@ -274,7 +330,74 @@ function applySheetBoxSizing(
   return true;
 }
 
+function computeLayoutZoom(
+  layout: SheetBoxLayout,
+  colSumPx: number,
+  rowSumPx: number,
+): number {
+  if (colSumPx <= 0 || rowSumPx <= 0)
+    return 0.01;
+
+  const zoomW = layout.cellAreaW / colSumPx;
+  const zoomH = layout.cellAreaH / rowSumPx;
+  let zoom = Math.min(zoomW, zoomH);
+  zoom = Math.round(zoom * 100) / 100;
+  if (zoom <= 0)
+    zoom = 0.01;
+  return zoom;
+}
+
+const SETTLE_MAX_FRAMES = 30;
+
+function startSettleConvergence(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
+  cancelSettleConvergence();
+  lastSettleSize = '';
+  let frame = 0;
+
+  const tick = (): void => {
+    settleFrame = 0;
+    if (!isLayoutPageViewActive()) {
+      cancelSettleConvergence();
+      return;
+    }
+
+    const nodes = resolveNodes();
+    const size = nodes ? `${nodes.gridHost.clientWidth}x${nodes.gridHost.clientHeight}` : '';
+    const stable = size !== '' && size === lastSettleSize;
+    lastSettleSize = size;
+
+    applyPageViewport(univerAPI, true);
+
+    frame++;
+    if (!stable && frame < SETTLE_MAX_FRAMES)
+      settleFrame = window.requestAnimationFrame(tick);
+  };
+
+  settleFrame = window.requestAnimationFrame(tick);
+}
+
+function cancelSettleConvergence(): void {
+  if (settleFrame) {
+    window.cancelAnimationFrame(settleFrame);
+    settleFrame = 0;
+  }
+}
+
 function applyPageViewport(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+  resetScale = false,
+): void {
+  if (orchestrating)
+    return;
+  orchestrating = true;
+  try {
+    applyPageViewportInner(univerAPI, resetScale);
+  } finally {
+    orchestrating = false;
+  }
+}
+
+function applyPageViewportInner(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
   resetScale = false,
 ): void {
@@ -286,9 +409,12 @@ function applyPageViewport(
 
   if (!layoutActive) {
     if (pageModeActive) {
+      cancelSettleConvergence();
+      restoreGridBaseline(univerAPI);
       clearPageViewport(univerAPI, nodes, true);
       pageModeActive = false;
     } else if (nodes.gridHost.classList.contains(PAGE_HOST_CLASS)) {
+      restoreGridBaseline(univerAPI);
       clearPageViewport(univerAPI, nodes, false);
     }
     return;
@@ -297,6 +423,7 @@ function applyPageViewport(
   if (!pageModeActive) {
     zoomBeforeLayout = readZoom(univerAPI);
     pageModeActive = true;
+    startSettleConvergence(univerAPI);
   }
 
   const state = getLayoutViewState();
@@ -304,32 +431,71 @@ function applyPageViewport(
   if (sheet.widthMm <= 0 || sheet.heightMm <= 0)
     return;
 
+  let appliedPpm: number;
   if (resetScale || getPagePreviewScalePxPerMm() <= 0) {
-    resetPagePreviewScaleFromFit(computeFitPxPerMm(nodes, sheet.widthMm, sheet.heightMm));
+    appliedPpm = computeFitPxPerMm(nodes, sheet.widthMm, sheet.heightMm);
+    resetPagePreviewScaleFromFit(appliedPpm);
+  } else {
+    appliedPpm = clampPagePreviewScaleToCanvas(
+      getPagePreviewScalePxPerMm(),
+      nodes,
+      sheet.widthMm,
+      sheet.heightMm,
+    );
+    if (Math.abs(appliedPpm - getPagePreviewScalePxPerMm()) > 0.0001)
+      setPagePreviewScalePxPerMm(appliedPpm);
   }
 
-  const clampedPpm = clampPagePreviewScaleToCanvas(
-    getPagePreviewScalePxPerMm(),
+  const boxLayout = computeSheetBoxLayout(
     nodes,
     sheet.widthMm,
     sheet.heightMm,
-  );
-  if (Math.abs(clampedPpm - getPagePreviewScalePxPerMm()) > 0.0001)
-    setPagePreviewScalePxPerMm(clampedPpm);
-
-  if (!applySheetBoxSizing(
-    nodes,
-    sheet.widthMm,
-    sheet.heightMm,
-    clampedPpm,
+    appliedPpm,
     state.pageMargins,
     state.showHeaders,
-  ))
+  );
+  if (!boxLayout)
     return;
 
-  applyZoom(univerAPI, clampedPpm / DISPLAY_PX_PER_MM);
+  if (!applySheetBoxSizing(nodes, boxLayout, sheet.widthMm, sheet.heightMm))
+    return;
+
+  const gridReseed = resetScale;
+  let fit = applyGridFitStep(univerAPI, { reseed: gridReseed });
+  if (!fit)
+    return;
+
+  const m = state.pageMargins;
+  const innerWmm = Math.max(1, sheet.widthMm - m.left - m.right);
+  const innerHmm = Math.max(1, sheet.heightMm - m.top - m.bottom);
+  const baselineColSumPx = mmToColDisplayPx(innerWmm);
+  const baselineRowSumPx = mmToRowDisplayPx(innerHmm);
+
+  if (
+    gridReseed
+    && (Math.abs(fit.colSumPx - baselineColSumPx) > 1 || Math.abs(fit.rowSumPx - baselineRowSumPx) > 1)
+  ) {
+    const corrected = correctLastGridTracks(univerAPI, {
+      targetColSumPx: baselineColSumPx,
+      targetRowSumPx: baselineRowSumPx,
+    });
+    if (corrected)
+      fit = corrected;
+  }
+
+  let zoom = computeLayoutZoom(boxLayout, fit.colSumPx, fit.rowSumPx);
+
+  const renderedColPx = fit.colSumPx * zoom;
+  const renderedRowPx = fit.rowSumPx * zoom;
+  if (
+    (renderedColPx > boxLayout.cellAreaW + 1 || renderedRowPx > boxLayout.cellAreaH + 1)
+    && zoom > 0.01
+  ) {
+    zoom = Math.max(0.01, Math.round((zoom - 0.01) * 100) / 100);
+  }
+
+  applyZoom(univerAPI, zoom, true);
   resetSheetScroll();
-  // 与 layout-grid-fit 一致：布局页锁定 scroll=0 并隐藏 canvas 滚动条
   setLayoutScrollLock(univerAPI, true);
 }
 
@@ -363,6 +529,32 @@ function installPageWheelZoom(univerAPI: ReturnType<typeof FUniver.newAPI>): () 
   };
 }
 
+function installLayoutZoomGuard(
+  univerAPI: ReturnType<typeof FUniver.newAPI>,
+): () => void {
+  let debounceTimer: number | undefined;
+
+  const unsub = univerAPI.onCommandExecuted?.((command) => {
+    if (command.id !== SetZoomRatioCommand.id)
+      return;
+    if (orchestratorApplyingZoom || orchestrating)
+      return;
+    if (!isLayoutPageViewActive())
+      return;
+
+    window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
+      if (isLayoutPageViewActive())
+        applyPageViewport(univerAPI, false);
+    }, 0);
+  }) ?? (() => {});
+
+  return () => {
+    window.clearTimeout(debounceTimer);
+    unsub();
+  };
+}
+
 export function installPageViewport(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
 ): () => void {
@@ -381,24 +573,29 @@ export function installPageViewport(
       schedule(false);
   });
   const unsubTab = subscribeLayoutTabActive(() => schedule(true));
-  const unsubScale = subscribePagePreviewScale(() => {
-    if (isLayoutPageViewActive())
-      schedule(false);
-  });
-  const unsubProbe = installViewportProbe(univerAPI, () => {
-    if (isLayoutPageViewActive())
-      schedule(false);
-  });
   const unsubWheel = installPageWheelZoom(univerAPI);
+  const unsubZoomGuard = installLayoutZoomGuard(univerAPI);
+
+  let resizeTimer: number | undefined;
+  const onResize = (): void => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      if (isLayoutPageViewActive())
+        applyPageViewport(univerAPI, true);
+    }, 120);
+  };
+  window.addEventListener('resize', onResize);
 
   return () => {
     unsubLayout();
     unsubRibbon();
     unsubSnapshot();
     unsubTab();
-    unsubScale();
-    unsubProbe();
     unsubWheel();
+    unsubZoomGuard();
+    window.clearTimeout(resizeTimer);
+    window.removeEventListener('resize', onResize);
+    cancelSettleConvergence();
 
     const nodes = resolveNodes();
     if (nodes)

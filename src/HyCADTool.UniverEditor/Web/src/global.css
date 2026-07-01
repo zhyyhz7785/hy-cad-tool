@@ -747,6 +747,14 @@ header [role='toolbar'] {
   touch-action: none !important;
 }
 
+/* 布局页：zoom 由 page-viewport 编排，隐藏 footer 原生缩放控件 */
+#app.hycad-layout-grid-fit footer [data-u-comp='zoom-slider'],
+#app.hycad-layout-grid-fit footer .univer-zoom-slider,
+#app.hycad-layout-grid-fit footer [class*='zoom'] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 
 .hycad-font-size-mm-host {
   display: inline-flex;

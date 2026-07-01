@@ -30,8 +30,6 @@ const CAD_ONLY_LAYOUT_OPS = new Set([
   'deleteCol',
   'merge',
   'unmerge',
-  'setPaperPreset',
-  'setOrientation',
   'setTargetWidth',
   'setMargin',
   'setRowCount',
@@ -140,6 +138,22 @@ function handleHyCadLayoutDev(
         payload: { on: value >= 0.5 },
       }));
       showDevAction(`结构模式 ${value >= 0.5 ? '开' : '关'}`);
+      return;
+    case 'setPaperPreset':
+      // CAD 宿主会据此回算纸张尺寸并回发 setViewport；dev mock 直接回显预设索引，
+      // 让布局视图（纸张盒子 + 网格铺满）能在浏览器里切换、验证网格锁定纸张。
+      dispatchDevHostMessage(JSON.stringify({
+        type: 'setViewport',
+        payload: { paperPresetIndex: Math.round(value) },
+      }));
+      showDevAction(`纸张预设 = ${Math.round(value)}（dev 本地预览）`);
+      return;
+    case 'setOrientation':
+      dispatchDevHostMessage(JSON.stringify({
+        type: 'setViewport',
+        payload: { orientation: value >= 0.5 ? 1 : 0 },
+      }));
+      showDevAction(`方向 = ${value >= 0.5 ? '纵向' : '横向'}（dev 本地预览）`);
       return;
     default:
       if (CAD_ONLY_LAYOUT_OPS.has(op)) {
