@@ -237,6 +237,72 @@ namespace HyCADTool.Features.Tables.Presentation
             }
         }
 
+        /// <summary>将快照合并区与行列尺寸应用到 OpLog（落图临时 grid 用；先结构后文本）。</summary>
+        public static void ApplyStructure(TableOpLog opLog, UniverGridSnapshot snapshot)
+        {
+            if (opLog == null || snapshot == null)
+                return;
+
+            var existingAnchors = opLog.Current.Structure.Merges
+                .Select(m => m.Anchor)
+                .Distinct()
+                .ToList();
+            foreach (var anchor in existingAnchors)
+                opLog.Apply(new UnmergeOp(anchor));
+
+            var rowCount = opLog.Current.Structure.Topology.RowCount;
+            var colCount = opLog.Current.Structure.Topology.ColCount;
+
+            if (snapshot.RowHeightsMm != null)
+            {
+                for (var r = 0; r < snapshot.RowHeightsMm.Count && r < rowCount; r++)
+                {
+                    var mm = snapshot.RowHeightsMm[r];
+                    if (mm > 0)
+                        opLog.Apply(new SetTrackSizeOp(true, r, mm));
+                }
+            }
+
+            if (snapshot.ColWidthsMm != null)
+            {
+                for (var c = 0; c < snapshot.ColWidthsMm.Count && c < colCount; c++)
+                {
+                    var mm = snapshot.ColWidthsMm[c];
+                    if (mm > 0)
+                        opLog.Apply(new SetTrackSizeOp(false, c, mm));
+                }
+            }
+
+            if (snapshot.Cells == null)
+                return;
+
+            var mergedSeen = new HashSet<CellAddr>();
+            foreach (var cell in snapshot.Cells)
+            {
+                var anchor = new CellAddr(cell.Row, cell.Col);
+                if (mergedSeen.Contains(anchor))
+                    continue;
+
+                var rowSpan = cell.RowSpan > 0 ? cell.RowSpan : 1;
+                var colSpan = cell.ColSpan > 0 ? cell.ColSpan : 1;
+                if (rowSpan <= 1 && colSpan <= 1)
+                    continue;
+
+                if (anchor.Row < 0 || anchor.Col < 0
+                    || anchor.Row + rowSpan > rowCount
+                    || anchor.Col + colSpan > colCount)
+                    continue;
+
+                opLog.Apply(new MergeOp(anchor, rowSpan, colSpan));
+
+                for (var r = anchor.Row; r < anchor.Row + rowSpan; r++)
+                {
+                    for (var c = anchor.Col; c < anchor.Col + colSpan; c++)
+                        mergedSeen.Add(new CellAddr(r, c));
+                }
+            }
+        }
+
         /// <summary>将 Univer 导出的文本写回 OpLog（仅 editable anchor 格）。</summary>
         public static void ApplyTextValues(TableOpLog opLog, UniverGridSnapshot snapshot)
         {

@@ -28,6 +28,8 @@ namespace HyCADTool.Features.Tables.Services
         private Action<string> _exportForPublishWebHandler;
         private Action<UniverPublishExportMode> _exportForPublishHandler;
         private Timer _exportTimeoutTimer;
+        private readonly object _exportSync = new object();
+        private bool _publishAfterSnapshot;
 
         public UniverTableEditorHostBridge(TableEditorViewModel viewModel)
         {
@@ -79,9 +81,7 @@ namespace HyCADTool.Features.Tables.Services
         public void CancelExportPending(string message)
         {
             ClearExportTimeout();
-            _pendingAfterSnapshot = null;
-            _pendingRequiresCadInteraction = false;
-            _pendingExportMode = UniverPublishExportMode.Default;
+            ResetExportState();
 
             if (!string.IsNullOrWhiteSpace(message))
                 _viewModel.SetStatusMessage(message);
@@ -130,8 +130,7 @@ namespace HyCADTool.Features.Tables.Services
 
         public void RequestPublish()
         {
-            _pendingExportMode = UniverPublishExportMode.Default;
-            PullSnapshotFromUniverThen(() => _viewModel.RequestPublish(), requiresCadInteraction: true);
+            PullSnapshotForDefaultPublish();
         }
 
         public void RequestPublishRangeFull()
@@ -438,9 +437,7 @@ namespace HyCADTool.Features.Tables.Services
                 if (exportMode == UniverPublishExportMode.RangeFull
                     || exportMode == UniverPublishExportMode.RangeContent)
                 {
-                    _pendingAfterSnapshot = null;
-                    _pendingRequiresCadInteraction = false;
-                    _pendingExportMode = UniverPublishExportMode.Default;
+                    ResetExportState();
 
                     if (snapshot == null)
                     {
@@ -453,16 +450,25 @@ namespace HyCADTool.Features.Tables.Services
                     return;
                 }
 
+                TakeExportContinuation(out var publishOnly, out var pending, out var requiresCad);
+
+                if (publishOnly)
+                {
+                    if (snapshot == null)
+                    {
+                        _viewModel.SetStatusMessage("exportSnapshot 返回空数据");
+                        return;
+                    }
+
+                    BeginCadInteraction();
+                    _viewModel.RequestPublishFromSnapshot(snapshot, clipRect: null, mutateEditor: false);
+                    return;
+                }
+
                 if (string.IsNullOrWhiteSpace(json))
                     _viewModel.SetStatusMessage("exportSnapshot 返回空数据，将使用内存表格落图");
                 else
-                    _viewModel.ApplyUniverSnapshot(snapshot);
-
-                var pending = _pendingAfterSnapshot;
-                var requiresCad = _pendingRequiresCadInteraction;
-                _pendingAfterSnapshot = null;
-                _pendingRequiresCadInteraction = false;
-                _pendingExportMode = UniverPublishExportMode.Default;
+                    ApplySnapshotToEditorSilently(snapshot);
 
                 if (pending == null)
                     return;
@@ -474,9 +480,7 @@ namespace HyCADTool.Features.Tables.Services
             }
             catch (Exception ex)
             {
-                _pendingAfterSnapshot = null;
-                _pendingRequiresCadInteraction = false;
-                _pendingExportMode = UniverPublishExportMode.Default;
+                ResetExportState();
                 _viewModel.SetStatusMessage(ex.Message);
                 EndCadInteraction();
             }
@@ -484,6 +488,32 @@ namespace HyCADTool.Features.Tables.Services
             {
                 NotifyStatusChanged();
             }
+        }
+
+        private void PullSnapshotForDefaultPublish()
+        {
+            if (_exportSnapshotHandler == null && RequestExportSnapshot == null)
+            {
+                _viewModel.SetStatusMessage("Univer 未就绪，请等待加载完成");
+                NotifyStatusChanged();
+                return;
+            }
+
+            lock (_exportSync)
+            {
+                _pendingExportMode = UniverPublishExportMode.Default;
+                _pendingAfterSnapshot = null;
+                _pendingRequiresCadInteraction = true;
+                _publishAfterSnapshot = true;
+            }
+
+            ClearExportTimeout();
+            _exportTimeoutTimer = new Timer(_ => OnExportTimeout(), null, ExportTimeoutMs, Timeout.Infinite);
+
+            if (_exportSnapshotHandler != null)
+                _exportSnapshotHandler();
+            else
+                RequestExportSnapshot?.Invoke();
         }
 
         private void PullSnapshotForRangePublish(UniverPublishExportMode mode)
@@ -496,8 +526,12 @@ namespace HyCADTool.Features.Tables.Services
             }
 
             _pendingExportMode = mode;
-            _pendingAfterSnapshot = null;
-            _pendingRequiresCadInteraction = true;
+            lock (_exportSync)
+            {
+                _pendingAfterSnapshot = null;
+                _pendingRequiresCadInteraction = true;
+                _publishAfterSnapshot = false;
+            }
             ClearExportTimeout();
             _exportTimeoutTimer = new Timer(_ => OnExportTimeout(), null, ExportTimeoutMs, Timeout.Infinite);
         }
@@ -550,7 +584,11 @@ namespace HyCADTool.Features.Tables.Services
             }
 
             _pendingAfterSnapshot = action;
-            _pendingRequiresCadInteraction = requiresCadInteraction;
+            lock (_exportSync)
+            {
+                _pendingRequiresCadInteraction = requiresCadInteraction;
+                _publishAfterSnapshot = false;
+            }
             ClearExportTimeout();
             _exportTimeoutTimer = new Timer(_ => OnExportTimeout(), null, ExportTimeoutMs, Timeout.Infinite);
 
@@ -615,14 +653,54 @@ namespace HyCADTool.Features.Tables.Services
 
         private void OnExportTimeout()
         {
-            if (_pendingAfterSnapshot == null && _pendingExportMode == UniverPublishExportMode.Default)
+            TakeExportContinuation(out var publishOnly, out var pending, out _);
+            if (!publishOnly && pending == null)
                 return;
 
-            _pendingAfterSnapshot = null;
-            _pendingRequiresCadInteraction = false;
-            _pendingExportMode = UniverPublishExportMode.Default;
-            _viewModel.SetStatusMessage("exportSnapshot 超时，请重试");
-            NotifyStatusChanged();
+            RunOnUi(() =>
+            {
+                _viewModel.SetStatusMessage("exportSnapshot 超时，请重试");
+                NotifyStatusChanged();
+                EndCadInteraction();
+            });
+        }
+
+        private void ApplySnapshotToEditorSilently(UniverGridSnapshot snapshot)
+        {
+            _suppressPush = true;
+            try
+            {
+                _viewModel.ApplyUniverSnapshot(snapshot);
+            }
+            finally
+            {
+                _suppressPush = false;
+            }
+        }
+
+        private void ResetExportState()
+        {
+            lock (_exportSync)
+            {
+                _pendingAfterSnapshot = null;
+                _pendingRequiresCadInteraction = false;
+                _pendingExportMode = UniverPublishExportMode.Default;
+                _publishAfterSnapshot = false;
+            }
+        }
+
+        private void TakeExportContinuation(out bool publishOnly, out Action pending, out bool requiresCad)
+        {
+            lock (_exportSync)
+            {
+                publishOnly = _publishAfterSnapshot;
+                _publishAfterSnapshot = false;
+                pending = _pendingAfterSnapshot;
+                _pendingAfterSnapshot = null;
+                requiresCad = _pendingRequiresCadInteraction;
+                _pendingRequiresCadInteraction = false;
+                _pendingExportMode = UniverPublishExportMode.Default;
+            }
         }
 
         private void ClearExportTimeout()

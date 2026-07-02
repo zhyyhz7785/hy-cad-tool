@@ -291,10 +291,47 @@ namespace HyCADTool.Tests.Features.Tables
             {
                 bridge.SetExportSnapshotHandler(() => { });
                 bridge.RequestPublish();
-                bridge.CompleteExportSnapshot(null);
+                var json = UniverGridSnapshotMapper.ToJson(TableSamples.BuildPersonnelTable());
+                bridge.CompleteExportSnapshot(json);
 
                 Assert.Contains("请先加载或拾取表格", vm.StatusMessage);
             }
+        }
+
+        [Fact]
+        public void ApplyStructure_AppliesMergeAndTrackSizesFromSnapshot()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+            snapshot.RowHeightsMm[0] = 12.5;
+            snapshot.ColWidthsMm[0] = 30.0;
+            var titleCell = snapshot.Cells.First(c => c.Row == 0 && c.Col == 0);
+            titleCell.RowSpan = 1;
+            titleCell.ColSpan = 7;
+
+            UniverGridSnapshotMapper.ApplyStructure(opLog, snapshot);
+
+            Assert.Equal(12.5, opLog.Current.Structure.Topology.Rows[0].Size, 3);
+            Assert.Equal(30.0, opLog.Current.Structure.Topology.Cols[0].Size, 3);
+            Assert.Contains(opLog.Current.Structure.Merges, m => m.Anchor.Row == 0 && m.ColSpan == 7);
+        }
+
+        [Fact]
+        public void BuildPublishGridFromSnapshot_DoesNotMutateEditorOpLog()
+        {
+            var grid = TableSamples.BuildPersonnelTable();
+            var opLog = new TableOpLog(grid);
+            var originalValue = ReadCellText(opLog.Current, 1, 1);
+            var snapshot = UniverGridSnapshotMapper.FromTableGrid(opLog.Current);
+            var valueCell = snapshot.Cells.First(c => c.Row == 1 && c.Col == 1);
+            valueCell.Text = "落图专用值";
+            valueCell.Editable = true;
+
+            var publishGrid = TablePanelViewModel.BuildPublishGridFromSnapshot(opLog.Current, snapshot, clipRect: null);
+
+            Assert.Equal("落图专用值", ReadCellText(publishGrid, 1, 1));
+            Assert.Equal(originalValue, ReadCellText(opLog.Current, 1, 1));
         }
 
         [Fact]

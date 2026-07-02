@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -96,7 +97,8 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             List<(ObjectId Id, string Kind, CellAddr? Cell)> members)
         {
             // 边框宽走纸面 mm 解析（fallback 用未缩放值），统一在 CreateBorderSegment ×Scale，避免回退值被双重缩放。
-            var segments = BorderGridResolver.Resolve(layout, _options.DefaultInnerBorderWidthMm);
+            var segments = MergeCollinearSegments(
+                BorderGridResolver.Resolve(layout, _options.DefaultInnerBorderWidthMm));
             var z = _options.ZElevation;
 
             foreach (var seg in segments)
@@ -248,6 +250,35 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             }
         }
 
+        private static IEnumerable<BorderGridSegment> MergeCollinearSegments(IEnumerable<BorderGridSegment> source)
+        {
+            BorderGridSegment? current = null;
+            foreach (var seg in source.OrderBy(s => s.Orientation).ThenBy(s => s.FixedCoord).ThenBy(s => s.Start))
+            {
+                if (current == null)
+                {
+                    current = seg;
+                    continue;
+                }
+
+                var c = current.Value;
+                if (c.Orientation == seg.Orientation
+                    && Math.Abs(c.FixedCoord - seg.FixedCoord) < 0.001
+                    && Math.Abs(c.WidthMm - seg.WidthMm) < 0.001
+                    && Math.Abs(c.End - seg.Start) < 0.001)
+                {
+                    current = new BorderGridSegment(c.Orientation, c.FixedCoord, c.Start, seg.End, c.WidthMm);
+                    continue;
+                }
+
+                yield return c;
+                current = seg;
+            }
+
+            if (current.HasValue)
+                yield return current.Value;
+        }
+
         private void AppendVerticalStackedText(
             TableGrid grid,
             VisibleCellLayout cell,
@@ -260,34 +291,50 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
             if (string.IsNullOrEmpty(displayText) && !_scaledOptions.DrawEmptyCellText)
                 return;
 
+            var chars = new List<char>();
+            foreach (var ch in displayText.Replace("\r", string.Empty))
+            {
+                if (ch == '\n')
+                    continue;
+                chars.Add(ch);
+            }
+
+            if (chars.Count == 0 && !_scaledOptions.DrawEmptyCellText)
+                return;
+
             var positions = AcadTableVerticalText.ComputePositions(
                 displayText,
                 cell.Bounds,
                 effective.Style,
                 _scaledOptions);
 
-            foreach (var (character, x, y) in positions)
+            var contents = string.Join("\\P", chars.Select(c => c.ToString()));
+            var mtext = new MText
             {
-                var text = new DBText
-                {
-                    Height = effective.Style.TextHeight,
-                    TextString = character.ToString(),
-                    Layer = _scaledOptions.TextLayerName,
-                    WidthFactor = effective.WidthFactor,
-                };
+                Contents = contents,
+                TextHeight = effective.Style.TextHeight,
+                Layer = _scaledOptions.TextLayerName,
+            };
 
-                AcadTableTextMapper.ApplyAtPoint(
-                    text,
-                    x,
-                    y,
-                    TextAlign.Center,
-                    _scaledOptions.ZElevation,
-                    _database);
-
-                ms.AppendEntity(text);
-                tr.AddNewlyCreatedDBObject(text, true);
-                members.Add((text.ObjectId, HyTableXdata.KindText, cell.Addr));
+            if (positions.Count > 0)
+            {
+                var x = positions[0].X;
+                var y = (positions[0].Y + positions[positions.Count - 1].Y) / 2;
+                mtext.Location = new Point3d(x, y, _scaledOptions.ZElevation);
+                mtext.Attachment = AttachmentPoint.MiddleCenter;
             }
+            else
+            {
+                mtext.Location = new Point3d(
+                    (cell.Bounds.Left + cell.Bounds.Right) / 2,
+                    (cell.Bounds.Top + cell.Bounds.Bottom) / 2,
+                    _scaledOptions.ZElevation);
+                mtext.Attachment = AttachmentPoint.MiddleCenter;
+            }
+
+            ms.AppendEntity(mtext);
+            tr.AddNewlyCreatedDBObject(mtext, true);
+            members.Add((mtext.ObjectId, HyTableXdata.KindText, cell.Addr));
         }
 
         private void AppendHorizontalText(

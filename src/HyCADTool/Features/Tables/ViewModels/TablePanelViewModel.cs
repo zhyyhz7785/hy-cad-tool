@@ -715,31 +715,7 @@ namespace HyCADTool.Features.Tables.ViewModels
             }
             else
             {
-                if (clipRect == null)
-                {
-                    StatusMessage = "范围落图缺少选区信息";
-                    InvokeCadInteractionCompleted();
-                    return;
-                }
-
-                var extendOpLog = new TableOpLog(_opLog.Current);
-                UniverGridSnapshotMapper.EnsureGridFits(extendOpLog, new UniverGridSnapshot
-                {
-                    RowCount = clipRect.EndRow + 1,
-                    ColCount = clipRect.EndCol + 1,
-                });
-
-                var cropped = TableGridCropper.Crop(
-                    extendOpLog.Current,
-                    clipRect.StartRow,
-                    clipRect.StartCol,
-                    clipRect.EndRow,
-                    clipRect.EndCol);
-
-                var tempOpLog = new TableOpLog(cropped);
-                UniverGridSnapshotMapper.EnsureGridFits(tempOpLog, snapshot);
-                UniverGridSnapshotMapper.ApplyTextValues(tempOpLog, snapshot);
-                publishGrid = tempOpLog.Current;
+                publishGrid = BuildPublishGridFromSnapshot(_opLog.Current, snapshot, clipRect);
             }
 
             var gridToPublish = publishGrid;
@@ -782,6 +758,46 @@ namespace HyCADTool.Features.Tables.ViewModels
                     InvokeCadInteractionCompleted();
                 });
             });
+        }
+
+        /// <summary>从 Univer 快照构建落图 grid（不写回编辑器 OpLog）。clipRect 为 null 表示全表。</summary>
+        internal static TableGrid BuildPublishGridFromSnapshot(
+            TableGrid source,
+            UniverGridSnapshot snapshot,
+            UniverClipRect clipRect)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+
+            TableGrid baseGrid;
+            if (clipRect == null)
+            {
+                baseGrid = source;
+            }
+            else
+            {
+                var extendOpLog = new TableOpLog(source);
+                UniverGridSnapshotMapper.EnsureGridFits(extendOpLog, new UniverGridSnapshot
+                {
+                    RowCount = clipRect.EndRow + 1,
+                    ColCount = clipRect.EndCol + 1,
+                });
+
+                baseGrid = TableGridCropper.Crop(
+                    extendOpLog.Current,
+                    clipRect.StartRow,
+                    clipRect.StartCol,
+                    clipRect.EndRow,
+                    clipRect.EndCol);
+            }
+
+            var tempOpLog = new TableOpLog(baseGrid);
+            UniverGridSnapshotMapper.EnsureGridFits(tempOpLog, snapshot);
+            UniverGridSnapshotMapper.ApplyStructure(tempOpLog, snapshot);
+            UniverGridSnapshotMapper.ApplyTextValues(tempOpLog, snapshot);
+            return tempOpLog.Current;
         }
 
         protected virtual void OnAfterApplyGrid()
