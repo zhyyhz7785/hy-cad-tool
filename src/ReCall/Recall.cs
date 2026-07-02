@@ -166,6 +166,13 @@ namespace HyCADTool.ReCall
         /// <summary>上次 C2 创建的 PluginInitializer 实例（用于下次 C2 前调用其 Terminate 清理事件订阅）</summary>
         private static object _lastPluginInitInstance;
 
+        /// <summary>
+        /// 同一次 C2 内 AssemblyResolve 解析缓存（每次 C2 开头清空）。
+        /// 防止 WPF/CLR 重复触发 Resolve 时从 deps 目录反复 byte[] 加载同名程序集。
+        /// </summary>
+        private static readonly Dictionary<string, Assembly> _resolvedDependencyCache =
+            new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
+
         #endregion
 
         #region ========== C2 ==========
@@ -272,6 +279,7 @@ namespace HyCADTool.ReCall
                 _currentDependenciesPath = loadDepsPath;
                 _currentNugetPackagesPath = nugetPath;
                 _lastLoadDir = loadDepsPath;
+                _resolvedDependencyCache.Clear();
                 AppDomain.CurrentDomain.SetData("HyCADTool.ReCall.DependenciesPath", loadDepsPath);
                 AppDomain.CurrentDomain.SetData("HyCADTool.ReCall.SourceBinPath", depsPath);
 
@@ -1251,6 +1259,13 @@ namespace HyCADTool.ReCall
             "System.Xaml",
         };
 
+        // 【HyCADTool 主程序集 · 2026-07-02】
+        //   C2 用 Assembly.Load(byte[]) 加载主程序集后，WPF pack URI / BAML 解析仍可能触发
+        //   Assembly.Load("HyCADTool, ...") → 失败 → AssemblyResolve。
+        //   若 Resolve 再从 deps 目录 byte[] 加载，AppDomain 会增殖第二份 HyCADTool，
+        //   ResourceContainer 按程序集名缓存资源 → FilterPanel 等 UserControl 抛
+        //   "组件 … 不具有由 URI /HyCADTool;component/... 识别的资源"，并在 Measure 循环中卡顿。
+        //   修复：HyCADTool 请求一律返回当前 C2 代的 _refactoredAssembly；其余 deps 走解析缓存 + AppDomain 复用。
         private static Assembly ResolveAssembly(ResolveEventArgs args, string dependenciesPath, string nugetPackagesPath)
         {
             if (args.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
@@ -1259,12 +1274,26 @@ namespace HyCADTool.ReCall
             var requestedName = new AssemblyName(args.Name);
             string shortName = requestedName.Name;
 
+            if (string.Equals(shortName, TARGET_PROJECT_NAME, StringComparison.OrdinalIgnoreCase))
+                return _refactoredAssembly;
+
+            if (_resolvedDependencyCache.TryGetValue(shortName, out Assembly cached))
+                return cached;
+
             // 宿主程序集：用 AppDomain 已加载的版本（短名匹配），杜绝双载入。
             if (AutoCadHostAssemblyNames.Contains(shortName, StringComparer.OrdinalIgnoreCase))
             {
-                Assembly hostExisting = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => string.Equals(a.GetName().Name, shortName, StringComparison.OrdinalIgnoreCase));
+                Assembly hostExisting = GetLoadedAssembly(shortName);
+                if (hostExisting != null)
+                    _resolvedDependencyCache[shortName] = hostExisting;
                 return hostExisting; // 返回 null 让 CLR fallback；返回非 null 则 CLR 接受为版本替代
+            }
+
+            Assembly existing = GetLoadedAssembly(shortName);
+            if (existing != null)
+            {
+                _resolvedDependencyCache[shortName] = existing;
+                return existing;
             }
 
             if (string.IsNullOrWhiteSpace(dependenciesPath))
@@ -1272,24 +1301,14 @@ namespace HyCADTool.ReCall
 
             string name = shortName + ".dll";
             string path = Path.Combine(dependenciesPath, name);
-            if (File.Exists(path))
-            {
-                try
-                {
-                    return Assembly.Load(File.ReadAllBytes(path));
-                }
-                catch
-                {
-                    return null;
-                }
-            }
+            Assembly loaded = TryLoadAndCacheDependency(shortName, path);
+            if (loaded != null)
+                return loaded;
 
             string net8Path = Path.Combine(dependenciesPath, "net8", name);
-            if (File.Exists(net8Path))
-            {
-                try { return Assembly.Load(File.ReadAllBytes(net8Path)); }
-                catch { return null; }
-            }
+            loaded = TryLoadAndCacheDependency(shortName, net8Path);
+            if (loaded != null)
+                return loaded;
 
             try
             {
@@ -1297,19 +1316,31 @@ namespace HyCADTool.ReCall
                 foreach (var dir in dirs)
                 {
                     path = Path.Combine(dir, name);
-                    if (File.Exists(path))
-                    {
-                        try
-                        {
-                            return Assembly.Load(File.ReadAllBytes(path));
-                        }
-                        catch { }
-                    }
+                    loaded = TryLoadAndCacheDependency(shortName, path);
+                    if (loaded != null)
+                        return loaded;
                 }
             }
             catch { }
 
             return null;
+        }
+
+        private static Assembly TryLoadAndCacheDependency(string shortName, string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return null;
+
+            try
+            {
+                Assembly asm = Assembly.Load(File.ReadAllBytes(path));
+                _resolvedDependencyCache[shortName] = asm;
+                return asm;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         #endregion

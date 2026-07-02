@@ -13,6 +13,7 @@ description: |
   AdWindows Badge/badge.xaml：真根因为 ReCall AssemblyResolve 把项目传递引用的旧 AdWindows 5.0.1.2
   byte[] 加载，与 AutoCAD 进程 5.1.1.1 双载入 → 类型身份割裂。修复在 ReCall/Recall.cs
   ResolveAssembly 增加 AutoCAD 宿主程序集黑名单（B11 真根因落地 / doc/RoadDesign/00.md）；
+  HyCADTool 自身 C2 双载入导致 FilterPanel 等 pack URI 资源割裂（B13：ResolveAssembly 返回 _refactoredAssembly + Terminate 拆 PaletteSet）；
   构建系统：Refactored→ReCall 用 ProjectReference 链式触发 ReCall obj→bin 复制，
   AutoCAD 锁着 ReCall.dll 时致 MSB3027/MSB3021 整个方案构建中断、Refactored.dll 无产出，
   C2 热重载机制失效。修复改为 Reference+HintPath 单向二进制引用断开 MSBuild 项目依赖链
@@ -874,6 +875,46 @@ XamlReader.Load(info.Stream);  // 抛 XmlException 0x0C
 
 ---
 
+### B13【真根因落地 · 2026-07-02】HyCADTool 自身双载入 → `FilterPanel` pack URI 资源割裂 + 面板卡顿
+
+> B11 姊妹条目：同样是 ReCall C2 + `AssemblyResolve` byte[] 加载导致的**程序集身份割裂**，只是分裂对象从 `AdWindows` 换成 **`HyCADTool` 主程序集**。
+
+**现象**
+
+- 命令行狂刷：`XamlParseException`，对类型 `HyCADTool.Shell.Views.FilterPanel`…
+- **内层**：组件 `FilterPanel` 不具有由 URI **`/HyCADTool;component/shell/blenderpanel/filterpanel.xaml`** 识别的资源。
+- 堆栈：`FrameworkTemplate.LoadContent` → `ApplyTemplate` → `MeasureOverride` → `ContextLayoutManager.UpdateLayout`（每次布局 pass 重试 → **异常风暴 = Hy 面板卡顿**）。
+- 常在一次或多次 **C2 热重载**、且 FilterPanel.xaml 有大改后出现；**冷启动 AutoCAD 后立刻恢复**。
+
+**真根因**
+
+1. 每次 C2 都 `Assembly.Load(byte[])` 一份新 `HyCADTool.dll`（旧副本不可卸载）。
+2. WPF `InitializeComponent` / pack URI 解析仍可能触发 `Assembly.Load("HyCADTool, ...")` → 失败 → `AssemblyResolve`。
+3. 旧版 `ResolveAssembly` 对 `HyCADTool` **无保护**，每次 Resolve 都从 %TEMP% deps 目录 **再 byte[] 加载一份新副本**（无缓存）。
+4. WPF `ResourceContainer` 按程序集**名字**缓存 BAML；`HyBlenderPanel.xaml` DataTemplate 实例化的 `FilterPanel` 类型来自副本 A，`LoadComponent` 查的是副本 B 的资源 → URI 找不到。
+5. `PluginInitializer.Terminate` 不关闭旧 `_blenderPaletteSet`，旧代 WPF 视觉树跨 C2 存活继续参与 Measure，加剧卡顿。
+
+**正确做法（仓库 2026-07-02 已落地）**
+
+1. ✅ `ReCall/Recall.cs::ResolveAssembly`：`HyCADTool` 请求一律返回当前 C2 代的 `_refactoredAssembly`，**禁止**再从 deps 目录 byte[] 增殖。
+2. ✅ 其余非宿主 deps：`_resolvedDependencyCache`（每次 C2 开头 `Clear`）+ 先查 `AppDomain` 短名复用，同名只 load 一次。
+3. ✅ `PanelManager.CloseAndDisposeAllPalettes()`：`Terminate` 时关闭/Dispose 全部 PaletteSet，拆掉旧代视觉树。
+4. ⚠️ 已污染 AppDomain 的旧副本**无法卸载**；首次修复后须 **关 AutoCAD 冷启动** 一次清场，再 NETLOAD ReCall → C2。
+
+**回归提示**
+
+- 看到 **`/HyCADTool;component/...` 不具有由 URI 识别的资源**：先答 **「C2 导致 HyCADTool 双载入 + 旧 PaletteSet 未拆；冷启动清场 + 确认 ReCall ResolveAssembly 已返回 _refactoredAssembly」**，不要误以为是 XAML 路径写错（路径通常是对的）。
+- 连续 C2 后仍异常：输 `hyRecallSelfCheck` 看 AppDomain 里 `HyCADTool` count；>1 且未冷启动说明旧副本仍在。
+- 改 `ReCall.ResolveAssembly` 时，`HyCADTool` 分支必须**优先于** deps 目录 byte[] 加载。
+
+**已修复文件**
+
+- `ReCall/Recall.cs`：`ResolveAssembly` HyCADTool 分支 + `_resolvedDependencyCache` + `TryLoadAndCacheDependency`。
+- `HyCADTool/Shell/BlenderPanel/PanelManager.cs`：`CloseAndDisposeAllPalettes`。
+- `HyCADTool/App/Bootstrap/PluginInitializer.cs`：`Terminate` 调用 `CloseAndDisposeAllPalettes`。
+
+---
+
 ### B12【新 2026-04-26】`Shell/Preferences`：空 `Host` + 代码套 `DataTemplate` → VS XAML 设计器全白
 
 **现象**
@@ -1445,6 +1486,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 | **B1/B2** | `HyCAD.BlenderUI/Themes/Controls/ScrollBar.xaml` 为 **`x:Key="BlenderScrollBar"`** 命名 Style，非隐式无 Key。 |
 | **D3 / D4** | `PluginInitializer.InstallWpfExceptionTraps`：`MdiActiveDocument` 空防御；`BindingErrorListener` 白名单 + `Debug.WriteLine`，避免命令行刷爆卡死。 |
 | **Badge 真修复（B11）** | `ReCall/Recall.cs::ResolveAssembly` 增加 `AutoCadHostAssemblyNames` 黑名单，宿主程序集（`AdWindows` / `AcMr` / ...）一律走 `AppDomain` 已加载查表，绝不从 deps 目录 byte[] 加载，杜绝 5.0.1.2 与 5.1.1.1 双载入；见 **B11** 全文。 |
+| **HyCADTool 双载入（B13）** | `ReCall/Recall.cs::ResolveAssembly`：`HyCADTool` 请求返回 `_refactoredAssembly` + `_resolvedDependencyCache`；`PanelManager.CloseAndDisposeAllPalettes` 于 C2 Terminate 拆掉旧 PaletteSet；见 **B13** 全文。 |
 | **C1** | 【2026-04-25 已更进一步】主工程 `src/HyCADTool/HyCADTool.csproj` 对 ReCall **零引用**（ProjectReference / Reference HintPath / EnsureReCallDllExists 全部移除，业务代码切到 `HyCADTool.Shell.Commands` 自有类型）。`grep -n 'ReCall' src/HyCADTool/HyCADTool.csproj` 仅命中注释与 Production 的 commands.json 拷贝项。AutoCAD 开着 `dotnet build src\HyCADTool\HyCADTool.csproj -c Debug` 实测 0 error（2026-06-12 复测通过）。 |
 | **C2** | `HyCADTool.Refactored.csproj` 与 `HyCAD.BlenderUI.csproj` 都已 `<PlatformTarget>AnyCPU</PlatformTarget>` + `<Prefer32Bit>false</Prefer32Bit>`。校验：用 32-bit PowerShell 跑 `[System.Reflection.Assembly]::LoadFrom('HyCADTool.Refactored\bin\Debug\HyCAD.BlenderUI.dll').GetTypes().Length` 应返回 210；同样测 Refactored.dll 应返回 1249。VS 重启后错误列表 0 个 XDG-0001/XDG0023/XDG0010。`ReCall.csproj` 故意保持 x64 不变（设计器不引用它）。 |
 | **B12** | `HyCADTool/Shell/Preferences/Preferences/*SettingsView.xaml.cs`：`Loaded` + `Dispatcher.BeginInvoke(ApplySection, DispatcherPriority.Loaded)`；对应 `.xaml` 中 `Host` 含 `d:ContentTemplate`（`Section_<默认键>`）与 `d:Content=" "`。若设计器仍白屏，先查 XAML 错误列表与 **B5/C2**（pack/平台），见 **B12** 全文。 |
@@ -1455,6 +1497,7 @@ Refactored 面板所在 UserControl 根部资源合并模板——**只这一行
 | 风险 | 说明 |
 |------|------|
 | **`/AdWindows;component/themes/badge.xaml`** | 真根因为 ReCall AssemblyResolve 双载入旧版 AdWindows 5.0.1.2，与 AutoCAD 进程 5.1.1.1 形成类型身份割裂。复现时先查：**ReCall 宿主程序集黑名单是否完整**、bin/Debug 里是否多出本不该有的旧版 AutoCAD 宿主 dll（见 **B11**、`.cursor/rules/05-AdWindows-WPF-PaletteSet宿主.mdc`）。 |
+| **`/HyCADTool;component/...` FilterPanel 等** | C2 多次后 HyCADTool 自身双载入 + 旧 PaletteSet 跨 C2 存活（见 **B13**）。先冷启动清场，再确认 ResolveAssembly 已返回 `_refactoredAssembly` 且 Terminate 已 Dispose 面板。 |
 | **B10 同类** | 未来若有新的 `Freezable` 写入 Theme 字典且未做 freeze 阻断，仍可能再引入异常链。 |
 | **A1** | 依赖持续 Code Review：`SingleInstance` 服务不得长期缓存 `Database`。 |
 | **C1 同类** | 未来若新建解决方案项目（如 `HyCADTool.Plugins.X`）想引用 ReCall，必须用 `<Reference HintPath>` 而非 `<ProjectReference>`；同样必须保持 ReCall 不反向引用任何业务项目。审 PR 时 `grep` 一下 `ReCall\.csproj"` 看是否被任何 csproj 用 ProjectReference。 |

@@ -678,6 +678,59 @@ namespace HyCADTool.Shell
             }
         }
 
+        /// <summary>
+        /// C2 Terminate 时关闭并释放全部 PaletteSet，避免旧代 WPF 视觉树跨 C2 存活继续参与布局，
+        /// 与新一代 HyCADTool 程序集混用导致 pack URI / BAML 资源身份割裂与 Measure 异常风暴。
+        /// </summary>
+        public void CloseAndDisposeAllPalettes()
+        {
+            DisposePaletteSet(ref _blenderPaletteSet, ref _blenderPanel, OnBlenderPaletteStateChanged);
+
+            DisposePaletteSet(ref _alignmentPaletteSet, ref _alignmentPanel, OnAlignmentPaletteStateChanged);
+            _alignmentVm = null;
+
+            DisposePaletteSet(ref _projectTreePaletteSet, ref _projectTreePanel, OnProjectTreePaletteStateChanged);
+            _projectTreeVm = null;
+
+            DisposePaletteSet(ref _crossSectionPaletteSet, ref _crossSectionPanel, OnCrossSectionPaletteStateChanged);
+            _crossSectionVm = null;
+
+            DisposePaletteSet(ref _hyobHistoryPaletteSet, ref _hyobHistoryPanel, OnHyobHistoryPaletteStateChanged);
+            _hyobHistoryVm = null;
+
+            DisposePaletteSet(ref _hyfeaBeamMvpPaletteSet, ref _hyfeaBeamMvpPanel, null);
+            _hyfeaBeamMvpVm = null;
+
+            _alignmentPaletteWasVisible = false;
+        }
+
+        private static void DisposePaletteSet<TPanel>(
+            ref PaletteSet paletteSet,
+            ref TPanel panel,
+            PaletteSetStateEventHandler stateChangedHandler)
+            where TPanel : class
+        {
+            if (paletteSet == null)
+                return;
+
+            try
+            {
+                paletteSet.Visible = false;
+                if (stateChangedHandler != null)
+                    paletteSet.StateChanged -= stateChangedHandler;
+                paletteSet.Dispose();
+            }
+            catch
+            {
+                // PaletteSet 是 AutoCAD 原生宿主，Dispose 失败不可向外抛
+            }
+            finally
+            {
+                paletteSet = null;
+                panel = null;
+            }
+        }
+
         private void OnDocumentToBeDestroyed(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
             if (e.Document == null) return;

@@ -238,7 +238,9 @@ namespace HyCADTool.App.Bootstrap
 
                 try
                 {
-                    ServiceLocator.TryResolve<HyCADTool.Shell.PanelManager>()?.UnregisterDocumentEvents();
+                    var panelManager = ServiceLocator.TryResolve<HyCADTool.Shell.PanelManager>();
+                    panelManager?.CloseAndDisposeAllPalettes();
+                    panelManager?.UnregisterDocumentEvents();
                 }
                 catch { }
 
