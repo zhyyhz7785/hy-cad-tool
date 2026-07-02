@@ -12,7 +12,7 @@ import { isLayoutTabActive, subscribeLayoutTabActive } from './layout-tab-inject
 import { subscribePagePreviewScale } from './page-preview-scale';
 
 import { resolvePageBoxLayout, resolveViewportRulerBand, resolvePixelsPerMm } from './page-box-layout';
-import { getPagePreviewScalePxPerMm } from './page-preview-scale';
+import { resolveLayoutPpm } from './page-preview-scale';
 
 import { installViewportProbe, type UniverViewportMetrics } from './univer-viewport';
 
@@ -595,9 +595,9 @@ function layoutRulersOnPaper(
   vTickClipEnd: number;
 } {
   const { rect: paperRect, pageWidthPx, widthMm, heightMm } = pageBox;
-  const ppm = getPagePreviewScalePxPerMm() > 0
-    ? getPagePreviewScalePxPerMm()
-    : (widthMm > 0 && pageWidthPx > 0 ? pageWidthPx / widthMm : DISPLAY_PX_PER_MM);
+  const ppm = resolveLayoutPpm(
+    widthMm > 0 && pageWidthPx > 0 ? pageWidthPx / widthMm : DISPLAY_PX_PER_MM,
+  );
 
   // 图纸外框左上角（sheetBox 视口坐标）
   const paperLeft = paperRect.left;

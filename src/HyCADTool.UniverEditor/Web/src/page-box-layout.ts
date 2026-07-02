@@ -1,7 +1,7 @@
 import type { UniverViewportMetrics } from './univer-viewport';
 import { DISPLAY_PX_PER_MM, mmSizeToDisplayPx } from './mm-display';
 import { getLayoutViewState } from './layout-view-state';
-import { getPagePreviewScalePxPerMm } from './page-preview-scale';
+import { resolveLayoutPpm } from './page-preview-scale';
 import { resolveSheetSizeMm } from './paper-sheet';
 
 export interface PageBoxLayout {
@@ -57,9 +57,9 @@ export function resolvePageBoxLayout(metrics: UniverViewportMetrics): PageBoxLay
     const rect = sheetBox.getBoundingClientRect();
     const state = getLayoutViewState();
     const sheet = resolveSheetSizeMm(state.paperPresetIndex, state.orientation);
-    const ppm = getPagePreviewScalePxPerMm() > 0
-      ? getPagePreviewScalePxPerMm()
-      : (rect.width > 0 && sheet.widthMm > 0 ? rect.width / sheet.widthMm : DISPLAY_PX_PER_MM);
+    const ppm = resolveLayoutPpm(
+      rect.width > 0 && sheet.widthMm > 0 ? rect.width / sheet.widthMm : DISPLAY_PX_PER_MM,
+    );
     return {
       rect,
       widthMm: sheet.widthMm,

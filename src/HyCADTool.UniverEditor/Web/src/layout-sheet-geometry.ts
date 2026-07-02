@@ -128,21 +128,23 @@ export function computeLayoutGeometry(
   if (boxW <= 0 || boxH <= 0)
     return null;
 
+  const innerWmm = Math.max(1, sheetWidthMm - pageMargins.left - pageMargins.right);
+  const innerHmm = Math.max(1, sheetHeightMm - pageMargins.top - pageMargins.bottom);
+
   const pad = marginsToPaddingPx(pageMargins, ppm);
   const maxPadLeft = Math.max(0, Math.floor(boxW / 2) - 1);
-  const maxPadRight = Math.max(0, Math.floor(boxW / 2) - 1);
   const maxPadTop = Math.max(0, Math.floor(boxH / 2) - 1);
-  const maxPadBottom = Math.max(0, Math.floor(boxH / 2) - 1);
 
   const padLeft = Math.min(Math.max(0, Math.round(pad.padLeft)), maxPadLeft);
   const padTop = Math.min(Math.max(0, Math.round(pad.padTop)), maxPadTop);
-  const padRight = Math.min(pad.padRight, maxPadRight);
-  const padBottom = Math.min(pad.padBottom, maxPadBottom);
 
-  const contentW = Math.max(0, boxW - padLeft - padRight);
-  const contentH = Math.max(0, boxH - padTop - padBottom);
-  const widthPx = Math.max(1, contentW);
-  const heightPx = Math.max(1, contentH);
+  // CellRegion 由内区 mm 直算；右/下 pad 吸收取整残差，保证网格右/下边与边距线重合。
+  const widthPx = Math.max(1, Math.round(innerWmm * ppm));
+  const heightPx = Math.max(1, Math.round(innerHmm * ppm));
+  const padRight = Math.max(0, boxW - padLeft - widthPx);
+  const padBottom = Math.max(0, boxH - padTop - heightPx);
+  const contentW = widthPx;
+  const contentH = heightPx;
 
   const anchor = cellRegionAnchorOffset(ppm, showHeaders);
 

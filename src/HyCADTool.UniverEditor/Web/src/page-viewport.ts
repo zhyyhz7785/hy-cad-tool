@@ -18,6 +18,8 @@ import {
 
   resetPagePreviewScaleFromFit,
 
+  setEffectivePagePpm,
+
 } from './page-preview-scale';
 
 import { resolveSheetSizeMm } from './paper-sheet';
@@ -40,7 +42,6 @@ import {
   correctLastGridTracks,
   invalidateGridFit,
   restoreGridBaseline,
-  type GridFitResult,
 } from './layout-grid-fit';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
@@ -268,30 +269,13 @@ function applySheetBoxSizing(
   return true;
 }
 
-/** 网格 zoom 严格跟随图纸 appliedPpm，不与 cellArea/colSum 反推脱钩。 */
-function computePaperLockedZoom(appliedPpm: number): number {
-  let zoom = appliedPpm / DISPLAY_PX_PER_MM;
+/** 将请求 ppm 量化为 Univer zoom（0.01 步长）；effectivePpm = zoom × DISPLAY_PX_PER_MM 驱动纸面几何。 */
+function quantizeRequestedPpmToZoom(requestedPpm: number): number {
+  let zoom = requestedPpm / DISPLAY_PX_PER_MM;
   zoom = Math.round(zoom * 100) / 100;
   if (zoom <= 0)
     zoom = 0.01;
   return zoom;
-}
-
-/**
- * 量化 zoom 以"不超过 CellRegion"为准（floor）：ceil 会让网格溢出裁切框最多
- * colSum×0.01≈13px，最后一行/列被裁半、右/下封口线消失。floor 宁留 ≤1 个量化步
- * 的缝隙，配合 cellViewport 的 CLIP_SLACK_PX 余量，封口线始终可见。
- */
-function snapZoomToGridEdge(
-  zoomPaper: number,
-  fit: GridFitResult,
-  cellRegion: LayoutGeometry['cellRegion'],
-): number {
-  const fitZoom = Math.floor(Math.min(
-    cellRegion.widthPx / fit.colSumPx,
-    cellRegion.heightPx / fit.rowSumPx,
-  ) * 100) / 100;
-  return Math.max(0.01, Math.min(zoomPaper, fitZoom));
 }
 
 function clampPreviewScaleAbsolute(ppm: number): number {
@@ -397,19 +381,23 @@ function applyPageViewportInner(
   if (sheet.widthMm <= 0 || sheet.heightMm <= 0)
     return;
 
-  let appliedPpm: number;
+  let requestedPpm: number;
   if (resetScale || getPagePreviewScalePxPerMm() <= 0) {
-    appliedPpm = computeFitPxPerMm(nodes, sheet.widthMm, sheet.heightMm);
-    resetPagePreviewScaleFromFit(appliedPpm);
+    requestedPpm = computeFitPxPerMm(nodes, sheet.widthMm, sheet.heightMm);
+    resetPagePreviewScaleFromFit(requestedPpm);
   } else {
-    appliedPpm = clampPreviewScaleAbsolute(getPagePreviewScalePxPerMm());
+    requestedPpm = clampPreviewScaleAbsolute(getPagePreviewScalePxPerMm());
   }
+
+  const zoom = quantizeRequestedPpmToZoom(requestedPpm);
+  const effectivePpm = zoom * DISPLAY_PX_PER_MM;
+  setEffectivePagePpm(effectivePpm);
 
   const geometry = computeLayoutGeometry(
     nodes,
     sheet.widthMm,
     sheet.heightMm,
-    appliedPpm,
+    effectivePpm,
     state.pageMargins,
     resolveCanvasSheetGapMm(),
     state.showHeaders,
@@ -442,9 +430,6 @@ function applyPageViewportInner(
     if (corrected)
       fit = corrected;
   }
-
-  const zoomPaper = computePaperLockedZoom(appliedPpm);
-  const zoom = snapZoomToGridEdge(zoomPaper, fit, geometry.cellRegion);
 
   applyZoom(univerAPI, zoom, true);
   resetSheetScroll();
