@@ -733,13 +733,12 @@ export function installHyCadBridge(univerAPI: ReturnType<typeof FUniver.newAPI>)
         rowHeightsMm: snapshot.rowHeightsMm ?? [],
         colWidthsMm: snapshot.colWidthsMm ?? [],
       };
-      emitSnapshotDims();
 
       pendingSnapshot = snapshot;
       const token = ++coalesceToken;
       queueMicrotask(() => {
         if (token !== coalesceToken)
-          return;
+          return; // 被更新的 loadSnapshot 取代：不重建、不 emit（由取代者负责）
 
         const snap = pendingSnapshot;
         pendingSnapshot = null;
@@ -750,6 +749,10 @@ export function installHyCadBridge(univerAPI: ReturnType<typeof FUniver.newAPI>)
           rebuildWorkbookFromSnapshot(univerAPI, snap);
         } catch (error) {
           console.error('[HyCAD] loadSnapshot failed', error);
+        } finally {
+          // 必须在工作簿重建完成之后再通知：dispose+createWorkbook 会把 zoom 重置、
+          // 覆盖所有行列尺寸，订阅方（page-viewport 编排）需要针对新工作簿重新铺排。
+          emitSnapshotDims();
         }
       });
 

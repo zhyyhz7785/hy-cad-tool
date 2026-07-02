@@ -84,6 +84,7 @@ function shouldApplyLayoutFit(): boolean {
 }
 
 function resolveAvailableMm(): { widthMm: number; heightMm: number } {
+  // CellRegion mm 口径（仅 margin 内区，与 HeaderBand 无关）
   const state = getLayoutViewState();
   const sheet = resolveSheetSizeMm(state.paperPresetIndex, state.orientation);
   const m = state.pageMargins;
@@ -361,23 +362,10 @@ export function applyGridFitStep(
   return applyGridFit(univerAPI, options.reseed === true || options.force === true);
 }
 
-/** 仅读回当前网格 colSum/rowSum（缩放变化、sig 未变时仍须刷新 zoom）。 */
-export function measureGridFitStep(
-  univerAPI: ReturnType<typeof FUniver.newAPI>,
-): GridFitResult | null {
-  if (!shouldApplyLayoutFit())
-    return null;
-
-  const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as FitSheet | null | undefined;
-  if (!sheet)
-    return null;
-
-  const { rowCount, colCount } = resolveTargetCounts();
-  if (rowCount < 1 || colCount < 1)
-    return null;
-
-  const measured = measureGridSumPx(sheet, rowCount, colCount);
-  return { ...measured, rowCount, colCount };
+/** 快照重建工作簿后调用：sig 失配、baseline 属于已 dispose 的 unit，全部作废。 */
+export function invalidateGridFit(): void {
+  lastSig = '';
+  savedBaseline = null;
 }
 
 /** 离开布局模式时恢复 Univer 默认网格（供 page-viewport 调用）。 */

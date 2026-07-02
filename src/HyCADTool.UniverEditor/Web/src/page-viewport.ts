@@ -18,8 +18,6 @@ import {
 
   resetPagePreviewScaleFromFit,
 
-  setPagePreviewScalePxPerMm,
-
 } from './page-preview-scale';
 
 import { resolveSheetSizeMm } from './paper-sheet';
@@ -27,18 +25,22 @@ import { resolveSheetSizeMm } from './paper-sheet';
 import { subscribeSnapshotDims } from './univer-bridge';
 
 import { findScrollElement, readZoom } from './univer-viewport';
-import {
-  formatMarginDataset,
-  marginsToPaddingPx,
-  type PageMarginsMm,
-} from './page-margins';
+import { formatMarginDataset } from './page-margins';
 import { DEFAULT_CANVAS_SHEET_GAP_MM } from './page-canvas-gap';
-import { GRID_COL_HEADER_H, GRID_ROW_HEADER_W } from './sheet-headers';
 import { resetLayoutSheetScrollbars, setLayoutScrollLock } from './layout-sheet-scrollbars';
+import {
+  computeLayoutGeometry,
+  resolveCanvasContentSize,
+  resolveLayoutPageNodes,
+  type LayoutGeometry,
+  type LayoutPageNodes,
+} from './layout-sheet-geometry';
 import {
   applyGridFitStep,
   correctLastGridTracks,
+  invalidateGridFit,
   restoreGridBaseline,
+  type GridFitResult,
 } from './layout-grid-fit';
 
 /** @deprecated 用 layout-view-state.canvasSheetGapMm */
@@ -46,9 +48,14 @@ export const CANVAS_SHEET_GAP_MM = DEFAULT_CANVAS_SHEET_GAP_MM;
 
 const PAGE_HOST_CLASS = 'hycad-page-grid-host';
 const PAGE_SHEET_CLASS = 'hycad-page-sheet-box';
+const PAGE_CELL_VIEWPORT_CLASS = 'hycad-cell-viewport';
 const ZOOM_EPSILON = 0.004;
 const MIN_PREVIEW_SCALE = 0.1;
 const MAX_PREVIEW_SCALE = 5.0;
+/** 进入布局/快照重建后的收敛重试上限（rAF 帧数），测量稳定即提前停止。 */
+const SETTLE_MAX_FRAMES = 30;
+/** cellViewport 裁切余量：网格恰好贴住 CellRegion 边缘时，1px 封口线不被 overflow 吃掉。 */
+const CLIP_SLACK_PX = 2;
 
 let lastZoom = 0;
 let orchestrating = false;
@@ -61,54 +68,8 @@ let zoomBeforeLayout = 1;
 let settleFrame = 0;
 let lastSettleSize = '';
 
-export interface SheetBoxLayout {
-  boxW: number;
-  boxH: number;
-  maxBoxW: number;
-  maxBoxH: number;
-  gapPx: number;
-  padLeft: number;
-  padTop: number;
-  padRight: number;
-  padBottom: number;
-  contentW: number;
-  contentH: number;
-  headerRowPx: number;
-  headerColPx: number;
-  /** 单元格区目标宽（content − 行头，zoom=1 基线 px 总和应 × zoom 贴齐） */
-  cellAreaW: number;
-  cellAreaH: number;
-}
-
-interface PageNodes {
-  gridHost: HTMLElement;
-  sheetBox: HTMLElement;
-}
-
-function resolveNodes(): PageNodes | null {
-  const content = document.querySelector('#app [data-range-selector]');
-  if (!(content instanceof HTMLElement))
-    return null;
-
-  const sheetBox = content.parentElement;
-  if (!(sheetBox instanceof HTMLElement))
-    return null;
-
-  const gridHost = sheetBox.parentElement;
-  if (!(gridHost instanceof HTMLElement))
-    return null;
-
-  return {
-    gridHost,
-    sheetBox,
-  };
-}
-
-function resolveCanvasContentSize(nodes: PageNodes): { width: number; height: number } {
-  return {
-    width: Math.max(0, nodes.gridHost.clientWidth),
-    height: Math.max(0, nodes.gridHost.clientHeight),
-  };
+function resolveNodes(): LayoutPageNodes | null {
+  return resolveLayoutPageNodes();
 }
 
 function resolveCanvasSheetGapMm(): number {
@@ -116,7 +77,7 @@ function resolveCanvasSheetGapMm(): number {
 }
 
 export function computeMaxPxPerMm(
-  nodes: PageNodes,
+  nodes: LayoutPageNodes,
   sheetWidthMm: number,
   sheetHeightMm: number,
   gapMm = resolveCanvasSheetGapMm(),
@@ -132,7 +93,7 @@ export function computeMaxPxPerMm(
 
 export function clampPagePreviewScaleToCanvas(
   ppm: number,
-  nodes: PageNodes,
+  nodes: LayoutPageNodes,
   sheetWidthMm: number,
   sheetHeightMm: number,
 ): number {
@@ -140,7 +101,7 @@ export function clampPagePreviewScaleToCanvas(
   return Math.max(MIN_PREVIEW_SCALE, Math.min(maxPpm, ppm));
 }
 
-function clearPageStyles(nodes: PageNodes): void {
+function clearPageStyles(nodes: LayoutPageNodes): void {
   nodes.gridHost.classList.remove(PAGE_HOST_CLASS);
   nodes.gridHost.style.removeProperty('overflow');
 
@@ -166,20 +127,42 @@ function clearPageStyles(nodes: PageNodes): void {
   delete nodes.sheetBox.dataset.hycadSheetMm;
   delete nodes.sheetBox.dataset.hycadMarginPx;
   delete nodes.sheetBox.dataset.hycadGridCount;
+
+  const cell = nodes.cellViewport;
+  cell.classList.remove(PAGE_CELL_VIEWPORT_CLASS);
+  cell.style.removeProperty('flex');
+  cell.style.removeProperty('width');
+  cell.style.removeProperty('height');
+  cell.style.removeProperty('margin-left');
+  cell.style.removeProperty('margin-top');
+  cell.style.removeProperty('overflow');
 }
 
 function applyZoom(univerAPI: ReturnType<typeof FUniver.newAPI>, zoom: number, force = false): void {
-  if (!force && Math.abs(zoom - lastZoom) < ZOOM_EPSILON)
-    return;
-
   const wb = univerAPI.getActiveWorkbook?.();
   const sheet = wb?.getActiveSheet?.();
   if (!wb || !sheet)
     return;
 
   const quantized = Math.round(zoom * 100) / 100;
-  if (force && Math.abs(quantized - lastZoom) < 0.0001)
+  if (quantized <= 0)
     return;
+
+  // 与 Univer 真实 zoom 比较，而非模块缓存 lastZoom：快照加载会 dispose+createWorkbook,
+  // 真实 zoom 被重置为 1 而缓存仍是旧值——按缓存比较会吞掉必要的缩放命令，
+  // 网格以 zoom 1 渲染直接溢出纸张。getZoom 不可用时才退回 lastZoom。
+  let actual = lastZoom;
+  try {
+    const z = (sheet as unknown as { getZoom?: () => number }).getZoom?.();
+    if (typeof z === 'number' && z > 0)
+      actual = z;
+  } catch {
+    // ignore
+  }
+
+  if (Math.abs(quantized - actual) < (force ? 0.0001 : ZOOM_EPSILON))
+    return;
+
   lastZoom = quantized;
   orchestratorApplyingZoom = true;
   try {
@@ -197,12 +180,13 @@ function applyZoom(univerAPI: ReturnType<typeof FUniver.newAPI>, zoom: number, f
 
 function clearPageViewport(
   univerAPI: ReturnType<typeof FUniver.newAPI>,
-  nodes: PageNodes,
+  nodes: LayoutPageNodes,
   restoreZoom = false,
 ): void {
   clearPageStyles(nodes);
   nodes.gridHost.classList.remove(PAGE_HOST_CLASS);
   lastSheetBoxSig = '';
+  lastLayoutGeometrySig = '';
 
   if (restoreZoom) {
     lastZoom = 0;
@@ -215,7 +199,7 @@ function isLayoutPageViewActive(): boolean {
   return isLayoutTabActive() && getLayoutViewState().showPaperBoundary;
 }
 
-function computeFitPxPerMm(nodes: PageNodes, sheetWidthMm: number, sheetHeightMm: number): number {
+function computeFitPxPerMm(nodes: LayoutPageNodes, sheetWidthMm: number, sheetHeightMm: number): number {
   const maxPpm = computeMaxPxPerMm(nodes, sheetWidthMm, sheetHeightMm);
   return Math.min(DISPLAY_PX_PER_MM, maxPpm);
 }
@@ -230,70 +214,15 @@ function resetSheetScroll(): void {
     scroller.scrollTop = 0;
 }
 
-function computeSheetBoxLayout(
-  nodes: PageNodes,
-  sheetWidthMm: number,
-  sheetHeightMm: number,
-  ppm: number,
-  pageMargins: PageMarginsMm,
-  showHeaders: boolean,
-): SheetBoxLayout | null {
-  const canvas = resolveCanvasContentSize(nodes);
-  const gapPx = Math.round(resolveCanvasSheetGapMm() * ppm);
-  const maxBoxW = Math.max(0, canvas.width - 2 * gapPx);
-  const maxBoxH = Math.max(0, canvas.height - 2 * gapPx);
-
-  const boxW = Math.min(Math.round(sheetWidthMm * ppm), maxBoxW);
-  const boxH = Math.min(Math.round(sheetHeightMm * ppm), maxBoxH);
-
-  if (boxW <= 0 || boxH <= 0)
-    return null;
-
-  const pad = marginsToPaddingPx(pageMargins, ppm);
-  const maxPadLeft = Math.max(0, Math.floor(boxW / 2) - 1);
-  const maxPadRight = Math.max(0, Math.floor(boxW / 2) - 1);
-  const maxPadTop = Math.max(0, Math.floor(boxH / 2) - 1);
-  const maxPadBottom = Math.max(0, Math.floor(boxH / 2) - 1);
-
-  const headerRowPx = showHeaders ? GRID_ROW_HEADER_W : 0;
-  const headerColPx = showHeaders ? GRID_COL_HEADER_H : 0;
-
-  const padLeft = Math.min(Math.max(0, Math.round(pad.padLeft - headerRowPx)), maxPadLeft);
-  const padTop = Math.min(Math.max(0, Math.round(pad.padTop - headerColPx)), maxPadTop);
-  const padRight = Math.min(pad.padRight, maxPadRight);
-  const padBottom = Math.min(pad.padBottom, maxPadBottom);
-
-  const contentW = Math.max(0, boxW - padLeft - padRight);
-  const contentH = Math.max(0, boxH - padTop - padBottom);
-  const cellAreaW = Math.max(1, contentW - headerRowPx);
-  const cellAreaH = Math.max(1, contentH - headerColPx);
-
-  return {
-    boxW,
-    boxH,
-    maxBoxW,
-    maxBoxH,
-    gapPx,
-    padLeft,
-    padTop,
-    padRight,
-    padBottom,
-    contentW,
-    contentH,
-    headerRowPx,
-    headerColPx,
-    cellAreaW,
-    cellAreaH,
-  };
-}
-
 function applySheetBoxSizing(
-  nodes: PageNodes,
-  layout: SheetBoxLayout,
+  nodes: LayoutPageNodes,
+  geometry: LayoutGeometry,
   sheetWidthMm: number,
   sheetHeightMm: number,
 ): boolean {
-  const sig = `${layout.boxW}x${layout.boxH}|${layout.gapPx}|${layout.padTop},${layout.padRight},${layout.padBottom},${layout.padLeft}|${Math.round(sheetWidthMm)}x${Math.round(sheetHeightMm)}`;
+  const paper = geometry.paper;
+  const bleed = geometry.headerBleed;
+  const sig = `${paper.boxW}x${paper.boxH}|${paper.gapPx}|${paper.padTop},${paper.padRight},${paper.padBottom},${paper.padLeft}|${bleed.hostWidthPx}x${bleed.hostHeightPx}|${bleed.bleedLeftPx},${bleed.bleedTopPx}|${Math.round(sheetWidthMm)}x${Math.round(sheetHeightMm)}`;
   if (sig === lastSheetBoxSig)
     return true;
   lastSheetBoxSig = sig;
@@ -305,21 +234,21 @@ function applySheetBoxSizing(
   nodes.sheetBox.dataset.hycadSheetMm = `${Math.round(sheetWidthMm)}x${Math.round(sheetHeightMm)}`;
   nodes.sheetBox.dataset.hycadPaperMm = nodes.sheetBox.dataset.hycadSheetMm;
   nodes.sheetBox.dataset.hycadMarginPx = formatMarginDataset({
-    padLeft: layout.padLeft,
-    padTop: layout.padTop,
-    padRight: layout.padRight,
-    padBottom: layout.padBottom,
+    padLeft: paper.padLeft,
+    padTop: paper.padTop,
+    padRight: paper.padRight,
+    padBottom: paper.padBottom,
   });
 
   const box = nodes.sheetBox.style;
   box.flex = 'none';
-  box.width = `${layout.boxW}px`;
-  box.height = `${layout.boxH}px`;
-  box.maxWidth = `${layout.maxBoxW}px`;
-  box.maxHeight = `${layout.maxBoxH}px`;
-  box.marginLeft = `${layout.gapPx}px`;
-  box.marginTop = `${layout.gapPx}px`;
-  box.padding = `${layout.padTop}px ${layout.padRight}px ${layout.padBottom}px ${layout.padLeft}px`;
+  box.width = `${paper.boxW}px`;
+  box.height = `${paper.boxH}px`;
+  box.maxWidth = 'none';
+  box.maxHeight = 'none';
+  box.marginLeft = `${paper.gapPx}px`;
+  box.marginTop = `${paper.gapPx}px`;
+  box.padding = `${paper.padTop}px ${paper.padRight}px ${paper.padBottom}px ${paper.padLeft}px`;
   box.justifySelf = 'start';
   box.alignSelf = 'start';
   box.background = '#ffffff';
@@ -327,27 +256,64 @@ function applySheetBoxSizing(
   box.border = '1px solid #cbd5e1';
   box.overflow = 'hidden';
 
+  const viewport = nodes.cellViewport;
+  viewport.classList.add(PAGE_CELL_VIEWPORT_CLASS);
+  viewport.style.flex = 'none';
+  viewport.style.width = `${bleed.hostWidthPx + CLIP_SLACK_PX}px`;
+  viewport.style.height = `${bleed.hostHeightPx + CLIP_SLACK_PX}px`;
+  viewport.style.marginLeft = `${-bleed.bleedLeftPx}px`;
+  viewport.style.marginTop = `${-bleed.bleedTopPx}px`;
+  viewport.style.overflow = 'hidden';
+
   return true;
 }
 
-function computeLayoutZoom(
-  layout: SheetBoxLayout,
-  colSumPx: number,
-  rowSumPx: number,
-): number {
-  if (colSumPx <= 0 || rowSumPx <= 0)
-    return 0.01;
-
-  const zoomW = layout.cellAreaW / colSumPx;
-  const zoomH = layout.cellAreaH / rowSumPx;
-  let zoom = Math.min(zoomW, zoomH);
+/** 网格 zoom 严格跟随图纸 appliedPpm，不与 cellArea/colSum 反推脱钩。 */
+function computePaperLockedZoom(appliedPpm: number): number {
+  let zoom = appliedPpm / DISPLAY_PX_PER_MM;
   zoom = Math.round(zoom * 100) / 100;
   if (zoom <= 0)
     zoom = 0.01;
   return zoom;
 }
 
-const SETTLE_MAX_FRAMES = 30;
+/**
+ * 量化 zoom 以"不超过 CellRegion"为准（floor）：ceil 会让网格溢出裁切框最多
+ * colSum×0.01≈13px，最后一行/列被裁半、右/下封口线消失。floor 宁留 ≤1 个量化步
+ * 的缝隙，配合 cellViewport 的 CLIP_SLACK_PX 余量，封口线始终可见。
+ */
+function snapZoomToGridEdge(
+  zoomPaper: number,
+  fit: GridFitResult,
+  cellRegion: LayoutGeometry['cellRegion'],
+): number {
+  const fitZoom = Math.floor(Math.min(
+    cellRegion.widthPx / fit.colSumPx,
+    cellRegion.heightPx / fit.rowSumPx,
+  ) * 100) / 100;
+  return Math.max(0.01, Math.min(zoomPaper, fitZoom));
+}
+
+function clampPreviewScaleAbsolute(ppm: number): number {
+  return Math.max(MIN_PREVIEW_SCALE, Math.min(MAX_PREVIEW_SCALE, ppm));
+}
+
+function layoutGeometrySig(state: ReturnType<typeof getLayoutViewState>): string {
+  const m = state.pageMargins;
+  return [
+    state.paperPresetIndex,
+    state.orientation,
+    Math.round(state.targetWidthMm),
+    m.top,
+    m.bottom,
+    m.left,
+    m.right,
+    state.canvasSheetGapMm,
+    state.showPaperBoundary,
+  ].join('|');
+}
+
+let lastLayoutGeometrySig = '';
 
 function startSettleConvergence(univerAPI: ReturnType<typeof FUniver.newAPI>): void {
   cancelSettleConvergence();
@@ -436,28 +402,22 @@ function applyPageViewportInner(
     appliedPpm = computeFitPxPerMm(nodes, sheet.widthMm, sheet.heightMm);
     resetPagePreviewScaleFromFit(appliedPpm);
   } else {
-    appliedPpm = clampPagePreviewScaleToCanvas(
-      getPagePreviewScalePxPerMm(),
-      nodes,
-      sheet.widthMm,
-      sheet.heightMm,
-    );
-    if (Math.abs(appliedPpm - getPagePreviewScalePxPerMm()) > 0.0001)
-      setPagePreviewScalePxPerMm(appliedPpm);
+    appliedPpm = clampPreviewScaleAbsolute(getPagePreviewScalePxPerMm());
   }
 
-  const boxLayout = computeSheetBoxLayout(
+  const geometry = computeLayoutGeometry(
     nodes,
     sheet.widthMm,
     sheet.heightMm,
     appliedPpm,
     state.pageMargins,
+    resolveCanvasSheetGapMm(),
     state.showHeaders,
   );
-  if (!boxLayout)
+  if (!geometry)
     return;
 
-  if (!applySheetBoxSizing(nodes, boxLayout, sheet.widthMm, sheet.heightMm))
+  if (!applySheetBoxSizing(nodes, geometry, sheet.widthMm, sheet.heightMm))
     return;
 
   const gridReseed = resetScale;
@@ -483,20 +443,15 @@ function applyPageViewportInner(
       fit = corrected;
   }
 
-  let zoom = computeLayoutZoom(boxLayout, fit.colSumPx, fit.rowSumPx);
-
-  const renderedColPx = fit.colSumPx * zoom;
-  const renderedRowPx = fit.rowSumPx * zoom;
-  if (
-    (renderedColPx > boxLayout.cellAreaW + 1 || renderedRowPx > boxLayout.cellAreaH + 1)
-    && zoom > 0.01
-  ) {
-    zoom = Math.max(0.01, Math.round((zoom - 0.01) * 100) / 100);
-  }
+  const zoomPaper = computePaperLockedZoom(appliedPpm);
+  const zoom = snapZoomToGridEdge(zoomPaper, fit, geometry.cellRegion);
 
   applyZoom(univerAPI, zoom, true);
   resetSheetScroll();
   setLayoutScrollLock(univerAPI, true);
+
+  const activeSheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as { refreshCanvas?: () => void } | null | undefined;
+  activeSheet?.refreshCanvas?.();
 }
 
 function installPageWheelZoom(univerAPI: ReturnType<typeof FUniver.newAPI>): () => void {
@@ -534,7 +489,8 @@ function installLayoutZoomGuard(
 ): () => void {
   let debounceTimer: number | undefined;
 
-  const unsub = univerAPI.onCommandExecuted?.((command) => {
+  // onCommandExecuted 返回 IDisposable（非函数），teardown 须调 dispose()
+  const disposable = univerAPI.onCommandExecuted?.((command) => {
     if (command.id !== SetZoomRatioCommand.id)
       return;
     if (orchestratorApplyingZoom || orchestrating)
@@ -547,11 +503,11 @@ function installLayoutZoomGuard(
       if (isLayoutPageViewActive())
         applyPageViewport(univerAPI, false);
     }, 0);
-  }) ?? (() => {});
+  });
 
   return () => {
     window.clearTimeout(debounceTimer);
-    unsub();
+    disposable?.dispose();
   };
 }
 
@@ -560,17 +516,27 @@ export function installPageViewport(
 ): () => void {
   const schedule = (resetScale = false): void => applyPageViewport(univerAPI, resetScale);
 
-  const unsubLayout = subscribeLayoutViewState(() => {
-    if (isLayoutPageViewActive() || pageModeActive)
-      schedule(true);
+  const unsubLayout = subscribeLayoutViewState((view) => {
+    if (!isLayoutPageViewActive() && !pageModeActive)
+      return;
+    const geomSig = layoutGeometrySig(view);
+    const resetScale = geomSig !== lastLayoutGeometrySig;
+    lastLayoutGeometrySig = geomSig;
+    schedule(resetScale);
   });
   const unsubRibbon = subscribeLayoutRibbonModel(() => {
     if (isLayoutPageViewActive())
       schedule(true);
   });
   const unsubSnapshot = subscribeSnapshotDims(() => {
-    if (isLayoutPageViewActive())
-      schedule(false);
+    // 工作簿已 dispose+重建：无条件作废 grid-fit 与纸盒样式缓存（含布局未激活时，
+    // 否则稍后切回布局 Tab 会因 sig 陈旧匹配跳过重写，快照原始尺寸溢出纸张）。
+    invalidateGridFit();
+    lastSheetBoxSig = '';
+    if (isLayoutPageViewActive()) {
+      schedule(true); // reset：重算 fit ppm + 按快照 reseed 行列数 + 强制重写格子
+      startSettleConvergence(univerAPI); // 重建后 DOM/canvas 可能异步挂载，rAF 收敛兜底
+    }
   });
   const unsubTab = subscribeLayoutTabActive(() => schedule(true));
   const unsubWheel = installPageWheelZoom(univerAPI);

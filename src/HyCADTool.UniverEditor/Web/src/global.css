@@ -61,10 +61,33 @@ body,
   box-sizing: border-box;
 }
 
-/* 行列头关闭时隐藏左上角占位（Univer LEFT_TOP） */
+/* 行列头关闭时隐藏 header 带（保留 Univer 布局占位，见 layout-sheet-geometry HeaderBand） */
 #app.hycad-headers-hidden canvas[data-u-comp='__SpreadsheetLeftTopPlaceholder__'],
-#app.hycad-headers-hidden [class*='LeftTop'] {
+#app.hycad-headers-hidden canvas[data-u-comp='__SpreadsheetRowHeader__'],
+#app.hycad-headers-hidden canvas[data-u-comp='__SpreadsheetColumnHeader__'],
+#app.hycad-headers-hidden [class*='LeftTop'],
+#app.hycad-headers-hidden [class*='RowHeader'],
+#app.hycad-headers-hidden [class*='ColumnHeader'] {
   visibility: hidden !important;
+}
+
+/* CellRegion DOM 裁切框，与 layout-sheet-geometry.headerBleed 数值对齐 */
+#app .hycad-cell-viewport {
+  box-sizing: border-box;
+  overflow: hidden !important;
+  flex: none !important;
+}
+
+/*
+ * 布局页模式下必须压过上方 hycad-u7-section 的 `flex: 1 1 0 !important`
+ * （特异性 1,2,2）：flex-basis:0+grow 会让裁切框高度强制拉伸为纸张内容高，
+ * 内联 height（CellRegion+bleed+CLIP_SLACK）被忽略 → 行列头尺寸漏进边距渲染、
+ * 底部封口线被裁。此选择器特异性 1,3,2，内联尺寸得以生效。
+ */
+#app section.hycad-u7-section > section[data-range-selector].hycad-cell-viewport {
+  flex: none !important;
+  min-width: 0;
+  min-height: 0;
 }
 
 /*

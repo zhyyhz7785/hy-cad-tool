@@ -18,6 +18,20 @@ export interface UniverViewportMetrics {
 }
 
 export function readZoom(univerAPI: ReturnType<typeof FUniver.newAPI>): number {
+  // 首选 FWorksheet.getZoom()（sheets-ui facade mixin，运行时已验证可靠）；
+  // getZoomRatio / footer 正则仅作后备。
+  try {
+    const sheet = univerAPI.getActiveWorkbook?.()?.getActiveSheet?.() as unknown as {
+      getZoom?: () => number;
+    } | null | undefined;
+    const fromSheet = sheet?.getZoom?.();
+    if (typeof fromSheet === 'number' && fromSheet > 0)
+      return fromSheet;
+  }
+  catch {
+    // ignore
+  }
+
   try {
     const api = univerAPI as unknown as {
       getZoomRatio?: () => number;
