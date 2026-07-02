@@ -41,6 +41,11 @@
     </Content>
   </ItemGroup>
 
+  <!-- dist 变更时强制 UniverEditor 参与构建，确保 Content 复制到 net8 -->
+  <ItemGroup>
+    <UpToDateCheckInput Include="$(WebDistDir)\**\*.*" />
+  </ItemGroup>
+
   <Target Name="BuildWebAssets"
           BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems"
           Inputs="@(WebSourceFiles)"
@@ -61,6 +66,16 @@
         <Link>Web\dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
       </Content>
     </ItemGroup>
+  </Target>
+
+  <Target Name="SyncWebDistToOutput" AfterTargets="BuildWebAssets" BeforeTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <_WebDistFiles Include="$(WebDistDir)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WebDistFiles)"
+          DestinationFiles="@(_WebDistFiles->'$(OutputPath)Web\dist\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false"
+          Condition="Exists('$(WebDistIndex)')" />
   </Target>
 
   <Target Name="CopyWebView2NativeLoader" AfterTargets="Build">

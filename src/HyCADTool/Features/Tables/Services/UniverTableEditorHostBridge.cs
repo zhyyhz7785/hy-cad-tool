@@ -662,7 +662,7 @@ namespace HyCADTool.Features.Tables.Services
 
             if (PrepareForCadInteraction == null)
             {
-                _viewModel.LastError = "编辑器窗口交互未初始化，无法进行 CAD 交互";
+                _viewModel.SetStatusMessage("编辑器窗口交互未初始化，无法进行 CAD 交互");
                 return;
             }
 
@@ -672,7 +672,7 @@ namespace HyCADTool.Features.Tables.Services
             }
             catch (Exception ex)
             {
-                _viewModel.LastError = $"准备 CAD 交互时出错：{ex.Message}";
+                _viewModel.SetStatusMessage($"准备 CAD 交互时出错：{ex.Message}");
             }
         }
 
