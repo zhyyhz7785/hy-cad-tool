@@ -3,6 +3,7 @@ using HYFEA.Core.LinearAlgebra;
 using HYFEA.Core.Loads;
 using HYFEA.Core.Materials;
 using HYFEA.Core.Model;
+using HYFEA.Core.Results;
 using HYFEA.Core.Sections;
 
 namespace HYFEA.Core.Elements;
@@ -10,11 +11,23 @@ namespace HYFEA.Core.Elements;
 /// <summary>Euler–Bernoulli plane beam (6 dof: ux, uy, rz per node).</summary>
 /// <remarks>
 /// Sign / recovery: end moments from <b>residual</b> <c>K_l u_l - f_equiv</c> rotation components (dual to rz); see source comments.
+/// P1.v0.1b: implements IElementContribution for registry dispatch.
 /// </remarks>
-internal static class EulerBeam2DContribution
+internal sealed class EulerBeam2DContribution : IElementContribution
 {
-    public static void Contribute(FemProblem problem, EulerBeam2DElementDef e, DofLayout layout, DenseMatrix K)
+    public Type ElementDefinitionType => typeof(EulerBeam2DElementDef);
+
+    public IReadOnlyList<DofType> ActiveDofsForNode(FemElementDefinition element, NodeId node)
     {
+        var b = (EulerBeam2DElementDef)element;
+        if (node == b.NodeA || node == b.NodeB)
+            return new[] { DofType.UX, DofType.UY, DofType.RZ };
+        return Array.Empty<DofType>();
+    }
+
+    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K)
+    {
+        var e = (EulerBeam2DElementDef)element;
         GetBeamData(problem, e, out double L, out double c, out double s, out double E, out double A, out double I);
 
         Span<double> kl = stackalloc double[36];
@@ -43,8 +56,47 @@ internal static class EulerBeam2DContribution
         }
     }
 
+    public void ApplyEquivalentLoads(
+        FemProblem problem,
+        FemElementDefinition element,
+        IReadOnlyList<IElementLoad> elementLoads,
+        DofLayout layout,
+        DenseVector F)
+    {
+        var e = (EulerBeam2DElementDef)element;
+        foreach (var load in elementLoads)
+        {
+            if (load is UniformBeamLoad ul)
+            {
+                ApplyEquivalentNodalForcesInternal(problem, e, ul, layout, F);
+            }
+        }
+    }
+
+    public object Recover(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseVector uFull)
+    {
+        var e = (EulerBeam2DElementDef)element;
+
+        // Find associated uniform load (if any)
+        UniformBeamLoad? uniform = null;
+        foreach (var ld in problem.LoadCase.ElementLoads)
+        {
+            if (ld is UniformBeamLoad u && u.TargetElement == e.Id)
+            {
+                uniform = u;
+                break;
+            }
+        }
+
+        RecoverEndForcesInternal(
+            problem, e, layout, uFull, uniform,
+            out double n, out double ma, out double va, out double mb, out double vb);
+
+        return new BeamEndValues(n, va, ma, vb, mb);
+    }
+
     /// <summary>Adds equivalent nodal forces from distributed loads onto <paramref name="F"/>.</summary>
-    public static void ApplyEquivalentNodalForces(
+    private static void ApplyEquivalentNodalForcesInternal(
         FemProblem problem,
         EulerBeam2DElementDef e,
         UniformBeamLoad load,
@@ -83,25 +135,8 @@ internal static class EulerBeam2DContribution
         }
     }
 
-    /// <summary>Tension-positive axial force from global displacements.</summary>
-    public static double AxialForceFromDisplacement(
-        FemProblem problem,
-        EulerBeam2DElementDef e,
-        DofLayout layout,
-        DenseVector uFull)
-    {
-        GetBeamData(problem, e, out double L, out double c, out double s, out double E, out double A, out _);
-        Span<double> ug = stackalloc double[6];
-        GatherGlobal(e, layout, uFull, ug);
-        Span<double> t = stackalloc double[36];
-        BuildT6(c, s, t);
-        Span<double> uLoc = stackalloc double[6];
-        Mat6Vec(t, ug, uLoc);
-        return E * A / L * (uLoc[3] - uLoc[0]);
-    }
-
     /// <summary>Axial force N (tension +); end moments MA, MB (N·length); end shears VA, VB.</summary>
-    public static void RecoverEndForces(
+    private static void RecoverEndForcesInternal(
         FemProblem problem,
         EulerBeam2DElementDef e,
         DofLayout layout,

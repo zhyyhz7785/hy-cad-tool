@@ -1,3 +1,4 @@
+using HYFEA.Core.Elements;
 using HYFEA.Core.Model;
 
 namespace HYFEA.Core.Dofs;
@@ -43,30 +44,17 @@ public sealed class DofLayout
     public static DofLayout Build(FemProblem problem)
     {
         var required = new Dictionary<NodeId, HashSet<DofType>>();
+
+        // P1.v0.1b: registry-based polymorphic dispatch
+        var registry = new ElementContributionRegistry();
+
         foreach (var el in problem.Elements)
         {
-            switch (el)
+            var contrib = registry.Resolve(el);
+            foreach (var node in GetElementNodes(el))
             {
-                case Spring1DElementDef s:
-                    AddDof(required, s.NodeA, DofType.UX);
-                    AddDof(required, s.NodeB, DofType.UX);
-                    break;
-                case Truss2DElementDef t:
-                    AddDof(required, t.NodeA, DofType.UX);
-                    AddDof(required, t.NodeA, DofType.UY);
-                    AddDof(required, t.NodeB, DofType.UX);
-                    AddDof(required, t.NodeB, DofType.UY);
-                    break;
-                case EulerBeam2DElementDef b:
-                    AddDof(required, b.NodeA, DofType.UX);
-                    AddDof(required, b.NodeA, DofType.UY);
-                    AddDof(required, b.NodeA, DofType.RZ);
-                    AddDof(required, b.NodeB, DofType.UX);
-                    AddDof(required, b.NodeB, DofType.UY);
-                    AddDof(required, b.NodeB, DofType.RZ);
-                    break;
-                default:
-                    throw new NotSupportedException($"Element type {el.GetType().Name} is not supported.");
+                foreach (var dof in contrib.ActiveDofsForNode(el, node))
+                    AddDof(required, node, dof);
             }
         }
 
@@ -133,5 +121,17 @@ public sealed class DofLayout
             map[node] = set;
         }
         set.Add(dof);
+    }
+
+    private static IEnumerable<NodeId> GetElementNodes(FemElementDefinition element)
+    {
+        // All current element types (Spring1D, Truss2D, EulerBeam2D) have NodeA, NodeB
+        return element switch
+        {
+            Spring1DElementDef s => new[] { s.NodeA, s.NodeB },
+            Truss2DElementDef t => new[] { t.NodeA, t.NodeB },
+            EulerBeam2DElementDef b => new[] { b.NodeA, b.NodeB },
+            _ => throw new NotSupportedException($"Element type {element.GetType().Name} not supported."),
+        };
     }
 }

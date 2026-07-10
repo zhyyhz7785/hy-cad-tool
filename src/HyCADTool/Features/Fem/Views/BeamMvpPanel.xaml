@@ -51,6 +51,16 @@
                      helper:TextBoxHelper.EnableCustomHandlers="True"
                      Text="{Binding Segments, UpdateSourceTrigger=PropertyChanged}" />
 
+            <TextBlock Margin="0 8 0 2" Text="端 A 约束" />
+            <ComboBox ItemsSource="{Binding SupportOptions}"
+                      SelectedItem="{Binding EndA}"
+                      Style="{StaticResource BlenderComboBox}" />
+
+            <TextBlock Margin="0 8 0 2" Text="端 B 约束" />
+            <ComboBox ItemsSource="{Binding SupportOptions}"
+                      SelectedItem="{Binding EndB}"
+                      Style="{StaticResource BlenderComboBox}" />
+
             <TextBlock Margin="0 8 0 2" Text="变形显示比例" />
             <TextBox Style="{StaticResource BlenderTextBox}"
                      helper:TextBoxHelper.EnableCustomHandlers="True"

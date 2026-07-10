@@ -1,16 +1,29 @@
 using HYFEA.Core.Dofs;
 using HyCAD.Geometry;
 using HYFEA.Core.LinearAlgebra;
+using HYFEA.Core.Loads;
 using HYFEA.Core.Materials;
 using HYFEA.Core.Model;
 using HYFEA.Core.Sections;
 
 namespace HYFEA.Core.Elements;
 
-internal static class Truss2DContribution
+/// <summary>Truss2D contribution: UX+UY, tension/compression only.</summary>
+internal sealed class Truss2DContribution : IElementContribution
 {
-    public static void Contribute(FemProblem problem, Truss2DElementDef e, DofLayout layout, DenseMatrix K)
+    public Type ElementDefinitionType => typeof(Truss2DElementDef);
+
+    public IReadOnlyList<DofType> ActiveDofsForNode(FemElementDefinition element, NodeId node)
     {
+        var t = (Truss2DElementDef)element;
+        if (node == t.NodeA || node == t.NodeB)
+            return new[] { DofType.UX, DofType.UY };
+        return Array.Empty<DofType>();
+    }
+
+    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K)
+    {
+        var e = (Truss2DElementDef)element;
         GetBarData(problem, e, out double L, out double c, out double s, out double k);
         double[] b = { -c, -s, c, s };
         int[] g =
@@ -27,9 +40,19 @@ internal static class Truss2DContribution
         }
     }
 
-    /// <summary>Tension-positive axial force N.</summary>
-    public static double AxialForce(FemProblem problem, Truss2DElementDef e, DofLayout layout, DenseVector uFull)
+    public void ApplyEquivalentLoads(
+        FemProblem problem,
+        FemElementDefinition element,
+        IReadOnlyList<IElementLoad> elementLoads,
+        DofLayout layout,
+        DenseVector F)
     {
+        // Truss2D has no element loads (no distributed load on truss bar)
+    }
+
+    public object Recover(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseVector uFull)
+    {
+        var e = (Truss2DElementDef)element;
         GetBarData(problem, e, out double L, out double c, out double s, out double k);
         int gax = layout.GetGlobalIndex(e.NodeA, DofType.UX);
         int gay = layout.GetGlobalIndex(e.NodeA, DofType.UY);
@@ -40,7 +63,7 @@ internal static class Truss2DContribution
         double ubx = uFull[gbx];
         double uby = uFull[gby];
         double delta = c * (ubx - uax) + s * (uby - uay);
-        return k * delta;
+        return k * delta; // tension-positive axial force
     }
 
     private static void GetBarData(

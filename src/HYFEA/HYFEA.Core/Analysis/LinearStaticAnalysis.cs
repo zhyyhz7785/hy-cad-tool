@@ -124,42 +124,46 @@ public sealed class LinearStaticAnalysis
     private static ElementAxialForceMap ComputeAxialForces(FemProblem problem, DofLayout layout, DenseVector uFull)
     {
         var map = new ElementAxialForceMap();
+        var registry = new ElementContributionRegistry();
+
         foreach (var el in problem.Elements)
         {
-            switch (el)
+            var contrib = registry.Resolve(el);
+            var result = contrib.Recover(problem, el, layout, uFull);
+
+            // Extract axial force from result
+            double axial = result switch
             {
-                case Spring1DElementDef s:
-                    map.Set(s.Id, Spring1DContribution.AxialForceUxOnly(problem, s, layout, uFull));
-                    break;
-                case Truss2DElementDef t:
-                    map.Set(t.Id, Truss2DContribution.AxialForce(problem, t, layout, uFull));
-                    break;
-                case EulerBeam2DElementDef eb:
-                    map.Set(eb.Id, EulerBeam2DContribution.AxialForceFromDisplacement(problem, eb, layout, uFull));
-                    break;
-            }
+                double d => d,  // Spring1D, Truss2D return double
+                BeamEndValues b => b.N,  // EulerBeam2D returns BeamEndValues
+                _ => 0.0
+            };
+
+            map.Set(el.Id, axial);
         }
+
         return map;
     }
 
     private static ElementBeamEndForceMap ComputeBeamEndForces(FemProblem problem, DofLayout layout, DenseVector uFull)
     {
         var map = new ElementBeamEndForceMap();
+        var registry = new ElementContributionRegistry();
+
         foreach (var el in problem.Elements)
         {
-            if (el is not EulerBeam2DElementDef beam)
+            if (el is not EulerBeam2DElementDef)
                 continue;
-            UniformBeamLoad? ul = null;
-            foreach (var L in problem.LoadCase.ElementLoads)
+
+            var contrib = registry.Resolve(el);
+            var result = contrib.Recover(problem, el, layout, uFull);
+
+            if (result is BeamEndValues beamEnd)
             {
-                if (L is UniformBeamLoad u && u.TargetElement == beam.Id)
-                    ul = u;
+                map.Set(el.Id, beamEnd);
             }
-            EulerBeam2DContribution.RecoverEndForces(
-                problem, beam, layout, uFull, ul,
-                out double n, out double ma, out double va, out double mb, out double vb);
-            map.Set(beam.Id, new BeamEndValues(n, va, ma, vb, mb));
         }
+
         return map;
     }
 }

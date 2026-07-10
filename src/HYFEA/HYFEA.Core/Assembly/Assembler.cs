@@ -20,45 +20,23 @@ public static class Assembler
             F[g] += load.Value;
         }
 
+        // P1.v0.1b: registry-based polymorphic dispatch
+        var registry = new ElementContributionRegistry();
+
         foreach (var el in problem.Elements)
         {
-            switch (el)
-            {
-                case Spring1DElementDef s:
-                    Spring1DContribution.Contribute(problem, s, layout, K);
-                    break;
-                case Truss2DElementDef t:
-                    Truss2DContribution.Contribute(problem, t, layout, K);
-                    break;
-                case EulerBeam2DElementDef b:
-                    EulerBeam2DContribution.Contribute(problem, b, layout, K);
-                    break;
-                default:
-                    throw new NotSupportedException($"Element {el.GetType().Name} not supported.");
-            }
+            var contrib = registry.Resolve(el);
+            contrib.ApplyStiffness(problem, el, layout, K);
         }
 
-        foreach (var eload in problem.LoadCase.ElementLoads)
+        foreach (var el in problem.Elements)
         {
-            if (eload is not UniformBeamLoad ul)
-                continue;
-            var found = FindElement(problem, ul.TargetElement) as EulerBeam2DElementDef;
-            if (found is null)
-                throw new InvalidOperationException($"Uniform load targets missing or non-beam element {ul.TargetElement.Value}.");
-            EulerBeam2DContribution.ApplyEquivalentNodalForces(problem, found, ul, layout, F);
+            var contrib = registry.Resolve(el);
+            var loads = problem.LoadCase.ElementLoads.Where(ld => ld.TargetElement == el.Id).ToList();
+            contrib.ApplyEquivalentLoads(problem, el, loads, layout, F);
         }
 
         return new AssembledLinearSystem(K, F, layout);
-    }
-
-    private static FemElementDefinition? FindElement(FemProblem problem, ElementId id)
-    {
-        foreach (var e in problem.Elements)
-        {
-            if (e.Id == id)
-                return e;
-        }
-        return null;
     }
 
     public static ReducedLinearSystem Reduce(AssembledLinearSystem system)

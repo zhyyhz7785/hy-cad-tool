@@ -34,6 +34,13 @@ namespace HyCADTool.Features.Fem.Views
             SolveCommand = _solveCommand;
         }
 
+        public IReadOnlyList<BeamSupportUi> SupportOptions { get; } = new[]
+        {
+            BeamSupportUi.Free,
+            BeamSupportUi.Pin,
+            BeamSupportUi.Fixed,
+        };
+
         private ObjectId _sourceEntityId;
 
         public ObjectId SourceEntityId

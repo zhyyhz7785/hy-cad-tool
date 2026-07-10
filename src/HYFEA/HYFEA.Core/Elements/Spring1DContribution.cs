@@ -1,15 +1,28 @@
 using HYFEA.Core.Dofs;
 using HYFEA.Core.LinearAlgebra;
+using HYFEA.Core.Loads;
 using HYFEA.Core.Materials;
 using HYFEA.Core.Model;
 using HYFEA.Core.Sections;
 
 namespace HYFEA.Core.Elements;
 
-internal static class Spring1DContribution
+/// <summary>Spring1D contribution: UX-only, axial stiffness k = EA/L.</summary>
+internal sealed class Spring1DContribution : IElementContribution
 {
-    public static void Contribute(FemProblem problem, Spring1DElementDef e, DofLayout layout, DenseMatrix K)
+    public Type ElementDefinitionType => typeof(Spring1DElementDef);
+
+    public IReadOnlyList<DofType> ActiveDofsForNode(FemElementDefinition element, NodeId node)
     {
+        var s = (Spring1DElementDef)element;
+        if (node == s.NodeA || node == s.NodeB)
+            return new[] { DofType.UX };
+        return Array.Empty<DofType>();
+    }
+
+    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K)
+    {
+        var e = (Spring1DElementDef)element;
         var na = GetNode(problem, e.NodeA);
         var nb = GetNode(problem, e.NodeB);
         double L = na.Position.DistanceTo(nb.Position);
@@ -26,16 +39,26 @@ internal static class Spring1DContribution
         K.Add(g1, g1, k);
     }
 
-    /// <summary>Axial force (tension positive) for UX-only spring; valid when bar is along X.</summary>
-    public static double AxialForceUxOnly(FemProblem problem, Spring1DElementDef e, DofLayout layout, DenseVector uFull)
+    public void ApplyEquivalentLoads(
+        FemProblem problem,
+        FemElementDefinition element,
+        IReadOnlyList<IElementLoad> elementLoads,
+        DofLayout layout,
+        DenseVector F)
     {
+        // Spring1D has no element loads (no distributed load on 1D spring)
+    }
+
+    public object Recover(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseVector uFull)
+    {
+        var e = (Spring1DElementDef)element;
         int ga = layout.GetGlobalIndex(e.NodeA, DofType.UX);
         int gb = layout.GetGlobalIndex(e.NodeB, DofType.UX);
         var na = GetNode(problem, e.NodeA);
         var nb = GetNode(problem, e.NodeB);
         double L = na.Position.DistanceTo(nb.Position);
         double k = GetAxialStiffness(problem, e.MaterialId, e.SectionId, L);
-        return k * (uFull[gb] - uFull[ga]);
+        return k * (uFull[gb] - uFull[ga]); // tension-positive axial force
     }
 
     private static double GetAxialStiffness(FemProblem problem, MaterialId mid, SectionId sid, double L)
@@ -59,3 +82,4 @@ internal static class Spring1DContribution
         throw new ArgumentException($"Node {id.Value} not found.");
     }
 }
+
