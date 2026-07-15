@@ -1,0 +1,149 @@
+{
+  "id": "sheet-mrggpqz9",
+  "sheetOrder": [
+    "sheet1"
+  ],
+  "name": "Sheet1",
+  "appVersion": "0.25.1",
+  "locale": "zhCN",
+  "styles": {},
+  "sheets": {
+    "sheet1": {
+      "id": "sheet1",
+      "name": "Sheet1",
+      "rowCount": 7,
+      "columnCount": 2,
+      "cellData": {
+        "0": {
+          "0": {
+            "v": "项",
+            "t": 1
+          },
+          "1": {
+            "v": "决定",
+            "t": 1
+          }
+        },
+        "1": {
+          "0": {
+            "v": "范围",
+            "t": 1
+          },
+          "1": {
+            "v": "仅 HYFEA 交互测试外壳；HyCADTool 其它 WPF 面板不动",
+            "t": 1
+          }
+        },
+        "2": {
+          "0": {
+            "v": "主战场",
+            "t": 1
+          },
+          "1": {
+            "v": "独立桌面宿主（不嵌 PaletteSet）",
+            "t": 1
+          }
+        },
+        "3": {
+          "0": {
+            "v": "远期",
+            "t": 1
+          },
+          "1": {
+            "v": "预留 AutoCAD 适配接口；生产主用途仍在 AutoCAD",
+            "t": 1
+          }
+        },
+        "4": {
+          "0": {
+            "v": "本期交付",
+            "t": 1
+          },
+          "1": {
+            "v": "只写本调研；不建工程、不改 BeamMvpPanel.xaml",
+            "t": 1
+          }
+        },
+        "5": {
+          "0": {
+            "v": "风格参考",
+            "t": 1
+          },
+          "1": {
+            "v": "Blend er 信息密度 / VS Code 工作区感（非以 Blender 本体作主宿主）",
+            "t": 1
+          }
+        },
+        "6": {
+          "0": {
+            "v": "阿斯顿发放到",
+            "t": 1
+          },
+          "1": {
+            "v": "阿斯顿发",
+            "t": 1
+          }
+        }
+      },
+      "tabColor": "",
+      "hidden": 0,
+      "zoomRatio": 1,
+      "freeze": {
+        "xSplit": 0,
+        "ySplit": 0,
+        "startRow": -1,
+        "startColumn": -1
+      },
+      "scrollTop": 0,
+      "scrollLeft": 0,
+      "defaultColumnWidth": 88,
+      "defaultRowHeight": 24,
+      "mergeData": [],
+      "rowData": {},
+      "columnData": {
+        "0": {
+          "w": 96.03294372558594
+        },
+        "1": {
+          "w": 464.27198791503906
+        }
+      },
+      "showGridlines": 1,
+      "rowHeader": {
+        "width": 46,
+        "hidden": 0
+      },
+      "columnHeader": {
+        "height": 20,
+        "hidden": 0
+      },
+      "rightToLeft": 0
+    }
+  },
+  "resources": [
+    {
+      "name": "SHEET_RANGE_PROTECTION_PLUGIN",
+      "data": ""
+    },
+    {
+      "name": "SHEET_AuthzIoMockService_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_WORKSHEET_PROTECTION_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_WORKSHEET_PROTECTION_POINT_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_DEFINED_NAME_PLUGIN",
+      "data": ""
+    },
+    {
+      "name": "SHEET_RANGE_THEME_MODEL_PLUGIN",
+      "data": "{}"
+    }
+  ]
+}

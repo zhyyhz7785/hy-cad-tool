@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HYFEA.Core\HYFEA.Core.csproj" />
+    <ProjectReference Include="..\HYFEA.Hosting\HYFEA.Hosting.csproj" />
+    <ProjectReference Include="..\HYFEA.Viz\HYFEA.Viz.csproj" />
   </ItemGroup>
 
 </Project>

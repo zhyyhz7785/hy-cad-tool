@@ -1,0 +1,4 @@
+pyvista>=0.44
+trame>=3.6
+trame-vtk>=2.8
+trame-vuetify>=2.6

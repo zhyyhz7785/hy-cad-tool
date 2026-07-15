@@ -1,0 +1,181 @@
+{
+  "id": "sheet-mrh38voc",
+  "sheetOrder": [
+    "sheet1"
+  ],
+  "name": "Sheet1",
+  "appVersion": "0.25.1",
+  "locale": "zhCN",
+  "styles": {},
+  "sheets": {
+    "sheet1": {
+      "id": "sheet1",
+      "name": "Sheet1",
+      "rowCount": 9,
+      "columnCount": 3,
+      "cellData": {
+        "0": {
+          "0": {
+            "v": "层级"
+          },
+          "1": {
+            "v": "技术"
+          },
+          "2": {
+            "v": "说明"
+          }
+        },
+        "1": {
+          "0": {
+            "v": "算法内核"
+          },
+          "1": {
+            "v": "HYFEA.Core（netstandard2.0）"
+          },
+          "2": {
+            "v": "平台无关 FEM 求解"
+          }
+        },
+        "2": {
+          "0": {
+            "v": "宿主抽象"
+          },
+          "1": {
+            "v": "HYFEA.Hosting（netstandard2.0）"
+          },
+          "2": {
+            "v": "IFemHostGeometry / IFemResultSink / BeamProblemFactory"
+          }
+        },
+        "3": {
+          "0": {
+            "v": "独立测试壳"
+          },
+          "1": {
+            "v": "HYFEA.Shell（Avalonia / net8.0-windows）"
+          },
+          "2": {
+            "v": "脱离 AutoCAD 测交互（阶段 1.5）"
+          }
+        },
+        "4": {
+          "0": {
+            "v": "结果可视化"
+          },
+          "1": {
+            "v": "HYFEA.Viz + PyVista/trame 边车（vtk.js 兜底）"
+          },
+          "2": {
+            "v": "VTU 契约；变形叠加/探针/动画（008 V2）"
+          }
+        },
+        "5": {
+          "0": {
+            "v": "共用几何"
+          },
+          "1": {
+            "v": "HyCAD.Geometry（netstandard2.0）"
+          },
+          "2": {
+            "v": "平面几何，内核与宿主共用"
+          }
+        },
+        "6": {
+          "0": {
+            "v": "测试"
+          },
+          "1": {
+            "v": "HYFEA.Tests（net48 + xUnit）"
+          },
+          "2": {
+            "v": "金标准算例与单元测试"
+          }
+        },
+        "7": {
+          "0": {
+            "v": "CAD 宿主外壳"
+          },
+          "1": {
+            "v": "HyCADTool.Features.Fem"
+          },
+          "2": {
+            "v": "AutoCAD 命令、WPF 面板、几何桥接"
+          }
+        },
+        "8": {
+          "0": {
+            "v": "热重载"
+          },
+          "1": {
+            "v": "ReCall C2/C1"
+          },
+          "2": {
+            "v": "开发联调，N7 → HyFeaBeamMvpCommand"
+          }
+        }
+      },
+      "tabColor": "",
+      "hidden": 0,
+      "zoomRatio": 1,
+      "freeze": {
+        "xSplit": 0,
+        "ySplit": 0,
+        "startRow": -1,
+        "startColumn": -1
+      },
+      "scrollTop": 0,
+      "scrollLeft": 0,
+      "defaultColumnWidth": 88,
+      "defaultRowHeight": 24,
+      "mergeData": [],
+      "rowData": {},
+      "columnData": {
+        "0": {
+          "w": 101.73802185058594
+        },
+        "1": {
+          "w": 318.8388671875
+        },
+        "2": {
+          "w": 405.63197326660156
+        }
+      },
+      "showGridlines": 1,
+      "rowHeader": {
+        "width": 46,
+        "hidden": 0
+      },
+      "columnHeader": {
+        "height": 20,
+        "hidden": 0
+      },
+      "rightToLeft": 0
+    }
+  },
+  "resources": [
+    {
+      "name": "SHEET_RANGE_PROTECTION_PLUGIN",
+      "data": ""
+    },
+    {
+      "name": "SHEET_AuthzIoMockService_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_WORKSHEET_PROTECTION_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_WORKSHEET_PROTECTION_POINT_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_DEFINED_NAME_PLUGIN",
+      "data": ""
+    },
+    {
+      "name": "SHEET_RANGE_THEME_MODEL_PLUGIN",
+      "data": "{}"
+    }
+  ]
+}

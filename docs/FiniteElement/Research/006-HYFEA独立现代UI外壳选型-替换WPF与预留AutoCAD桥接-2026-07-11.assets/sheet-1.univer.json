@@ -1,0 +1,413 @@
+{
+  "id": "sheet-1",
+  "sheetOrder": [
+    "sheet1"
+  ],
+  "name": "Sheet1",
+  "appVersion": "0.25.1",
+  "locale": "zhCN",
+  "styles": {
+    "7yeY52": {
+      "ff": "Arial",
+      "fs": 11,
+      "it": 0,
+      "bl": 0,
+      "ul": {
+        "s": 0
+      },
+      "st": {
+        "s": 0
+      },
+      "ol": {
+        "s": 0
+      },
+      "tr": {
+        "a": 0,
+        "v": 0
+      },
+      "td": 0,
+      "ht": 1,
+      "vt": 0,
+      "tb": 0,
+      "pd": {
+        "t": 0,
+        "r": 2,
+        "b": 2,
+        "l": 2
+      }
+    }
+  },
+  "sheets": {
+    "sheet1": {
+      "id": "sheet1",
+      "name": "Sheet1",
+      "rowCount": 10,
+      "columnCount": 6,
+      "cellData": {
+        "0": {
+          "0": {
+            "s": "7yeY52",
+            "v": "项",
+            "t": 1
+          },
+          "1": {
+            "s": "7yeY52",
+            "v": "决定",
+            "t": 1
+          }
+        },
+        "1": {
+          "0": {
+            "s": "7yeY52",
+            "v": "范围",
+            "t": 1
+          },
+          "1": {
+            "s": "7yeY52",
+            "p": {
+              "id": "d",
+              "documentStyle": {
+                "pageSize": {
+                  "width": null,
+                  "height": null
+                },
+                "documentFlavor": 0,
+                "marginTop": 0,
+                "marginBottom": 2,
+                "marginRight": 2,
+                "marginLeft": 2,
+                "paragraphLineGapDefault": 0,
+                "renderConfig": {
+                  "horizontalAlign": 1,
+                  "verticalAlign": 0,
+                  "centerAngle": 0,
+                  "vertexAngle": 0,
+                  "wrapStrategy": 0,
+                  "zeroWidthParagraphBreak": 1
+                }
+              },
+              "body": {
+                "dataStream": "仅 HYFEA 交互测试外壳；HyCADTool 其它 WPF 面板不动\r\n",
+                "textRuns": [
+                  {
+                    "st": 0,
+                    "ed": 14,
+                    "ts": {
+                      "bl": 1
+                    }
+                  }
+                ],
+                "paragraphs": [
+                  {
+                    "startIndex": 36,
+                    "paragraphStyle": {
+                      "horizontalAlign": 1
+                    }
+                  }
+                ]
+              },
+              "drawings": {},
+              "drawingsOrder": []
+            },
+            "v": "仅 HYFEA 交互测试外壳；HyCADTool 其它 WPF 面板不动",
+            "t": 1
+          }
+        },
+        "2": {
+          "0": {
+            "s": "7yeY52",
+            "v": "主战场",
+            "t": 1
+          },
+          "1": {
+            "s": "7yeY52",
+            "p": {
+              "id": "d",
+              "documentStyle": {
+                "pageSize": {
+                  "width": null,
+                  "height": null
+                },
+                "documentFlavor": 0,
+                "marginTop": 0,
+                "marginBottom": 2,
+                "marginRight": 2,
+                "marginLeft": 2,
+                "paragraphLineGapDefault": 0,
+                "renderConfig": {
+                  "horizontalAlign": 1,
+                  "verticalAlign": 0,
+                  "centerAngle": 0,
+                  "vertexAngle": 0,
+                  "wrapStrategy": 0,
+                  "zeroWidthParagraphBreak": 1
+                }
+              },
+              "body": {
+                "dataStream": "独立桌面宿主（不嵌 PaletteSet）\r\n",
+                "textRuns": [
+                  {
+                    "st": 0,
+                    "ed": 6,
+                    "ts": {
+                      "bl": 1
+                    }
+                  }
+                ],
+                "paragraphs": [
+                  {
+                    "startIndex": 21,
+                    "paragraphStyle": {
+                      "horizontalAlign": 1
+                    }
+                  }
+                ]
+              },
+              "drawings": {},
+              "drawingsOrder": []
+            },
+            "v": "独立桌面宿主（不嵌 PaletteSet）",
+            "t": 1
+          }
+        },
+        "3": {
+          "0": {
+            "s": "7yeY52",
+            "v": "远期",
+            "t": 1
+          },
+          "1": {
+            "s": "7yeY52",
+            "p": {
+              "id": "d",
+              "documentStyle": {
+                "pageSize": {
+                  "width": null,
+                  "height": null
+                },
+                "documentFlavor": 0,
+                "marginTop": 0,
+                "marginBottom": 2,
+                "marginRight": 2,
+                "marginLeft": 2,
+                "paragraphLineGapDefault": 0,
+                "renderConfig": {
+                  "horizontalAlign": 1,
+                  "verticalAlign": 0,
+                  "centerAngle": 0,
+                  "vertexAngle": 0,
+                  "wrapStrategy": 0,
+                  "zeroWidthParagraphBreak": 1
+                }
+              },
+              "body": {
+                "dataStream": "预留 AutoCAD 适配接口；生产主用途仍在 AutoCAD\r\n",
+                "textRuns": [
+                  {
+                    "st": 3,
+                    "ed": 15,
+                    "ts": {
+                      "bl": 1
+                    }
+                  }
+                ],
+                "paragraphs": [
+                  {
+                    "startIndex": 31,
+                    "paragraphStyle": {
+                      "horizontalAlign": 1
+                    }
+                  }
+                ]
+              },
+              "drawings": {},
+              "drawingsOrder": []
+            },
+            "v": "预留 AutoCAD 适配接口；生产主用途仍在 AutoCAD",
+            "t": 1
+          }
+        },
+        "4": {
+          "0": {
+            "s": "7yeY52",
+            "v": "本期交付",
+            "t": 1
+          },
+          "1": {
+            "s": "7yeY52",
+            "p": {
+              "id": "d",
+              "documentStyle": {
+                "pageSize": {
+                  "width": null,
+                  "height": null
+                },
+                "documentFlavor": 0,
+                "marginTop": 0,
+                "marginBottom": 2,
+                "marginRight": 2,
+                "marginLeft": 2,
+                "paragraphLineGapDefault": 0,
+                "renderConfig": {
+                  "horizontalAlign": 1,
+                  "verticalAlign": 0,
+                  "centerAngle": 0,
+                  "vertexAngle": 0,
+                  "wrapStrategy": 0,
+                  "zeroWidthParagraphBreak": 1
+                }
+              },
+              "body": {
+                "dataStream": "只写本调研；不建工程、不改 BeamMvpPanel.xaml\r\n",
+                "textRuns": [
+                  {
+                    "st": 0,
+                    "ed": 5,
+                    "ts": {
+                      "bl": 1
+                    }
+                  }
+                ],
+                "paragraphs": [
+                  {
+                    "startIndex": 31,
+                    "paragraphStyle": {
+                      "horizontalAlign": 1
+                    }
+                  }
+                ]
+              },
+              "drawings": {},
+              "drawingsOrder": []
+            },
+            "v": "只写本调研；不建工程、不改 BeamMvpPanel.xaml",
+            "t": 1
+          }
+        },
+        "5": {
+          "0": {
+            "s": "7yeY52",
+            "v": "风格参考",
+            "t": 1
+          },
+          "1": {
+            "s": "7yeY52",
+            "p": {
+              "id": "d",
+              "documentStyle": {
+                "pageSize": {
+                  "width": null,
+                  "height": null
+                },
+                "documentFlavor": 0,
+                "marginTop": 0,
+                "marginBottom": 2,
+                "marginRight": 2,
+                "marginLeft": 2,
+                "paragraphLineGapDefault": 0,
+                "renderConfig": {
+                  "horizontalAlign": 1,
+                  "verticalAlign": 0,
+                  "centerAngle": 0,
+                  "vertexAngle": 0,
+                  "wrapStrategy": 0,
+                  "zeroWidthParagraphBreak": 1
+                }
+              },
+              "body": {
+                "dataStream": "Blend er 信息密度 / VS Code 工作区感（非以 Blender 本体作主宿主）\r\n",
+                "textRuns": [
+                  {
+                    "st": 29,
+                    "ed": 30,
+                    "ts": {
+                      "bl": 1
+                    }
+                  }
+                ],
+                "paragraphs": [
+                  {
+                    "startIndex": 47,
+                    "paragraphStyle": {
+                      "horizontalAlign": 1
+                    }
+                  }
+                ]
+              },
+              "drawings": {},
+              "drawingsOrder": []
+            },
+            "v": "Blend er 信息密度 / VS Code 工作区感（非以 Blender 本体作主宿主）",
+            "t": 1
+          }
+        },
+        "6": {
+          "0": {
+            "v": "阿斯顿发放到",
+            "t": 1
+          },
+          "1": {
+            "v": "阿斯顿发",
+            "t": 1
+          }
+        }
+      },
+      "tabColor": "",
+      "hidden": 0,
+      "zoomRatio": 1,
+      "freeze": {
+        "xSplit": 0,
+        "ySplit": 0,
+        "startRow": -1,
+        "startColumn": -1
+      },
+      "scrollTop": 0,
+      "scrollLeft": 0,
+      "defaultColumnWidth": 88,
+      "defaultRowHeight": 24,
+      "mergeData": [],
+      "rowData": {},
+      "columnData": {
+        "1": {
+          "w": 460.198974609375
+        }
+      },
+      "showGridlines": 1,
+      "rowHeader": {
+        "width": 46,
+        "hidden": 0
+      },
+      "columnHeader": {
+        "height": 20,
+        "hidden": 0
+      },
+      "rightToLeft": 0
+    }
+  },
+  "resources": [
+    {
+      "name": "SHEET_RANGE_PROTECTION_PLUGIN",
+      "data": ""
+    },
+    {
+      "name": "SHEET_AuthzIoMockService_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_WORKSHEET_PROTECTION_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_WORKSHEET_PROTECTION_POINT_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_DEFINED_NAME_PLUGIN",
+      "data": "{}"
+    },
+    {
+      "name": "SHEET_RANGE_THEME_MODEL_PLUGIN",
+      "data": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HYFEA.Hosting</RootNamespace>
+    <AssemblyName>HYFEA.Hosting</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HYFEA.Core\HYFEA.Core.csproj" />
+    <ProjectReference Include="..\..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
+  </ItemGroup>
+
+</Project>

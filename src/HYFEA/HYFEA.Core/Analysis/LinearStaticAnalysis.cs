@@ -12,11 +12,27 @@ namespace HYFEA.Core.Analysis;
 
 public sealed class LinearStaticAnalysis
 {
-    private readonly ILinearSolver _solver;
+    private readonly ILinearSystemSolver _solver;
+    private readonly SolverRegistry? _registry;
 
-    public LinearStaticAnalysis(ILinearSolver? solver = null)
+    /// <summary>
+    /// 创建线性静力分析 (P2.v0.2 支持求解器注册表)。
+    /// </summary>
+    /// <param name="solver">指定求解器(优先级最高)</param>
+    /// <param name="registry">求解器注册表(使用 registry.Default)</param>
+    public LinearStaticAnalysis(ILinearSystemSolver? solver = null, SolverRegistry? registry = null)
     {
-        _solver = solver ?? new DenseLinearSolver();
+        _registry = registry;
+        _solver = solver ?? registry?.Default ?? new DenseSystemSolver();
+    }
+
+    /// <summary>
+    /// 便捷构造:从注册表键创建分析器。
+    /// </summary>
+    public static LinearStaticAnalysis WithSolver(string solverKey)
+    {
+        var registry = new SolverRegistry();
+        return new LinearStaticAnalysis(solver: registry.Get(solverKey), registry: registry);
     }
 
     public FemResult Run(FemProblem problem)
@@ -38,7 +54,7 @@ public sealed class LinearStaticAnalysis
 
         var sys = Assembler.Assemble(problem, layout);
         var red = Assembler.Reduce(sys);
-        var sol = _solver.Solve(red.Stiffness, red.Force);
+        var sol = _solver.SolveDense(red.Stiffness, red.Force);
         if (!sol.Success || sol.Solution is null)
         {
             return new FemResult(

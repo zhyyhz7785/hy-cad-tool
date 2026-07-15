@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HYFEA Result Viewer</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1e1e1e; overflow: hidden; font-family: Segoe UI, sans-serif; }
+    #viewer { position: absolute; inset: 0; }
+    #empty {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #999; font-size: 14px; pointer-events: none; z-index: 2;
+      background: rgba(30,30,30,0.35);
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+  <div id="empty">求解后此处显示位移云图（U_mag）</div>
+  <script src="vendor/viewer.bundle.js"></script>
+</body>
+</html>

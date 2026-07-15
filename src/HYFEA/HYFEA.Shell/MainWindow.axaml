@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:HYFEA.Shell.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1200" d:DesignHeight="760"
+        x:Class="HYFEA.Shell.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="HYFEA Shell — 梁元交互测试"
+        Width="1200" Height="760"
+        Background="#1E1E1E">
+
+  <DockPanel Margin="12">
+    <Border DockPanel.Dock="Bottom"
+            Margin="0 8 0 0"
+            Padding="8 6"
+            Background="#2A2A2A"
+            CornerRadius="4">
+      <TextBlock Text="{Binding Status}" Foreground="#CCCCCC" FontSize="12" />
+    </Border>
+
+    <Grid ColumnDefinitions="300,*" ColumnSpacing="12">
+      <ScrollViewer Grid.Column="0">
+        <StackPanel Spacing="6">
+          <TextBlock Text="HYFEA 梁元 PoC" FontSize="18" FontWeight="Bold" Foreground="#EEEEEE" />
+          <TextBlock Text="独立壳 · 内嵌 vtk.js 云图" FontSize="11" Foreground="#888888" Margin="0 0 0 8" />
+
+          <TextBlock Text="梁长 L" Foreground="#AAAAAA" />
+          <NumericUpDown Value="{Binding Length}" Minimum="1" Increment="100" FormatString="0.###" />
+
+          <TextBlock Text="E" Foreground="#AAAAAA" />
+          <NumericUpDown Value="{Binding YoungsModulus}" Minimum="0.000000001" Increment="1000" FormatString="0.######" />
+
+          <TextBlock Text="A" Foreground="#AAAAAA" />
+          <NumericUpDown Value="{Binding Area}" Minimum="0.000000001" Increment="100" FormatString="0.######" />
+
+          <TextBlock Text="Iz" Foreground="#AAAAAA" />
+          <NumericUpDown Value="{Binding InertiaZ}" Minimum="0.000000001" Increment="1000000" FormatString="0.######" />
+
+          <TextBlock Text="q 均布" Foreground="#AAAAAA" />
+          <NumericUpDown Value="{Binding Q}" Minimum="0.000000000001" Increment="1" FormatString="0.######" />
+
+          <CheckBox Content="荷载：全局 −Y（否则局部法向）" IsChecked="{Binding LoadIsGlobalNegY}" />
+
+          <TextBlock Text="轴线分段数" Foreground="#AAAAAA" />
+          <NumericUpDown Value="{Binding Segments}" Minimum="1" Maximum="10000" Increment="1" FormatString="0" />
+
+          <TextBlock Text="端 A 约束" Foreground="#AAAAAA" />
+          <ComboBox ItemsSource="{Binding SupportOptions}" SelectedItem="{Binding EndA}" />
+
+          <TextBlock Text="端 B 约束" Foreground="#AAAAAA" />
+          <ComboBox ItemsSource="{Binding SupportOptions}" SelectedItem="{Binding EndB}" />
+
+          <CheckBox Content="单位 SI（m/N）；默认 MmN" IsChecked="{Binding UseSiUnits}" />
+
+          <Button Content="求解"
+                  Command="{Binding SolveCommand}"
+                  Margin="0 12 0 0"
+                  HorizontalAlignment="Stretch"
+                  Classes="accent" />
+
+          <Button Content="导出 VTU"
+                  Command="{Binding ExportVtuCommand}"
+                  Margin="0 8 0 0"
+                  HorizontalAlignment="Stretch"
+                  ToolTip.Tip="旁路互操作；主路径为内嵌云图" />
+        </StackPanel>
+      </ScrollViewer>
+
+      <Grid Grid.Column="1" RowDefinitions="2*,*" RowSpacing="8">
+        <DockPanel Grid.Row="0">
+          <TextBlock DockPanel.Dock="Top" Text="位移云图（U_mag）" FontWeight="SemiBold" Margin="0 0 0 4" Foreground="#DDDDDD" />
+          <Border BorderBrush="#333333" BorderThickness="1" Background="#121212">
+            <NativeWebView x:Name="ResultWebView" />
+          </Border>
+        </DockPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="8">
+          <DockPanel Grid.Column="0">
+            <TextBlock DockPanel.Dock="Top" Text="节点位移" FontWeight="SemiBold" Margin="0 0 0 4" Foreground="#DDDDDD" />
+            <DataGrid ItemsSource="{Binding NodalResults}"
+                      IsReadOnly="True"
+                      AutoGenerateColumns="False"
+                      CanUserResizeColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      BorderBrush="#333333"
+                      BorderThickness="1">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Node" Binding="{Binding Node}" Width="50" />
+                <DataGridTextColumn Header="UX" Binding="{Binding UX, StringFormat=G6}" Width="*" />
+                <DataGridTextColumn Header="UY" Binding="{Binding UY, StringFormat=G6}" Width="*" />
+                <DataGridTextColumn Header="RZ" Binding="{Binding RZ, StringFormat=G6}" Width="*" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+
+          <DockPanel Grid.Column="1">
+            <TextBlock DockPanel.Dock="Top" Text="单元端部力" FontWeight="SemiBold" Margin="0 0 0 4" Foreground="#DDDDDD" />
+            <DataGrid ItemsSource="{Binding BeamForces}"
+                      IsReadOnly="True"
+                      AutoGenerateColumns="False"
+                      CanUserResizeColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      BorderBrush="#333333"
+                      BorderThickness="1">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Elem" Binding="{Binding Element}" Width="45" />
+                <DataGridTextColumn Header="N" Binding="{Binding N, StringFormat=G5}" Width="*" />
+                <DataGridTextColumn Header="VA" Binding="{Binding VA, StringFormat=G5}" Width="*" />
+                <DataGridTextColumn Header="MA" Binding="{Binding MA, StringFormat=G5}" Width="*" />
+                <DataGridTextColumn Header="VB" Binding="{Binding VB, StringFormat=G5}" Width="*" />
+                <DataGridTextColumn Header="MB" Binding="{Binding MB, StringFormat=G5}" Width="*" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

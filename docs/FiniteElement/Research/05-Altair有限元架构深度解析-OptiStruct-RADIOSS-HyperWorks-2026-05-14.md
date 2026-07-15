@@ -1,10 +1,10 @@
-# Altair 有限元计算架构深度解析（OptiStruct + RADIOSS + HyperWorks）
+﻿# Altair 有限元计算架构深度解析（OptiStruct + RADIOSS + HyperWorks）
 
 > 文档日期：2026-05-14
 > 系列定位：FEM 软件架构深度解析 · 第 05 篇
 > 上承：
-> - [01-全球三维有限元软件对标调研-2026-05-14](../01-全球三维有限元软件对标调研-2026-05-14.md)
-> - [02-有限元通用底座架构-从挡土墙开始-2026-05-14](../02-有限元通用底座架构-从挡土墙开始-2026-05-14.md)
+> - [01-全球三维有限元软件对标调研-2026-05-14](../../01-全球三维有限元软件对标调研-2026-05-14.md)
+> - [02-有限元通用底座架构-从挡土墙开始-2026-05-14](../../02-有限元通用底座架构-从挡土墙开始-2026-05-14.md)
 > 同系列（计划）：
 > - 03 ANSYS Workbench + Mechanical APDL + LS-DYNA 架构
 > - 04 ABAQUS Standard/Explicit + CAE Python 架构
@@ -715,8 +715,8 @@ graph TB
   - Bendsøe & Sigmund, *Topology Optimization: Theory, Methods, and Applications*（OptiStruct 算法理论基础）
   - Belytschko, Liu, Moran, *Nonlinear Finite Elements for Continua and Structures*（RADIOSS 显式算法基础）
 - **同系列文档**：
-  - [01-全球三维有限元软件对标调研](../01-全球三维有限元软件对标调研-2026-05-14.md)
-  - [02-有限元通用底座架构-从挡土墙开始](../02-有限元通用底座架构-从挡土墙开始-2026-05-14.md)
+  - [01-全球三维有限元软件对标调研](../../01-全球三维有限元软件对标调研-2026-05-14.md)
+  - [02-有限元通用底座架构-从挡土墙开始](../../02-有限元通用底座架构-从挡土墙开始-2026-05-14.md)
 
 ---
 
