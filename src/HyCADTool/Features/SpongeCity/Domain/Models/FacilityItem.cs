@@ -1,9 +1,15 @@
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
+
 namespace HyCADTool.Features.SpongeCity.Domain.Models
 {
     /// <summary>
     /// LID 设施一行（与 Excel Sheet 设施配置 + 污染削减率 对应）。
+    /// 规模、单位调蓄、调蓄量在计算回写后通知面板。
     /// </summary>
-    public class FacilityItem
+    public class FacilityItem : INotifyPropertyChanged
     {
         /// <summary>序号（F1~F8）。</summary>
         public string Code { get; set; } = "";
@@ -14,35 +20,57 @@ namespace HyCADTool.Features.SpongeCity.Domain.Models
         /// <summary>单位（m² / m³ / m）。</summary>
         public string Unit { get; set; } = "";
 
+        private double _quantity;
         /// <summary>规模数量（面积或容积或长度）。</summary>
-        public double Quantity { get; set; }
+        public double Quantity
+        {
+            get => _quantity;
+            set => Set(ref _quantity, value);
+        }
 
-        /// <summary>单位调蓄系数（如下沉绿地=下沉深 m，雨水花园 0.30 m³/m²，蓄水池=1.0 m³/m³）。</summary>
-        public double UnitVolumeFactor { get; set; }
+        private double _unitVolumeFactor;
+        /// <summary>单位调蓄系数（m³/单位）。下沉绿地可取下沉深 m。</summary>
+        public double UnitVolumeFactor
+        {
+            get => _unitVolumeFactor;
+            set => Set(ref _unitVolumeFactor, value);
+        }
 
-        /// <summary>SS 削减率（0~1）。</summary>
+        /// <summary>SS 削减率（0~1）。计算不覆盖用户改过的值。</summary>
         public double EtaSs { get; set; }
 
-        /// <summary>承担调蓄量 (m³) = Quantity × UnitVolumeFactor（容积类设施直接=Quantity）。</summary>
-        public double ProvidedVolume { get; set; }
+        private double _providedVolume;
+        /// <summary>承担调蓄量 (m³)。按规范位数舍入后写回。</summary>
+        public double ProvidedVolume
+        {
+            get => _providedVolume;
+            set => Set(ref _providedVolume, value);
+        }
 
         /// <summary>说明 / 依据。</summary>
         public string Note { get; set; } = "";
+
+        /// <summary>容积类设施图层。空表示不建层。</summary>
+        public string LayerName { get; set; } = "";
+
+        public short AciColor { get; set; } = 7;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void Set(ref double field, double value, [CallerMemberName] string name = null)
+        {
+            if (field == value) return;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
     }
 
-    /// <summary>8 类设施默认表（对齐 gen_sponge_housing_calc.py create_facility）。</summary>
+    /// <summary>8 类设施默认表 = 京津冀规范的默认设施，避免和注册表各写一份。</summary>
     public static class FacilityCatalog
     {
-        public static FacilityItem[] CreateDefaults() => new[]
+        public static FacilityItem[] CreateDefaults()
         {
-            new FacilityItem { Code = "F1", Name = "下沉式绿地（深度150mm）", Unit = "m²", Quantity = 2500, UnitVolumeFactor = 0.150, EtaSs = 0.50, Note = "下沉深度 150mm；DB13 §5.0.5" },
-            new FacilityItem { Code = "F2", Name = "雨水花园（生物滞留）",   Unit = "m²", Quantity = 600,  UnitVolumeFactor = 0.30,  EtaSs = 0.80, Note = "蓄水深 0.20~0.30m；指南§6.1.3" },
-            new FacilityItem { Code = "F3", Name = "透水铺装贡献调蓄",       Unit = "m²", Quantity = 3000, UnitVolumeFactor = 0.10,  EtaSs = 0.85, Note = "按蓄水层 0.10m；DB13 §5.0.6" },
-            new FacilityItem { Code = "F4", Name = "绿色屋顶（简单式）",     Unit = "m²", Quantity = 0,    UnitVolumeFactor = 0.05,  EtaSs = 0.75, Note = "简单式 0.05~0.10 m³/m²" },
-            new FacilityItem { Code = "F5", Name = "雨水蓄水池（钢混/模块）", Unit = "m³", Quantity = 250,  UnitVolumeFactor = 1.0,   EtaSs = 0.85, Note = "≥10mm 屋面雨量；DB13 §6.4.2" },
-            new FacilityItem { Code = "F6", Name = "植草沟（转输+渗透）",     Unit = "m³", Quantity = 30,   UnitVolumeFactor = 1.0,   EtaSs = 0.60, Note = "断面 ≤1m²；DB13 §5.0.7" },
-            new FacilityItem { Code = "F7", Name = "湿塘 / 雨水湿地",         Unit = "m³", Quantity = 0,    UnitVolumeFactor = 1.0,   EtaSs = 0.65, Note = "调蓄水位 <1.5m，出口控流" },
-            new FacilityItem { Code = "F8", Name = "渗透塘 / 渗透井",         Unit = "m³", Quantity = 0,    UnitVolumeFactor = 1.0,   EtaSs = 0.75, Note = "K≥1×10⁻⁶ m/s；距建筑 ≥3m" },
-        };
+            return SpongeStandardRegistry.GetOrDefault(SpongeStandardIds.Db13).CreateInput().Facilities.ToArray();
+        }
     }
 }

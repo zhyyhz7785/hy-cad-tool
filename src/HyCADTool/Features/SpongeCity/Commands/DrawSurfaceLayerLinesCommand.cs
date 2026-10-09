@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Features.SpongeCity.Domain.Models;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
 using HyCADTool.Features.SpongeCity.Infrastructure;
 using HyCADTool.Features.SpongeCity.ViewModels;
 using HyCADTool.Shell.ViewModels;
@@ -48,38 +48,44 @@ namespace HyCADTool.Features.SpongeCity.Commands
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
-                    foreach (var entry in SurfaceCatalog.Entries)
+                    var standard = SpongeStandardRegistry.GetOrDefault(vm?.Input?.StandardId);
+                    foreach (var spec in standard.Surfaces)
                     {
-                        SurfaceLayerService.EnsureLayer(tr, db, entry.Name, entry.AciColor);
-                        SurfaceLayerService.EnsureLayer(tr, db, entry.TextLayerName, entry.AciColor);
+                        var item = vm?.Surfaces == null ? null : FirstByCode(vm.Surfaces, spec.Code);
+                        string layer = item != null && !string.IsNullOrWhiteSpace(item.LayerName)
+                            ? item.LayerName
+                            : spec.LayerName;
+                        short color = item != null && item.AciColor > 0 ? item.AciColor : spec.AciColor;
+                        string textLayer = SpongeLayerNames.Text(layer);
+                        string label = item != null && !string.IsNullOrWhiteSpace(item.Name) ? item.Name : spec.Name;
 
-                        // 主线
+                        SurfaceLayerService.EnsureLayer(tr, db, layer, color);
+                        SurfaceLayerService.EnsureLayer(tr, db, textLayer, color);
+
                         var line = new Line(
                             new Point3d(startX, startY, 0),
                             new Point3d(startX + lineLength, startY, 0))
                         {
-                            Layer = entry.Name,
+                            Layer = layer,
                         };
                         ms.AppendEntity(line);
                         tr.AddNewlyCreatedDBObject(line, true);
 
-                        // 标尺线 a（紧跟主线右端，作为合计文字锚点）
                         var anchorStart = new Point3d(startX + lineLength + textHeight, startY, 0);
                         var anchorEnd = new Point3d(anchorStart.X + rulerLength, startY, 0);
                         var ruler = new Line(anchorStart, anchorEnd)
                         {
-                            Layer = entry.Name,
+                            Layer = layer,
                         };
                         ms.AppendEntity(ruler);
                         tr.AddNewlyCreatedDBObject(ruler, true);
 
-                        // 图层名文字（线上方）
                         var text = new DBText
                         {
                             Position = new Point3d(startX, startY + textHeight * 0.4, 0),
                             Height = textHeight,
-                            TextString = entry.Name,
-                            Layer = entry.TextLayerName,
+                            TextString = label,
+                            Layer = textLayer,
                             HorizontalMode = TextHorizontalMode.TextLeft,
                             VerticalMode = TextVerticalMode.TextBottom,
                             AlignmentPoint = new Point3d(startX, startY + textHeight * 0.4, 0),
@@ -88,12 +94,17 @@ namespace HyCADTool.Features.SpongeCity.Commands
                         ms.AppendEntity(text);
                         tr.AddNewlyCreatedDBObject(text, true);
 
-                        // 缓存锚点
                         if (vm != null)
-                            vm.AnchorPoints[entry.Name] = anchorEnd;
+                            vm.AnchorPoints[spec.Code] = anchorEnd;
 
                         startY += rowGap;
                         created++;
+                    }
+
+                    foreach (var facility in standard.Facilities)
+                    {
+                        if (string.IsNullOrWhiteSpace(facility.LayerName)) continue;
+                        SurfaceLayerService.EnsureLayer(tr, db, facility.LayerName, facility.AciColor);
                     }
 
                     tr.Commit();
@@ -107,6 +118,16 @@ namespace HyCADTool.Features.SpongeCity.Commands
                 ed.WriteMessage($"\n[hyscDL] 失败: {ex.Message}");
                 if (vm != null) vm.StatusMessage = "hyscDL 失败：" + ex.Message;
             }
+        }
+
+        private static Domain.Models.SurfaceItem FirstByCode(System.Collections.Generic.IEnumerable<Domain.Models.SurfaceItem> surfaces, string code)
+        {
+            foreach (var s in surfaces)
+            {
+                if (s != null && string.Equals(s.Code, code, System.StringComparison.OrdinalIgnoreCase))
+                    return s;
+            }
+            return null;
         }
 
         private static double ReadScale()

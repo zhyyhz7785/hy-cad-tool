@@ -1,7 +1,7 @@
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Features.SpongeCity.Domain.Models;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
 using HyCADTool.Features.SpongeCity.Infrastructure;
 using HyCADTool.Features.SpongeCity.ViewModels;
 using HyCADTool.Shell.ViewModels;
@@ -44,14 +44,17 @@ namespace HyCADTool.Features.SpongeCity.Commands
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
-                    foreach (var entry in SurfaceCatalog.Entries)
+                    var standard = SpongeStandardRegistry.GetOrDefault(vm.Input?.StandardId);
+                    foreach (var spec in standard.Surfaces)
                     {
-                        var item = vm.Surfaces.FirstOrDefault(s => s.Code == entry.Code);
+                        var item = vm.Surfaces.FirstOrDefault(s => s.Code == spec.Code);
                         if (item == null) continue;
 
-                        SurfaceLayerService.EnsureLayer(tr, db, entry.TextLayerName, entry.AciColor);
+                        string layer = string.IsNullOrWhiteSpace(item.LayerName) ? spec.LayerName : item.LayerName;
+                        string textLayer = SpongeLayerNames.Text(layer);
+                        short color = item.AciColor > 0 ? item.AciColor : spec.AciColor;
+                        SurfaceLayerService.EnsureLayer(tr, db, textLayer, color);
 
-                        // 1) 每条形心文字
                         if (vm.LayerPolylines.TryGetValue(item.LayerName, out var polyList))
                         {
                             foreach (var rec in polyList)
@@ -61,7 +64,7 @@ namespace HyCADTool.Features.SpongeCity.Commands
                                     Position = rec.Centroid,
                                     Height = textHeight,
                                     TextString = $"{rec.Area:F2} m²",
-                                    Layer = entry.TextLayerName,
+                                    Layer = textLayer,
                                     HorizontalMode = TextHorizontalMode.TextCenter,
                                     VerticalMode = TextVerticalMode.TextVerticalMid,
                                     AlignmentPoint = rec.Centroid,
@@ -73,15 +76,14 @@ namespace HyCADTool.Features.SpongeCity.Commands
                             }
                         }
 
-                        // 2) 合计文字（贴在样线 a 右端；无 a 则跳过）
-                        if (vm.AnchorPoints.TryGetValue(entry.Name, out var anchor))
+                        if (vm.AnchorPoints.TryGetValue(spec.Code, out var anchor))
                         {
                             var totalText = new DBText
                             {
                                 Position = new Point3d(anchor.X + textHeight, anchor.Y - textHeight * 0.5, 0),
                                 Height = textHeight,
-                                TextString = $"{entry.Name}: {item.Area:F2} m²",
-                                Layer = entry.TextLayerName,
+                                TextString = $"{item.Name}: {item.Area:F2} m²",
+                                Layer = textLayer,
                                 HorizontalMode = TextHorizontalMode.TextLeft,
                                 VerticalMode = TextVerticalMode.TextBottom,
                                 AlignmentPoint = new Point3d(anchor.X + textHeight, anchor.Y - textHeight * 0.5, 0),

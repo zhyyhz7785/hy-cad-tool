@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
 
 namespace HyCADTool.Features.SpongeCity.Domain.Models
 {
@@ -8,6 +9,8 @@ namespace HyCADTool.Features.SpongeCity.Domain.Models
         Beijing,
         Tianjin,
         Hebei,
+        /// <summary>湖北省。加在枚举末尾，避免打乱面板下拉索引。</summary>
+        Hubei,
     }
 
     /// <summary>用地性质，影响 §5.2.4-1 α 默认值与 §5.2.2 硬化面积口径。</summary>
@@ -25,6 +28,8 @@ namespace HyCADTool.Features.SpongeCity.Domain.Models
         RebuildOtherResidential,
         /// <summary>改扩建公共建筑。</summary>
         RebuildPublic,
+        /// <summary>工业用地。加在枚举末尾，避免打乱面板下拉索引。</summary>
+        Industrial,
     }
 
     /// <summary>
@@ -33,6 +38,9 @@ namespace HyCADTool.Features.SpongeCity.Domain.Models
     public class SpongeProjectInput
     {
         // ── 一、项目信息 ──
+        /// <summary>当前规范 Id，见 <see cref="SpongeStandardIds"/>。面板切换后写在这里，并随计算书、Excel 导出。</summary>
+        public string StandardId { get; set; } = SpongeStandardIds.Db13;
+
         public string ProjectName { get; set; } = "示例·海绵小区";
         public string Location { get; set; } = "河北省衡水市";
         public SpongeRegion Region { get; set; } = SpongeRegion.Hebei;
@@ -87,29 +95,15 @@ namespace HyCADTool.Features.SpongeCity.Domain.Models
         public List<SurfaceItem> Surfaces { get; set; } = new List<SurfaceItem>();
         public List<FacilityItem> Facilities { get; set; } = new List<FacilityItem>();
 
-        /// <summary>构造时填充默认下垫面表 + 默认设施表。</summary>
+        /// <summary>默认是京津冀居住区模板。要工业园表用 <see cref="CreateFor"/>。</summary>
         public static SpongeProjectInput CreateDefault()
         {
-            var input = new SpongeProjectInput();
-            // 10 类下垫面默认面积（与 py 算例对齐）
-            var defaultAreas = new[] { 12500.0, 0, 8000, 4000, 3000, 2500, 12500, 5500, 1500, 500 };
-            int i = 0;
-            foreach (var e in SurfaceCatalog.Entries)
-            {
-                input.Surfaces.Add(new SurfaceItem
-                {
-                    Code = e.Code,
-                    Name = e.Name,
-                    LayerName = e.Name,
-                    Area = i < defaultAreas.Length ? defaultAreas[i] : 0,
-                    Psi = e.DefaultPsi,
-                    Note = e.Note,
-                });
-                i++;
-            }
-            foreach (var f in FacilityCatalog.CreateDefaults())
-                input.Facilities.Add(f);
-            return input;
+            return CreateFor(SpongeStandardIds.Db13);
+        }
+
+        public static SpongeProjectInput CreateFor(string standardId)
+        {
+            return SpongeStandardRegistry.GetOrDefault(standardId).CreateInput();
         }
     }
 }

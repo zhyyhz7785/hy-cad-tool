@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Domain.Services;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -108,7 +109,33 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
             set { Input.Location = value ?? ""; OnPropertyChanged(); }
         }
 
-        /// <summary>地区下拉索引（0=北京 1=天津 2=河北）。</summary>
+        /// <summary>规范下拉。顺序与 <see cref="SpongeStandardRegistry.All"/> 一致，选中后保存在 Input.StandardId。</summary>
+        public int StandardIndex
+        {
+            get => SpongeStandardRegistry.IndexOf(Input.StandardId);
+            set
+            {
+                if (value < 0 || value >= SpongeStandardRegistry.All.Count) return;
+                var standard = SpongeStandardRegistry.All[value];
+                if (string.Equals(Input.StandardId, standard.Id, StringComparison.OrdinalIgnoreCase)
+                    && Input.Surfaces != null && Input.Surfaces.Count > 0)
+                    return;
+                LoadStandard(standard.Id);
+            }
+        }
+
+        public string[] StandardNames
+        {
+            get
+            {
+                var names = new string[SpongeStandardRegistry.All.Count];
+                for (int i = 0; i < names.Length; i++)
+                    names[i] = SpongeStandardRegistry.All[i].DisplayName;
+                return names;
+            }
+        }
+
+        /// <summary>地区下拉索引（0=北京 1=天津 2=河北 3=湖北）。</summary>
         public int RegionIndex
         {
             get => (int)Input.Region;
@@ -211,9 +238,12 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
             get
             {
                 if (Result == null) return "—";
-                return $"ψ_z = {Result.PsiZ:F3} | W_设计 = {Result.FinalRequiredVolume:F1} m³ | " +
-                       $"V_实 = {Result.ProvidedVolume:F1} m³ | η_年 = {Result.EtaAnnual:P1} | " +
-                       (Result.AllPassed ? "全部达标 ✓" : "存在不达标 ✗");
+                var name = SpongeStandardRegistry.GetOrDefault(Input?.StandardId).DisplayName;
+                return name + " | ψc = " + Result.PsiZ.ToString("F3") +
+                       " | V需 = " + Result.FinalRequiredVolume.ToString("F1") + " m³ | " +
+                       "V实 = " + Result.ProvidedVolume.ToString("F1") + " m³ | η = " +
+                       Result.EtaCompared.ToString("F3") + " | " +
+                       (Result.AllPassed ? "控制性指标达标" : "存在不达标");
             }
         }
 
@@ -299,15 +329,21 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
 
         private void ExecuteReset()
         {
-            Input = SpongeProjectInput.CreateDefault();
-            Surfaces.Clear();
-            foreach (var s in Input.Surfaces) Surfaces.Add(s);
-            Facilities.Clear();
-            foreach (var f in Input.Facilities) Facilities.Add(f);
-            // 触发所有 PropertyChanged
+            LoadStandard(Input?.StandardId);
+            StatusMessage = "已恢复当前规范的默认参数。";
+        }
+
+        /// <summary>换成该规范的默认输入。图上的 NOD 持久化留到 P1，这里保存在当前文档的面板里。</summary>
+        private void LoadStandard(string standardId)
+        {
+            Input = SpongeProjectInput.CreateFor(standardId);
+            Surfaces = new ObservableCollection<SurfaceItem>(Input.Surfaces);
+            Facilities = new ObservableCollection<FacilityItem>(Input.Facilities);
+            OnPropertyChanged(nameof(Surfaces));
+            OnPropertyChanged(nameof(Facilities));
             OnPropertyChanged(string.Empty);
             ExecuteCalculate();
-            StatusMessage = "已恢复默认参数。";
+            StatusMessage = "已切换规范：" + SpongeStandardRegistry.GetOrDefault(standardId).DisplayName + "。";
         }
 
         /// <summary>

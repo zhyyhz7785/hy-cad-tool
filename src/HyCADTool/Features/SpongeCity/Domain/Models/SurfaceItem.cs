@@ -20,6 +20,9 @@ namespace HyCADTool.Features.SpongeCity.Domain.Models
         /// <summary>雨量径流系数 ψ。</summary>
         public double Psi { get; set; }
 
+        /// <summary>ACI 色号，画样线时建层用。</summary>
+        public short AciColor { get; set; } = 7;
+
         /// <summary>备注。</summary>
         public string Note { get; set; } = "";
     }
