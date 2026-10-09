@@ -165,11 +165,12 @@ namespace HyCAD.Geometry
         }
 
         /// <summary>
-        /// 计算与另一条线段的交点
-        /// 如果没有交点返回 null
+        /// 计算与另一条线段的交点。无交点时返回 false。
+        /// 交点落在原点时仍然返回 true：default(Point2D) 是 (0,0)，不能用来表示“没有交点”。
         /// </summary>
-        public Point2D GetIntersection(Line2D other, double tolerance = 1e-6)
+        public bool TryGetIntersection(Line2D other, out Point2D intersection, double tolerance = 1e-6)
         {
+            intersection = default;
             double x1 = StartPoint.X, y1 = StartPoint.Y;
             double x2 = EndPoint.X, y2 = EndPoint.Y;
             double x3 = other.StartPoint.X, y3 = other.StartPoint.Y;
@@ -177,56 +178,45 @@ namespace HyCAD.Geometry
 
             double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
-            // 平行或重合
             if (System.Math.Abs(denom) < tolerance)
-                return default;
+                return false;
 
             double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
             double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
 
-            // 检查交点是否在两条线段内
-            if (t >= -tolerance && t <= 1.0 + tolerance && 
+            if (t >= -tolerance && t <= 1.0 + tolerance &&
                 u >= -tolerance && u <= 1.0 + tolerance)
             {
-                double ix = x1 + t * (x2 - x1);
-                double iy = y1 + t * (y2 - y1);
-                return new Point2D(ix, iy);
+                intersection = new Point2D(x1 + t * (x2 - x1), y1 + t * (y2 - y1));
+                return true;
             }
 
-            return default;
+            return false;
         }
 
         /// <summary>
-        /// 获取与另一条线段的无限延长线交点（用于 FILLET R=0）
-        /// 使用参数方程求交点，不限制在线段范围内
+        /// 两条直线（线段所在无限直线）的交点。平行、共线或任一线段为零长度时返回 false。
         /// </summary>
-        public Point2D GetIntersectionWithInfiniteLine(Line2D other, double tolerance = 1e-6)
+        public bool TryGetIntersectionWithInfiniteLine(Line2D other, out Point2D intersection, double tolerance = 1e-6)
         {
-            // 参数方程：
-            // Line1: P1 + t × D1
-            // Line2: P2 + s × D2
-            
+            intersection = default;
             Point2D p1 = this.StartPoint;
             if (!this.Direction.TryNormalize(out Vector2D d1))
-                return default; // 零长度线段
-            
+                return false;
+
             Point2D p2 = other.StartPoint;
             if (!other.Direction.TryNormalize(out Vector2D d2))
-                return default; // 零长度线段
-            
-            // 向量叉积判断平行
+                return false;
+
             double cross = d1.X * d2.Y - d1.Y * d2.X;
-            
             if (System.Math.Abs(cross) < tolerance)
-                return default;  // 平行或共线
-            
-            // 求解参数 t
+                return false;
+
             double dx = p2.X - p1.X;
             double dy = p2.Y - p1.Y;
             double t = (dx * d2.Y - dy * d2.X) / cross;
-            
-            // 计算交点
-            return new Point2D(p1.X + t * d1.X, p1.Y + t * d1.Y);
+            intersection = new Point2D(p1.X + t * d1.X, p1.Y + t * d1.Y);
+            return true;
         }
 
         public override string ToString()

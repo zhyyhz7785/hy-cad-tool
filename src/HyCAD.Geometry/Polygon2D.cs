@@ -204,7 +204,7 @@ namespace HyCAD.Geometry
             // 检查每条边是否与线段相交
             foreach (var edge in GetEdges())
             {
-                if (edge.GetIntersection(line) != null)
+                if (edge.TryGetIntersection(line, out _))
                     return true;
             }
 

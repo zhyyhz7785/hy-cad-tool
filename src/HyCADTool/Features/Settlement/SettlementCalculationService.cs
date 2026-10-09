@@ -532,46 +532,33 @@ namespace HyCADTool.Features.Settlement
         #region 计算深度判定（GB 50007 §5.3.7）
 
         /// <summary>
-        /// 天然基础/复合地基深度判定：Δs'_n ≤ 0.025·Σ(Δs'_i)
-        /// 使用 Δz 按 b 确定（表5.3.7）
+        /// 天然基础/复合地基深度判定（GB 50007 §5.3.7）：
+        /// 自浅向深找最浅 n，使层 n 底面以上 Δz 条带内的沉降 ≤ 0.025·累计沉降。
+        /// Δz 按基础宽度 b 查表 5.3.7。层厚取相邻 Zi 之差。
         /// </summary>
         private static void ApplyDepthCheck(List<SettlementLayerResult> layers, double b)
         {
-            if (!layers.Any()) return;
+            if (layers == null || layers.Count == 0) return;
 
-            double totalSum = layers.Sum(r => r.DeltaS);
-            if (totalSum <= 0) return;
-
-            double threshold = 0.025 * totalSum;
-
-            // 从最后一层向上检查，找到满足条件的层
-            bool foundDepth = false;
-            for (int i = layers.Count - 1; i >= 0; i--)
+            var slices = new List<Gb50007SettlementDepth.LayerSlice>(layers.Count);
+            double zPrev = 0;
+            foreach (var layer in layers)
             {
-                if (layers[i].DeltaS > threshold)
-                {
-                    foundDepth = true;
-                    break;
-                }
-                // 如果连续多层都很小，不标记（保持 WithinDepth=true，让结果自然截断）
+                double thickness = layer.Zi - zPrev;
+                if (thickness < 0) thickness = 0;
+                slices.Add(new Gb50007SettlementDepth.LayerSlice(thickness, layer.DeltaS));
+                zPrev = layer.Zi;
             }
 
-            // 如果没找到需要截断的位置，全部层都在计算深度内
-            if (!foundDepth) return;
-
-            for (int i = layers.Count - 1; i >= 0; i--)
+            var decision = Gb50007SettlementDepth.Resolve(slices, b);
+            for (int i = 0; i < layers.Count; i++)
             {
-                if (layers[i].DeltaS > threshold) break;
-                layers[i].WithinDepth = false;
+                layers[i].WithinDepth = i < decision.IncludedCount;
+                layers[i].DepthCheckRatio = 0;
             }
 
-            var withinLayers = layers.Where(r => r.WithinDepth).ToList();
-            if (withinLayers.Any())
-            {
-                double cumSum = withinLayers.Sum(r => r.DeltaS);
-                var last = withinLayers.Last();
-                last.DepthCheckRatio = cumSum > 0 ? last.DeltaS / cumSum : 0;
-            }
+            if (decision.IncludedCount > 0)
+                layers[decision.IncludedCount - 1].DepthCheckRatio = decision.Ratio;
         }
 
         #endregion
@@ -799,17 +786,13 @@ namespace HyCADTool.Features.Settlement
 
             if (scTotal <= 0) return 0;
 
-            double threshold = depthRatio * scTotal;
-            int effectiveCount = layerDeltas.Count;
-            for (int i = layerDeltas.Count - 1; i >= 0; i--)
-            {
-                if (layerDeltas[i] > threshold) break;
-                effectiveCount = i;
-            }
-            if (effectiveCount <= 0) effectiveCount = 1;
+            var slices = new List<Gb50007SettlementDepth.LayerSlice>(layers.Count);
+            for (int i = 0; i < layers.Count; i++)
+                slices.Add(new Gb50007SettlementDepth.LayerSlice(layers[i].Thickness, layerDeltas[i]));
 
+            var decision = Gb50007SettlementDepth.Resolve(slices, b, depthRatio);
             double sc = 0;
-            for (int i = 0; i < effectiveCount; i++)
+            for (int i = 0; i < decision.IncludedCount && i < layerDeltas.Count; i++)
                 sc += layerDeltas[i];
 
             return sc * input.PsiC;

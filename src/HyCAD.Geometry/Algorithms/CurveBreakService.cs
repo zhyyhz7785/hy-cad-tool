@@ -42,8 +42,7 @@ namespace HyCAD.Geometry.Algorithms
                     var line2 = lineList[j];
 
                     // 计算两条线段的交点
-                    var intersection = line1.GetIntersection(line2, TOLERANCE);
-                    if (intersection != null)
+                    if (line1.TryGetIntersection(line2, out var intersection, TOLERANCE))
                     {
                         // 计算交点在两条线段上的参数（0到1之间）
                         double param1 = GetParameterAtPoint(line1, intersection);
@@ -110,13 +109,13 @@ namespace HyCAD.Geometry.Algorithms
         private double GetParameterAtPoint(Line2D line, Point2D point)
         {
             var direction = line.Direction;
-            var toPoint = new Vector2D(point.X - line.StartPoint.X, point.Y - line.StartPoint.Y);
-            
-            // 计算投影长度
-            double projection = toPoint.X * direction.X + toPoint.Y * direction.Y;
-            double parameter = projection / line.Length;
+            double len2 = direction.X * direction.X + direction.Y * direction.Y;
+            if (len2 < 1e-20) return 0;
 
-            return parameter;
+            var toPoint = new Vector2D(point.X - line.StartPoint.X, point.Y - line.StartPoint.Y);
+            // Direction 是整段向量，点积是 t·|D|²，除以长度平方才得到 0~1 的参数。
+            double projection = toPoint.X * direction.X + toPoint.Y * direction.Y;
+            return projection / len2;
         }
 
         /// <summary>
@@ -133,12 +132,12 @@ namespace HyCAD.Geometry.Algorithms
 
             var direction = line.Direction;
             var startPoint = new Point2D(
-                line.StartPoint.X + direction.X * line.Length * param1,
-                line.StartPoint.Y + direction.Y * line.Length * param1
+                line.StartPoint.X + direction.X * param1,
+                line.StartPoint.Y + direction.Y * param1
             );
             var endPoint = new Point2D(
-                line.StartPoint.X + direction.X * line.Length * param2,
-                line.StartPoint.Y + direction.Y * line.Length * param2
+                line.StartPoint.X + direction.X * param2,
+                line.StartPoint.Y + direction.Y * param2
             );
 
             return new Line2D(startPoint, endPoint);

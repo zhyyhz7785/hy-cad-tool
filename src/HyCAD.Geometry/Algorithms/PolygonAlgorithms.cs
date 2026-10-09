@@ -90,8 +90,7 @@ namespace HyCAD.Geometry.Algorithms
             var edges = polygon.GetEdges().ToList();
             for (int i = 0; i < edges.Count; i++)
             {
-                var intersection = edges[i].GetIntersection(line);
-                if (intersection != default)
+                if (edges[i].TryGetIntersection(line, out var intersection))
                 {
                     intersections.Add((i, intersection));
                 }
@@ -186,7 +185,7 @@ namespace HyCAD.Geometry.Algorithms
                     if (i == 0 && j == edges.Count - 1)
                         continue;
 
-                    if (edges[i].GetIntersection(edges[j], tolerance) != default)
+                    if (edges[i].TryGetIntersection(edges[j], out _, tolerance))
                     {
                         return true;
                     }
