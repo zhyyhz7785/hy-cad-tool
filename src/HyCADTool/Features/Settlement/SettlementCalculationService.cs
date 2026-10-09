@@ -188,13 +188,26 @@ namespace HyCADTool.Features.Settlement
                         break;
                 }
             }
-            else
+
+            if (input.EnableRebound)
             {
-                result.Success = true;
+                var reboundInput = effectiveInput;
+                if (input.Type == FoundationType.Pile)
+                {
+                    var belowTip = GetSoilLayersBelowPileTip(effectiveInput.SoilLayers, input.PileLength);
+                    reboundInput = CloneInputWithLayers(effectiveInput, belowTip);
+                }
+                CalculateRebound(reboundInput, result);
             }
 
-            if (result.Success && input.EnableRebound)
-                CalculateRebound(effectiveInput, result);
+            // p₀ ≤ 0 时没有跑附加应力沉降。Success 只表示回弹再压缩真的算出了结果。
+            if (input.AdditionalPressure <= 0)
+            {
+                result.Success = result.HasRebound;
+                result.Message = result.HasRebound
+                    ? "p₀ ≤ 0，未计算附加应力沉降，仅完成回弹再压缩。"
+                    : "p₀ ≤ 0，未计算附加应力沉降，回弹再压缩也没有得出结果。";
+            }
 
             return result;
         }
@@ -390,6 +403,7 @@ namespace HyCADTool.Features.Settlement
                     Name = layer.Name,
                     Thickness = remainThickness,
                     Es = layer.Es,
+                    Eci = layer.Eci,
                     Description = layer.Description
                 });
             }

@@ -25,6 +25,17 @@
   <!-- 只编入纯算法文件，不引用 HyCADTool（net48 + WPF，Linux 上编不过）。 -->
   <ItemGroup>
     <Compile Include="..\HyCADTool\Features\Settlement\Gb50007SettlementDepth.cs" Link="Settlement\Gb50007SettlementDepth.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\FoundationType.cs" Link="Settlement\FoundationType.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\SoilLayer.cs" Link="Settlement\SoilLayer.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\SettlementInput.cs" Link="Settlement\SettlementInput.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\SettlementResult.cs" Link="Settlement\SettlementResult.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\SettlementLayerResult.cs" Link="Settlement\SettlementLayerResult.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\BearingCapacityInput.cs" Link="Settlement\BearingCapacityInput.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\PileStructuralInput.cs" Link="Settlement\PileStructuralInput.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\SettlementReportGenerator.cs" Link="Settlement\SettlementReportGenerator.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\SettlementCalculationService.cs" Link="Settlement\SettlementCalculationService.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\Domain\Services\BearingCapacityService.cs" Link="Settlement\BearingCapacityService.cs" />
+    <Compile Include="..\HyCADTool\Features\Settlement\Domain\Services\PileStructuralService.cs" Link="Settlement\PileStructuralService.cs" />
   </ItemGroup>
 
 </Project>

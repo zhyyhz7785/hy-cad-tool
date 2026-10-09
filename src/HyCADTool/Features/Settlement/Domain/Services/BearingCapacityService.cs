@@ -79,7 +79,13 @@ namespace HyCADTool.Features.Settlement.Domain.Services
             result.AlphaP = input.AlphaP;
             result.QpValue = input.CompQp;
             result.SideResistanceRows = rows;
-            result.BearingCheck = true;
+            // 本模块里 p₀ = pk − γm·d，所以 pk = p₀ + γm·d。验算 pk ≤ fspk（JGJ 79 复合地基承载力）。
+            double gamma = settlement != null && settlement.GammaM > 0 ? settlement.GammaM : 0;
+            double depth = settlement != null ? settlement.FoundationDepth : 0;
+            double p0 = settlement != null ? settlement.AdditionalPressure : 0;
+            double pk = p0 + gamma * depth;
+            result.Pk = Math.Round(pk, 1);
+            result.BearingCheck = pk <= fspk + 1e-6;
 
             return result;
         }

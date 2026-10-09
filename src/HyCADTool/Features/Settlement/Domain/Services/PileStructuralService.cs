@@ -47,13 +47,26 @@ namespace HyCADTool.Features.Settlement.Domain.Services
                 result.CrackCheck = (input.SigmaPc - input.SigmaTp) <= input.Ftk;
             }
 
-            // 结论
-            if (compressCheck && (input.SteelArea <= 0 || result.SteelRatioCheck))
-                result.Conclusion = "桩身结构满足承载力和配筋要求。";
-            else if (!compressCheck)
-                result.Conclusion = "桩身受压承载力不满足要求，需增大桩径或提高混凝土等级。";
+            // 结论：预应力桩把抗裂验算写进同一句，不能只看受压和配筋。
+            bool steelOk = input.SteelArea <= 0 || result.SteelRatioCheck;
+            bool crackOk = !input.IsPrestressed || result.CrackCheck;
+            if (compressCheck && steelOk && crackOk)
+            {
+                result.Conclusion = input.IsPrestressed
+                    ? "桩身结构满足承载力、配筋和抗裂要求。"
+                    : "桩身结构满足承载力和配筋要求。";
+            }
             else
-                result.Conclusion = "配筋率不满足最小要求，需增加纵向钢筋。";
+            {
+                var parts = new System.Collections.Generic.List<string>();
+                if (!compressCheck)
+                    parts.Add("桩身受压承载力不满足要求，需增大桩径或提高混凝土等级");
+                if (!steelOk)
+                    parts.Add("配筋率不满足最小要求，需增加纵向钢筋");
+                if (!crackOk)
+                    parts.Add("抗裂不满足要求（σpc−σtp > ftk）");
+                result.Conclusion = string.Join("；", parts) + "。";
+            }
 
             return result;
         }

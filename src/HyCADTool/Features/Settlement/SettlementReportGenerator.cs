@@ -59,6 +59,8 @@ namespace HyCADTool.Features.Settlement
         public double Qpk { get; set; }
         public double Quk { get; set; }
         public double Fspk { get; set; }
+        /// <summary>基底平均压力 pk (kPa)，由 p₀ + γm·d 还原。</summary>
+        public double Pk { get; set; }
         public double RequiredFcu { get; set; }
         public double ActualFcu { get; set; }
         public bool FcuCheck { get; set; }
@@ -491,6 +493,9 @@ namespace HyCADTool.Features.Settlement
             sb.AppendLine("### 复合地基承载力特征值（式 7.1.5-2）");
             sb.AppendLine();
             sb.AppendLine($"fspk = λ·m·Ra/Ap + β·(1-m)·fsk = {br.Fspk:F1} kPa");
+            sb.AppendLine();
+            string bearingWord = br.BearingCheck ? "✓ 满足" : "✗ 不满足";
+            sb.AppendLine($"pk = {br.Pk:F1} kPa {(br.BearingCheck ? "≤" : ">")} fspk = {br.Fspk:F1} kPa → {bearingWord}");
             sb.AppendLine();
             sb.AppendLine($"ξ = fspk/fak = {br.Fspk:F1}/{input.BearingCapacity:F1} = {input.Xi:F3}");
             sb.AppendLine();

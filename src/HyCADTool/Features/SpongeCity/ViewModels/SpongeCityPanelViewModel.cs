@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Domain.Services;
+using HyCADTool.Shell.Commands;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -267,35 +268,17 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
             }
         }
 
-        private void ExecuteDrawLines()
-        {
-            RunCadCommand("HyCADTool.Features.SpongeCity.Commands.DrawSurfaceLayerLinesCommand", "Execute");
-        }
+        private void ExecuteDrawLines() => SendRegistered("hyscDL");
 
-        private void ExecuteReadArea()
-        {
-            RunCadCommand("HyCADTool.Features.SpongeCity.Commands.ReadSurfaceAreaCommand", "Execute");
-        }
+        private void ExecuteReadArea() => SendRegistered("hyscRA");
 
-        private void ExecuteWriteArea()
-        {
-            RunCadCommand("HyCADTool.Features.SpongeCity.Commands.WriteSurfaceAreaCommand", "Execute");
-        }
+        private void ExecuteWriteArea() => SendRegistered("hyscWA");
 
-        private void ExecuteExportCalcExcel()
-        {
-            RunCadCommand("HyCADTool.Features.SpongeCity.Commands.ExportCalcExcelCommand", "Execute");
-        }
+        private void ExecuteExportCalcExcel() => SendRegistered("hyscExC");
 
-        private void ExecuteExportBudgetExcel()
-        {
-            RunCadCommand("HyCADTool.Features.SpongeCity.Commands.ExportBudgetExcelCommand", "Execute");
-        }
+        private void ExecuteExportBudgetExcel() => SendRegistered("hyscExB");
 
-        private void ExecuteExportMdReport()
-        {
-            RunCadCommand("HyCADTool.Features.SpongeCity.Commands.ExportReportMdCommand", "Execute");
-        }
+        private void ExecuteExportMdReport() => SendRegistered("hyscExM");
 
         private void ExecuteReset()
         {
@@ -311,33 +294,18 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
         }
 
         /// <summary>
-        /// 反射实例化 Command 类并调用 Execute（避免面板 ViewModel 直接 using AutoCAD API，
-        /// 也便于以后命令拆出去而 VM 不动）。
+        /// 经已注册的命令名交给 AutoCAD 命令线程。GetPoint 不能在面板 UI 线程上反射调用。
         /// </summary>
-        private void RunCadCommand(string typeFullName, string method)
+        private void SendRegistered(string key)
         {
-            try
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
             {
-                var type = Type.GetType(typeFullName + ", HyCADTool");
-                if (type == null)
-                {
-                    StatusMessage = "未找到命令：" + typeFullName;
-                    return;
-                }
-                var instance = Activator.CreateInstance(type);
-                var mi = type.GetMethod(method);
-                if (mi == null)
-                {
-                    StatusMessage = "未找到方法：" + method;
-                    return;
-                }
-                mi.Invoke(instance, null);
+                StatusMessage = "无活动文档，未发送 " + key;
+                return;
             }
-            catch (System.Exception ex)
-            {
-                var inner = ex.InnerException ?? ex;
-                StatusMessage = "执行失败：" + inner.Message;
-            }
+            StatusMessage = "已投递命令 " + key;
+            CommandDispatcher.Send(key);
         }
 
         #endregion

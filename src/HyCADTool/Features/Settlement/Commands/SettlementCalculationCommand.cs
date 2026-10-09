@@ -62,18 +62,20 @@ namespace HyCADTool.Features.Settlement.Commands
             {
                 double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
 
+                var ptResult = ed.GetPoint("\n选择沉降计算表格插入点: ");
+                if (ptResult.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("\n已取消，未插入表格。");
+                    return;
+                }
+
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
                     var table = SettlementTableService.CreateResultTable(vm.LastResult, db, scale);
-
-                    var ptResult = ed.GetPoint("\n选择沉降计算表格插入点: ");
-                    if (ptResult.Status == PromptStatus.OK)
-                        table.Position = ptResult.Value;
-                    else
-                        table.Position = new Point3d(0, 0, 0);
+                    table.Position = ptResult.Value;
 
                     ms.AppendEntity(table);
                     tr.AddNewlyCreatedDBObject(table, true);
