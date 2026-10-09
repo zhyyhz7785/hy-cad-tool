@@ -70,11 +70,15 @@
         "HyDcL": { "type": "HyCADTool.Features.Pad.CreatePadFromLineCommand",     "method": "Execute", "category": "多段线垫层", "displayName": "线生成垫层",    "tooltip": "直线生成垫层（HyDcL）",          "order": 30 },
         "hyDcP": { "type": "HyCADTool.Features.Pad.CreatePadFromPolylineCommand", "method": "Execute", "category": "多段线垫层", "displayName": "多段线生垫层",  "tooltip": "多段线生成垫层（hyDcP）",        "order": 40 },
 
-        "hymd":  { "type": "HyCADTool.Features.Export.DesignSpecCommand",     "method": "Execute", "category": "导出说明", "displayName": "设计说明",      "tooltip": "插入设计说明表（hymd）",     "order": 10 },
-        "hymdE": { "type": "HyCADTool.Features.Export.DesignSpecEditCommand", "method": "Execute", "category": "导出说明", "displayName": "编辑设计说明",  "tooltip": "编辑设计说明（hymdE）",      "order": 20 },
+        "hymd":  { "type": "HyCADTool.Features.Export.DesignSpecCommand",     "method": "Execute", "category": "导出说明", "displayName": "设计说明",      "tooltip": "连接/绑定 HyMd，再在编辑器中贴到图纸（hymd）",     "order": 10 },
+        "hymdE": { "type": "HyCADTool.Features.Export.DesignSpecEditCommand", "method": "Execute", "category": "导出说明", "displayName": "编辑设计说明",  "tooltip": "点选贴图文字，导入 HyMd 编辑（hymdE）",      "order": 20 },
+        "hymdc": { "type": "HyCADTool.Features.Export.DesignSpecCaptureCommand", "method": "Execute", "category": "导出说明", "displayName": "捕捉文字表格", "tooltip": "循环选择文字/表格，转换成 Markdown 追加到 HyMd（hymdc）", "order": 21 },
+        "HYMDCOMPARE": { "type": "HyCADTool.Features.Export.HymdCadCompareCommand", "method": "Execute", "category": "导出说明", "displayName": "HyMd文字对照", "tooltip": "测 MText 字宽/折行/行距并叠 HyMd 块框（HYMDCOMPARE）", "order": 25 },
+        "HYMDPLANCHECK": { "type": "HyCADTool.Features.Export.HymdCadPlanCheckCommand", "method": "Execute", "category": "导出说明", "displayName": "HyMd贴图清单对照", "tooltip": "同一 dump 用插件公式编 plan，对照 HyMd TS plan（HYMDPLANCHECK）", "order": 27 },
         "hyex":     { "type": "HyCADTool.Features.Export.ExportMarkdownTableCommand",         "method": "Execute", "category": "导出说明", "displayName": "导出 Markdown", "tooltip": "导出 Markdown 表（hyex）",      "order": 30 },
         "hyex_csv": { "type": "HyCADTool.Features.Export.ExportEntityPropertiesToCsvCommand", "method": "Execute", "category": "导出说明", "displayName": "导出 CSV",       "tooltip": "导出实体属性到 CSV（hyex_csv）","order": 40 },
         "hyLtCapture": { "type": "HyCADTool.Features.Export.CaptureDrawingLinetypesCommand", "method": "Execute", "category": "导出说明", "displayName": "提取线型目录", "tooltip": "从当前 DWG 线型表写入 hy-linetype-catalog.json，可选另存 .lin，并更新 hy-settings.json 中的 LinetypeCatalog（hyLtCapture）", "order": 45 },
+        "hysvg": { "type": "HyCADTool.Features.Export.SvgExportCommand", "method": "Execute", "category": "导出说明", "displayName": "导出 SVG", "tooltip": "当前选择集或当前空间导出为 SVG（hysvg）", "order": 50 },
 
         "hyAxis": { "type": "HyCADTool.Features.Misc.AlignedAxisTextCommand",     "method": "Execute", "category": "杂项", "displayName": "轴线文字对齐", "tooltip": "轴线文字对齐（hyAxis）",         "order": 10 },
         "HyRT":   { "type": "HyCADTool.Features.Misc.RaftThicknessTextCommand",   "method": "Execute", "category": "杂项", "displayName": "筏板厚度文字", "tooltip": "筏板厚度文字（HyRT）",          "order": 20 },
@@ -273,7 +277,11 @@
             "tooltip": "打开 Univer WebView2 表格编辑器 PoC（插件模式基础示例）",
             "order": 160
         },
-        "N41": null, "N42": null, "N43": null, "N44": null, "N45": null,
+        "N39": { "type": "HyCADTool.Features.Export.HymdCadCompareCommand", "method": "Execute", "category": "导出说明", "displayName": "HyMd文字对照(N39)", "tooltip": "同 HYMDCOMPARE：真 MText 测宽/折行，叠 HyMd JSON 块框", "order": 26 },
+        "N40": { "type": "HyCADTool.Features.Export.DesignSpecCaptureCommand", "method": "Execute", "category": "导出说明", "displayName": "捕捉文字表格(N40)", "tooltip": "同 hymdc：循环选择文字/表格，转换成 Markdown 追加到 HyMd。真名 hymdc 需关 CAD 重 NETLOAD ReCall", "order": 21 },
+        "N41": { "type": "HyCADTool.Features.Export.HymdCadPlanCheckCommand", "method": "Execute", "category": "导出说明", "displayName": "HyMd贴图清单对照(N41)", "tooltip": "同 HYMDPLANCHECK：同一 dump 对照 HyMd plan JSON", "order": 27 },
+        "N42": { "type": "HyCADTool.Features.Export.SvgExportCommand", "method": "Execute", "category": "导出说明", "displayName": "导出 SVG(N42)", "tooltip": "同 hysvg：当前选择集或当前空间导出为 SVG。真名 hysvg 需关 CAD 重 NETLOAD ReCall", "order": 50 },
+        "N43": null, "N44": null, "N45": null,
         "N46": null, "N47": null, "N48": null, "N49": null, "N50": null
     }
 }

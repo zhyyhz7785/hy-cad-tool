@@ -15,8 +15,7 @@ using SharedLayoutEngine = HyCADTool.TextLayout.LayoutEngine;
 namespace HyCADTool.Features.DesignSpec.Services
 {
     /// <summary>
-    /// 动态加载 HyCADTool.MarkdownEditor.dll（net8.0-windows）并调用 Vditor WYSIWYG 编辑器。
-    /// 加载失败时返回 false，由调用方提示并中止命令。
+    /// 旧 Vditor 编辑器反射加载器。hymd 已改为进程外 HyMd 管道，本类不再被命令调用。
     /// </summary>
     public static class EditorLoader
     {

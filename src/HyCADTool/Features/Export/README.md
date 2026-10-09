@@ -26,6 +26,8 @@
 | `hyex` | `ExportMarkdownTableCommand` |
 | `hyex_csv` | `ExportEntityPropertiesToCsvCommand` |
 | `hyLtCapture` | `CaptureDrawingLinetypesCommand` |
+| `hysvg` | `SvgExportCommand` |
+| `N42` | 同 `hysvg`（占位符，C2 即生效） |
 
 Blender 分类：`导出说明`。
 

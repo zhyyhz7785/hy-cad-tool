@@ -524,23 +524,20 @@ namespace HyCADTool.Features.DesignSpec.Domain.Models
         {
             string boldMode = _config.MTextBoldMode ?? "FontSwitch";
 
-            if (string.Equals(boldMode, "WidthScale", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(boldMode, "None", StringComparison.OrdinalIgnoreCase))
             {
-                string boldW = F(_config.MTextBoldWidthScale);
-                string origW = F(_config.TextXScale);
-                _sb.Append("{\\W").Append(boldW).Append(";");
                 foreach (var child in container)
                     RenderInline(child);
-                _sb.Append("\\W").Append(origW).Append(";}");
             }
-            else if (string.Equals(boldMode, "None", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(boldMode, "Color", StringComparison.OrdinalIgnoreCase))
             {
+                _sb.Append("{\\C1;");
                 foreach (var child in container)
                     RenderInline(child);
+                _sb.Append("}");
             }
             else
             {
-                // FontSwitch（默认）：切换到 TTF 粗体字体
                 _sb.Append("{\\f").Append(_config.BoldFontName).Append(";");
                 foreach (var child in container)
                     RenderInline(child);

@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autofac;
+using HyCADTool.Features.DesignSpec.Services;
 using HyCADTool.Features.TextEdit.Services;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
@@ -192,6 +193,17 @@ namespace HyCADTool.App.Bootstrap
                 WriteMessage("\n✓ HyCADTool 插件初始化完成！");
                 WriteMessage("\n========================================\n");
 
+                try
+                {
+                    HyMdCadBridge.Start();
+                    if (HyMdCadBridge.IsConnected)
+                        WriteMessage("\n✓ 已接通 HyMd 管道（尚未绑定，请执行 hymd）");
+                }
+                catch (System.Exception ex)
+                {
+                    WriteMessage("\n  ⚠ HyMd 管道未连接：" + ex.Message);
+                }
+
                 WriteEntryGuide();
             }
             catch (System.Exception ex)
@@ -232,6 +244,8 @@ namespace HyCADTool.App.Bootstrap
                 // 道路子系统收尾：
                 // v1.1 起各命令在 tr.Commit() 后已同步写盘，卸载时不再需要 FlushAll；
                 // 如果用户在执行过命令后直接关闭 AutoCAD，数据已经在 .roaddesign.json 里。
+
+                try { HyMdCadBridge.Stop(); } catch { }
 
                 // 清理事件订阅
                 UnregisterDocumentEvents();

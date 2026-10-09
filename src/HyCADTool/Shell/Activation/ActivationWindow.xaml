@@ -122,7 +122,7 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,16">
                 <StackPanel>
-                    <TextBlock Text="将本机机器码发给销售/代理商，获取 license.lic 或授权码后在此激活。"
+                    <TextBlock Text="复制下面 8 段机器码。把收到的以 HYC1. 开头的授权码贴回，或用「从文件导入」选择 license.lic。"
                                Style="{StaticResource Hint}" Margin="0,0,0,12" />
 
                     <!-- 状态 -->
@@ -135,7 +135,7 @@
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitle}" Text="① 本机机器码" />
                             <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                                       Text="复制后发给开发者签发；机器码与本机硬件绑定。" />
+                                       Text="复制这 8 段机器码交给签发的人。它只对这一台电脑有效。" />
                             <TextBox x:Name="MachineCodeText" Style="{StaticResource MonoBox}"
                                      IsReadOnly="True" MinHeight="40" Background="#17181b"
                                      BorderBrush="#3a3d44" Foreground="#eceff4" />
@@ -161,7 +161,7 @@
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitle}" Text="③ 导入授权" />
                             <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                                       Text="推荐导入 license.lic 文件；也可粘贴完整授权 JSON 后点「确定激活」。" />
+                                       Text="粘贴以 HYC1. 开头的授权码后点「确定激活」，或用「从文件导入」选择 license.lic。" />
                             <TextBox x:Name="LicenseCodeBox" Style="{StaticResource MonoBox}"
                                      MinHeight="88" AcceptsReturn="True"
                                      VerticalScrollBarVisibility="Auto"

@@ -1,0 +1,235 @@
+<Window x:Class="HyCADTool.Features.Export.Views.SvgExportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:bui="clr-namespace:HyCAD.BlenderUI.Controls;assembly=HyCAD.BlenderUI"
+        xmlns:btmetrics="clr-namespace:HyCAD.BlenderUI.Theming;assembly=HyCAD.BlenderUI"
+        btmetrics:BlenderMetricsOverlay.Attach="True"
+        Title="导出 SVG" Height="680" Width="400"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource Brush_RegionBack}"
+        Foreground="{DynamicResource Brush_TextPrimary}"
+        FontFamily="{DynamicResource Font_Main}"
+        FontSize="{DynamicResource Metric_FontMain}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/Palettes/BlenderDark.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HyCAD.BlenderUI;component/Themes/BlenderTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="SvgPropertyRow" TargetType="{x:Type bui:PropertyRow}">
+                <Setter Property="LabelWidth" Value="96"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="{DynamicResource Metric_ButtonPaddingSmall}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" Style="{StaticResource BlenderScrollViewer}"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="图纸尺寸" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <bui:PropertyRow Label="纸张" Style="{StaticResource SvgPropertyRow}">
+                            <ComboBox x:Name="cmbPaper" Style="{StaticResource BlenderComboBox}"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectionChanged="CmbPaper_SelectionChanged"/>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="宽 × 高" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtPaperW" Style="{StaticResource BlenderTextBox}" IsEnabled="False"/>
+                                <TextBlock Grid.Column="1" Text=" × " VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                                <TextBox x:Name="txtPaperH" Grid.Column="2" Style="{StaticResource BlenderTextBox}" IsEnabled="False"/>
+                                <TextBlock Grid.Column="3" Text=" mm" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="打印区域" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <bui:PropertyRow Label="区域" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="cmbArea" Style="{StaticResource BlenderComboBox}"
+                                          SelectionChanged="CmbArea_SelectionChanged">
+                                    <ComboBoxItem Content="窗口" Tag="Window"/>
+                                    <ComboBoxItem Content="图形范围" Tag="Extents"/>
+                                    <ComboBoxItem Content="当前显示" Tag="Display"/>
+                                    <ComboBoxItem Content="选择集" Tag="Selection"/>
+                                </ComboBox>
+                                <Button x:Name="btnWindow" Grid.Column="1" Style="{StaticResource BlenderButtonFlat}"
+                                        Content="窗口 &lt;"
+                                        Width="{DynamicResource Metric_DialogButtonWidth}"
+                                        Height="{DynamicResource Metric_ButtonHeight}"
+                                        Margin="6,0,0,0" Click="BtnWindow_Click"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                        <TextBlock x:Name="txtWindowInfo" Text="未指定窗口" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   FontSize="{DynamicResource Metric_FontSmall}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="打印偏移" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <CheckBox x:Name="chkCenter" Style="{StaticResource BlenderCheckBox}" Content="居中打印"
+                                  Checked="ChkCenter_Changed" Unchecked="ChkCenter_Changed" Margin="0,2,0,4"/>
+                        <bui:PropertyRow Label="X" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtOffsetX" Style="{StaticResource BlenderTextBox}"/>
+                                <TextBlock Grid.Column="1" Text=" mm" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="Y" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtOffsetY" Style="{StaticResource BlenderTextBox}"/>
+                                <TextBlock Grid.Column="1" Text=" mm" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="打印比例" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <CheckBox x:Name="chkFit" Style="{StaticResource BlenderCheckBox}" Content="布满图纸"
+                                  Checked="ChkFit_Changed" Unchecked="ChkFit_Changed" Margin="0,2,0,4"/>
+                        <bui:PropertyRow Label="比例" Style="{StaticResource SvgPropertyRow}">
+                            <ComboBox x:Name="cmbScale" Style="{StaticResource BlenderComboBox}"
+                                      SelectionChanged="CmbScale_SelectionChanged">
+                                <ComboBoxItem Content="1:1" Tag="1"/>
+                                <ComboBoxItem Content="1:2" Tag="2"/>
+                                <ComboBoxItem Content="1:5" Tag="5"/>
+                                <ComboBoxItem Content="1:10" Tag="10"/>
+                                <ComboBoxItem Content="1:20" Tag="20"/>
+                                <ComboBoxItem Content="1:50" Tag="50"/>
+                                <ComboBoxItem Content="1:100" Tag="100"/>
+                                <ComboBoxItem Content="1:200" Tag="200"/>
+                                <ComboBoxItem Content="1:500" Tag="500"/>
+                                <ComboBoxItem Content="自定义" Tag="custom"/>
+                            </ComboBox>
+                        </bui:PropertyRow>
+                        <bui:PropertyRow Label="1 mm =" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtUnitsPerMm" Style="{StaticResource BlenderTextBox}"/>
+                                <TextBlock Grid.Column="1" Text=" 图形单位" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="打印样式表" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <bui:PropertyRow Label="样式" Style="{StaticResource SvgPropertyRow}">
+                            <ComboBox x:Name="cmbStyle" Style="{StaticResource BlenderComboBox}">
+                                <ComboBoxItem Content="monochrome（全部黑色）" Tag="Monochrome"/>
+                                <ComboBoxItem Content="按对象颜色" Tag="Color"/>
+                                <ComboBoxItem Content="灰度" Tag="Grayscale"/>
+                            </ComboBox>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="打印选项" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <CheckBox x:Name="chkLineweight" Style="{StaticResource BlenderCheckBox}" Content="打印对象线宽" Margin="0,2,0,4"/>
+                        <CheckBox x:Name="chkScaleLw" Style="{StaticResource BlenderCheckBox}" Content="缩放线宽" Margin="0,2,0,4"/>
+                        <CheckBox x:Name="chkWhiteBg" Style="{StaticResource BlenderCheckBox}" Content="白色底" Margin="0,2,0,2"/>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="图形方向" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <bui:PropertyRow Label="方向" Style="{StaticResource SvgPropertyRow}">
+                            <ComboBox x:Name="cmbOrient" Style="{StaticResource BlenderComboBox}">
+                                <ComboBoxItem Content="纵向" Tag="Portrait"/>
+                                <ComboBoxItem Content="横向" Tag="Landscape"/>
+                                <ComboBoxItem Content="上下颠倒" Tag="UpsideDown"/>
+                            </ComboBox>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+                <Expander Style="{StaticResource BlenderExpander}" Header="裁切与边框" IsExpanded="True" Margin="0,2,0,3">
+                    <StackPanel Margin="{DynamicResource Metric_PropertyListMargin}">
+                        <CheckBox x:Name="chkIgnoreBlank" Style="{StaticResource BlenderCheckBox}"
+                                  Content="忽略空白（按窗口内实体包围盒出图）" Margin="0,2,0,4"/>
+                        <CheckBox x:Name="chkClip" Style="{StaticResource BlenderCheckBox}"
+                                  Content="自动裁切（窗口外不出现）" Margin="0,2,0,4"/>
+                        <bui:PropertyRow Label="边距" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtMargin" Style="{StaticResource BlenderTextBox}"/>
+                                <TextBlock Grid.Column="1" Text=" mm" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                        <CheckBox x:Name="chkBorder" Style="{StaticResource BlenderCheckBox}" Content="绘制边框线" Margin="0,4,0,4"/>
+                        <bui:PropertyRow Label="边框线宽" Style="{StaticResource SvgPropertyRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtBorderW" Style="{StaticResource BlenderTextBox}"/>
+                                <TextBlock Grid.Column="1" Text=" mm" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"/>
+                            </Grid>
+                        </bui:PropertyRow>
+                    </StackPanel>
+                </Expander>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Style="{StaticResource BlenderButtonFlat}" Content="预览"
+                    Width="{DynamicResource Metric_DialogButtonWidth}" Height="{DynamicResource Metric_ButtonHeight}"
+                    Margin="0,0,8,0" Click="BtnPreview_Click"/>
+            <Button Style="{StaticResource BlenderButton}" Content="确定"
+                    Width="{DynamicResource Metric_DialogButtonWidth}" Height="{DynamicResource Metric_ButtonHeight}"
+                    Margin="0,0,8,0" IsDefault="True" Click="BtnOK_Click"/>
+            <Button Style="{StaticResource BlenderButtonFlat}" Content="取消"
+                    Width="{DynamicResource Metric_DialogButtonWidth}" Height="{DynamicResource Metric_ButtonHeight}"
+                    IsCancel="True" Click="BtnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -32,6 +32,8 @@ namespace HyCADTool.Features.DesignSpec.Services
         private const string XREC_KEY_MD = "HyDesignSpec_MD";
         private const string XREC_KEY_CFG = "HyDesignSpec_CFG";
         private const string XREC_KEY_GROUP = "HyDesignSpec_Group";
+        private const string HyMdTableStyleFallbackName = "HyMd";
+        private const double CadLineSpacingCell = 5.0 / 3.0;
 
         private sealed class TablePlacement
         {
@@ -147,6 +149,609 @@ namespace HyCADTool.Features.DesignSpec.Services
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// 按 HyMd 导出的毫米几何插入：每块一个 MText，GFM 表走 CAD Table，多页按纸高下排。只 Insert。
+        /// </summary>
+        public ObjectId InsertFromHyMdDump(
+            CadLayoutDump dump,
+            Point3d insertionPoint,
+            double scale,
+            string styleName)
+        {
+            if (dump == null)
+                throw new ArgumentNullException(nameof(dump));
+            if (dump.Paper == null)
+                throw new InvalidOperationException("HyMd 导出缺少纸面几何");
+
+            var config = ConfigFromDump(dump, scale, styleName);
+            config.Normalize();
+
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) throw new InvalidOperationException("无活动文档");
+
+            var db = doc.Database;
+            var ed = doc.Editor;
+            string markdownSource = dump.Markdown ?? string.Empty;
+            double s = config.Scale;
+
+            ObjectId anchorEntityId = ObjectId.Null;
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                    var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+                    var textStyleId = EnsureTextStyle(db, tr, config);
+                    string groupId = Guid.NewGuid().ToString("N");
+                    bool metadataWritten = false;
+                    int mtextCount = 0;
+                    int tableCount = 0;
+                    var renderer = new MarkdownToMTextRenderer(config);
+                    var pages = dump.Pages ?? new List<CadDumpPage>();
+                    bool useV3 = dump.SchemaVersion >= 3;
+                    if (pages.Count == 0)
+                    {
+                        DrawTitleBlock(tr, btr, db, config, insertionPoint.X, insertionPoint.Y, insertionPoint.Z, groupId);
+                    }
+
+                    foreach (var page in pages)
+                    {
+                        int pageIndex = page?.PageIndex ?? 0;
+                        double pageTopY = insertionPoint.Y - pageIndex * config.PageHeightMm * s;
+                        DrawTitleBlock(tr, btr, db, config, insertionPoint.X, pageTopY, insertionPoint.Z, groupId);
+
+                        if (page?.Blocks != null)
+                        {
+                            foreach (var block in page.Blocks)
+                            {
+                                if (block == null)
+                                    continue;
+                                var mtexts = new List<MText>();
+                                if (useV3 && block.Lines != null && block.Lines.Count > 0)
+                                {
+                                    mtexts.AddRange(CreateLockedMTexts(config, textStyleId, insertionPoint, pageTopY, s, block));
+                                }
+                                else if (!string.IsNullOrWhiteSpace(block.Markdown))
+                                {
+                                    string contents = renderer.Convert(block.Markdown);
+                                    if (string.IsNullOrWhiteSpace(contents))
+                                        continue;
+                                    double x = insertionPoint.X + block.XMm * s;
+                                    double y = pageTopY - block.YMm * s;
+                                    double w = Math.Max(config.ActualTextHeight, block.WidthMm * s);
+                                    mtexts.Add(CreateMTextEntity(config, textStyleId, x, y, insertionPoint.Z, w, contents));
+                                }
+                                foreach (var mtext in mtexts)
+                                {
+                                    if (mtext == null)
+                                        continue;
+                                    SetLayer(db, tr, mtext, LayerText);
+                                    btr.AppendEntity(mtext);
+                                    tr.AddNewlyCreatedDBObject(mtext, true);
+                                    if (anchorEntityId.IsNull)
+                                        anchorEntityId = mtext.ObjectId;
+                                    WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataWritten);
+                                    ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
+                                    mtextCount++;
+                                }
+                            }
+                        }
+
+                        if (page?.Tables != null)
+                        {
+                            foreach (var tableDump in page.Tables)
+                            {
+                                if (tableDump == null)
+                                    continue;
+                                if (useV3 && tableDump.Cells != null && tableDump.ColumnWidthsMm != null)
+                                {
+                                    if (TryCreateTableFromDumpV3(
+                                        tr, btr, db, config, tableDump,
+                                        insertionPoint, pageTopY, s,
+                                        groupId, markdownSource, textStyleId,
+                                        ref metadataWritten, ref anchorEntityId))
+                                    {
+                                        tableCount++;
+                                    }
+                                    continue;
+                                }
+                                if (tableDump.Rows == null || tableDump.Rows.Count == 0)
+                                    continue;
+                                var tableData = new MarkdownTableData();
+                                foreach (var row in tableDump.Rows)
+                                {
+                                    tableData.Rows.Add(row ?? new List<string>());
+                                }
+                                double x = insertionPoint.X + tableDump.XMm * s;
+                                double y = pageTopY - tableDump.YMm * s;
+                                double w = Math.Max(config.ActualTextHeight, tableDump.WidthMm * s);
+                                if (TryCreateTable(
+                                    tr, btr, db, config, tableData,
+                                    x, y, insertionPoint.Z, w,
+                                    groupId, markdownSource, textStyleId,
+                                    ref metadataWritten, ref anchorEntityId))
+                                {
+                                    tableCount++;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!metadataWritten && !anchorEntityId.IsNull)
+                    {
+                        var ent = tr.GetObject(anchorEntityId, OpenMode.ForWrite) as Entity;
+                        WriteMetadataIfNeeded(tr, ent, markdownSource, config, ref metadataWritten);
+                    }
+
+                    tr.Commit();
+                    int skip = dump.SkippedBlocks?.Count ?? 0;
+                    ed.WriteMessage(
+                        $"\n已从 HyMd 插入设计说明：MText={mtextCount}, Table={tableCount}（{pages.Count}页，跳过={skip}）");
+                    if (skip > 0)
+                    {
+                        ed.WriteMessage("\n已跳过 sheet/slide/calc/layout 或 mermaid/math 块，未整篇失败。");
+                    }
+                    return anchorEntityId;
+                }
+                catch (System.Exception ex)
+                {
+                    tr.Abort();
+                    ed.WriteMessage($"\nHyMd 贴图失败: {ex.Message}\n{ex.StackTrace}");
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 按 HyMd 编好的 CadStampPlan 落笔：不再从 dump 算锁行 Contents / 表内容 / 图框。
+        /// </summary>
+        public ObjectId AppendFromCadStampPlan(CadStampPlan plan, Point3d insertionPoint)
+        {
+            if (plan == null)
+                throw new ArgumentNullException(nameof(plan));
+
+            var config = ConfigFromPlan(plan);
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) throw new InvalidOperationException("无活动文档");
+
+            var db = doc.Database;
+            var ed = doc.Editor;
+            string markdownSource = plan.Markdown ?? string.Empty;
+            double s = config.Scale;
+            var pages = plan.Pages ?? new List<CadStampPagePlan>();
+
+            ObjectId anchorEntityId = ObjectId.Null;
+            using (doc.LockDocument())
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                try
+                {
+                    var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                    var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
+                    var textStyleId = EnsureTextStyle(db, tr, config);
+                    string groupId = Guid.NewGuid().ToString("N");
+                    bool metadataWritten = false;
+                    int mtextCount = 0;
+                    int tableCount = 0;
+                    int frameCount = 0;
+
+                    if (pages.Count == 0)
+                    {
+                        DrawTitleBlock(tr, btr, db, config, insertionPoint.X, insertionPoint.Y, insertionPoint.Z, groupId);
+                    }
+
+                    foreach (var page in pages)
+                    {
+                        if (page == null)
+                            continue;
+                        double pageTopY = insertionPoint.Y - page.PageTopMm * s;
+                        if (page.Frames != null && page.Frames.Count > 0)
+                        {
+                            foreach (var frame in page.Frames)
+                            {
+                                if (DrawFrameFromPlan(tr, btr, db, insertionPoint, pageTopY, s, frame, groupId))
+                                    frameCount++;
+                            }
+                        }
+                        else
+                        {
+                            DrawTitleBlock(tr, btr, db, config, insertionPoint.X, pageTopY, insertionPoint.Z, groupId);
+                        }
+
+                        if (page.Mtexts != null)
+                        {
+                            foreach (var mtPlan in page.Mtexts)
+                            {
+                                if (mtPlan == null || string.IsNullOrEmpty(mtPlan.Contents))
+                                    continue;
+                                var mtext = CreateMTextFromPlan(textStyleId, insertionPoint, pageTopY, s, mtPlan);
+                                SetLayer(db, tr, mtext, LayerText);
+                                btr.AppendEntity(mtext);
+                                tr.AddNewlyCreatedDBObject(mtext, true);
+                                if (anchorEntityId.IsNull)
+                                    anchorEntityId = mtext.ObjectId;
+                                WriteMetadataIfNeeded(tr, mtext, markdownSource, config, ref metadataWritten);
+                                ExtensionDictionaryService.WriteLongString(tr, mtext, groupId, XREC_KEY_GROUP);
+                                mtextCount++;
+                            }
+                        }
+
+                        if (page.Tables != null)
+                        {
+                            foreach (var tablePlan in page.Tables)
+                            {
+                                if (tablePlan == null)
+                                    continue;
+                                if (TryCreateTableFromPlan(
+                                    tr, btr, db, config, tablePlan,
+                                    insertionPoint, pageTopY, s,
+                                    groupId, markdownSource, textStyleId,
+                                    ref metadataWritten, ref anchorEntityId))
+                                {
+                                    tableCount++;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!metadataWritten && !anchorEntityId.IsNull)
+                    {
+                        var ent = tr.GetObject(anchorEntityId, OpenMode.ForWrite) as Entity;
+                        WriteMetadataIfNeeded(tr, ent, markdownSource, config, ref metadataWritten);
+                    }
+
+                    tr.Commit();
+                    int skip = plan.SkippedCount;
+                    ed.WriteMessage(
+                        $"\n已从 HyMd 插入设计说明：MText={mtextCount}, Table={tableCount}, Frame={frameCount}（{pages.Count}页，跳过={skip}）");
+                    if (skip > 0)
+                    {
+                        ed.WriteMessage("\n已跳过 sheet/slide/calc/layout 或 mermaid/math 块，未整篇失败。");
+                    }
+                    return anchorEntityId;
+                }
+                catch (System.Exception ex)
+                {
+                    tr.Abort();
+                    ed.WriteMessage($"\nHyMd 贴图失败: {ex.Message}\n{ex.StackTrace}");
+                    throw;
+                }
+            }
+        }
+
+        private static DesignSpecConfig ConfigFromPlan(CadStampPlan plan)
+        {
+            if (plan == null)
+                throw new ArgumentNullException(nameof(plan));
+            var margin = plan.MarginMm ?? new double[0];
+            double mt = margin.Length > 0 ? margin[0] : 10;
+            double mr = margin.Length > 1 ? margin[1] : 10;
+            double mb = margin.Length > 2 ? margin[2] : 10;
+            double ml = margin.Length > 3 ? margin[3] : 25;
+            var config = new DesignSpecConfig
+            {
+                Scale = plan.Scale > 0 ? plan.Scale : 1.0,
+                TextSize = 3.5,
+                TextStyleName = !string.IsNullOrWhiteSpace(plan.StyleName)
+                    ? plan.StyleName.Trim()
+                    : "0-hy-说明-T",
+                PageWidthMm = plan.PageWidthMm > 0 ? plan.PageWidthMm : 210,
+                PageHeightMm = plan.PageHeightMm > 0 ? plan.PageHeightMm : 297,
+                MarginLeftMm = ml,
+                MarginRightMm = mr,
+                MarginTopMm = mt,
+                MarginBottomMm = mb,
+                ColumnCount = plan.Columns > 0 ? plan.Columns : 1,
+                ColumnGutter = plan.GutterMm,
+                SourcePath = plan.SourcePath,
+                FontFileName = string.IsNullOrWhiteSpace(plan.FontFileName)
+                    ? "Microsoft YaHei"
+                    : plan.FontFileName.Trim(),
+                BigFontFileName = plan.BigFontFileName ?? string.Empty,
+                TextXScale = plan.TextXScale > 0 ? plan.TextXScale : 1.0,
+                HyMdLayoutSchemaVersion = plan.SchemaVersion
+            };
+            if (plan.LineSpacingFactor > 0)
+                config.LineSpacingFactor = plan.LineSpacingFactor;
+            if (plan.HeadingScales != null && plan.HeadingScales.Length >= 3)
+            {
+                if (plan.HeadingScales[0] > 0) config.H1Scale = plan.HeadingScales[0];
+                if (plan.HeadingScales[1] > 0) config.H2Scale = plan.HeadingScales[1];
+                if (plan.HeadingScales[2] > 0) config.H3Scale = plan.HeadingScales[2];
+            }
+            string face = config.FontFileName ?? string.Empty;
+            bool shx = face.EndsWith(".shx", StringComparison.OrdinalIgnoreCase);
+            if (shx)
+            {
+                config.MTextBoldMode = "Color";
+                config.MTextCodeMode = "SameFont";
+                config.BoldFontName = string.Empty;
+                config.MTextCharSpacing = 1.0;
+            }
+            else
+            {
+                config.MTextBoldMode = "FontSwitch";
+                config.MTextCodeMode = "SameFont";
+                config.BoldFontName = ResolveTrueTypeFontFile(face);
+            }
+            config.Normalize();
+            return config;
+        }
+
+        private static DesignSpecConfig ConfigFromDump(CadLayoutDump dump, double scale, string styleName)
+        {
+            var paper = dump.Paper;
+            var margin = paper.MarginMm ?? new double[0];
+            // HyMd dump.marginMm = [上, 右, 下, 左]
+            double mt = margin.Length > 0 ? margin[0] : 10;
+            double mr = margin.Length > 1 ? margin[1] : 10;
+            double mb = margin.Length > 2 ? margin[2] : 10;
+            double ml = margin.Length > 3 ? margin[3] : 25;
+            string dumpStyle = dump.Font != null ? dump.Font.StyleName : null;
+            var config = new DesignSpecConfig
+            {
+                Scale = scale > 0 ? scale : 1.0,
+                TextSize = dump.TextSizeMm > 0 ? dump.TextSizeMm : 3.5,
+                TextStyleName = !string.IsNullOrWhiteSpace(dumpStyle)
+                    ? dumpStyle.Trim()
+                    : (string.IsNullOrWhiteSpace(styleName) ? "0-hy-说明-T" : styleName),
+                PageWidthMm = paper.WidthMm > 0 ? paper.WidthMm : 210,
+                PageHeightMm = paper.HeightMm > 0 ? paper.HeightMm : 297,
+                MarginLeftMm = ml,
+                MarginRightMm = mr,
+                MarginTopMm = mt,
+                MarginBottomMm = mb,
+                ColumnCount = paper.Columns > 0 ? paper.Columns : 1,
+                ColumnGutter = paper.GutterMm,
+                SourcePath = dump.SourcePath,
+                HyMdLayoutSchemaVersion = dump.SchemaVersion
+            };
+            ApplyDumpFont(config, dump);
+            return config;
+        }
+
+        /// <summary>
+        /// 用 InsertFromHyMdDump 同一套公式编出 CadStampPlan，供 HYMDPLANCHECK 与 HyMd TS 产出对照。
+        /// 不写图，不取点。
+        /// </summary>
+        public static CadStampPlan BuildStampPlanFromDump(CadLayoutDump dump, double scale)
+        {
+            if (dump == null)
+                throw new ArgumentNullException(nameof(dump));
+            if (dump.Paper == null)
+                throw new InvalidOperationException("HyMd 导出缺少纸面几何");
+            var config = ConfigFromDump(dump, scale, null);
+            config.Normalize();
+            double s = config.Scale;
+            var pagesIn = dump.Pages ?? new List<CadDumpPage>();
+            if (pagesIn.Count == 0)
+                pagesIn = new List<CadDumpPage> { new CadDumpPage { PageIndex = 0 } };
+
+            var pages = new List<CadStampPagePlan>();
+            for (int i = 0; i < pagesIn.Count; i++)
+            {
+                var page = pagesIn[i] ?? new CadDumpPage();
+                int pageIndex = page.PageIndex;
+                double pageTopMm = pageIndex * config.PageHeightMm;
+                var pagePlan = new CadStampPagePlan
+                {
+                    PageIndex = pageIndex,
+                    PageTopMm = pageTopMm,
+                    Frames = PageFramesMm(config),
+                    Mtexts = new List<CadStampMText>(),
+                    Tables = new List<CadStampTablePlan>()
+                };
+                if (page.Blocks != null)
+                {
+                    foreach (var block in page.Blocks)
+                    {
+                        var mt = LockedMTextPlanFromBlock(config, block);
+                        if (mt != null)
+                            pagePlan.Mtexts.Add(mt);
+                    }
+                }
+                if (page.Tables != null)
+                {
+                    foreach (var table in page.Tables)
+                    {
+                        var t = TablePlanFromDump(config, table, s);
+                        if (t != null)
+                            pagePlan.Tables.Add(t);
+                    }
+                }
+                pages.Add(pagePlan);
+            }
+
+            return new CadStampPlan
+            {
+                SchemaVersion = 1,
+                Scale = s,
+                StyleName = config.TextStyleName,
+                FontFileName = config.FontFileName ?? string.Empty,
+                BigFontFileName = config.BigFontFileName ?? string.Empty,
+                TextXScale = config.TextXScale,
+                PageWidthMm = config.PageWidthMm,
+                PageHeightMm = config.PageHeightMm,
+                MarginMm = new[] { config.MarginTopMm, config.MarginRightMm, config.MarginBottomMm, config.MarginLeftMm },
+                Columns = config.ColumnCount,
+                GutterMm = config.ColumnGutter,
+                LineSpacingFactor = dump.LineSpacingFactor ?? 0,
+                HeadingScales = dump.HeadingScales,
+                Markdown = dump.Markdown ?? string.Empty,
+                SourcePath = dump.SourcePath,
+                SkippedCount = dump.SkippedBlocks != null ? dump.SkippedBlocks.Count : 0,
+                Pages = pages
+            };
+        }
+
+        private static List<CadStampFrame> PageFramesMm(DesignSpecConfig config)
+        {
+            double w = config.PageWidthMm;
+            double h = config.PageHeightMm;
+            double ml = config.MarginLeftMm;
+            double mr = config.MarginRightMm;
+            double mt = config.MarginTopMm;
+            double mb = config.MarginBottomMm;
+            return new List<CadStampFrame>
+            {
+                new CadStampFrame
+                {
+                    Kind = "outer",
+                    PointsMm = new List<double[]>
+                    {
+                        new[] { 0.0, 0.0 },
+                        new[] { w, 0.0 },
+                        new[] { w, h },
+                        new[] { 0.0, h }
+                    }
+                },
+                new CadStampFrame
+                {
+                    Kind = "inner",
+                    PointsMm = new List<double[]>
+                    {
+                        new[] { ml, mt },
+                        new[] { w - mr, mt },
+                        new[] { w - mr, h - mb },
+                        new[] { ml, h - mb }
+                    }
+                }
+            };
+        }
+
+        private static CadStampMText LockedMTextPlanFromBlock(DesignSpecConfig config, CadDumpBlock block)
+        {
+            var lines = block?.Lines;
+            if (lines == null || lines.Count == 0)
+                return null;
+            double fontSizeMm = block.FontSizeMm > 0 ? block.FontSizeMm : config.TextSize;
+            double originXMm = DumpBlockOriginXMm(block);
+            double topMm = lines[0].BaselineMm - fontSizeMm;
+            return new CadStampMText
+            {
+                XMm = originXMm,
+                YMm = topMm,
+                HeightMm = fontSizeMm,
+                Width = 0,
+                Attachment = "topLeft",
+                LineSpacingExactly = LockedLineSpacingFactor(block.LinePitchMm, fontSizeMm),
+                Contents = BuildLockedMTextContents(lines, originXMm, config)
+            };
+        }
+
+        private static CadStampTablePlan TablePlanFromDump(DesignSpecConfig config, CadDumpTable table, double s)
+        {
+            var cells = table?.Cells;
+            int rows = cells != null ? cells.Count : 0;
+            int cols = table?.ColumnWidthsMm != null ? table.ColumnWidthsMm.Length : 0;
+            if (cells != null)
+            {
+                foreach (var row in cells)
+                {
+                    if (row != null && row.Count > cols)
+                        cols = row.Count;
+                }
+            }
+            if (rows <= 0 || cols <= 0)
+                return null;
+            double fontSizeMm = table.FontSizeMm > 0 ? table.FontSizeMm : config.TextSize;
+            double glyphHeight = Math.Max(0.01, fontSizeMm * s);
+            var outCells = new List<List<string>>();
+            var aligns = new List<List<string>>();
+            for (int r = 0; r < rows; r++)
+            {
+                var row = cells != null && r < cells.Count ? cells[r] : null;
+                var cellRow = new List<string>();
+                var alignRow = new List<string>();
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = row != null && c < row.Count ? row[c] : null;
+                    cellRow.Add(CellLinesToContents(cell, config, glyphHeight));
+                    string a = ParseCellAlignName(cell?.Align);
+                    alignRow.Add(a);
+                }
+                outCells.Add(cellRow);
+                aligns.Add(alignRow);
+            }
+            var colW = new double[cols];
+            for (int c = 0; c < cols; c++)
+            {
+                colW[c] = (table.ColumnWidthsMm != null && c < table.ColumnWidthsMm.Length)
+                    ? table.ColumnWidthsMm[c]
+                    : table.WidthMm / Math.Max(1, cols);
+            }
+            var rowH = new double[rows];
+            for (int r = 0; r < rows; r++)
+            {
+                rowH[r] = (table.RowHeightsMm != null && r < table.RowHeightsMm.Length)
+                    ? table.RowHeightsMm[r]
+                    : fontSizeMm;
+            }
+            return new CadStampTablePlan
+            {
+                XMm = table.XMm,
+                YMm = table.YMm,
+                FontSizeMm = fontSizeMm,
+                CellPadXMm = Math.Max(0, table.CellPadXMm),
+                CellPadYMm = Math.Max(0, table.CellPadYMm),
+                ColumnWidthsMm = colW,
+                RowHeightsMm = rowH,
+                Aligns = aligns,
+                Cells = outCells
+            };
+        }
+
+        private static string ParseCellAlignName(string align)
+        {
+            string a = (align ?? "center").Trim().ToLowerInvariant();
+            if (a == "left" || a == "start") return "left";
+            if (a == "right" || a == "end") return "right";
+            return "center";
+        }
+
+        /// <summary>
+        /// dump 内字体口径优先：有则覆盖 FontFileName / 字宽 / 行距 / 标题倍率。
+        /// SHX 口径不再 \f 切雅黑粗体或代码字体。
+        /// </summary>
+        private static void ApplyDumpFont(DesignSpecConfig config, CadLayoutDump dump)
+        {
+            if (dump == null || config == null) return;
+            var font = dump.Font;
+            if (font != null)
+            {
+                if (!string.IsNullOrWhiteSpace(font.FontFileName))
+                    config.FontFileName = font.FontFileName.Trim();
+                config.BigFontFileName = font.BigFontFileName ?? string.Empty;
+                if (font.XScale > 0)
+                    config.TextXScale = font.XScale;
+            }
+            if (dump.LineSpacingFactor.HasValue && dump.LineSpacingFactor.Value > 0)
+                config.LineSpacingFactor = dump.LineSpacingFactor.Value;
+            if (dump.HeadingScales != null && dump.HeadingScales.Length >= 3)
+            {
+                if (dump.HeadingScales[0] > 0) config.H1Scale = dump.HeadingScales[0];
+                if (dump.HeadingScales[1] > 0) config.H2Scale = dump.HeadingScales[1];
+                if (dump.HeadingScales[2] > 0) config.H3Scale = dump.HeadingScales[2];
+            }
+
+            string face = config.FontFileName ?? string.Empty;
+            string id = font?.Id ?? string.Empty;
+            bool shx = face.EndsWith(".shx", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(id, "tssd", StringComparison.OrdinalIgnoreCase);
+            if (shx)
+            {
+                config.MTextBoldMode = "Color";
+                config.MTextCodeMode = "SameFont";
+                config.BoldFontName = string.Empty;
+                config.MTextCharSpacing = 1.0;
+                return;
+            }
+            config.MTextBoldMode = "FontSwitch";
+            config.MTextCodeMode = "SameFont";
+            config.BoldFontName = ResolveTrueTypeFontFile(face);
         }
 
         /// <summary>
@@ -274,6 +879,54 @@ namespace HyCADTool.Features.DesignSpec.Services
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// 从选中图元或其同组图元读取 HyMd Markdown 源与配置。
+        /// </summary>
+        public static bool TryReadHymdSource(
+            Transaction tr,
+            Database db,
+            Entity entity,
+            out string markdown,
+            out DesignSpecConfig config)
+        {
+            markdown = null;
+            config = null;
+            if (tr == null || entity == null)
+                return false;
+
+            markdown = ReadMarkdownSource(tr, entity);
+            config = ReadConfig(tr, entity);
+            if (!string.IsNullOrWhiteSpace(markdown) || (config != null && !string.IsNullOrWhiteSpace(config.SourcePath)))
+                return true;
+
+            string groupId = ExtensionDictionaryService.ReadLongString(tr, entity, XREC_KEY_GROUP);
+            if (string.IsNullOrEmpty(groupId) || db == null)
+                return false;
+
+            var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+            foreach (ObjectId id in btr)
+            {
+                var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
+                if (ent == null)
+                    continue;
+                string gid = ExtensionDictionaryService.ReadLongString(tr, ent, XREC_KEY_GROUP);
+                if (gid != groupId)
+                    continue;
+                string md = ReadMarkdownSource(tr, ent);
+                var cfg = ReadConfig(tr, ent);
+                if (cfg != null)
+                    config = cfg;
+                if (!string.IsNullOrWhiteSpace(md))
+                {
+                    markdown = md;
+                    return true;
+                }
+            }
+
+            return config != null && !string.IsNullOrWhiteSpace(config.SourcePath);
         }
 
         /// <summary>
@@ -915,6 +1568,535 @@ namespace HyCADTool.Features.DesignSpec.Services
             return result;
         }
 
+        private static string FormatCadNumber(double value)
+        {
+            return value.ToString("0.###", CultureInfo.InvariantCulture);
+        }
+
+        private static string EscapeMTextLiteral(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+            text = text.Replace("\\t", " ").Replace("\t", " ");
+            return text.Replace("\\", "\\\\").Replace("{", "\\{").Replace("}", "\\}");
+        }
+
+        private static double LockedLineSpacingFactor(double linePitchMm, double fontSizeMm)
+        {
+            if (!(fontSizeMm > 0) || !(linePitchMm > 0))
+                return 1.2;
+            double factor = linePitchMm / (CadLineSpacingCell * fontSizeMm);
+            if (factor < 0.8) return 0.8;
+            if (factor > 4.0) return 4.0;
+            return factor;
+        }
+
+        private static string FormatDumpRun(CadDumpRun run, DesignSpecConfig config)
+        {
+            string text = EscapeMTextLiteral(run?.Text ?? string.Empty);
+            if (run == null)
+                return text;
+            var prefix = new StringBuilder();
+            var suffix = new StringBuilder();
+            if (run.SizeMm.HasValue && run.SizeMm.Value > 0)
+            {
+                prefix.Append("{\\H").Append(FormatCadNumber(run.SizeMm.Value * config.Scale)).Append(";");
+                suffix.Insert(0, "}");
+            }
+            if (run.Bold)
+            {
+                if (IsShxFont(config.FontFileName))
+                {
+                    prefix.Append("{\\C1;");
+                    suffix.Insert(0, "}");
+                }
+                else
+                {
+                    string face = ResolveTrueTypeFontFile(config.FontFileName);
+                    prefix.Append("{\\f").Append(face).Append("|b1|i0|c134|p34;");
+                    suffix.Insert(0, "}");
+                }
+            }
+            if (run.Italic)
+            {
+                double angle = config.MTextItalicAngle > 0.01 ? config.MTextItalicAngle : 15;
+                prefix.Append("{\\Q").Append(FormatCadNumber(angle)).Append(";");
+                suffix.Insert(0, "}");
+            }
+            return prefix.ToString() + text + suffix.ToString();
+        }
+
+        private static void AppendDumpLineContents(StringBuilder sb, CadDumpLine line, double originXMm, DesignSpecConfig config)
+        {
+            if (line == null)
+                return;
+            bool hasMarker = line.Marker != null && !string.IsNullOrEmpty(line.Marker.Text);
+            double lineLeft = hasMarker ? line.Marker.XMm : line.XMm;
+            double dx = lineLeft - originXMm;
+            if (Math.Abs(dx) > 0.05)
+                sb.Append("\\pxl").Append(FormatCadNumber(dx / 25.4)).Append(";");
+            if (hasMarker)
+            {
+                sb.Append(EscapeMTextLiteral(line.Marker.Text));
+                if (!line.Marker.Text.EndsWith(" "))
+                    sb.Append(' ');
+            }
+            if (line.Runs != null)
+            {
+                foreach (var run in line.Runs)
+                    sb.Append(FormatDumpRun(run, config));
+            }
+        }
+
+        private static string BuildLockedMTextContents(IList<CadDumpLine> lines, double originXMm, DesignSpecConfig config)
+        {
+            var sb = new StringBuilder();
+            sb.Append("{\\W").Append(FormatCadNumber(config.TextXScale)).Append(";");
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append("\\P");
+                AppendDumpLineContents(sb, lines[i], originXMm, config);
+            }
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        private static double DumpBlockOriginXMm(CadDumpBlock block)
+        {
+            double origin = block.XMm;
+            if (block.Lines == null)
+                return origin;
+            foreach (var line in block.Lines)
+            {
+                if (line == null)
+                    continue;
+                origin = Math.Min(origin, line.XMm);
+                if (line.Marker != null)
+                    origin = Math.Min(origin, line.Marker.XMm);
+            }
+            return origin;
+        }
+
+        private static List<MText> CreateLockedMTexts(
+            DesignSpecConfig config,
+            ObjectId textStyleId,
+            Point3d insertionPoint,
+            double pageTopY,
+            double s,
+            CadDumpBlock block)
+        {
+            var result = new List<MText>();
+            result.Add(CreateLockedMText(config, textStyleId, insertionPoint, pageTopY, s, block));
+            return result;
+        }
+
+        private static MText CreateLockedMText(
+            DesignSpecConfig config,
+            ObjectId textStyleId,
+            Point3d insertionPoint,
+            double pageTopY,
+            double s,
+            CadDumpBlock block)
+        {
+            var lines = block.Lines;
+            double fontSizeMm = block.FontSizeMm > 0 ? block.FontSizeMm : config.TextSize;
+            double textHeight = Math.Max(0.01, fontSizeMm * s);
+            double firstBaseline = lines[0].BaselineMm;
+            double topMm = firstBaseline - fontSizeMm;
+            double originXMm = DumpBlockOriginXMm(block);
+            double x = insertionPoint.X + originXMm * s;
+            double y = pageTopY - topMm * s;
+            var mtext = new MText();
+            mtext.SetDatabaseDefaults();
+            mtext.Location = new Point3d(x, y, insertionPoint.Z);
+            mtext.Attachment = AttachmentPoint.TopLeft;
+            mtext.TextStyleId = textStyleId;
+            mtext.TextHeight = textHeight;
+            mtext.LineSpacingStyle = LineSpacingStyle.Exactly;
+            mtext.LineSpacingFactor = LockedLineSpacingFactor(block.LinePitchMm, fontSizeMm);
+            mtext.Width = 0;
+            mtext.Contents = BuildLockedMTextContents(lines, originXMm, config);
+            return mtext;
+        }
+
+        private static MText CreateMTextFromPlan(
+            ObjectId textStyleId,
+            Point3d insertionPoint,
+            double pageTopY,
+            double s,
+            CadStampMText mt)
+        {
+            double textHeight = Math.Max(0.01, mt.HeightMm * s);
+            double x = insertionPoint.X + mt.XMm * s;
+            double y = pageTopY - mt.YMm * s;
+            double factor = mt.LineSpacingExactly;
+            if (factor <= 0) factor = 1.2;
+            if (factor < 0.8) factor = 0.8;
+            if (factor > 4) factor = 4;
+            var mtext = new MText();
+            mtext.SetDatabaseDefaults();
+            mtext.Location = new Point3d(x, y, insertionPoint.Z);
+            mtext.Attachment = AttachmentPoint.TopLeft;
+            mtext.TextStyleId = textStyleId;
+            mtext.TextHeight = textHeight;
+            mtext.LineSpacingStyle = LineSpacingStyle.Exactly;
+            mtext.LineSpacingFactor = factor;
+            mtext.Width = 0;
+            mtext.Contents = mt.Contents ?? string.Empty;
+            return mtext;
+        }
+
+        private static CellAlignment ParseCellAlign(string align)
+        {
+            string a = (align ?? "center").Trim();
+            if (string.Equals(a, "left", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(a, "start", StringComparison.OrdinalIgnoreCase))
+                return CellAlignment.MiddleLeft;
+            if (string.Equals(a, "right", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(a, "end", StringComparison.OrdinalIgnoreCase))
+                return CellAlignment.MiddleRight;
+            return CellAlignment.MiddleCenter;
+        }
+
+        private static string HyMdTableStyleNameFor(string textStyleName)
+        {
+            return string.IsNullOrWhiteSpace(textStyleName)
+                ? HyMdTableStyleFallbackName
+                : textStyleName.Trim();
+        }
+
+        private static ObjectId EnsureHyMdTableStyle(
+            Database db,
+            Transaction tr,
+            ObjectId textStyleId,
+            double padX,
+            double padY,
+            string textStyleName)
+        {
+            string styleName = HyMdTableStyleNameFor(textStyleName);
+            var dict = (DBDictionary)tr.GetObject(db.TableStyleDictionaryId, OpenMode.ForRead);
+            TableStyle ts;
+            if (dict.Contains(styleName))
+            {
+                ts = (TableStyle)tr.GetObject(dict.GetAt(styleName), OpenMode.ForWrite);
+            }
+            else
+            {
+                dict.UpgradeOpen();
+                ts = new TableStyle();
+                dict.SetAt(styleName, ts);
+                tr.AddNewlyCreatedDBObject(ts, true);
+            }
+
+            int allRows = (int)(RowType.DataRow | RowType.HeaderRow | RowType.TitleRow);
+            ts.SetBackgroundColorNone(true, allRows);
+            ts.IsTitleSuppressed = true;
+            ts.IsHeaderSuppressed = true;
+            try
+            {
+                ts.HorizontalCellMargin = Math.Max(0, padX);
+                ts.VerticalCellMargin = Math.Max(0, padY);
+            }
+            catch { }
+            if (!textStyleId.IsNull)
+            {
+                try { ts.SetTextStyle(textStyleId, allRows); } catch { }
+            }
+            // 选中框厚度跟表样式字高走；0 与手建表（样式高度 0）一致。
+            try { ts.SetTextHeight(0, allRows); } catch { }
+            return ts.ObjectId;
+        }
+
+        private static void SetTableUiTextHeight(Cell cell)
+        {
+            try { cell.TextHeight = 0; }
+            catch { cell.TextHeight = 0.01; }
+        }
+
+        private static string WrapGlyphHeight(string contents, double glyphHeight)
+        {
+            if (string.IsNullOrEmpty(contents))
+                return contents ?? string.Empty;
+            return "{\\H" + FormatCadNumber(Math.Max(0.01, glyphHeight)) + ";" + contents + "}";
+        }
+
+        /// <summary>
+        /// 表格单元格不用 \f / \H / \W：字高走 Cell.TextHeight，粗体只标颜色 1。
+        /// </summary>
+        private static string FormatTableRun(CadDumpRun run)
+        {
+            string text = EscapeMTextLiteral(run?.Text ?? string.Empty);
+            if (run != null && run.Bold)
+                return "{\\C1;" + text + "}";
+            return text;
+        }
+
+        private static string CellLinesToContents(CadDumpTableCell cell, DesignSpecConfig config, double glyphHeight)
+        {
+            if (cell?.Lines == null || cell.Lines.Count == 0)
+                return string.Empty;
+            var sb = new StringBuilder();
+            for (int i = 0; i < cell.Lines.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append("\\P");
+                var line = cell.Lines[i];
+                if (line?.Runs == null)
+                    continue;
+                foreach (var run in line.Runs)
+                    sb.Append(FormatTableRun(run));
+            }
+            return sb.ToString();
+        }
+
+        private static void SetTableCellGlyphHeight(Cell cell, double textHeight)
+        {
+            try { cell.TextHeight = Math.Max(0.01, textHeight); }
+            catch { }
+        }
+
+        private bool TryCreateTableFromDumpV3(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            DesignSpecConfig config,
+            CadDumpTable tableDump,
+            Point3d insertionPoint,
+            double pageTopY,
+            double s,
+            string groupId,
+            string markdownSource,
+            ObjectId textStyleId,
+            ref bool metadataWritten,
+            ref ObjectId anchorEntityId)
+        {
+            int rows = tableDump.Cells != null ? tableDump.Cells.Count : 0;
+            int cols = 0;
+            if (tableDump.ColumnWidthsMm != null)
+                cols = tableDump.ColumnWidthsMm.Length;
+            if (tableDump.Cells != null)
+            {
+                foreach (var row in tableDump.Cells)
+                {
+                    if (row != null && row.Count > cols)
+                        cols = row.Count;
+                }
+            }
+            if (rows <= 0 || cols <= 0)
+                return false;
+
+            double padX = Math.Max(0, tableDump.CellPadXMm) * s;
+            double padY = Math.Max(0, tableDump.CellPadYMm) * s;
+            ObjectId styleId = EnsureHyMdTableStyle(db, tr, textStyleId, padX, padY, config.TextStyleName);
+
+            var table = new Table();
+            table.SetDatabaseDefaults();
+            table.TableStyle = styleId;
+            table.Position = new Point3d(
+                insertionPoint.X + tableDump.XMm * s,
+                pageTopY - tableDump.YMm * s,
+                insertionPoint.Z);
+            table.SetSize(rows, cols);
+#pragma warning disable CS0618
+            table.IsTitleSuppressed = true;
+            table.IsHeaderSuppressed = true;
+#pragma warning restore CS0618
+
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    try
+                    {
+                        var range = table.Cells[r, c].GetMergeRange();
+                        if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                            table.UnmergeCells(range);
+                    }
+                    catch { }
+                }
+            }
+
+            double fontSizeMm = tableDump.FontSizeMm > 0 ? tableDump.FontSizeMm : config.TextSize;
+            double textHeight = Math.Max(0.01, fontSizeMm * s);
+
+            for (int c = 0; c < cols; c++)
+            {
+                double w = (tableDump.ColumnWidthsMm != null && c < tableDump.ColumnWidthsMm.Length)
+                    ? tableDump.ColumnWidthsMm[c] * s
+                    : Math.Max(textHeight, tableDump.WidthMm * s / Math.Max(1, cols));
+                table.Columns[c].Width = Math.Max(textHeight, w);
+            }
+
+            for (int r = 0; r < rows; r++)
+            {
+                double h = (tableDump.RowHeightsMm != null && r < tableDump.RowHeightsMm.Length)
+                    ? tableDump.RowHeightsMm[r] * s
+                    : textHeight;
+                table.Rows[r].Height = Math.Max(textHeight, h);
+                try { table.Rows[r].TextHeight = textHeight; }
+                catch { }
+            }
+
+            for (int r = 0; r < rows; r++)
+            {
+                var row = tableDump.Cells[r];
+                for (int c = 0; c < cols; c++)
+                {
+                    var cellDump = (row != null && c < row.Count) ? row[c] : null;
+                    var cell = table.Cells[r, c];
+                    if (!textStyleId.IsNull)
+                        cell.TextStyleId = textStyleId;
+                    SetTableCellGlyphHeight(cell, textHeight);
+                    cell.Alignment = ParseCellAlign(cellDump?.Align);
+                    cell.TextString = CellLinesToContents(cellDump, config, textHeight);
+                }
+            }
+
+            table.GenerateLayout();
+            for (int r = 0; r < rows; r++)
+            {
+                double h = (tableDump.RowHeightsMm != null && r < tableDump.RowHeightsMm.Length)
+                    ? tableDump.RowHeightsMm[r] * s
+                    : textHeight;
+                table.Rows[r].Height = Math.Max(textHeight, h);
+                try { table.Rows[r].TextHeight = textHeight; }
+                catch { }
+                for (int c = 0; c < cols; c++)
+                    SetTableCellGlyphHeight(table.Cells[r, c], textHeight);
+            }
+
+            SetLayer(db, tr, table, LayerText);
+            btr.AppendEntity(table);
+            tr.AddNewlyCreatedDBObject(table, true);
+            if (anchorEntityId.IsNull)
+                anchorEntityId = table.ObjectId;
+            WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
+            ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
+            return true;
+        }
+
+        private bool TryCreateTableFromPlan(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            DesignSpecConfig config,
+            CadStampTablePlan tablePlan,
+            Point3d insertionPoint,
+            double pageTopY,
+            double s,
+            string groupId,
+            string markdownSource,
+            ObjectId textStyleId,
+            ref bool metadataWritten,
+            ref ObjectId anchorEntityId)
+        {
+            int rows = tablePlan.Cells != null ? tablePlan.Cells.Count : 0;
+            int cols = 0;
+            if (tablePlan.ColumnWidthsMm != null)
+                cols = tablePlan.ColumnWidthsMm.Length;
+            if (tablePlan.Cells != null)
+            {
+                foreach (var row in tablePlan.Cells)
+                {
+                    if (row != null && row.Count > cols)
+                        cols = row.Count;
+                }
+            }
+            if (rows <= 0 || cols <= 0)
+                return false;
+
+            double padX = Math.Max(0, tablePlan.CellPadXMm) * s;
+            double padY = Math.Max(0, tablePlan.CellPadYMm) * s;
+            ObjectId styleId = EnsureHyMdTableStyle(db, tr, textStyleId, padX, padY, config.TextStyleName);
+
+            var table = new Table();
+            table.SetDatabaseDefaults();
+            table.TableStyle = styleId;
+            table.Position = new Point3d(
+                insertionPoint.X + tablePlan.XMm * s,
+                pageTopY - tablePlan.YMm * s,
+                insertionPoint.Z);
+            table.SetSize(rows, cols);
+#pragma warning disable CS0618
+            table.IsTitleSuppressed = true;
+            table.IsHeaderSuppressed = true;
+#pragma warning restore CS0618
+
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    try
+                    {
+                        var range = table.Cells[r, c].GetMergeRange();
+                        if (range.TopRow != range.BottomRow || range.LeftColumn != range.RightColumn)
+                            table.UnmergeCells(range);
+                    }
+                    catch { }
+                }
+            }
+
+            double fontSizeMm = tablePlan.FontSizeMm > 0 ? tablePlan.FontSizeMm : config.TextSize;
+            double textHeight = Math.Max(0.01, fontSizeMm * s);
+
+            for (int c = 0; c < cols; c++)
+            {
+                double w = (tablePlan.ColumnWidthsMm != null && c < tablePlan.ColumnWidthsMm.Length)
+                    ? tablePlan.ColumnWidthsMm[c] * s
+                    : textHeight;
+                table.Columns[c].Width = Math.Max(textHeight, w);
+            }
+
+            for (int r = 0; r < rows; r++)
+            {
+                double h = (tablePlan.RowHeightsMm != null && r < tablePlan.RowHeightsMm.Length)
+                    ? tablePlan.RowHeightsMm[r] * s
+                    : textHeight;
+                table.Rows[r].Height = Math.Max(textHeight, h);
+                try { table.Rows[r].TextHeight = 0; }
+                catch { table.Rows[r].TextHeight = 0.01; }
+            }
+
+            for (int r = 0; r < rows; r++)
+            {
+                var row = tablePlan.Cells[r];
+                var alignRow = (tablePlan.Aligns != null && r < tablePlan.Aligns.Count) ? tablePlan.Aligns[r] : null;
+                for (int c = 0; c < cols; c++)
+                {
+                    var cell = table.Cells[r, c];
+                    if (!textStyleId.IsNull)
+                        cell.TextStyleId = textStyleId;
+                    SetTableUiTextHeight(cell);
+                    string align = (alignRow != null && c < alignRow.Count) ? alignRow[c] : "center";
+                    cell.Alignment = ParseCellAlign(align);
+                    cell.TextString = (row != null && c < row.Count) ? (row[c] ?? string.Empty) : string.Empty;
+                }
+            }
+
+            table.GenerateLayout();
+            for (int r = 0; r < rows; r++)
+            {
+                double h = (tablePlan.RowHeightsMm != null && r < tablePlan.RowHeightsMm.Length)
+                    ? tablePlan.RowHeightsMm[r] * s
+                    : textHeight;
+                table.Rows[r].Height = Math.Max(textHeight, h);
+                try { table.Rows[r].TextHeight = 0; }
+                catch { table.Rows[r].TextHeight = 0.01; }
+                for (int c = 0; c < cols; c++)
+                    SetTableUiTextHeight(table.Cells[r, c]);
+            }
+
+            SetLayer(db, tr, table, LayerText);
+            btr.AppendEntity(table);
+            tr.AddNewlyCreatedDBObject(table, true);
+            if (anchorEntityId.IsNull)
+                anchorEntityId = table.ObjectId;
+            WriteMetadataIfNeeded(tr, table, markdownSource, config, ref metadataWritten);
+            ExtensionDictionaryService.WriteLongString(tr, table, groupId, XREC_KEY_GROUP);
+            return true;
+        }
+
         private static MText CreateMTextEntity(
             DesignSpecConfig config,
             ObjectId textStyleId,
@@ -943,7 +2125,7 @@ namespace HyCADTool.Features.DesignSpec.Services
                 return content ?? string.Empty;
 
             var inlineCodes = new StringBuilder();
-            bool hasTracking = content.IndexOf("\\T", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool hasTracking = content.IndexOf("\\T", StringComparison.Ordinal) >= 0;
             if (!hasTracking && config.MTextCharSpacing >= 0.75 && config.MTextCharSpacing <= 4.0)
             {
                 inlineCodes.Append("\\T").Append(config.MTextCharSpacing.ToString("0.###", CultureInfo.InvariantCulture)).Append(";");
@@ -1330,7 +2512,8 @@ namespace HyCADTool.Features.DesignSpec.Services
             {
                 int lineCount = (rowLines != null && r < rowLines.Length) ? Math.Max(1, rowLines[r]) : 1;
                 table.Rows[r].Height = Math.Max(baseRowHeight, baseRowHeight * lineCount);
-                table.Rows[r].TextHeight = config.ActualTextHeight;
+                try { table.Rows[r].TextHeight = 0; }
+                catch { table.Rows[r].TextHeight = 0.01; }
             }
 
             for (int c = 0; c < cols; c++)
@@ -1339,11 +2522,17 @@ namespace HyCADTool.Features.DesignSpec.Services
                 table.Columns[c].Width = Math.Max(config.ActualTextHeight * config.TextXScale * 2.0, width);
             }
 
+            double glyphH = config.ActualTextHeight;
             for (int r = 0; r < rows; r++)
             {
                 var row = tableData.Rows[r];
                 for (int c = 0; c < cols; c++)
-                    table.Cells[r, c].TextString = c < row.Count ? row[c] ?? string.Empty : string.Empty;
+                {
+                    string raw = c < row.Count ? row[c] ?? string.Empty : string.Empty;
+                    var cell = table.Cells[r, c];
+                    SetTableUiTextHeight(cell);
+                    cell.TextString = WrapGlyphHeight(raw, glyphH);
+                }
             }
 
             table.GenerateLayout();
@@ -1362,6 +2551,10 @@ namespace HyCADTool.Features.DesignSpec.Services
             {
                 int lc = (rowLines != null && r < rowLines.Length) ? Math.Max(1, rowLines[r]) : 1;
                 table.Rows[r].Height = baseRowHeight * lc;
+                try { table.Rows[r].TextHeight = 0; }
+                catch { table.Rows[r].TextHeight = 0.01; }
+                for (int c = 0; c < cols; c++)
+                    SetTableUiTextHeight(table.Cells[r, c]);
             }
 
             SetLayer(db, tr, table, LayerText);
@@ -1571,9 +2764,11 @@ namespace HyCADTool.Features.DesignSpec.Services
                 case "msyhbd.ttc":
                 case "microsoft yahei":
                 case "microsoft yahei ui":
+                case "yahei":
                     return "微软雅黑";
                 case "simsun.ttc":
                 case "simsun.ttf":
+                case "simsun":
                     return "宋体";
                 case "simhei.ttf":
                     return "黑体";
@@ -1586,6 +2781,9 @@ namespace HyCADTool.Features.DesignSpec.Services
             if (string.Equals(value, "微软雅黑", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(value, "微软雅黑体", StringComparison.OrdinalIgnoreCase))
                 return "微软雅黑";
+
+            if (string.Equals(value, "宋体", StringComparison.OrdinalIgnoreCase))
+                return "宋体";
 
             if (lower.EndsWith(".ttf") || lower.EndsWith(".ttc"))
                 return Path.GetFileNameWithoutExtension(value);
@@ -1620,6 +2818,43 @@ namespace HyCADTool.Features.DesignSpec.Services
             {
                 return Point3d.Origin;
             }
+        }
+
+        /// <summary>
+        /// 按 plan 顶点画一圈闭合多段线（纸面 y 向下）。
+        /// </summary>
+        private bool DrawFrameFromPlan(
+            Transaction tr,
+            BlockTableRecord btr,
+            Database db,
+            Point3d insertionPoint,
+            double pageTopY,
+            double s,
+            CadStampFrame frame,
+            string groupId)
+        {
+            if (frame?.PointsMm == null || frame.PointsMm.Count < 2)
+                return false;
+            var poly = new Polyline(frame.PointsMm.Count);
+            int i = 0;
+            foreach (var pt in frame.PointsMm)
+            {
+                if (pt == null || pt.Length < 2)
+                    continue;
+                double x = insertionPoint.X + pt[0] * s;
+                double y = pageTopY - pt[1] * s;
+                poly.AddVertexAt(i, new Point2d(x, y), 0, 0, 0);
+                i++;
+            }
+            if (i < 2)
+                return false;
+            poly.Closed = true;
+            poly.Elevation = insertionPoint.Z;
+            SetLayer(db, tr, poly, LayerFrame);
+            btr.AppendEntity(poly);
+            tr.AddNewlyCreatedDBObject(poly, true);
+            ExtensionDictionaryService.WriteLongString(tr, poly, groupId, XREC_KEY_GROUP);
+            return true;
         }
 
         /// <summary>

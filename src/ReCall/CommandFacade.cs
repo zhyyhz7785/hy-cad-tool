@@ -123,12 +123,16 @@ namespace HyCADTool.ReCall
         #region 设计说明 (Design Spec / Markdown)
         [CommandMethod("hymd")]  public void Cmd_hymd()  => ReCallClass.Invoke("hymd");
         [CommandMethod("hymdE")] public void Cmd_hymdE() => ReCallClass.Invoke("hymdE");
+        [CommandMethod("hymdc")] public void Cmd_hymdc() => ReCallClass.Invoke("hymdc");
+        [CommandMethod("HYMDCOMPARE")] public void Cmd_HYMDCOMPARE() => ReCallClass.Invoke("HYMDCOMPARE");
+        [CommandMethod("HYMDPLANCHECK")] public void Cmd_HYMDPLANCHECK() => ReCallClass.Invoke("HYMDPLANCHECK");
         #endregion
 
         #region 导出 (Export)
         [CommandMethod("hyex")]     public void Cmd_hyex()     => ReCallClass.Invoke("hyex");
         [CommandMethod("hyex_csv")] public void Cmd_hyex_csv() => ReCallClass.Invoke("hyex_csv");
         [CommandMethod("hyLtCapture")] public void Cmd_hyLtCapture() => ReCallClass.Invoke("hyLtCapture");
+        [CommandMethod("hysvg")] public void Cmd_hysvg() => ReCallClass.Invoke("hysvg");
         #endregion
 
         #region 其他工具 (Misc)

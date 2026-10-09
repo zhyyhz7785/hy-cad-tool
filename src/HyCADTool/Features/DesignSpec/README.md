@@ -4,7 +4,7 @@
 
 ## 定位（对照总纲 §三）
 
-**设计说明 / Markdown 表格** 领域：解析、列宽、HTML 模板、转 MText 排版；与 `HyCADTool.MarkdownEditor`（net8 WebView2）或内嵌编辑方案对接。
+**设计说明 / Markdown 表格** 领域：解析、列宽、HTML 模板、转 MText 排版；与进程外 HyMd（命名管道 `HyMd.Cad.v1`）对接贴图。
 
 ## 职责边界
 
@@ -34,7 +34,7 @@
 
 - **Export**：命令层与 `commands.json` 映射。
 - **Shell**：`Shell/Configuration/User` 等用户路径或编辑器配置。
-- **MarkdownEditor**：独立工程，主工程通过进程内或宿主约定加载（见 `doc/00` §二 解决方案表）。
+- **HyMd**：进程外编辑器；`HyMdCadBridge` 连接管道，`InsertFromHyMdDump` 按导出几何插入。
 
 ## 开发与审查要点
 

@@ -13,6 +13,12 @@ namespace HyCADTool.Features.DesignSpec.Domain.Models
         // ── 出图比例（用户可调，默认1，独立于 SettingsPanel） ──
         public double Scale { get; set; } = 1.0;
 
+        /// <summary>HyMd 源文件路径（未保存可空）</summary>
+        public string SourcePath { get; set; }
+
+        /// <summary>HyMd 布局协议版本（CadLayoutDump.schemaVersion）</summary>
+        public int HyMdLayoutSchemaVersion { get; set; }
+
         // ── 预览缩放（仅预览用，默认1.0） ──
         public double PreviewScale { get; set; } = 1.0;
 
@@ -77,7 +83,7 @@ namespace HyCADTool.Features.DesignSpec.Domain.Models
         public string TableBreakMode { get; set; } = "Overflow";
 
         // ── MText 字体策略 ──
-        /// <summary>粗体渲染：FontSwitch(切TTF) / WidthScale(加宽模拟) / None(忽略)</summary>
+        /// <summary>粗体渲染：FontSwitch(切TTF) / Color(ACI 1 红，TSSD) / None(忽略) / WidthScale</summary>
         public string MTextBoldMode { get; set; } = "FontSwitch";
         /// <summary>加宽模拟粗体的宽度因子（WidthScale 模式用）</summary>
         public double MTextBoldWidthScale { get; set; } = 1.15;
@@ -255,7 +261,9 @@ namespace HyCADTool.Features.DesignSpec.Domain.Models
                 ? "Split"
                 : "Overflow";
 
-            MTextBoldMode = MTextBoldMode == "WidthScale" || MTextBoldMode == "None" ? MTextBoldMode : "FontSwitch";
+            MTextBoldMode = MTextBoldMode == "WidthScale" || MTextBoldMode == "None" || MTextBoldMode == "Color"
+                ? MTextBoldMode
+                : "FontSwitch";
             MTextBoldWidthScale = Math.Max(1.0, Math.Min(2.0, MTextBoldWidthScale));
             MTextCodeMode = string.Equals(MTextCodeMode, "SameFont", StringComparison.OrdinalIgnoreCase) ? "SameFont" : "FontSwitch";
             if (string.IsNullOrWhiteSpace(MTextCodeFontName)) MTextCodeFontName = "Consolas";

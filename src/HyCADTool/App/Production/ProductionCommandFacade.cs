@@ -125,12 +125,16 @@ namespace HyCADTool.App.Production
         #region 设计说明 (Design Spec / Markdown)
         [CommandMethod("hymd")]  public void Cmd_hymd() => LicenseGate.RunGated("hymd", () => ProductionDispatcher.Invoke("hymd"));
         [CommandMethod("hymdE")] public void Cmd_hymdE() => LicenseGate.RunGated("hymdE", () => ProductionDispatcher.Invoke("hymdE"));
+        [CommandMethod("hymdc")] public void Cmd_hymdc() => LicenseGate.RunGated("hymdc", () => ProductionDispatcher.Invoke("hymdc"));
+        [CommandMethod("HYMDCOMPARE")] public void Cmd_HYMDCOMPARE() => LicenseGate.RunGated("HYMDCOMPARE", () => ProductionDispatcher.Invoke("HYMDCOMPARE"));
+        [CommandMethod("HYMDPLANCHECK")] public void Cmd_HYMDPLANCHECK() => LicenseGate.RunGated("HYMDPLANCHECK", () => ProductionDispatcher.Invoke("HYMDPLANCHECK"));
         #endregion
 
         #region 导出 (Export)
         [CommandMethod("hyex")]        public void Cmd_hyex() => LicenseGate.RunGated("hyex", () => ProductionDispatcher.Invoke("hyex"));
         [CommandMethod("hyex_csv")]    public void Cmd_hyex_csv() => LicenseGate.RunGated("hyex_csv", () => ProductionDispatcher.Invoke("hyex_csv"));
         [CommandMethod("hyLtCapture")] public void Cmd_hyLtCapture() => LicenseGate.RunGated("hyLtCapture", () => ProductionDispatcher.Invoke("hyLtCapture"));
+        [CommandMethod("hysvg")] public void Cmd_hysvg() => LicenseGate.RunGated("hysvg", () => ProductionDispatcher.Invoke("hysvg"));
         #endregion
 
         #region 其他工具 (Misc)

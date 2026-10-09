@@ -83,7 +83,7 @@
     <ProjectReference Include="..\HYFEA\HYFEA.Hosting\HYFEA.Hosting.csproj" />
     <ProjectReference Include="..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
     <ProjectReference Include="..\HyCAD.Tables\HyCAD.Tables.csproj" />
-    <ProjectReference Include="..\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />
+    <ProjectReference Include="..\..\..\注册机\sdk\dotnet\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HyCAD.BlenderUI\HyCAD.BlenderUI.csproj">
@@ -160,6 +160,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Features\OverKill\Views\HyovSettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Features\Export\Views\SvgExportWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

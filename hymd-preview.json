@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-02T00:50:09.628Z",
+  "sourcePath": "E:\\Code\\HyMdTauri2\\samples\\cad-compare\\F-font.hy.md",
+  "markdown": "---\ntitle: cad-compare F-font\ncad_compare:\n  caseId: F-font\npage:\n  preset: A4\n  columns: 1\n  margin_mm: [25, 20, 25, 20]\nhymd:\n  version: \"0.1\"\n---\n\n# F 字体\n\n预览默认栈西文先走 Segoe UI，中文才是微软雅黑。强制雅黑 / 宋体由夹具 CSS 覆盖，不改这篇正文。\n\n本段混排：设计说明 DesignSpec 栏宽 165 mm，The quick brown fox 与汉字宽度一起决定折行点。\n",
+  "reports": [
+    {
+      "schemaVersion": 1,
+      "surface": "hymd-paper",
+      "recipe": "preview",
+      "caseId": "F-font",
+      "fontResolved": "\"Segoe UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+      "textHeightMm": 3.7,
+      "columnWidthMm": 170,
+      "lineHeightCss": "23.6px",
+      "glyphs": [
+        {
+          "ch": "A",
+          "advanceMm": 2.387
+        },
+        {
+          "ch": "i",
+          "advanceMm": 0.896
+        },
+        {
+          "ch": "W",
+          "advanceMm": 3.456
+        },
+        {
+          "ch": "0",
+          "advanceMm": 1.995
+        },
+        {
+          "ch": "中",
+          "advanceMm": 3.7
+        },
+        {
+          "ch": "一",
+          "advanceMm": 3.7
+        },
+        {
+          "ch": "、",
+          "advanceMm": 3.7
+        },
+        {
+          "ch": " ",
+          "advanceMm": 1.014
+        }
+      ],
+      "wrap": {
+        "asciiN": 400,
+        "cjkN": 45,
+        "mixedN": 55,
+        "widthMm": 170
+      },
+      "vertical": {
+        "oneLineMm": 5.901,
+        "twoLineMm": 11.802,
+        "paraGapMm": 3,
+        "h1HeightMm": 5.901
+      },
+      "blocks": [
+        {
+          "caseId": "F-font",
+          "kind": "h1",
+          "markdown": "F 字体",
+          "xMm": 20,
+          "yMm": 25,
+          "widthMm": 170,
+          "heightMm": 11.635,
+          "lineCount": 1
+        },
+        {
+          "caseId": "F-font",
+          "kind": "p",
+          "markdown": "预览默认栈西文先走 Segoe UI，中文才是微软雅黑。强制雅黑 / 宋体由夹具 CSS 覆盖，不改这篇正文。",
+          "xMm": 20,
+          "yMm": 40.333,
+          "widthMm": 170,
+          "heightMm": 5.901,
+          "lineCount": 1
+        },
+        {
+          "caseId": "F-font",
+          "kind": "p",
+          "markdown": "本段混排：设计说明 DesignSpec 栏宽 165 mm，The quick brown fox 与汉字宽度一起决定折行点。",
+          "xMm": 20,
+          "yMm": 49.234,
+          "widthMm": 170,
+          "heightMm": 5.901,
+          "lineCount": 1
+        }
+      ]
+    }
+  ]
+}
