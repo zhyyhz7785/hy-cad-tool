@@ -21,59 +21,31 @@ namespace HyCAD.Geometry.Algorithms
             if (!line1.IsCollinear(line2, tolerance))
                 return default;
 
-            // 检查重叠
-            // 将线段投影到主方向上
+            // 沿 line1 的方向参数 t 取两段的交集。斜线不能只比 X 或只比 Y，
+            // 否则 45° 重叠会被收成过起点的竖线。
             Vector2D dir = line1.Direction;
-            bool isHorizontal = System.Math.Abs(dir.Y) < System.Math.Abs(dir.X);
+            double len2 = dir.X * dir.X + dir.Y * dir.Y;
+            if (len2 < tolerance * tolerance)
+                return default;
 
-            if (isHorizontal)
-            {
-                // 水平方向，比较 X 坐标
-                double min1 = System.Math.Min(line1.StartPoint.X, line1.EndPoint.X);
-                double max1 = System.Math.Max(line1.StartPoint.X, line1.EndPoint.X);
-                double min2 = System.Math.Min(line2.StartPoint.X, line2.EndPoint.X);
-                double max2 = System.Math.Max(line2.StartPoint.X, line2.EndPoint.X);
+            double t2a = ParameterAlong(line1.StartPoint, dir, len2, line2.StartPoint);
+            double t2b = ParameterAlong(line1.StartPoint, dir, len2, line2.EndPoint);
+            double lo = System.Math.Max(0.0, System.Math.Min(t2a, t2b));
+            double hi = System.Math.Min(1.0, System.Math.Max(t2a, t2b));
+            double length = System.Math.Sqrt(len2);
+            if ((hi - lo) * length < tolerance)
+                return default;
 
-                // 检查是否有重叠
-                if (max1 < min2 - tolerance || max2 < min1 - tolerance)
-                    return default;
+            return new Line2D(
+                new Point2D(line1.StartPoint.X + dir.X * lo, line1.StartPoint.Y + dir.Y * lo),
+                new Point2D(line1.StartPoint.X + dir.X * hi, line1.StartPoint.Y + dir.Y * hi));
+        }
 
-                // 计算重叠区域
-                double overlapMin = System.Math.Max(min1, min2);
-                double overlapMax = System.Math.Min(max1, max2);
-
-                if (overlapMax - overlapMin < tolerance)
-                    return default;
-
-                double y = line1.StartPoint.Y; // 共线，Y坐标相同
-                return new Line2D(
-                    new Point2D(overlapMin, y),
-                    new Point2D(overlapMax, y)
-                );
-            }
-            else
-            {
-                // 垂直方向，比较 Y 坐标
-                double min1 = System.Math.Min(line1.StartPoint.Y, line1.EndPoint.Y);
-                double max1 = System.Math.Max(line1.StartPoint.Y, line1.EndPoint.Y);
-                double min2 = System.Math.Min(line2.StartPoint.Y, line2.EndPoint.Y);
-                double max2 = System.Math.Max(line2.StartPoint.Y, line2.EndPoint.Y);
-
-                if (max1 < min2 - tolerance || max2 < min1 - tolerance)
-                    return default;
-
-                double overlapMin = System.Math.Max(min1, min2);
-                double overlapMax = System.Math.Min(max1, max2);
-
-                if (overlapMax - overlapMin < tolerance)
-                    return default;
-
-                double x = line1.StartPoint.X;
-                return new Line2D(
-                    new Point2D(x, overlapMin),
-                    new Point2D(x, overlapMax)
-                );
-            }
+        private static double ParameterAlong(Point2D origin, Vector2D dir, double len2, Point2D point)
+        {
+            double dx = point.X - origin.X;
+            double dy = point.Y - origin.Y;
+            return (dx * dir.X + dy * dir.Y) / len2;
         }
 
         /// <summary>

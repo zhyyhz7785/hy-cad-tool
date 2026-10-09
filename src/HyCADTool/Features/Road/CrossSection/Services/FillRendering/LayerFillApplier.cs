@@ -27,13 +27,15 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             if (tr == null || ms == null || db == null) return 0;
 
             // boundary 必须先进 Database（有 ObjectId），否则下面 AppendLoop 会拿不到合法的 Loop Id。
-            // 这里容忍调用方可能传入"已附加"或"未附加"的 polyline；未附加则先 Append 再设置。
+            // 调用方已经入库的轮廓归调用方，失败时不删。本方法自己补进去的，填充失败就擦掉。
+            bool addedBoundary = false;
             if (boundary.ObjectId.IsNull)
             {
                 try
                 {
                     ms.AppendEntity(boundary);
                     tr.AddNewlyCreatedDBObject(boundary, true);
+                    addedBoundary = true;
                 }
                 catch
                 {
@@ -55,6 +57,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             catch
             {
                 hatch.Dispose();
+                EraseIfAdded(addedBoundary, boundary);
                 return 0;
             }
             try
@@ -78,6 +81,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             catch
             {
                 hatch.Dispose();
+                EraseIfAdded(addedBoundary, boundary);
                 return 0;
             }
 
@@ -90,13 +94,22 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             }
             catch
             {
-                // 任一步失败（图案不识别 / 边界拓扑问题 / 关联建立失败）都把 hatch 擦掉，返回 0；不传染主出图。
+                // 任一步失败（图案不识别 / 边界拓扑问题 / 关联建立失败）都把 hatch 擦掉。
+                // 调用方自己的轮廓留下；本方法临时补进库的边界一起擦掉。
                 try { hatch.Erase(); } catch { /* 吞 */ }
+                EraseIfAdded(addedBoundary, boundary);
                 return 0;
             }
 
             HyRoadXdata.Write(tr, db, hatch, templateGuid, RoadStandardSectionDrawService.DrawingKind, SchemaVersion.Current);
             return 1;
+        }
+
+        private static void EraseIfAdded(bool added, Polyline boundary)
+        {
+            if (!added || boundary == null)
+                return;
+            try { boundary.Erase(); } catch { /* 已不在库中 */ }
         }
 
         public static int ApplyBlock(

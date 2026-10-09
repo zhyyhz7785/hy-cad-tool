@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
+    <ProjectReference Include="..\HyCAD.Tables\HyCAD.Tables.csproj" />
   </ItemGroup>
 
   <!-- 只编入纯算法文件，不引用 HyCADTool（net48 + WPF，Linux 上编不过）。 -->

@@ -14,7 +14,7 @@ public sealed class FormulaCalculatorTests
     [InlineData("1+2*3", 7)]
     [InlineData("(1+2)*3", 9)]
     [InlineData("-5+2", -3)]
-    [InlineData("2^3^2", 512)]
+    [InlineData("2^3^2", 64)]
     [InlineData("5!", 120)]
     [InlineData("50%", 0.5)]
     [InlineData("1.5e2", 150)]
@@ -30,6 +30,27 @@ public sealed class FormulaCalculatorTests
         FormulaEvaluator.Evaluate("LOG(8,2)").Value.Should().BeApproximately(3, 1e-9);
         FormulaEvaluator.Evaluate("SQRT(2)").Value.Should().BeApproximately(Math.Sqrt(2), 1e-9);
         FormulaEvaluator.Evaluate("=EXP(1)").Value.Should().BeApproximately(Math.E, 1e-9);
+    }
+
+    [Fact]
+    public void Missing_scalar_arguments_are_value_errors()
+    {
+        FormulaEvaluator.Evaluate("=SIN()").ToDisplay().Should().Be("#VALUE!");
+        FormulaEvaluator.Evaluate("ATAN2(1)").ToDisplay().Should().Be("#VALUE!");
+        FormulaEvaluator.Evaluate("POWER(2)").ToDisplay().Should().Be("#VALUE!");
+        FormulaEvaluator.Evaluate("MOD(1)").ToDisplay().Should().Be("#VALUE!");
+        FormulaEvaluator.Evaluate("LOG()").ToDisplay().Should().Be("#VALUE!");
+        FormulaEvaluator.Evaluate("ROUND()").ToDisplay().Should().Be("#VALUE!");
+        FormulaEvaluator.Evaluate("SQRT()").ToDisplay().Should().Be("#VALUE!");
+    }
+
+    [Fact]
+    public void Power_is_left_associative_like_excel()
+    {
+        FormulaEvaluator.Evaluate("2^3^2").Value.Should().BeApproximately(64, 1e-9);
+        FormulaEvaluator.Evaluate("2^(3^2)").Value.Should().BeApproximately(512, 1e-9);
+        FormulaEvaluator.Evaluate("2^-3").Value.Should().BeApproximately(0.125, 1e-9);
+        FormulaEvaluator.Evaluate("-2^2").Value.Should().BeApproximately(-4, 1e-9);
     }
 
     [Fact]

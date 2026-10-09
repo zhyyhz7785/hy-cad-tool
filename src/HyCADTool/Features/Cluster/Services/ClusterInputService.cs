@@ -151,24 +151,57 @@ namespace HyCADTool.Features.Cluster.Services
         {
             var points = new HashSet<Point3d>(new Point2dEqualityComparer(tolerance));
             var lines = ExplodePolylinesToLines(polylines);
-            foreach (var baseLine in lines)
-                foreach (var axis in axisLines)
-                    points.UnionWith(GetIntersectionPoints(baseLine, axis));
-            return points.ToList();
+            try
+            {
+                foreach (var baseLine in lines)
+                    foreach (var axis in axisLines)
+                        points.UnionWith(GetIntersectionPoints(baseLine, axis));
+                return points.ToList();
+            }
+            finally
+            {
+                foreach (var line in lines)
+                    line.Dispose();
+            }
         }
 
         private List<Line> ExplodePolylinesToLines(List<Polyline> polylines)
         {
             var lines = new List<Line>();
-            foreach (var pl in polylines)
+            try
             {
-                var coll = new DBObjectCollection();
-                pl.Explode(coll);
-                foreach (DBObject obj in coll)
-                    if (obj is Line line)
-                        lines.Add(line);
+                foreach (var pl in polylines)
+                {
+                    var coll = new DBObjectCollection();
+                    try
+                    {
+                        pl.Explode(coll);
+                    }
+                    catch
+                    {
+                        foreach (DBObject obj in coll)
+                            obj?.Dispose();
+                        throw;
+                    }
+
+                    foreach (DBObject obj in coll)
+                    {
+                        if (obj is Line line)
+                            lines.Add(line);
+                        else
+                            obj?.Dispose();
+                    }
+                    coll.Dispose();
+                }
+
+                return lines;
             }
-            return lines;
+            catch
+            {
+                foreach (var line in lines)
+                    line.Dispose();
+                throw;
+            }
         }
 
         private List<Point3d> GetIntersectionPoints(Line l1, Line l2)

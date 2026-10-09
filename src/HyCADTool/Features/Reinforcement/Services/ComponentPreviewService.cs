@@ -50,6 +50,11 @@ namespace HyCADTool.Features.Reinforcement.Services
                         HyComponentXdata.WritePreview(tr, db, hatch, sessionId, region.Id, region.Type);
                         count++;
                     }
+                    else
+                    {
+                        // 填充失败时边界只为 Hatch 而入库，没有 XData，EraseSession 扫不到，这里擦掉。
+                        try { boundary.Erase(); } catch { /* 已不在库中 */ }
+                    }
 
                     var label = CreateLabel(tr, btr, region);
                     if (label != null)

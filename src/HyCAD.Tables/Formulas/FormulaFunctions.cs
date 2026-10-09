@@ -66,8 +66,12 @@ internal static class FormulaFunctions
                 });
         }
 
-        var scalars = RequireScalars(args, context);
-        return name.ToUpperInvariant() switch
+        var upper = name.ToUpperInvariant();
+        if (!TryScalarArity(upper, out var minArgs, out var maxArgs))
+            return FormulaResult.FromError(FormulaErrorCode.Name);
+
+        var scalars = RequireScalars(args, context, minArgs, maxArgs);
+        return upper switch
         {
             "SIN" => FormulaMath.FromDouble(Math.Sin(scalars[0])),
             "COS" => FormulaMath.FromDouble(Math.Cos(scalars[0])),
@@ -158,8 +162,65 @@ internal static class FormulaFunctions
         return aggregate(values);
     }
 
-    private static List<double> RequireScalars(IReadOnlyList<FormulaArg> args, IFormulaContext? context)
+    /// <summary>
+    /// 标量函数的参数个数。个数不够或过多时由 <see cref="RequireScalars"/> 转成 #VALUE!，
+    /// 不再落到 scalars[0] 的 IndexOutOfRangeException。
+    /// </summary>
+    private static bool TryScalarArity(string upperName, out int minArgs, out int maxArgs)
     {
+        switch (upperName)
+        {
+            case "ATAN2":
+            case "MOD":
+            case "POWER":
+                minArgs = 2;
+                maxArgs = 2;
+                return true;
+            case "LOG":
+            case "ROUND":
+                minArgs = 1;
+                maxArgs = 2;
+                return true;
+            case "SIN":
+            case "COS":
+            case "TAN":
+            case "ASIN":
+            case "ACOS":
+            case "ATAN":
+            case "SINH":
+            case "COSH":
+            case "TANH":
+            case "EXP":
+            case "LN":
+            case "LOG10":
+            case "SQRT":
+            case "ABS":
+            case "SIGN":
+            case "FLOOR":
+            case "CEILING":
+            case "TRUNC":
+            case "FACT":
+            case "DEGREES":
+            case "RADIANS":
+                minArgs = 1;
+                maxArgs = 1;
+                return true;
+            default:
+                minArgs = 0;
+                maxArgs = 0;
+                return false;
+        }
+    }
+
+    private static List<double> RequireScalars(
+        IReadOnlyList<FormulaArg> args,
+        IFormulaContext? context,
+        int minCount,
+        int maxCount)
+    {
+        if (args.Count < minCount || args.Count > maxCount)
+            throw new FormulaException(FormulaErrorCode.Value);
+
         if (args.Any(arg => arg.IsRange))
             throw new FormulaException(FormulaErrorCode.Value);
 
