@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using HyCADTool.Features.SpongeCity.Domain.Models;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
 
 namespace HyCADTool.Features.SpongeCity.Infrastructure
 {
@@ -19,10 +20,13 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
 
             var ci = CultureInfo.InvariantCulture;
             var sb = new StringBuilder();
+            var standard = SpongeStandardRegistry.GetOrDefault(input.StandardId);
+            var rounding = standard.Rounding ?? new SpongeRounding();
 
             sb.AppendLine($"# 海绵城市雨水控制与利用计算书 — {input.ProjectName}");
             sb.AppendLine();
-            sb.AppendLine($"> 主依据：DB13(J) 8457-2022 京津冀地方标准；建城函[2014]275 号；GB 50180-2018。");
+            sb.AppendLine($"> 主依据：{standard.Citation}。");
+            sb.AppendLine($"> 规范 Id：{standard.Id}（{standard.DisplayName}）。数值与面板、Excel 同源，来自同一次计算。");
             sb.AppendLine($"> 生成日期：{DateTime.Now:yyyy-MM-dd HH:mm}");
             sb.AppendLine();
 
@@ -33,6 +37,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             sb.AppendLine("|---|---|");
             sb.AppendLine($"| 项目名称 | {input.ProjectName} |");
             sb.AppendLine($"| 建设地点 | {input.Location} |");
+            sb.AppendLine($"| 适用规范 | {standard.DisplayName} |");
             sb.AppendLine($"| 适用地区 | {RegionText(input.Region)} |");
             sb.AppendLine($"| 用地性质 | {ProjectTypeText(input.ProjectType)} |");
             sb.AppendLine($"| 总用地面积 F | {input.TotalAreaM2.ToString("F0", ci)} m² ({(input.TotalAreaM2 / 10000).ToString("F4", ci)} hm²) |");
@@ -46,17 +51,17 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             sb.AppendLine();
             sb.AppendLine("| 控制指标 | 数值 | 依据 |");
             sb.AppendLine("|---|---|---|");
-            sb.AppendLine($"| 年径流总量控制率 α | {input.AlphaTarget:P1} | DB13 §5.2.4-1 |");
-            sb.AppendLine($"| 对应设计降雨厚度 h_y | {input.DesignRainfallMm.ToString("F1", ci)} mm | DB13 附录 A |");
-            sb.AppendLine($"| 年 SS 削减率目标 | {input.EtaSsTarget:P1} | DB13 §5.2.5 |");
-            sb.AppendLine($"| 初期弃流厚度 | {input.InitialDiscardMm.ToString("F1", ci)} mm | DB13 §4.4.4 |");
-            sb.AppendLine($"| 外排雨水重现期 | {input.ReturnPeriodYear} 年 | DB13 §3.0.6 |");
+            sb.AppendLine($"| 年径流总量控制率 α | {input.AlphaTarget.ToString("P1", ci)} | {standard.Id} |");
+            sb.AppendLine($"| 对应设计降雨厚度 h_y | {input.DesignRainfallMm.ToString("F1", ci)} mm | {standard.Id} |");
+            sb.AppendLine($"| SS 削减率目标 | {input.EtaSsTarget.ToString("P1", ci)} | {standard.Id} |");
+            sb.AppendLine($"| 初期弃流厚度 | {input.InitialDiscardMm.ToString("F1", ci)} mm | 不从 V需 中扣除 |");
+            sb.AppendLine($"| 外排雨水重现期 | {input.ReturnPeriodYear} 年 | {standard.Id} |");
             sb.AppendLine();
 
             // ── 二、下垫面 ──
             sb.AppendLine("## 二、下垫面与综合径流系数 ψ_z");
             sb.AppendLine();
-            sb.AppendLine("> 公式：ψ_z = Σ(F_i·ψ_i) / ΣF_i  （DB13 §4.1.4 式 4.1.4）");
+            sb.AppendLine("> 公式：ψc = Σ(F_i·ψ_i) / ΣF_i。下表 ψ 与面积来自本次输入；ψc 为引擎舍入后的值。");
             sb.AppendLine();
             sb.AppendLine("| 序号 | 下垫面类型 | 图层名 | 面积 (m²) | 占比 | ψ_i | F_i·ψ_i |");
             sb.AppendLine("|---|---|---|---:|---:|---:|---:|");
@@ -70,20 +75,20 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             foreach (var s in input.Surfaces) psiSumFiPsi += s.Area * s.Psi;
             sb.AppendLine($"| — | **合计** | — | **{total.ToString("F0", ci)}** | 100% | — | **{psiSumFiPsi.ToString("F1", ci)}** |");
             sb.AppendLine();
-            sb.AppendLine($"**ψ_z = {result.PsiZ.ToString("F3", ci)}**（{InterpretPsi(result.PsiZ)}）");
+            sb.AppendLine($"**ψc = {result.PsiZ.ToString("F3", ci)}**（{InterpretPsi(result.PsiZ)}）");
             sb.AppendLine();
-            sb.AppendLine($"流量径流系数（GB 50014 §4.2.2 系数 1.1）：Ψm = 1.1·ψ_z = **{result.PsiM.ToString("F3", ci)}**");
+            sb.AppendLine($"流量径流系数（GB 50014 §4.2.2 系数 1.1，上限 0.95）：Ψm = **{result.PsiM.ToString("F3", ci)}**");
             sb.AppendLine();
 
             // ── 三、调蓄容积 ──
             sb.AppendLine("## 三、调蓄容积");
             sb.AppendLine();
-            sb.AppendLine("> 公式：W = 10·ψ_z·h_y·F(hm²)  （DB13 §4.2.4 式 4.2.4）");
+            sb.AppendLine("> 公式：V需 = 10·ψc·h_y·F(hm²)。ψc、F、V需 的小数位由当前规范决定，与 Excel 同一数字。");
             sb.AppendLine();
-            sb.AppendLine($"- 设计调蓄容积 W = 10 × {result.PsiZ.ToString("F3", ci)} × {input.DesignRainfallMm.ToString("F1", ci)} × {(input.TotalAreaM2 / 10000).ToString("F4", ci)} = **{result.DesignVolumeW.ToString("F2", ci)} m³**");
+            sb.AppendLine($"- 设计调蓄容积 W = 10 × {result.PsiZ.ToString("F3", ci)} × {input.DesignRainfallMm.ToString("F1", ci)} × {result.AreaHm2.ToString("F4", ci)} = **{Fmt(result.DesignVolumeW, rounding.RequiredVolumeDecimals, ci)} m³**");
             sb.AppendLine($"- 硬化面积 F_硬化 = {result.HardeningArea.ToString("F0", ci)} m²");
-            sb.AppendLine($"- §5.2.2 配建容积 V_配 = **{result.RequiredVolume522.ToString("F2", ci)} m³**");
-            sb.AppendLine($"- 取严格 W_设计 = MAX(W, V_配) = **{result.FinalRequiredVolume.ToString("F2", ci)} m³**");
+            sb.AppendLine($"- 配建容积 V_配 = **{Fmt(result.RequiredVolume522, rounding.RequiredVolumeDecimals, ci)} m³**");
+            sb.AppendLine($"- V需 = MAX(W, V_配) = **{Fmt(result.FinalRequiredVolume, rounding.RequiredVolumeDecimals, ci)} m³**");
             sb.AppendLine($"- 单位汇水面积控制水量 = {(result.FinalRequiredVolume / Math.Max(0.0001, input.TotalAreaM2 / 10000.0)).ToString("F2", ci)} m³/hm²");
             sb.AppendLine();
 
@@ -100,8 +105,11 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             }
             sb.AppendLine($"| — | **合计 V_实** | — | — | — | **{result.ProvidedVolume.ToString("F2", ci)}** | — | **{provVeta.ToString("F2", ci)}** |");
             sb.AppendLine();
-            sb.AppendLine($"- 综合 SS 削减率 η_综合 = **{result.EtaCombined:P1}**");
-            sb.AppendLine($"- 年 SS 削减率 η_年 = α·η_综合 = {input.AlphaTarget:P1} × {result.EtaCombined:P1} = **{result.EtaAnnual:P1}**");
+            sb.AppendLine($"- 综合 SS 削减率 η_综合 = **{result.EtaCombined.ToString("F3", ci)}**");
+            sb.AppendLine($"- 年 SS 削减率 η_年 = α·η_综合 = **{result.EtaAnnual.ToString("F3", ci)}**");
+            sb.AppendLine(standard.MultiplySsByAlpha
+                ? "- 本规范 SS 校核比较的是 η_年。"
+                : "- 本规范 SS 校核比较的是 η_综合，不乘 α。");
             sb.AppendLine($"- V_实 / W_设计 富余率 = **{result.VolumeSurplus:P1}**");
             sb.AppendLine();
 
@@ -113,7 +121,8 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             int idx = 1;
             foreach (var c in result.Checks)
             {
-                sb.AppendLine($"| {idx} | {c.Name} | {c.ActualText} | {c.TargetText} | {(c.Passed ? "达标 ✓" : "不达标 ✗")} | {c.Reference} |");
+                string mark = string.IsNullOrEmpty(c.VerdictText) ? (c.Passed ? "达标" : "不达标") : c.VerdictText;
+                sb.AppendLine($"| {idx} | {c.Name} | {c.ActualText} | {c.TargetText} | {mark} | {c.Reference} |");
                 idx++;
             }
             sb.AppendLine();
@@ -121,20 +130,25 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             // ── 六、综合结论 ──
             sb.AppendLine("## 六、综合结论");
             sb.AppendLine();
-            if (result.AllPassed)
-                sb.AppendLine("**★ 海绵城市强制性指标全部达标，可进入施工图深化阶段。**");
-            else
-                sb.AppendLine("**✗ 存在不达标项，请回到「设施配置」/「下垫面统计」 调整规模或下垫面构成。**");
+            if (!string.IsNullOrEmpty(standard.PerviousPavement?.Documentation))
+            {
+                sb.AppendLine(standard.PerviousPavement.Documentation);
+                sb.AppendLine();
+            }
+            sb.AppendLine(string.IsNullOrEmpty(result.VerdictText)
+                ? (result.AllPassed ? standard.PassVerdict : standard.FailVerdict)
+                : "**" + result.VerdictText + "**");
             sb.AppendLine();
             sb.AppendLine("### 关键技术指标汇总");
             sb.AppendLine();
             sb.AppendLine($"- 项目用地面积 F = {input.TotalAreaM2.ToString("F0", ci)} m²");
-            sb.AppendLine($"- 综合径流系数 ψ_z = {result.PsiZ.ToString("F3", ci)}");
-            sb.AppendLine($"- 年径流总量控制率 α = {input.AlphaTarget:P1}");
+            sb.AppendLine($"- 综合径流系数 ψc = {result.PsiZ.ToString("F3", ci)}");
+            sb.AppendLine($"- 年径流总量控制率 α = {input.AlphaTarget.ToString("P1", ci)}");
             sb.AppendLine($"- 设计降雨厚度 h_y = {input.DesignRainfallMm.ToString("F1", ci)} mm");
-            sb.AppendLine($"- 设计调蓄容积 W_设计 = {result.FinalRequiredVolume.ToString("F2", ci)} m³");
-            sb.AppendLine($"- 设施提供 V_实 = {result.ProvidedVolume.ToString("F2", ci)} m³");
-            sb.AppendLine($"- 综合 SS 削减率 = {result.EtaCombined:P1}");
+            sb.AppendLine($"- 设计调蓄容积 V需 = {Fmt(result.FinalRequiredVolume, rounding.RequiredVolumeDecimals, ci)} m³");
+            sb.AppendLine($"- 设施提供 V实 = {result.ProvidedVolume.ToString("F2", ci)} m³");
+            sb.AppendLine($"- 综合 SS 削减率 = {result.EtaCombined.ToString("F3", ci)}");
+            sb.AppendLine($"- SS 校核取值 = {result.EtaCompared.ToString("F3", ci)}");
             sb.AppendLine($"- 外排设计流量 Q = {result.DesignFlowQ.ToString("F1", ci)} L/s");
             sb.AppendLine($"- 海绵投资估算 = {result.EstimatedCostWanyuan.ToString("F2", ci)} 万元");
             sb.AppendLine();
@@ -142,10 +156,8 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             // ── 七、规范引用 ──
             sb.AppendLine("## 七、规范引用");
             sb.AppendLine();
-            sb.AppendLine("- DB13(J) 8457-2022 《海绵城市雨水控制与利用工程设计规范（京津冀）》§4 / §5");
-            sb.AppendLine("- 建城函[2014]275 号 《海绵城市建设技术指南——低影响开发雨水系统构建》");
-            sb.AppendLine("- GB 50180-2018 《城市居住区规划设计标准》§3.0.5 / §4.0.4");
-            sb.AppendLine("- GB 50014-2021 《室外排水设计标准》§4.2");
+            sb.AppendLine("- " + standard.Citation);
+            sb.AppendLine("- GB 50014 《室外排水设计标准》§4.2（流量径流系数 1.1，上限 0.95）");
             sb.AppendLine();
 
             sb.AppendLine($"---");
@@ -160,6 +172,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             {
                 case SpongeRegion.Beijing: return "北京市";
                 case SpongeRegion.Tianjin: return "天津市";
+                case SpongeRegion.Hubei: return "湖北省";
                 default: return "河北省";
             }
         }
@@ -174,8 +187,15 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 case ProjectType.RebuildOldResidential: return "改扩建老旧小区";
                 case ProjectType.RebuildOtherResidential: return "改扩建其他小区";
                 case ProjectType.RebuildPublic: return "改扩建公共建筑";
+                case ProjectType.Industrial: return "工业用地";
                 default: return "—";
             }
+        }
+
+        private static string Fmt(double value, int decimals, CultureInfo ci)
+        {
+            if (decimals < 0) return value.ToString("F2", ci);
+            return value.ToString("F" + decimals.ToString(ci), ci);
         }
 
         private static string InterpretPsi(double psi)

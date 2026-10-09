@@ -4,6 +4,8 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using HyCADTool.Features.SpongeCity.Domain.Models;
+using HyCADTool.Features.SpongeCity.Domain.Services;
+using HyCADTool.Features.SpongeCity.Domain.Standards;
 using static HyCADTool.Features.SpongeCity.Infrastructure.OpenXmlSheetHelper;
 
 namespace HyCADTool.Features.SpongeCity.Infrastructure
@@ -18,6 +20,8 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
     {
         public static void Build(SpongeProjectInput input, SpongeResult result, string filePath)
         {
+            if (input == null) input = SpongeProjectInput.CreateDefault();
+            if (result == null) result = SpongeCalculationService.Compute(input);
             using (var doc = SpreadsheetDocument.Create(filePath, SpreadsheetDocumentType.Workbook))
             {
                 var wbPart = doc.AddWorkbookPart();
@@ -28,13 +32,13 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 stylesPart.Stylesheet = BuildStylesheet();
                 stylesPart.Stylesheet.Save();
 
-                BuildSheetBasic(wbPart, sheets, input);
-                BuildSheetSurface(wbPart, sheets, input);
+                BuildSheetBasic(wbPart, sheets, input, result);
+                BuildSheetSurface(wbPart, sheets, input, result);
                 BuildSheetRunoff(wbPart, sheets);
-                BuildSheetVolume(wbPart, sheets);
-                BuildSheetPollution(wbPart, sheets, input);
-                BuildSheetFacility(wbPart, sheets, input);
-                BuildSheetSummary(wbPart, sheets);
+                BuildSheetVolume(wbPart, sheets, result);
+                BuildSheetPollution(wbPart, sheets, input, result);
+                BuildSheetFacility(wbPart, sheets, input, result);
+                BuildSheetSummary(wbPart, sheets, input, result);
 
                 wbPart.Workbook.Save();
             }
@@ -43,8 +47,9 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
         // ────────────────────────────────────────────────
         // Sheet1：基本参数（左列 C 存值；右列 G 存值；行号契约固定）
         // ────────────────────────────────────────────────
-        private static void BuildSheetBasic(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input)
+        private static void BuildSheetBasic(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input, SpongeResult result)
         {
+            var standard = SpongeStandardRegistry.GetOrDefault(input.StandardId);
             var (ws, data) = AddSheet(wbPart, sheets, "基本参数", 1);
             SetColumnWidths(ws, new[]
             {
@@ -54,7 +59,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
 
             // 标题
             var r1 = EnsureRow(data, 1);
-            Write(ws, r1, 1, "海绵城市雨水控制利用计算总表  （住宅 / 商业小区）", S_TITLE);
+            Write(ws, r1, 1, standard.WorkbookTitle + "  [" + standard.Id + "]", S_TITLE);
             Merge(ws, 1, 1, 1, 8);
             SetRowHeight(data, 1, 24);
 
@@ -66,7 +71,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             var r4 = EnsureRow(data, 4);
             Write(ws, r4, 1, "一、项目信息", S_SUBTITLE);
             Merge(ws, 4, 1, 4, 4);
-            Write(ws, r4, 5, "二、设计控制目标（DB13 §3.0.4）", S_SUBTITLE);
+            Write(ws, r4, 5, "二、设计控制目标（" + standard.Id + "）", S_SUBTITLE);
             Merge(ws, 4, 5, 4, 8);
 
             // 表头
@@ -89,7 +94,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 ("总用地面积 F (hm²)",    "=ROUND(C9/10000,4)",                    "自动换算"),           // C10
                 ("建筑占地面积 (m²)",     input.BuildingFootprintM2,               "建筑屋面投影"),       // C11
                 ("建筑密度 (%)",          "=ROUND(C11/C9,4)",                      "自动计算"),           // C12
-                ("绿地率 (%)",            input.GreenRatio,                        "GB50180 ≥30%(R2)"),  // C13
+                ("绿地率 (%)",            result.GreenRatioActual,              "与校核同一口径"),  // C13
                 ("绿地面积 (m²)",         "=ROUND(C13*C9,0)",                      "自动"),               // C14
                 ("地下车库占地比例 (%)",  0.40,                                    "影响下沉式绿地适用"),
                 ("机动车出入口数 (处)",   2.0,                                     "影响透水铺装"),
@@ -117,7 +122,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 ("初期雨水弃流厚度 (mm)",              input.InitialDiscardMm,                                            "DB13 §4.4.4"),                  // G9
                 ("雨水回用要求",                        "绿化/道浇/景观",                                                  "用户选择"),                     // G10
                 ("外排峰值流量控制重现期 (年)",       (double)input.ReturnPeriodYear,                                    "DB13 §3.0.6"),                  // G11
-                ("控制目标体积 V需 (m³)",              "=ROUND(10*G7*'下垫面分析'!E19*C10,2)",                            "V=10·H·ψc·F(hm²)"),            // G12 ★
+                ("控制目标体积 V需 (m³)",              result.FinalRequiredVolume,                                           "引擎值，与计算书同一数字"), // G12 ★
                 ("单位汇水面积需控制水量 (m³/hm²)",   "=IF(C10=0,0,ROUND(G12/C10,2))",                                  "自动"),                         // G13
                 ("控制目标对应 SS 削减率",            "=G8",                                                             "等于 ηSS 目标"),                // G14
                 ("是否大型公共建筑(≥2万㎡)",          "否",                                                              "DB13 §5.0.5"),
@@ -199,8 +204,9 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
         // ────────────────────────────────────────────────
         // Sheet2：下垫面分析（C6~C15 面积；C16 合计；E19 ψc ★）
         // ────────────────────────────────────────────────
-        private static void BuildSheetSurface(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input)
+        private static void BuildSheetSurface(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input, SpongeResult result)
         {
+            var standard = SpongeStandardRegistry.GetOrDefault(input.StandardId);
             var (ws, data) = AddSheet(wbPart, sheets, "下垫面分析", 2);
             SetColumnWidths(ws, new[]
             {
@@ -213,33 +219,27 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             SetRowHeight(data, 1, 24);
 
             var r3 = EnsureRow(data, 3);
-            Write(ws, r3, 1, "依据：DB13(J)8457 表4.2.1-3；指南表4-3；GB50014 表4.2.1", S_SMALL);
+            Write(ws, r3, 1, "依据：" + standard.Citation, S_SMALL);
             Merge(ws, 3, 1, 3, 7);
 
             var r5 = EnsureRow(data, 5);
             string[] head = { "序号", "下垫面类型", "面积 A (m²)", "占比", "雨量径流系数 ψ", "面积·ψ (m²)", "备注" };
             for (int i = 0; i < head.Length; i++) Write(ws, r5, i + 1, head[i], S_HEADER);
 
-            // 10 类下垫面 row 6~15
-            var entries = SurfaceCatalog.Entries;
-            for (int i = 0; i < entries.Count; i++)
+            // 10 类下垫面 row 6~15，名称与 ψ 来自当前输入（即当前规范）
+            var surfaces = input.Surfaces ?? new System.Collections.Generic.List<SurfaceItem>();
+            for (int i = 0; i < surfaces.Count && i < 10; i++)
             {
                 uint r = (uint)(6 + i);
                 var row = EnsureRow(data, r);
-                var ent = entries[i];
-                // 找面板/输入里此 code 的实际值
-                double area = 0; double psi = ent.DefaultPsi;
-                foreach (var s in input.Surfaces)
-                {
-                    if (s.Code == ent.Code) { area = s.Area; psi = s.Psi; break; }
-                }
+                var ent = surfaces[i];
                 Write(ws, row, 1, ent.Code, S_CALC);
                 Write(ws, row, 2, ent.Name, S_NORMAL);
-                Write(ws, row, 3, area, S_INPUT);
+                Write(ws, row, 3, ent.Area, S_INPUT);
                 Write(ws, row, 4, $"=IF($C$16=0,0,C{r}/$C$16)", S_CALC);
-                Write(ws, row, 5, psi, S_INPUT);
+                Write(ws, row, 5, ent.Psi, S_INPUT);
                 Write(ws, row, 6, $"=C{r}*E{r}", S_CALC);
-                Write(ws, row, 7, ent.Note, S_SMALL);
+                Write(ws, row, 7, ent.Note ?? "", S_SMALL);
             }
 
             // 合计行 row 16
@@ -267,7 +267,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             var r19 = EnsureRow(data, 19);
             Write(ws, r19, 1, "★", S_RESULT);
             Write(ws, r19, 2, "综合雨量径流系数 ψc", S_RESULT);
-            Write(ws, r19, 5, "=IF(C16=0,0,ROUND(F16/C16,3))", S_RESULT);
+            Write(ws, r19, 5, result.PsiZ, S_RESULT);
             Write(ws, r19, 6, "← 引用至 调蓄/校核", S_SMALL);
         }
 
@@ -321,7 +321,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
         // ────────────────────────────────────────────────
         // Sheet4：调蓄容积需求（D6~D13；D10 = V需 ★）
         // ────────────────────────────────────────────────
-        private static void BuildSheetVolume(WorkbookPart wbPart, Sheets sheets)
+        private static void BuildSheetVolume(WorkbookPart wbPart, Sheets sheets, SpongeResult result)
         {
             var (ws, data) = AddSheet(wbPart, sheets, "调蓄容积需求", 4);
             SetColumnWidths(ws, new[] { (1, 4.0), (2, 32.0), (3, 28.0), (4, 16.0), (5, 32.0) });
@@ -344,7 +344,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 ("2", "项目总面积（换算）",    "F = 基本参数!C10",                      "=基本参数!C10",                       "hm²"),
                 ("3", "设计降雨厚度",          "H = 基本参数!G7",                       "=基本参数!G7",                        "mm"),
                 ("4", "综合雨量径流系数",      "ψc = 下垫面!E19",                       "=下垫面分析!E19",                     "—"),
-                ("5", "★ 雨水控制利用总容积","V需 = 10·H·ψc·F(hm²)",                  "=ROUND(10*D8*D9*D7,2)",               "m³ 关键控制目标"),
+                ("5", "★ 雨水控制利用总容积","V需 = 10·H·ψc·F(hm²)",                  "=ENGINE", "m³ 与基本参数 G12 同一引擎值"),
                 ("6", "复核 基本参数!G12",     "=基本参数!G12",                         "=基本参数!G12",                       "m³（应一致）"),
                 ("7", "差值校核",              "= D10 − D11",                           "=ROUND(D10-D11,3)",                   "应=0"),
                 ("8", "单位面积控制水量",      "v = V需/F(hm²)",                        "=IF(D7=0,0,ROUND(D10/D7,2))",         "m³/hm² 参考 200~400"),
@@ -356,7 +356,10 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 Write(ws, row, 1, rows[i].seq, S_CALC);
                 Write(ws, row, 2, rows[i].name, S_NORMAL);
                 Write(ws, row, 3, rows[i].sym, S_SMALL);
-                Write(ws, row, 4, rows[i].formula, rows[i].seq == "5" ? S_RESULT : S_CALC);
+                if (rows[i].formula == "=ENGINE")
+                    Write(ws, row, 4, result.FinalRequiredVolume, S_RESULT);
+                else
+                    Write(ws, row, 4, rows[i].formula, rows[i].seq == "5" ? S_RESULT : S_CALC);
                 Write(ws, row, 5, rows[i].unit, S_SMALL);
             }
         }
@@ -364,8 +367,9 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
         // ────────────────────────────────────────────────
         // Sheet5：污染削减率验算（E16 = ηSS 实际 ★）
         // ────────────────────────────────────────────────
-        private static void BuildSheetPollution(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input)
+        private static void BuildSheetPollution(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input, SpongeResult result)
         {
+            var standard = SpongeStandardRegistry.GetOrDefault(input.StandardId);
             var (ws, data) = AddSheet(wbPart, sheets, "污染削减率验算", 5);
             SetColumnWidths(ws, new[] { (1, 4.0), (2, 28.0), (3, 14.0), (4, 14.0), (5, 14.0), (6, 16.0), (7, 28.0) });
 
@@ -411,8 +415,8 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             // ★ row 16 E16 综合 ηSS（关键引用）
             var r16 = EnsureRow(data, 16);
             Write(ws, r16, 1, "★", S_RESULT);
-            Write(ws, r16, 2, "综合 SS 削减率 ηSS（实际）", S_RESULT);
-            Write(ws, r16, 5, "=IF(C14=0,0,ROUND(F14/C14,3))", S_RESULT);
+            Write(ws, r16, 2, standard.MultiplySsByAlpha ? "年 SS 削减率 η_年（校核取值）" : "综合 SS 削减率 η综合（校核取值）", S_RESULT);
+            Write(ws, r16, 5, result.EtaCompared, S_RESULT);
             Write(ws, r16, 6, "← 引用至 校核汇总", S_SMALL);
 
             // row 17 目标
@@ -424,14 +428,14 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             // row 18 判定
             var r18 = EnsureRow(data, 18);
             Write(ws, r18, 2, "达标判定", S_BOLD);
-            Write(ws, r18, 5, "=IF(E16>=E17,\"达标\",\"不达标\")", S_RESULT);
+            Write(ws, r18, 5, VerdictOf(result, SpongeCheckCodes.Ss), S_RESULT);
             Write(ws, r18, 6, "ηSS,实 ≥ ηSS,目标 ?", S_SMALL);
         }
 
         // ────────────────────────────────────────────────
         // Sheet6：设施配置（D6~D13 规模；E6~E13 Vi；E14 = V实 ★）
         // ────────────────────────────────────────────────
-        private static void BuildSheetFacility(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input)
+        private static void BuildSheetFacility(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input, SpongeResult result)
         {
             var (ws, data) = AddSheet(wbPart, sheets, "设施配置", 6);
             SetColumnWidths(ws, new[]
@@ -451,18 +455,6 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             string[] head = { "序号", "设施名称", "单位", "数量 / 规模", "调蓄容积 Vi (m³)", "占总目标", "覆盖下垫面", "技术要点 / 依据" };
             for (int i = 0; i < head.Length; i++) Write(ws, r5, i + 1, head[i], S_HEADER);
 
-            // Vi 公式：F1 用 D6*G26/1000；F2 用 D7*0.30；F3 用 D8*0.10；F4 用 D9*0.05；F5~F8 直接 = Dx
-            string[] viFormulas =
-            {
-                "=ROUND(D6*基本参数!G26/1000,2)",
-                "=ROUND(D7*0.30,2)",
-                "=ROUND(D8*0.10,2)",
-                "=ROUND(D9*0.05,2)",
-                "=D10",
-                "=D11",
-                "=D12",
-                "=D13",
-            };
             string[] scopes = { "绿地内", "屋面+路面汇入", "人行/广场", "屋面源头", "屋面+路面", "路面沿线", "区域低洼", "土壤渗透性好区" };
 
             for (int i = 0; i < input.Facilities.Count && i < 8; i++)
@@ -474,7 +466,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 Write(ws, row, 2, f.Name, S_NORMAL);
                 Write(ws, row, 3, f.Unit, S_CALC);
                 Write(ws, row, 4, f.Quantity, S_INPUT);
-                Write(ws, row, 5, viFormulas[i], S_RESULT);
+                Write(ws, row, 5, f.ProvidedVolume, S_RESULT);
                 Write(ws, row, 6, $"=IF(基本参数!G12=0,0,E{r}/基本参数!G12)", S_CALC);
                 Write(ws, row, 7, scopes[i], S_SMALL);
                 Write(ws, row, 8, f.Note, S_SMALL);
@@ -483,7 +475,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             // 合计 V实 row 14 ★
             var r14 = EnsureRow(data, 14);
             Write(ws, r14, 2, "★ 设施调蓄合计 V实", S_BOLD);
-            Write(ws, r14, 5, "=SUM(E6:E13)", S_RESULT);
+            Write(ws, r14, 5, result.ProvidedVolume, S_RESULT);
             Write(ws, r14, 6, "=IF(基本参数!G12=0,0,E14/基本参数!G12)", S_BOLD);
             Write(ws, r14, 7, "V实 / V需", S_BOLD);
             Write(ws, r14, 8, "应 ≥ 100%", S_BOLD);
@@ -503,7 +495,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             Write(ws, r17, 2, "V实 ≥ V需", S_NORMAL);
             Write(ws, r17, 3, "=E14", S_CALC);
             Write(ws, r17, 4, "=基本参数!G12", S_CALC);
-            Write(ws, r17, 5, "=IF(C17>=D17,\"达标\",\"不达标\")", S_RESULT);
+            Write(ws, r17, 5, VerdictOf(result, SpongeCheckCodes.Volume), S_RESULT);
             Write(ws, r17, 6, "=ROUND(C17-D17,2)", S_CALC);
             Write(ws, r17, 7, "不达标→增设下沉式绿地/蓄水池", S_SMALL);
 
@@ -512,9 +504,9 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             Write(ws, r18, 1, "②", S_CALC);
             Write(ws, r18, 2, "下沉式绿地率 ≥ 50% 绿地", S_NORMAL);
             // 绿地总 = 下垫面 S2+S6+S7+S8 = C7+C11+C12+C13
-            Write(ws, r18, 3, "=IF((下垫面分析!C7+下垫面分析!C11+下垫面分析!C12+下垫面分析!C13)=0,0,D6/(下垫面分析!C7+下垫面分析!C11+下垫面分析!C12+下垫面分析!C13))", S_CALC);
+            Write(ws, r18, 3, result.SinkenGreenRatio, S_CALC);
             Write(ws, r18, 4, 0.50, S_CALC);
-            Write(ws, r18, 5, "=IF(C18>=D18,\"达标\",\"不达标\")", S_RESULT);
+            Write(ws, r18, 5, VerdictOf(result, SpongeCheckCodes.Sunken), S_RESULT);
             Write(ws, r18, 6, "=ROUND(C18-D18,3)", S_CALC);
             Write(ws, r18, 7, "DB13 §5.0.5", S_SMALL);
 
@@ -522,9 +514,9 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             var r19 = EnsureRow(data, 19);
             Write(ws, r19, 1, "③", S_CALC);
             Write(ws, r19, 2, "透水铺装率 ≥ 70%", S_NORMAL);
-            Write(ws, r19, 3, "=IF((下垫面分析!C8+下垫面分析!C9+下垫面分析!C10)=0,0,下垫面分析!C10/(下垫面分析!C8+下垫面分析!C9+下垫面分析!C10))", S_CALC);
+            Write(ws, r19, 3, result.PerviousPavementRatio, S_CALC);
             Write(ws, r19, 4, 0.70, S_CALC);
-            Write(ws, r19, 5, "=IF(C19>=D19,\"达标\",\"不达标\")", S_RESULT);
+            Write(ws, r19, 5, VerdictOf(result, SpongeCheckCodes.Pervious), S_RESULT);
             Write(ws, r19, 6, "=ROUND(C19-D19,3)", S_CALC);
             Write(ws, r19, 7, "DB13 §5.0.6", S_SMALL);
         }
@@ -532,8 +524,9 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
         // ────────────────────────────────────────────────
         // Sheet7：校核与汇总
         // ────────────────────────────────────────────────
-        private static void BuildSheetSummary(WorkbookPart wbPart, Sheets sheets)
+        private static void BuildSheetSummary(WorkbookPart wbPart, Sheets sheets, SpongeProjectInput input, SpongeResult result)
         {
+            var standard = SpongeStandardRegistry.GetOrDefault(input.StandardId);
             var (ws, data) = AddSheet(wbPart, sheets, "校核与汇总", 7);
             SetColumnWidths(ws, new[] { (1, 4.0), (2, 32.0), (3, 18.0), (4, 18.0), (5, 14.0), (6, 30.0) });
 
@@ -543,38 +536,26 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             SetRowHeight(data, 1, 24);
 
             var r4 = EnsureRow(data, 4);
-            Write(ws, r4, 1, "一、强制性指标判定（DB13 §3 / 设计目标核算）", S_SUBTITLE);
+            Write(ws, r4, 1, "一、指标判定（" + standard.Id + "；与引擎同一结果）", S_SUBTITLE);
             Merge(ws, 4, 1, 4, 6);
 
             var r5 = EnsureRow(data, 5);
             string[] head = { "", "校核项", "实际值", "目标值/阈值", "判定", "依据 / 备注" };
             for (int i = 0; i < head.Length; i++) Write(ws, r5, i + 1, head[i], S_HEADER);
 
-            // 7 项校核 row 6~12（与 py 一致 + 自洽公式）
-            (string seq, string name, string real, object target, string chk, string note)[] checks =
-            {
-                ("1", "年径流总量控制率 α",       "=基本参数!G6", "=基本参数!G6", "NA", "目标自定"),
-                ("2", "调蓄容积 V实 ≥ V需",      "='设施配置'!E14", "=基本参数!G12", "GE", "≥V需 即达标"),
-                ("3", "径流污染削减率 ηSS",       "='污染削减率验算'!E16", "=基本参数!G8", "GE", "≥目标 即达标"),
-                ("4", "绿地率 ≥ 30% (R2)",        "=基本参数!C13", 0.30,           "GE", "GB50180 §4.0.5"),
-                ("5", "下沉式绿地率 ≥ 50%",       "='设施配置'!C18", 0.50,         "GE", "DB13 §5.0.5"),
-                ("6", "透水铺装率 ≥ 70%",         "='设施配置'!C19", 0.70,         "GE", "DB13 §5.0.6"),
-                ("7", "外排径流系数 ≤ 0.50",      "=下垫面分析!E19", 0.50,         "LE", "DB13 §3.0.7 一般≤0.5"),
-            };
-            for (int i = 0; i < checks.Length; i++)
+            // 校核行直接写引擎的 CheckRow，不再用另一套 IF 公式重判
+            var checks = result.Checks ?? new System.Collections.Generic.List<CheckRow>();
+            for (int i = 0; i < checks.Count; i++)
             {
                 uint r = (uint)(6 + i);
                 var row = EnsureRow(data, r);
-                Write(ws, row, 1, checks[i].seq, S_CALC);
-                Write(ws, row, 2, checks[i].name, S_NORMAL);
-                Write(ws, row, 3, checks[i].real, S_CALC);
-                Write(ws, row, 4, checks[i].target, S_CALC);
-                string vJudge;
-                if (checks[i].chk == "GE") vJudge = $"=IF(C{r}>=D{r},\"达标\",\"不达标\")";
-                else if (checks[i].chk == "LE") vJudge = $"=IF(C{r}<=D{r},\"达标\",\"不达标\")";
-                else vJudge = "—";
-                Write(ws, row, 5, vJudge, S_RESULT);
-                Write(ws, row, 6, checks[i].note, S_SMALL);
+                var c = checks[i];
+                Write(ws, row, 1, (i + 1).ToString(), S_CALC);
+                Write(ws, row, 2, c.Name, S_NORMAL);
+                Write(ws, row, 3, c.ActualText ?? "", S_CALC);
+                Write(ws, row, 4, c.TargetText ?? "", S_CALC);
+                Write(ws, row, 5, string.IsNullOrEmpty(c.VerdictText) ? (c.Passed ? "达标" : "不达标") : c.VerdictText, S_RESULT);
+                Write(ws, row, 6, c.Reference ?? "", S_SMALL);
             }
 
             // 二、关键技术指标汇总 row 14~28
@@ -623,11 +604,7 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
 
             uint rJj = rJ + 1;
             var rJjRow = EnsureRow(data, rJj);
-            string judgeFormula =
-                "=IF(AND($E$7=\"达标\",$E$8=\"达标\",$E$9=\"达标\",$E$10=\"达标\",$E$11=\"达标\",$E$12=\"达标\"),"
-                + "\"★ 海绵指标全部达标，可进入施工图深化\","
-                + "\"✗ 存在不达标项，请回到 设施配置 调整规模\")";
-            Write(ws, rJjRow, 1, judgeFormula, S_RESULT);
+            Write(ws, rJjRow, 1, string.IsNullOrEmpty(result.VerdictText) ? standard.FailVerdict : result.VerdictText, S_RESULT);
             Merge(ws, (int)rJj, 1, (int)rJj, 6);
             SetRowHeight(data, rJj, 28);
         }
@@ -660,11 +637,19 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 case ProjectType.RebuildOldResidential: return "改扩建居住区(老旧)";
                 case ProjectType.RebuildOtherResidential: return "改扩建居住区(其他)";
                 case ProjectType.RebuildPublic: return "改扩建公共建筑";
+                case ProjectType.Industrial: return "工业用地(M)";
                 default: return "—";
             }
         }
 
-        // SpongeResult 当前未直接写入；公式按引用链动态计算。保留接口以便后续追加"快照值列"。
-        private static void TouchResult(SpongeResult result) { _ = result; }
+        private static string VerdictOf(SpongeResult result, string code)
+        {
+            if (result?.Checks == null) return "";
+            foreach (var c in result.Checks)
+            {
+                if (c.Code == code) return c.VerdictText ?? "";
+            }
+            return "";
+        }
     }
 }

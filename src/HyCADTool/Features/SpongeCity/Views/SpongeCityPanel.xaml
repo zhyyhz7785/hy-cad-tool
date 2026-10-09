@@ -35,6 +35,16 @@
                             <ColumnDefinition Width="92" />
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
+                        <TextBlock Text="计算规范" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" Style="{StaticResource BlenderComboBox}"
+                                  ItemsSource="{Binding StandardNames}"
+                                  SelectedIndex="{Binding StandardIndex}" />
+                    </Grid>
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
                         <TextBlock Text="项目名称" VerticalAlignment="Center" />
                         <TextBox Style="{StaticResource BlenderTextBox}" Grid.Column="1"
                                  Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" />
@@ -58,6 +68,7 @@
                             <ComboBoxItem Content="北京市" />
                             <ComboBoxItem Content="天津市" />
                             <ComboBoxItem Content="河北省" />
+                            <ComboBoxItem Content="湖北省" />
                         </ComboBox>
                     </Grid>
                     <Grid Margin="0,2">
@@ -73,6 +84,7 @@
                             <ComboBoxItem Content="改扩建老旧小区" />
                             <ComboBoxItem Content="改扩建其他小区" />
                             <ComboBoxItem Content="改扩建公共建筑" />
+                            <ComboBoxItem Content="工业用地" />
                         </ComboBox>
                     </Grid>
                     <Grid Margin="0,2">
@@ -233,7 +245,7 @@
                         <DataGridTextColumn Header="校核项" Binding="{Binding Name}" Width="*" />
                         <DataGridTextColumn Header="实际" Binding="{Binding ActualText}" Width="75" />
                         <DataGridTextColumn Header="目标" Binding="{Binding TargetText}" Width="70" />
-                        <DataGridTextColumn Header="判定" Binding="{Binding Passed}" Width="42" />
+                        <DataGridTextColumn Header="判定" Binding="{Binding VerdictText}" Width="52" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Expander>
