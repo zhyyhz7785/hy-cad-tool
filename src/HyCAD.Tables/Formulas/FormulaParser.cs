@@ -69,16 +69,35 @@ internal sealed class FormulaParser
         return ParsePower();
     }
 
+    // ^ 左结合，与 Excel 相同：2^3^2 = (2^3)^2 = 64。数学里的幂是右结合，2^(3^2) = 512，要写括号。
+    // 右操作数仍接受一元正负号，所以 2^-3 = 1/8。式子开头的一元号在 ParseUnary，-2^2 仍是 -(2^2)。
     private FormulaNode ParsePower()
     {
         var left = ParsePostfix();
-        if (_current.Kind == FormulaTokenKind.Operator && _current.Text == "^")
+        while (_current.Kind == FormulaTokenKind.Operator && _current.Text == "^")
         {
             Advance();
-            return new BinaryNode("^", left, ParseUnary());
+            left = new BinaryNode("^", left, ParsePowerOperand());
         }
 
         return left;
+    }
+
+    private FormulaNode ParsePowerOperand()
+    {
+        if (_current.Kind == FormulaTokenKind.Operator && _current.Text == "+")
+        {
+            Advance();
+            return ParsePowerOperand();
+        }
+
+        if (_current.Kind == FormulaTokenKind.Operator && _current.Text == "-")
+        {
+            Advance();
+            return new UnaryNode("-", ParsePowerOperand());
+        }
+
+        return ParsePostfix();
     }
 
     private FormulaNode ParsePostfix()

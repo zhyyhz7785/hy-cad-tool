@@ -246,13 +246,14 @@ namespace HyCADTool.Shared.AutoCAD.Services.Road
         {
             switch (kind)
             {
-                case RoadTreeNodeKind.Alignment: return "hyRoadAlnWorkbench";
-                case RoadTreeNodeKind.Profile: return "hyRoadProf";
+                case RoadTreeNodeKind.Alignment: return "hyRoadAw";
+                case RoadTreeNodeKind.Profile: return "hyRoadP";
                 case RoadTreeNodeKind.Template: return "hyRoadCsLoad";
                 case RoadTreeNodeKind.CrossSection: return "hyRoadCs";
-                case RoadTreeNodeKind.Corridor: return "hyRoadCorridor";
+                case RoadTreeNodeKind.Corridor: return "hyRoadC";
                 case RoadTreeNodeKind.Intersection: return "hyRoadIntersectionEdit";
-                case RoadTreeNodeKind.CodeAudit: return "hyRoadCheckCode";
+                // 没有规范检查命令；Open 对空命令打印「暂无对应编辑器」。
+                case RoadTreeNodeKind.CodeAudit: return null;
                 default: return null;
             }
         }

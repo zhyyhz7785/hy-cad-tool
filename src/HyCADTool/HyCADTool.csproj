@@ -83,8 +83,32 @@
     <ProjectReference Include="..\HYFEA\HYFEA.Hosting\HYFEA.Hosting.csproj" />
     <ProjectReference Include="..\HyCAD.Geometry\HyCAD.Geometry.csproj" />
     <ProjectReference Include="..\HyCAD.Tables\HyCAD.Tables.csproj" />
-    <ProjectReference Include="..\..\..\注册机\sdk\dotnet\HyCADTool.Licensing\HyCADTool.Licensing.csproj" />
   </ItemGroup>
+
+  <!--
+    许可 SDK 不在本仓库（路径：仓库上三级/注册机/sdk/dotnet/HyCADTool.Licensing）。
+    存在：ProjectReference 真库，并排除开发桩，避免类型重复。
+    不存在且非 Production：编译 Shell/Licensing/LicensingStub.cs，Debug/Release 能还原、能编译。
+    不存在且 Production：在编译前报错，禁止把不验签的桩打进发行包。
+  -->
+  <PropertyGroup>
+    <_HyCadLicensingRel>$(MSBuildThisFileDirectory)..\..\..\注册机\sdk\dotnet\HyCADTool.Licensing\HyCADTool.Licensing.csproj</_HyCadLicensingRel>
+    <HyCadLicensingProject>$([System.IO.Path]::GetFullPath('$(_HyCadLicensingRel)'))</HyCadLicensingProject>
+    <HyCadLicensingPresent Condition="Exists('$(HyCadLicensingProject)')">true</HyCadLicensingPresent>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(HyCadLicensingPresent)' == 'true'">
+    <ProjectReference Include="$(HyCadLicensingProject)" />
+    <Compile Remove="Shell\Licensing\LicensingStub.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' == 'Production'">
+    <Compile Remove="Shell\Licensing\LicensingStub.cs" />
+  </ItemGroup>
+  <Target Name="WarnLicensingStub" BeforeTargets="Restore;CollectPackageReferences;ResolveProjectReferences;BeforeBuild" Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' != 'Production'">
+    <Warning Text="未找到许可 SDK：$(HyCadLicensingProject)。本次 $(Configuration) 编译 Shell/Licensing/LicensingStub.cs（不验签，授予 Enterprise，仅供本机开发）。Production 在 SDK 缺失时会失败，不能用本桩发行。" />
+  </Target>
+  <Target Name="RequireLicensingSdkForProduction" BeforeTargets="Restore;CollectPackageReferences;ResolveProjectReferences;BeforeBuild" Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' == 'Production'">
+    <Error Text="Production 构建需要许可 SDK，未找到：$(HyCadLicensingProject)。请把「注册机/sdk/dotnet/HyCADTool.Licensing/HyCADTool.Licensing.csproj」放到该路径后再执行 dotnet build -c Production。Debug/Release 在文件缺失时使用不验签的开发桩，不能代替发行包。" />
+  </Target>
   <ItemGroup>
     <ProjectReference Include="..\HyCAD.BlenderUI\HyCAD.BlenderUI.csproj">
       <Project>{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}</Project>

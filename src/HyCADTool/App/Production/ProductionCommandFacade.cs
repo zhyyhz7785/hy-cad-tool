@@ -18,7 +18,8 @@
 //         | Set-Content HyCADTool\Production\ProductionCommandFacade.cs
 //   ★ assembly attribute 已经写在 ProductionEntry.cs，本文件不再重复。
 //
-// 同步基线：与 ReCall/CommandFacade.cs 的 2026-04-25 版本对齐（144 条命令）。
+// 同步基线：CommandMethod 集合必须与 ReCall/CommandFacade.cs 一致（含别名）。
+// 对照测试：HyCADTool.LinuxTests / CommandFacadeSyncTests。
 // =============================================================================
 
 #if HYCAD_PRODUCTION
@@ -36,6 +37,16 @@ namespace HyCADTool.App.Production
         [CommandMethod("HyB")]     public void Cmd_HyB() => LicenseGate.RunGated("HyB", () => ProductionDispatcher.Invoke("HyB"));
         [CommandMethod("_HyExec")] public void Cmd__HyExec() => LicenseGate.RunGated("_HyExec", () => ProductionDispatcher.Invoke("_HyExec"));
         [CommandMethod("hyLicense")] public void Cmd_hyLicense() => LicenseGate.RunGated("hyLicense", () => ProductionDispatcher.Invoke("hyLicense"));
+        #endregion
+
+        #region 海绵城市 (Sponge City)
+        [CommandMethod("HYSpongeCity")] public void Cmd_HYSpongeCity() => LicenseGate.RunGated("HYSpongeCity", () => ProductionDispatcher.Invoke("HYSpongeCity"));
+        [CommandMethod("hyscDL")]       public void Cmd_hyscDL()       => LicenseGate.RunGated("hyscDL", () => ProductionDispatcher.Invoke("hyscDL"));
+        [CommandMethod("hyscRA")]       public void Cmd_hyscRA()       => LicenseGate.RunGated("hyscRA", () => ProductionDispatcher.Invoke("hyscRA"));
+        [CommandMethod("hyscWA")]       public void Cmd_hyscWA()       => LicenseGate.RunGated("hyscWA", () => ProductionDispatcher.Invoke("hyscWA"));
+        [CommandMethod("hyscExB")]      public void Cmd_hyscExB()      => LicenseGate.RunGated("hyscExB", () => ProductionDispatcher.Invoke("hyscExB"));
+        [CommandMethod("hyscExC")]      public void Cmd_hyscExC()      => LicenseGate.RunGated("hyscExC", () => ProductionDispatcher.Invoke("hyscExC"));
+        [CommandMethod("hyscExM")]      public void Cmd_hyscExM()      => LicenseGate.RunGated("hyscExM", () => ProductionDispatcher.Invoke("hyscExM"));
         #endregion
 
         #region 钢筋绘制 (Reinforcement - Draw)
@@ -69,6 +80,10 @@ namespace HyCADTool.App.Production
         #region 尺寸标注 (Dimension)
         [CommandMethod("dds")]    public void Cmd_dds() => LicenseGate.RunGated("dds", () => ProductionDispatcher.Invoke("dds"));
         [CommandMethod("ddss")]   public void Cmd_ddss() => LicenseGate.RunGated("ddss", () => ProductionDispatcher.Invoke("ddss"));
+        [CommandMethod("ndds")]   public void Cmd_ndds() => LicenseGate.RunGated("ndds", () => ProductionDispatcher.Invoke("ndds"));
+        [CommandMethod("nddss")]  public void Cmd_nddss() => LicenseGate.RunGated("nddss", () => ProductionDispatcher.Invoke("nddss"));
+        [CommandMethod("nddsR")]  public void Cmd_nddsR() => LicenseGate.RunGated("nddsR", () => ProductionDispatcher.Invoke("nddsR"));
+        [CommandMethod("nddsT")]  public void Cmd_nddsT() => LicenseGate.RunGated("nddsT", () => ProductionDispatcher.Invoke("nddsT"));
         [CommandMethod("sd")]     public void Cmd_sd() => LicenseGate.RunGated("sd", () => ProductionDispatcher.Invoke("sd"));
         [CommandMethod("ddaa")]   public void Cmd_ddaa() => LicenseGate.RunGated("ddaa", () => ProductionDispatcher.Invoke("ddaa"));
         [CommandMethod("hydimA")] public void Cmd_hydimA() => LicenseGate.RunGated("hydimA", () => ProductionDispatcher.Invoke("hydimA"));
@@ -156,6 +171,22 @@ namespace HyCADTool.App.Production
         [CommandMethod("hySC")] public void Cmd_hySC() => LicenseGate.RunGated("hySC", () => ProductionDispatcher.Invoke("hySC"));
         #endregion
 
+        #region hyob 几何对象库 (HyCAD Object Base)
+        [CommandMethod("hyobI")]  public void Cmd_hyobI()  => LicenseGate.RunGated("hyobI", () => ProductionDispatcher.Invoke("hyobI"));
+        [CommandMethod("hyobS")]  public void Cmd_hyobS()  => LicenseGate.RunGated("hyobS", () => ProductionDispatcher.Invoke("hyobS"));
+        [CommandMethod("hyobC")]  public void Cmd_hyobC()  => LicenseGate.RunGated("hyobC", () => ProductionDispatcher.Invoke("hyobC"));
+        [CommandMethod("hyobL")]  public void Cmd_hyobL()  => LicenseGate.RunGated("hyobL", () => ProductionDispatcher.Invoke("hyobL"));
+        [CommandMethod("hyobCo")] public void Cmd_hyobCo() => LicenseGate.RunGated("hyobCo", () => ProductionDispatcher.Invoke("hyobCo"));
+        [CommandMethod("hyobD")]  public void Cmd_hyobD()  => LicenseGate.RunGated("hyobD", () => ProductionDispatcher.Invoke("hyobD"));
+        [CommandMethod("hyobR")]  public void Cmd_hyobR()  => LicenseGate.RunGated("hyobR", () => ProductionDispatcher.Invoke("hyobR"));
+        [CommandMethod("hyobG")]  public void Cmd_hyobG()  => LicenseGate.RunGated("hyobG", () => ProductionDispatcher.Invoke("hyobG"));
+        [CommandMethod("hyobB")]  public void Cmd_hyobB()  => LicenseGate.RunGated("hyobB", () => ProductionDispatcher.Invoke("hyobB"));
+        [CommandMethod("hyobM")]  public void Cmd_hyobM()  => LicenseGate.RunGated("hyobM", () => ProductionDispatcher.Invoke("hyobM"));
+        [CommandMethod("hyobP")]  public void Cmd_hyobP()  => LicenseGate.RunGated("hyobP", () => ProductionDispatcher.Invoke("hyobP"));
+        [CommandMethod("hyobES")] public void Cmd_hyobES() => LicenseGate.RunGated("hyobES", () => ProductionDispatcher.Invoke("hyobES"));
+        [CommandMethod("hyobAp")] public void Cmd_hyobAp() => LicenseGate.RunGated("hyobAp", () => ProductionDispatcher.Invoke("hyobAp"));
+        #endregion
+
         #region 道路 (Road) — hyRoad* + r* 短别名
         [CommandMethod("hyRoadTree")][CommandMethod("rTree")]               public void Cmd_hyRoadTree() => LicenseGate.RunGated("hyRoadTree", () => ProductionDispatcher.Invoke("hyRoadTree"));
         [CommandMethod("hyRoad")][CommandMethod("rCx")]                     public void Cmd_hyRoad() => LicenseGate.RunGated("hyRoad", () => ProductionDispatcher.Invoke("hyRoad"));
@@ -209,6 +240,18 @@ namespace HyCADTool.App.Production
         [CommandMethod("hyRoadLoad")][CommandMethod("rLd")]                 public void Cmd_hyRoadLoad() => LicenseGate.RunGated("hyRoadLoad", () => ProductionDispatcher.Invoke("hyRoadLoad"));
         [CommandMethod("hyRoad3dExportGltf")][CommandMethod("rGf")]         public void Cmd_hyRoad3dExportGltf() => LicenseGate.RunGated("hyRoad3dExportGltf", () => ProductionDispatcher.Invoke("hyRoad3dExportGltf"));
         [CommandMethod("hyRoadSeg3")][CommandMethod("r3s")]                 public void Cmd_hyRoadSeg3() => LicenseGate.RunGated("hyRoadSeg3", () => ProductionDispatcher.Invoke("hyRoadSeg3"));
+        [CommandMethod("hyRoadSnapshot")]              public void Cmd_hyRoadSnapshot() => LicenseGate.RunGated("hyRoadSnapshot", () => ProductionDispatcher.Invoke("hyRoadSnapshot"));
+        [CommandMethod("hyRoadHistory")]               public void Cmd_hyRoadHistory() => LicenseGate.RunGated("hyRoadHistory", () => ProductionDispatcher.Invoke("hyRoadHistory"));
+        [CommandMethod("hyRoadRestoreTo")]             public void Cmd_hyRoadRestoreTo() => LicenseGate.RunGated("hyRoadRestoreTo", () => ProductionDispatcher.Invoke("hyRoadRestoreTo"));
+        [CommandMethod("hyRoadRepaintAll")]            public void Cmd_hyRoadRepaintAll() => LicenseGate.RunGated("hyRoadRepaintAll", () => ProductionDispatcher.Invoke("hyRoadRepaintAll"));
+        [CommandMethod("hyRoadPlan")]                  public void Cmd_hyRoadPlan() => LicenseGate.RunGated("hyRoadPlan", () => ProductionDispatcher.Invoke("hyRoadPlan"));
+        [CommandMethod("hyRoadPlanRebuild")]           public void Cmd_hyRoadPlanRebuild() => LicenseGate.RunGated("hyRoadPlanRebuild", () => ProductionDispatcher.Invoke("hyRoadPlanRebuild"));
+        [CommandMethod("hyRoadExtract")]               public void Cmd_hyRoadExtract() => LicenseGate.RunGated("hyRoadExtract", () => ProductionDispatcher.Invoke("hyRoadExtract"));
+        [CommandMethod("hyRoadDataClean")]             public void Cmd_hyRoadDataClean() => LicenseGate.RunGated("hyRoadDataClean", () => ProductionDispatcher.Invoke("hyRoadDataClean"));
+        [CommandMethod("hyRoadStructureLayer")]        public void Cmd_hyRoadStructureLayer() => LicenseGate.RunGated("hyRoadStructureLayer", () => ProductionDispatcher.Invoke("hyRoadStructureLayer"));
+        [CommandMethod("hyRoadCsPresetSave")]          public void Cmd_hyRoadCsPresetSave() => LicenseGate.RunGated("hyRoadCsPresetSave", () => ProductionDispatcher.Invoke("hyRoadCsPresetSave"));
+        [CommandMethod("hyRoadCsPresetLoad")]          public void Cmd_hyRoadCsPresetLoad() => LicenseGate.RunGated("hyRoadCsPresetLoad", () => ProductionDispatcher.Invoke("hyRoadCsPresetLoad"));
+        [CommandMethod("hyRoadIntersectionMergeRule")] public void Cmd_hyRoadIntersectionMergeRule() => LicenseGate.RunGated("hyRoadIntersectionMergeRule", () => ProductionDispatcher.Invoke("hyRoadIntersectionMergeRule"));
         #endregion
 
         #region 几何工具 (Geometry Tools)

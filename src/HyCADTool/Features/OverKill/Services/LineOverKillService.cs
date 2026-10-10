@@ -578,10 +578,8 @@ namespace HyCADTool.Features.OverKill.Services
                         if (distance > tolerance && distance <= maxDistance)
                         {
                             // 计算无限延长线的交点
-                            var intersection = currentLine.GetIntersectionWithInfiniteLine(otherLine, tolerance);
-
-                    if (intersection != default)
-                    {
+                            if (currentLine.TryGetIntersectionWithInfiniteLine(otherLine, out var intersection, tolerance))
+                            {
                                 // 延伸当前线段到交点
                                 Line2D newCurrentLine;
                                 if (isCurrentEnd)
@@ -789,9 +787,8 @@ namespace HyCADTool.Features.OverKill.Services
                     if (distStart > tolerance && distStart <= maxDistance)
                     {
                         // 计算交点（currentLine 的无限延长线与 otherLine 的交点）
-                        var intersection = currentLine.GetIntersectionWithInfiniteLine(otherLine, tolerance);
-                        
-                        if (intersection != default && otherLine.IsPointOnSegment(intersection, tolerance))
+                        if (currentLine.TryGetIntersectionWithInfiniteLine(otherLine, out var intersection, tolerance)
+                            && otherLine.IsPointOnSegment(intersection, tolerance))
                         {
                             // 延伸当前线段的起点到交点
                             Line2D newCurrentLine = new Line2D(intersection, currentLine.EndPoint);
@@ -832,9 +829,8 @@ namespace HyCADTool.Features.OverKill.Services
                     if (!extended && distEnd > tolerance && distEnd <= maxDistance)
                     {
                         // 计算交点（currentLine 的无限延长线与 otherLine 的交点）
-                        var intersection = currentLine.GetIntersectionWithInfiniteLine(otherLine, tolerance);
-                        
-                        if (intersection != default && otherLine.IsPointOnSegment(intersection, tolerance))
+                        if (currentLine.TryGetIntersectionWithInfiniteLine(otherLine, out var intersection, tolerance)
+                            && otherLine.IsPointOnSegment(intersection, tolerance))
                         {
                             // 延伸当前线段的终点到交点
                             currentLine = new Line2D(currentLine.StartPoint, intersection);
@@ -913,8 +909,7 @@ namespace HyCADTool.Features.OverKill.Services
                 {
                     if (j <= i) continue; // 避免重复检测
                     
-                    var intersection = line1.GetIntersection(lines[j], tolerance);
-                    if (intersection != default)
+                    if (line1.TryGetIntersection(lines[j], out var intersection, tolerance))
                     {
                         lock (lockObj)
                         {
@@ -1260,8 +1255,7 @@ namespace HyCADTool.Features.OverKill.Services
                     var neighbors = GetNeighbors(activeLines, lineIndex);
                     foreach (var neighborIndex in neighbors)
                     {
-                        var intersection = lines[lineIndex].GetIntersection(lines[neighborIndex], tolerance);
-                        if (intersection != default)
+                        if (lines[lineIndex].TryGetIntersection(lines[neighborIndex], out var intersection, tolerance))
                         {
                             totalIntersections++;
 
@@ -1638,8 +1632,7 @@ namespace HyCADTool.Features.OverKill.Services
         /// </summary>
         private bool TryGetInfiniteLinesIntersection(Line2D line1, Line2D line2, double tolerance, out Point2D intersection)
         {
-            intersection = line1.GetIntersectionWithInfiniteLine(line2, tolerance);
-            return intersection != default;
+            return line1.TryGetIntersectionWithInfiniteLine(line2, out intersection, tolerance);
         }
 
         /// <summary>

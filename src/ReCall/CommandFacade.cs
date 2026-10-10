@@ -32,6 +32,16 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyLicense")] public void Cmd_hyLicense() => ReCallClass.Invoke("hyLicense");
         #endregion
 
+        #region 海绵城市 (Sponge City)
+        [CommandMethod("HYSpongeCity")] public void Cmd_HYSpongeCity() => ReCallClass.Invoke("HYSpongeCity");
+        [CommandMethod("hyscDL")]       public void Cmd_hyscDL()       => ReCallClass.Invoke("hyscDL");
+        [CommandMethod("hyscRA")]       public void Cmd_hyscRA()       => ReCallClass.Invoke("hyscRA");
+        [CommandMethod("hyscWA")]       public void Cmd_hyscWA()       => ReCallClass.Invoke("hyscWA");
+        [CommandMethod("hyscExB")]      public void Cmd_hyscExB()      => ReCallClass.Invoke("hyscExB");
+        [CommandMethod("hyscExC")]      public void Cmd_hyscExC()      => ReCallClass.Invoke("hyscExC");
+        [CommandMethod("hyscExM")]      public void Cmd_hyscExM()      => ReCallClass.Invoke("hyscExM");
+        #endregion
+
         #region 钢筋绘制 (Reinforcement - Draw)
         [CommandMethod("gj")]  public void Cmd_gj()  => ReCallClass.Invoke("gj");
         [CommandMethod("gg")]  public void Cmd_gg()  => ReCallClass.Invoke("gg");
@@ -233,6 +243,18 @@ namespace HyCADTool.ReCall
         [CommandMethod("hyRoadLoad")][CommandMethod("rLd")]         public void Cmd_hyRoadLoad()         => ReCallClass.Invoke("hyRoadLoad");
         [CommandMethod("hyRoad3dExportGltf")][CommandMethod("rGf")] public void Cmd_hyRoad3dExportGltf() => ReCallClass.Invoke("hyRoad3dExportGltf");
         [CommandMethod("hyRoadSeg3")][CommandMethod("r3s")]        public void Cmd_hyRoadSeg3()        => ReCallClass.Invoke("hyRoadSeg3");
+        [CommandMethod("hyRoadSnapshot")]              public void Cmd_hyRoadSnapshot()              => ReCallClass.Invoke("hyRoadSnapshot");
+        [CommandMethod("hyRoadHistory")]               public void Cmd_hyRoadHistory()               => ReCallClass.Invoke("hyRoadHistory");
+        [CommandMethod("hyRoadRestoreTo")]             public void Cmd_hyRoadRestoreTo()             => ReCallClass.Invoke("hyRoadRestoreTo");
+        [CommandMethod("hyRoadRepaintAll")]            public void Cmd_hyRoadRepaintAll()            => ReCallClass.Invoke("hyRoadRepaintAll");
+        [CommandMethod("hyRoadPlan")]                  public void Cmd_hyRoadPlan()                  => ReCallClass.Invoke("hyRoadPlan");
+        [CommandMethod("hyRoadPlanRebuild")]           public void Cmd_hyRoadPlanRebuild()           => ReCallClass.Invoke("hyRoadPlanRebuild");
+        [CommandMethod("hyRoadExtract")]               public void Cmd_hyRoadExtract()               => ReCallClass.Invoke("hyRoadExtract");
+        [CommandMethod("hyRoadDataClean")]             public void Cmd_hyRoadDataClean()             => ReCallClass.Invoke("hyRoadDataClean");
+        [CommandMethod("hyRoadStructureLayer")]        public void Cmd_hyRoadStructureLayer()        => ReCallClass.Invoke("hyRoadStructureLayer");
+        [CommandMethod("hyRoadCsPresetSave")]          public void Cmd_hyRoadCsPresetSave()          => ReCallClass.Invoke("hyRoadCsPresetSave");
+        [CommandMethod("hyRoadCsPresetLoad")]          public void Cmd_hyRoadCsPresetLoad()          => ReCallClass.Invoke("hyRoadCsPresetLoad");
+        [CommandMethod("hyRoadIntersectionMergeRule")] public void Cmd_hyRoadIntersectionMergeRule() => ReCallClass.Invoke("hyRoadIntersectionMergeRule");
         #endregion
 
         #region 几何工具 (Geometry Tools)

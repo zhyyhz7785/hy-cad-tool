@@ -249,11 +249,18 @@ namespace HyCADTool.Features.Pile
             double radius = diameter / 2.0;
             foreach (Coordinate center in pileCenters)
             {
-                using (Circle circle = new Circle(new Point3d(center.X, center.Y, 0), Vector3d.ZAxis, radius))
+                // 加入事务后由数据库持有，不能再用 using 释放，否则图形里的圆会被 Dispose。
+                var circle = new Circle(new Point3d(center.X, center.Y, 0), Vector3d.ZAxis, radius);
+                try
                 {
                     circle.Layer = "00-HY-桩";
                     btr.AppendEntity(circle);
                     tr.AddNewlyCreatedDBObject(circle, true);
+                }
+                catch
+                {
+                    circle.Dispose();
+                    throw;
                 }
             }
         }

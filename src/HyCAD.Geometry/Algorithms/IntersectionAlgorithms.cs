@@ -14,9 +14,9 @@ namespace HyCAD.Geometry.Algorithms
         /// <summary>
         /// 计算两条线段的交点
         /// </summary>
-        public static Point2D GetLineIntersection(Line2D line1, Line2D line2, double tolerance = 1e-6)
+        public static bool TryGetLineIntersection(Line2D line1, Line2D line2, out Point2D intersection, double tolerance = 1e-6)
         {
-            return line1.GetIntersection(line2, tolerance);
+            return line1.TryGetIntersection(line2, out intersection, tolerance);
         }
 
         /// <summary>
@@ -32,8 +32,7 @@ namespace HyCAD.Geometry.Algorithms
             // 检查每条边与线段的交点
             foreach (var edge in polygon.GetEdges())
             {
-                var intersection = edge.GetIntersection(line, tolerance);
-                if (intersection != default)
+                if (edge.TryGetIntersection(line, out var intersection, tolerance))
                 {
                     // 检查是否已经存在相同的交点（避免重复）
                     bool isDuplicate = intersections.Any(p => p.DistanceTo(intersection) < tolerance);
@@ -64,8 +63,7 @@ namespace HyCAD.Geometry.Algorithms
             {
                 foreach (var edge2 in polygon2.GetEdges())
                 {
-                    var intersection = edge1.GetIntersection(edge2, tolerance);
-                    if (intersection != default)
+                    if (edge1.TryGetIntersection(edge2, out var intersection, tolerance))
                     {
                         // 检查是否重复
                         bool isDuplicate = intersections.Any(p => p.DistanceTo(intersection) < tolerance);

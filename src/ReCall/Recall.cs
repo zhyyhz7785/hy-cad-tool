@@ -160,8 +160,14 @@ namespace HyCADTool.ReCall
         private static DateTime _lastC2Utc = DateTime.MinValue;
         private static string _lastLoadDir;
 
-        /// <summary>当前已加载的 Refactored 程序集（每次 C2 后刷新，Invoke 据此反射）</summary>
+        /// <summary>当前已加载的 Refactored 程序集（仅 Initialize 成功后替换，Invoke 据此反射）</summary>
         private static Assembly _refactoredAssembly;
+
+        /// <summary>正在初始化、尚未提交的程序集。失败时丢掉它，AssemblyResolve 在初始化期间仍要指向它。</summary>
+        private static Assembly _pendingRefactoredAssembly;
+
+        /// <summary>本次 C2 开始前那份已成功的程序集，Initialize 失败时写回。</summary>
+        private static Assembly _pendingPreviousAssembly;
 
         /// <summary>上次 C2 创建的 PluginInitializer 实例（用于下次 C2 前调用其 Terminate 清理事件订阅）</summary>
         private static object _lastPluginInitInstance;
@@ -332,7 +338,10 @@ namespace HyCADTool.ReCall
 
                 var swLoad = System.Diagnostics.Stopwatch.StartNew();
                 Assembly asm = Assembly.Load(mainBytes);
-                _refactoredAssembly = asm;
+                // 先挂到 pending：初始化期间 AssemblyResolve 要返回这份新程序集。
+                // _refactoredAssembly 仍指向上一次成功的那份，Initialize 失败不替换它。
+                _pendingPreviousAssembly = _refactoredAssembly;
+                _pendingRefactoredAssembly = asm;
                 swLoad.Stop();
                 tAsm = swLoad.ElapsedMilliseconds;
                 C2LogPhase(ed, ref accMs, tAsm, "Assembly.Load(byte[])", logPhases);
@@ -352,9 +361,12 @@ namespace HyCADTool.ReCall
                 if (!InvokePluginInitialize(asm, ed))
                 {
                     swInit.Stop();
+                    AbandonPendingReload(ed);
                     if (logPhases) ed.WriteMessage($"\n── C2 中止(Initialize 失败)  {DateTime.Now:HH:mm:ss.fff} ──");
                     return;
                 }
+                _refactoredAssembly = asm;
+                _pendingRefactoredAssembly = null;
                 swInit.Stop();
                 tInit = swInit.ElapsedMilliseconds;
                 C2LogPhase(ed, ref accMs, tInit, "新 PluginInitializer.Initialize（细分见上）", logPhases);
@@ -415,6 +427,8 @@ namespace HyCADTool.ReCall
             }
             catch (System.Exception ex)
             {
+                if (_pendingRefactoredAssembly != null)
+                    AbandonPendingReload(ed);
                 ed.WriteMessage(
                     $"\n✗ 加载失败 @ {DateTime.Now:HH:mm:ss.fff}  已耗时{sw.ElapsedMilliseconds}ms: {ex.GetType().Name}: {ex.Message}");
                 if (ex.InnerException != null)
@@ -480,6 +494,19 @@ namespace HyCADTool.ReCall
 
             if (newly > 0 || skipped > 0)
                 ed?.WriteMessage("\n  预加载伙伴: +" + newly + " / 已存在 " + skipped);
+        }
+
+        /// <summary>Initialize 未成功：丢掉 pending，把命令反射用的程序集留在上一次成功的那份。</summary>
+        private static void AbandonPendingReload(Editor ed)
+        {
+            var previous = _pendingPreviousAssembly;
+            _pendingRefactoredAssembly = null;
+            _refactoredAssembly = previous;
+            if (previous != null)
+                ResourceManager.ResourceAssembly = previous;
+            ed?.WriteMessage(previous == null
+                ? "\n  Initialize 未成功，且没有上一次可用的程序集。"
+                : "\n  Initialize 未成功，已恢复上一次成功加载的程序集。");
         }
 
         /// <summary>反射调用上次 PluginInitializer 实例的 Terminate，幂等性兜底（解绑文档事件、Reset 容器）。</summary>
@@ -1275,7 +1302,7 @@ namespace HyCADTool.ReCall
             string shortName = requestedName.Name;
 
             if (string.Equals(shortName, TARGET_PROJECT_NAME, StringComparison.OrdinalIgnoreCase))
-                return _refactoredAssembly;
+                return _pendingRefactoredAssembly ?? _refactoredAssembly;
 
             if (_resolvedDependencyCache.TryGetValue(shortName, out Assembly cached))
                 return cached;

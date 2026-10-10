@@ -129,7 +129,7 @@ namespace HyCAD.Geometry.Math
             var line1 = new Line2D(line1Start, line1End);
             var line2 = new Line2D(line2Start, line2End);
             
-            if (line1.GetIntersection(line2) != default)
+            if (line1.TryGetIntersection(line2, out _))
                 return 0; // 相交，距离为 0
             
             // 计算四个端点到对方线段的距离，取最小值

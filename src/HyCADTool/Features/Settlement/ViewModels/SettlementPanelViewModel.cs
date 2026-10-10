@@ -1313,7 +1313,10 @@ namespace HyCADTool.Features.Settlement.ViewModels
                     ctx.BearingResult = BearingCapacityService.CalculatePile(input, bearingInput);
                 }
             }
-            catch { }
+            catch (System.Exception ex)
+            {
+                StatusMessage = "承载力验算失败: " + ex.Message;
+            }
 
             // Phase 3: 桩身结构验算
             try
@@ -1324,7 +1327,11 @@ namespace HyCADTool.Features.Settlement.ViewModels
                     ctx.StructuralResult = PileStructuralService.Calculate(input, structInput);
                 }
             }
-            catch { }
+            catch (System.Exception ex)
+            {
+                var prefix = string.IsNullOrEmpty(StatusMessage) ? "" : StatusMessage + "；";
+                StatusMessage = prefix + "桩身结构验算失败: " + ex.Message;
+            }
 
             return ctx;
         }
