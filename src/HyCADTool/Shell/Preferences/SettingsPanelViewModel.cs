@@ -1238,12 +1238,12 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>
         /// 待执行命令：面板按钮设置后通过 _HyExec 在 AutoCAD 命令线程执行
         /// </summary>
-        public static System.Action PendingCommand { get; set; }
+        public static System.Action PendingCommand { get; private set; }
 
         /// <summary>
         /// 与 <see cref="PendingCommand"/> 成对的真实命令键，供 _HyExec 内层 LicenseGate 使用。
         /// </summary>
-        public static string PendingCommandKey { get; set; }
+        public static string PendingCommandKey { get; private set; }
 
         /// <summary>
         /// 最后一次执行的命令（用于 _HyExec 重复执行）
