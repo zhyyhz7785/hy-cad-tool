@@ -20,7 +20,11 @@ public interface ILinearSolver
 /// </summary>
 public sealed class DenseLinearSolver : ILinearSolver
 {
-    private const double PivotTol = 1e-18;
+    /// <summary>主元小于矩阵最大绝对值的这个倍数时，视为奇异。绝对 1e-18 会拒绝量级更小的良态阵，也会放过量级为 1 的近机构。</summary>
+    private const double RelativePivotTol = 1e-12;
+
+    /// <summary>残差 / (||K||∞近似 · ||x|| + ||f||) 超过此值则拒绝，避免病态消元被报成成功。</summary>
+    private const double RelativeResidualTol = 1e-8;
 
     public LinearSolveResult Solve(DenseMatrix K, DenseVector F)
     {
@@ -33,6 +37,16 @@ public sealed class DenseLinearSolver : ILinearSolver
         var sw = System.Diagnostics.Stopwatch.StartNew();
         double rhsNorm = F.Norm2();
 
+        double scale = MaxAbs(K);
+        if (!(scale > 0) || double.IsInfinity(scale))
+        {
+            sw.Stop();
+            return new LinearSolveResult(false, null,
+                new FemError(FemErrorKind.SingularMatrix, "Matrix has no finite nonzero entry."),
+                new SolveDiagnostics(n, rhsNorm, double.NaN, sw.Elapsed));
+        }
+
+        double pivotFloor = RelativePivotTol * scale;
         var A = K.CloneMatrix();
         var b = F.CloneVector();
 
@@ -51,7 +65,7 @@ public sealed class DenseLinearSolver : ILinearSolver
                 }
             }
 
-            if (maxAbs < PivotTol)
+            if (!(maxAbs > pivotFloor))
             {
                 sw.Stop();
                 return new LinearSolveResult(false, null,
@@ -69,9 +83,10 @@ public sealed class DenseLinearSolver : ILinearSolver
             double pivot = A[col, col];
             for (int r = col + 1; r < n; r++)
             {
-                double m = A[r, col] / pivot;
-                if (Math.Abs(m) < PivotTol)
+                double entry = A[r, col];
+                if (!(Math.Abs(entry) > pivotFloor))
                     continue;
+                double m = entry / pivot;
                 for (int c = col; c < n; c++)
                     A[r, c] -= m * A[col, c];
                 b[r] -= m * b[col];
@@ -85,7 +100,7 @@ public sealed class DenseLinearSolver : ILinearSolver
             for (int c = r + 1; c < n; c++)
                 sum -= A[r, c] * x[c];
             double diag = A[r, r];
-            if (Math.Abs(diag) < PivotTol)
+            if (!(Math.Abs(diag) > pivotFloor))
             {
                 sw.Stop();
                 return new LinearSolveResult(false, null,
@@ -97,7 +112,38 @@ public sealed class DenseLinearSolver : ILinearSolver
 
         double residual = ComputeResidualNorm(K, x, F);
         sw.Stop();
+        if (!AcceptResidual(scale, x.Norm2(), rhsNorm, residual))
+        {
+            return new LinearSolveResult(false, null,
+                new FemError(FemErrorKind.SingularMatrix, "Relative residual exceeds tolerance."),
+                new SolveDiagnostics(n, rhsNorm, residual, sw.Elapsed));
+        }
+
         return new LinearSolveResult(true, x, null, new SolveDiagnostics(n, rhsNorm, residual, sw.Elapsed));
+    }
+
+    private static bool AcceptResidual(double scale, double xNorm, double rhsNorm, double residual)
+    {
+        if (double.IsNaN(xNorm) || double.IsInfinity(xNorm) || double.IsNaN(residual) || double.IsInfinity(residual))
+            return false;
+        double denom = scale * xNorm + rhsNorm;
+        double rel = denom > 0 ? residual / denom : residual;
+        return !double.IsNaN(rel) && !double.IsInfinity(rel) && rel <= RelativeResidualTol;
+    }
+
+    private static double MaxAbs(DenseMatrix k)
+    {
+        double m = 0;
+        for (int i = 0; i < k.Rows; i++)
+        {
+            for (int j = 0; j < k.Cols; j++)
+            {
+                double a = Math.Abs(k[i, j]);
+                if (a > m)
+                    m = a;
+            }
+        }
+        return m;
     }
 
     private static double ComputeResidualNorm(DenseMatrix K, DenseVector x, DenseVector f)

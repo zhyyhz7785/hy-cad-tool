@@ -112,6 +112,63 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void Subtracting_holes_does_not_return_hole_rings_as_solids()
+        {
+            var outer = Square(0, 0, 10, 10);
+            var holes = new[]
+            {
+                Ring(1, 1, 3, 3),
+                Ring(6, 6, 8, 8)
+            };
+
+            var parts = PolygonBoolean.IntersectPolygonWithRegionAll(outer, Ring(0, 0, 10, 10), holes);
+
+            Assert.Single(parts);
+            Assert.InRange(Math.Abs(parts[0].GetSignedArea()), 90, 110);
+        }
+
+        [Fact]
+        public void Union_keeps_island_inside_a_hole_and_drops_the_hole_ring()
+        {
+            var outer = Square(0, 0, 10, 10);
+            var hole = Square(8, 2, 2, 8);
+            var island = Square(4, 4, 6, 6);
+
+            var parts = PolygonBoolean.UnionAll(new[] { outer, hole, island });
+
+            Assert.Equal(2, parts.Count);
+            Assert.InRange(Math.Abs(parts[0].GetSignedArea()), 90, 110);
+            Assert.InRange(Math.Abs(parts[1].GetSignedArea()), 3.9, 4.1);
+        }
+
+        [Fact]
+        public void Union_of_two_disjoint_squares_returns_both()
+        {
+            var parts = PolygonBoolean.UnionAll(new[]
+            {
+                Square(0, 0, 1, 1),
+                Square(3, 3, 4, 4)
+            });
+
+            Assert.Equal(2, parts.Count);
+            double area = parts.Sum(p => Math.Abs(p.GetSignedArea()));
+            Assert.InRange(area, 1.99, 2.01);
+        }
+
+        [Fact]
+        public void NormalizeAngle_wraps_finite_values_and_rejects_non_finite()
+        {
+            double twoPi = 2 * Math.PI;
+            Assert.Equal(0, HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(0), 6);
+            Assert.Equal(0, HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(twoPi), 8);
+            Assert.Equal(3 * Math.PI / 2, HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(-Math.PI / 2), 8);
+            Assert.Equal(1, HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(10000 * twoPi + 1), 6);
+            Assert.True(double.IsNaN(HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(double.PositiveInfinity)));
+            Assert.True(double.IsNaN(HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(double.NegativeInfinity)));
+            Assert.True(double.IsNaN(HyCAD.Geometry.Math.AngleCalculator.NormalizeAngle(double.NaN)));
+        }
+
+        [Fact]
         public void Point2D_equals_is_exact_and_matches_hash_code()
         {
             var a = new Point2D(0, 0);
@@ -125,6 +182,28 @@ namespace HyCADTool.LinuxTests
             Assert.Equal(2, set.Count);
             Assert.Contains(a, set);
             Assert.Contains(b, set);
+        }
+
+        private static Polygon2D Square(double x0, double y0, double x1, double y1)
+        {
+            return new Polygon2D(new[]
+            {
+                new Point2D(x0, y0),
+                new Point2D(x1, y0),
+                new Point2D(x1, y1),
+                new Point2D(x0, y1)
+            });
+        }
+
+        private static Polyline2D Ring(double x0, double y0, double x1, double y1)
+        {
+            return new Polyline2D(new[]
+            {
+                new Point2D(x0, y0),
+                new Point2D(x1, y0),
+                new Point2D(x1, y1),
+                new Point2D(x0, y1)
+            }, true);
         }
 
         private static string NormalizeHull(Polygon2D hull)

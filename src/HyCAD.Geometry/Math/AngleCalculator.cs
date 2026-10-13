@@ -39,10 +39,15 @@ namespace HyCAD.Geometry.Math
         /// <returns>归一化角度 Normalized angle</returns>
         public static double NormalizeAngle(double angle)
         {
-            while (angle < 0)
-                angle += 2 * System.Math.PI;
-            while (angle >= 2 * System.Math.PI)
-                angle -= 2 * System.Math.PI;
+            if (double.IsNaN(angle) || double.IsInfinity(angle))
+                return double.NaN;
+
+            double twoPi = 2 * System.Math.PI;
+            angle %= twoPi;
+            if (angle < 0)
+                angle += twoPi;
+            if (angle >= twoPi)
+                angle = 0;
             return angle;
         }
 

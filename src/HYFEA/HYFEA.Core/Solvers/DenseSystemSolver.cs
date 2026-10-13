@@ -8,7 +8,10 @@ namespace HYFEA.Core.Solvers;
 /// </summary>
 public sealed class DenseSystemSolver : ILinearSystemSolver
 {
-    private const double PivotTol = 1e-18;
+    /// <summary>与 <see cref="DenseLinearSolver"/> 相同：主元相对矩阵最大绝对值，避免绝对 1e-18。</summary>
+    private const double RelativePivotTol = 1e-12;
+
+    private const double RelativeResidualTol = 1e-8;
 
     public string Name => "Dense Gauss Elimination (Track B)";
 
@@ -28,6 +31,18 @@ public sealed class DenseSystemSolver : ILinearSystemSolver
         var sw = System.Diagnostics.Stopwatch.StartNew();
         double rhsNorm = F.Norm2();
 
+        double scale = MaxAbs(K);
+        if (!(scale > 0) || double.IsInfinity(scale))
+        {
+            sw.Stop();
+            return new LinearSolveResult(
+                false,
+                null,
+                new FemError(FemErrorKind.SingularMatrix, "Matrix has no finite nonzero entry."),
+                new SolveDiagnostics(n, rhsNorm, double.NaN, sw.Elapsed));
+        }
+
+        double pivotFloor = RelativePivotTol * scale;
         var A = K.CloneMatrix();
         var b = F.CloneVector();
 
@@ -46,7 +61,7 @@ public sealed class DenseSystemSolver : ILinearSystemSolver
                 }
             }
 
-            if (maxAbs < PivotTol)
+            if (!(maxAbs > pivotFloor))
             {
                 sw.Stop();
                 return new LinearSolveResult(
@@ -77,22 +92,61 @@ public sealed class DenseSystemSolver : ILinearSystemSolver
         // Back substitution
         for (int i = n - 1; i >= 0; i--)
         {
+            double diag = A[i, i];
+            if (!(Math.Abs(diag) > pivotFloor))
+            {
+                sw.Stop();
+                return new LinearSolveResult(
+                    false,
+                    null,
+                    new FemError(FemErrorKind.SingularMatrix, $"Near-zero diagonal in back-substitution at row {i}.", i),
+                    new SolveDiagnostics(n, rhsNorm, double.NaN, sw.Elapsed));
+            }
+
             double sum = b[i];
             for (int j = i + 1; j < n; j++)
                 sum -= A[i, j] * b[j];
-            b[i] = sum / A[i, i];
+            b[i] = sum / diag;
         }
 
         sw.Stop();
 
-        // Compute residual
         double residual = ComputeResidual(K, b, F);
+        double xNorm = b.Norm2();
+        double denom = scale * xNorm + rhsNorm;
+        double rel = denom > 0 ? residual / denom : residual;
+        if (double.IsNaN(xNorm) || double.IsInfinity(xNorm)
+            || double.IsNaN(residual) || double.IsInfinity(residual)
+            || double.IsNaN(rel) || double.IsInfinity(rel)
+            || rel > RelativeResidualTol)
+        {
+            return new LinearSolveResult(
+                false,
+                null,
+                new FemError(FemErrorKind.SingularMatrix, "Relative residual exceeds tolerance."),
+                new SolveDiagnostics(n, rhsNorm, residual, sw.Elapsed));
+        }
 
         return new LinearSolveResult(
             true,
             b,
             null,
             new SolveDiagnostics(n, rhsNorm, residual, sw.Elapsed));
+    }
+
+    private static double MaxAbs(DenseMatrix k)
+    {
+        double m = 0;
+        for (int i = 0; i < k.Rows; i++)
+        {
+            for (int j = 0; j < k.Cols; j++)
+            {
+                double a = Math.Abs(k[i, j]);
+                if (a > m)
+                    m = a;
+            }
+        }
+        return m;
     }
 
     /// <summary>

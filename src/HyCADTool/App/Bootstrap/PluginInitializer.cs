@@ -4,7 +4,9 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autofac;
 using HyCADTool.Features.DesignSpec.Services;
+using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.TextEdit.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
 using HyCADTool.Shell.Contracts;
@@ -431,8 +433,10 @@ namespace HyCADTool.App.Bootstrap
         {
             try
             {
+                ComponentSession.SetDocumentKeyResolver(ResolveActiveDocumentKey);
                 AcApp.DocumentManager.DocumentActivated += OnDocumentActivated;
                 AcApp.DocumentManager.DocumentCreated += OnDocumentCreated;
+                AcApp.DocumentManager.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
                 HyEdDoubleClickInterceptor.Install();
             }
             catch (System.Exception ex)
@@ -450,8 +454,10 @@ namespace HyCADTool.App.Bootstrap
             {
                 HyEdDoubleClickInterceptor.Uninstall();
 
+                ComponentSession.SetDocumentKeyResolver(null);
                 AcApp.DocumentManager.DocumentActivated -= OnDocumentActivated;
                 AcApp.DocumentManager.DocumentCreated -= OnDocumentCreated;
+                AcApp.DocumentManager.DocumentToBeDestroyed -= OnDocumentToBeDestroyed;
             }
             catch
             {
@@ -465,6 +471,19 @@ namespace HyCADTool.App.Bootstrap
         private void OnDocumentActivated(object sender, DocumentCollectionEventArgs e)
         {
             EnsureCurrentDocumentResourcesInitialized(force: false);
+        }
+
+        private static string ResolveActiveDocumentKey()
+        {
+            var doc = AcApp.DocumentManager.MdiActiveDocument;
+            return DocumentKeys.GetKey(doc) ?? "";
+        }
+
+        private void OnDocumentToBeDestroyed(object sender, DocumentCollectionEventArgs e)
+        {
+            if (e.Document == null)
+                return;
+            ComponentSession.ForgetDocument(DocumentKeys.GetKey(e.Document));
         }
 
         /// <summary>
