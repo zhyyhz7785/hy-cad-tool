@@ -16,14 +16,17 @@ namespace HYFEA.Core.Analysis;
 public sealed class SparseLinearStaticAnalysis
 {
     private readonly ILinearSystemSolver _solver;
+    private readonly ElementContributionRegistry _elements;
 
     /// <summary>
     /// 创建稀疏分析 (默认使用 CSparse.NET)。
     /// </summary>
     /// <param name="solver">指定求解器;null 则用 CSparseSystemSolver</param>
-    public SparseLinearStaticAnalysis(ILinearSystemSolver? solver = null)
+    /// <param name="elements">单元贡献注册表；null 则用内置默认</param>
+    public SparseLinearStaticAnalysis(ILinearSystemSolver? solver = null, ElementContributionRegistry? elements = null)
     {
         _solver = solver ?? new CSparseSystemSolver();
+        _elements = elements ?? new ElementContributionRegistry();
         if (!_solver.SupportsSparse)
             throw new ArgumentException(
                 $"Solver '{_solver.Name}' does not natively support sparse; use LinearStaticAnalysis instead.",
@@ -32,7 +35,7 @@ public sealed class SparseLinearStaticAnalysis
 
     public FemResult Run(FemProblem problem)
     {
-        var layout = DofLayout.Build(problem);
+        var layout = DofLayout.Build(problem, _elements);
         if (layout.FreeDofCount <= 0)
         {
             return new FemResult(
@@ -48,7 +51,7 @@ public sealed class SparseLinearStaticAnalysis
         }
 
         // 使用稀疏装配器
-        var sys = SparseAssembler.Assemble(problem, layout);
+        var sys = SparseAssembler.Assemble(problem, layout, _elements);
         var red = SparseAssembler.Reduce(sys);
 
         // 稀疏求解
@@ -71,8 +74,8 @@ public sealed class SparseLinearStaticAnalysis
         var disp = ToDisplacementField(layout, uFull);
         var rVec = ComputeReactions(sys.StiffnessTriplets, sys.Layout.TotalDofCount, sys.Force, uFull);
         var reacField = ToReactionField(layout, rVec);
-        var axial = ComputeAxialForces(problem, layout, uFull);
-        var beams = ComputeBeamEndForces(problem, layout, uFull);
+        var axial = ComputeAxialForces(problem, layout, uFull, _elements);
+        var beams = ComputeBeamEndForces(problem, layout, uFull, _elements);
 
         return new FemResult(
             true,
@@ -140,10 +143,9 @@ public sealed class SparseLinearStaticAnalysis
         return f;
     }
 
-    private static ElementAxialForceMap ComputeAxialForces(FemProblem problem, DofLayout layout, DenseVector uFull)
+    private static ElementAxialForceMap ComputeAxialForces(FemProblem problem, DofLayout layout, DenseVector uFull, ElementContributionRegistry registry)
     {
         var map = new ElementAxialForceMap();
-        var registry = new ElementContributionRegistry();
 
         foreach (var el in problem.Elements)
         {
@@ -164,10 +166,9 @@ public sealed class SparseLinearStaticAnalysis
         return map;
     }
 
-    private static ElementBeamEndForceMap ComputeBeamEndForces(FemProblem problem, DofLayout layout, DenseVector uFull)
+    private static ElementBeamEndForceMap ComputeBeamEndForces(FemProblem problem, DofLayout layout, DenseVector uFull, ElementContributionRegistry registry)
     {
         var map = new ElementBeamEndForceMap();
-        var registry = new ElementContributionRegistry();
 
         foreach (var el in problem.Elements)
         {
