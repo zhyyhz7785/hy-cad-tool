@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Elevation.Services
 {
@@ -214,7 +215,7 @@ namespace HyCADTool.Features.Elevation.Services
                 AddSectionLabel(tr, btr, sl, generatedEntities);
 
                 // 2D 几何已生成完毕，删除 Section 活体对象，避免留在图中被后续框选误选
-                section.Erase();
+                LockedLayerErase.TryErase(tr, section, ed);
             }
         }
 

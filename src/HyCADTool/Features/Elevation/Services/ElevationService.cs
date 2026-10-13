@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Session;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -212,7 +213,9 @@ namespace HyCADTool.Features.Elevation.Services
                     ObjectId textId = entry.Value;
 
                     var shape = tr.GetObject(shapeId, OpenMode.ForRead) as Polyline;
-                    var text = tr.GetObject(textId, OpenMode.ForWrite) as DBText;
+                    DBText text;
+                    if (!LockedLayerErase.TryOpenForWrite(tr, textId, out text, ed))
+                        continue;
 
                     if (shape != null && text != null && shape.NumberOfVertices >= 3)
                     {
@@ -242,9 +245,12 @@ namespace HyCADTool.Features.Elevation.Services
             {
                 foreach (var entry in dictionary)
                 {
-                    var shape = tr.GetObject(entry.Key.Item1, OpenMode.ForWrite) as Polyline;
-                    var shape1 = tr.GetObject(entry.Key.Item2, OpenMode.ForWrite) as Polyline;
-                    var text = tr.GetObject(entry.Value, OpenMode.ForWrite) as DBText;
+                    Polyline shape;
+                    Polyline shape1;
+                    DBText text;
+                    LockedLayerErase.TryOpenForWrite(tr, entry.Key.Item1, out shape, null);
+                    LockedLayerErase.TryOpenForWrite(tr, entry.Key.Item2, out shape1, null);
+                    LockedLayerErase.TryOpenForWrite(tr, entry.Value, out text, null);
 
                     if (shape != null && shape.NumberOfVertices >= 3)
                     {

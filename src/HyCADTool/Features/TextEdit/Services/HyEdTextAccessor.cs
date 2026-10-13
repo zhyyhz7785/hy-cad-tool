@@ -1,5 +1,6 @@
 using System;
 using Autodesk.AutoCAD.DatabaseServices;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.TextEdit.Services
 {
@@ -52,8 +53,8 @@ namespace HyCADTool.Features.TextEdit.Services
 
             using (var tr = db.TransactionManager.StartTransaction())
             {
-                var obj = tr.GetObject(id, OpenMode.ForWrite, false);
-                if (!(obj is Entity ent))
+                Entity ent;
+                if (!LockedLayerErase.TryOpenForWrite(tr, id, out ent, null))
                 {
                     tr.Abort();
                     return false;
