@@ -202,6 +202,14 @@ namespace HyCAD.Geometry.Algorithms
         }
 
         /// <summary>
+        /// subject ∩ clip，返回全部片段（按面积降序）。
+        /// </summary>
+        public static IReadOnlyList<Polygon2D> IntersectAll(Polygon2D subject, Polygon2D clip)
+        {
+            return IntersectAllAndSubtractHoles(subject, clip, holes: null);
+        }
+
+        /// <summary>
         /// 合并多个多边形，返回全部结果（NonZero）。
         /// </summary>
         public static IReadOnlyList<Polygon2D> UnionAll(IReadOnlyList<Polygon2D> polygons)

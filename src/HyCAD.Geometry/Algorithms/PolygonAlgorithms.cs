@@ -484,7 +484,7 @@ namespace HyCAD.Geometry.Algorithms
                 // 平均法向量
                 var avgNormal = new Vector2D(
                     (normal1.X + normal2.X) / 2,
-                    (normal2.Y + normal2.Y) / 2
+                    (normal1.Y + normal2.Y) / 2
                 );
                 
                 double length = System.Math.Sqrt(avgNormal.X * avgNormal.X + avgNormal.Y * avgNormal.Y);

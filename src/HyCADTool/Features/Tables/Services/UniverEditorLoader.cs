@@ -238,7 +238,9 @@ namespace HyCADTool.Features.Tables.Services
                 _editorAssembly =
                     TryLoadFromDirectory(execLocation)
                     ?? TryLoadFromAppDomainDepsPath()
+#if DEBUG
                     ?? TryLoadFromReCallTemp()
+#endif
                     ?? TryLoadFromDevOutputBin()
                     ?? TryLoadFromSharedNet8Dir();
 

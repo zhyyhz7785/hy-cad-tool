@@ -77,19 +77,8 @@ internal sealed class EulerBeam2DContribution : IElementContribution
     {
         var e = (EulerBeam2DElementDef)element;
 
-        // Find associated uniform load (if any)
-        UniformBeamLoad? uniform = null;
-        foreach (var ld in problem.LoadCase.ElementLoads)
-        {
-            if (ld is UniformBeamLoad u && u.TargetElement == e.Id)
-            {
-                uniform = u;
-                break;
-            }
-        }
-
         RecoverEndForcesInternal(
-            problem, e, layout, uFull, uniform,
+            problem, e, layout, uFull,
             out double n, out double ma, out double va, out double mb, out double vb);
 
         return new BeamEndValues(n, va, ma, vb, mb);
@@ -104,15 +93,9 @@ internal sealed class EulerBeam2DContribution : IElementContribution
         DenseVector F)
     {
         GetBeamData(problem, e, out double L, out double c, out double s, out _, out _, out _);
-        double q = ResolveTransverseQ(load.Q, load.Direction, c, s);
-        // Local transverse consistent load (+local y), see 02 MVP §4.2
         Span<double> fl = stackalloc double[6];
-        fl[0] = 0;
-        fl[1] = q * L / 2.0;
-        fl[2] = q * L * L / 12.0;
-        fl[3] = 0;
-        fl[4] = q * L / 2.0;
-        fl[5] = -q * L * L / 12.0;
+        for (int i = 0; i < 6; i++) fl[i] = 0;
+        AccumulateLocalEquivalent(load, L, c, s, fl);
 
         Span<double> t = stackalloc double[36];
         BuildT6(c, s, t);
@@ -141,7 +124,6 @@ internal sealed class EulerBeam2DContribution : IElementContribution
         EulerBeam2DElementDef e,
         DofLayout layout,
         DenseVector uFull,
-        UniformBeamLoad? uniform,
         out double N,
         out double MA,
         out double VA,
@@ -159,27 +141,15 @@ internal sealed class EulerBeam2DContribution : IElementContribution
         Span<double> uLoc = stackalloc double[6];
         Mat6Vec(t, ul, uLoc);
 
-        double ua = uLoc[0];
-        double ub = uLoc[3];
-        N = E * A / L * (ub - ua);
-
-        double w1 = uLoc[1];
-        double th1 = uLoc[2];
-        double w2 = uLoc[4];
-        double th2 = uLoc[5];
-
         Span<double> kl = stackalloc double[36];
         BuildLocalStiffness(E, A, Iz, L, kl);
 
         Span<double> fl = stackalloc double[6];
         for (int i = 0; i < 6; i++) fl[i] = 0;
-        if (uniform is not null)
+        foreach (var ld in problem.LoadCase.ElementLoads)
         {
-            double q = ResolveTransverseQ(uniform.Q, uniform.Direction, c, s);
-            fl[1] = q * L / 2.0;
-            fl[2] = q * L * L / 12.0;
-            fl[4] = q * L / 2.0;
-            fl[5] = -q * L * L / 12.0;
+            if (ld is UniformBeamLoad uniform && uniform.TargetElement == e.Id)
+                AccumulateLocalEquivalent(uniform, L, c, s, fl);
         }
 
         Span<double> ku = stackalloc double[6];
@@ -190,6 +160,8 @@ internal sealed class EulerBeam2DContribution : IElementContribution
         double mA = ku[2] - fl[2];
         double ryB = ku[4] - fl[4];
         double mB = ku[5] - fl[5];
+        // Tension-positive axial: N = EA/L (uB-uA) = -(ku[0]) when fl=0; subtract equivalent axial too.
+        N = -(ku[0] - fl[0]);
 
         // Map FE nodal equilibrium to engineering V, M (vertical reaction at A + upward +): VA = ryA, VB = ryB
         VA = ryA;
@@ -198,15 +170,37 @@ internal sealed class EulerBeam2DContribution : IElementContribution
         MB = mB;
     }
 
-    private static double ResolveTransverseQ(double Q, BeamLoadDirection direction, double c, double s)
+    /// <summary>
+    /// Consistent nodal load in local (ux uy rz)_A (ux uy rz)_B.
+    /// Global (0, −Q) projects onto local +x (c, s) and local +y (−s, c).
+    /// </summary>
+    private static void AccumulateLocalEquivalent(
+        UniformBeamLoad load, double L, double c, double s, Span<double> fl)
+    {
+        ResolveLocalQ(load.Q, load.Direction, c, s, out double qAxial, out double qTrans);
+        fl[0] += qAxial * L / 2.0;
+        fl[1] += qTrans * L / 2.0;
+        fl[2] += qTrans * L * L / 12.0;
+        fl[3] += qAxial * L / 2.0;
+        fl[4] += qTrans * L / 2.0;
+        fl[5] += -qTrans * L * L / 12.0;
+    }
+
+    private static void ResolveLocalQ(
+        double Q, BeamLoadDirection direction, double c, double s, out double qAxial, out double qTransverse)
     {
         switch (direction)
         {
             case BeamLoadDirection.LocalPerpendicular:
-                return Q;
+                qAxial = 0;
+                qTransverse = Q;
+                return;
             case BeamLoadDirection.GlobalNegY:
-                // Global distributed (0, -Q) per length; local +y unit in GCS = (-s, c)
-                return -Q * c;
+                // Global distributed (0, -Q) per length.
+                // local +x unit in GCS = (c, s); local +y unit in GCS = (-s, c)
+                qAxial = -Q * s;
+                qTransverse = -Q * c;
+                return;
             default:
                 throw new ArgumentOutOfRangeException(nameof(direction), direction, null);
         }

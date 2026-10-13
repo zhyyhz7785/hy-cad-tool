@@ -12,6 +12,7 @@ namespace HyCADTool.Features.DesignSpec.Domain.Models
     {
         private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
+            .DisableHtml()
             .Build();
 
         /// <summary>

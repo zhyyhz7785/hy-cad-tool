@@ -220,11 +220,12 @@ namespace HyCADTool.Features.DesignSpec.Services
                 string execLocation = Assembly.GetExecutingAssembly().Location;
                 _editorAssembly = TryLoadFromDirectory(execLocation);
 
-                // 策略2: 从 ReCall 临时目录加载（C2 热重载场景）
-                // ReCall 用 Assembly.Load(byte[]) 加载 Refactored.dll，Location 为空
-                // 但 DLL 文件副本在 %TEMP%\HyCADToolRefactored\{ticks}\net8\
+                // 策略2: 仅 DEBUG 才从 %TEMP%\HyCADToolRefactored 回退（C2 热重载）。
+                // 生产版禁止按「最新临时目录」字节加载 DLL，避免植入。
+#if DEBUG
                 if (_editorAssembly == null)
                     _editorAssembly = TryLoadFromReCallTemp();
+#endif
 
                 if (_editorAssembly == null)
                 {

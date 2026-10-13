@@ -5,7 +5,7 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>false</IsPackable>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>12.0</LangVersion>
     <RootNamespace>HyCADTool.LinuxTests</RootNamespace>
   </PropertyGroup>
 
@@ -16,6 +16,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +38,9 @@
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementCalculationService.cs" Link="Settlement\SettlementCalculationService.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\Domain\Services\BearingCapacityService.cs" Link="Settlement\BearingCapacityService.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\Domain\Services\PileStructuralService.cs" Link="Settlement\PileStructuralService.cs" />
+    <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\EvenlySpacedLayout.cs" Link="Reinforcement\EvenlySpacedLayout.cs" />
+    <Compile Include="..\HyCADTool\Features\Tables\Presentation\TableGridXlsxAdapter.cs" Link="Tables\TableGridXlsxAdapter.cs" />
+    <Compile Include="..\HyCADTool\Features\SpongeCity\Infrastructure\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
   </ItemGroup>
 
 </Project>

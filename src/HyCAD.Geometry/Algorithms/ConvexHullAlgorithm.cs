@@ -107,22 +107,33 @@ namespace HyCAD.Geometry.Algorithms
             if (pointList.Count < 3)
                 throw new ArgumentException("At least 3 points required for convex hull", nameof(points));
 
-            // 找到最左和最右的点
-            Point2D minPoint = pointList.OrderBy(p => p.X).First();
-            Point2D maxPoint = pointList.OrderByDescending(p => p.X).First();
+            Point2D minPoint = pointList.OrderBy(p => p.X).ThenBy(p => p.Y).First();
+            Point2D maxPoint = pointList.OrderByDescending(p => p.X).ThenByDescending(p => p.Y).First();
+
+            if (minPoint.Equals(maxPoint))
+                return GrahamScan(pointList);
 
             var hull = new List<Point2D>();
+            var upper = pointList.Where(p => IsLeftOf(p, minPoint, maxPoint)).ToList();
+            var lower = pointList.Where(p => IsLeftOf(p, maxPoint, minPoint)).ToList();
 
-            // 上凸包
-            QuickHullRecursive(pointList, minPoint, maxPoint, hull);
+            hull.Add(minPoint);
+            QuickHullRecursive(upper, minPoint, maxPoint, hull);
+            hull.Add(maxPoint);
+            QuickHullRecursive(lower, maxPoint, minPoint, hull);
 
-            // 下凸包
-            QuickHullRecursive(pointList, maxPoint, minPoint, hull);
+            var uniqueHull = DedupPreserveOrder(hull);
+            if (uniqueHull.Count < 3)
+                return GrahamScan(pointList);
 
-            // 去重
-            var uniqueHull = hull.Distinct().ToList();
+            var poly = new Polygon2D(uniqueHull);
+            if (poly.GetSignedArea() < 0)
+            {
+                uniqueHull.Reverse();
+                poly = new Polygon2D(uniqueHull);
+            }
 
-            return new Polygon2D(uniqueHull);
+            return poly;
         }
 
         #region 辅助方法
@@ -147,52 +158,52 @@ namespace HyCAD.Geometry.Algorithms
         }
 
         /// <summary>
-        /// Quick Hull 递归函数
+        /// Quick Hull 递归：只处理有向线段 p1→p2 左侧的点，按逆时针插入 farthest。
         /// </summary>
         private static void QuickHullRecursive(List<Point2D> points, Point2D p1, Point2D p2, List<Point2D> hull)
         {
             if (points.Count == 0)
                 return;
 
-            // 找到距离线段 p1-p2 最远的点
             Point2D farthest = default;
             bool foundFarthest = false;
-            double maxDistance = 0;
+            double maxSigned = 0;
 
             foreach (var point in points)
             {
-                double dist = DistanceToLine(point, p1, p2);
-                if (dist > maxDistance)
+                double signed = CrossProduct(p1, p2, point);
+                if (!foundFarthest || signed > maxSigned)
                 {
-                    maxDistance = dist;
+                    maxSigned = signed;
                     farthest = point;
                     foundFarthest = true;
                 }
             }
 
             if (!foundFarthest)
-            {
-                hull.Add(p1);
                 return;
-            }
 
-            // 分割点集
             var s1 = points.Where(p => IsLeftOf(p, p1, farthest)).ToList();
             var s2 = points.Where(p => IsLeftOf(p, farthest, p2)).ToList();
 
-            // 递归处理
             QuickHullRecursive(s1, p1, farthest, hull);
+            hull.Add(farthest);
             QuickHullRecursive(s2, farthest, p2, hull);
         }
 
-        /// <summary>
-        /// 点到直线的距离
-        /// </summary>
-        private static double DistanceToLine(Point2D point, Point2D lineStart, Point2D lineEnd)
+        private static List<Point2D> DedupPreserveOrder(List<Point2D> points)
         {
-            double area = System.Math.Abs(CrossProduct(lineStart, lineEnd, point));
-            double baseLength = lineStart.DistanceTo(lineEnd);
-            return baseLength > 1e-10 ? area / baseLength : 0;
+            var result = new List<Point2D>(points.Count);
+            foreach (var point in points)
+            {
+                if (result.Count == 0 || !result[result.Count - 1].Equals(point))
+                    result.Add(point);
+            }
+
+            if (result.Count >= 2 && result[0].Equals(result[result.Count - 1]))
+                result.RemoveAt(result.Count - 1);
+
+            return result;
         }
 
         /// <summary>
