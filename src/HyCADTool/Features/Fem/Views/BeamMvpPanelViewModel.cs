@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -13,11 +15,10 @@ using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shell.Configuration.User;
-using HYFEA.Core.Analysis;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Loads;
-using HYFEA.Core.Model;
 using HYFEA.Core.Results;
+using HYFEA.Hosting;
 
 namespace HyCADTool.Features.Fem.Views
 {
@@ -26,6 +27,7 @@ namespace HyCADTool.Features.Fem.Views
         public static BeamMvpPanelViewModel Current { get; private set; }
 
         private readonly RelayCommand _solveCommand;
+        private int _solveSerial;
 
         public BeamMvpPanelViewModel()
         {
@@ -143,18 +145,48 @@ namespace HyCADTool.Features.Fem.Views
                 }
 
                 var dir = LoadIsGlobalNegY ? BeamLoadDirection.GlobalNegY : BeamLoadDirection.LocalPerpendicular;
-                var prob = HyfeaBeamProblemBuilder.Build(
-                    axis,
-                    eUse,
-                    aUse,
-                    izUse,
-                    qUse,
-                    dir,
-                    EndA,
-                    EndB,
-                    Units);
+                var request = new BeamSolveRequest
+                {
+                    YoungsModulus = eUse,
+                    Area = aUse,
+                    InertiaZ = izUse,
+                    Q = qUse,
+                    LoadDirection = dir,
+                    EndA = (HYFEA.Core.Model.BeamSupportKind)EndA,
+                    EndB = (HYFEA.Core.Model.BeamSupportKind)EndB,
+                    Units = Units,
+                };
+                var geom = new InMemoryAxisGeometry(axis);
+                var session = new BeamSolveSession();
+                int serial = Interlocked.Increment(ref _solveSerial);
+                var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                ed.WriteMessage("\n[HYFEA] 后台稀疏求解中…");
+                Task.Run(() => session.Compute(geom, request))
+                    .ContinueWith(
+                        t => dispatcher.BeginInvoke(new Action(() => FinishSolve(serial, doc, ed, axis, t))),
+                        TaskScheduler.Default);
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n[HYFEA] 异常：{ex.Message}");
+            }
+        }
 
-                var sol = new LinearStaticAnalysis().Run(prob);
+        private void FinishSolve(int serial, Document doc, Editor ed, IReadOnlyList<Point2D> axis, Task<BeamSolveOutput> task)
+        {
+            if (serial != Volatile.Read(ref _solveSerial))
+                return;
+
+            try
+            {
+                if (task.IsFaulted)
+                {
+                    var err = task.Exception != null ? task.Exception.GetBaseException().Message : "未知";
+                    ed.WriteMessage("\n[HYFEA] 异常：" + err);
+                    return;
+                }
+
+                var sol = task.Result.Result;
                 if (!sol.Success || sol.Displacements == null || sol.Layout == null)
                 {
                     ed.WriteMessage("\n求解失败：" + (sol.Error != null ? sol.Error.Message : "未知"));
@@ -171,7 +203,8 @@ namespace HyCADTool.Features.Fem.Views
                     DrawReactions,
                     Units);
 
-                BeamResultRenderer.Render(doc, axis, sol, opt);
+                using (doc.LockDocument())
+                    BeamResultRenderer.Render(doc, axis, sol, opt);
 
                 double du = MaxTranslationalDispFromUFull(sol);
                 double mMax = MaxMomentMagnitude(sol);
