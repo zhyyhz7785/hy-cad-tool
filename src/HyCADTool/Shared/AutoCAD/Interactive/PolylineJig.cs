@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.GraphicsInterface;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcGiGeometry = Autodesk.AutoCAD.GraphicsInterface.Geometry;
 
 namespace HyCADTool.Shared.AutoCAD.Interactive
@@ -17,7 +18,9 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
     {
         private readonly AcDbPolyline _polyline;
         private readonly Point3dCollection _points;
+        private readonly Point3dCollection _ucsPoints;
         private Point3d? _currentPoint;
+        private Point3d? _currentUcs;
         private readonly double _offsetDistance;
         private bool _disposed;
 
@@ -34,6 +37,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
         {
             _polyline = new AcDbPolyline();
             _points = new Point3dCollection();
+            _ucsPoints = new Point3dCollection();
             _offsetDistance = offsetDistance;
         }
 
@@ -92,10 +96,10 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             options.AppendKeywordsToMessage = true;
 
             // 相对上一确认点取点，并服从 ORTHOMODE（F8 正交）
-            if (_points.Count > 0)
+            if (_ucsPoints.Count > 0)
             {
                 options.UseBasePoint = true;
-                options.BasePoint = _points[_points.Count - 1];
+                options.BasePoint = _ucsPoints[_ucsPoints.Count - 1];
             }
 
             options.UserInputControls =
@@ -107,12 +111,11 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
             if (result.Status == PromptStatus.OK)
             {
-                if (_currentPoint.HasValue && result.Value == _currentPoint.Value)
-                {
+                if (_currentUcs.HasValue && result.Value == _currentUcs.Value)
                     return SamplerStatus.NoChange;
-                }
 
-                _currentPoint = result.Value;
+                _currentUcs = result.Value;
+                _currentPoint = ToWcs(result.Value);
                 return SamplerStatus.OK;
             }
             else if (result.Status == PromptStatus.Keyword)
@@ -122,8 +125,10 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 {
                     if (_points.Count > 0)
                     {
-                        _points.RemoveAt(_points.Count - 1); // 撤销最后一个点
-                        return SamplerStatus.OK; // 更新绘制
+                        _points.RemoveAt(_points.Count - 1);
+                        if (_ucsPoints.Count > 0)
+                            _ucsPoints.RemoveAt(_ucsPoints.Count - 1);
+                        return SamplerStatus.OK;
                     }
                     else
                     {
@@ -153,9 +158,10 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             {
                 PromptResult res = ed.Drag(this);
 
-                if (res.Status == PromptStatus.OK && _currentPoint.HasValue)
+                if (res.Status == PromptStatus.OK && _currentPoint.HasValue && _currentUcs.HasValue)
                 {
                     _points.Add(_currentPoint.Value);
+                    _ucsPoints.Add(_currentUcs.Value);
                 }
                 else if (res.Status == PromptStatus.Keyword)
                 {
@@ -178,6 +184,12 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             return PromptStatus.OK;
+        }
+
+        private static Point3d ToWcs(Point3d ucsPoint)
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            return ed == null ? ucsPoint : EditorWcs.ToWcs(ed, ucsPoint);
         }
 
         public void Dispose()

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.AutoCAD.GraphicsInterface;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Misc
 {
@@ -61,18 +62,6 @@ namespace HyCADTool.Features.Misc
 
                 pt2 = jig.SecondPoint;
 
-                // 计算选择框范围
-                double minX = Math.Min(pt1.X, pt2.X);
-                double maxX = Math.Max(pt1.X, pt2.X);
-                double minY = Math.Min(pt1.Y, pt2.Y);
-                double maxY = Math.Max(pt1.Y, pt2.Y);
-                double minZ = Math.Min(pt1.Z, pt2.Z);
-                double maxZ = Math.Max(pt1.Z, pt2.Z);
-
-                Extents3d selectionExtents = new Extents3d(
-                    new Point3d(minX, minY, minZ),
-                    new Point3d(maxX, maxY, maxZ));
-
                 // 2. 自动在选择框内选择对象
                 TypedValue[] filterList = new TypedValue[]
                 {
@@ -85,7 +74,7 @@ namespace HyCADTool.Features.Misc
                 SelectionFilter filter = new SelectionFilter(filterList);
                 
                 // 使用交叉窗口选择（Crossing Window）- 选择与窗口相交或完全在窗口内的对象
-                PromptSelectionResult psr = ed.SelectCrossingWindow(pt1, pt2, filter);
+                PromptSelectionResult psr = ed.SelectCrossingPolygon(SelectionWindowJig.ToWcsPolygon(ed, pt1, pt2), filter);
 
                 if (psr.Status != PromptStatus.OK || psr.Value == null || psr.Value.Count == 0)
                 {
@@ -105,11 +94,16 @@ namespace HyCADTool.Features.Misc
 
                         if (ent is Line line)
                         {
+                            if (LockedLayerErase.IsLocked(tr, line))
+                            {
+                                ed.WriteMessage("\n图层 " + line.Layer + " 已锁定，跳过。");
+                                continue;
+                            }
+
                             AcDbPolyline pline = ConvertLineToPolyline(line);
-                            ObjectId newId = btr.AppendEntity(pline);
+                            btr.AppendEntity(pline);
                             tr.AddNewlyCreatedDBObject(pline, true);
 
-                            // 删除原直线
                             line.UpgradeOpen();
                             line.Erase();
 
@@ -123,7 +117,7 @@ namespace HyCADTool.Features.Misc
 
                     // 步骤4: 获取所有多段线的端点，并筛选在选择框内的端点
                     List<EndpointInfo> allEndpoints = GetAllPolylineEndpoints(polylines);
-                    List<EndpointInfo> endpointsInBounds = FilterEndpointsInBounds(allEndpoints, selectionExtents);
+                    List<EndpointInfo> endpointsInBounds = FilterEndpointsInUcsRect(ed, allEndpoints, pt1, pt2);
                     
                     // 步骤5: 连接共线的多段线
                     int mergedCount = MergeCollinearPolylines(polylines, endpointsInBounds, tr);
@@ -188,23 +182,20 @@ namespace HyCADTool.Features.Misc
         }
 
         // 筛选在选择框内的端点
-        private List<EndpointInfo> FilterEndpointsInBounds(List<EndpointInfo> allEndpoints, Extents3d bounds)
+        private static List<EndpointInfo> FilterEndpointsInUcsRect(
+            Editor ed, List<EndpointInfo> allEndpoints, Point3d aUcs, Point3d bUcs)
         {
-            List<EndpointInfo> endpointsInBounds = new List<EndpointInfo>();
+            double minX = Math.Min(aUcs.X, bUcs.X);
+            double maxX = Math.Max(aUcs.X, bUcs.X);
+            double minY = Math.Min(aUcs.Y, bUcs.Y);
+            double maxY = Math.Max(aUcs.Y, bUcs.Y);
+            var endpointsInBounds = new List<EndpointInfo>();
 
             foreach (var epInfo in allEndpoints)
             {
-                Point3d pt = epInfo.Point;
-
-                // 检查点是否在选择框内
-                bool isInsideBounds =
-                    pt.X >= bounds.MinPoint.X && pt.X <= bounds.MaxPoint.X &&
-                    pt.Y >= bounds.MinPoint.Y && pt.Y <= bounds.MaxPoint.Y;
-
-                if (isInsideBounds)
-                {
+                Point3d pt = EditorWcs.ToUcs(ed, epInfo.Point);
+                if (pt.X >= minX && pt.X <= maxX && pt.Y >= minY && pt.Y <= maxY)
                     endpointsInBounds.Add(epInfo);
-                }
             }
 
             return endpointsInBounds;
@@ -453,6 +444,22 @@ namespace HyCADTool.Features.Misc
 
         public Point3d SecondPoint => _secondPoint;
 
+        /// <summary>把 UCS 轴对齐矩形的四个角变到世界坐标，供交叉多边形选择和预览。</summary>
+        public static Point3dCollection ToWcsPolygon(Editor ed, Point3d aUcs, Point3d bUcs)
+        {
+            double minX = Math.Min(aUcs.X, bUcs.X);
+            double maxX = Math.Max(aUcs.X, bUcs.X);
+            double minY = Math.Min(aUcs.Y, bUcs.Y);
+            double maxY = Math.Max(aUcs.Y, bUcs.Y);
+            double z = (aUcs.Z + bUcs.Z) * 0.5;
+            var polygon = new Point3dCollection();
+            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(minX, minY, z)));
+            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(maxX, minY, z)));
+            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(maxX, maxY, z)));
+            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(minX, maxY, z)));
+            return polygon;
+        }
+
         /// <summary>
         /// 启动 Jig 交互
         /// </summary>
@@ -486,16 +493,11 @@ namespace HyCADTool.Features.Misc
             if (draw == null)
                 return false;
 
-            // 计算矩形的四个角点
-            double minX = Math.Min(_firstPoint.X, _secondPoint.X);
-            double maxX = Math.Max(_firstPoint.X, _secondPoint.X);
-            double minY = Math.Min(_firstPoint.Y, _secondPoint.Y);
-            double maxY = Math.Max(_firstPoint.Y, _secondPoint.Y);
-
-            Point3d pt1 = new Point3d(minX, minY, 0);
-            Point3d pt2 = new Point3d(maxX, minY, 0);
-            Point3d pt3 = new Point3d(maxX, maxY, 0);
-            Point3d pt4 = new Point3d(minX, maxY, 0);
+            var corners = ToWcsPolygon(_editor, _firstPoint, _secondPoint);
+            Point3d pt1 = corners[0];
+            Point3d pt2 = corners[1];
+            Point3d pt3 = corners[2];
+            Point3d pt4 = corners[3];
 
             // 绘制虚线矩形（使用绿色，类似AutoCAD的交叉选择）
             short colorIndex = 3; // 绿色

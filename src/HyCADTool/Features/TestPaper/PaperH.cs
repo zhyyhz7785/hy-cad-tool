@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.TestPaper
 {
@@ -18,7 +19,7 @@ namespace HyCADTool.Features.TestPaper
             Point2d point2d = new Point2d(0, 0);
             if (ppr.Status == PromptStatus.OK)
             {
-                var point1 = ppr.Value;
+                var point1 = EditorWcs.ToWcs(ed, ppr.Value);
                 point2d = new Point2d(point1.X, point1.Y);
             }
            try
