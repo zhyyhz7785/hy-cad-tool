@@ -64,7 +64,15 @@ namespace GenerateCommandTiers
                 {
                     if (prop.Value.ValueKind != JsonValueKind.Object)
                         continue;
-                    rows.Add(ReadRow(prop.Name, prop.Value));
+                    try
+                    {
+                        rows.Add(ReadRow(prop.Name, prop.Value));
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        Console.Error.WriteLine(jsonPath + " 键 " + prop.Name + ": " + ex.Message);
+                        return 1;
+                    }
                 }
 
                 rows.Sort(CompareKeyCasefold);
@@ -207,7 +215,7 @@ namespace GenerateCommandTiers
                 return "professional";
             if (t.Equals("enterprise", StringComparison.OrdinalIgnoreCase) || t.Equals("ent", StringComparison.OrdinalIgnoreCase))
                 return "enterprise";
-            return "standard";
+            throw new InvalidOperationException("无法识别的 tier: '" + t + "'。允许 freemium/free、standard、professional/pro、enterprise/ent。");
         }
 
         private static string RenderTiers(List<CommandRow> rows, bool useRegistry)
@@ -627,7 +635,15 @@ namespace GenerateCommandTiers
                     {
                         if (prop.Value.ValueKind != JsonValueKind.Object)
                             continue;
-                        rows.Add(ReadRow(prop.Name, prop.Value));
+                        try
+                        {
+                            rows.Add(ReadRow(prop.Name, prop.Value));
+                        }
+                        catch (InvalidOperationException ex)
+                        {
+                            Console.Error.WriteLine(json + " 键 " + prop.Name + ": " + ex.Message);
+                            return null;
+                        }
                     }
                     rows.Sort(CompareKeyCasefold);
                     list.Add(new ModuleRows(moduleId, rows));

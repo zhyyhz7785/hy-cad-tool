@@ -34,5 +34,17 @@ namespace HyCADTool.LinuxTests
             };
             Program.EnsureUniqueModuleKeys(modules);
         }
+
+        [Fact]
+        public void Unknown_tier_fails_instead_of_falling_back_to_standard()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() => Program.NormalizeTier("professionnal"));
+            Assert.Contains("无法识别的 tier", ex.Message);
+            Assert.Contains("professionnal", ex.Message);
+            Assert.Equal("standard", Program.NormalizeTier(null));
+            Assert.Equal("standard", Program.NormalizeTier(""));
+            Assert.Equal("professional", Program.NormalizeTier("pro"));
+            Assert.Equal("freemium", Program.NormalizeTier("free"));
+        }
     }
 }
