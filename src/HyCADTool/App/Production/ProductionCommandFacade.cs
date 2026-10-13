@@ -37,6 +37,9 @@ namespace HyCADTool.App.Production
         [CommandMethod("HyB")]     public void Cmd_HyB() => LicenseGate.RunGated("HyB", () => ProductionDispatcher.Invoke("HyB"));
         [CommandMethod("_HyExec")] public void Cmd__HyExec() => LicenseGate.RunGated("_HyExec", () => ProductionDispatcher.Invoke("_HyExec"));
         [CommandMethod("hyLicense")] public void Cmd_hyLicense() => LicenseGate.RunGated("hyLicense", () => ProductionDispatcher.Invoke("hyLicense"));
+        [CommandMethod("hyG101")] public void Cmd_hyG101() => LicenseGate.RunGated("hyG101", () => ProductionDispatcher.Invoke("hyG101"));
+        [CommandMethod("hyG16")] public void Cmd_hyG16() => LicenseGate.RunGated("hyG16", () => ProductionDispatcher.Invoke("hyG16"));
+        [CommandMethod("hyBaseRein")] public void Cmd_hyBaseRein() => LicenseGate.RunGated("hyBaseRein", () => ProductionDispatcher.Invoke("hyBaseRein"));
         #endregion
 
         #region 海绵城市 (Sponge City)

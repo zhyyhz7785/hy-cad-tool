@@ -59,17 +59,11 @@ namespace HyCADTool.App.Production
                     return;
                 }
 
-                var route = CommandRouteResolver.GetBuiltin(key);
-                if (route == null || string.IsNullOrWhiteSpace(route.Type))
+                CommandRoute route;
+                string prepareError;
+                if (!CommandRouteResolver.TryPrepareDispatch(key, CommandCatalog.Get(key), out route, out prepareError))
                 {
-                    ed.WriteMessage("\n✗ 内置路由表中未定义键 \"" + key + "\"。");
-                    return;
-                }
-
-                string tamperReason;
-                if (CommandRouteResolver.TryRejectIfTampered(key, CommandCatalog.Get(key), out tamperReason))
-                {
-                    ed.WriteMessage("\n✗ " + tamperReason);
+                    ed.WriteMessage("\n✗ " + prepareError);
                     return;
                 }
 

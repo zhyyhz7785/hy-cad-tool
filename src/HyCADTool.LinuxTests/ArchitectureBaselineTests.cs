@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using HyCAD.Geometry;
 using HyCAD.Tables;
 using HyCADTool.TextLayout;
@@ -20,15 +19,12 @@ namespace HyCADTool.LinuxTests
 {
     public class ArchitectureBaselineTests
     {
-        private static readonly Regex ShellRef = new Regex(@"HyCADTool\.Shell", RegexOptions.Compiled);
-        private static readonly Regex GetPoint = new Regex(@"\.\s*GetPoint\s*\(", RegexOptions.Compiled);
-
         [Fact]
         public void Features_must_not_gain_new_shell_references()
         {
             AssertNoNewViolations(
                 "whitelist-features-shell.txt",
-                ScanFeatureCounts(ShellRef));
+                ScanFeatureCounts(CountShellRefs));
         }
 
         [Fact]
@@ -36,7 +32,7 @@ namespace HyCADTool.LinuxTests
         {
             AssertNoNewViolations(
                 "whitelist-editor-getpoint.txt",
-                ScanFeatureCounts(GetPoint));
+                ScanFeatureCounts(CountGetPointCalls));
         }
 
         [Fact]
@@ -114,18 +110,61 @@ namespace HyCADTool.LinuxTests
             }
         }
 
-        private static IReadOnlyCollection<string> ScanFeatureCounts(Regex pattern)
+        private static IReadOnlyCollection<string> ScanFeatureCounts(Func<CompilationUnitSyntax, int> count)
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(FeaturesRoot(), "*.cs", SearchOption.AllDirectories))
             {
                 var rel = ToRepoRelative(path);
-                var text = StripComments(File.ReadAllText(path));
-                var n = pattern.Matches(text).Count;
+                var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
+                var n = count(tree.GetCompilationUnitRoot());
                 if (n > 0)
                     hits.Add(rel + "::" + n);
             }
             return hits;
+        }
+
+        /// <summary>
+        /// 每个 <c>HyCADTool.Shell</c> 限定名计 1（含 using）。不扫字符串与注释。
+        /// </summary>
+        internal static int CountShellRefs(CompilationUnitSyntax root)
+        {
+            var n = 0;
+            foreach (var name in root.DescendantNodes().OfType<QualifiedNameSyntax>())
+            {
+                if (name.Right.Identifier.Text == "Shell"
+                    && name.Left is IdentifierNameSyntax left
+                    && left.Identifier.Text == "HyCADTool")
+                    n++;
+            }
+
+            // HyCADTool.Shell.ViewModels.Foo.Current 是成员访问，不是 QualifiedName。
+            foreach (var access in root.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+            {
+                if (access.Name.Identifier.Text == "Shell"
+                    && access.Expression is IdentifierNameSyntax left
+                    && left.Identifier.Text == "HyCADTool")
+                    n++;
+            }
+            return n;
+        }
+
+        /// <summary>
+        /// 每个名为 GetPoint 的调用计 1。不扫字符串与注释。
+        /// </summary>
+        internal static int CountGetPointCalls(CompilationUnitSyntax root)
+        {
+            var n = 0;
+            foreach (var inv in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                if (inv.Expression is MemberAccessExpressionSyntax member
+                    && member.Name.Identifier.Text == "GetPoint")
+                    n++;
+                else if (inv.Expression is IdentifierNameSyntax id
+                    && id.Identifier.Text == "GetPoint")
+                    n++;
+            }
+            return n;
         }
 
         private static IReadOnlyCollection<string> ScanMutableStatics(string root)
@@ -145,20 +184,75 @@ namespace HyCADTool.LinuxTests
                         continue;
                     if (field.Modifiers.Any(SyntaxKind.ConstKeyword))
                         continue;
-                    if (field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword))
-                        continue;
                     if (HasProcessWide(field))
+                        continue;
+                    var readonlyField = field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
+                    if (readonlyField && !IsMutableCollectionType(field.Declaration.Type))
                         continue;
                     foreach (var variable in field.Declaration.Variables)
                         hits.Add(rel + "::" + variable.Identifier.Text);
+                }
+
+                foreach (var prop in rootNode.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                {
+                    if (!prop.Modifiers.Any(SyntaxKind.StaticKeyword))
+                        continue;
+                    if (HasProcessWide(prop))
+                        continue;
+                    if (!HasWritableAccessor(prop))
+                        continue;
+                    hits.Add(rel + "::" + prop.Identifier.Text);
+                }
+
+                foreach (var ev in rootNode.DescendantNodes().OfType<EventFieldDeclarationSyntax>())
+                {
+                    if (!ev.Modifiers.Any(SyntaxKind.StaticKeyword))
+                        continue;
+                    if (HasProcessWide(ev))
+                        continue;
+                    foreach (var variable in ev.Declaration.Variables)
+                        hits.Add(rel + "::event " + variable.Identifier.Text);
                 }
             }
             return hits;
         }
 
-        private static bool HasProcessWide(FieldDeclarationSyntax field)
+        private static bool HasWritableAccessor(PropertyDeclarationSyntax prop)
         {
-            foreach (var list in field.AttributeLists)
+            if (prop.AccessorList == null)
+                return false;
+            foreach (var acc in prop.AccessorList.Accessors)
+            {
+                if (acc.IsKind(SyntaxKind.SetAccessorDeclaration) || acc.IsKind(SyntaxKind.InitAccessorDeclaration))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsMutableCollectionType(TypeSyntax type)
+        {
+            var text = type.ToString();
+            if (text.IndexOf("IReadOnly", StringComparison.Ordinal) >= 0)
+                return false;
+            if (text.IndexOf("Immutable", StringComparison.Ordinal) >= 0)
+                return false;
+            if (text.IndexOf("ReadOnlySpan", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyMemory", StringComparison.Ordinal) >= 0)
+                return false;
+
+            return text.IndexOf("List<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Dictionary<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("HashSet<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Queue<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Stack<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Collection<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Concurrent", StringComparison.Ordinal) >= 0
+                || text.EndsWith("[]", StringComparison.Ordinal);
+        }
+
+        private static bool HasProcessWide(MemberDeclarationSyntax member)
+        {
+            foreach (var list in member.AttributeLists)
             {
                 foreach (var attr in list.Attributes)
                 {
@@ -192,19 +286,6 @@ namespace HyCADTool.LinuxTests
                 set.Add(t);
             }
             return set;
-        }
-
-        private static string StripComments(string text)
-        {
-            text = Regex.Replace(text, @"/\*.*?\*/", "", RegexOptions.Singleline);
-            var lines = text.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
-            {
-                var idx = lines[i].IndexOf("//", StringComparison.Ordinal);
-                if (idx >= 0)
-                    lines[i] = lines[i].Substring(0, idx);
-            }
-            return string.Join("\n", lines);
         }
 
         private static string FeaturesRoot()

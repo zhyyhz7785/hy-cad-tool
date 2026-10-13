@@ -1,4 +1,4 @@
-# Features 直接调用 Editor.GetPoint 的计数基线（文件::次数）。次数只减不增。
+# Features 直接调用 Editor.GetPoint 的计数基线（Roslyn Invocation，文件::次数）。次数只减不增。
 src/HyCADTool/Features/AnchorBolt/AnchorBoltTableCommand.cs::1
 src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::1
 src/HyCADTool/Features/Elevation/DrawElevationCommand.cs::1
