@@ -27,8 +27,8 @@ namespace HyCADTool.Features.Fem.Views
         public static BeamMvpPanelViewModel Current { get; private set; }
 
         private readonly RelayCommand _solveCommand;
-        private int _solveSerial;
-        private CancellationTokenSource _solveCts;
+        private readonly BeamSolveSession _session = new BeamSolveSession();
+        private readonly BeamSolveFlight _flight = new BeamSolveFlight();
         private bool _isSolving;
 
         public BeamMvpPanelViewModel()
@@ -125,7 +125,7 @@ namespace HyCADTool.Features.Fem.Views
                 double izUse = CoercePositiveFinite(InertiaZ, 1.067e9, "Iz (mm⁴)", ed);
                 double qUse = CoercePositiveFinite(Q, 10.0, "q (N/mm)", ed);
 
-                IReadOnlyList<Point2D> axis;
+                HyfeaGeometryMapper geom;
                 using (var tr = doc.TransactionManager.StartTransaction())
                 {
                     var obj = tr.GetObject(SourceEntityId, OpenMode.ForRead);
@@ -136,9 +136,11 @@ namespace HyCADTool.Features.Fem.Views
                         return;
                     }
 
-                    axis = HyfeaGeometryMapper.MapBeam(cv, segUse, Units);
+                    geom = new HyfeaGeometryMapper(cv, segUse, Units);
                     tr.Commit();
                 }
+
+                IReadOnlyList<Point2D> axis = geom.GetAxisNodes();
 
                 double dxChord = axis[axis.Count - 1].X - axis[0].X;
                 double dyChord = axis[axis.Count - 1].Y - axis[0].Y;
@@ -170,26 +172,13 @@ namespace HyCADTool.Features.Fem.Views
                     EndB = (HYFEA.Core.Model.BeamSupportKind)EndB,
                     Units = Units,
                 };
-                var geom = new InMemoryAxisGeometry(axis);
-                var session = new BeamSolveSession();
-                int serial = Interlocked.Increment(ref _solveSerial);
-                var prev = Interlocked.Exchange(ref _solveCts, new CancellationTokenSource());
-                if (prev != null)
-                {
-                    prev.Cancel();
-                    prev.Dispose();
-                }
-                var token = _solveCts.Token;
+                var ticket = _flight.Begin();
                 var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
                 IsSolving = true;
                 ed.WriteMessage("\n[HYFEA] 后台稀疏求解中…");
-                Task.Run(() =>
-                    {
-                        token.ThrowIfCancellationRequested();
-                        return session.Compute(geom, request);
-                    }, token)
+                Task.Run(() => _session.Compute(geom, request, ticket.Token), ticket.Token)
                     .ContinueWith(
-                        t => dispatcher.BeginInvoke(new Action(() => FinishSolve(serial, doc, ed, axis, token, t))),
+                        t => dispatcher.BeginInvoke(new Action(() => FinishSolve(ticket, doc, ed, axis, t))),
                         TaskScheduler.Default);
             }
             catch (Exception ex)
@@ -199,13 +188,13 @@ namespace HyCADTool.Features.Fem.Views
             }
         }
 
-        private void FinishSolve(int serial, Document doc, Editor ed, IReadOnlyList<Point2D> axis, CancellationToken token, Task<BeamSolveOutput> task)
+        private void FinishSolve(BeamSolveTicket ticket, Document doc, Editor ed, IReadOnlyList<Point2D> axis, Task<BeamSolveOutput> task)
         {
-            if (serial != Volatile.Read(ref _solveSerial))
+            if (!_flight.IsCurrent(ticket.Serial))
                 return;
 
             IsSolving = false;
-            if (token.IsCancellationRequested || task.IsCanceled)
+            if (ticket.Token.IsCancellationRequested || task.IsCanceled)
             {
                 ed.WriteMessage("\n[HYFEA] 求解已取消。");
                 return;
@@ -213,7 +202,7 @@ namespace HyCADTool.Features.Fem.Views
 
             try
             {
-                if (doc == null || !ReferenceEquals(doc, Application.DocumentManager.MdiActiveDocument))
+                if (!_flight.ShouldPresent(ticket.Serial, doc, Application.DocumentManager.MdiActiveDocument))
                 {
                     ed.WriteMessage("\n[HYFEA] 活动文档已切换，已丢弃本次结果。");
                     return;
@@ -243,8 +232,9 @@ namespace HyCADTool.Features.Fem.Views
                     DrawReactions,
                     Units);
 
+                IFemResultSink sink = new BeamResultRenderer(doc, axis, opt);
                 using (doc.LockDocument())
-                    BeamResultRenderer.Render(doc, axis, sol, opt);
+                    sink.Present(task.Result.Result, task.Result.Problem);
 
                 double du = MaxTranslationalDispFromUFull(sol);
                 double mMax = MaxMomentMagnitude(sol);

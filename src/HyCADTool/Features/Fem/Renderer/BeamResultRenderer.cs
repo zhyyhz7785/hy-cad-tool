@@ -7,6 +7,7 @@ using HyCAD.Geometry;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Model;
 using HYFEA.Core.Results;
+using HYFEA.Hosting;
 
 namespace HyCADTool.Features.Fem.Renderer
 {
@@ -39,9 +40,27 @@ namespace HyCADTool.Features.Fem.Renderer
         public UnitSystem Units { get; }
     }
 
-    /// <summary>将位移与简化 M/V/R 结果写入当前空间（HYFEA-Result）。</summary>
-    public static class BeamResultRenderer
+    /// <summary>将位移与简化 M/V/R 结果写入当前空间（HYFEA-Result）。实现 <see cref="IFemResultSink"/>。</summary>
+    public sealed class BeamResultRenderer : IFemResultSink
     {
+        private readonly Document _doc;
+        private readonly IReadOnlyList<Point2D> _axisNodesFem;
+        private readonly BeamRenderOptions _opt;
+
+        public BeamResultRenderer(Document doc, IReadOnlyList<Point2D> axisNodesFem, BeamRenderOptions opt)
+        {
+            _doc = doc ?? throw new ArgumentNullException(nameof(doc));
+            _axisNodesFem = axisNodesFem ?? throw new ArgumentNullException(nameof(axisNodesFem));
+            _opt = opt ?? throw new ArgumentNullException(nameof(opt));
+        }
+
+        public void Present(FemResult result, FemProblem problem)
+        {
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
+            Render(_doc, _axisNodesFem, result, _opt);
+        }
+
         /// <summary>轴线节点坐标与 <see cref="Integration.HyfeaGeometryMapper.MapBeam"/> 输出一致（MmN=mm，SI=m）。</summary>
         public static void Render(Document doc, IReadOnlyList<Point2D> axisNodesFem, FemResult result, BeamRenderOptions opt)
         {

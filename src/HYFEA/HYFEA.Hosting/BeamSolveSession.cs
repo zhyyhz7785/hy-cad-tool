@@ -3,13 +3,25 @@ using System.Threading;
 using HYFEA.Core.Analysis;
 using HYFEA.Core.Model;
 using HYFEA.Core.Results;
+using HYFEA.Core.Solvers;
 
 namespace HYFEA.Hosting;
 
-/// <summary>几何 → 组装 → 线性静力求解 → 可选结果呈现。</summary>
+/// <summary>几何 → 组装 → 线性静力求解 → 可选结果呈现。默认稀疏路径。</summary>
 public sealed class BeamSolveSession
 {
-    private readonly SparseLinearStaticAnalysis _analysis = new();
+    private readonly SparseLinearStaticAnalysis _analysis;
+
+    public BeamSolveSession() : this(null)
+    {
+    }
+
+    public BeamSolveSession(FemContext? context)
+    {
+        var ctx = context ?? FemContext.CreateDefault();
+        ILinearSystemSolver? solver = ctx.Solvers.Default.SupportsSparse ? ctx.Solvers.Default : null;
+        _analysis = new SparseLinearStaticAnalysis(ctx, solver);
+    }
 
     public FemResult Run(IFemHostGeometry geometry, BeamSolveRequest request, IFemResultSink? sink = null)
     {
