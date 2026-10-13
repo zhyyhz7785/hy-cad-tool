@@ -29,7 +29,7 @@ namespace HyCADTool.LinuxTests
         {
             AssertNoNewViolations(
                 "whitelist-features-shell.txt",
-                ScanFeatureFiles((rel, text) => ShellRef.IsMatch(text) ? rel : null));
+                ScanFeatureCounts(ShellRef));
         }
 
         [Fact]
@@ -37,7 +37,7 @@ namespace HyCADTool.LinuxTests
         {
             AssertNoNewViolations(
                 "whitelist-editor-getpoint.txt",
-                ScanFeatureFiles((rel, text) => GetPoint.IsMatch(text) ? rel : null));
+                ScanFeatureCounts(GetPoint));
         }
 
         [Fact]
@@ -81,16 +81,16 @@ namespace HyCADTool.LinuxTests
             }
         }
 
-        private static IReadOnlyCollection<string> ScanFeatureFiles(Func<string, string, string> pick)
+        private static IReadOnlyCollection<string> ScanFeatureCounts(Regex pattern)
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(FeaturesRoot(), "*.cs", SearchOption.AllDirectories))
             {
                 var rel = ToRepoRelative(path);
                 var text = StripComments(File.ReadAllText(path));
-                var hit = pick(rel, text);
-                if (!string.IsNullOrEmpty(hit))
-                    hits.Add(hit);
+                var n = pattern.Matches(text).Count;
+                if (n > 0)
+                    hits.Add(rel + "::" + n);
             }
             return hits;
         }
@@ -147,8 +147,8 @@ namespace HyCADTool.LinuxTests
             var allowed = LoadWhitelist(whitelistName);
             var extra = actual.Where(x => !allowed.Contains(x)).ToArray();
             var stale = allowed.Where(x => !actual.Contains(x)).ToArray();
-            Assert.True(extra.Length == 0, "新增违规（请改代码或更新白名单 " + whitelistName + "）:\n" + string.Join("\n", extra));
-            Assert.True(stale.Length == 0, "白名单已过期（请删掉已消失的条目 " + whitelistName + "）:\n" + string.Join("\n", stale));
+            Assert.True(extra.Length == 0, "新增违规（次数只减不增；请改代码或更新白名单 " + whitelistName + "）:\n" + string.Join("\n", extra));
+            Assert.True(stale.Length == 0, "白名单应收紧（实际次数已下降，请把计数改小 " + whitelistName + "）:\n" + string.Join("\n", stale));
         }
 
         private static HashSet<string> LoadWhitelist(string name)
