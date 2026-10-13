@@ -78,16 +78,40 @@ namespace HyCADTool.Shared.AutoCAD.Interaction
                 throw new ArgumentException("Layer name cannot be null or empty", nameof(layerName));
 
             var previous = db.Clayer;
-            using (var tr = db.TransactionManager.StartTransaction())
+            WithLayerWriteLock(db, tr =>
             {
                 var layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 if (!layerTable.Has(layerName))
                     throw new ArgumentException("Layer '" + layerName + "' does not exist", nameof(layerName));
-                db.Clayer = layerTable[layerName];
-                tr.Commit();
-            }
+                var layerId = layerTable[layerName];
+                var record = (LayerTableRecord)tr.GetObject(layerId, OpenMode.ForRead);
+                if (record.IsFrozen)
+                    throw new InvalidOperationException("Layer '" + layerName + "' is frozen.");
+                db.Clayer = layerId;
+            });
 
             return new RestoreCurrentLayer(db, previous);
+        }
+
+        private static void WithLayerWriteLock(Database db, Action<Transaction> body)
+        {
+            var doc = CadTx.TryGetDocument(db);
+            if (doc != null)
+            {
+                using (doc.LockDocument())
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    body(tr);
+                    tr.Commit();
+                }
+                return;
+            }
+
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                body(tr);
+                tr.Commit();
+            }
         }
 
         private static Editor ActiveEditor()
@@ -112,8 +136,19 @@ namespace HyCADTool.Shared.AutoCAD.Interaction
                 _db = null;
                 if (db == null)
                     return;
-                try { db.Clayer = _previous; }
-                catch { }
+                try
+                {
+                    WithLayerWriteLock(db, tr =>
+                    {
+                        if (_previous.IsNull || _previous.IsErased)
+                            throw new InvalidOperationException("previous CLAYER is no longer valid.");
+                        db.Clayer = _previous;
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine("[HyCAD] 恢复 CLAYER 失败: " + ex.Message);
+                }
             }
         }
     }
