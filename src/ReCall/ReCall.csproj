@@ -29,10 +29,10 @@
   <ItemGroup>
     <!-- 与 HyCADTool 共用同一版本 AutoCAD.NET，避免 Managed DLL 版本不一致 -->
     <!-- ExcludeAssets=runtime: 只引用头、不 copy Ac*.dll 到 bin\Debug（AutoCAD 进程已加载对应版本） -->
-    <PackageReference Include="AutoCAD.NET" Version="24.3.0">
+    <PackageReference Include="AutoCAD.NET">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>
