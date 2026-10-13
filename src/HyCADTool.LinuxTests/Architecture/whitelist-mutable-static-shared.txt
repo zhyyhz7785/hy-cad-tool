@@ -3,5 +3,4 @@ src/HyCADTool/Shared/AutoCAD/Extensions/TypeNameConverter.cs::ChineseToDxf
 src/HyCADTool/Shared/AutoCAD/Extensions/TypeNameConverter.cs::TypeToChinese
 src/HyCADTool/Shared/AutoCAD/Services/ActiveScaleContextProvider.cs::_current
 src/HyCADTool/Shared/AutoCAD/Services/Road/DwgBlockNameProvider.cs::_names
-src/HyCADTool/Shared/AutoCAD/Services/Road/DwgBlockNameProvider.cs::_namesView
 src/HyCADTool/Shared/UI/Helpers/TextBoxHelper.cs::_lastFocusedTextBox

@@ -194,7 +194,7 @@ namespace HyCADTool.LinuxTests
                     if (HasValidProcessWide(field, field.Declaration.Type))
                         continue;
                     var readonlyField = field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
-                    if (readonlyField && !IsMutableCollectionType(field.Declaration.Type))
+                    if (readonlyField && IsAllowedImmutableReadonlyType(field.Declaration.Type))
                         continue;
                     foreach (var variable in field.Declaration.Variables)
                         hits.Add(rel + "::" + variable.Identifier.Text);
@@ -236,25 +236,109 @@ namespace HyCADTool.LinuxTests
             return false;
         }
 
-        private static bool IsMutableCollectionType(TypeSyntax type)
+        private static bool IsAllowedImmutableReadonlyType(TypeSyntax type)
         {
-            var text = type.ToString();
-            if (text.IndexOf("IReadOnly", StringComparison.Ordinal) >= 0)
-                return false;
-            if (text.IndexOf("Immutable", StringComparison.Ordinal) >= 0)
-                return false;
-            if (text.IndexOf("ReadOnlySpan", StringComparison.Ordinal) >= 0
-                || text.IndexOf("ReadOnlyMemory", StringComparison.Ordinal) >= 0)
+            if (type == null)
                 return false;
 
-            return text.IndexOf("List<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Dictionary<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("HashSet<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Queue<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Stack<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Collection<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Concurrent", StringComparison.Ordinal) >= 0
-                || text.EndsWith("[]", StringComparison.Ordinal);
+            if (type is GenericNameSyntax generic
+                && generic.Identifier.Text == "Lazy"
+                && generic.TypeArgumentList.Arguments.Count == 1)
+                return IsAllowedImmutableReadonlyType(generic.TypeArgumentList.Arguments[0]);
+
+            var text = type.ToString();
+            if (text.IndexOf("IReadOnly", StringComparison.Ordinal) >= 0)
+                return true;
+            if (text.IndexOf("Immutable", StringComparison.Ordinal) >= 0)
+                return true;
+            if (text.IndexOf("Frozen", StringComparison.Ordinal) >= 0)
+                return true;
+            if (text.IndexOf("ReadOnlySpan", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyMemory", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyCollection", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyObservableCollection", StringComparison.Ordinal) >= 0)
+                return true;
+
+            var name = LastTypeName(type);
+            switch (name)
+            {
+                case "bool":
+                case "byte":
+                case "sbyte":
+                case "short":
+                case "ushort":
+                case "int":
+                case "uint":
+                case "long":
+                case "ulong":
+                case "float":
+                case "double":
+                case "decimal":
+                case "char":
+                case "string":
+                case "String":
+                case "object":
+                case "Object":
+                case "Boolean":
+                case "Byte":
+                case "SByte":
+                case "Int16":
+                case "UInt16":
+                case "Int32":
+                case "UInt32":
+                case "Int64":
+                case "UInt64":
+                case "Single":
+                case "Double":
+                case "Decimal":
+                case "Char":
+                case "Regex":
+                case "Type":
+                case "CultureInfo":
+                case "TimeSpan":
+                case "DateTime":
+                case "DateTimeOffset":
+                case "Guid":
+                case "Uri":
+                case "IntPtr":
+                case "UIntPtr":
+                case "DependencyProperty":
+                case "XNamespace":
+                case "Brush":
+                case "SolidColorBrush":
+                case "MarkdownPipeline":
+                case "AtlasRef":
+                case "Vector2D":
+                case "ElevationValue":
+                case "WallThickness":
+                case "SlabThickness":
+                case "ToleranceSettings":
+                case "StyleInfo":
+                case "DataShortcutResolveResult":
+                case "ConditionalWeakTable":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static string LastTypeName(TypeSyntax type)
+        {
+            if (type is IdentifierNameSyntax id)
+                return id.Identifier.Text;
+            if (type is QualifiedNameSyntax q)
+                return LastTypeName(q.Right);
+            if (type is AliasQualifiedNameSyntax a)
+                return LastTypeName(a.Name);
+            if (type is GenericNameSyntax g)
+                return g.Identifier.Text;
+            if (type is PredefinedTypeSyntax p)
+                return p.Keyword.Text;
+            if (type is NullableTypeSyntax n)
+                return LastTypeName(n.ElementType);
+            if (type is ArrayTypeSyntax)
+                return "[]";
+            return type.ToString();
         }
 
         private static readonly HashSet<string> ForbiddenProcessWideTypes = new HashSet<string>(StringComparer.Ordinal)

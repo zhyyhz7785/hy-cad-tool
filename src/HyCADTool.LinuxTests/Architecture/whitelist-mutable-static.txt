@@ -51,12 +51,8 @@ src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::Defa
 src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::DefaultSubbase
 src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::DefaultSurface
 src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_base
-src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_baseView
-src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_hatchPatternNames
 src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_subbase
-src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_subbaseView
 src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_surface
-src/HyCADTool/Features/Road/CrossSection/Domain/RoadMaterialFillPresets.cs::_surfaceView
 src/HyCADTool/Features/Road/Shared/RoadCommandShortAliases.cs::Map
 src/HyCADTool/Features/Settlement/ViewModels/SettlementPanelViewModel.cs::_settingsFilePath
 src/HyCADTool/Features/Tables/Presentation/TableGridXlsxAdapter.cs::BuiltInDateFormatIds
