@@ -52,6 +52,13 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void ProcessWide_usages_must_match_snapshot()
+        {
+            var actual = ScanProcessWideUsages(FeaturesRoot(), SharedRoot());
+            AssertNoNewViolations("processwide-usages.txt", actual);
+        }
+
+        [Fact]
         public void Neutral_assemblies_must_not_reference_host_ui()
         {
             var prefixes = new[]
@@ -184,7 +191,7 @@ namespace HyCADTool.LinuxTests
                         continue;
                     if (field.Modifiers.Any(SyntaxKind.ConstKeyword))
                         continue;
-                    if (HasProcessWide(field))
+                    if (HasValidProcessWide(field, field.Declaration.Type))
                         continue;
                     var readonlyField = field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
                     if (readonlyField && !IsMutableCollectionType(field.Declaration.Type))
@@ -197,7 +204,7 @@ namespace HyCADTool.LinuxTests
                 {
                     if (!prop.Modifiers.Any(SyntaxKind.StaticKeyword))
                         continue;
-                    if (HasProcessWide(prop))
+                    if (HasValidProcessWide(prop, prop.Type))
                         continue;
                     if (!HasWritableAccessor(prop))
                         continue;
@@ -208,7 +215,7 @@ namespace HyCADTool.LinuxTests
                 {
                     if (!ev.Modifiers.Any(SyntaxKind.StaticKeyword))
                         continue;
-                    if (HasProcessWide(ev))
+                    if (HasValidProcessWide(ev, ev.Declaration.Type))
                         continue;
                     foreach (var variable in ev.Declaration.Variables)
                         hits.Add(rel + "::event " + variable.Identifier.Text);
@@ -250,18 +257,100 @@ namespace HyCADTool.LinuxTests
                 || text.EndsWith("[]", StringComparison.Ordinal);
         }
 
-        private static bool HasProcessWide(MemberDeclarationSyntax member)
+        private static readonly HashSet<string> ForbiddenProcessWideTypes = new HashSet<string>(StringComparer.Ordinal)
         {
+            "Document", "Database", "ObjectId", "Window", "Editor",
+        };
+
+        private static IReadOnlyCollection<string> ScanProcessWideUsages(params string[] roots)
+        {
+            var hits = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var root in roots)
+            {
+                if (!Directory.Exists(root))
+                    continue;
+                foreach (var path in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+                {
+                    var rel = ToRepoRelative(path);
+                    var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
+                    var rootNode = tree.GetCompilationUnitRoot();
+                    foreach (var field in rootNode.DescendantNodes().OfType<FieldDeclarationSyntax>())
+                    {
+                        string reason;
+                        if (!TryGetValidProcessWideReason(field, field.Declaration.Type, out reason))
+                            continue;
+                        foreach (var variable in field.Declaration.Variables)
+                            hits.Add(rel + "::" + variable.Identifier.Text + "::" + reason);
+                    }
+
+                    foreach (var prop in rootNode.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                    {
+                        string reason;
+                        if (!TryGetValidProcessWideReason(prop, prop.Type, out reason))
+                            continue;
+                        hits.Add(rel + "::" + prop.Identifier.Text + "::" + reason);
+                    }
+
+                    foreach (var ev in rootNode.DescendantNodes().OfType<EventFieldDeclarationSyntax>())
+                    {
+                        string reason;
+                        if (!TryGetValidProcessWideReason(ev, ev.Declaration.Type, out reason))
+                            continue;
+                        foreach (var variable in ev.Declaration.Variables)
+                            hits.Add(rel + "::event " + variable.Identifier.Text + "::" + reason);
+                    }
+                }
+            }
+
+            return hits;
+        }
+
+        private static bool HasValidProcessWide(MemberDeclarationSyntax member, TypeSyntax type)
+        {
+            string reason;
+            return TryGetValidProcessWideReason(member, type, out reason);
+        }
+
+        private static bool TryGetValidProcessWideReason(MemberDeclarationSyntax member, TypeSyntax type, out string reason)
+        {
+            reason = null;
             foreach (var list in member.AttributeLists)
             {
                 foreach (var attr in list.Attributes)
                 {
                     var name = attr.Name.ToString();
-                    if (name == "ProcessWide" || name.EndsWith(".ProcessWide", StringComparison.Ordinal)
-                        || name == "ProcessWideAttribute" || name.EndsWith(".ProcessWideAttribute", StringComparison.Ordinal))
-                        return true;
+                    if (name != "ProcessWide" && !name.EndsWith(".ProcessWide", StringComparison.Ordinal)
+                        && name != "ProcessWideAttribute" && !name.EndsWith(".ProcessWideAttribute", StringComparison.Ordinal))
+                        continue;
+
+                    if (attr.ArgumentList == null || attr.ArgumentList.Arguments.Count == 0)
+                        return false;
+                    var expr = attr.ArgumentList.Arguments[0].Expression as LiteralExpressionSyntax;
+                    if (expr == null || !expr.IsKind(SyntaxKind.StringLiteralExpression))
+                        return false;
+                    var text = expr.Token.ValueText;
+                    if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < 8)
+                        return false;
+                    if (TypeHasForbiddenHostToken(type))
+                        return false;
+                    reason = text.Trim();
+                    return true;
                 }
             }
+
+            return false;
+        }
+
+        private static bool TypeHasForbiddenHostToken(TypeSyntax type)
+        {
+            if (type == null)
+                return false;
+            foreach (var ident in type.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
+            {
+                if (ForbiddenProcessWideTypes.Contains(ident.Identifier.Text))
+                    return true;
+            }
+
             return false;
         }
 
