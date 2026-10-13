@@ -40,7 +40,7 @@ namespace HyCADTool.LinuxTests
         {
             AssertNoNewViolations(
                 "whitelist-mutable-static.txt",
-                ScanMutableStatics(FeaturesRoot()));
+                ScanMutableStatics(EnumerateCsByNamespace(FeatureNamespacePrefixes)));
         }
 
         [Fact]
@@ -48,14 +48,23 @@ namespace HyCADTool.LinuxTests
         {
             AssertNoNewViolations(
                 "whitelist-mutable-static-shared.txt",
-                ScanMutableStatics(SharedRoot()));
+                ScanMutableStatics(EnumerateCsByNamespace(SharedNamespacePrefixes)));
         }
 
         [Fact]
         public void ProcessWide_usages_must_match_snapshot()
         {
-            var actual = ScanProcessWideUsages(FeaturesRoot(), SharedRoot());
+            var actual = ScanProcessWideUsages(
+                EnumerateCsByNamespace(FeatureNamespacePrefixes, SharedNamespacePrefixes));
             AssertNoNewViolations("processwide-usages.txt", actual);
+        }
+
+        [Fact]
+        public void Shared_and_base_must_not_gain_new_business_module_deps()
+        {
+            AssertNoNewViolations(
+                "whitelist-module-deps.txt",
+                ScanForbiddenModuleDeps());
         }
 
         [Fact]
@@ -117,10 +126,21 @@ namespace HyCADTool.LinuxTests
             }
         }
 
+        private static readonly string[] FeatureNamespacePrefixes =
+        {
+            "HyCADTool.Features",
+            "HyCADTool.Domain",
+        };
+
+        private static readonly string[] SharedNamespacePrefixes =
+        {
+            "HyCADTool.Shared",
+        };
+
         private static IReadOnlyCollection<string> ScanFeatureCounts(Func<CompilationUnitSyntax, int> count)
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
-            foreach (var path in Directory.GetFiles(FeaturesRoot(), "*.cs", SearchOption.AllDirectories))
+            foreach (var path in EnumerateCsByNamespace(FeatureNamespacePrefixes))
             {
                 var rel = ToRepoRelative(path);
                 var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
@@ -174,13 +194,10 @@ namespace HyCADTool.LinuxTests
             return n;
         }
 
-        private static IReadOnlyCollection<string> ScanMutableStatics(string root)
+        private static IReadOnlyCollection<string> ScanMutableStatics(IEnumerable<string> files)
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
-            if (!Directory.Exists(root))
-                return hits;
-
-            foreach (var path in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+            foreach (var path in files)
             {
                 var rel = ToRepoRelative(path);
                 var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
@@ -346,47 +363,180 @@ namespace HyCADTool.LinuxTests
             "Document", "Database", "ObjectId", "Window", "Editor",
         };
 
-        private static IReadOnlyCollection<string> ScanProcessWideUsages(params string[] roots)
+        private static IReadOnlyCollection<string> ScanProcessWideUsages(IEnumerable<string> files)
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
-            foreach (var root in roots)
+            foreach (var path in files)
             {
-                if (!Directory.Exists(root))
-                    continue;
-                foreach (var path in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+                var rel = ToRepoRelative(path);
+                var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
+                var rootNode = tree.GetCompilationUnitRoot();
+                foreach (var field in rootNode.DescendantNodes().OfType<FieldDeclarationSyntax>())
                 {
-                    var rel = ToRepoRelative(path);
-                    var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
-                    var rootNode = tree.GetCompilationUnitRoot();
-                    foreach (var field in rootNode.DescendantNodes().OfType<FieldDeclarationSyntax>())
-                    {
-                        string reason;
-                        if (!TryGetValidProcessWideReason(field, field.Declaration.Type, out reason))
-                            continue;
-                        foreach (var variable in field.Declaration.Variables)
-                            hits.Add(rel + "::" + variable.Identifier.Text + "::" + reason);
-                    }
+                    string reason;
+                    if (!TryGetValidProcessWideReason(field, field.Declaration.Type, out reason))
+                        continue;
+                    foreach (var variable in field.Declaration.Variables)
+                        hits.Add(rel + "::" + variable.Identifier.Text + "::" + reason);
+                }
 
-                    foreach (var prop in rootNode.DescendantNodes().OfType<PropertyDeclarationSyntax>())
-                    {
-                        string reason;
-                        if (!TryGetValidProcessWideReason(prop, prop.Type, out reason))
-                            continue;
-                        hits.Add(rel + "::" + prop.Identifier.Text + "::" + reason);
-                    }
+                foreach (var prop in rootNode.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                {
+                    string reason;
+                    if (!TryGetValidProcessWideReason(prop, prop.Type, out reason))
+                        continue;
+                    hits.Add(rel + "::" + prop.Identifier.Text + "::" + reason);
+                }
 
-                    foreach (var ev in rootNode.DescendantNodes().OfType<EventFieldDeclarationSyntax>())
-                    {
-                        string reason;
-                        if (!TryGetValidProcessWideReason(ev, ev.Declaration.Type, out reason))
-                            continue;
-                        foreach (var variable in ev.Declaration.Variables)
-                            hits.Add(rel + "::event " + variable.Identifier.Text + "::" + reason);
-                    }
+                foreach (var ev in rootNode.DescendantNodes().OfType<EventFieldDeclarationSyntax>())
+                {
+                    string reason;
+                    if (!TryGetValidProcessWideReason(ev, ev.Declaration.Type, out reason))
+                        continue;
+                    foreach (var variable in ev.Declaration.Variables)
+                        hits.Add(rel + "::event " + variable.Identifier.Text + "::" + reason);
                 }
             }
 
             return hits;
+        }
+
+        /// <summary>
+        /// 剩余跨模块依赖基线。格式：<c>from -&gt; to :: 仓库相对路径</c>。次数只减不增。
+        /// Shared / base 画图切片不得新依赖业务模块；业务模块之间不得新互依。
+        /// </summary>
+        private static IReadOnlyCollection<string> ScanForbiddenModuleDeps()
+        {
+            var hits = new SortedSet<string>(StringComparer.Ordinal);
+            var src = Path.Combine(RepoRoot(), "src", "HyCADTool");
+            foreach (var path in EnumerateCsFiles(src))
+            {
+                var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
+                var root = tree.GetCompilationUnitRoot();
+                var from = ModuleOfNamespace(DeclaredNamespace(root));
+                if (from == null || from == "host")
+                    continue;
+
+                var targets = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var ns in ReferencedHyCadNamespaces(root))
+                {
+                    var to = ModuleOfNamespace(ns);
+                    if (to == null || to == from)
+                        continue;
+                    if (!IsForbiddenModuleDep(from, to))
+                        continue;
+                    targets.Add(to);
+                }
+
+                if (targets.Count == 0)
+                    continue;
+                var rel = ToRepoRelative(path);
+                foreach (var to in targets)
+                    hits.Add(from + " -> " + to + " :: " + rel);
+            }
+
+            return hits;
+        }
+
+        private static bool IsForbiddenModuleDep(string from, string to)
+        {
+            if (from == "shared" && IsBusinessModule(to))
+                return true;
+            if (from == "base" && IsBusinessModule(to))
+                return true;
+            return IsBusinessModule(from) && IsBusinessModule(to);
+        }
+
+        private static bool IsBusinessModule(string module)
+        {
+            return module == "road"
+                || module == "sponge-city"
+                || module == "structure"
+                || module == "fea"
+                || module == "design-spec"
+                || module == "hyob";
+        }
+
+        private static string ModuleOfNamespace(string ns)
+        {
+            if (string.IsNullOrEmpty(ns))
+                return null;
+            if (ns == "HyCADTool.Shared" || ns.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal))
+                return "shared";
+            if (ns == "HyCADTool.Shell" || ns.StartsWith("HyCADTool.Shell.", StringComparison.Ordinal))
+                return "host";
+            if (ns == "HyCADTool.App" || ns.StartsWith("HyCADTool.App.", StringComparison.Ordinal))
+                return "host";
+            if (ns == "HyCADTool.Licensing" || ns.StartsWith("HyCADTool.Licensing.", StringComparison.Ordinal))
+                return "host";
+            if (ns == "HyCADTool.Domain" || ns.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal))
+                return "road";
+            const string features = "HyCADTool.Features.";
+            if (ns == "HyCADTool.Features")
+                return "base";
+            if (!ns.StartsWith(features, StringComparison.Ordinal))
+                return null;
+
+            var slice = ns.Substring(features.Length);
+            var dot = slice.IndexOf('.');
+            if (dot >= 0)
+                slice = slice.Substring(0, dot);
+            switch (slice)
+            {
+                case "Road":
+                    return "road";
+                case "SpongeCity":
+                    return "sponge-city";
+                case "Fem":
+                    return "fea";
+                case "DesignSpec":
+                    return "design-spec";
+                case "DataExchange":
+                    return "hyob";
+                case "Reinforcement":
+                case "Elevation":
+                case "DimensionForReinforcement":
+                case "AcadDimension":
+                case "AnchorBolt":
+                case "EquipmentFoundation":
+                case "Pad":
+                case "Misc":
+                case "Pile":
+                case "Settlement":
+                case "BaseRein":
+                case "DCEL":
+                    return "structure";
+                default:
+                    return "base";
+            }
+        }
+
+        private static IEnumerable<string> ReferencedHyCadNamespaces(CompilationUnitSyntax root)
+        {
+            foreach (var u in root.Usings)
+            {
+                var name = u.Name != null ? u.Name.ToString() : null;
+                if (name != null && name.StartsWith("HyCADTool.", StringComparison.Ordinal))
+                    yield return name;
+            }
+
+            foreach (var name in root.DescendantNodes().OfType<QualifiedNameSyntax>())
+            {
+                var text = name.ToString();
+                if (text.StartsWith("HyCADTool.Features.", StringComparison.Ordinal)
+                    || text.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal)
+                    || text.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal))
+                    yield return text;
+            }
+
+            foreach (var access in root.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+            {
+                var text = access.ToString();
+                if (text.StartsWith("HyCADTool.Features.", StringComparison.Ordinal)
+                    || text.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal)
+                    || text.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal))
+                    yield return text;
+            }
         }
 
         private static bool HasValidProcessWide(MemberDeclarationSyntax member, TypeSyntax type)
@@ -461,14 +611,83 @@ namespace HyCADTool.LinuxTests
             return set;
         }
 
-        private static string FeaturesRoot()
+        private static IEnumerable<string> EnumerateCsByNamespace(params string[] prefixes)
         {
-            return Path.Combine(RepoRoot(), "src", "HyCADTool", "Features");
+            var merged = new List<string>();
+            foreach (var group in prefixes)
+            {
+                if (group == null)
+                    continue;
+                merged.Add(group);
+            }
+
+            var src = Path.Combine(RepoRoot(), "src", "HyCADTool");
+            foreach (var path in EnumerateCsFiles(src))
+            {
+                if (FileDeclaresNamespace(path, merged))
+                    yield return path;
+            }
         }
 
-        private static string SharedRoot()
+        private static IEnumerable<string> EnumerateCsByNamespace(string[] first, string[] second)
         {
-            return Path.Combine(RepoRoot(), "src", "HyCADTool", "Shared");
+            var set = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in EnumerateCsByNamespace(first))
+                set.Add(path);
+            foreach (var path in EnumerateCsByNamespace(second))
+                set.Add(path);
+            return set;
+        }
+
+        private static IEnumerable<string> EnumerateCsFiles(string root)
+        {
+            if (!Directory.Exists(root))
+                yield break;
+            foreach (var path in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+            {
+                if (IsBinOrObj(path))
+                    continue;
+                yield return path;
+            }
+        }
+
+        private static bool IsBinOrObj(string path)
+        {
+            var norm = path.Replace('/', Path.DirectorySeparatorChar);
+            return norm.IndexOf(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) >= 0
+                || norm.IndexOf(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool FileDeclaresNamespace(string path, IReadOnlyCollection<string> prefixes)
+        {
+            foreach (var line in File.ReadLines(path))
+            {
+                var t = line.TrimStart();
+                if (!t.StartsWith("namespace ", StringComparison.Ordinal))
+                    continue;
+                var ns = t.Substring("namespace ".Length).Trim();
+                if (ns.EndsWith(";", StringComparison.Ordinal) || ns.EndsWith("{", StringComparison.Ordinal))
+                    ns = ns.Substring(0, ns.Length - 1).Trim();
+                foreach (var prefix in prefixes)
+                {
+                    if (ns.Equals(prefix, StringComparison.Ordinal)
+                        || ns.StartsWith(prefix + ".", StringComparison.Ordinal))
+                        return true;
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
+        private static string DeclaredNamespace(CompilationUnitSyntax root)
+        {
+            var fileScoped = root.Members.OfType<FileScopedNamespaceDeclarationSyntax>().FirstOrDefault();
+            if (fileScoped != null)
+                return fileScoped.Name.ToString();
+            var block = root.Members.OfType<NamespaceDeclarationSyntax>().FirstOrDefault();
+            return block != null ? block.Name.ToString() : null;
         }
 
         private static string ToRepoRelative(string path)
