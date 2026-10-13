@@ -375,7 +375,7 @@ namespace HyCADTool.App.Bootstrap
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            var root = LoadOrCreateRoot(filePath);
+            var root = ConfigJsonRoot.LoadOrCreate(filePath);
             if (config is GlobalConfiguration)
                 root["GlobalConfiguration"] = JObject.FromObject(config);
             else
@@ -390,22 +390,6 @@ namespace HyCADTool.App.Bootstrap
             var root = existing ?? new JObject();
             root[sectionName] = section;
             return root;
-        }
-
-        private static JObject LoadOrCreateRoot(string filePath)
-        {
-            if (!File.Exists(filePath))
-                return new JObject();
-
-            try
-            {
-                var parsed = JObject.Parse(File.ReadAllText(filePath));
-                return parsed ?? new JObject();
-            }
-            catch
-            {
-                return new JObject();
-            }
         }
 
         /// <summary>

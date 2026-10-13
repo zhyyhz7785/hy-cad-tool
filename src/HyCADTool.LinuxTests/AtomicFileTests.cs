@@ -40,5 +40,38 @@ namespace HyCADTool.LinuxTests
             Assert.True(existing["Other"].Value<bool>());
             Assert.Equal(2.5, existing["GlobalConfiguration"]["ElevationLength"].Value<double>());
         }
+
+        [Fact]
+        public void LoadOrCreate_missing_file_returns_empty_object()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "hycad-missing-" + Path.GetRandomFileName() + ".json");
+            var root = ConfigJsonRoot.LoadOrCreate(path);
+            Assert.Empty(root.Properties());
+            Assert.False(File.Exists(path));
+        }
+
+        [Fact]
+        public void LoadOrCreate_corrupt_file_backs_up_and_throws_without_clobbering()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "hycad-corrupt-" + Path.GetRandomFileName());
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, "config.json");
+            const string original = "{\"PileConfigData\":{\"x\":1},";
+            try
+            {
+                File.WriteAllText(path, original);
+                var ex = Assert.Throws<InvalidOperationException>(() => ConfigJsonRoot.LoadOrCreate(path));
+                Assert.Contains("拒绝覆盖", ex.Message);
+                Assert.Equal(original, File.ReadAllText(path));
+
+                var backups = Directory.GetFiles(dir, "config.json.corrupt-*");
+                Assert.Single(backups);
+                Assert.Equal(original, File.ReadAllText(backups[0]));
+            }
+            finally
+            {
+                try { Directory.Delete(dir, true); } catch { }
+            }
+        }
     }
 }
