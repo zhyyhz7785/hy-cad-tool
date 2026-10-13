@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Theming;
 using HyCADTool.Shell.Contracts;
+using HyCADTool.Shell.Licensing;
 using HyCADTool.Shared.Drawing.Models;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Features.Road.CrossSection.Domain;
@@ -1278,6 +1279,7 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>面板入队：委托 + 真实命令键。漏传键时 _HyExec 按 Standard 处理。</summary>
         public static void EnqueuePendingCommand(System.Action command, string commandKey)
         {
+            LicenseCommandTierMap.RejectAlwaysFreemiumEnqueue(commandKey);
             PendingCommand = command;
             PendingCommandKey = commandKey;
         }
