@@ -148,8 +148,16 @@ namespace HyCADTool.Features.OverKill.Commands
             }
             finally
             {
-                // 恢复当前图层
-                db.Clayer = originalLayer;
+                try
+                {
+                    using (doc.LockDocument())
+                        db.Clayer = originalLayer;
+                }
+                catch (System.Exception)
+                {
+                    try { db.Clayer = originalLayer; }
+                    catch { }
+                }
             }
         }
 
