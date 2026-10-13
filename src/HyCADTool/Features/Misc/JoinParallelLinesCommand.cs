@@ -74,7 +74,8 @@ namespace HyCADTool.Features.Misc
                 SelectionFilter filter = new SelectionFilter(filterList);
                 
                 // 使用交叉窗口选择（Crossing Window）- 选择与窗口相交或完全在窗口内的对象
-                PromptSelectionResult psr = ed.SelectCrossingPolygon(SelectionWindowJig.ToWcsPolygon(ed, pt1, pt2), filter);
+                // Editor 选择方法把传入点当 UCS（_gile：SelectCrossingPolygon 要当前 UCS）。
+                PromptSelectionResult psr = ed.SelectCrossingPolygon(SelectionWindowJig.ToUcsPolygon(pt1, pt2), filter);
 
                 if (psr.Status != PromptStatus.OK || psr.Value == null || psr.Value.Count == 0)
                 {
@@ -448,8 +449,8 @@ namespace HyCADTool.Features.Misc
         /// <summary>第二个角点（UCS），与第一个 GetPoint 角点一起交给 <see cref="ToWcsPolygon"/>。</summary>
         public Point3d SecondPoint => _secondPointUcs;
 
-        /// <summary>把 UCS 轴对齐矩形的四个角变到世界坐标，供交叉多边形选择和预览。</summary>
-        public static Point3dCollection ToWcsPolygon(Editor ed, Point3d aUcs, Point3d bUcs)
+        /// <summary>UCS 轴对齐矩形四角（仍是 UCS）。给 <see cref="Editor.SelectCrossingPolygon"/> 用。</summary>
+        public static Point3dCollection ToUcsPolygon(Point3d aUcs, Point3d bUcs)
         {
             double minX = Math.Min(aUcs.X, bUcs.X);
             double maxX = Math.Max(aUcs.X, bUcs.X);
@@ -457,10 +458,20 @@ namespace HyCADTool.Features.Misc
             double maxY = Math.Max(aUcs.Y, bUcs.Y);
             double z = (aUcs.Z + bUcs.Z) * 0.5;
             var polygon = new Point3dCollection();
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(minX, minY, z)));
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(maxX, minY, z)));
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(maxX, maxY, z)));
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(minX, maxY, z)));
+            polygon.Add(new Point3d(minX, minY, z));
+            polygon.Add(new Point3d(maxX, minY, z));
+            polygon.Add(new Point3d(maxX, maxY, z));
+            polygon.Add(new Point3d(minX, maxY, z));
+            return polygon;
+        }
+
+        /// <summary>把 UCS 轴对齐矩形的四个角变到世界坐标，只给 WorldDraw 预览用。</summary>
+        public static Point3dCollection ToWcsPolygon(Editor ed, Point3d aUcs, Point3d bUcs)
+        {
+            var ucs = ToUcsPolygon(aUcs, bUcs);
+            var polygon = new Point3dCollection();
+            foreach (Point3d p in ucs)
+                polygon.Add(EditorWcs.ToWcs(ed, p));
             return polygon;
         }
 
