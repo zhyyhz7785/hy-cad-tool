@@ -13,6 +13,7 @@ using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 
 using HyCADTool.Shared.AutoCAD.Converters;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 using System.Collections.Generic;
 
@@ -422,9 +423,9 @@ namespace HyCADTool.Features.Reinforcement.Services
 
             {
 
-                var ent = tr.GetObject(id, OpenMode.ForWrite) as Entity;
+                var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
 
-                ent?.Erase();
+                LockedLayerErase.TryErase(tr, ent, null);
 
             }
 

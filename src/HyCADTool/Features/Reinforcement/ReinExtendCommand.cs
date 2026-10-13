@@ -47,8 +47,10 @@ namespace HyCADTool.Features.Reinforcement
 
                 using (var trans = db.TransactionManager.StartTransaction())
                 {
-                    var poly = trans.GetObject(per.ObjectId, OpenMode.ForWrite) as Polyline;
-                    if (poly == null || poly.NumberOfVertices < 2) { trans.Abort(); return; }
+                    Polyline poly;
+                    if (!LockedLayerErase.TryOpenForWrite(trans, per.ObjectId, out poly, ed)
+                        || poly.NumberOfVertices < 2)
+                    { trans.Abort(); return; }
 
                     // 2. 按点击位置决定延长哪一端（不反转库内多段线）
                     bool extendFromStart = IsPickedNearStart(poly, EditorWcs.ToWcs(ed, per.PickedPoint));

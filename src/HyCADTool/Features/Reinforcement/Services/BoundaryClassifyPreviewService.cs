@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Shared.AutoCAD.Converters;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System.Collections.Generic;
 
 namespace HyCADTool.Features.Reinforcement.Services
@@ -345,7 +346,7 @@ namespace HyCADTool.Features.Reinforcement.Services
             }
             catch
             {
-                try { hatch.Erase(); } catch { /* 吞 */ }
+                LockedLayerErase.TryErase(tr, hatch, null);
                 return null;
             }
         }
@@ -407,8 +408,8 @@ namespace HyCADTool.Features.Reinforcement.Services
 
             foreach (var id in toErase)
             {
-                var ent = tr.GetObject(id, OpenMode.ForWrite) as Entity;
-                ent?.Erase();
+                var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
+                LockedLayerErase.TryErase(tr, ent, null);
             }
         }
 

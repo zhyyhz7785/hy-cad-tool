@@ -67,8 +67,9 @@ namespace HyCADTool.Features.Reinforcement
 
                 using (var trans = db.TransactionManager.StartTransaction())
                 {
-                    var polyline = trans.GetObject(per.ObjectId, OpenMode.ForWrite) as Polyline;
-                    if (polyline == null) return;
+                    Polyline polyline;
+                    if (!LockedLayerErase.TryOpenForWrite(trans, per.ObjectId, out polyline, ed))
+                        return;
 
                     // 反转多段线使末端靠近用户点击位置（弯钩添加在末端）
                     OrientEndToPickedPoint(polyline, EditorWcs.ToWcs(ed, per.PickedPoint));

@@ -50,8 +50,9 @@ namespace HyCADTool.Features.Reinforcement
 
                 using (var trans = db.TransactionManager.StartTransaction())
                 {
-                    var poly = trans.GetObject(per.ObjectId, OpenMode.ForWrite) as Polyline;
-                    if (poly == null || poly.NumberOfVertices < 2)
+                    Polyline poly;
+                    if (!LockedLayerErase.TryOpenForWrite(trans, per.ObjectId, out poly, ed)
+                        || poly.NumberOfVertices < 2)
                     {
                         trans.Abort();
                         return;
