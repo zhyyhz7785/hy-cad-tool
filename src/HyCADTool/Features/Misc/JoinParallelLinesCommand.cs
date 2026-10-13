@@ -490,7 +490,7 @@ namespace HyCADTool.Features.Misc
 
         protected override bool WorldDraw(WorldDraw draw)
         {
-            if (draw == null)
+            if (draw == null || _editor == null)
                 return false;
 
             var corners = ToWcsPolygon(_editor, _firstPoint, _secondPoint);
