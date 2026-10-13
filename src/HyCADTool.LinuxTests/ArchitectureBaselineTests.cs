@@ -6,9 +6,13 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using HyCAD.Geometry;
 using HyCAD.Tables;
+using HyCADTool.TextLayout;
 using HYFEA.Core.LinearAlgebra;
 using HYFEA.Hosting;
 using HYFEA.Viz;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using NetArchTest.Rules;
 using Xunit;
 
@@ -18,11 +22,6 @@ namespace HyCADTool.LinuxTests
     {
         private static readonly Regex ShellRef = new Regex(@"HyCADTool\.Shell", RegexOptions.Compiled);
         private static readonly Regex GetPoint = new Regex(@"\.\s*GetPoint\s*\(", RegexOptions.Compiled);
-        private static readonly Regex ProcessWide = new Regex(@"\[\s*ProcessWide\b", RegexOptions.Compiled);
-        private static readonly Regex StaticField = new Regex(
-            @"^\s*(?:(?:public|private|internal|protected|new|unsafe|volatile|partial|static|readonly|const)\s+)+static\s+" +
-            @"(?!readonly\b)(?!const\b)(?!event\b)(?!class\b)(?!struct\b)(?!enum\b)(?!delegate\b)(?!implicit\b)(?!explicit\b)",
-            RegexOptions.Compiled);
 
         [Fact]
         public void Features_must_not_gain_new_shell_references()
@@ -45,30 +44,59 @@ namespace HyCADTool.LinuxTests
         {
             AssertNoNewViolations(
                 "whitelist-mutable-static.txt",
-                ScanMutableStatics());
+                ScanMutableStatics(FeaturesRoot()));
+        }
+
+        [Fact]
+        public void Shared_must_not_gain_new_mutable_static_fields()
+        {
+            AssertNoNewViolations(
+                "whitelist-mutable-static-shared.txt",
+                ScanMutableStatics(SharedRoot()));
         }
 
         [Fact]
         public void Neutral_assemblies_must_not_reference_host_ui()
         {
-            var forbidden = new[]
+            var prefixes = new[]
             {
-                "Autodesk.AutoCAD.ApplicationServices",
-                "Autodesk.AutoCAD.DatabaseServices",
+                "Autodesk",
                 "System.Windows",
                 "Avalonia",
+                "Microsoft.Web.WebView2",
+                "HyCADTool",
             };
 
-            AssertNeutral(typeof(Point2D).Assembly, forbidden);
-            AssertNeutral(typeof(TableDocument).Assembly, forbidden);
-            AssertNeutral(typeof(DenseMatrix).Assembly, forbidden);
-            AssertNeutral(typeof(IFemHostGeometry).Assembly, forbidden);
-            AssertNeutral(typeof(ResultMesh).Assembly, forbidden);
+            AssertNeutral(typeof(Point2D).Assembly, prefixes);
+            AssertNeutral(typeof(TableDocument).Assembly, prefixes);
+            AssertNeutral(typeof(DenseMatrix).Assembly, prefixes);
+            AssertNeutral(typeof(IFemHostGeometry).Assembly, prefixes);
+            AssertNeutral(typeof(ResultMesh).Assembly, prefixes);
+            AssertNeutral(typeof(LayoutEngine).Assembly, prefixes);
         }
 
-        private static void AssertNeutral(Assembly assembly, string[] forbidden)
+        private static void AssertNeutral(Assembly assembly, string[] prefixes)
         {
-            foreach (var name in forbidden)
+            var bad = new List<string>();
+            foreach (var name in assembly.GetReferencedAssemblies())
+            {
+                var n = name.Name ?? "";
+                foreach (var prefix in prefixes)
+                {
+                    if (n.Equals(prefix, StringComparison.Ordinal)
+                        || n.StartsWith(prefix + ".", StringComparison.Ordinal))
+                    {
+                        bad.Add(n);
+                        break;
+                    }
+                }
+            }
+
+            Assert.True(
+                bad.Count == 0,
+                assembly.GetName().Name + " 依赖了宿主/UI：" + string.Join(", ", bad));
+
+            foreach (var name in prefixes)
             {
                 var result = Types.InAssembly(assembly)
                     .ShouldNot()
@@ -76,7 +104,7 @@ namespace HyCADTool.LinuxTests
                     .GetResult();
                 Assert.True(
                     result.IsSuccessful,
-                    assembly.GetName().Name + " 依赖了 " + name + ": " +
+                    assembly.GetName().Name + " 类型依赖了 " + name + ": " +
                     string.Join(", ", result.FailingTypeNames ?? Array.Empty<string>()));
             }
         }
@@ -95,51 +123,47 @@ namespace HyCADTool.LinuxTests
             return hits;
         }
 
-        private static IReadOnlyCollection<string> ScanMutableStatics()
+        private static IReadOnlyCollection<string> ScanMutableStatics(string root)
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
-            foreach (var path in Directory.GetFiles(FeaturesRoot(), "*.cs", SearchOption.AllDirectories))
+            if (!Directory.Exists(root))
+                return hits;
+
+            foreach (var path in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
             {
                 var rel = ToRepoRelative(path);
-                var text = StripComments(File.ReadAllText(path));
-                var prev = new List<string>();
-                foreach (var rawLine in text.Split('\n'))
+                var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
+                var rootNode = tree.GetCompilationUnitRoot();
+                foreach (var field in rootNode.DescendantNodes().OfType<FieldDeclarationSyntax>())
                 {
-                    var line = rawLine.TrimEnd('\r');
-                    var stripped = line.Trim();
-                    if (stripped.Length == 0)
-                    {
-                        prev.Clear();
+                    if (!field.Modifiers.Any(SyntaxKind.StaticKeyword))
                         continue;
-                    }
-                    if (stripped.StartsWith("["))
-                    {
-                        prev.Add(stripped);
+                    if (field.Modifiers.Any(SyntaxKind.ConstKeyword))
                         continue;
-                    }
-                    if (StaticField.IsMatch(line) && IsField(line) && !prev.Exists(ProcessWide.IsMatch))
-                        hits.Add(rel + "::" + stripped);
-                    prev.Clear();
+                    if (field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword))
+                        continue;
+                    if (HasProcessWide(field))
+                        continue;
+                    foreach (var variable in field.Declaration.Variables)
+                        hits.Add(rel + "::" + variable.Identifier.Text);
                 }
             }
             return hits;
         }
 
-        private static bool IsField(string line)
+        private static bool HasProcessWide(FieldDeclarationSyntax field)
         {
-            if (Regex.IsMatch(line, @"\b\w+\s*=>") || Regex.IsMatch(line, @"\)\s*=>"))
-                return false;
-            if (line.IndexOf('(') >= 0)
+            foreach (var list in field.AttributeLists)
             {
-                var beforeParen = line.Split('(')[0];
-                if (!beforeParen.Contains("{") && !Regex.IsMatch(beforeParen, @"\bnew\b"))
-                    return false;
+                foreach (var attr in list.Attributes)
+                {
+                    var name = attr.Name.ToString();
+                    if (name == "ProcessWide" || name.EndsWith(".ProcessWide", StringComparison.Ordinal)
+                        || name == "ProcessWideAttribute" || name.EndsWith(".ProcessWideAttribute", StringComparison.Ordinal))
+                        return true;
+                }
             }
-            if (Regex.IsMatch(line, @"\{\s*(get|set|add|remove)\b"))
-                return false;
-            if (line.TrimEnd().EndsWith("{") || line.Contains("{ get") || line.Contains("{get"))
-                return false;
-            return line.Contains(";") || line.Contains("=");
+            return false;
         }
 
         private static void AssertNoNewViolations(string whitelistName, IReadOnlyCollection<string> actual)
@@ -181,6 +205,11 @@ namespace HyCADTool.LinuxTests
         private static string FeaturesRoot()
         {
             return Path.Combine(RepoRoot(), "src", "HyCADTool", "Features");
+        }
+
+        private static string SharedRoot()
+        {
+            return Path.Combine(RepoRoot(), "src", "HyCADTool", "Shared");
         }
 
         private static string ToRepoRelative(string path)

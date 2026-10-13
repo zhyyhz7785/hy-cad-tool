@@ -19,6 +19,7 @@
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +28,7 @@
     <ProjectReference Include="..\HYFEA\HYFEA.Core\HYFEA.Core.csproj" />
     <ProjectReference Include="..\HYFEA\HYFEA.Hosting\HYFEA.Hosting.csproj" />
     <ProjectReference Include="..\HYFEA\HYFEA.Viz\HYFEA.Viz.csproj" />
+    <ProjectReference Include="..\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj" />
   </ItemGroup>
 
   <!-- 只编入纯算法文件，不引用 HyCADTool（net48 + WPF，Linux 上编不过）。 -->

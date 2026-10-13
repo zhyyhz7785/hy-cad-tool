@@ -1,0 +1,3 @@
+# Shared 可变静态字段现状白名单（Roslyn FieldDeclaration）。新增字段须改代码或标 [ProcessWide]。
+src/HyCADTool/Shared/AutoCAD/Services/ActiveScaleContextProvider.cs::_current
+src/HyCADTool/Shared/UI/Helpers/TextBoxHelper.cs::_lastFocusedTextBox

@@ -1,40 +1,41 @@
-# Features 可变静态字段现状白名单。新增字段须改代码或标 [ProcessWide]。
-src/HyCADTool/Features/DCEL/Domain/Services/DCELSettings.cs::private static DCELSettings _current = Default;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static Assembly _editorAssembly;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static MethodInfo _showDialogMethod;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static MethodInfo _showNonModalMethod;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static MethodInfo _isNonModalOpenMethod;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static MethodInfo _registerSyncCallbacksMethod;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static MethodInfo _clearSyncCallbacksMethod;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static MethodInfo _forceResetMethod;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static bool _loadAttempted;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static string _net8Dir;
-src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::private static ResolveEventHandler _editorResolveHandler;
-src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::private static NamedPipeClientStream _pipe;
-src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::private static StreamReader _reader;
-src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::private static StreamWriter _writer;
-src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::private static Thread _readThread;
-src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::private static volatile bool _stop;
-src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::private static bool _stampHooked;
-src/HyCADTool/Features/Export/Services/Svg/SvgPlotSettings.cs::public static SvgPlotSettings Session;
-src/HyCADTool/Features/OverKill/Domain/HyovSettings.cs::private static HyovSettings _instance;
-src/HyCADTool/Features/Pile/ViewModels/PilePanelViewModel.cs::private static string _settingsFilePath;
-src/HyCADTool/Features/Reinforcement/Domain/Components/ComponentSession.cs::private static Func<object> _documentKey;
-src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentCommitCommand.cs::private static Guid? _pendingCommit;
-src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentUserPickPreviewSession.cs::private static Guid? _pendingWorkbenchAlignmentId;
-src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentUserPickRegisterCommand.cs::private static Guid? _lastRegistered;
-src/HyCADTool/Features/Settlement/ViewModels/SettlementPanelViewModel.cs::private static string _settingsFilePath;
-src/HyCADTool/Features/Tables/Commands/OpenTableEditorCommand.cs::private static TableEditorWindow _currentWindow;
-src/HyCADTool/Features/Tables/Commands/OpenUniverTableEditorCommand.cs::private static UniverTableEditorHostBridge _hostBridge;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static Assembly _editorAssembly;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static MethodInfo _showMethod;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static MethodInfo _isOpenMethod;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static MethodInfo _forceResetMethod;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static MethodInfo _warmupMethod;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static string _net8Dir;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static ResolveEventHandler _resolveHandler;
-src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::private static UniverTableEditorHostBridge _pendingHostBridge;
-src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::private static bool _installed;
-src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::private static ObjectId _pendingId = ObjectId.Null;
-src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::private static bool _runHyEdAfterVeto;
-src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::private static bool _beginDoubleClickArmed;
+# Features 可变静态字段现状白名单（Roslyn FieldDeclaration）。新增字段须改代码或标 [ProcessWide]。
+src/HyCADTool/Features/DCEL/Domain/Services/DCELSettings.cs::_current
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_clearSyncCallbacksMethod
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_editorAssembly
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_editorResolveHandler
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_forceResetMethod
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_isNonModalOpenMethod
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_loadAttempted
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_net8Dir
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_registerSyncCallbacksMethod
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_showDialogMethod
+src/HyCADTool/Features/DesignSpec/Services/EditorLoader.cs::_showNonModalMethod
+src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::_pipe
+src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::_readThread
+src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::_reader
+src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::_stampHooked
+src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::_stop
+src/HyCADTool/Features/DesignSpec/Services/HyMdCadBridge.cs::_writer
+src/HyCADTool/Features/Export/Services/Svg/SvgPlotSettings.cs::Session
+src/HyCADTool/Features/OverKill/Domain/HyovSettings.cs::_instance
+src/HyCADTool/Features/Pile/ViewModels/PilePanelViewModel.cs::_settingsFilePath
+src/HyCADTool/Features/Reinforcement/Domain/Components/ComponentSession.cs::_documentKey
+src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentCommitCommand.cs::_pendingCommit
+src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentUserPickPreviewSession.cs::_pendingColorMode
+src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentUserPickPreviewSession.cs::_pendingWorkbenchAlignmentId
+src/HyCADTool/Features/Road/Alignment/Commands/RoadAlignmentUserPickRegisterCommand.cs::_lastRegistered
+src/HyCADTool/Features/Settlement/ViewModels/SettlementPanelViewModel.cs::_settingsFilePath
+src/HyCADTool/Features/Tables/Commands/OpenTableEditorCommand.cs::_currentWindow
+src/HyCADTool/Features/Tables/Commands/OpenUniverTableEditorCommand.cs::_hostBridge
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_editorAssembly
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_forceResetMethod
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_isOpenMethod
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_net8Dir
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_pendingHostBridge
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_resolveHandler
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_showMethod
+src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_warmupMethod
+src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_beginDoubleClickArmed
+src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_installed
+src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_pendingId
+src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_runHyEdAfterVeto
