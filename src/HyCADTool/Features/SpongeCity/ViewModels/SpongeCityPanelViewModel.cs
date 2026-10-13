@@ -8,7 +8,7 @@ using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Domain.Services;
 using HyCADTool.Shell.Commands;
 using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.SpongeCity.ViewModels
@@ -22,33 +22,24 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
     {
         #region 多文档支持
 
-        private static readonly Dictionary<string, SpongeCityPanelViewModel> _documentViewModels
-            = new Dictionary<string, SpongeCityPanelViewModel>();
-
         public static SpongeCityPanelViewModel Current
         {
             get
             {
-                try
-                {
-                    var doc = AcApp.DocumentManager.MdiActiveDocument;
-                    if (doc == null) return null;
-                    return GetOrCreate(DocumentKeys.GetKey(doc));
-                }
+                try { return ActiveDocumentSession.GetOrNull<SpongeCityPanelViewModel>(); }
                 catch { return null; }
             }
         }
 
-        public static SpongeCityPanelViewModel GetOrCreate(string documentName)
+        public static SpongeCityPanelViewModel GetOrCreate(object documentKey)
         {
-            if (!_documentViewModels.ContainsKey(documentName))
-                _documentViewModels[documentName] = new SpongeCityPanelViewModel();
-            return _documentViewModels[documentName];
+            if (documentKey == null)
+                return new SpongeCityPanelViewModel();
+            return DocumentSessionStore.Get<SpongeCityPanelViewModel>(documentKey);
         }
 
-        public static void RemoveDocument(string documentName)
+        public static void RemoveDocument(object documentKey)
         {
-            _documentViewModels.Remove(documentName);
         }
 
         #endregion

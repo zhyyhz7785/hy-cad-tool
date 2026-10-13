@@ -93,7 +93,7 @@ namespace HyCADTool.Shell.ViewModels
         }
 
         /// <summary>获取或创建全局单例；若实例缺 IStyleService 则补挂。</summary>
-        public static SettingsPanelViewModel GetOrCreate(string documentName, IStyleService styleService)
+        public static SettingsPanelViewModel GetOrCreate(IStyleService styleService)
         {
             var vm = Current;
             vm.EnsureStyleService(styleService);

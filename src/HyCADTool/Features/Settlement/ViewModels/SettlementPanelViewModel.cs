@@ -14,7 +14,7 @@ using HyCADTool.Features.Settlement.Commands;
 using HyCADTool.Features.Settlement.Domain.Services;
 using HyCADTool.Features.DesignSpec.Domain;
 using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Settlement.ViewModels
@@ -23,36 +23,24 @@ namespace HyCADTool.Features.Settlement.ViewModels
     {
         #region 多文档支持
 
-        private static readonly Dictionary<string, SettlementPanelViewModel> _documentViewModels
-            = new Dictionary<string, SettlementPanelViewModel>();
-
         public static SettlementPanelViewModel Current
         {
             get
             {
-                try
-                {
-                    var doc = AcApp.DocumentManager.MdiActiveDocument;
-                    if (doc == null) return null;
-                    var docKey = DocumentKeys.GetKey(doc);
-                    if (!_documentViewModels.ContainsKey(docKey))
-                        _documentViewModels[docKey] = new SettlementPanelViewModel();
-                    return _documentViewModels[docKey];
-                }
+                try { return ActiveDocumentSession.GetOrNull<SettlementPanelViewModel>(); }
                 catch { return null; }
             }
         }
 
-        public static SettlementPanelViewModel GetOrCreate(string documentName)
+        public static SettlementPanelViewModel GetOrCreate(object documentKey)
         {
-            if (!_documentViewModels.ContainsKey(documentName))
-                _documentViewModels[documentName] = new SettlementPanelViewModel();
-            return _documentViewModels[documentName];
+            if (documentKey == null)
+                return new SettlementPanelViewModel();
+            return DocumentSessionStore.Get<SettlementPanelViewModel>(documentKey);
         }
 
-        public static void RemoveDocument(string documentName)
+        public static void RemoveDocument(object documentKey)
         {
-            _documentViewModels.Remove(documentName);
         }
 
         #endregion

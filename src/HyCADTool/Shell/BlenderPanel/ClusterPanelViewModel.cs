@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.Cluster.Domain.Models;
 using HyCADTool.Features.Cluster.Services;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Shell.ViewModels
@@ -18,9 +18,6 @@ namespace HyCADTool.Shell.ViewModels
     {
         #region 多文档支持
 
-        private static readonly Dictionary<string, ClusterPanelViewModel> _documentViewModels
-            = new Dictionary<string, ClusterPanelViewModel>();
-
         /// <summary>
         /// 当前活动文档的实例，供外部命令读取配置。
         /// </summary>
@@ -28,26 +25,20 @@ namespace HyCADTool.Shell.ViewModels
         {
             get
             {
-                try
-                {
-                    var doc = AcApp.DocumentManager.MdiActiveDocument;
-                    if (doc == null) return null;
-                    return GetOrCreate(DocumentKeys.GetKey(doc));
-                }
+                try { return ActiveDocumentSession.GetOrNull<ClusterPanelViewModel>(); }
                 catch { return null; }
             }
         }
 
-        public static ClusterPanelViewModel GetOrCreate(string documentName)
+        public static ClusterPanelViewModel GetOrCreate(object documentKey)
         {
-            if (!_documentViewModels.ContainsKey(documentName))
-                _documentViewModels[documentName] = new ClusterPanelViewModel();
-            return _documentViewModels[documentName];
+            if (documentKey == null)
+                return new ClusterPanelViewModel();
+            return DocumentSessionStore.Get<ClusterPanelViewModel>(documentKey);
         }
 
-        public static void RemoveDocument(string documentName)
+        public static void RemoveDocument(object documentKey)
         {
-            _documentViewModels.Remove(documentName);
         }
 
         #endregion

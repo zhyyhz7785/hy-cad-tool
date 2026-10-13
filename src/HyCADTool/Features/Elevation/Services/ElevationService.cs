@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Session;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -17,9 +18,6 @@ namespace HyCADTool.Features.Elevation.Services
     /// </summary>
     public class ElevationService
     {
-        private static readonly Dictionary<IntPtr, (ObjectId textStyleId, ObjectId layerId)> _styleCacheByDatabase
-            = new Dictionary<IntPtr, (ObjectId, ObjectId)>();
-
         /// <summary>
         /// 确保标高图层和文字样式已创建，返回 (textStyleId, layerId)
         /// </summary>
@@ -27,36 +25,35 @@ namespace HyCADTool.Features.Elevation.Services
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
-            var dbKey = db.UnmanagedObject;
+            var cache = DocumentSessionStore.Get<ElevationStyleCache>(db);
 
-            if (!_styleCacheByDatabase.TryGetValue(dbKey, out var cached)
-                || cached.textStyleId.IsNull || cached.textStyleId.IsErased
-                || cached.layerId.IsNull || cached.layerId.IsErased)
+            if (cache.TextStyleId.IsNull || cache.TextStyleId.IsErased
+                || cache.LayerId.IsNull || cache.LayerId.IsErased)
             {
-                var textStyleId = CreateTextStyleForElevation(db, doc);
-                var layerId = CreateLayerForElevation(db, doc);
-                cached = (textStyleId, layerId);
-                _styleCacheByDatabase[dbKey] = cached;
+                cache.TextStyleId = CreateTextStyleForElevation(db, doc);
+                cache.LayerId = CreateLayerForElevation(db, doc);
             }
 
-            return cached;
+            return (cache.TextStyleId, cache.LayerId);
         }
 
         /// <summary>
-        /// 重置全部缓存（测试或全局清理）。
+        /// 重置当前文档缓存（测试或全局清理）。其它文档的槽仍由 Store 持有。
         /// </summary>
         public static void ResetCache()
         {
-            _styleCacheByDatabase.Clear();
+            var db = AcApp.DocumentManager.MdiActiveDocument?.Database;
+            if (db == null) return;
+            var cache = DocumentSessionStore.Get<ElevationStyleCache>(db);
+            cache.TextStyleId = ObjectId.Null;
+            cache.LayerId = ObjectId.Null;
         }
 
         /// <summary>
-        /// 文档关闭时移除对应 Database 的样式缓存。
+        /// 文档关闭时由 <see cref="DocumentSessionStore.Forget"/> 统一释放；保留空实现以免调用方崩。
         /// </summary>
         public static void RemoveDocumentCache(Database db)
         {
-            if (db == null) return;
-            _styleCacheByDatabase.Remove(db.UnmanagedObject);
         }
 
         /// <summary>
@@ -352,5 +349,12 @@ namespace HyCADTool.Features.Elevation.Services
         }
 
         #endregion
+    }
+
+    /// <summary>单张图上的标高样式缓存，由 <see cref="DocumentSessionStore"/> 按 Database 持有。</summary>
+    public sealed class ElevationStyleCache
+    {
+        public ObjectId TextStyleId;
+        public ObjectId LayerId;
     }
 }

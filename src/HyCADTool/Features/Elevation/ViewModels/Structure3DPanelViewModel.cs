@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.Misc;
+using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -24,32 +25,15 @@ namespace HyCADTool.Features.Elevation.ViewModels
     /// </summary>
     public class Structure3DPanelViewModel : INotifyPropertyChanged
     {
-        private static readonly Dictionary<string, Structure3DPanelViewModel> _byDoc
-            = new Dictionary<string, Structure3DPanelViewModel>();
-
-        /// <summary>按活动文档隔离的当前 ViewModel（与 PilePanelViewModel.Current 同模式）。</summary>
+        /// <summary>按活动文档隔离的当前 ViewModel（Database 为键，另存为后仍是同一槽）。</summary>
         public static Structure3DPanelViewModel Current
         {
-            get
-            {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc == null) return null;
-                var key = HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(doc);
-                if (!_byDoc.TryGetValue(key, out var vm))
-                {
-                    vm = new Structure3DPanelViewModel();
-                    _byDoc[key] = vm;
-                }
-                return vm;
-            }
+            get { return ActiveDocumentSession.GetOrNull<Structure3DPanelViewModel>(); }
         }
 
-        /// <summary>文档关闭时移除对应 VM，防止跨文档泄漏（A1 陷阱）。</summary>
-        /// <param name="docKey"><see cref="HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey"/> 生成的「句柄:文件名」组合键。</param>
-        public static void RemoveDocument(string docKey)
+        /// <summary>文档关闭时由 <see cref="DocumentSessionStore.Forget"/> 统一释放。</summary>
+        public static void RemoveDocument(object documentKey)
         {
-            if (!string.IsNullOrEmpty(docKey))
-                _byDoc.Remove(docKey);
         }
 
         public Structure3DPanelViewModel()

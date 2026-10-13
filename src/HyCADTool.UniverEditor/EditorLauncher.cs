@@ -115,10 +115,11 @@ namespace HyCADTool.UniverEditor
                 }
 
                 UniverEditorWindow window = null;
+                EventHandler onClosed = null;
                 try
                 {
                     window = new UniverEditorWindow(HostContext ?? new UniverEditorHostContext());
-                    window.Closed += (_, __) =>
+                    onClosed = (_, __) =>
                     {
                         lock (WindowLock)
                         {
@@ -126,6 +127,7 @@ namespace HyCADTool.UniverEditor
                                 _currentWindow = null;
                         }
                     };
+                    window.Closed += onClosed;
 
                     _currentWindow = window;
                     TrySetOwner(window, ownerHandle);
@@ -139,7 +141,8 @@ namespace HyCADTool.UniverEditor
                     {
                         try
                         {
-                            window.Closed -= (_, __) => { };
+                            if (onClosed != null)
+                                window.Closed -= onClosed;
                             window.Close();
                         }
                         catch

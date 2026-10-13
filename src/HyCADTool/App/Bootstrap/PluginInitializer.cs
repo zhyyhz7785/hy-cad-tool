@@ -6,7 +6,7 @@ using Autofac;
 using HyCADTool.Features.DesignSpec.Services;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.TextEdit.Services;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
 using HyCADTool.Shell.Contracts;
@@ -36,13 +36,13 @@ namespace HyCADTool.App.Bootstrap
     /// </summary>
     public class PluginInitializer
     {
-        private static readonly HashSet<string> _initializedDocuments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private static readonly HashSet<object> _initializedDocuments = new HashSet<object>();
 
-        /// <summary>文档关闭时移除初始化标记，同名文件再打开时可重新初始化。</summary>
-        public static void RemoveInitializedDocument(string documentName)
+        /// <summary>文档关闭时移除初始化标记，同一 Database 再打开时可重新初始化。</summary>
+        public static void RemoveInitializedDocument(object documentKey)
         {
-            if (string.IsNullOrEmpty(documentName)) return;
-            _initializedDocuments.Remove(documentName);
+            if (documentKey == null) return;
+            _initializedDocuments.Remove(documentKey);
         }
 
         /// <summary>
@@ -482,7 +482,10 @@ namespace HyCADTool.App.Bootstrap
         {
             if (e.Document == null)
                 return;
-            ComponentSession.ForgetDocument(e.Document.Database);
+            var db = e.Document.Database;
+            ComponentSession.ForgetDocument(db);
+            if (db != null)
+                DocumentSessionStore.Forget(db);
         }
 
         /// <summary>
@@ -495,7 +498,7 @@ namespace HyCADTool.App.Bootstrap
             try
             {
                 var styleService = ServiceLocator.Resolve<IStyleService>();
-                SettingsPanelViewModel.GetOrCreate(HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(e.Document), styleService);
+                SettingsPanelViewModel.GetOrCreate(styleService);
             }
             catch
             {
@@ -853,8 +856,8 @@ namespace HyCADTool.App.Bootstrap
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
 
-            string documentName = HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(doc);
-            if (!force && _initializedDocuments.Contains(documentName))
+            var db = doc.Database;
+            if (!force && db != null && _initializedDocuments.Contains(db))
                 return;
 
             try
@@ -864,13 +867,14 @@ namespace HyCADTool.App.Bootstrap
                 var styleService = ServiceLocator.Resolve<IStyleService>();
                 var layerService = ServiceLocator.Resolve<ILayerService>();
 
-                var vm = SettingsPanelViewModel.GetOrCreate(documentName, styleService);
+                var vm = SettingsPanelViewModel.GetOrCreate(styleService);
                 vm.LoadSettings();
                 vm.EnsureLayerCatalogForDocumentInit();
                 vm.EnsureStylesApplied();
 
                 layerService.EnsureUserLayerItems(vm.LayerCatalogItems.ToList());
-                _initializedDocuments.Add(documentName);
+                if (db != null)
+                    _initializedDocuments.Add(db);
             }
             catch (System.Exception ex)
             {

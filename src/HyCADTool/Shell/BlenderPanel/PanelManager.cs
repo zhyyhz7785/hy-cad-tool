@@ -14,6 +14,7 @@ using HyCADTool.Features.DataExchange.Hyob.Presentation.ViewModels;
 using HyCADTool.Features.Fem.Views;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using Autodesk.AutoCAD.DatabaseServices;
+using HyCADTool.Shared.AutoCAD.Session;
 
 namespace HyCADTool.Shell
 {
@@ -734,15 +735,13 @@ namespace HyCADTool.Shell
         private void OnDocumentToBeDestroyed(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
             if (e.Document == null) return;
-            string docKey = HyCADTool.Shared.AutoCAD.Utilities.DocumentKeys.GetKey(e.Document);
-            if (e.Document.Database != null)
-                ViewModels.SettingsPanelViewModel.ClearDatabaseStyleState(e.Document.Database.UnmanagedObject);
-            HyCADTool.Features.Pile.ViewModels.PilePanelViewModel.RemoveDocument(docKey);
-            HyCADTool.Features.SpongeCity.ViewModels.SpongeCityPanelViewModel.RemoveDocument(docKey);
-            HyCADTool.Features.Settlement.ViewModels.SettlementPanelViewModel.RemoveDocument(docKey);
-            ViewModels.ClusterPanelViewModel.RemoveDocument(docKey);
-            HyCADTool.Features.Elevation.ViewModels.Structure3DPanelViewModel.RemoveDocument(docKey);
-            Features.Elevation.Services.ElevationService.RemoveDocumentCache(e.Document.Database);
+            var db = e.Document.Database;
+            if (db != null)
+            {
+                ViewModels.SettingsPanelViewModel.ClearDatabaseStyleState(db.UnmanagedObject);
+                DocumentSessionStore.Forget(db);
+                PluginInitializer.RemoveInitializedDocument(db);
+            }
 
             try
             {
@@ -753,8 +752,6 @@ namespace HyCADTool.Shell
             {
                 // 容器未初始化或道路子系统未就绪
             }
-
-            PluginInitializer.RemoveInitializedDocument(docKey);
         }
 
         /// <summary>

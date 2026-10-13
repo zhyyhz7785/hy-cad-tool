@@ -135,5 +135,28 @@ namespace HyCADTool.LinuxTests
             DocumentSessionStore.Forget(a);
             DocumentSessionStore.Forget(b);
         }
+
+        private sealed class PendingGuidState
+        {
+            public Guid? Value;
+        }
+
+        [Fact]
+        public void Pending_flags_do_not_cross_document_keys()
+        {
+            var a = new object();
+            var b = new object();
+            var id = Guid.NewGuid();
+            DocumentSessionStore.Get<PendingGuidState>(a).Value = id;
+
+            Assert.Equal(id, DocumentSessionStore.Get<PendingGuidState>(a).Value);
+            Assert.Null(DocumentSessionStore.Get<PendingGuidState>(b).Value);
+
+            DocumentSessionStore.Forget(a);
+            Assert.Null(DocumentSessionStore.Get<PendingGuidState>(a).Value);
+
+            DocumentSessionStore.Forget(a);
+            DocumentSessionStore.Forget(b);
+        }
     }
 }

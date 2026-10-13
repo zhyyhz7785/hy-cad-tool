@@ -8,12 +8,16 @@ namespace HyCADTool.UniverEditor.Views
     {
         private UniverSessionLifecycle _session;
         private UniverEditorHostContext _hostContext;
+        private readonly Action _prepareForCad;
+        private readonly Action _restoreAfterCad;
 
         private UniverEditorHostContext ActiveContext => EditorLauncher.HostContext ?? _hostContext;
 
         public UniverEditorWindow(UniverEditorHostContext hostContext)
         {
             _hostContext = hostContext ?? new UniverEditorHostContext();
+            _prepareForCad = PrepareForCadInteraction;
+            _restoreAfterCad = RestoreAfterCadInteraction;
             InitializeComponent();
             Loaded += OnLoadedAsync;
             Closed += OnClosed;
@@ -40,8 +44,8 @@ namespace HyCADTool.UniverEditor.Views
         {
             Loaded -= OnLoadedAsync;
 
-            EditorLauncher.PrepareForCadInteraction = PrepareForCadInteraction;
-            EditorLauncher.RestoreAfterCadInteraction = RestoreAfterCadInteraction;
+            EditorLauncher.PrepareForCadInteraction = _prepareForCad;
+            EditorLauncher.RestoreAfterCadInteraction = _restoreAfterCad;
             SyncHostContextBindings();
 
             try
@@ -271,10 +275,10 @@ namespace HyCADTool.UniverEditor.Views
                 ctx.StatusChanged -= OnHostStatusChanged;
             }
 
-            if (ReferenceEquals(EditorLauncher.PrepareForCadInteraction, (Action)PrepareForCadInteraction))
+            if (ReferenceEquals(EditorLauncher.PrepareForCadInteraction, _prepareForCad))
                 EditorLauncher.PrepareForCadInteraction = null;
 
-            if (ReferenceEquals(EditorLauncher.RestoreAfterCadInteraction, (Action)RestoreAfterCadInteraction))
+            if (ReferenceEquals(EditorLauncher.RestoreAfterCadInteraction, _restoreAfterCad))
                 EditorLauncher.RestoreAfterCadInteraction = null;
 
             try { _session?.Dispose(); }

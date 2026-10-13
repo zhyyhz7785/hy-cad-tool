@@ -4,6 +4,8 @@ using System.Windows.Threading;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using HyCADTool.Shared.AutoCAD.Session;
+using HyCADTool.Shared.Core;
 using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -23,10 +25,8 @@ namespace HyCADTool.Features.TextEdit.Services
     /// </summary>
     public static class HyEdDoubleClickInterceptor
     {
+        [ProcessWide("双击拦截只挂一次进程级事件")]
         private static bool _installed;
-        private static ObjectId _pendingId = ObjectId.Null;
-        private static bool _runHyEdAfterVeto;
-        private static bool _beginDoubleClickArmed;
 
         private static readonly HashSet<string> NativeTextEditCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -58,16 +58,15 @@ namespace HyCADTool.Features.TextEdit.Services
             AcApp.DocumentManager.DocumentLockModeChanged -= OnDocumentLockModeChanged;
             AcApp.DocumentManager.DocumentLockModeChangeVetoed -= OnDocumentLockModeChangeVetoed;
             _installed = false;
-            _pendingId = ObjectId.Null;
-            _runHyEdAfterVeto = false;
-            _beginDoubleClickArmed = false;
+            var session = TrySession();
+            if (session != null)
+                session.Reset();
         }
 
         private static void OnBeginDoubleClick(object sender, BeginDoubleClickEventArgs e)
         {
-            _pendingId = ObjectId.Null;
-            _runHyEdAfterVeto = false;
-            _beginDoubleClickArmed = false;
+            var session = TrySession();
+            session?.Reset();
 
             if (!IsEnabledBySettings())
                 return;
@@ -75,6 +74,9 @@ namespace HyCADTool.Features.TextEdit.Services
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 return;
+
+            session = DocumentSessionStore.Get<HyEdClickSession>(doc.Database);
+            session.Reset();
 
             var ed = doc.Editor;
             PromptSelectionResult res = ed.SelectImplied();
@@ -85,8 +87,8 @@ namespace HyCADTool.Features.TextEdit.Services
             if (!IsSupportedTextEntity(doc.Database, id))
                 return;
 
-            _pendingId = id;
-            _beginDoubleClickArmed = true;
+            session.PendingId = id;
+            session.BeginDoubleClickArmed = true;
 
             int dbl = 1;
             try
@@ -107,9 +109,13 @@ namespace HyCADTool.Features.TextEdit.Services
 
         private static void OnDocumentLockModeChanged(object sender, DocumentLockModeChangedEventArgs e)
         {
-            _runHyEdAfterVeto = false;
+            var session = TrySession();
+            if (session == null)
+                return;
 
-            if (!_beginDoubleClickArmed || _pendingId.IsNull)
+            session.RunHyEdAfterVeto = false;
+
+            if (!session.BeginDoubleClickArmed || session.PendingId.IsNull)
                 return;
 
             if (string.IsNullOrEmpty(e.GlobalCommandName))
@@ -124,32 +130,30 @@ namespace HyCADTool.Features.TextEdit.Services
             if (!NativeTextEditCommands.Contains(cmd))
                 return;
 
-            _runHyEdAfterVeto = true;
+            session.RunHyEdAfterVeto = true;
             e.Veto();
         }
 
         private static void OnDocumentLockModeChangeVetoed(object sender, DocumentLockModeChangeVetoedEventArgs e)
         {
-            if (!_runHyEdAfterVeto || _pendingId.IsNull)
+            var session = TrySession();
+            if (session == null || !session.RunHyEdAfterVeto || session.PendingId.IsNull)
                 return;
 
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
                 return;
 
-            ObjectId id = _pendingId;
-            _pendingId = ObjectId.Null;
-            _beginDoubleClickArmed = false;
-            _runHyEdAfterVeto = false;
+            ObjectId id = session.PendingId;
+            session.Reset();
 
             LaunchHyEdInternal(doc, id);
         }
 
         private static void LaunchHyEdInternal(Document doc, ObjectId id)
         {
-            _pendingId = ObjectId.Null;
-            _beginDoubleClickArmed = false;
-            _runHyEdAfterVeto = false;
+            var session = doc?.Database == null ? null : DocumentSessionStore.Get<HyEdClickSession>(doc.Database);
+            session?.Reset();
 
             // 通过 WPF Dispatcher 派发到下一帧 —— 让 AutoCAD 完成 Veto 收尾后立刻在 UI 线程上调起编辑器，
             // 不需要等 idle。DispatcherPriority.Background 排到 Render 之后，避开 MFC 消息循环重入。
@@ -188,6 +192,11 @@ namespace HyCADTool.Features.TextEdit.Services
             }
         }
 
+        private static HyEdClickSession TrySession()
+        {
+            return ActiveDocumentSession.GetOrNull<HyEdClickSession>();
+        }
+
         private static bool IsSupportedTextEntity(Database db, ObjectId id)
         {
             try
@@ -209,6 +218,21 @@ namespace HyCADTool.Features.TextEdit.Services
             {
                 return false;
             }
+        }
+    }
+
+    /// <summary>单张图上的双击待处理槽，由 <see cref="DocumentSessionStore"/> 按 Database 持有。</summary>
+    public sealed class HyEdClickSession
+    {
+        public ObjectId PendingId;
+        public bool RunHyEdAfterVeto;
+        public bool BeginDoubleClickArmed;
+
+        public void Reset()
+        {
+            PendingId = ObjectId.Null;
+            RunHyEdAfterVeto = false;
+            BeginDoubleClickArmed = false;
         }
     }
 }
