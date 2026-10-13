@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Extensions;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shell.Configuration;
 using System;
@@ -38,14 +39,14 @@ namespace HyCADTool.Features.Reinforcement
 
                 using (var trans = db.TransactionManager.StartTransaction())
                 {
-                    var originalPl = trans.GetObject(per.ObjectId, OpenMode.ForWrite) as Polyline;
+                    var originalPl = trans.GetObject(per.ObjectId, OpenMode.ForRead) as Polyline;
                     if (originalPl == null || originalPl.NumberOfVertices < 2) return;
 
                     string sourceLayer = originalPl.Layer;
                     double sourceWidth = ReinforcementWidthExtensions.ResolveEffectiveWidth(originalPl);
                     double targetWidth = sourceWidth > 0 ? sourceWidth : panelWidth;
 
-                    Point3d closestPt = originalPl.GetClosestPointTo(per.PickedPoint, false);
+                    Point3d closestPt = originalPl.GetClosestPointTo(EditorWcs.ToWcs(ed, per.PickedPoint), false);
                     int segIndex = GetSegmentIndex(originalPl, closestPt);
                     if (segIndex < 0 || segIndex >= originalPl.NumberOfVertices - 1) return;
 
@@ -59,8 +60,24 @@ namespace HyCADTool.Features.Reinforcement
                     if (upperPl.NumberOfVertices >= 2)
                         ShortenStart(upperPl, SpliceGap);
 
+                    if (lowerPl.NumberOfVertices < 2 && upperPl.NumberOfVertices < 2)
+                    {
+                        lowerPl.Dispose();
+                        upperPl.Dispose();
+                        ed.WriteMessage("\n截断后无有效线段，操作已取消。");
+                        trans.Abort();
+                        return;
+                    }
+
+                    if (!LockedLayerErase.TryErase(trans, originalPl, ed))
+                    {
+                        lowerPl.Dispose();
+                        upperPl.Dispose();
+                        trans.Abort();
+                        return;
+                    }
+
                     var btr = (BlockTableRecord)trans.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
-                    originalPl.Erase();
 
                     int written = 0;
                     if (lowerPl.NumberOfVertices >= 2)

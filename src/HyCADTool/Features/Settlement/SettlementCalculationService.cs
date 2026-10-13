@@ -631,12 +631,13 @@ namespace HyCADTool.Features.Settlement
         }
 
         /// <summary>
-        /// 桩基经验系数（JGJ 94 表5.5.11）
+        /// 桩基经验系数（JGJ 94-2008 表5.5.11）
+        /// Ē_s（MPa）：≤10, 15, 20, 35, ≥50 → ψ_s：1.2, 0.9, 0.65, 0.50, 0.40；中间线性插值，外侧取边界。
         /// </summary>
         private static double InterpolatePsiS_Pile(double es)
         {
             double[] esValues = { 10.0, 15.0, 20.0, 35.0, 50.0 };
-            double[] psiValues = { 2.0, 0.9, 0.65, 0.50, 0.40 };
+            double[] psiValues = { 1.2, 0.9, 0.65, 0.50, 0.40 };
             return Interpolate(esValues, psiValues, es);
         }
 

@@ -21,35 +21,8 @@ namespace HyCAD.Geometry.Algorithms
             if (subject == null || clip == null)
                 return null;
 
-            var subjectPath = ToPath(subject);
-            var clipPath = ToPath(clip);
-
-            var intersection = Clipper.Intersect(
-                new PathsD { subjectPath },
-                new PathsD { clipPath },
-                FillRule.NonZero);
-
-            if (intersection == null || intersection.Count == 0)
-                return null;
-
-            if (holes != null && holes.Count > 0)
-            {
-                foreach (var hole in holes)
-                {
-                    if (hole == null || hole.VertexCount < 3)
-                        continue;
-
-                    intersection = Clipper.Difference(
-                        intersection,
-                        new PathsD { ToPath(hole) },
-                        FillRule.NonZero);
-
-                    if (intersection == null || intersection.Count == 0)
-                        return null;
-                }
-            }
-
-            return LargestPolygon(intersection);
+            var solids = IntersectAllAndSubtractHoles(subject, clip, holes);
+            return solids.Count == 0 ? null : solids[0];
         }
 
         /// <summary>
@@ -170,15 +143,11 @@ namespace HyCAD.Geometry.Algorithms
             if (subject == null || clip == null)
                 return Array.Empty<Polygon2D>();
 
-            var subjectPath = ToPath(subject);
-            var clipPath = ToPath(clip);
-
-            var intersection = Clipper.Intersect(
-                new PathsD { subjectPath },
-                new PathsD { clipPath },
-                FillRule.NonZero);
-
-            if (intersection == null || intersection.Count == 0)
+            var tree = Boolean(
+                ClipType.Intersection,
+                new PathsD { ToPath(subject) },
+                new PathsD { ToPath(clip) });
+            if (tree.Count == 0)
                 return Array.Empty<Polygon2D>();
 
             if (holes != null && holes.Count > 0)
@@ -188,17 +157,25 @@ namespace HyCAD.Geometry.Algorithms
                     if (hole == null || hole.VertexCount < 3)
                         continue;
 
-                    intersection = Clipper.Difference(
-                        intersection,
-                        new PathsD { ToPath(hole) },
-                        FillRule.NonZero);
+                    var current = Flatten(tree);
+                    if (current.Count == 0)
+                        return Array.Empty<Polygon2D>();
 
-                    if (intersection == null || intersection.Count == 0)
+                    tree = Boolean(ClipType.Difference, current, new PathsD { ToPath(hole) });
+                    if (tree.Count == 0)
                         return Array.Empty<Polygon2D>();
                 }
             }
 
-            return AllPolygons(intersection);
+            return Solids(tree);
+        }
+
+        /// <summary>
+        /// subject ∩ clip，返回全部片段（按面积降序）。
+        /// </summary>
+        public static IReadOnlyList<Polygon2D> IntersectAll(Polygon2D subject, Polygon2D clip)
+        {
+            return IntersectAllAndSubtractHoles(subject, clip, holes: null);
         }
 
         /// <summary>
@@ -221,52 +198,90 @@ namespace HyCAD.Geometry.Algorithms
                 return Array.Empty<Polygon2D>();
 
             if (paths.Count == 1)
-                return AllPolygons(new PathsD { paths[0] });
-
-            var united = Clipper.Union(paths, FillRule.NonZero);
-            return united == null || united.Count == 0
-                ? Array.Empty<Polygon2D>()
-                : AllPolygons(united);
-        }
-
-        private static IReadOnlyList<Polygon2D> AllPolygons(PathsD paths)
-        {
-            var result = new List<Polygon2D>();
-            foreach (var path in paths)
             {
-                if (path == null || path.Count < 3)
-                    continue;
-
-                var verts = path.Select(p => new Point2D(p.x, p.y)).ToList();
-                result.Add(new Polygon2D(verts, isClosed: true));
+                var only = ToPolygon(paths[0]);
+                return only == null
+                    ? Array.Empty<Polygon2D>()
+                    : new[] { only };
             }
 
+            var tree = Boolean(ClipType.Union, paths, null);
+            return tree.Count == 0
+                ? Array.Empty<Polygon2D>()
+                : Solids(tree);
+        }
+
+        /// <summary>
+        /// Clipper2 默认精度。与 <see cref="Clipper.Intersect(PathsD, PathsD, FillRule, int)"/> 的默认参数一致。
+        /// </summary>
+        private const int ClipperPrecision = 2;
+
+        private static PolyTreeD Boolean(ClipType op, PathsD subject, PathsD clip)
+        {
+            var tree = new PolyTreeD();
+            Clipper.BooleanOp(op, subject, clip, tree, FillRule.NonZero, ClipperPrecision);
+            return tree;
+        }
+
+        /// <summary>
+        /// 只收集非孔洞环。孔洞里的岛（孔的非孔子节点）仍作为独立实体返回。
+        /// </summary>
+        private static IReadOnlyList<Polygon2D> Solids(PolyTreeD tree)
+        {
+            var result = new List<Polygon2D>();
+            CollectSolids(tree, result);
             return result
                 .OrderByDescending(poly => System.Math.Abs(Clipper.Area(ToPath(poly))))
                 .ToList();
         }
-        private static Polygon2D LargestPolygon(PathsD paths)
+
+        private static void CollectSolids(PolyPathD node, List<Polygon2D> result)
         {
-            PathD best = null;
-            double bestArea = 0;
-
-            foreach (var path in paths)
+            for (int i = 0; i < node.Count; i++)
             {
-                if (path == null || path.Count < 3)
-                    continue;
-
-                double area = System.Math.Abs(Clipper.Area(path));
-                if (area > bestArea)
+                var child = node[i];
+                if (!child.IsHole)
                 {
-                    bestArea = area;
-                    best = path;
+                    var poly = ToPolygon(child.Polygon);
+                    if (poly != null)
+                        result.Add(poly);
                 }
-            }
 
-            if (best == null)
+                if (child.Count > 0)
+                    CollectSolids(child, result);
+            }
+        }
+
+        /// <summary>
+        /// 下一轮差集的主体要带上孔洞环，否则只传外环会把已挖掉的孔重新填上。
+        /// </summary>
+        private static PathsD Flatten(PolyTreeD tree)
+        {
+            var paths = new PathsD();
+            CollectPaths(tree, paths);
+            return paths;
+        }
+
+        private static void CollectPaths(PolyPathD node, PathsD paths)
+        {
+            for (int i = 0; i < node.Count; i++)
+            {
+                var child = node[i];
+                if (child.Polygon != null && child.Polygon.Count >= 3)
+                    paths.Add(child.Polygon);
+                if (child.Count > 0)
+                    CollectPaths(child, paths);
+            }
+        }
+
+        private static Polygon2D ToPolygon(PathD path)
+        {
+            if (path == null || path.Count < 3)
                 return null;
 
-            var verts = best.Select(p => new Point2D(p.x, p.y)).ToList();
+            var verts = new List<Point2D>(path.Count);
+            foreach (var p in path)
+                verts.Add(new Point2D(p.x, p.y));
             return new Polygon2D(verts, isClosed: true);
         }
 

@@ -42,4 +42,38 @@ public sealed class DenseLinearSolverTests
         r.Error.Should().NotBeNull();
         r.Error!.Kind.Should().BeOneOf(FemErrorKind.NegativePivot, FemErrorKind.SingularMatrix);
     }
+
+    [Fact]
+    public void Well_conditioned_tiny_matrix_is_not_rejected()
+    {
+        const double s = 1e-20;
+        var K = new DenseMatrix(2, 2);
+        K[0, 0] = 4 * s; K[0, 1] = 1 * s;
+        K[1, 0] = 1 * s; K[1, 1] = 3 * s;
+        var F = new DenseVector(2);
+        F[0] = 1 * s;
+        F[1] = 2 * s;
+
+        var r = new DenseLinearSolver().Solve(K, F);
+
+        r.Success.Should().BeTrue();
+        r.Solution![0].Should().BeApproximately(1.0 / 11.0, 1e-9);
+        r.Solution[1].Should().BeApproximately(7.0 / 11.0, 1e-9);
+    }
+
+    [Fact]
+    public void Near_mechanism_relative_to_matrix_scale_fails()
+    {
+        var K = new DenseMatrix(2, 2);
+        K[0, 0] = 1; K[0, 1] = 1;
+        K[1, 0] = 1; K[1, 1] = 1 + 1e-15;
+        var F = new DenseVector(2);
+        F[0] = 1;
+        F[1] = 1;
+
+        var r = new DenseLinearSolver().Solve(K, F);
+
+        r.Success.Should().BeFalse();
+        r.Error!.Kind.Should().Be(FemErrorKind.SingularMatrix);
+    }
 }

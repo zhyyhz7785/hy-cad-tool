@@ -1,4 +1,5 @@
 using Autodesk.AutoCAD.DatabaseServices;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -20,8 +21,9 @@ namespace HyCADTool.Features.Misc
             var ptResult = ed.GetPoint("\n选择插入基点: ");
             if (ptResult.Status != PromptStatus.OK) return;
 
-            double startX = ptResult.Value.X;
-            double startY = ptResult.Value.Y;
+            var origin = EditorWcs.ToWcs(ed, ptResult.Value);
+            double startX = origin.X;
+            double startY = origin.Y;
             double lineLength = 200;
             double offsetY = 20;
             double textHeight = 5;

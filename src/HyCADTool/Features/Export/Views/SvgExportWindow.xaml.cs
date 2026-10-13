@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.Export.Services.Svg;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Export.Views
@@ -250,11 +251,13 @@ namespace HyCADTool.Features.Export.Views
                 var p2 = ed.GetCorner("\n指定打印窗口另一角点", p1.Value);
                 if (p2.Status != PromptStatus.OK)
                     return;
+                var w1 = EditorWcs.ToWcs(ed, p1.Value);
+                var w2 = EditorWcs.ToWcs(ed, p2.Value);
                 _settings.HasWindow = true;
-                _settings.WindowX1 = p1.Value.X;
-                _settings.WindowY1 = p1.Value.Y;
-                _settings.WindowX2 = p2.Value.X;
-                _settings.WindowY2 = p2.Value.Y;
+                _settings.WindowX1 = w1.X;
+                _settings.WindowY1 = w1.Y;
+                _settings.WindowX2 = w2.X;
+                _settings.WindowY2 = w2.Y;
                 UpdateWindowInfo();
             }
             finally

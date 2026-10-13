@@ -1,0 +1,21 @@
+name: linux-tests
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: HyCADTool.LinuxTests
+        run: dotnet test src/HyCADTool.LinuxTests/HyCADTool.LinuxTests.csproj -c Release
+      - name: HYFEA.Tests
+        run: dotnet test src/HYFEA/HYFEA.Tests/HYFEA.Tests.csproj -c Release -f net8.0
+      - name: HyCAD.Tables.Tests
+        run: dotnet test src/HyCAD.Tables.Tests/HyCAD.Tables.Tests.csproj -c Release -f net8.0

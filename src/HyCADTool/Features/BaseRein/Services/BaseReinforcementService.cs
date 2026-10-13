@@ -9,6 +9,7 @@ using HyCADTool.Features.BaseRein.Domain;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.Configuration.User;
 
 using System;
@@ -87,9 +88,8 @@ namespace HyCADTool.Features.BaseRein.Services
 
                     if (!targetLayers.Contains(ent.Layer))
                     {
-                        ent.UpgradeOpen();
-                        ent.Erase();
-                        deletedCount++;
+                        if (LockedLayerErase.TryErase(tr, ent, ed))
+                            deletedCount++;
                     }
                 }
                 tr.Commit();
@@ -327,7 +327,7 @@ namespace HyCADTool.Features.BaseRein.Services
                 {
                     var textObj = tr.GetObject(textId, OpenMode.ForRead);
                     if (textObj is DBText dbText)
-                        textPositions[textId] = dbText.AlignmentPoint;
+                        textPositions[textId] = GetDbTextPlacement(dbText);
                     else if (textObj is MText mText)
                         textPositions[textId] = mText.Location;
                 }
@@ -986,13 +986,34 @@ namespace HyCADTool.Features.BaseRein.Services
             }
         }
 
+        /// <summary>
+        /// 左对齐 DBText 的 AlignmentPoint 是 (0,0,0)，必须用 Position。
+        /// 其它对正方式用 AlignmentPoint；若仍是原点则回退 Position。
+        /// </summary>
+        internal static Point3d GetDbTextPlacement(DBText dbText)
+        {
+            if (dbText == null)
+                return Point3d.Origin;
+
+            var align = dbText.AlignmentPoint;
+            bool alignIsOrigin =
+                Math.Abs(align.X) < 1e-9 &&
+                Math.Abs(align.Y) < 1e-9 &&
+                Math.Abs(align.Z) < 1e-9;
+
+            if (dbText.Justify == AttachmentPoint.BaseLeft || alignIsOrigin)
+                return dbText.Position;
+
+            return align;
+        }
+
         private static List<NumericTextHit> CollectNumericTexts(IEnumerable<DBObject> objects)
         {
             var result = new List<NumericTextHit>();
             foreach (var obj in objects)
             {
                 if (obj is DBText dbText && double.TryParse(dbText.TextString, out _))
-                    result.Add(new NumericTextHit(dbText.ObjectId, dbText.AlignmentPoint));
+                    result.Add(new NumericTextHit(dbText.ObjectId, GetDbTextPlacement(dbText)));
                 else if (obj is MText mText)
                 {
                     string text = mText.Text.Replace("\\P", " ");

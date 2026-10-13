@@ -2,7 +2,9 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using System;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Shared.AutoCAD.Interactive
 {
@@ -49,7 +51,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 return SamplerStatus.Cancel;
 
             var jigOpts = new JigPromptPointOptions("\n移动光标选择弯钩方向（沿相交钢筋，点击确认）：");
-            jigOpts.BasePoint = _basePoint;
+            jigOpts.BasePoint = ToUcs(_basePoint);
             jigOpts.UseBasePoint = true;
             jigOpts.UserInputControls =
                 UserInputControls.Accept3dCoordinates | UserInputControls.NoNegativeResponseAccepted;
@@ -57,9 +59,10 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             PromptPointResult ppr = prompts.AcquirePoint(jigOpts);
             if (ppr.Status == PromptStatus.OK)
             {
-                if (_jigPoint.DistanceTo(ppr.Value) < Tolerance.Global.EqualPoint)
+                var wcs = ToWcs(ppr.Value);
+                if (_jigPoint.DistanceTo(wcs) < Tolerance.Global.EqualPoint)
                     return SamplerStatus.NoChange;
-                _jigPoint = ppr.Value;
+                _jigPoint = wcs;
                 return SamplerStatus.OK;
             }
 
@@ -70,6 +73,18 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             return SamplerStatus.Cancel;
+        }
+
+        private static Point3d ToWcs(Point3d ucsPoint)
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            return ed == null ? ucsPoint : EditorWcs.ToWcs(ed, ucsPoint);
+        }
+
+        private static Point3d ToUcs(Point3d wcsPoint)
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            return ed == null ? wcsPoint : EditorWcs.ToUcs(ed, wcsPoint);
         }
 
         protected override bool Update()

@@ -81,7 +81,7 @@ namespace HyCAD.Geometry
 
         public bool Equals(Point2D other)
         {
-            return IsEqualTo(other, 1e-9);
+            return X.Equals(other.X) && Y.Equals(other.Y);
         }
 
         public override bool Equals(object obj)

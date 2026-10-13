@@ -6,6 +6,7 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -45,7 +46,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
         /// <summary>
         /// 构造函数
         /// </summary>
-        /// <param name="basePoint">基准点</param>
+        /// <param name="basePoint">基准点（世界坐标）。GetPoint 的结果要先经 EditorWcs.ToWcs。</param>
         /// <param name="scale">比例</param>
         /// <param name="d">构造参数 d（默认2）</param>
         /// <param name="editor">编辑器</param>
@@ -160,8 +161,9 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             PromptPointResult res = prompts.AcquirePoint(opts);
             if (res.Status == PromptStatus.OK)
             {
-                if (_currentPoint == res.Value) return SamplerStatus.NoChange;
-                _currentPoint = res.Value;
+                var wcs = EditorWcs.ToWcs(_editor, res.Value);
+                if (_currentPoint == wcs) return SamplerStatus.NoChange;
+                _currentPoint = wcs;
                 double elevation = ElevationService.ToElevationMeters(_currentPoint.Y - BasePoint.Y);
                 bool isBase = Math.Abs(elevation) <= 0.001;
                 UpdateSymbol(elevation, isBase);
@@ -212,7 +214,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                     PromptPointResult res = _editor.GetPoint("\n选择新的基点: ");
                     if (res.Status == PromptStatus.OK)
                     {
-                        BasePoint = res.Value;
+                        BasePoint = EditorWcs.ToWcs(_editor, res.Value);
                         _currentPoint = BasePoint;
                         UpdateSymbol(0.0, true);
                     }

@@ -567,34 +567,7 @@ namespace HyCADTool.Features.Reinforcement.Domain
         /// </summary>
         private static double[] GetEvenlySpacedRatios(double length, double separation)
         {
-            double normalizedSep = separation / length;
-            int divCount = (int)(1.0 / normalizedSep);
-            double remainder = 1.0 - normalizedSep * divCount;
-            var result = new List<double>();
-
-            if (remainder < 1e-6)
-            {
-                result.Add(0);
-                for (int i = 1; i < divCount; i++)
-                    result.Add(i * normalizedSep);
-                result.Add(1.0);
-            }
-            else
-            {
-                double halfGap = (normalizedSep - remainder) / 2;
-                result.Add(0);
-                double current = normalizedSep - halfGap;
-                result.Add(current);
-                for (int i = 2; i < divCount; i++)
-                {
-                    current += normalizedSep;
-                    result.Add(current);
-                }
-                result.Add(1.0 - normalizedSep + halfGap);
-                result.Add(1.0);
-            }
-
-            return result.ToArray();
+            return EvenlySpacedLayout.GetRatios(length, separation);
         }
 
         #endregion

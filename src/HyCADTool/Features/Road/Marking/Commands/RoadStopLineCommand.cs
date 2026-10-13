@@ -5,6 +5,7 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -68,8 +69,10 @@ namespace HyCADTool.Features.Road
                 $"[道路] 停止线线宽 (默认 {StopLine.DefaultStripeWidth:F2} m，GB 规范 0.20~0.40)",
                 StopLine.DefaultStripeWidth);
 
-            var left = new Point2D(p1.Value.X, p1.Value.Y);
-            var right = new Point2D(p2.Value.X, p2.Value.Y);
+            var leftWcs = EditorWcs.ToWcs(ed, p1.Value);
+            var rightWcs = EditorWcs.ToWcs(ed, p2.Value);
+            var left = new Point2D(leftWcs.X, leftWcs.Y);
+            var right = new Point2D(rightWcs.X, rightWcs.Y);
 
             StopLine stopLine;
             try

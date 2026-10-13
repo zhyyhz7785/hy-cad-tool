@@ -257,47 +257,22 @@ namespace HyCAD.Geometry.Algorithms
 
         public List<Polygon2D> CalculateIntersection(Polygon2D polygon1, Polygon2D polygon2, Tolerance tolerance)
         {
-            // 这是一个复杂的算法，通常需要使用专门的几何计算库
-            // 这里提供简化版本，实际项目中建议使用Clipper2等专业库
-            
-            var result = new List<Polygon2D>();
-            
-            if (!DoPolygonsIntersect(polygon1, polygon2, tolerance))
-                return result;
+            if (polygon1?.Vertices == default || polygon2?.Vertices == default)
+                return new List<Polygon2D>();
 
-            // 简化实现：如果相交，返回重叠区域的近似多边形
-            // 实际应用中需要更复杂的算法
-            
-            return result;
+            return PolygonBoolean.IntersectAll(polygon1, polygon2).ToList();
         }
 
         public List<Polygon2D> CalculateUnion(Polygon2D polygon1, Polygon2D polygon2, Tolerance tolerance)
         {
-            // 类似于交集，并集也是复杂的算法
-            // 这里提供框架，实际实现需要专业的几何计算库
-            
-            var result = new List<Polygon2D>();
-            
-            if (!DoPolygonsIntersect(polygon1, polygon2, tolerance))
-            {
-                result.Add(polygon1);
-                result.Add(polygon2);
-            }
-            else
-            {
-                // 简化处理：返回包含两个多边形的边界框
-                var bbox1 = CalculateBoundingBox(polygon1);
-                var bbox2 = CalculateBoundingBox(polygon2);
-                
-                var minX = System.Math.Min(bbox1.MinPoint.X, bbox2.MinPoint.X);
-                var minY = System.Math.Min(bbox1.MinPoint.Y, bbox2.MinPoint.Y);
-                var maxX = System.Math.Max(bbox1.MaxPoint.X, bbox2.MaxPoint.X);
-                var maxY = System.Math.Max(bbox1.MaxPoint.Y, bbox2.MaxPoint.Y);
-                
-                result.Add(CreateRectangle(new Point2D(minX, minY), new Point2D(maxX, maxY)));
-            }
-            
-            return result;
+            if (polygon1?.Vertices == default && polygon2?.Vertices == default)
+                return new List<Polygon2D>();
+            if (polygon1?.Vertices == default)
+                return new List<Polygon2D> { polygon2 };
+            if (polygon2?.Vertices == default)
+                return new List<Polygon2D> { polygon1 };
+
+            return PolygonBoolean.UnionAll(new[] { polygon1, polygon2 }).ToList();
         }
 
         // === 多边形变换 ===

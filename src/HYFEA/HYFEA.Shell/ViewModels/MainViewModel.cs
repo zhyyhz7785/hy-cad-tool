@@ -2,7 +2,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Threading;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Loads;
 using HYFEA.Core.Model;
@@ -30,6 +33,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
     private BeamSupportKind _endA = BeamSupportKind.Fixed;
     private BeamSupportKind _endB = BeamSupportKind.Free;
     private string _status = "就绪 — 改参数后点「求解」";
+    private int _solveSerial;
 
     public MainViewModel()
     {
@@ -136,50 +140,63 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 
     private void ExecuteSolve()
     {
-        try
+        int seg = Segments < 1 ? 4 : Math.Min(Segments, 10000);
+        if (seg != Segments) Segments = seg;
+
+        double len = Length > 0 ? Length : 10000;
+        if (Math.Abs(len - Length) > 1e-15) Length = len;
+
+        var geom = InMemoryAxisGeometry.Horizontal(len, seg);
+        var request = new BeamSolveRequest
         {
-            int seg = Segments < 1 ? 4 : Math.Min(Segments, 10000);
-            if (seg != Segments) Segments = seg;
+            YoungsModulus = CoercePositive(YoungsModulus, 2.06e5),
+            Area = CoercePositive(Area, 8e4),
+            InertiaZ = CoercePositive(InertiaZ, 1.067e9),
+            Q = CoercePositive(Q, 10),
+            LoadDirection = LoadIsGlobalNegY ? BeamLoadDirection.GlobalNegY : BeamLoadDirection.LocalPerpendicular,
+            EndA = EndA,
+            EndB = EndB,
+            Units = UseSiUnits ? UnitSystem.SI : UnitSystem.MmN,
+        };
 
-            double len = Length > 0 ? Length : 10000;
-            if (Math.Abs(len - Length) > 1e-15) Length = len;
+        int serial = Interlocked.Increment(ref _solveSerial);
+        Status = "求解中…";
+        var sw = Stopwatch.StartNew();
+        Task.Run(() => _session.Compute(geom, request))
+            .ContinueWith(
+                t => Dispatcher.UIThread.Post(() => FinishSolve(serial, sw, t)),
+                TaskScheduler.Default);
+    }
 
-            var geom = InMemoryAxisGeometry.Horizontal(len, seg);
-            var request = new BeamSolveRequest
-            {
-                YoungsModulus = CoercePositive(YoungsModulus, 2.06e5),
-                Area = CoercePositive(Area, 8e4),
-                InertiaZ = CoercePositive(InertiaZ, 1.067e9),
-                Q = CoercePositive(Q, 10),
-                LoadDirection = LoadIsGlobalNegY ? BeamLoadDirection.GlobalNegY : BeamLoadDirection.LocalPerpendicular,
-                EndA = EndA,
-                EndB = EndB,
-                Units = UseSiUnits ? UnitSystem.SI : UnitSystem.MmN,
-            };
+    private void FinishSolve(int serial, Stopwatch sw, Task<BeamSolveOutput> task)
+    {
+        if (serial != Volatile.Read(ref _solveSerial))
+            return;
 
-            var sw = Stopwatch.StartNew();
-            var result = _session.Run(geom, request, this);
-            sw.Stop();
-
-            if (!result.Success)
-            {
-                _lastProblem = null;
-                _lastResult = null;
-                LastMeshJson = null;
-                RaiseExportCommandsChanged();
-                Status = "求解失败：" + (result.Error?.Message ?? "未知");
-                return;
-            }
-
-            Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
-        }
-        catch (Exception ex)
+        sw.Stop();
+        if (task.IsFaulted)
         {
             _lastProblem = null;
             _lastResult = null;
             LastMeshJson = null;
             RaiseExportCommandsChanged();
-            Status = "异常：" + ex.Message;
+            Status = "异常：" + task.Exception.GetBaseException().Message;
+            return;
+        }
+
+        var output = task.Result;
+        string statusBeforePresent = Status;
+        Present(output.Result, output.Problem);
+
+        if (!output.Result.Success)
+        {
+            Status = "求解失败：" + (output.Result.Error?.Message ?? "未知");
+            return;
+        }
+
+        if (Status == statusBeforePresent)
+        {
+            Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
         }
     }
 

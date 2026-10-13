@@ -7,6 +7,7 @@ using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shell.Configuration;
@@ -70,7 +71,7 @@ namespace HyCADTool.Features.Reinforcement
                     if (polyline == null) return;
 
                     // 反转多段线使末端靠近用户点击位置（弯钩添加在末端）
-                    OrientEndToPickedPoint(polyline, per.PickedPoint);
+                    OrientEndToPickedPoint(polyline, EditorWcs.ToWcs(ed, per.PickedPoint));
 
                     // 交互式添加弯钩（HookJig 实时预览）
                     var jig = new HookJig(polyline, hookLength, _isVertical);

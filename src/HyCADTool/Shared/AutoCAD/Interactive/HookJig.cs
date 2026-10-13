@@ -2,7 +2,9 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using System;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Shared.AutoCAD.Interactive
 {
@@ -64,7 +66,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             JigPromptPointOptions jigOpts = new JigPromptPointOptions("\n移动光标以选择弯钩方向，点击确认: ");
-            jigOpts.BasePoint = _lastVertex;
+            jigOpts.BasePoint = ToUcs(_lastVertex);
             jigOpts.UseBasePoint = true;
             jigOpts.UserInputControls = UserInputControls.Accept3dCoordinates | UserInputControls.NoNegativeResponseAccepted;
 
@@ -72,15 +74,12 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
             if (ppr.Status == PromptStatus.OK)
             {
-                if (_jigPoint.DistanceTo(ppr.Value) < Tolerance.Global.EqualPoint)
-                {
+                var wcs = ToWcs(ppr.Value);
+                if (_jigPoint.DistanceTo(wcs) < Tolerance.Global.EqualPoint)
                     return SamplerStatus.NoChange;
-                }
-                else
-                {
-                    _jigPoint = ppr.Value;
-                    return SamplerStatus.OK;
-                }
+
+                _jigPoint = wcs;
+                return SamplerStatus.OK;
             }
             else if (ppr.Status == PromptStatus.None)
             {
@@ -131,6 +130,18 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             _polyline.SetEndWidthAt(_numVertices - 1, _hookSegmentWidth);
 
             return true; // 实体已更新，需要重绘
+        }
+
+        private static Point3d ToWcs(Point3d ucsPoint)
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            return ed == null ? ucsPoint : EditorWcs.ToWcs(ed, ucsPoint);
+        }
+
+        private static Point3d ToUcs(Point3d wcsPoint)
+        {
+            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+            return ed == null ? wcsPoint : EditorWcs.ToUcs(ed, wcsPoint);
         }
 
         internal static double ResolveHookSegmentWidth(AcDbPolyline polyline, int sourceSegmentIndex)

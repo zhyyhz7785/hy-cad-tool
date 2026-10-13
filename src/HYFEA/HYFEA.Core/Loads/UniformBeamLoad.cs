@@ -14,7 +14,7 @@ public enum BeamLoadDirection
     /// <summary>Intensity <see cref="UniformBeamLoad.Q"/> acts along local +y (perpendicular to chord A→B, CCW from chord).</summary>
     LocalPerpendicular = 0,
 
-    /// <summary>Global distributed load vector (0, -Q) per unit length, projected onto local transverse.</summary>
+    /// <summary>Global distributed load vector (0, -Q) per unit length, projected onto local axial and transverse.</summary>
     GlobalNegY = 1,
 }
 

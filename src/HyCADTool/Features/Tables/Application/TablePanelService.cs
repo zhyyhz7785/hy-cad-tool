@@ -6,6 +6,7 @@ using HyCAD.Tables;
 using HyCAD.Tables.Samples;
 using HyCADTool.Features.Tables.Infrastructure.AutoCad;
 using HyCADTool.Features.Tables.Presentation;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Tables.TableApp
 {
@@ -50,7 +51,7 @@ namespace HyCADTool.Features.Tables.TableApp
             if (ppr.Status != PromptStatus.OK)
                 return TablePublishResult.Cancelled;
 
-            var insertionPoint = ppr.Value;
+            var insertionPoint = EditorWcs.ToWcs(ed, ppr.Value);
             var instanceGrid = grid.CloneWithNewId();
 
             var renderer = new AcadTableRenderer(_database, null, scale);

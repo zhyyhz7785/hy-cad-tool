@@ -21,7 +21,7 @@ internal sealed class Truss2DContribution : IElementContribution
         return Array.Empty<DofType>();
     }
 
-    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K)
+    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, IMatrixAccumulator K)
     {
         var e = (Truss2DElementDef)element;
         GetBarData(problem, e, out double L, out double c, out double s, out double k);

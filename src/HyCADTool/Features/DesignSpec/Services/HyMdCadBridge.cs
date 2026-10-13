@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Autodesk.AutoCAD.EditorInput;
+using Microsoft.Win32.SafeHandles;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -19,12 +23,17 @@ namespace HyCADTool.Features.DesignSpec.Services
         public const string PipeShortName = "HyMd.Cad.v1";
 
         private static readonly object Gate = new object();
+        private static readonly ConcurrentQueue<Action> IdleActions = new ConcurrentQueue<Action>();
+        private static readonly string[] AllowedServerProcessNames = { "HyMd", "hymd-tauri2", "hymd" };
         private static NamedPipeClientStream _pipe;
         private static StreamReader _reader;
         private static StreamWriter _writer;
         private static Thread _readThread;
         private static volatile bool _stop;
         private static bool _stampHooked;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe, out uint serverProcessId);
 
         public static bool IsConnected
         {
@@ -64,6 +73,7 @@ namespace HyCADTool.Features.DesignSpec.Services
 
         public static bool EnsureProcess(Editor ed)
         {
+            EnsureStampHook();
             if (IsConnected)
                 return true;
 
@@ -193,6 +203,11 @@ namespace HyCADTool.Features.DesignSpec.Services
             try
             {
                 pipe.Connect(Math.Max(50, timeoutMs));
+                if (!TryValidatePipeServer(pipe))
+                {
+                    try { pipe.Dispose(); } catch { }
+                    return false;
+                }
             }
             catch
             {
@@ -328,19 +343,42 @@ namespace HyCADTool.Features.DesignSpec.Services
             return false;
         }
 
+        private static bool TryValidatePipeServer(NamedPipeClientStream pipe)
+        {
+            try
+            {
+                if (!GetNamedPipeServerProcessId(pipe.SafePipeHandle, out uint pid))
+                    return false;
+                using (var proc = Process.GetProcessById(unchecked((int)pid)))
+                {
+                    string name = proc.ProcessName ?? string.Empty;
+                    foreach (var allowed in AllowedServerProcessNames)
+                    {
+                        if (string.Equals(name, allowed, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
         private static void EnsureStampHook()
         {
             if (_stampHooked) return;
             _stampHooked = true;
             StampRequested += req => QueueOnIdle(() => HyMdCadStampHandler.Run(req));
+            AcApp.Idle += DrainIdleQueue;
         }
 
-        private static void QueueOnIdle(Action action)
+        private static void DrainIdleQueue(object sender, EventArgs e)
         {
-            EventHandler handler = null;
-            handler = (s, e) =>
+            int budget = 16;
+            while (budget-- > 0 && IdleActions.TryDequeue(out var action))
             {
-                AcApp.Idle -= handler;
                 try { action(); }
                 catch (Exception ex)
                 {
@@ -351,8 +389,14 @@ namespace HyCADTool.Features.DesignSpec.Services
                     }
                     catch { }
                 }
-            };
-            AcApp.Idle += handler;
+            }
+        }
+
+        private static void QueueOnIdle(Action action)
+        {
+            if (action == null)
+                return;
+            IdleActions.Enqueue(action);
         }
     }
 
@@ -376,11 +420,12 @@ namespace HyCADTool.Features.DesignSpec.Services
             }
 
             var service = new DesignSpecService();
+            var insertAt = EditorWcs.ToWcs(ed, ptRes.Value);
             if (req.Dump != null)
             {
                 service.InsertFromHyMdDump(
                     req.Dump,
-                    ptRes.Value,
+                    insertAt,
                     HyMdCadBridge.LastScale,
                     HyMdCadBridge.LastStyleName);
                 ReportPlanDiff(ed, req);
@@ -388,7 +433,7 @@ namespace HyCADTool.Features.DesignSpec.Services
             }
             if (req.Plan != null && req.Plan.Pages != null)
             {
-                service.AppendFromCadStampPlan(req.Plan, ptRes.Value);
+                service.AppendFromCadStampPlan(req.Plan, insertAt);
                 return;
             }
             ed.WriteMessage("\n贴图清单与 dump 都为空，本次未贴图。");

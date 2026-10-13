@@ -12,6 +12,7 @@ using HyCADTool.Features.G101.Domain.Geometry;
 using HyCADTool.Features.G101.Domain.Tables;
 using HyCADTool.Features.G101.Services;
 using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.G101.ViewModels
@@ -308,7 +309,7 @@ namespace HyCADTool.Features.G101.ViewModels
             try
             {
                 var sketch = item.Build(Global, CollectParams());
-                var ids = DetailSketchRenderer.Render(sketch, ppr.Value, 1.0);
+                var ids = DetailSketchRenderer.Render(sketch, EditorWcs.ToWcs(ed, ppr.Value), 1.0);
                 StatusMessage = $"已绘制 {ids.Count} 个实体 — {item.Name}";
                 ed.WriteMessage($"\n[G101] {StatusMessage}（{item.AtlasRef?.Display}）");
             }

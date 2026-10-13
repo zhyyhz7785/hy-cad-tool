@@ -142,6 +142,37 @@ namespace HyCADTool.LinuxTests
             Assert.Contains("抗裂", result.Conclusion);
         }
 
+        [Theory]
+        [InlineData(8, 1.2)]
+        [InlineData(10, 1.2)]
+        [InlineData(12.5, 1.05)]
+        [InlineData(15, 0.9)]
+        [InlineData(20, 0.65)]
+        [InlineData(35, 0.50)]
+        [InlineData(50, 0.40)]
+        [InlineData(80, 0.40)]
+        public void Pile_psi_s_follows_jgj94_table_5_5_11(double es, double expectedPsiS)
+        {
+            var input = BaseInput(additionalPressure: 80, enableRebound: false);
+            input.Type = FoundationType.Pile;
+            input.PileLength = 2;
+            input.PileDiameter = 0.5;
+            input.CapWidth = input.FoundationWidth;
+            input.CapLength = input.FoundationLength;
+            input.SoilLayers = new List<SoilLayer>
+            {
+                new SoilLayer { Name = "桩身", Thickness = 2, Es = es, Eci = es * 5 },
+                new SoilLayer { Name = "桩端下", Thickness = 30, Es = es, Eci = es * 5 }
+            };
+
+            var result = SettlementCalculationService.Calculate(input);
+
+            Assert.True(result.Success, result.Message);
+            Assert.Equal(es, result.EquivalentEs, 6);
+            Assert.Equal(expectedPsiS, result.PsiS, 6);
+            Assert.NotEqual(2.0, result.PsiS);
+        }
+
         [Fact]
         public void Settlement_table_picks_the_point_before_the_write_transaction()
         {

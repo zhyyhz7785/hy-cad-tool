@@ -7,6 +7,7 @@ using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.Configuration.User;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -56,7 +57,7 @@ namespace HyCADTool.Features.Reinforcement
                         return;
                     }
 
-                    bool extendFromStart = ReinExtendCommand.IsPickedNearStart(poly, per.PickedPoint);
+                    bool extendFromStart = ReinExtendCommand.IsPickedNearStart(poly, EditorWcs.ToWcs(ed, per.PickedPoint));
 
                     if (!ReinExtendCommand.TryGetHookSpan(poly, hookHint, extendFromStart, out int mainTipIndex, out int mainPrevIndex))
                     {

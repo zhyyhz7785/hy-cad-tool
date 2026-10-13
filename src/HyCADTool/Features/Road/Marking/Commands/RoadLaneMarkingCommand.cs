@@ -4,6 +4,7 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -86,9 +87,11 @@ namespace HyCADTool.Features.Road
             LaneMarking marking;
             try
             {
+                var w1 = EditorWcs.ToWcs(ed, p1.Value);
+                var w2 = EditorWcs.ToWcs(ed, p2.Value);
                 marking = LaneMarkingDesigner.Create(
-                    new Point2D(p1.Value.X, p1.Value.Y),
-                    new Point2D(p2.Value.X, p2.Value.Y),
+                    new Point2D(w1.X, w1.Y),
+                    new Point2D(w2.X, w2.Y),
                     kind,
                     width);
             }

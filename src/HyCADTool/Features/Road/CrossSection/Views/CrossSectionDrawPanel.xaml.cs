@@ -12,6 +12,7 @@ using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
@@ -510,7 +511,8 @@ namespace HyCADTool.Features.Road.CrossSection.Views
                 return null;
             }
 
-            return new Point2d(res.Value.X, res.Value.Y);
+            var wcs = EditorWcs.ToWcs(ed, res.Value);
+            return new Point2d(wcs.X, wcs.Y);
         }
 
         private void SaveAsPresetFromUi()

@@ -10,6 +10,8 @@ using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
+using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Road.PlanAlignment.Services
 {
@@ -433,12 +435,15 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
                 toErase.Add(id);
             }
 
+            int erased = 0;
+            var editor = AcApp.DocumentManager.MdiActiveDocument?.Editor;
             foreach (var id in toErase)
             {
-                var ent = transaction.GetObject(id, OpenMode.ForWrite);
-                if (ent != null && !ent.IsErased) ent.Erase();
+                var ent = transaction.GetObject(id, OpenMode.ForRead) as Entity;
+                if (LockedLayerErase.TryErase(transaction, ent, editor))
+                    erased++;
             }
-            return toErase.Count;
+            return erased;
         }
 
         /// <summary>
@@ -614,12 +619,15 @@ namespace HyCADTool.Features.Road.PlanAlignment.Services
                 toErase.Add(id);
             }
 
+            int erased = 0;
+            var editor = AcApp.DocumentManager.MdiActiveDocument?.Editor;
             foreach (var id in toErase)
             {
-                var ent = transaction.GetObject(id, OpenMode.ForWrite);
-                if (ent != null && !ent.IsErased) ent.Erase();
+                var ent = transaction.GetObject(id, OpenMode.ForRead) as Entity;
+                if (LockedLayerErase.TryErase(transaction, ent, editor))
+                    erased++;
             }
-            return toErase.Count;
+            return erased;
         }
 
         /// <summary>

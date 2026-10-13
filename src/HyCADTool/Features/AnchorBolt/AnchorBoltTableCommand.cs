@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using Newtonsoft.Json;
 using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
 using System.Collections.Generic;
@@ -76,7 +77,7 @@ namespace HyCADTool.Features.AnchorBolt
                     var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
                     int totalRows = 1 + 1 + typeCounts.Count + 1 + boltData.Count;
-                    var table = new Table { Position = ppr.Value };
+                    var table = new Table { Position = EditorWcs.ToWcs(ed, ppr.Value) };
                     table.SetSize(totalRows, 14);
                     UnmergeDefaultTableCells(table);
 

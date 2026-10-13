@@ -63,7 +63,11 @@ namespace HyCADTool.UniverEditor.Services
 
             _setStatus?.Invoke("加载 Univer 页面...");
 
+#if DEBUG
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+#else
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+#endif
             _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
             _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 VirtualHostName,
@@ -71,6 +75,8 @@ namespace HyCADTool.UniverEditor.Services
                 CoreWebView2HostResourceAccessKind.Allow);
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
             _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+            _webView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+            _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
             _webView.CoreWebView2.Navigate(EntryUrl);
         }
 
@@ -244,10 +250,42 @@ namespace HyCADTool.UniverEditor.Services
             _setStatus?.Invoke($"Univer 页面加载失败: {e.WebErrorStatus}");
         }
 
+        private void OnNavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
+        {
+            if (IsAllowedUniverSource(e.Uri))
+                return;
+
+            e.Cancel = true;
+            _setStatus?.Invoke("已拦截非 Univer 本地页导航");
+        }
+
+        private void OnNewWindowRequested(object sender, CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            e.Handled = true;
+            _setStatus?.Invoke("已拦截 Univer 弹出窗口");
+        }
+
+        internal static bool IsAllowedUniverSource(string uri)
+        {
+            if (string.IsNullOrWhiteSpace(uri))
+                return false;
+            if (!Uri.TryCreate(uri, UriKind.Absolute, out Uri parsed))
+                return false;
+
+            return string.Equals(parsed.Host, VirtualHostName, StringComparison.OrdinalIgnoreCase)
+                && (parsed.Scheme == Uri.UriSchemeHttps || parsed.Scheme == Uri.UriSchemeHttp);
+        }
+
         private async void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
             {
+                if (!IsAllowedUniverSource(e.Source))
+                {
+                    _setStatus?.Invoke("忽略非 Univer 来源的网页消息");
+                    return;
+                }
+
                 string raw = e.TryGetWebMessageAsString();
                 if (string.IsNullOrWhiteSpace(raw))
                     return;
@@ -353,9 +391,9 @@ namespace HyCADTool.UniverEditor.Services
                     _setStatus?.Invoke($"Univer 错误: {detail}");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore malformed host messages
+                _setStatus?.Invoke("Univer 消息解析失败: " + ex.Message);
             }
         }
 
@@ -529,6 +567,8 @@ namespace HyCADTool.UniverEditor.Services
                 {
                     _webView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
                     _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
+                    _webView.CoreWebView2.NavigationStarting -= OnNavigationStarting;
+                    _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
                 }
             }
             catch

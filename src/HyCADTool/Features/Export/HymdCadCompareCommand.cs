@@ -1,5 +1,6 @@
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.DesignSpec.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System.IO;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -39,7 +40,7 @@ namespace HyCADTool.Features.Export
             if (hymd == null)
                 ed.WriteMessage("\n[HYMDCOMPARE] 未找到 hymd-compare.json / hymd-dump.json，只测 CAD 探针（无叠框）。");
 
-            HymdCadCompareService.Run(dir, ptRes.Value, hymd);
+            HymdCadCompareService.Run(dir, EditorWcs.ToWcs(ed, ptRes.Value), hymd);
         }
     }
 }

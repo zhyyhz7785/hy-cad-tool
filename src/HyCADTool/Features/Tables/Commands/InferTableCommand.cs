@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCAD.Tables.Inference;
 using HyCADTool.Features.Tables.Infrastructure.AutoCad;
 using HyCADTool.Features.Tables.TableApp;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Tables.Commands
 {
@@ -42,9 +43,10 @@ namespace HyCADTool.Features.Tables.Commands
             if (ppr.Status != PromptStatus.OK)
                 return;
 
-            var handle = service.ConfirmAndRender(result.Grid, ppr.Value);
+            var insertAt = EditorWcs.ToWcs(ed, ppr.Value);
+            var handle = service.ConfirmAndRender(result.Grid, insertAt);
             ed.WriteMessage(
-                $"\n[HyTable] 已渲染 {handle.EntityCount} 个实体 @ ({ppr.Value.X:F1}, {ppr.Value.Y:F1})；" +
+                $"\n[HyTable] 已渲染 {handle.EntityCount} 个实体 @ ({insertAt.X:F1}, {insertAt.Y:F1})；" +
                 $"TableId={handle.TableId:D}");
         }
 
