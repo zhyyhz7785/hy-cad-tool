@@ -68,6 +68,26 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void Unknown_feature_slice_is_not_mapped_to_base()
+        {
+            Assert.Equal("base", ModuleOfNamespace("HyCADTool.Features.Tables"));
+            Assert.Equal("base", ModuleOfNamespace("HyCADTool.Features.Export.Commands"));
+            Assert.Equal("road", ModuleOfNamespace("HyCADTool.Features.Road.Plan"));
+            Assert.Equal("structure", ModuleOfNamespace("HyCADTool.Features.Settlement.ViewModels"));
+
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => ModuleOfNamespace("HyCADTool.Features.NewBizA"));
+            Assert.Contains("NewBizA", ex.Message);
+            Assert.Contains("禁止默认归入 base", ex.Message);
+
+            string module;
+            string unknown;
+            Assert.False(TryMapModule("HyCADTool.Features.NewBizB.Services", out module, out unknown));
+            Assert.Equal("NewBizB", unknown);
+            Assert.Null(module);
+        }
+
+        [Fact]
         public void Neutral_assemblies_must_not_reference_host_ui()
         {
             var prefixes = new[]
@@ -408,19 +428,34 @@ namespace HyCADTool.LinuxTests
         private static IReadOnlyCollection<string> ScanForbiddenModuleDeps()
         {
             var hits = new SortedSet<string>(StringComparer.Ordinal);
+            var unknownSlices = new SortedSet<string>(StringComparer.Ordinal);
             var src = Path.Combine(RepoRoot(), "src", "HyCADTool");
             foreach (var path in EnumerateCsFiles(src))
             {
                 var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
                 var root = tree.GetCompilationUnitRoot();
-                var from = ModuleOfNamespace(DeclaredNamespace(root));
+                string from;
+                string unknownFrom;
+                if (!TryMapModule(DeclaredNamespace(root), out from, out unknownFrom))
+                {
+                    if (unknownFrom != null)
+                        unknownSlices.Add(unknownFrom + " :: " + ToRepoRelative(path));
+                    continue;
+                }
                 if (from == null || from == "host")
                     continue;
 
                 var targets = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var ns in ReferencedHyCadNamespaces(root))
                 {
-                    var to = ModuleOfNamespace(ns);
+                    string to;
+                    string unknownTo;
+                    if (!TryMapModule(ns, out to, out unknownTo))
+                    {
+                        if (unknownTo != null)
+                            unknownSlices.Add(unknownTo + " :: " + ToRepoRelative(path));
+                        continue;
+                    }
                     if (to == null || to == from)
                         continue;
                     if (!IsForbiddenModuleDep(from, to))
@@ -435,6 +470,10 @@ namespace HyCADTool.LinuxTests
                     hits.Add(from + " -> " + to + " :: " + rel);
             }
 
+            Assert.True(
+                unknownSlices.Count == 0,
+                "未知 Features 切片（须写入 KnownBaseSlices 或业务模块映射，禁止默认归 base）:\n"
+                + string.Join("\n", unknownSlices));
             return hits;
         }
 
@@ -457,25 +496,72 @@ namespace HyCADTool.LinuxTests
                 || module == "hyob";
         }
 
-        private static string ModuleOfNamespace(string ns)
+        private static readonly HashSet<string> KnownBaseSlices = new HashSet<string>(StringComparer.Ordinal)
         {
+            "BlockLeader",
+            "Cluster",
+            "DimTextAlign",
+            "Export",
+            "G101",
+            "G16",
+            "OverKill",
+            "Tables",
+            "TestPaper",
+            "TextEdit",
+            "TitleBlock",
+        };
+
+        internal static string ModuleOfNamespace(string ns)
+        {
+            string module;
+            string unknownSlice;
+            if (TryMapModule(ns, out module, out unknownSlice))
+                return module;
+            if (unknownSlice != null)
+                throw new InvalidOperationException(
+                    "未知 Features 切片 '" + unknownSlice + "'，禁止默认归入 base。请写入 KnownBaseSlices 或业务模块映射。");
+            return null;
+        }
+
+        internal static bool TryMapModule(string ns, out string module, out string unknownSlice)
+        {
+            module = null;
+            unknownSlice = null;
             if (string.IsNullOrEmpty(ns))
-                return null;
+                return false;
             if (ns == "HyCADTool.Shared" || ns.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal))
-                return "shared";
+            {
+                module = "shared";
+                return true;
+            }
             if (ns == "HyCADTool.Shell" || ns.StartsWith("HyCADTool.Shell.", StringComparison.Ordinal))
-                return "host";
+            {
+                module = "host";
+                return true;
+            }
             if (ns == "HyCADTool.App" || ns.StartsWith("HyCADTool.App.", StringComparison.Ordinal))
-                return "host";
+            {
+                module = "host";
+                return true;
+            }
             if (ns == "HyCADTool.Licensing" || ns.StartsWith("HyCADTool.Licensing.", StringComparison.Ordinal))
-                return "host";
+            {
+                module = "host";
+                return true;
+            }
             if (ns == "HyCADTool.Domain" || ns.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal))
-                return "road";
+            {
+                module = "road";
+                return true;
+            }
             const string features = "HyCADTool.Features.";
             if (ns == "HyCADTool.Features")
-                return "base";
+            {
+                module = "base";
+                return true;
+            }
             if (!ns.StartsWith(features, StringComparison.Ordinal))
-                return null;
+                return false;
 
             var slice = ns.Substring(features.Length);
             var dot = slice.IndexOf('.');
@@ -484,15 +570,20 @@ namespace HyCADTool.LinuxTests
             switch (slice)
             {
                 case "Road":
-                    return "road";
+                    module = "road";
+                    return true;
                 case "SpongeCity":
-                    return "sponge-city";
+                    module = "sponge-city";
+                    return true;
                 case "Fem":
-                    return "fea";
+                    module = "fea";
+                    return true;
                 case "DesignSpec":
-                    return "design-spec";
+                    module = "design-spec";
+                    return true;
                 case "DataExchange":
-                    return "hyob";
+                    module = "hyob";
+                    return true;
                 case "Reinforcement":
                 case "Elevation":
                 case "DimensionForReinforcement":
@@ -505,9 +596,16 @@ namespace HyCADTool.LinuxTests
                 case "Settlement":
                 case "BaseRein":
                 case "DCEL":
-                    return "structure";
+                    module = "structure";
+                    return true;
                 default:
-                    return "base";
+                    if (KnownBaseSlices.Contains(slice))
+                    {
+                        module = "base";
+                        return true;
+                    }
+                    unknownSlice = slice;
+                    return false;
             }
         }
 
