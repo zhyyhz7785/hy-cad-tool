@@ -1054,7 +1054,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         {
 
-            SettingsPanelViewModel.PendingCommand = action;
+            SettingsPanelViewModel.EnqueuePendingCommand(action, "N37");
 
             try
 
@@ -1068,7 +1068,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                     StatusMessage = "无活动文档";
 
-                    SettingsPanelViewModel.PendingCommand = null;
+                    SettingsPanelViewModel.ClearPendingCommand();
 
                     InvokeCadInteractionCompleted();
 
@@ -1086,7 +1086,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
             {
 
-                SettingsPanelViewModel.PendingCommand = null;
+                SettingsPanelViewModel.ClearPendingCommand();
 
                 StatusMessage = "发送命令失败：" + ex.Message;
 

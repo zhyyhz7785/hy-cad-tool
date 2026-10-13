@@ -72,6 +72,64 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void Tampered_json_type_method_is_rejected()
+        {
+            Assert.True(CommandRouteResolver.TryRejectIfTampered(
+                "CHECKWPF",
+                "HyCADTool.Features.Elevation.Elevation3DCommand",
+                "Execute",
+                out var reason));
+            Assert.Contains("CHECKWPF", reason);
+            Assert.Contains("不一致", reason);
+
+            Assert.False(CommandRouteResolver.TryRejectIfTampered(
+                "CHECKWPF",
+                "HyCADTool.Features.Misc.CheckWPFLoadedCommand",
+                "CheckWPF",
+                out _));
+        }
+
+        [Fact]
+        public void Missing_runtime_json_is_not_treated_as_tamper()
+        {
+            Assert.False(CommandRouteResolver.TryRejectIfTampered("HY3", (string)null, null, out _));
+            Assert.True(CommandRouteResolver.TryRejectIfTampered("definitely-not-a-command", "X", "Y", out var reason));
+            Assert.Contains("没有键", reason);
+        }
+
+        [Fact]
+        public void Generated_routes_match_commands_json_type_method()
+        {
+            var path = Path.Combine(RepoRoot(), "src", "ReCall", "commands.json");
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            foreach (var prop in doc.RootElement.GetProperty("commands").EnumerateObject())
+            {
+                if (prop.Value.ValueKind != JsonValueKind.Object)
+                    continue;
+                var type = prop.Value.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String
+                    ? t.GetString()
+                    : null;
+                var method = prop.Value.TryGetProperty("method", out var m) && m.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(m.GetString())
+                    ? m.GetString()
+                    : "Execute";
+                var route = CommandRoutes.Get(prop.Name);
+                Assert.NotNull(route);
+                Assert.Equal(type, route.Type);
+                Assert.Equal(method, route.Method);
+            }
+        }
+
+        [Fact]
+        public void Missing_pending_key_requires_standard()
+        {
+            var key = CommandRouteResolver.ResolvePendingLicenseKey(null);
+            Assert.Equal(CommandRouteResolver.MissingPendingKey, key);
+            Assert.Equal(LicenseProductTier.Standard, LicenseCommandTierMap.GetRequiredTier(key));
+            Assert.Equal("gj", CommandRouteResolver.ResolvePendingLicenseKey(" gj "));
+        }
+
+        [Fact]
         public void GetRequiredTier_logs_when_runtime_json_disagrees()
         {
             var captured = new List<string>();

@@ -54,6 +54,8 @@
     <Compile Include="..\HyCADTool\Features\Tables\Presentation\TableGridXlsxAdapter.cs" Link="Tables\TableGridXlsxAdapter.cs" />
     <Compile Include="..\HyCADTool\Features\SpongeCity\Infrastructure\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandTiers.g.cs" Link="Licensing\CommandTiers.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandRoutes.g.cs" Link="Licensing\CommandRoutes.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandRouteResolver.cs" Link="Licensing\CommandRouteResolver.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\LicenseCommandTierMap.cs" Link="Licensing\LicenseCommandTierMap.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\LicensingStub.cs" Link="Licensing\LicensingStub.cs" />
     <Compile Include="..\HyCADTool\Shell\Commands\CommandCatalog.cs" Link="Licensing\CommandCatalog.cs" />

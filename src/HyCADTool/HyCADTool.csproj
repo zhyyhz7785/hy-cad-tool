@@ -443,21 +443,22 @@
     <_GenerateCommandTiersProgram>$(MSBuildThisFileDirectory)..\..\build\tools\GenerateCommandTiers\Program.cs</_GenerateCommandTiersProgram>
     <_CommandsJson>$(MSBuildThisFileDirectory)..\ReCall\commands.json</_CommandsJson>
     <_CommandTiersGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandTiers.g.cs</_CommandTiersGenerated>
+    <_CommandRoutesGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandRoutes.g.cs</_CommandRoutesGenerated>
   </PropertyGroup>
   <Target Name="GenerateCommandTiers"
           BeforeTargets="CoreCompile"
           Inputs="$(_CommandsJson);$(_GenerateCommandTiersProj);$(_GenerateCommandTiersProgram)"
-          Outputs="$(_CommandTiersGenerated)"
+          Outputs="$(_CommandTiersGenerated);$(_CommandRoutesGenerated)"
           Condition="Exists('$(_GenerateCommandTiersProj)') And Exists('$(_CommandsJson)')">
-    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot;"
+    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot; &quot;$(_CommandRoutesGenerated)&quot;"
           IgnoreExitCode="true"
           ConsoleToMSBuild="true">
       <Output TaskParameter="ExitCode" PropertyName="_GenerateCommandTiersExit" />
     </Exec>
     <Error Condition="'$(Configuration)'=='Production' And '$(_GenerateCommandTiersExit)' != '0'"
-           Text="Production 生成 CommandTiers.g.cs 失败（exit $(_GenerateCommandTiersExit)）。请确认已安装 .NET SDK 8，并能执行 dotnet run --project build/tools/GenerateCommandTiers。" />
+           Text="Production 生成 CommandTiers/CommandRoutes 失败（exit $(_GenerateCommandTiersExit)）。请确认已安装 .NET SDK 8，并能执行 dotnet run --project build/tools/GenerateCommandTiers。" />
     <Warning Condition="'$(Configuration)'!='Production' And '$(_GenerateCommandTiersExit)' != '0'"
-             Text="生成 CommandTiers.g.cs 失败（exit $(_GenerateCommandTiersExit)），沿用已提交文件。Production 构建会因此失败。" />
+             Text="生成 CommandTiers/CommandRoutes 失败（exit $(_GenerateCommandTiersExit)），沿用已提交文件。Production 构建会因此失败。" />
   </Target>
 
 </Project>
