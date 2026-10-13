@@ -43,6 +43,21 @@ public sealed class ElementContributionRegistryTests
         Assert.Equal("injected-registry", sparse.Message);
     }
 
+    [Fact]
+    public void FemContext_is_used_by_both_analyses()
+    {
+        var problem = BuildSpring();
+        var registry = new ElementContributionRegistry(registerBuiltins: false);
+        registry.Register(new MarkerContribution());
+        var ctx = new FemContext(elements: registry);
+
+        var dense = Assert.Throws<InvalidOperationException>(() => new LinearStaticAnalysis(ctx).Run(problem));
+        Assert.Equal("injected-registry", dense.Message);
+
+        var sparse = Assert.Throws<InvalidOperationException>(() => new SparseLinearStaticAnalysis(ctx).Run(problem));
+        Assert.Equal("injected-registry", sparse.Message);
+    }
+
     private sealed class MarkerContribution : IElementContribution
     {
         public Type ElementDefinitionType => typeof(Spring1DElementDef);
@@ -73,11 +88,7 @@ public sealed class ElementContributionRegistryTests
 
         var allowed = new HashSet<string>(StringComparer.Ordinal)
         {
-            "Analysis/LinearStaticAnalysis.cs",
-            "Analysis/SparseLinearStaticAnalysis.cs",
-            "Assembly/Assembler.cs",
-            "Assembly/SparseAssembler.cs",
-            "Dofs/DofLayout.cs",
+            "Elements/ElementContributionRegistry.cs",
         };
 
         var extra = new List<string>();
