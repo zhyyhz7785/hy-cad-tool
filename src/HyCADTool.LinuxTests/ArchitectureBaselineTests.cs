@@ -68,6 +68,24 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void Growing_whitelist_over_cap_fails()
+        {
+            var allowed = new[] { "a", "b", "c" };
+            var actual = new[] { "a", "b", "c" };
+            var grown = DescribeWhitelistViolation("demo.txt", allowed, actual, cap: 2);
+            Assert.Contains("白名单行数禁止增加", grown);
+            Assert.DoesNotContain("或更新白名单", grown);
+
+            var extra = DescribeWhitelistViolation(
+                "demo.txt",
+                new[] { "a" },
+                new[] { "a", "new-row" },
+                cap: 10);
+            Assert.Contains("禁止扩大白名单，请改代码", extra);
+            Assert.DoesNotContain("或更新白名单", extra);
+        }
+
+        [Fact]
         public void Unknown_feature_slice_is_not_mapped_to_base()
         {
             Assert.Equal("base", ModuleOfNamespace("HyCADTool.Features.Tables"));
@@ -686,13 +704,48 @@ namespace HyCADTool.LinuxTests
             return false;
         }
 
+        internal static readonly IReadOnlyDictionary<string, int> WhitelistCaps =
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["whitelist-features-shell.txt"] = 0,
+                ["whitelist-editor-getpoint.txt"] = 32,
+                ["whitelist-mutable-static.txt"] = 68,
+                ["whitelist-mutable-static-shared.txt"] = 5,
+                ["processwide-usages.txt"] = 9,
+                ["whitelist-module-deps.txt"] = 26,
+            };
+
         private static void AssertNoNewViolations(string whitelistName, IReadOnlyCollection<string> actual)
         {
+            int cap;
+            if (!WhitelistCaps.TryGetValue(whitelistName, out cap))
+                throw new InvalidOperationException("白名单未登记上限: " + whitelistName);
             var allowed = LoadWhitelist(whitelistName);
+            var message = DescribeWhitelistViolation(whitelistName, allowed, actual, cap);
+            Assert.True(message == null, message);
+        }
+
+        /// <summary>
+        /// 白名单只减不增：行数不得超过硬编码上限；新增未登记项必须改代码，禁止靠加白名单行放行。
+        /// 返回 null 表示通过。
+        /// </summary>
+        internal static string DescribeWhitelistViolation(
+            string whitelistName,
+            IReadOnlyCollection<string> allowed,
+            IReadOnlyCollection<string> actual,
+            int cap)
+        {
+            if (allowed.Count > cap)
+                return "白名单行数禁止增加（" + whitelistName + " 上限 " + cap + "，实际 " + allowed.Count + "）。请改代码，禁止扩大白名单。";
+            if (actual.Count > cap)
+                return "违规行数禁止增加（" + whitelistName + " 上限 " + cap + "，实际 " + actual.Count + "）。请改代码，禁止扩大白名单。";
             var extra = actual.Where(x => !allowed.Contains(x)).ToArray();
+            if (extra.Length > 0)
+                return "新增违规（次数只减不增；禁止扩大白名单，请改代码 " + whitelistName + "）:\n" + string.Join("\n", extra);
             var stale = allowed.Where(x => !actual.Contains(x)).ToArray();
-            Assert.True(extra.Length == 0, "新增违规（次数只减不增；请改代码或更新白名单 " + whitelistName + "）:\n" + string.Join("\n", extra));
-            Assert.True(stale.Length == 0, "白名单应收紧（实际次数已下降，请把计数改小 " + whitelistName + "）:\n" + string.Join("\n", stale));
+            if (stale.Length > 0)
+                return "白名单应收紧（实际次数已下降，请把计数改小 " + whitelistName + "）:\n" + string.Join("\n", stale);
+            return null;
         }
 
         private static HashSet<string> LoadWhitelist(string name)
