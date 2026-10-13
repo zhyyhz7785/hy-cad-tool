@@ -61,5 +61,28 @@ namespace HyCADTool.Shell.Licensing
         {
             return string.IsNullOrWhiteSpace(pendingKey) ? MissingPendingKey : pendingKey.Trim();
         }
+
+        /// <summary>
+        /// Production 调度入口：取内置路由并做篡改检查。Linux 测试覆盖这一层，Dispatcher 只转发。
+        /// </summary>
+        public static bool TryPrepareDispatch(string key, CommandEntry runtime, out CommandRoute route, out string error)
+        {
+            route = GetBuiltin(key);
+            if (route == null || string.IsNullOrWhiteSpace(route.Type))
+            {
+                route = null;
+                error = "内置路由表中未定义键 \"" + key + "\"。";
+                return false;
+            }
+
+            if (TryRejectIfTampered(key, runtime, out error))
+            {
+                route = null;
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
     }
 }
