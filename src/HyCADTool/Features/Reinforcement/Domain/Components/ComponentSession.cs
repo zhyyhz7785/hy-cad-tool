@@ -7,16 +7,15 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
     /// <summary>
     /// 构件识别会话（内存缓存，供预览与配筋命令共享）。
     /// 按文档对象分槽：插件注入 <see cref="SetDocumentKeyResolver"/> 后，切换活动图不会读到另一张图的区域。
-    /// 键应是 Database（另存为后对象不变）；未注入时共用进程级默认槽。
+    /// 键应是 Database（另存为后对象不变）；没有活动文档时不写共享槽，Get 返回空、Set 忽略。
     /// </summary>
     public static class ComponentSession
     {
         private static readonly object Gate = new object();
-        private static readonly object FallbackKey = new object();
         private static Func<object> _documentKey;
 
         /// <summary>
-        /// 由插件启动时注入。返回当前活动图的 Database（或测试用对象）；null 落在默认槽。
+        /// 由插件启动时注入。返回当前活动图的 Database（或测试用对象）；null 表示无活动文档。
         /// </summary>
         public static void SetDocumentKeyResolver(Func<object> resolver)
         {
@@ -35,7 +34,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             get
             {
                 lock (Gate)
-                    return GetSlot().CurrentSessionId;
+                {
+                    var slot = TryGetSlot();
+                    return slot == null ? Guid.Empty : slot.CurrentSessionId;
+                }
             }
         }
 
@@ -44,7 +46,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             get
             {
                 lock (Gate)
-                    return GetSlot().Regions;
+                {
+                    var slot = TryGetSlot();
+                    return slot == null ? new List<ComponentRegion>() : slot.Regions;
+                }
             }
         }
 
@@ -53,7 +58,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             get
             {
                 lock (Gate)
-                    return GetSlot().ReinRegions;
+                {
+                    var slot = TryGetSlot();
+                    return slot == null ? new List<ReinRegion>() : slot.ReinRegions;
+                }
             }
         }
 
@@ -61,7 +69,9 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         {
             lock (Gate)
             {
-                var slot = GetSlot();
+                var slot = TryGetSlot();
+                if (slot == null)
+                    return;
                 slot.CurrentSessionId = sessionId;
                 slot.ReinRegions = reinRegions != null ? new List<ReinRegion>(reinRegions) : new List<ReinRegion>();
                 slot.Regions = regions != null ? new List<ComponentRegion>(regions) : new List<ComponentRegion>();
@@ -72,7 +82,10 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         {
             lock (Gate)
             {
-                var region = GetSlot().Regions.Find(r => r.Id == regionId);
+                var slot = TryGetSlot();
+                if (slot == null)
+                    return;
+                var region = slot.Regions.Find(r => r.Id == regionId);
                 if (region != null)
                     region.Type = type;
             }
@@ -82,30 +95,35 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         {
             lock (Gate)
             {
-                var slot = GetSlot();
+                var slot = TryGetSlot();
+                if (slot == null)
+                    return;
                 slot.CurrentSessionId = Guid.Empty;
                 slot.Regions = new List<ComponentRegion>();
                 slot.ReinRegions = new List<ReinRegion>();
             }
         }
 
-        private static ComponentSessionState GetSlot()
+        private static ComponentSessionState TryGetSlot()
         {
-            return DocumentSessionStore.Get<ComponentSessionState>(ResolveKey());
+            var key = ResolveKeyOrNull();
+            if (key == null)
+                return null;
+            return DocumentSessionStore.Get<ComponentSessionState>(key);
         }
 
-        private static object ResolveKey()
+        private static object ResolveKeyOrNull()
         {
             var resolver = _documentKey;
             if (resolver == null)
-                return FallbackKey;
+                return null;
             try
             {
-                return resolver() ?? FallbackKey;
+                return resolver();
             }
             catch
             {
-                return FallbackKey;
+                return null;
             }
         }
     }

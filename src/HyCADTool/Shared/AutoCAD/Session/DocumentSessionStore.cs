@@ -12,16 +12,19 @@ namespace HyCADTool.Shared.AutoCAD.Session
     {
         private static readonly ConditionalWeakTable<object, DocumentSession> Map =
             new ConditionalWeakTable<object, DocumentSession>();
+        private static readonly object Gate = new object();
 
         public static T Get<T>(object documentKey) where T : class, new()
         {
             if (documentKey == null)
                 throw new ArgumentNullException(nameof(documentKey));
-            return Map.GetOrCreateValue(documentKey).Get<T>();
+            lock (Gate)
+                return Map.GetOrCreateValue(documentKey).Get<T>();
         }
 
         /// <summary>
         /// 文档即将销毁时主动丢掉袋子，避免句柄复用前读到旧槽。
+        /// 先 Remove 再 Dispose，与 Get 同一把锁，避免拿到已释放的袋子。
         /// </summary>
         public static void Forget(object documentKey)
         {
@@ -29,11 +32,13 @@ namespace HyCADTool.Shared.AutoCAD.Session
                 return;
 
             DocumentSession session;
-            if (!Map.TryGetValue(documentKey, out session))
-                return;
-
-            session.Dispose();
-            Map.Remove(documentKey);
+            lock (Gate)
+            {
+                if (!Map.TryGetValue(documentKey, out session))
+                    return;
+                Map.Remove(documentKey);
+                session.Dispose();
+            }
         }
     }
 }

@@ -74,6 +74,43 @@ namespace HyCADTool.LinuxTests
         }
     }
 
+        [Fact]
+        public void No_active_document_does_not_write_a_shared_slot()
+        {
+            var docA = new object();
+            try
+            {
+                ComponentSession.SetDocumentKeyResolver(null);
+                ComponentSession.Set(Guid.NewGuid(), null, new[]
+                {
+                    new ComponentRegion
+                    {
+                        Id = Guid.NewGuid(),
+                        Type = ComponentType.Slab,
+                        Polygon = new Polyline2D(new[]
+                        {
+                            new Point2D(0, 0),
+                            new Point2D(1, 0),
+                            new Point2D(0, 1)
+                        }, true)
+                    }
+                });
+                Assert.Equal(Guid.Empty, ComponentSession.CurrentSessionId);
+                Assert.Empty(ComponentSession.Regions);
+
+                ComponentSession.SetDocumentKeyResolver(() => docA);
+                Assert.Equal(Guid.Empty, ComponentSession.CurrentSessionId);
+                Assert.Empty(ComponentSession.Regions);
+            }
+            finally
+            {
+                ComponentSession.SetDocumentKeyResolver(null);
+                ComponentSession.ForgetDocument(docA);
+                ComponentSession.Clear();
+            }
+        }
+    }
+
     public class DocumentSessionStoreTests
     {
         private sealed class CounterState
