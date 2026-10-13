@@ -7,6 +7,7 @@ using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.ViewModels;
@@ -44,8 +45,9 @@ namespace HyCADTool.Features.Reinforcement
             var db = doc.Database;
             var ed = doc.Editor;
 
-            _layerService.SetCurrentLayer(LayerLineRein);
-
+            var cad = new CadInteraction();
+            using (cad.WithTemporaryLayer(db, LayerLineRein))
+            {
             var vm = SettingsPanelViewModel.Current;
             double scale = ScaleResolver.GetScale();
             double hookLength = (vm?.HookLength ?? 1.0) * scale; // 绿色参数 × Scale
@@ -92,6 +94,7 @@ namespace HyCADTool.Features.Reinforcement
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n错误: {ex.Message}");
+            }
             }
         }
 

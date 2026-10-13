@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Services;
 
 namespace HyCADTool.Features.Reinforcement.Services
@@ -59,12 +60,13 @@ namespace HyCADTool.Features.Reinforcement.Services
             var db = doc.Database;
             double globalReinWidth = parameters.PolylineWidth * parameters.Scale;
 
+            var cad = new CadInteraction();
+            using (cad.WithTemporaryLayer(db, LayerLineRein))
             using (var tr = db.TransactionManager.StartTransaction())
             {
                 var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
 
-                // 1. 线钢筋 → 线钢筋图层
-                _layerService.SetCurrentLayer(LayerLineRein);
+                // 1. 线钢筋 → 线钢筋图层（实体显式赋层；当前层仅供预览，命令结束恢复）
                 if (result.FinalReinforcements != null)
                 {
                     foreach (var polyDomain in result.FinalReinforcements)
@@ -78,7 +80,6 @@ namespace HyCADTool.Features.Reinforcement.Services
                 }
 
                 // 2. 减少数量点钢筋 → 点钢筋图层
-                _layerService.SetCurrentLayer(LayerDotRein);
                 double dotDiameter = parameters.ReinforcementDiameter * parameters.Scale;
                 if (result.ReduceDotReinPoints != null)
                 {
@@ -92,7 +93,6 @@ namespace HyCADTool.Features.Reinforcement.Services
                 }
 
                 // 3. 标注 → 引线图层
-                _layerService.SetCurrentLayer(LayerLeader);
                 if (result.MLeaders != null)
                 {
                     foreach (var mlData in result.MLeaders)

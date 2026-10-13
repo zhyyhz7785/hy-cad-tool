@@ -6,6 +6,7 @@ using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.ViewModels;
@@ -77,9 +78,8 @@ namespace HyCADTool.Features.Reinforcement
 
             string content = $"\\U+E532{rebarDiameter}@{rebarSpacing}";
 
-            // 图层已在 PluginInitializer 中创建，直接设置当前图层
-            _layerService.SetCurrentLayer(LayerMLeader);
-
+            var cad = new CadInteraction();
+            using (cad.WithTemporaryLayer(db, LayerMLeader))
             try
             {
                 switch (_mode)
