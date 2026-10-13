@@ -1720,9 +1720,18 @@ namespace HyCADTool.Shell.ViewModels
         /// 保存当前面板参数到 JSON 文件。
         /// 当 <paramref name="explicitPath"/> 为 null 时写入默认路径 <see cref="GetSettingsFilePath"/>。
         /// </summary>
+        /// <summary>最近一次 hy-settings 读取失败的提示（已备份路径）。</summary>
+        public static string LastLoadWarning { get; private set; }
+
         public void SaveSettings(string explicitPath = null)
         {
-            if (_settingsLoadFailed && explicitPath == null)
+            SaveSettingsCore(explicitPath, force: explicitPath != null);
+        }
+
+        /// <param name="force">用户显式保存时为 true，读取失败后仍允许覆盖已备份的原文件。</param>
+        private void SaveSettingsCore(string explicitPath, bool force)
+        {
+            if (_settingsLoadFailed && !force && explicitPath == null)
                 return;
             try
             {
@@ -1881,11 +1890,12 @@ namespace HyCADTool.Shell.ViewModels
         {
             _isLoading = true;
             _settingsLoadFailed = false;
+            LastLoadWarning = null;
             _layerCatalogSchemaVersionBeforeLoad = int.MinValue;
+            var path = explicitPath ?? GetSettingsFilePath();
             try
             {
                 string beforeStyleSignature = BuildStyleSignature();
-                var path = explicitPath ?? GetSettingsFilePath();
                 if (!File.Exists(path))
                 {
                     _isLoading = false;
@@ -1902,8 +1912,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (data == null)
                 {
                     _isLoading = false;
-                    _settingsLoadFailed = true;
-                    _autoSaveEnabled = false;
+                    MarkSettingsLoadFailed(path, "反序列化结果为空");
                     _layerCatalogSchemaVersionBeforeLoad = 0;
                     LoadLayerCatalogFromSettingsData(null);
                     SetRoadMaterialFillSettings(null);
@@ -2055,12 +2064,14 @@ namespace HyCADTool.Shell.ViewModels
                 string afterStyleSignature = BuildStyleSignature();
                 if (!string.Equals(beforeStyleSignature, afterStyleSignature, StringComparison.Ordinal))
                     MarkStylesDirty();
+
+                _settingsLoadFailed = false;
+                _autoSaveEnabled = true;
+                LastLoadWarning = null;
             }
             catch (Exception ex)
             {
-                _settingsLoadFailed = true;
-                _autoSaveEnabled = false;
-                System.Diagnostics.Trace.WriteLine("[HyCAD] 加载 hy-settings 失败，已停自动保存以免覆盖用户文件: " + ex.Message);
+                MarkSettingsLoadFailed(path, ex.Message);
                 SetRoadMaterialFillSettings(null);
                 _linetypeCatalogSnapshot = null;
             }
@@ -2094,7 +2105,36 @@ namespace HyCADTool.Shell.ViewModels
         /// 显式保存当前参数到 hy-settings.json（用于「保存用户设置」按钮）。
         /// 即便 AutoSaveEnabled=false 也会强制写入一次。
         /// </summary>
-        public void SavePublic() => SaveSettings();
+        public void SavePublic() => SaveSettingsCore(null, force: true);
+
+        private void MarkSettingsLoadFailed(string path, string detail)
+        {
+            _settingsLoadFailed = true;
+            _autoSaveEnabled = false;
+            string backup = null;
+            try
+            {
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    backup = CorruptFileBackup.Copy(path);
+            }
+            catch (Exception bex)
+            {
+                System.Diagnostics.Trace.WriteLine("[HyCAD] hy-settings 备份失败: " + bex.Message);
+            }
+
+            LastLoadWarning = backup != null
+                ? "[HyCAD] hy-settings 读取失败，已备份到 " + backup + "。自动保存已停；点「保存用户设置」可覆盖原文件。"
+                : "[HyCAD] hy-settings 读取失败：" + detail + "。自动保存已停；点「保存用户设置」可覆盖原文件。";
+            System.Diagnostics.Trace.WriteLine(LastLoadWarning);
+            try
+            {
+                var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+                ed?.WriteMessage("\n" + LastLoadWarning);
+            }
+            catch
+            {
+            }
+        }
 
         /// <summary>从指定路径加载（「选择文件恢复」按钮）。</summary>
         public void LoadSettingsFromFile(string path)
