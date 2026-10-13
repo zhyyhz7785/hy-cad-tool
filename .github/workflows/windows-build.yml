@@ -1,0 +1,23 @@
+name: windows-build
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+
+jobs:
+  net48:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build HyCADTool (net48 + AutoCAD.NET)
+        run: dotnet build src/HyCADTool/HyCADTool.csproj -c Release
+      - name: Build solution
+        run: dotnet build HyCADtoolGpt.sln -c Release
+      - name: HYFEA.Tests net48
+        run: dotnet test src/HYFEA/HYFEA.Tests/HYFEA.Tests.csproj -c Release -f net48 --no-build
+      - name: HyCAD.Tables.Tests net48
+        run: dotnet test src/HyCAD.Tables.Tests/HyCAD.Tables.Tests.csproj -c Release -f net48 --no-build
