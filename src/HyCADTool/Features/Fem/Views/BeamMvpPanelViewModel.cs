@@ -28,11 +28,13 @@ namespace HyCADTool.Features.Fem.Views
 
         private readonly RelayCommand _solveCommand;
         private int _solveSerial;
+        private CancellationTokenSource _solveCts;
+        private bool _isSolving;
 
         public BeamMvpPanelViewModel()
         {
             Current = this;
-            _solveCommand = new RelayCommand(ExecuteSolve, () => SourceEntityId.IsValid);
+            _solveCommand = new RelayCommand(ExecuteSolve, () => SourceEntityId.IsValid && !_isSolving);
             SolveCommand = _solveCommand;
         }
 
@@ -86,6 +88,18 @@ namespace HyCADTool.Features.Fem.Views
         public BeamSupportUi EndB { get; set; } = BeamSupportUi.Free;
 
         public ICommand SolveCommand { get; }
+
+        public bool IsSolving
+        {
+            get => _isSolving;
+            private set
+            {
+                if (_isSolving == value) return;
+                _isSolving = value;
+                OnPropertyChanged();
+                _solveCommand.RaiseCanExecuteChanged();
+            }
+        }
 
         private UnitSystem Units => UseSiUnits ? UnitSystem.SI : UnitSystem.MmN;
 
@@ -159,26 +173,52 @@ namespace HyCADTool.Features.Fem.Views
                 var geom = new InMemoryAxisGeometry(axis);
                 var session = new BeamSolveSession();
                 int serial = Interlocked.Increment(ref _solveSerial);
+                var prev = Interlocked.Exchange(ref _solveCts, new CancellationTokenSource());
+                if (prev != null)
+                {
+                    prev.Cancel();
+                    prev.Dispose();
+                }
+                var token = _solveCts.Token;
                 var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                IsSolving = true;
                 ed.WriteMessage("\n[HYFEA] 后台稀疏求解中…");
-                Task.Run(() => session.Compute(geom, request))
+                Task.Run(() =>
+                    {
+                        token.ThrowIfCancellationRequested();
+                        return session.Compute(geom, request);
+                    }, token)
                     .ContinueWith(
-                        t => dispatcher.BeginInvoke(new Action(() => FinishSolve(serial, doc, ed, axis, t))),
+                        t => dispatcher.BeginInvoke(new Action(() => FinishSolve(serial, doc, ed, axis, token, t))),
                         TaskScheduler.Default);
             }
             catch (Exception ex)
             {
+                IsSolving = false;
                 ed.WriteMessage($"\n[HYFEA] 异常：{ex.Message}");
             }
         }
 
-        private void FinishSolve(int serial, Document doc, Editor ed, IReadOnlyList<Point2D> axis, Task<BeamSolveOutput> task)
+        private void FinishSolve(int serial, Document doc, Editor ed, IReadOnlyList<Point2D> axis, CancellationToken token, Task<BeamSolveOutput> task)
         {
             if (serial != Volatile.Read(ref _solveSerial))
                 return;
 
+            IsSolving = false;
+            if (token.IsCancellationRequested || task.IsCanceled)
+            {
+                ed.WriteMessage("\n[HYFEA] 求解已取消。");
+                return;
+            }
+
             try
             {
+                if (doc == null || !ReferenceEquals(doc, Application.DocumentManager.MdiActiveDocument))
+                {
+                    ed.WriteMessage("\n[HYFEA] 活动文档已切换，已丢弃本次结果。");
+                    return;
+                }
+
                 if (task.IsFaulted)
                 {
                     var err = task.Exception != null ? task.Exception.GetBaseException().Message : "未知";
