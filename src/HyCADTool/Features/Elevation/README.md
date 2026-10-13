@@ -31,7 +31,7 @@
 
 ## 依赖与协作
 
-- **Shell**：`Shell.Configuration.User`（多命令 `using`）。
+- **宿主**：`CadHost.Settings` / `Shared.Configuration.User`（不再直连 `HyCADTool.Shell`）。
 - **Shared**：几何、转换器。
 
 ## 开发与审查要点

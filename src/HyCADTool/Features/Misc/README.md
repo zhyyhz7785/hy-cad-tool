@@ -39,7 +39,7 @@
 
 - **DCEL**：DI 解析 `IDCELBuilderService` / `IDCELRenderer`。
 - **Road**：`RoadThreeSegmentChainCommand` 本体在 `Features/Road`。
-- **Shell.Configuration.User**：部分命令读取用户设置。
+- **宿主**：`CadHost.Settings` / `Shared.Configuration.User`（部分命令读用户设置）。
 
 ## 开发与审查要点
 
