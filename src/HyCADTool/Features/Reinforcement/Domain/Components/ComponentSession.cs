@@ -1,4 +1,4 @@
-using HyCADTool.Features.Reinforcement.Domain.Components;
+using HyCADTool.Shared.AutoCAD.Session;
 using System;
 using System.Collections.Generic;
 
@@ -6,39 +6,28 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
 {
     /// <summary>
     /// 构件识别会话（内存缓存，供预览与配筋命令共享）。
-    /// 按文档键分槽：插件注入 <see cref="SetDocumentKeyResolver"/> 后，切换活动图不会读到另一张图的区域。
-    /// 未注入时所有调用共用空键，保持单文档进程里的原行为。
+    /// 按文档对象分槽：插件注入 <see cref="SetDocumentKeyResolver"/> 后，切换活动图不会读到另一张图的区域。
+    /// 键应是 Database（另存为后对象不变）；未注入时共用进程级默认槽。
     /// </summary>
     public static class ComponentSession
     {
         private static readonly object Gate = new object();
-        private static Func<string> _documentKey;
-        private static readonly Dictionary<string, Slot> Slots =
-            new Dictionary<string, Slot>(StringComparer.Ordinal);
-
-        private sealed class Slot
-        {
-            public Guid CurrentSessionId;
-            public List<ComponentRegion> Regions = new List<ComponentRegion>();
-            public List<ReinRegion> ReinRegions = new List<ReinRegion>();
-        }
+        private static readonly object FallbackKey = new object();
+        private static Func<object> _documentKey;
 
         /// <summary>
-        /// 由插件启动时注入。返回值是当前活动图的稳定键；null 与空字符串都落在同一默认槽。
+        /// 由插件启动时注入。返回当前活动图的 Database（或测试用对象）；null 落在默认槽。
         /// </summary>
-        public static void SetDocumentKeyResolver(Func<string> resolver)
+        public static void SetDocumentKeyResolver(Func<object> resolver)
         {
             lock (Gate)
                 _documentKey = resolver;
         }
 
         /// <summary>文档关闭时丢掉该图的槽，避免句柄复用后读到旧区域。</summary>
-        public static void ForgetDocument(string documentKey)
+        public static void ForgetDocument(object documentKey)
         {
-            if (string.IsNullOrEmpty(documentKey))
-                return;
-            lock (Gate)
-                Slots.Remove(documentKey);
+            DocumentSessionStore.Forget(documentKey);
         }
 
         public static Guid CurrentSessionId
@@ -100,30 +89,32 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
             }
         }
 
-        private static Slot GetSlot()
+        private static ComponentSessionState GetSlot()
         {
-            string key = ResolveKey();
-            if (!Slots.TryGetValue(key, out var slot))
-            {
-                slot = new Slot();
-                Slots[key] = slot;
-            }
-            return slot;
+            return DocumentSessionStore.Get<ComponentSessionState>(ResolveKey());
         }
 
-        private static string ResolveKey()
+        private static object ResolveKey()
         {
             var resolver = _documentKey;
             if (resolver == null)
-                return "";
+                return FallbackKey;
             try
             {
-                return resolver() ?? "";
+                return resolver() ?? FallbackKey;
             }
             catch
             {
-                return "";
+                return FallbackKey;
             }
         }
+    }
+
+    /// <summary>单张图上的构件会话槽，由 <see cref="DocumentSessionStore"/> 按文档键持有。</summary>
+    public sealed class ComponentSessionState
+    {
+        public Guid CurrentSessionId;
+        public List<ComponentRegion> Regions = new List<ComponentRegion>();
+        public List<ReinRegion> ReinRegions = new List<ReinRegion>();
     }
 }

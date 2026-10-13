@@ -473,17 +473,16 @@ namespace HyCADTool.App.Bootstrap
             EnsureCurrentDocumentResourcesInitialized(force: false);
         }
 
-        private static string ResolveActiveDocumentKey()
+        private static object ResolveActiveDocumentKey()
         {
-            var doc = AcApp.DocumentManager.MdiActiveDocument;
-            return DocumentKeys.GetKey(doc) ?? "";
+            return AcApp.DocumentManager.MdiActiveDocument?.Database;
         }
 
         private void OnDocumentToBeDestroyed(object sender, DocumentCollectionEventArgs e)
         {
             if (e.Document == null)
                 return;
-            ComponentSession.ForgetDocument(DocumentKeys.GetKey(e.Document));
+            ComponentSession.ForgetDocument(e.Document.Database);
         }
 
         /// <summary>
