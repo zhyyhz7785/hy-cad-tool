@@ -303,7 +303,35 @@ namespace GenerateCommandTiers
         {
             if (value == null)
                 return "";
-            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            var sb = new StringBuilder(value.Length + 8);
+            foreach (var c in value)
+            {
+                switch (c)
+                {
+                    case '\\':
+                        sb.Append("\\\\");
+                        break;
+                    case '"':
+                        sb.Append("\\\"");
+                        break;
+                    case '\n':
+                        sb.Append("\\n");
+                        break;
+                    case '\r':
+                        sb.Append("\\r");
+                        break;
+                    case '\t':
+                        sb.Append("\\t");
+                        break;
+                    default:
+                        if (c < 32)
+                            sb.Append("\\u").Append(((int)c).ToString("X4"));
+                        else
+                            sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
         }
 
         private static string CsOrNull(string value)
