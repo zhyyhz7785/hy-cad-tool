@@ -26,7 +26,7 @@
 
 ## 依赖与协作
 
-- **Shell**：`Shell.Configuration.User`、`SettingsPanelViewModel`（标注样式、Scale）。
+- **宿主**：`CadHost.Settings`（标注样式、Scale；不再直连 `HyCADTool.Shell`）。
 - **Shared**：选集、实体扩展。
 
 ## 开发与审查要点

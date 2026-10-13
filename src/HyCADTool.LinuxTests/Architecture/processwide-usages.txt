@@ -1,2 +1,10 @@
 # [ProcessWide] 用法快照（文件::成员::理由）。理由须非空且不少于 8 字；类型含 Document/Database/ObjectId/Window/Editor 禁止使用。次数只减不增。
 src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_installed::双击拦截只挂一次进程级事件
+src/HyCADTool/Shared/Host/CadHost.cs::ApplyAlignmentDefaultsAction::插件初始化登记路线默认值写回
+src/HyCADTool/Shared/Host/CadHost.cs::ApplyStationLabelOptionsAction::插件初始化登记桩号标注写回
+src/HyCADTool/Shared/Host/CadHost.cs::Commands::插件初始化绑定一次的命令通道
+src/HyCADTool/Shared/Host/CadHost.cs::NewAlignmentDefaults::插件初始化登记路线默认值工厂
+src/HyCADTool/Shared/Host/CadHost.cs::NewReinParameters::插件初始化登记钢筋参数工厂
+src/HyCADTool/Shared/Host/CadHost.cs::NewStationLabelOptions::插件初始化登记桩号标注工厂
+src/HyCADTool/Shared/Host/CadHost.cs::Panels::插件初始化绑定一次的面板入口
+src/HyCADTool/Shared/Host/CadHost.cs::Settings::插件初始化绑定一次的宿主设置面

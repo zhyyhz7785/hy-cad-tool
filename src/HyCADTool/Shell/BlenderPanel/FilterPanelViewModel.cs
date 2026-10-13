@@ -16,6 +16,7 @@ using HyCADTool.Shared.AutoCAD.Selection;
 using HyCADTool.Shared.AutoCAD.Selection.Rules;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using TypeNameConverter = HyCADTool.Shared.AutoCAD.Extensions.TypeNameConverter;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Shell.ViewModels
 {

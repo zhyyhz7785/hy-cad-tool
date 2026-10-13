@@ -88,8 +88,8 @@
   <!--
     许可 SDK 不在本仓库（路径：仓库上三级/注册机/sdk/dotnet/HyCADTool.Licensing）。
     存在：ProjectReference 真库，并排除开发桩，避免类型重复。
-    不存在且非 Production：编译 Shell/Licensing/LicensingStub.cs，Debug/Release 能还原、能编译。
-    不存在且 Production：在编译前报错，禁止把不验签的桩打进发行包。
+    不存在且 Debug：编译 Shell/Licensing/LicensingStub.cs（不验签，仅供本机开发）。
+    不存在且非 Debug（Release / Production 等）：MSBuild Error 中止，禁止把不验签的桩打进发行包。
   -->
   <PropertyGroup>
     <_HyCadLicensingRel>$(MSBuildThisFileDirectory)..\..\..\注册机\sdk\dotnet\HyCADTool.Licensing\HyCADTool.Licensing.csproj</_HyCadLicensingRel>
@@ -114,12 +114,18 @@
       <Project>{D4B7E1A2-5C3F-4A8E-9B62-7F1E2C3D4E5F}</Project>
       <Name>HyCAD.BlenderUI</Name>
     </ProjectReference>
-    <!-- 仅触发 net8 子工程编译并复制到 bin\Debug\net8，供 C2 递归复制；不引用程序集 -->
-    <ProjectReference Include="..\HyCADTool.UniverEditor\HyCADTool.UniverEditor.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
-    </ProjectReference>
   </ItemGroup>
+
+  <!-- UniverEditor 是 net8.0-windows sidecar（旁路程序集）：主插件 net48 不 ProjectReference，
+       运行时由 UniverEditorLoader 按路径反射加载。Windows 上另起 MSBuild 编出
+       bin\<Config>\net8\（UniverEditor.csproj 的 OutputPath 已指向该目录）。 -->
+  <Target Name="BuildUniverEditorSidecar"
+          BeforeTargets="Build"
+          Condition="'$(OS)'=='Windows_NT' And Exists('$(MSBuildThisFileDirectory)..\HyCADTool.UniverEditor\HyCADTool.UniverEditor.csproj')">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)..\HyCADTool.UniverEditor\HyCADTool.UniverEditor.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
 
   <!-- 配置文件复制到输出目录 -->
   <ItemGroup>
@@ -442,16 +448,21 @@
     <_GenerateCommandTiersProj>$(MSBuildThisFileDirectory)..\..\build\tools\GenerateCommandTiers\GenerateCommandTiers.csproj</_GenerateCommandTiersProj>
     <_GenerateCommandTiersProgram>$(MSBuildThisFileDirectory)..\..\build\tools\GenerateCommandTiers\Program.cs</_GenerateCommandTiersProgram>
     <_CommandsJson>$(MSBuildThisFileDirectory)..\ReCall\commands.json</_CommandsJson>
+    <_FacadeMethodsJson>$(MSBuildThisFileDirectory)..\ReCall\facade-methods.json</_FacadeMethodsJson>
     <_CommandTiersGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandTiers.g.cs</_CommandTiersGenerated>
     <_CommandRoutesGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandRoutes.g.cs</_CommandRoutesGenerated>
+    <_DevFacadeGenerated>$(MSBuildThisFileDirectory)..\ReCall\CommandFacade.cs</_DevFacadeGenerated>
+    <_ProdFacadeGenerated>$(MSBuildThisFileDirectory)App\Production\ProductionCommandFacade.cs</_ProdFacadeGenerated>
+    <_ModulesDir>$(MSBuildThisFileDirectory)Modules</_ModulesDir>
+    <_CommandModulesGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandModules.g.cs</_CommandModulesGenerated>
     <_CommandTiersStamp>$(IntermediateOutputPath)GenerateCommandTiers.stamp</_CommandTiersStamp>
   </PropertyGroup>
   <Target Name="GenerateCommandTiers"
           BeforeTargets="CoreCompile"
-          Inputs="$(_CommandsJson);$(_GenerateCommandTiersProj);$(_GenerateCommandTiersProgram)"
-          Outputs="$(_CommandTiersStamp);$(_CommandTiersGenerated);$(_CommandRoutesGenerated)"
+          Inputs="$(_CommandsJson);$(_FacadeMethodsJson);$(_GenerateCommandTiersProj);$(_GenerateCommandTiersProgram);$(_ModulesDir)\base\commands.json;$(_ModulesDir)\road\commands.json;$(_ModulesDir)\sponge-city\commands.json;$(_ModulesDir)\structure\commands.json;$(_ModulesDir)\fea\commands.json;$(_ModulesDir)\design-spec\commands.json;$(_ModulesDir)\hyob\commands.json"
+          Outputs="$(_CommandTiersStamp);$(_CommandTiersGenerated);$(_CommandRoutesGenerated);$(_DevFacadeGenerated);$(_ProdFacadeGenerated);$(_CommandModulesGenerated)"
           Condition="Exists('$(_GenerateCommandTiersProj)') And Exists('$(_CommandsJson)')">
-    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot; &quot;$(_CommandRoutesGenerated)&quot; &quot;$(_CommandTiersStamp)&quot;"
+    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot; &quot;$(_CommandRoutesGenerated)&quot; &quot;$(_CommandTiersStamp)&quot; &quot;$(_FacadeMethodsJson)&quot; &quot;$(_DevFacadeGenerated)&quot; &quot;$(_ProdFacadeGenerated)&quot; &quot;$(_ModulesDir)&quot; &quot;$(_CommandModulesGenerated)&quot;"
           IgnoreExitCode="true"
           ConsoleToMSBuild="true">
       <Output TaskParameter="ExitCode" PropertyName="_GenerateCommandTiersExit" />

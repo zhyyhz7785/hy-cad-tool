@@ -1,22 +1,22 @@
 using HyCADTool.Features.AcadDimension.Domain.Config;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.AcadDimension.Services
 {
     /// <summary>
-    /// 把钢筋首选项（SettingsPanelViewModel）映射成 NewDDS 平台无关配置（07 §11 第 6 条）。
+    /// 把钢筋首选项（IHostSettings）映射成 NewDDS 平台无关配置（07 §11 第 6 条）。
     /// 第一阶段：与老 dds 完全一致——四项面板参数同时为两者服务（07 §1.2）。
     /// 第二阶段（迁移期之后）：可选地为 NewDDS 独立 ViewModel；本 Adapter 仍为兜底。
     /// 设计要点：
     ///  - Domain 层不感知 ViewModel；Adapter 是仅有的桥；
     ///  - 输出已是"实际 mm（× Scale）"，Domain 内部不再二次缩放；
-    ///  - SettingsPanelViewModel.Current 为 null 时（无面板时）回落工厂默认。
+    ///  - CadHost.Settings 为 null 时（无面板时）回落工厂默认。
     /// </summary>
     public static class NewDdsConfigAdapter
     {
         public static NewDdsConfig FromSettingsPanel()
         {
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             double scale = vm?.Scale ?? 40.0;
 
             double distInside = (vm?.DimensionDistanceInside ?? 6.0) * scale;

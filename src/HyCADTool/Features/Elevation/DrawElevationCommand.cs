@@ -2,11 +2,11 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Elevation
 {
@@ -24,7 +24,7 @@ namespace HyCADTool.Features.Elevation
 
             try
             {
-                var vm = SettingsPanelViewModel.Current;
+                var vm = CadHost.Settings;
                 double scale = vm != null ? vm.Scale : 40.0;
                 double d = 2.0; // 构造参数（ElevationLength）
 

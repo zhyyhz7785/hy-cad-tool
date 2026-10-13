@@ -15,7 +15,7 @@
 
 ## 目录结构
 
-- `OutlinerDragDropBehavior.cs`：Outliner 等树形控件的拖放行为。
+- 横断出图树拖放已迁到 `Features/Road/CrossSection/Behaviors/OutlinerDragDropBehavior.cs`，避免 Features XAML 引用 `HyCADTool.Shell`。
 
 ## 命令与入口
 

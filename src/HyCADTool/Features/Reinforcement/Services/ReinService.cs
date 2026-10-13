@@ -1,8 +1,8 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.Contracts;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Contracts;
+using HyCADTool.Shared.Configuration.User;
 using HyCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Shared.AutoCAD.Configuration;

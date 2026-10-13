@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HyCADTool.Shared.Domain;
 
 namespace HyCADTool.Features.Settlement
 {

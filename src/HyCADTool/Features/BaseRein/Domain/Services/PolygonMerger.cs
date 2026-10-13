@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCAD.Geometry;
+using HyCADTool.Shared.Geometry;
 
 namespace HyCADTool.Features.BaseRein.Domain.Services
 {

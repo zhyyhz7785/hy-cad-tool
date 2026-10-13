@@ -1,5 +1,5 @@
-using HyCADTool.Shell.Contracts;
-using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shared.Contracts;
+using HyCADTool.Shared.Configuration.Global;
 using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.App.Bootstrap

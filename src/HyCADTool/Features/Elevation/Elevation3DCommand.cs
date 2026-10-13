@@ -9,7 +9,7 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Colors;
 using HyCADTool.Features.Elevation.Domain.Services;
 using HyCADTool.Features.Elevation.Domain.ValueObjects;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using ElevationValue = HyCADTool.Features.Elevation.Domain.ValueObjects.ElevationValue;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;

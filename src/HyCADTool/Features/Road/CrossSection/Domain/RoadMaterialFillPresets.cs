@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using HyCADTool.Domain.Models.Road;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 
 namespace HyCADTool.Features.Road.CrossSection.Domain
 {

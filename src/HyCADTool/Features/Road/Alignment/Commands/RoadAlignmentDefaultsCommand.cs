@@ -1,10 +1,10 @@
 using System;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Views;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -12,13 +12,13 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
     ///
     /// 作用：在 <c>hyRoadAlnByPi</c>、<c>hyRoadAlnEditPi</c> 等创建命令里回车默认值
     /// （默认 R / Ls_in / Ls_out / 起桩号）需要落在工程实际数量级上，
-    /// 这些默认值持久化在 <see cref="SettingsPanelViewModel"/>，
+    /// 这些默认值持久化在 <see cref="IHostSettings"/>，
     /// 本命令提供一个独立的 BlenderWindow 配置入口，改一次就全局生效，避免每条命令重复敲键。
     ///
     /// 执行流：
-    /// 1. 读 <see cref="SettingsPanelViewModel.Current"/>.CreateAlignmentDefaults() 作为窗口初值；
+    /// 1. 读 <see cref="CadHost.Settings"/>.CreateAlignmentDefaults() 作为窗口初值；
     /// 2. ShowModalWindow 打开 <see cref="AlignmentDefaultsWindow"/>；
-    /// 3. 用户确定时通过 <see cref="SettingsPanelViewModel.ApplyAlignmentDefaults"/> 写回并即时落盘。
+    /// 3. 用户确定时通过 <see cref="IHostSettings.ApplyAlignmentDefaults"/> 写回并即时落盘。
     /// </summary>
     public sealed class RoadAlignmentDefaultsCommand
     {
@@ -28,14 +28,14 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             if (doc == null) return;
             var ed = doc.Editor;
 
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             if (settings == null)
             {
-                ed.WriteMessage("\n[道路] SettingsPanelViewModel 不可用（hy-settings.json 未加载），无法配置默认值。");
+                ed.WriteMessage("\n[道路] IHostSettings 不可用（hy-settings.json 未加载），无法配置默认值。");
                 return;
             }
 
-            var initial = settings.CreateAlignmentDefaults();
+            var initial = CadHost.Create<HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults>(CadHost.NewAlignmentDefaults);
             var vm = new AlignmentDefaultsViewModel(initial);
             var window = new AlignmentDefaultsWindow(vm);
 
@@ -51,8 +51,8 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             {
                 try
                 {
-                    settings.ApplyAlignmentDefaults(vm.Snapshot());
-                    // SettingsPanelViewModel 的 SetProperty 会自动触发 SaveSettings
+                    CadHost.ApplyAlignmentDefaultsAction(vm.Snapshot());
+                    // IHostSettings 的 SetProperty 会自动触发 SaveSettings
                     ed.WriteMessage(
                         $"\n[道路] Alignment 默认值已更新：R={vm.DefaultRadius:F2} m, "
                         + $"Ls_in={vm.DefaultSpiralIn:F2} m, Ls_out={vm.DefaultSpiralOut:F2} m, "

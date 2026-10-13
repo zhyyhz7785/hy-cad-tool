@@ -8,11 +8,11 @@ using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.Road.CrossSection.Services;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 
 using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.CrossSection.Services.Workflows
 {
     /// <summary>
@@ -89,7 +89,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services.Workflows
                     using (var tr = safeDb.TransactionManager.StartTransaction())
                     {
                         erased = drawService.Clear(tr, safeDb, result.Template.Id);
-                        double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
+                        double planOff = CadHost.Settings?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
                         created = drawService.Draw(
                             tr,
                             safeDb,
@@ -147,7 +147,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services.Workflows
         {
             try
             {
-                var settings = SettingsPanelViewModel.Current;
+                var settings = CadHost.Settings;
                 // 有设置就走 Factory 正路，让它在当前 doc.Database 里按名字重新取 ObjectId。
                 if (settings != null)
                 {

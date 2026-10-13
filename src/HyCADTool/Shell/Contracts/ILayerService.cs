@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 
-namespace HyCADTool.Shell.Contracts
+namespace HyCADTool.Shared.Contracts
 {
     /// <summary>
     /// 图层服务接口（平台无关）

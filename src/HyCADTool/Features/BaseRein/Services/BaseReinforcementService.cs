@@ -4,18 +4,19 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Features.DCEL.Domain.Enums;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Features.BaseRein.Domain;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.BaseRein.Services
 {
@@ -51,7 +52,7 @@ namespace HyCADTool.Features.BaseRein.Services
         public void ApplyStyles(double scale)
         {
             // 不再做任何操作 — 图层和样式已在 PluginInitializer 启动时一次性创建
-            // 面板参数变更时通过 SettingsPanelViewModel.EnsureStylesApplied() 按需更新
+            // 面板参数变更时通过 IHostSettings.EnsureStylesApplied() 按需更新
         }
 
         #endregion

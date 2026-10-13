@@ -32,7 +32,7 @@ Blender 分类：`图框视口`。
 ## 依赖与协作
 
 - **Cluster**：`IClusteringService` 等（`MBRCommand` 流程）。
-- **Shell**：`Shell.Configuration.User`（`TitleBlockService` 等）。
+- **宿主**：`CadHost.Settings` / `Shared.Configuration.User`（`TitleBlockService` 等）。
 - **首选项**：聚类参数在 Shell `ClusterPanel` / 设置页。
 
 ## 开发与审查要点

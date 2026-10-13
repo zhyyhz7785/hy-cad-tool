@@ -108,14 +108,14 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
-        public void License_gate_wrap_script_points_at_the_production_facade()
+        public void License_gate_wrap_script_must_not_exist()
         {
             var root = RepoRoot();
-            var script = File.ReadAllText(Path.Combine(
-                root, "build", "scripts", "Wrap-LicenseGate-ProductionCommandFacade.ps1"));
-            Assert.Contains("src\\HyCADTool\\App\\Production\\ProductionCommandFacade.cs", script);
-            Assert.True(File.Exists(Path.Combine(
-                root, "src", "HyCADTool", "App", "Production", "ProductionCommandFacade.cs")));
+            var script = Path.Combine(
+                root, "build", "scripts", "Wrap-LicenseGate-ProductionCommandFacade.ps1");
+            Assert.False(
+                File.Exists(script),
+                "双门面已由生成器写出 LicenseGate.RunGated，禁止再保留或新增 Wrap 脚本: " + script);
         }
 
         private static int CountCommandAttributes(MatchCollection methods)

@@ -7,11 +7,13 @@ using HyCADTool.Features.DesignSpec.Services;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.TextEdit.Services;
 using HyCADTool.Shared.AutoCAD.Session;
-using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shared.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Shell.Input;
 using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shell;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -147,6 +149,9 @@ namespace HyCADTool.App.Bootstrap
                     builder.RegisterModule<AutofacModule>();
                     var container = builder.Build();
                     ServiceLocator.Initialize(container);
+                    SettingsPanelViewModel.BindHost(SettingsPanelViewModel.Current);
+                    if (CadHost.Panels == null)
+                        CadHost.Bind(CadHost.Settings, CadHost.Commands, new HostPanelAdapter());
                 });
 
                 WriteMessage("\n✓ 依赖注入容器已初始化");

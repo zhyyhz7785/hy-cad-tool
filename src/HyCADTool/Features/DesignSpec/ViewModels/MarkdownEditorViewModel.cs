@@ -5,7 +5,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.DesignSpec.ViewModels
 {
@@ -201,7 +202,7 @@ namespace HyCADTool.Features.DesignSpec.ViewModels
         /// <summary>新建模式</summary>
         public MarkdownEditorViewModel()
         {
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             if (vm != null)
             {
                 _textSize = vm.TextSize;
@@ -284,7 +285,7 @@ namespace HyCADTool.Features.DesignSpec.ViewModels
                 QuoteSpaceBefore = QuoteSpaceBefore,
                 QuoteSpaceAfter = QuoteSpaceAfter
             };
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             if (vm != null)
             {
                 if (string.IsNullOrWhiteSpace(cfg.FontFileName))

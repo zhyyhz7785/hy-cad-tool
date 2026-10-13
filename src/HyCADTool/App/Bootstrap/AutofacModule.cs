@@ -1,5 +1,5 @@
 using Autofac;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCAD.Geometry.Interfaces;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using HyCAD.Geometry.Math;

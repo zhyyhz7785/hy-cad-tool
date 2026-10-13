@@ -6,13 +6,13 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Utilities;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Features.Road.PlanAlignment.Views;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -66,7 +66,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             var newP = new Point2D(picked.X, picked.Y);
 
             // Step 3：R / Ls 默认值来自 hy-settings.json
-            var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults()
+            var defaults = CadHost.Create<HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults>(CadHost.NewAlignmentDefaults)
                            ?? new global::HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults();
 
             // 占位 PI 预填默认值，随后交互修正

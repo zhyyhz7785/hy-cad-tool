@@ -4,8 +4,8 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Features.TextEdit.ViewModels;
 using HyCADTool.Features.TextEdit.Views;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.TextEdit.Services
 {
@@ -44,7 +44,7 @@ namespace HyCADTool.Features.TextEdit.Services
             }
 
             double offsetFactor = 0;
-            try { offsetFactor = SettingsPanelViewModel.Current?.HyEdAboveOffsetFactor ?? 0; }
+            try { offsetFactor = CadHost.Settings?.HyEdAboveOffsetFactor ?? 0; }
             catch { /* ViewModel 未就绪退默认 0 */ }
 
             // MText/MLeader 走 codec：把 \T1.137;{\L...} 这类控制码剥成纯文本进编辑框，

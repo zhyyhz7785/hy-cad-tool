@@ -7,7 +7,7 @@ using HyCADTool.Features.Elevation.Domain.Entities;
 using HyCADTool.Features.Elevation.Domain.ValueObjects;
 using HyCADTool.Features.Elevation.Domain.Services;
 using HyCAD.Geometry.Algorithms;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Interfaces;

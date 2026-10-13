@@ -1,0 +1,297 @@
+{
+    "version": 2,
+    "module": "base",
+    "_description": "HyCADTool 模块 base 的命令清单。档位与 ReCall/commands.json 一致，拆分后由 GenerateCommandTiers 汇总。",
+    "commands": {
+        "Hy": {
+            "tier": "freemium",
+            "type": "HyCADTool.Shell.Commands.ShowPanelCommand",
+            "method": "ShowHyToolPanel",
+            "category": "常用",
+            "displayName": "HY 统一面板",
+            "tooltip": "显示/隐藏 HyCAD 统一工具面板（Hy）",
+            "order": 1
+        },
+        "HyB": {
+            "tier": "freemium",
+            "type": "HyCADTool.Shell.Commands.ShowPanelCommand",
+            "method": "ShowHyBlenderPanel",
+            "category": "常用",
+            "displayName": "HyCAD 命令面板",
+            "tooltip": "显示/隐藏 Blender 风格命令检索面板（HyB）",
+            "order": 2
+        },
+        "_HyExec": {
+            "tier": "freemium",
+            "type": "__PANEL_PENDING__",
+            "method": "ConsumePendingCommand"
+        },
+        "hyCmdList": {
+            "tier": "freemium",
+            "type": "HyCADTool.Shell.Commands.CommandListDumpCommand",
+            "method": "Execute",
+            "category": "测试",
+            "displayName": "命令分组清单",
+            "tooltip": "在命令行打印当前 commands.json 分组结果（hyCmdList）",
+            "order": 1
+        },
+        "hyLicense": {
+            "tier": "freemium",
+            "type": "HyCADTool.Shell.Commands.LicenseActivationCommand",
+            "method": "Execute",
+            "category": "常用",
+            "displayName": "许可与激活",
+            "tooltip": "本机机器码、二维码、导入 %ProgramData%\\HyCAD\\license.lic（hyLicense）",
+            "order": 3
+        },
+        "hyed": {
+            "type": "HyCADTool.Features.TextEdit.Commands.HyEdCommand",
+            "method": "Execute",
+            "category": "文字编辑",
+            "displayName": "文字编辑",
+            "tooltip": "替代 AutoCAD 双击文字编辑（hyed），绕开 IPE/TTF 扫描",
+            "order": 10
+        },
+        "_HYED_INTERNAL": {
+            "type": "HyCADTool.Features.TextEdit.Commands.HyEdCommand",
+            "method": "Execute",
+            "_alias": "BeginDoubleClick 内部派发，勿手输"
+        },
+        "HYMBR": {
+            "type": "HyCADTool.Features.TitleBlock.MBRCommand",
+            "method": "Execute",
+            "category": "图框视口",
+            "displayName": "最小包围矩形",
+            "tooltip": "最小包围矩形（HYMBR）",
+            "order": 10
+        },
+        "HYMBRN": {
+            "type": "HyCADTool.Features.TitleBlock.MBRNCommand",
+            "method": "Execute",
+            "category": "图框视口",
+            "displayName": "MBR性能对比",
+            "tooltip": "MBR聚类BFS/Grid对比（HYMBRN）",
+            "order": 11
+        },
+        "HYMBRD": {
+            "type": "HyCADTool.Features.TitleBlock.DrawTitleBlockCommand",
+            "method": "Execute",
+            "category": "图框视口",
+            "displayName": "绘制图框",
+            "tooltip": "绘制图框（HYMBRD）",
+            "order": 20
+        },
+        "HYMBRC": {
+            "type": "HyCADTool.Features.TitleBlock.CreateLayoutViewportsCommand",
+            "method": "Execute",
+            "category": "图框视口",
+            "displayName": "布局视口",
+            "tooltip": "创建布局视口（HYMBRC）",
+            "order": 30
+        },
+        "HY_PackViewports": {
+            "type": "HyCADTool.Features.TitleBlock.PackViewportsCommand",
+            "method": "Execute",
+            "category": "图框视口",
+            "displayName": "视口排列",
+            "tooltip": "视口紧凑排列（HY_PackViewports）",
+            "order": 40
+        },
+        "HYc2bc": {
+            "type": "HyCADTool.Features.BlockLeader.BlockColorCommand",
+            "method": "Execute",
+            "category": "块引线",
+            "displayName": "块颜色",
+            "tooltip": "批量修改块颜色（HYc2bc）",
+            "order": 10
+        },
+        "HYc2bl": {
+            "type": "HyCADTool.Features.BlockLeader.BlockToMLeaderCommand",
+            "method": "Execute",
+            "category": "块引线",
+            "displayName": "块转引线",
+            "tooltip": "块转换为引线（HYc2bl）",
+            "order": 20
+        },
+        "hyex": {
+            "type": "HyCADTool.Features.Export.ExportMarkdownTableCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "导出 Markdown",
+            "tooltip": "导出 Markdown 表（hyex）",
+            "order": 30
+        },
+        "hyex_csv": {
+            "type": "HyCADTool.Features.Export.ExportEntityPropertiesToCsvCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "导出 CSV",
+            "tooltip": "导出实体属性到 CSV（hyex_csv）",
+            "order": 40
+        },
+        "hyLtCapture": {
+            "type": "HyCADTool.Features.Export.CaptureDrawingLinetypesCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "提取线型目录",
+            "tooltip": "从当前 DWG 线型表写入 hy-linetype-catalog.json，可选另存 .lin，并更新 hy-settings.json 中的 LinetypeCatalog（hyLtCapture）",
+            "order": 45
+        },
+        "hysvg": {
+            "type": "HyCADTool.Features.Export.SvgExportCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "导出 SVG",
+            "tooltip": "当前选择集或当前空间导出为 SVG（hysvg）",
+            "order": 50
+        },
+        "HYOV": {
+            "tier": "freemium",
+            "type": "HyCADTool.Features.OverKill.Commands.OverKillCommand",
+            "method": "Execute",
+            "category": "杂项",
+            "displayName": "OverKill",
+            "tooltip": "删除重复实体（HYOV）",
+            "order": 70
+        },
+        "HYOVSET": {
+            "tier": "freemium",
+            "type": "HyCADTool.Features.OverKill.Commands.OverKillCommand",
+            "method": "ExecuteSettings",
+            "category": "杂项",
+            "displayName": "OverKill 设置",
+            "tooltip": "OverKill 设置（HYOVSET）",
+            "order": 75
+        },
+        "ph": {
+            "type": "HyCADTool.Features.TestPaper.PaperH",
+            "method": "Test",
+            "category": "测试",
+            "displayName": "Paper H",
+            "tooltip": "Paper 横向测试（ph）",
+            "order": 10
+        },
+        "pv": {
+            "type": "HyCADTool.Features.TestPaper.PaperV",
+            "method": "Test",
+            "category": "测试",
+            "displayName": "Paper V",
+            "tooltip": "Paper 纵向测试（pv）",
+            "order": 20
+        },
+        "phh": {
+            "type": "HyCADTool.Features.TestPaper.PaperHH",
+            "method": "Test",
+            "category": "测试",
+            "displayName": "Paper HH",
+            "tooltip": "Paper HH 测试（phh）",
+            "order": 30
+        },
+        "pvv": {
+            "type": "HyCADTool.Features.TestPaper.PaperVV",
+            "method": "Test",
+            "category": "测试",
+            "displayName": "Paper VV",
+            "tooltip": "Paper VV 测试（pvv）",
+            "order": 40
+        },
+        "N6": {
+            "type": "HyCADTool.Features.TextEdit.Commands.HyEdCommand",
+            "method": "Execute",
+            "category": "杂项",
+            "displayName": "hyed 文字编辑(N6)",
+            "tooltip": "占位符：同 hyed，替代 TEXTEDIT/MTEDIT/DDEDIT",
+            "order": 99
+        },
+        "N11": {
+            "type": "HyCADTool.Shell.Commands.ShowPanelCommand",
+            "method": "ShowStructure3DPanel",
+            "category": "杂项",
+            "displayName": "3D结构面板(N11)",
+            "tooltip": "打开统一面板「3D结构」Tab：整理底图(DCEL) + 生成3D模型(HY3) + 生成剖面",
+            "order": 91
+        },
+        "N33": {
+            "type": "HyCADTool.Features.Tables.Commands.InsertSampleTableCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "插入黄金样表(N33)",
+            "tooltip": "插入人员样表并写入 HyTable 真相源",
+            "order": 160
+        },
+        "N34": {
+            "type": "HyCADTool.Features.Tables.Commands.ReadTableBackCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "读回 HyTable(N34)",
+            "tooltip": "选择表格实体，读回 TableGrid 并校验",
+            "order": 161
+        },
+        "N35": {
+            "type": "HyCADTool.Features.Tables.Commands.PickTableCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "拾取表格(N35)",
+            "tooltip": "点选 HY_TABLE 实体，摘要 + 可选再渲染",
+            "order": 162
+        },
+        "N36": {
+            "type": "HyCADTool.Features.Tables.Commands.InferTableCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "线框识别(N36)",
+            "tooltip": "框选线+文字，反推表格结构（AC9 V1）",
+            "order": 156
+        },
+        "N37": {
+            "tier": "standard",
+            "_temporary": true,
+            "type": "HyCADTool.Features.Tables.Commands.OpenTableEditorCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "表格编辑器(N37)",
+            "tooltip": "临时命令，保持 standard。打开独立表格编辑器窗口（纸张优先 + 宽网格）",
+            "order": 159
+        },
+        "N38": {
+            "type": "HyCADTool.Features.Tables.Commands.OpenUniverTableEditorCommand",
+            "method": "Execute",
+            "category": "表格",
+            "displayName": "Univer 表格编辑器(N38)",
+            "tooltip": "打开 Univer WebView2 表格编辑器 PoC（插件模式基础示例）",
+            "order": 160
+        },
+        "N39": {
+            "type": "HyCADTool.Features.Export.HymdCadCompareCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "HyMd文字对照(N39)",
+            "tooltip": "同 HYMDCOMPARE：真 MText 测宽/折行，叠 HyMd JSON 块框",
+            "order": 26
+        },
+        "N41": {
+            "type": "HyCADTool.Features.Export.HymdCadPlanCheckCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "HyMd贴图清单对照(N41)",
+            "tooltip": "同 HYMDPLANCHECK：同一 dump 对照 HyMd plan JSON",
+            "order": 27
+        },
+        "N42": {
+            "type": "HyCADTool.Features.Export.SvgExportCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "导出 SVG(N42)",
+            "tooltip": "同 hysvg：当前选择集或当前空间导出为 SVG。真名 hysvg 需关 CAD 重 NETLOAD ReCall",
+            "order": 50
+        },
+        "N43": null,
+        "N44": null,
+        "N45": null,
+        "N46": null,
+        "N47": null,
+        "N48": null,
+        "N49": null,
+        "N50": null
+    }
+}

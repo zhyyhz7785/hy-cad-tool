@@ -1,15 +1,15 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Converters;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
 using HyCAD.Geometry.Interfaces;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -37,8 +37,8 @@ namespace HyCADTool.Features.Reinforcement
             var db = doc.Database;
             var ed = doc.Editor;
 
-            var vm = SettingsPanelViewModel.Current;
-            var parameters = vm != null ? vm.CreateReinParameters() : ReinParameters.CreateDefault();
+            var vm = CadHost.Settings;
+            var parameters = CadHost.CreateOrDefault(CadHost.NewReinParameters, ReinParameters.CreateDefault());
 
             if (!parameters.IsValid(out string paramError))
             {

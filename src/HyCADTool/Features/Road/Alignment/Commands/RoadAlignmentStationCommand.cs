@@ -4,12 +4,12 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Views;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -17,7 +17,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
     ///
     /// T6 在原"一键标注"的基础上加了 3 个关键字分支：
     /// <list type="bullet">
-    ///   <item><b>应用 (A)</b>（默认）：从 <see cref="SettingsPanelViewModel"/> 读桩号配置，
+    ///   <item><b>应用 (A)</b>（默认）：从 <see cref="IHostSettings"/> 读桩号配置，
     ///     调用 <see cref="RoadAlignmentService.DrawStationLabels"/> 生成标注。</item>
     ///   <item><b>配置 (C)</b>：弹 <see cref="StationLabelConfigWindow"/> 让用户交互改参数，
     ///     确定后持久化到 hy-settings.json（与 T4 走同一套）。</item>
@@ -92,8 +92,8 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             var svc = ServiceLocator.Resolve<RoadAlignmentService>();
             var registry = ServiceLocator.Resolve<RoadDesignRegistry>();
 
-            // 读持久化配置；SettingsPanelViewModel 不可用时退回默认
-            var options = SettingsPanelViewModel.Current?.CreateStationLabelOptions()
+            // 读持久化配置；IHostSettings 不可用时退回默认
+            var options = CadHost.Create<HyCADTool.Features.Road.PlanAlignment.Services.RoadStationLabelOptions>(CadHost.NewStationLabelOptions)
                           ?? RoadStationLabelOptions.Default;
             try { options.Validate(); }
             catch (Exception ex)
@@ -151,14 +151,14 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
 
         private static void DoConfigure(Editor ed)
         {
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             if (settings == null)
             {
-                ed.WriteMessage("\n[道路] SettingsPanelViewModel 不可用，无法配置桩号参数。");
+                ed.WriteMessage("\n[道路] IHostSettings 不可用，无法配置桩号参数。");
                 return;
             }
 
-            var initial = settings.CreateStationLabelOptions();
+            var initial = CadHost.Create<HyCADTool.Features.Road.PlanAlignment.Services.RoadStationLabelOptions>(CadHost.NewStationLabelOptions);
             var vm = new StationLabelConfigViewModel(initial);
             var window = new StationLabelConfigWindow(vm);
 
@@ -170,7 +170,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             {
                 try
                 {
-                    settings.ApplyStationLabelOptions(vm.Snapshot());
+                    CadHost.ApplyStationLabelOptionsAction(vm.Snapshot());
                     ed.WriteMessage(
                         $"\n[道路] 桩号配置已更新：主 {vm.MainInterval} m / 副 {vm.SubInterval} m，"
                         + $"文字 {vm.TextHeight} m，侧别 {(vm.SideIsLeft ? "左" : "右")}，"
@@ -194,13 +194,13 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
 
         private static void DoRestoreDefaults(Editor ed)
         {
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             if (settings == null)
             {
-                ed.WriteMessage("\n[道路] SettingsPanelViewModel 不可用，无法保存默认配置。");
+                ed.WriteMessage("\n[道路] IHostSettings 不可用，无法保存默认配置。");
                 return;
             }
-            settings.ApplyStationLabelOptions(RoadStationLabelOptions.Default);
+            CadHost.ApplyStationLabelOptionsAction(RoadStationLabelOptions.Default);
             ed.WriteMessage("\n[道路] 桩号配置已恢复为出厂默认并持久化。回车 hyRoadAlnStation 再跑一次应用。");
         }
     }

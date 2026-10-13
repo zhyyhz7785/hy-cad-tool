@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using System.Text.RegularExpressions;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

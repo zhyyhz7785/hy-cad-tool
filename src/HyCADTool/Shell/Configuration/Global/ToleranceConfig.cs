@@ -1,4 +1,4 @@
-namespace HyCADTool.Shell.Configuration.Global
+namespace HyCADTool.Shared.Configuration.Global
 {
     public class ToleranceConfig
     {

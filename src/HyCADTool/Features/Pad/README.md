@@ -31,7 +31,7 @@ Blender 分类：`多段线垫层`。
 ## 依赖与协作
 
 - **Shared**：多段线、面域、事务。
-- **Shell.Configuration.User**：若读取用户默认厚度等。
+- **宿主**：`CadHost.Settings` / `Shared.Configuration.User`（默认厚度等）。
 
 ## 开发与审查要点
 

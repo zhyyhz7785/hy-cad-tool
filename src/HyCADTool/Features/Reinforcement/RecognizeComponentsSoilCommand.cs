@@ -6,9 +6,9 @@ using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.Reinforcement.Services;
 using HyCADTool.Shared.AutoCAD.Converters;
-using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -23,7 +23,7 @@ namespace HyCADTool.Features.Reinforcement
             var db = doc.Database;
             var ed = doc.Editor;
 
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             var parameters = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
 
             var filter = new SelectionFilter(new[]

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""扫描 Features 现状，写出架构白名单（仅生成基线，测试以 C# 扫描为准）。"""
+"""按命名空间扫描 Features/Shared 现状。
+
+写出 shell/getpoint 为「文件::次数」，与 C# ScanFeatureCounts 对齐。
+可变静态仍以 C# Roslyn 扫描为准，本脚本不再覆盖 whitelist-mutable-static.txt。
+"""
 from __future__ import annotations
 
 import re
@@ -7,9 +11,10 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-FEATURES = REPO / "src" / "HyCADTool" / "Features"
+SRC = REPO / "src" / "HyCADTool"
 OUT = Path(__file__).resolve().parent
 
+NS_RE = re.compile(r"^namespace\s+([A-Za-z0-9_.]+)", re.M)
 SHELL_RE = re.compile(r"HyCADTool\.Shell")
 GETPOINT_RE = re.compile(r"\.\s*GetPoint\s*\(")
 PROCESS_WIDE_RE = re.compile(r"\[\s*ProcessWide\b")
@@ -17,6 +22,9 @@ STATIC_FIELD_RE = re.compile(
     r"^\s*(?:(?:public|private|internal|protected|new|unsafe|volatile|partial|static|readonly|const)\s+)+static\s+"
     r"(?!readonly\b)(?!const\b)(?!event\b)(?!class\b)(?!struct\b)(?!enum\b)(?!delegate\b)(?!implicit\b)(?!explicit\b)"
 )
+
+FEATURE_PREFIXES = ("HyCADTool.Features", "HyCADTool.Domain")
+SHARED_PREFIXES = ("HyCADTool.Shared",)
 
 
 def strip_comments(text: str) -> str:
@@ -47,18 +55,44 @@ def has_process_wide(prev_attrs: list[str]) -> bool:
     return any(PROCESS_WIDE_RE.search(x) for x in prev_attrs)
 
 
+def declared_namespace(text: str) -> str | None:
+    m = NS_RE.search(text)
+    return m.group(1) if m else None
+
+
+def matches_prefix(ns: str | None, prefixes: tuple[str, ...]) -> bool:
+    if not ns:
+        return False
+    return any(ns == p or ns.startswith(p + ".") for p in prefixes)
+
+
+def iter_cs() -> list[Path]:
+    rows = []
+    for path in SRC.rglob("*.cs"):
+        parts = {p.lower() for p in path.parts}
+        if "bin" in parts or "obj" in parts:
+            continue
+        rows.append(path)
+    return sorted(rows)
+
+
 def scan() -> tuple[list[str], list[str], list[str]]:
     shell: list[str] = []
     getpoint: list[str] = []
     statics: list[str] = []
-    for path in sorted(FEATURES.rglob("*.cs")):
-        rel = path.relative_to(REPO).as_posix()
+    for path in iter_cs():
         raw = path.read_text(encoding="utf-8")
+        ns = declared_namespace(raw)
+        if not matches_prefix(ns, FEATURE_PREFIXES):
+            continue
+        rel = path.relative_to(REPO).as_posix()
         text = strip_comments(raw)
-        if SHELL_RE.search(text):
-            shell.append(rel)
-        if GETPOINT_RE.search(text):
-            getpoint.append(rel)
+        shell_n = len(SHELL_RE.findall(text))
+        if shell_n > 0:
+            shell.append(f"{rel}::{shell_n}")
+        getpoint_n = len(GETPOINT_RE.findall(text))
+        if getpoint_n > 0:
+            getpoint.append(f"{rel}::{getpoint_n}")
 
         prev: list[str] = []
         for line in text.splitlines():
@@ -83,8 +117,7 @@ def main() -> int:
     shell, getpoint, statics = scan()
     write_list("whitelist-features-shell.txt", shell)
     write_list("whitelist-editor-getpoint.txt", getpoint)
-    write_list("whitelist-mutable-static.txt", statics)
-    print(f"shell={len(shell)} getpoint={len(getpoint)} static={len(statics)}")
+    print(f"shell={len(shell)} getpoint={len(getpoint)} static={len(statics)} (static 不写文件，以 C# 为准)")
     return 0
 
 

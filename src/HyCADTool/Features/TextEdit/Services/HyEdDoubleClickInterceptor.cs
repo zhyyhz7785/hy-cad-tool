@@ -6,8 +6,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shared.Core;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.TextEdit.Services
 {
@@ -176,14 +176,14 @@ namespace HyCADTool.Features.TextEdit.Services
         }
 
         /// <summary>
-        /// 读 <see cref="SettingsPanelViewModel.EnableHyEdDoubleClick"/>；ViewModel 未创建（首次启动尚未打开首选项面板）
+        /// 读 <see cref="IHostSettings.EnableHyEdDoubleClick"/>；ViewModel 未创建（首次启动尚未打开首选项面板）
         /// 时默认开启（与设置初值一致），失败时也默认开启（不影响原有可达性）。
         /// </summary>
         private static bool IsEnabledBySettings()
         {
             try
             {
-                var vm = SettingsPanelViewModel.Current;
+                var vm = CadHost.Settings;
                 return vm == null || vm.EnableHyEdDoubleClick;
             }
             catch

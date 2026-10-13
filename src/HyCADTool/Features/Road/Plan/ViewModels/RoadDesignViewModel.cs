@@ -9,8 +9,9 @@ using HyCADTool.Features.Road.PlanProfile.Commands;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
-using HyCADTool.Shell.ViewModels;
 
 namespace HyCADTool.Features.Road.Plan.ViewModels
 {
@@ -113,11 +114,11 @@ namespace HyCADTool.Features.Road.Plan.ViewModels
             }
         }
 
-        // ===== 命令路由（与 SettingsPanelViewModel 一致：PendingCommand → _HyExec）=====
+        // ===== 命令路由（与 IHostSettings 一致：PendingCommand → _HyExec）=====
 
         private static void SendCommand(Action command, string commandKey)
         {
-            SettingsPanelViewModel.EnqueuePendingCommand(command, commandKey);
+            CadHost.Commands.EnqueuePendingCommand(command, commandKey);
             AcApp.DocumentManager.MdiActiveDocument?.SendStringToExecute("_HyExec\n", true, false, false);
         }
 

@@ -3,14 +3,14 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Xdata;
-using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.EquipmentFoundation.Services
 {
@@ -172,7 +172,7 @@ namespace HyCADTool.Features.EquipmentFoundation.Services
                 }
 
                 // 尝试读取设备信息
-                var equipFilePath = SettingsPanelViewModel.Current?.EquipmentDataFilePath;
+                var equipFilePath = CadHost.Settings?.EquipmentDataFilePath;
                 if (!string.IsNullOrEmpty(equipFilePath))
                 {
                     try
@@ -242,7 +242,7 @@ namespace HyCADTool.Features.EquipmentFoundation.Services
             peoX.AddAllowedClass(typeof(Line), true);
             var perX = ed.GetEntity(peoX);
 
-            double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+            double scale = CadHost.Settings?.Scale ?? 40.0;
             var axes = new List<AxisData>();
 
             using (var tr = db.TransactionManager.StartTransaction())
@@ -487,7 +487,7 @@ namespace HyCADTool.Features.EquipmentFoundation.Services
                 return;
             }
 
-            double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+            double scale = CadHost.Settings?.Scale ?? 40.0;
             var guidEntityMap = BuildGuidEntityMap(db);
 
             using (var tr = db.TransactionManager.StartTransaction())

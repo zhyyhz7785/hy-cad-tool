@@ -8,13 +8,13 @@ using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell;
 using System.Windows;
 using System.Windows.Threading;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -165,7 +165,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                     {
                         try
                         {
-                            var pm = ServiceLocator.Resolve<PanelManager>();
+                            var pm = CadHost.Panels;
                             pm?.ShowAlignmentWorkbench(id, null);
                         }
                         catch

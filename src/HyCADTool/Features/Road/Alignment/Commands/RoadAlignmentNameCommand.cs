@@ -5,11 +5,11 @@ using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -96,7 +96,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
 
                     if (o.WasNew)
                     {
-                        var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults();
+                        var defaults = CadHost.Create<HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults>(CadHost.NewAlignmentDefaults);
                         if (defaults != null) o.Alignment.StartStation = defaults.DefaultStartStation;
                     }
 

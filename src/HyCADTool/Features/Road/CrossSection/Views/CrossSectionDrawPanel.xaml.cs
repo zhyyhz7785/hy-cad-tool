@@ -14,11 +14,10 @@ using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.CrossSection.Services;
-using HyCADTool.Shell;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.CrossSection.Views
 {
     /// <summary>
@@ -79,8 +78,8 @@ namespace HyCADTool.Features.Road.CrossSection.Views
 
             _currentFigure = viewModel.LastFigure;
             ApplyPanelVisibility();
-            if (SettingsPanelViewModel.Current != null)
-                SettingsPanelViewModel.Current.PropertyChanged += OnSettingsPropertyChanged;
+            if (CadHost.Settings != null)
+                CadHost.Settings.PropertyChanged += OnSettingsPropertyChanged;
             ScheduleRedrawPreview();
         }
 
@@ -88,8 +87,8 @@ namespace HyCADTool.Features.Road.CrossSection.Views
         {
             if (_vm == null) return;
 
-            if (SettingsPanelViewModel.Current != null)
-                SettingsPanelViewModel.Current.PropertyChanged -= OnSettingsPropertyChanged;
+            if (CadHost.Settings != null)
+                CadHost.Settings.PropertyChanged -= OnSettingsPropertyChanged;
             _vm.PreviewRequested -= OnPreviewRequested;
             _vm.PropertyChanged -= OnVmPropertyChanged;
             _vm.PickGeometryRequested -= OnPickGeometryRequested;
@@ -177,7 +176,7 @@ namespace HyCADTool.Features.Road.CrossSection.Views
             {
                 try
                 {
-                    ServiceLocator.Resolve<PanelManager>().HideCrossSectionPanel();
+                    CadHost.Panels.HideCrossSectionPanel();
                 }
                 catch
                 {
@@ -375,9 +374,9 @@ namespace HyCADTool.Features.Road.CrossSection.Views
 
         private void OnSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(SettingsPanelViewModel.RoadCrossSectionPlanStripVerticalOffsetM))
+            if (e.PropertyName == nameof(IHostSettings.RoadCrossSectionPlanStripVerticalOffsetM))
                 ScheduleRedrawPreview();
-            else if (e.PropertyName == nameof(SettingsPanelViewModel.RoadCrossSectionOrientationUseWestEast))
+            else if (e.PropertyName == nameof(IHostSettings.RoadCrossSectionOrientationUseWestEast))
                 _vm?.Recalculate();
         }
 
@@ -399,9 +398,9 @@ namespace HyCADTool.Features.Road.CrossSection.Views
 
         private void RedrawPreview()
         {
-            double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
+            double planOff = CadHost.Settings?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
             CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator, null,
-                SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec(),
+                CadHost.Settings?.CreateDrawingSheetTitleSpec(),
                 layout: _vm?.LastLayout,
                 planStripVerticalOffsetM: planOff,
                 onOrientationToggle: OnOrientationLabelClicked,
@@ -411,7 +410,7 @@ namespace HyCADTool.Features.Road.CrossSection.Views
 
         private static void OnOrientationLabelClicked()
         {
-            var sp = SettingsPanelViewModel.Current;
+            var sp = CadHost.Settings;
             if (sp == null) return;
             sp.RoadCrossSectionOrientationUseWestEast = !sp.RoadCrossSectionOrientationUseWestEast;
         }

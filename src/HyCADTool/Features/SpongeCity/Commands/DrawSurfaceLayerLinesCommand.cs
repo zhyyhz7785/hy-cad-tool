@@ -7,8 +7,8 @@ using HyCADTool.Features.SpongeCity.Infrastructure;
 using HyCADTool.Features.SpongeCity.ViewModels;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shared.AutoCAD.Interaction;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.SpongeCity.Commands
 {
@@ -113,7 +113,7 @@ namespace HyCADTool.Features.SpongeCity.Commands
         {
             try
             {
-                var s = SettingsPanelViewModel.Current?.Scale ?? 50.0;
+                var s = CadHost.Settings?.Scale ?? 50.0;
                 return s <= 0 ? 50.0 : s;
             }
             catch { return 50.0; }

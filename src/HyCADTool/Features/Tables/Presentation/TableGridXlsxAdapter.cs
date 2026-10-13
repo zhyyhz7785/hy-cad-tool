@@ -10,7 +10,7 @@ using HyCAD.Tables;
 using HyCAD.Tables.Operations;
 using HyCAD.Tables.Structure;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Features.SpongeCity.Infrastructure;
+using HyCADTool.Shared.Office;
 using TableCellValue = HyCAD.Tables.Data.CellValue;
 
 namespace HyCADTool.Features.Tables.Presentation

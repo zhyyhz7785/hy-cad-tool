@@ -13,7 +13,6 @@ using HyCADTool.Domain.ValueObjects.Road;
 
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.CrossSection.Services;
-using HyCADTool.Shell;
 namespace HyCADTool.Features.Road.CrossSection.Views
 {
     /// <summary>

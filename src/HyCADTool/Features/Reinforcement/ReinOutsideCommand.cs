@@ -1,15 +1,15 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Extensions;
-using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shell.Configuration;
+using HyCADTool.Shared.Configuration;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -27,7 +27,7 @@ namespace HyCADTool.Features.Reinforcement
             var db = doc.Database;
             var ed = doc.Editor;
 
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             double scale = ScaleResolver.GetScale();
             double protectionThickness = (vm?.ProtectionThickness ?? 1.0) * scale;
             double anchorageLength = ScaleResolver.GetAnchorageLength();

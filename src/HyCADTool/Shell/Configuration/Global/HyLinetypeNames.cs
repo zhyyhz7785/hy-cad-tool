@@ -1,4 +1,4 @@
-namespace HyCADTool.Shell.Configuration.Global
+namespace HyCADTool.Shared.Configuration.Global
 {
     /// <summary>与 <c>App/Resources/HyCAD-Linetypes.lin</c> 中定义的线型名一致。</summary>
     public static class HyLinetypeNames

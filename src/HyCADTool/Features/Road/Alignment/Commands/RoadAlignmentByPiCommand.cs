@@ -15,12 +15,11 @@ using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -109,7 +108,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                 alignment.Source = BuildAlignmentSource(elements);
 
                 // 起桩号取 hy-settings.json 默认（hyRoadAlnDefaults 可调）
-                var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults();
+                var defaults = CadHost.Create<HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults>(CadHost.NewAlignmentDefaults);
                 if (defaults != null) alignment.StartStation = defaults.DefaultStartStation;
 
                 tr.Commit();
@@ -156,7 +155,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
         {
             try
             {
-                var panels = ServiceLocator.Resolve<PanelManager>();
+                var panels = CadHost.Panels;
                 panels?.ShowAlignmentWorkbench(alignmentId, piIndex: null);
             }
             catch
@@ -239,7 +238,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             // 默认值复用上一次输入（radius/lsIn/lsOut），减少重复敲键。
             // 首次默认值从 hy-settings.json 的 AlignmentDefaults 读取（hyRoadAlnDefaults 可调）。
             var elements = new List<PiElement>(pts.Count);
-            var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults()
+            var defaults = CadHost.Create<HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults>(CadHost.NewAlignmentDefaults)
                           ?? new global::HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults();
             double lastR = defaults.DefaultRadius > 0 ? defaults.DefaultRadius : 30.0;
             double lastLsIn = defaults.DefaultSpiralIn;

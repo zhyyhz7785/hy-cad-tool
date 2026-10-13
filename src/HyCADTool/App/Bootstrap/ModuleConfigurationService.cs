@@ -1,4 +1,4 @@
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Shell.Configuration.Modules;
 using System;
 using System.Collections.Generic;

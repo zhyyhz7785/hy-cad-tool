@@ -36,7 +36,7 @@
 
 ## 依赖与协作
 
-- **Shell**：`IStyleService`、`SettingsPanelViewModel.Current`、`Shell.Contracts`。
+- **宿主**：`CadHost.Settings` / `Shared.Contracts`（不再直连 `HyCADTool.Shell`）。
 - **Shared**：`IPolygonOffsetService`、`EntityExtensions` 等。
 
 ## 开发与审查要点

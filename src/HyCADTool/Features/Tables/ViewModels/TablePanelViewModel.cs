@@ -23,9 +23,10 @@ using HyCADTool.Features.Tables.Presentation;
 
 using HyCADTool.Features.Tables.TableApp;
 
-using HyCADTool.Shell.ViewModels;
 
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 
 
@@ -124,7 +125,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         private static double ResolveDefaultScale()
         {
-            var s = SettingsPanelViewModel.Current?.Scale ?? 1.0;
+            var s = CadHost.Settings?.Scale ?? 1.0;
             return s > 0 ? s : 1.0;
         }
 
@@ -1054,7 +1055,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
         {
 
-            SettingsPanelViewModel.EnqueuePendingCommand(action, "N37");
+            CadHost.Commands.EnqueuePendingCommand(action, "N37");
 
             try
 
@@ -1068,7 +1069,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
                     StatusMessage = "无活动文档";
 
-                    SettingsPanelViewModel.ClearPendingCommand();
+                    CadHost.Commands.ClearPendingCommand();
 
                     InvokeCadInteractionCompleted();
 
@@ -1086,7 +1087,7 @@ namespace HyCADTool.Features.Tables.ViewModels
 
             {
 
-                SettingsPanelViewModel.ClearPendingCommand();
+                CadHost.Commands.ClearPendingCommand();
 
                 StatusMessage = "发送命令失败：" + ex.Message;
 

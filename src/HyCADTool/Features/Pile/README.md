@@ -32,8 +32,8 @@
 
 ## 依赖与协作
 
-- **Shell**：`PanelManager.OnDocumentToBeDestroyed` 调用 `PilePanelViewModel.RemoveDocument`。
-- **Shell.Configuration.User**：绘制服务常见依赖。
+- **宿主**：文档销毁仍由 Shell `PanelManager` 调用 `PilePanelViewModel.RemoveDocument`（host 组合 Features，允许）。
+- **设置**：`CadHost.Settings` / `Shared.Configuration.User`（绘制服务常见依赖）。
 
 ## 开发与审查要点
 

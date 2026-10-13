@@ -1,11 +1,11 @@
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.Reinforcement.Services;
-using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -111,8 +111,8 @@ namespace HyCADTool.Features.Reinforcement
             List<GroupBoundaryProfile> groupProfiles = null;
             if (useBoundaryProfile)
             {
-                SettingsPanelViewModel.CommitFocusedTextBoxValue();
-                var vm = SettingsPanelViewModel.Current;
+                CadHost.Commands.CommitFocusedTextBoxValue();
+                var vm = CadHost.Settings;
                 double foundationElevation = vm?.CompFoundationBottomElevation ?? ctx.Parameters.FoundationBottomElevationMm;
                 double embedmentDepth = vm?.CompEmbedmentDepth ?? ctx.Parameters.EmbedmentDepthMm;
                 groupProfiles = RegionBoundaryAnalyzer.AnalyzeAllGroups(

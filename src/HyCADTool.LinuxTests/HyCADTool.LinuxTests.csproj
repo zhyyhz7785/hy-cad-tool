@@ -29,13 +29,14 @@
     <ProjectReference Include="..\HYFEA\HYFEA.Hosting\HYFEA.Hosting.csproj" />
     <ProjectReference Include="..\HYFEA\HYFEA.Viz\HYFEA.Viz.csproj" />
     <ProjectReference Include="..\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj" />
+    <ProjectReference Include="..\..\build\tools\GenerateCommandTiers\GenerateCommandTiers.csproj" />
   </ItemGroup>
 
   <!-- 只编入纯算法文件，不引用 HyCADTool（net48 + WPF，Linux 上编不过）。 -->
   <ItemGroup>
     <Compile Include="..\HyCADTool\Features\Settlement\Gb50007SettlementDepth.cs" Link="Settlement\Gb50007SettlementDepth.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\FoundationType.cs" Link="Settlement\FoundationType.cs" />
-    <Compile Include="..\HyCADTool\Features\Settlement\SoilLayer.cs" Link="Settlement\SoilLayer.cs" />
+    <Compile Include="..\HyCADTool\Shared\Domain\SoilLayer.cs" Link="Settlement\SoilLayer.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementInput.cs" Link="Settlement\SettlementInput.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementResult.cs" Link="Settlement\SettlementResult.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementLayerResult.cs" Link="Settlement\SettlementLayerResult.cs" />
@@ -57,9 +58,11 @@
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentType.cs" Link="Reinforcement\ComponentType.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\ReinRegion.cs" Link="Reinforcement\ReinRegion.cs" />
     <Compile Include="..\HyCADTool\Features\Tables\Presentation\TableGridXlsxAdapter.cs" Link="Tables\TableGridXlsxAdapter.cs" />
-    <Compile Include="..\HyCADTool\Features\SpongeCity\Infrastructure\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
+    <Compile Include="..\HyCADTool\Shared\Office\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandTiers.g.cs" Link="Licensing\CommandTiers.g.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandRoutes.g.cs" Link="Licensing\CommandRoutes.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandModules.g.cs" Link="Licensing\CommandModules.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandModuleRegistry.cs" Link="Licensing\CommandModuleRegistry.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandRouteResolver.cs" Link="Licensing\CommandRouteResolver.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\LicenseCommandTierMap.cs" Link="Licensing\LicenseCommandTierMap.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\LicensingStub.cs" Link="Licensing\LicensingStub.cs" />

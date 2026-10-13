@@ -1,5 +1,5 @@
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Shared.AutoCAD.Interfaces;
 using System;
 using System.Collections.Generic;

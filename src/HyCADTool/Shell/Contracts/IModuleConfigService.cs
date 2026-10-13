@@ -1,4 +1,4 @@
-namespace HyCADTool.Shell.Contracts
+namespace HyCADTool.Shared.Contracts
 {
     /// <summary>
     /// 模块配置服务接口

@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.Elevation.Services;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Elevation
 {
@@ -109,7 +110,7 @@ namespace HyCADTool.Features.Elevation
             if (!double.IsNaN(_scale) && _scale > 0)
                 return _scale;
 
-            var settingsVm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
+            var settingsVm = CadHost.Settings;
             if (settingsVm != null && settingsVm.Scale > 0)
                 return settingsVm.Scale;
 

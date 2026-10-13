@@ -7,6 +7,7 @@ using HyCADTool.Features.Cluster.Domain.Models;
 using HyCADTool.Features.Cluster.Services;
 using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Shell.ViewModels
 {

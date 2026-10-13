@@ -13,9 +13,11 @@ using HyCADTool.Features.Settlement;
 using HyCADTool.Features.Settlement.Commands;
 using HyCADTool.Features.Settlement.Domain.Services;
 using HyCADTool.Features.DesignSpec.Domain;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.Domain;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Settlement.ViewModels
 {
@@ -66,7 +68,7 @@ namespace HyCADTool.Features.Settlement.ViewModels
 
         #region 只读属性
 
-        public double CurrentScale => SettingsPanelViewModel.Current?.Scale ?? 40.0;
+        public double CurrentScale => CadHost.Settings?.Scale ?? 40.0;
 
         /// <summary>复合地基模量提高系数 ξ = fspk / fak</summary>
         public double CompositeXi => BearingCapacity > 0 ? CompositeBearingCapacity / BearingCapacity : 0;
@@ -1405,9 +1407,9 @@ namespace HyCADTool.Features.Settlement.ViewModels
         private void SendCommand(Action commandAction, string commandKey)
         {
             SaveSettings();
-            SettingsPanelViewModel.EnqueuePendingCommand(() =>
+            CadHost.Commands.EnqueuePendingCommand(() =>
             {
-                var settingsVm = SettingsPanelViewModel.Current;
+                var settingsVm = CadHost.Settings;
                 settingsVm?.EnsureStylesApplied();
                 commandAction();
             }, commandKey);
@@ -1417,7 +1419,7 @@ namespace HyCADTool.Features.Settlement.ViewModels
                 if (doc == null)
                 {
                     StatusMessage = "无活动文档";
-                    SettingsPanelViewModel.ClearPendingCommand();
+                    CadHost.Commands.ClearPendingCommand();
                     return;
                 }
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
@@ -1425,7 +1427,7 @@ namespace HyCADTool.Features.Settlement.ViewModels
             catch (System.Exception ex)
             {
                 StatusMessage = $"发送命令失败: {ex.Message}";
-                SettingsPanelViewModel.ClearPendingCommand();
+                CadHost.Commands.ClearPendingCommand();
             }
         }
 

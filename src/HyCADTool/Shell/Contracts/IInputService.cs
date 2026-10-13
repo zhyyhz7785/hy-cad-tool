@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace HyCADTool.Shell.Contracts
+namespace HyCADTool.Shared.Contracts
 {
     /// <summary>
     /// 用户输入服务接口（平台无关）

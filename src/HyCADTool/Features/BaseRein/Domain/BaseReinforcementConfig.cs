@@ -1,6 +1,7 @@
 using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Features.DCEL.Domain.Enums;
 using System.Collections.Generic;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.BaseRein.Domain
 {
@@ -14,7 +15,7 @@ namespace HyCADTool.Features.BaseRein.Domain
         #region 基础参数
 
         /// <summary>
-        /// 主图形比例 — 运行时由 SettingsPanelViewModel.Scale 同步
+        /// 主图形比例 — 运行时由 IHostSettings.Scale 同步
         /// 不要手动设置此值，由 BaseReinPanelViewModel.SendCommand 自动填充
         /// </summary>
         public double Scale { get; set; }

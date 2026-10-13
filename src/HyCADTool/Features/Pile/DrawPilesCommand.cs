@@ -8,9 +8,9 @@ using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Pile.Services;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.Pile.ViewModels;
-using HyCADTool.Shell.ViewModels;
 using System;
 using System.Linq;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Pile
 {
@@ -33,7 +33,7 @@ namespace HyCADTool.Features.Pile
             }
 
             // Scale 统一从设置面板读取
-            var scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+            var scale = CadHost.Settings?.Scale ?? 40.0;
 
             try
             {

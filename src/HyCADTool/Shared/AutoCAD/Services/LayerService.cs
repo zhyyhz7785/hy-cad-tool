@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
-using HyCADTool.Shell.Contracts;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Contracts;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using System;
 using System.Collections.Generic;

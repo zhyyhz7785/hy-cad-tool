@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace HyCADTool.Shell.Commands.Base
+namespace HyCADTool.Shared.Commands
 {
     /// <summary>
     /// 极简命令接口

@@ -34,7 +34,7 @@ Blender 分类：`导出说明`。
 ## 依赖与协作
 
 - **DesignSpec**：`DesignSpecService`、编辑器视图。
-- **Shell**：`Shell.Configuration.Global`（线型目录等）。
+- **宿主**：`Shared.Configuration.Global`（线型目录等；不再直连 `HyCADTool.Shell`）。
 
 ## 开发与审查要点
 

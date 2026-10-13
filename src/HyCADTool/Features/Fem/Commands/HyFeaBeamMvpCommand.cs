@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-using HyCADTool.Shell.Commands;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Fem.Commands
 {
@@ -26,7 +26,7 @@ namespace HyCADTool.Features.Fem.Commands
             if (per.Status != PromptStatus.OK)
                 return;
 
-            ShowPanelCommand.ShowHyfeaBeamMvpPanel(per.ObjectId);
+            CadHost.Panels.ShowHyfeaBeamMvpPanel(per.ObjectId);
         }
     }
 }

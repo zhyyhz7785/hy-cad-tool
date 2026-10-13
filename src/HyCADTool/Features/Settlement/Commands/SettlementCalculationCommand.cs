@@ -6,8 +6,8 @@ using HyCADTool.Features.Settlement;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.Settlement.ViewModels;
 using HyCADTool.Features.Settlement.Views;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Settlement.Commands
 {
@@ -61,7 +61,7 @@ namespace HyCADTool.Features.Settlement.Commands
         {
             try
             {
-                double scale = SettingsPanelViewModel.Current?.Scale ?? 40.0;
+                double scale = CadHost.Settings?.Scale ?? 40.0;
 
                 var ptResult = ed.GetPoint("\n选择沉降计算表格插入点: ");
                 if (ptResult.Status != PromptStatus.OK)

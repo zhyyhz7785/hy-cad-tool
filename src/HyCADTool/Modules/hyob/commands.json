@@ -1,0 +1,111 @@
+{
+    "version": 2,
+    "module": "hyob",
+    "_description": "HyCADTool 模块 hyob 的命令清单。档位与 ReCall/commands.json 一致，拆分后由 GenerateCommandTiers 汇总。",
+    "commands": {
+        "hyobI": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobInitCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "初始化",
+            "tooltip": "在当前 DWG 旁初始化 .hyob/（hyobI）",
+            "order": 10
+        },
+        "hyobS": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobStatusCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "状态",
+            "tooltip": "显示 HEAD / 分支 tip / 仓库摘要（hyobS）",
+            "order": 20
+        },
+        "hyobC": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobCommitCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "提交",
+            "tooltip": "把当前 Database 快照 commit 到 hyob（hyobC）",
+            "order": 30
+        },
+        "hyobL": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobLogCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "日志",
+            "tooltip": "打印 commit 历史（含 +~− stat）（hyobL）",
+            "order": 40
+        },
+        "hyobCo": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobCheckoutCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "切换",
+            "tooltip": "切换 HEAD 到分支 / commit（不改 Database）（hyobCo）",
+            "order": 50
+        },
+        "hyobD": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobDiffCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "差异",
+            "tooltip": "比较两 commit / WIP vs HEAD，支持字段级 diff（hyobD）",
+            "order": 60
+        },
+        "hyobR": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobRoundTripCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "自检",
+            "tooltip": "DAG + 对象解码 round-trip 自检（hyobR）",
+            "order": 70
+        },
+        "hyobG": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobGcCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "打包",
+            "tooltip": "loose → Deflate pack，删已打包 loose（hyobG）",
+            "order": 80
+        },
+        "hyobB": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobBranchCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "分支",
+            "tooltip": "list / new / delete 分支（hyobB）",
+            "order": 90
+        },
+        "hyobM": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobMergeCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "合并",
+            "tooltip": "三路合并 ref 到当前分支（不改 Database）（hyobM）",
+            "order": 100
+        },
+        "hyobP": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobShowHistoryPanelCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "历史面板",
+            "tooltip": "PaletteSet：commit 列表 / diff / WIP / 自检（hyobP）",
+            "order": 110
+        },
+        "hyobES": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobExportHygeomCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "导出快照",
+            "tooltip": "commit → hygeom JSON（可 layer/type/handle 过滤）（hyobES）",
+            "order": 120
+        },
+        "hyobAp": {
+            "type": "HyCADTool.Features.DataExchange.Hyob.Presentation.Commands.HyobApplyCommand",
+            "method": "Execute",
+            "category": "hyob",
+            "displayName": "反向应用",
+            "tooltip": "把 ref 的 hyob 快照应用回 AutoCAD Database（M9-B：Line/Circle/Arc/Polyline/DBText/MText）（hyobAp）",
+            "order": 130
+        }
+    }
+}

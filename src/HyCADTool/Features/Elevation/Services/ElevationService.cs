@@ -9,6 +9,7 @@ using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using System.Collections.Generic;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Elevation.Services
 {
@@ -65,7 +66,7 @@ namespace HyCADTool.Features.Elevation.Services
         {
             try
             {
-                var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
+                var vm = CadHost.Settings;
                 if (vm != null)
                 {
                     double unitFactor = vm.BuildScaleContext().UnitFactor;
@@ -290,7 +291,7 @@ namespace HyCADTool.Features.Elevation.Services
 
         private static ObjectId CreateTextStyleForElevation(Database db, Document doc)
         {
-            var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             string styleName = vm != null ? vm.TextStyleName : "0_Hy_40";
             string fontName = vm != null ? vm.FontFileName : "tssdeng.shx";
             string bigFontName = vm != null ? vm.BigFontFileName : "hztxt.shx";

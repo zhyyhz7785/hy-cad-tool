@@ -42,14 +42,14 @@
 1. 只属于本业务？→ `Features/<切片>/` 下按上表选子目录。
 2. 多个业务都会用？→ **`HyCAD.Geometry`**（纯几何）或 `Shared/AutoCAD`（CAD 封装）。
 3. 全局 UI 框架/配置清单？→ 不放进 Feature；与维护者确认是否 `Shell`。
-4. 需要发 AutoCAD 命令串（与 `commands.json` 一致）？→ 可用 `Shell.Commands.CommandDispatcher.Send`（视为机箱提供的公共服务）。
+4. 需要发 AutoCAD 命令串（与 `commands.json` 一致）？→ 走 `CadHost.Commands`（宿主命令通道），不要再写 `HyCADTool.Shell`。
 
 ---
 
 ## PR Review Checklist（改 Features 时逐项勾）
 
 - [ ] **分层**：新算法默认进 `Domain/` 或 `Services/`；未在命令类里堆数百行业务逻辑。
-- [ ] **依赖方向**：未让 `Domain` 引用 AutoCAD、`ViewModels` 或 `Shell.Configuration`（读用户设置可通过注入或服务，避免 Domain 直接绑 `HyCadUserSettings`）。
+- [ ] **依赖方向**：未让 `Domain` 引用 AutoCAD、`ViewModels` 或 `HyCADTool.Shell`；读用户设置走 `CadHost.Settings` / `Shared.Configuration`。
 - [ ] **跨切片**：未在 Feature A 里 `using Features.B` 深层类型；共用逻辑应下沉 `Shared` 或上提契约。
 - [ ] **命令注册**：新命令已写入 `commands.json`、与 ReCall 占位符流程一致（见 `.cursor/skills/hycad-new-command-registration/SKILL.md`）。
 - [ ] **设置与 Shell**：若改 `SettingsPanelViewModel` / 全局样式，确认是否影响所有命令；缩放/单位规则见 `.cursor/rules/01-AI热启动模式.mdc`。

@@ -1,5 +1,6 @@
 using System;
 using HyCADTool.Shared.Drawing.Models;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Shared.AutoCAD.Services
 {
@@ -8,7 +9,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
     /// 命令在写新实体时统一调用 <see cref="Current"/> 拿到 <see cref="ScaleContext"/>，
     /// 用其 <c>GeomMul</c> 乘到 <c>LinetypeScale</c> / <c>Hatch.PatternScale</c> / 块 <c>ScaleFactors</c>。
     /// 
-    /// 由 <c>SettingsPanelViewModel</c> 在参数变更时调用 <see cref="Set"/> 推送最新快照；
+    /// 由 <c>IHostSettings</c> 在参数变更时调用 <see cref="Set"/> 推送最新快照；
     /// 命令侧只读不写。
     /// 
     /// 本期仅提供 provider + 约定；老命令按需逐步迁移。
