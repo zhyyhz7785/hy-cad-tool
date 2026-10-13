@@ -145,20 +145,75 @@ namespace HyCADTool.LinuxTests
                         continue;
                     if (field.Modifiers.Any(SyntaxKind.ConstKeyword))
                         continue;
-                    if (field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword))
-                        continue;
                     if (HasProcessWide(field))
+                        continue;
+                    var readonlyField = field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
+                    if (readonlyField && !IsMutableCollectionType(field.Declaration.Type))
                         continue;
                     foreach (var variable in field.Declaration.Variables)
                         hits.Add(rel + "::" + variable.Identifier.Text);
+                }
+
+                foreach (var prop in rootNode.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                {
+                    if (!prop.Modifiers.Any(SyntaxKind.StaticKeyword))
+                        continue;
+                    if (HasProcessWide(prop))
+                        continue;
+                    if (!HasWritableAccessor(prop))
+                        continue;
+                    hits.Add(rel + "::" + prop.Identifier.Text);
+                }
+
+                foreach (var ev in rootNode.DescendantNodes().OfType<EventFieldDeclarationSyntax>())
+                {
+                    if (!ev.Modifiers.Any(SyntaxKind.StaticKeyword))
+                        continue;
+                    if (HasProcessWide(ev))
+                        continue;
+                    foreach (var variable in ev.Declaration.Variables)
+                        hits.Add(rel + "::event " + variable.Identifier.Text);
                 }
             }
             return hits;
         }
 
-        private static bool HasProcessWide(FieldDeclarationSyntax field)
+        private static bool HasWritableAccessor(PropertyDeclarationSyntax prop)
         {
-            foreach (var list in field.AttributeLists)
+            if (prop.AccessorList == null)
+                return false;
+            foreach (var acc in prop.AccessorList.Accessors)
+            {
+                if (acc.IsKind(SyntaxKind.SetAccessorDeclaration) || acc.IsKind(SyntaxKind.InitAccessorDeclaration))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsMutableCollectionType(TypeSyntax type)
+        {
+            var text = type.ToString();
+            if (text.IndexOf("IReadOnly", StringComparison.Ordinal) >= 0)
+                return false;
+            if (text.IndexOf("Immutable", StringComparison.Ordinal) >= 0)
+                return false;
+            if (text.IndexOf("ReadOnlySpan", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyMemory", StringComparison.Ordinal) >= 0)
+                return false;
+
+            return text.IndexOf("List<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Dictionary<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("HashSet<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Queue<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Stack<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Collection<", StringComparison.Ordinal) >= 0
+                || text.IndexOf("Concurrent", StringComparison.Ordinal) >= 0
+                || text.EndsWith("[]", StringComparison.Ordinal);
+        }
+
+        private static bool HasProcessWide(MemberDeclarationSyntax member)
+        {
+            foreach (var list in member.AttributeLists)
             {
                 foreach (var attr in list.Attributes)
                 {
