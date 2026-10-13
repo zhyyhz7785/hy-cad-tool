@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.IO;
+using HyCADTool.Shared.Core;
 using HyCADTool.Shell.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
 using HyCADTool.Features.Pile.Domain.Entities;
@@ -373,8 +375,37 @@ namespace HyCADTool.App.Bootstrap
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            var json = JsonConvert.SerializeObject(config, Formatting.Indented);
-            File.WriteAllText(filePath, json);
+            var root = LoadOrCreateRoot(filePath);
+            if (config is GlobalConfiguration)
+                root["GlobalConfiguration"] = JObject.FromObject(config);
+            else
+                root[typeof(T).Name] = JObject.FromObject(config);
+
+            AtomicFile.WriteAllText(filePath, root.ToString(Formatting.Indented));
+            _configData = root;
+        }
+
+        internal static JObject MergeSectionForTest(JObject existing, string sectionName, JToken section)
+        {
+            var root = existing ?? new JObject();
+            root[sectionName] = section;
+            return root;
+        }
+
+        private static JObject LoadOrCreateRoot(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return new JObject();
+
+            try
+            {
+                var parsed = JObject.Parse(File.ReadAllText(filePath));
+                return parsed ?? new JObject();
+            }
+            catch
+            {
+                return new JObject();
+            }
         }
 
         /// <summary>
@@ -414,7 +445,7 @@ namespace HyCADTool.App.Bootstrap
             if (string.IsNullOrWhiteSpace(value))
                 return defaultValue;
 
-            if (double.TryParse(value, out var result))
+            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var result))
                 return result;
 
             return defaultValue;
@@ -428,7 +459,7 @@ namespace HyCADTool.App.Bootstrap
             if (string.IsNullOrWhiteSpace(value))
                 return defaultValue;
 
-            if (int.TryParse(value, out var result))
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
                 return result;
 
             return defaultValue;

@@ -49,6 +49,7 @@
     <Compile Include="..\HyCADTool\Shared\AutoCAD\Interaction\DisposableBag.cs" Link="Interaction\DisposableBag.cs" />
     <Compile Include="..\HyCADTool\Shared\AutoCAD\Session\DocumentSession.cs" Link="Session\DocumentSession.cs" />
     <Compile Include="..\HyCADTool\Shared\AutoCAD\Session\DocumentSessionStore.cs" Link="Session\DocumentSessionStore.cs" />
+    <Compile Include="..\HyCADTool\Shared\Core\AtomicFile.cs" Link="Core\AtomicFile.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentSession.cs" Link="Reinforcement\ComponentSession.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentRegion.cs" Link="Reinforcement\ComponentRegion.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentType.cs" Link="Reinforcement\ComponentType.cs" />

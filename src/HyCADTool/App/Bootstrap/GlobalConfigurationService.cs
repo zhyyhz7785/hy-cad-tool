@@ -55,31 +55,7 @@ namespace HyCADTool.App.Bootstrap
         /// </summary>
         private string FindConfigFile()
         {
-            var locations = new[]
-            {
-                // 1. 尝试从 Assembly.Location（正常情况）
-                Path.GetDirectoryName(typeof(GlobalConfigurationService).Assembly.Location),
-                // 2. 当前工作目录
-                Environment.CurrentDirectory,
-                // 3. AppDomain 基目录
-                AppDomain.CurrentDomain.BaseDirectory,
-                // 4. 已知的开发路径（用于热重启场景）
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "HyCADTool", "bin", "Debug")
-            };
-
-            foreach (var location in locations)
-            {
-                if (string.IsNullOrEmpty(location)) continue;
-                
-                var configPath = Path.Combine(location, "config.json");
-                if (File.Exists(configPath))
-                {
-                    return configPath;
-                }
-            }
-
-            // 如果都找不到，返回默认路径（后续会使用默认配置）
-            return Path.Combine(Environment.CurrentDirectory, "config.json");
+            return ConfigFileLocator.FindConfigJson();
         }
 
         /// <summary>

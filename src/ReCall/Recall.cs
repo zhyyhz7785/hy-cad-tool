@@ -723,9 +723,9 @@ namespace HyCADTool.ReCall
                 vmType.GetMethod("CommitFocusedTextBoxValue", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
                 vmType.GetMethod("EnsureStylesApplied", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
             }
-            catch
+            catch (System.Exception ex)
             {
-                /* 钩子失败不应阻塞命令执行，最坏情况下面板最新参数没同步 */
+                System.Diagnostics.Trace.WriteLine("[HyCAD] ReCall 前置钩子失败: " + ex.Message);
             }
         }
 

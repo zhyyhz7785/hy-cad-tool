@@ -26,6 +26,7 @@ using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.TitleBlock.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.Core;
 using HyCADTool.Shared.UI.Helpers;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -81,14 +82,33 @@ namespace HyCADTool.Shell.ViewModels
             {
                 if (_instance != null) return _instance;
 
-                IStyleService styleService = null;
-                try { styleService = ServiceLocator.Container?.Resolve<IStyleService>(); }
-                catch { }
+                try
+                {
+                    var container = ServiceLocator.Container;
+                    if (container != null && container.IsRegistered<SettingsPanelViewModel>())
+                    {
+                        _instance = container.Resolve<SettingsPanelViewModel>();
+                        return _instance;
+                    }
 
-                _instance = styleService != null
-                    ? new SettingsPanelViewModel(styleService)
-                    : new SettingsPanelViewModel();
-                return _instance;
+                    IStyleService styleService = null;
+                    try { styleService = container?.Resolve<IStyleService>(); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Trace.WriteLine("[HyCAD] 解析 IStyleService 失败: " + ex.Message);
+                    }
+
+                    _instance = styleService != null
+                        ? new SettingsPanelViewModel(styleService)
+                        : new SettingsPanelViewModel();
+                    return _instance;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine("[HyCAD] SettingsPanelViewModel.Current: " + ex.Message);
+                    _instance = new SettingsPanelViewModel();
+                    return _instance;
+                }
             }
         }
 
@@ -134,6 +154,8 @@ namespace HyCADTool.Shell.ViewModels
 
         public SettingsPanelViewModel(IStyleService styleService)
         {
+            if (_instance == null)
+                _instance = this;
             _styleService = styleService;
 
             ApplyStyleCommand = new RelayCommand(SaveAsDefault);
@@ -1698,6 +1720,8 @@ namespace HyCADTool.Shell.ViewModels
         /// </summary>
         public void SaveSettings(string explicitPath = null)
         {
+            if (_settingsLoadFailed && explicitPath == null)
+                return;
             try
             {
                 var data = new SettingsData
@@ -1827,7 +1851,7 @@ namespace HyCADTool.Shell.ViewModels
                 };
 
                 var json = JsonConvert.SerializeObject(data, Formatting.Indented);
-                File.WriteAllText(explicitPath ?? GetSettingsFilePath(), json);
+                AtomicFile.WriteAllText(explicitPath ?? GetSettingsFilePath(), json);
             }
             catch (Exception ex)
             {
@@ -1854,6 +1878,7 @@ namespace HyCADTool.Shell.ViewModels
         public void LoadSettings(string explicitPath = null)
         {
             _isLoading = true;
+            _settingsLoadFailed = false;
             _layerCatalogSchemaVersionBeforeLoad = int.MinValue;
             try
             {
@@ -1875,6 +1900,8 @@ namespace HyCADTool.Shell.ViewModels
                 if (data == null)
                 {
                     _isLoading = false;
+                    _settingsLoadFailed = true;
+                    _autoSaveEnabled = false;
                     _layerCatalogSchemaVersionBeforeLoad = 0;
                     LoadLayerCatalogFromSettingsData(null);
                     SetRoadMaterialFillSettings(null);
@@ -2029,7 +2056,9 @@ namespace HyCADTool.Shell.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"加载设置失败: {ex.Message}（使用默认值）");
+                _settingsLoadFailed = true;
+                _autoSaveEnabled = false;
+                System.Diagnostics.Trace.WriteLine("[HyCAD] 加载 hy-settings 失败，已停自动保存以免覆盖用户文件: " + ex.Message);
                 SetRoadMaterialFillSettings(null);
                 _linetypeCatalogSnapshot = null;
             }
@@ -2048,7 +2077,8 @@ namespace HyCADTool.Shell.ViewModels
 
                 OnPropertyChanged(nameof(AppliedDimStyleName));
 
-                if (_layerCatalogSchemaVersionBeforeLoad != int.MinValue
+                if (!_settingsLoadFailed
+                    && _layerCatalogSchemaVersionBeforeLoad != int.MinValue
                     && _layerCatalogSchemaVersionBeforeLoad < LayerCatalogFactory.CurrentCatalogVersion)
                 {
                     try { SaveSettings(); }
@@ -2274,6 +2304,7 @@ namespace HyCADTool.Shell.ViewModels
         /// 加载中标记：防止 LoadSettings → 属性 setter → SaveSettings 循环
         /// </summary>
         private bool _isLoading;
+        private bool _settingsLoadFailed;
 
         protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string propertyName = null)
         {
