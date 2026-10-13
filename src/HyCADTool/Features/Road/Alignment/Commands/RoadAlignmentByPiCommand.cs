@@ -214,9 +214,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                 ed.WriteMessage("\n[道路] 已取消。");
                 return null;
             }
-            pts.Add(new Point2D(firstRes.Value.X, firstRes.Value.Y));
-
-            var jig = new AlignmentPiPickJig(firstRes.Value);
+            var jig = new AlignmentPiPickJig(ed, firstRes.Value);
             var jigRes = jig.Run(ed);
             if (jigRes == PromptStatus.Cancel)
             {
@@ -224,7 +222,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                 return null;
             }
 
-            for (int i = 1; i < jig.Points.Count; i++)
+            for (int i = 0; i < jig.Points.Count; i++)
             {
                 var p = jig.Points[i];
                 pts.Add(new Point2D(p.X, p.Y));

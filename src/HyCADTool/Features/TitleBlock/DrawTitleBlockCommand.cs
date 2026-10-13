@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.TitleBlock.Services;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.TitleBlock
@@ -50,7 +51,7 @@ namespace HyCADTool.Features.TitleBlock
                     var ps = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.PaperSpace], OpenMode.ForWrite);
 
                     var tb = TitleBlockFactory.Create(sizeRes.StringResult, scaleRes.Value);
-                    TitleBlockDrawer.Draw(tr, ps, tb, db, ptRes.Value);
+                    TitleBlockDrawer.Draw(tr, ps, tb, db, EditorWcs.ToWcs(ed, ptRes.Value));
 
                     tr.Commit();
                     ed.WriteMessage($"\n图框绘制完成: {tb.Name}, 放大 {scaleRes.Value}");

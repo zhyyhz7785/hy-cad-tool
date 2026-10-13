@@ -6,6 +6,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -145,7 +146,7 @@ namespace HyCADTool.Features.Road.PlanProfile.Commands
                 ed.WriteMessage("\n[道路] 已取消。");
                 return;
             }
-            Point3d origin = ppr.Value;
+            Point3d origin = EditorWcs.ToWcs(ed, ppr.Value);
 
             // ===== 6) 绘制 =====
             var drawSvc = new ProfileLabelDrawService();

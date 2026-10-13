@@ -6,6 +6,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.Road.CrossSection.Services;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.App.Bootstrap;
@@ -50,7 +51,8 @@ namespace HyCADTool.Features.Road.CrossSection.Services.Workflows
                 doc.Editor.WriteMessage("\n[道路] 已取消。");
                 return null;
             }
-            return new Point2d(res.Value.X, res.Value.Y);
+            var wcs = EditorWcs.ToWcs(doc.Editor, res.Value);
+            return new Point2d(wcs.X, wcs.Y);
         }
 
         /// <summary>

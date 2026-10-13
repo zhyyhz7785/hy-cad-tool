@@ -6,6 +6,7 @@ using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Elevation
 {
@@ -30,7 +31,7 @@ namespace HyCADTool.Features.Elevation
                 // 选择基点
                 PromptPointResult ppr = ed.GetPoint("\n选择基点: ");
                 if (ppr.Status != PromptStatus.OK) return;
-                Point3d basePoint = ppr.Value;
+                Point3d basePoint = EditorWcs.ToWcs(ed, ppr.Value);
 
                 // 确保图层/文字样式
                 var (textStyleId, layerId) = ElevationService.EnsureStylesCreated();

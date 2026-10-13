@@ -6,6 +6,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.GraphicsInterface;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using AcDbPolyline = Autodesk.AutoCAD.DatabaseServices.Polyline;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Shared.AutoCAD.Interactive
 {
@@ -15,15 +16,23 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
     /// </summary>
     public sealed class AlignmentPiPickJig : DrawJig
     {
+        private readonly Editor _editor;
         private readonly List<Point3d> _points;
         private Point3d _cursor;
+        private Point3d _cursorUcs;
         private bool _hasCursorSample;
 
-        /// <param name="firstPoint">已通过 <see cref="Editor.GetPoint"/> 取得的 PI 起点。</param>
-        public AlignmentPiPickJig(Point3d firstPoint)
+        /// <param name="firstPointUcs">已通过 <see cref="Editor.GetPoint"/> 取得的 PI 起点（UCS）。</param>
+        public AlignmentPiPickJig(Editor editor, Point3d firstPointUcs)
         {
-            _points = new List<Point3d> { firstPoint };
-            _cursor = firstPoint;
+            if (editor == null)
+                throw new ArgumentNullException(nameof(editor));
+
+            _editor = editor;
+            var first = EditorWcs.ToWcs(editor, firstPointUcs);
+            _points = new List<Point3d> { first };
+            _cursor = first;
+            _cursorUcs = firstPointUcs;
             _hasCursorSample = false;
         }
 
@@ -89,7 +98,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 $"\n[道路] 指定下一 PI 点（已 {_points.Count} 个，回车结束）[撤销(Z)]：")
             {
                 UseBasePoint = true,
-                BasePoint = _points[_points.Count - 1],
+                BasePoint = EditorWcs.ToUcs(_editor, _points[_points.Count - 1]),
             };
             opts.Keywords.Add("撤销");
             opts.Keywords.Add("Z");
@@ -102,10 +111,11 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             if (result.Status == PromptStatus.OK)
             {
                 if (_hasCursorSample &&
-                    result.Value.IsEqualTo(_cursor, new Tolerance(1e-10, 1e-10)))
+                    result.Value.IsEqualTo(_cursorUcs, new Tolerance(1e-10, 1e-10)))
                     return SamplerStatus.NoChange;
 
-                _cursor = result.Value;
+                _cursorUcs = result.Value;
+                _cursor = EditorWcs.ToWcs(_editor, result.Value);
                 _hasCursorSample = true;
                 return SamplerStatus.OK;
             }

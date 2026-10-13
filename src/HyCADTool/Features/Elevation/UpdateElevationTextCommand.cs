@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.Elevation.Services;
 
 namespace HyCADTool.Features.Elevation
@@ -25,7 +26,7 @@ namespace HyCADTool.Features.Elevation
                     ed.WriteMessage("\n未成功选择原点，命令中止。");
                     return;
                 }
-                var newBasePoint = ppr.Value;
+                var newBasePoint = EditorWcs.ToWcs(ed, ppr.Value);
 
                 // 构建符号字典
                 var symbolDict = ElevationService.BuildSymbolDictionaryFromSelection();

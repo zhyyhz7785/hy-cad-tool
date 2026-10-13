@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -56,12 +57,13 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             {
                 AllowNone = false,
                 UseBasePoint = true,
-                BasePoint = new Point3d(basePi.X, basePi.Y, 0),
+                BasePoint = EditorWcs.ToUcs(ed, new Point3d(basePi.X, basePi.Y, 0)),
                 UseDashedLine = true,
             };
             var pres = ed.GetPoint(ppo);
             if (pres.Status != PromptStatus.OK) { ed.WriteMessage("\n[道路] 已取消。"); return; }
-            var newP = new Point2D(pres.Value.X, pres.Value.Y);
+            var picked = EditorWcs.ToWcs(ed, pres.Value);
+            var newP = new Point2D(picked.X, picked.Y);
 
             // Step 3：R / Ls 默认值来自 hy-settings.json
             var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults()

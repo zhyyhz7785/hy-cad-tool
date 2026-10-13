@@ -7,6 +7,7 @@ using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.Pile.ViewModels;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shell.Configuration;
@@ -309,7 +310,7 @@ namespace HyCADTool.Features.Pile
                     // 让用户选择表格插入点
                     var ptResult = ed.GetPoint("\n选择表格插入点: ");
                     if (ptResult.Status == PromptStatus.OK)
-                        table.Position = ptResult.Value;
+                        table.Position = EditorWcs.ToWcs(ed, ptResult.Value);
                     else
                         table.Position = new Point3d(0, 0, 0);
 

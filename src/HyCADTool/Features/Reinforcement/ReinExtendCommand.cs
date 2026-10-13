@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.Configuration;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -50,7 +51,7 @@ namespace HyCADTool.Features.Reinforcement
                     if (poly == null || poly.NumberOfVertices < 2) { trans.Abort(); return; }
 
                     // 2. 按点击位置决定延长哪一端（不反转库内多段线）
-                    bool extendFromStart = IsPickedNearStart(poly, per.PickedPoint);
+                    bool extendFromStart = IsPickedNearStart(poly, EditorWcs.ToWcs(ed, per.PickedPoint));
 
                     // 3. 识别弯钩跨度 + 主筋外伸方向（弯钩随主筋整体平移，原样保留）
                     if (!TryGetHookSpan(poly, anchorageLength, extendFromStart, out int mainTipIndex, out int mainPrevIndex))

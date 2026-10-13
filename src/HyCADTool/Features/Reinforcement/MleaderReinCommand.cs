@@ -6,6 +6,7 @@ using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shell.Configuration;
@@ -204,7 +205,7 @@ namespace HyCADTool.Features.Reinforcement
                 var pl = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Polyline;
                 if (pl == null) { tr.Commit(); return null; }
 
-                var points = GetPointsAlongPolyline(pl, per.PickedPoint, pointOffset, dotReinOffset);
+                var points = GetPointsAlongPolyline(pl, EditorWcs.ToWcs(ed, per.PickedPoint), pointOffset, dotReinOffset);
                 tr.Commit();
                 return points;
             }
@@ -234,7 +235,7 @@ namespace HyCADTool.Features.Reinforcement
                 if (pl == null) { tr.Commit(); return null; }
 
                 // 找到选中位置对应的线段
-                Point3d closestPt = pl.GetClosestPointTo(per.PickedPoint, false);
+                Point3d closestPt = pl.GetClosestPointTo(EditorWcs.ToWcs(ed, per.PickedPoint), false);
                 double param = pl.GetParameterAtPoint(closestPt);
                 int segIndex = Math.Min((int)Math.Floor(param), Math.Max(pl.NumberOfVertices - 2, 0));
 
