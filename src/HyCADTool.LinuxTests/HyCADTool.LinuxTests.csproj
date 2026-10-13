@@ -17,6 +17,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,6 +46,10 @@
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\ReinRegion.cs" Link="Reinforcement\ReinRegion.cs" />
     <Compile Include="..\HyCADTool\Features\Tables\Presentation\TableGridXlsxAdapter.cs" Link="Tables\TableGridXlsxAdapter.cs" />
     <Compile Include="..\HyCADTool\Features\SpongeCity\Infrastructure\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandTiers.g.cs" Link="Licensing\CommandTiers.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\LicenseCommandTierMap.cs" Link="Licensing\LicenseCommandTierMap.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\LicensingStub.cs" Link="Licensing\LicensingStub.cs" />
+    <Compile Include="..\HyCADTool\Shell\Commands\CommandCatalog.cs" Link="Licensing\CommandCatalog.cs" />
   </ItemGroup>
 
 </Project>

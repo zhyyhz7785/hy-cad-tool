@@ -437,4 +437,16 @@
 
   <!-- 已删除的废弃文件：ReinPanel.xaml/.cs、ReinPanelViewModel.cs、ShowMainPanelCommand.cs（2026-02-10 第三轮清理） -->
 
+  <!-- S-01：从 commands.json 生成编译期许可档位表。python3 不在 PATH 时沿用已提交的 CommandTiers.g.cs。 -->
+  <Target Name="GenerateCommandTiers" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_CommandTiersScript>$(MSBuildThisFileDirectory)..\..\build\scripts\generate_command_tiers.py</_CommandTiersScript>
+    </PropertyGroup>
+    <Exec Command="python3 &quot;$(_CommandTiersScript)&quot;"
+          Condition="Exists('$(_CommandTiersScript)')"
+          IgnoreExitCode="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low" />
+  </Target>
+
 </Project>
