@@ -25,9 +25,19 @@ public sealed class SparseLinearStaticAnalysis
     /// <param name="solver">指定求解器;null 则用 CSparseSystemSolver</param>
     /// <param name="elements">单元贡献注册表；null 则用内置默认</param>
     public SparseLinearStaticAnalysis(ILinearSystemSolver? solver = null, ElementContributionRegistry? elements = null)
+        : this(new FemContext(elements), solver)
     {
-        _solver = solver ?? new CSparseSystemSolver();
-        _elements = elements ?? new ElementContributionRegistry();
+    }
+
+    /// <summary>用同一 <see cref="FemContext"/> 建布局、装配与恢复，便于外部注入贡献。</summary>
+    public SparseLinearStaticAnalysis(FemContext context, ILinearSystemSolver? solver = null)
+    {
+        if (context == null)
+            throw new ArgumentNullException(nameof(context));
+        _elements = context.Elements;
+        _solver = solver ?? (context.Solvers.Default.SupportsSparse
+            ? context.Solvers.Default
+            : new CSparseSystemSolver());
         if (!_solver.SupportsSparse)
             throw new ArgumentException(
                 $"Solver '{_solver.Name}' does not natively support sparse; use LinearStaticAnalysis instead.",
