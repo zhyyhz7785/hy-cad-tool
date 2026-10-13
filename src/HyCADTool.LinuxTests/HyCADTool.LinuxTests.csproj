@@ -29,6 +29,7 @@
     <ProjectReference Include="..\HYFEA\HYFEA.Hosting\HYFEA.Hosting.csproj" />
     <ProjectReference Include="..\HYFEA\HYFEA.Viz\HYFEA.Viz.csproj" />
     <ProjectReference Include="..\HyCADTool.TextLayout\HyCADTool.TextLayout.csproj" />
+    <ProjectReference Include="..\..\build\tools\GenerateCommandTiers\GenerateCommandTiers.csproj" />
   </ItemGroup>
 
   <!-- 只编入纯算法文件，不引用 HyCADTool（net48 + WPF，Linux 上编不过）。 -->

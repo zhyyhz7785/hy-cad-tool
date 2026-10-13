@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+
+[assembly: InternalsVisibleTo("HyCADTool.LinuxTests")]
 
 namespace GenerateCommandTiers
 {
@@ -632,7 +635,46 @@ namespace GenerateCommandTiers
             }
 
             list.Sort((a, b) => string.CompareOrdinal(a.ModuleId, b.ModuleId));
+            var pairs = new List<(string ModuleId, string[] Keys)>(list.Count);
+            foreach (var module in list)
+            {
+                var keys = new string[module.Rows.Count];
+                for (var i = 0; i < module.Rows.Count; i++)
+                    keys[i] = module.Rows[i].Key;
+                pairs.Add((module.ModuleId, keys));
+            }
+            try
+            {
+                EnsureUniqueModuleKeys(pairs);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                return null;
+            }
             return list;
+        }
+
+        /// <summary>跨模块命令键 OrdinalIgnoreCase 必须唯一；冲突直接失败，禁止后写覆盖。</summary>
+        internal static void EnsureUniqueModuleKeys(IReadOnlyList<(string ModuleId, string[] Keys)> modules)
+        {
+            if (modules == null)
+                return;
+            var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var module in modules)
+            {
+                if (module.Keys == null)
+                    continue;
+                foreach (var key in module.Keys)
+                {
+                    if (string.IsNullOrEmpty(key))
+                        continue;
+                    if (seen.TryGetValue(key, out var prev))
+                        throw new InvalidOperationException(
+                            "命令键冲突: '" + key + "' 同时出现在模块 " + prev + " 与 " + module.ModuleId + "。");
+                    seen[key] = module.ModuleId;
+                }
+            }
         }
 
         private static string RenderModules(List<ModuleRows> modules)
