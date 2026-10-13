@@ -1,4 +1,4 @@
-# Features 引用 HyCADTool.Shell 的计数基线（文件::次数）。次数只减不增。
+# Features 引用 HyCADTool.Shell 的计数基线（Roslyn 限定名，文件::次数）。次数只减不增。
 src/HyCADTool/Features/AcadDimension/Services/NewDdsConfigAdapter.cs::1
 src/HyCADTool/Features/AnchorBolt/AnchorBoltCalcCommand.cs::1
 src/HyCADTool/Features/AnchorBolt/AnchorBoltTableCommand.cs::1
