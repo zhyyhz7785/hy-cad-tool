@@ -1,7 +1,9 @@
 using FluentAssertions;
 using HYFEA.Core.Diagnostics;
 using HYFEA.Core.LinearAlgebra;
+using HYFEA.Core.Model;
 using HYFEA.Core.Solvers;
+using HYFEA.Hosting;
 using Xunit;
 
 namespace HYFEA.Tests.Unit;
@@ -32,24 +34,21 @@ public sealed class CSparseSystemSolverTests
     }
 
     [Fact]
-    public void Mechanism_or_near_singular_fails_residual_check()
+    public void Free_free_beam_mechanism_fails()
     {
-        var triplets = new[]
+        var geom = InMemoryAxisGeometry.Horizontal(10000, 4);
+        var request = new BeamSolveRequest
         {
-            new SparseTriplet(0, 0, 1),
-            new SparseTriplet(0, 1, 1),
-            new SparseTriplet(1, 0, 1),
-            new SparseTriplet(1, 1, 1 + 1e-15),
+            EndA = BeamSupportKind.Free,
+            EndB = BeamSupportKind.Free,
+            Q = 10,
         };
-        var F = new DenseVector(2);
-        F[0] = 1;
-        F[1] = 1;
 
-        var r = new CSparseSystemSolver().SolveSparse(triplets, 2, F);
+        var output = new BeamSolveSession().Compute(geom, request);
 
-        r.Success.Should().BeFalse();
-        r.Error.Should().NotBeNull();
-        r.Error!.Kind.Should().Be(FemErrorKind.SingularMatrix);
+        output.Result.Success.Should().BeFalse();
+        output.Result.Error.Should().NotBeNull();
+        output.Result.Error!.Kind.Should().Be(FemErrorKind.SingularMatrix);
     }
 
     [Fact]

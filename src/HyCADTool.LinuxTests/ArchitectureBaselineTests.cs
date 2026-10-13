@@ -96,8 +96,13 @@ namespace HyCADTool.LinuxTests
                 bad.Count == 0,
                 assembly.GetName().Name + " 依赖了宿主/UI：" + string.Join(", ", bad));
 
+            var self = assembly.GetName().Name ?? "";
             foreach (var name in prefixes)
             {
+                if (self.Equals(name, StringComparison.Ordinal)
+                    || self.StartsWith(name + ".", StringComparison.Ordinal))
+                    continue;
+
                 var result = Types.InAssembly(assembly)
                     .ShouldNot()
                     .HaveDependencyOn(name)
