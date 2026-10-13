@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Models.Road.Civil;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Road.Plan.ViewModels
 {

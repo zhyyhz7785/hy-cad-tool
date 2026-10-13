@@ -1,18 +1,18 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Interactive;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shell.Configuration;
+using HyCADTool.Shared.Configuration;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -48,7 +48,7 @@ namespace HyCADTool.Features.Reinforcement
             var cad = new CadInteraction();
             using (cad.WithTemporaryLayer(db, LayerLineRein))
             {
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             double scale = ScaleResolver.GetScale();
             double hookLength = (vm?.HookLength ?? 1.0) * scale; // 绿色参数 × Scale
             double reinWidth = (vm?.PolylineWidth ?? 0.4) * scale;

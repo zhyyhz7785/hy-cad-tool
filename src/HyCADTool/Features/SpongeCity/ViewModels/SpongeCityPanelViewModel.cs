@@ -6,8 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Domain.Services;
-using HyCADTool.Shell.Commands;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.UI;
 using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 

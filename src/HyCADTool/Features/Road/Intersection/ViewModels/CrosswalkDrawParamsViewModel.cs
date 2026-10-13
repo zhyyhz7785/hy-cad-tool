@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Road.Intersections.ViewModels
 {

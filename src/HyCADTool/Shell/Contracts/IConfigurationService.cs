@@ -1,6 +1,6 @@
-using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shared.Configuration.Global;
 
-namespace HyCADTool.Shell.Contracts
+namespace HyCADTool.Shared.Contracts
 {
     /// <summary>
     /// 配置服务总接口

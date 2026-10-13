@@ -8,7 +8,7 @@ using HyCAD.Tables.Operations;
 using HyCAD.Tables.Structure;
 using HyCADTool.Features.Tables.Presentation;
 using HyCADTool.Features.Tables.TableApp;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Tables.ViewModels
 {

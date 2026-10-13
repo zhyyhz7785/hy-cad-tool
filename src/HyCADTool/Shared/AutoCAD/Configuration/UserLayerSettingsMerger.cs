@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 
 namespace HyCADTool.Shared.AutoCAD.Configuration
 {

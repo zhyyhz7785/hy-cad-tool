@@ -12,6 +12,7 @@ using Autofac;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell.Commands;
 using HyCADTool.Shell.Services;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Shell.ViewModels
 {

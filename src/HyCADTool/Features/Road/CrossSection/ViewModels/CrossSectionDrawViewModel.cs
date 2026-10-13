@@ -11,11 +11,12 @@ using System.Windows.Input;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Road.CrossSection.ViewModels
 {
@@ -146,7 +147,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
 
         private static void LoadRoadMaterialFillPresetsFromSettings()
         {
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             if (settings == null)
             {
                 RoadMaterialFillPresets.RestoreDefaults();
@@ -159,7 +160,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
         private static void RestoreDefaultFillMaterialPresets()
         {
             RoadMaterialFillPresets.RestoreDefaults();
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             settings?.SetRoadMaterialFillSettings(null, saveImmediately: true);
         }
 
@@ -178,7 +179,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
         private void TryWireDrawingScaleToSettings()
         {
             if (_isSubscribedToSettings) return;
-            var s = SettingsPanelViewModel.Current;
+            var s = CadHost.Settings;
             if (s == null) return;
             int denom = (int)Math.Round(s.Scale);
             if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
@@ -189,14 +190,14 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
 
         private void OnHySettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (!(sender is SettingsPanelViewModel s)) return;
-            if (e?.PropertyName == nameof(SettingsPanelViewModel.Scale))
+            if (!(sender is IHostSettings s)) return;
+            if (e?.PropertyName == nameof(IHostSettings.Scale))
             {
                 if (_scaleSync) return;
                 int denom = (int)Math.Round(s.Scale);
                 if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
             }
-            else if (e?.PropertyName == nameof(SettingsPanelViewModel.Precision))
+            else if (e?.PropertyName == nameof(IHostSettings.Precision))
             {
                 if (_precisionSync) return;
                 ApplyPrecisionFromExternal(s.Precision, pushBackToSettings: false);
@@ -206,7 +207,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
         /// <summary>载入预设几何后仍用 Hy 设置面板的绘图比例与标注小数位（与界面设置一致）。</summary>
         private void ApplyHySettingsScaleAndPrecisionToDrawing()
         {
-            var s = SettingsPanelViewModel.Current;
+            var s = CadHost.Settings;
             if (s == null) return;
             int denom = (int)Math.Round(s.Scale);
             if (denom > 0) ApplyScaleFromExternal(denom, pushBackToSettings: false);
@@ -222,7 +223,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
                     DisplayPrecision = precision;
                 if (pushBackToSettings)
                 {
-                    var s = SettingsPanelViewModel.Current;
+                    var s = CadHost.Settings;
                     if (s != null && s.Precision != precision)
                         s.Precision = precision;
                 }
@@ -233,7 +234,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
             }
         }
 
-        /// <summary>代码侧修改 <see cref="DisplayPrecision"/> 时与 <see cref="SettingsPanelViewModel.Precision"/> 对齐。</summary>
+        /// <summary>代码侧修改 <see cref="DisplayPrecision"/> 时与 <see cref="IHostSettings.Precision"/> 对齐。</summary>
         private void OnDrawingPrecisionChangedFromPropertyPanel()
         {
             if (_precisionSync) return;
@@ -253,7 +254,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
                 }
                 if (pushBackToSettings)
                 {
-                    var s = SettingsPanelViewModel.Current;
+                    var s = CadHost.Settings;
                     if (s != null && Math.Abs(s.Scale - scaleDenominator) > 0.1)
                     {
                         s.Scale = scaleDenominator;
@@ -266,7 +267,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
             }
         }
 
-        /// <summary>属性面板或 Hy 侧修改比例时调用：与设置面板 <see cref="SettingsPanelViewModel.Scale"/> 对齐。</summary>
+        /// <summary>属性面板或 Hy 侧修改比例时调用：与设置面板 <see cref="IHostSettings.Scale"/> 对齐。</summary>
         public void OnDrawingScaleChangedFromPropertyPanel()
         {
             if (_scaleSync) return;

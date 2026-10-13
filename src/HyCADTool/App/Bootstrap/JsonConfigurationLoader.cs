@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using HyCADTool.Shared.Core;
-using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shared.Configuration.Global;
 using HyCADTool.Shell.Configuration.Modules;
 using HyCADTool.Features.Pile.Domain.Entities;
 using Newtonsoft.Json;

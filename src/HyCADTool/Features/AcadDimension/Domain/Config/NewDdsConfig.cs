@@ -1,8 +1,9 @@
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.AcadDimension.Domain.Config
 {
     /// <summary>
     /// NewDDS 配置（已乘 Scale 后的实际 mm 值；Domain 不感知 ViewModel）。
-    /// 由 NewDdsConfigAdapter 从 SettingsPanelViewModel 转换而来。
+    /// 由 NewDdsConfigAdapter 从 IHostSettings 转换而来。
     /// 钢筋首选项面板上的"内/外/带尺寸距离/距离容差"四项同时为老 dds 与 NewDDS 服务（07 §1.2）。
     /// </summary>
     public sealed class NewDdsConfig

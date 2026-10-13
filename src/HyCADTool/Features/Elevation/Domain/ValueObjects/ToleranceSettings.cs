@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace HyCADTool.Features.Elevation.Domain.ValueObjects
+namespace HyCADTool.Shared.Geometry
 {
     /// <summary>
     /// 容差管理类（单例模式）

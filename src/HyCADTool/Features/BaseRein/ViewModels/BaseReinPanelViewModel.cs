@@ -1,8 +1,7 @@
 using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Features.DCEL.Domain.Enums;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Features.BaseRein.Domain;
-using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,6 +9,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.BaseRein.ViewModels
 {
@@ -227,14 +228,14 @@ namespace HyCADTool.Features.BaseRein.ViewModels
 
         /// <summary>
         /// 通过 _HyExec 路由到 AutoCAD 命令线程
-        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
+        /// 复用 IHostSettings 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
         /// 执行前自动从设置面板同步 Scale 并确保样式已应用
         /// </summary>
         private void SendCommand(Action commandAction, string commandKey)
         {
-            SettingsPanelViewModel.EnqueuePendingCommand(() =>
+            CadHost.Commands.EnqueuePendingCommand(() =>
             {
-                var settingsVm = SettingsPanelViewModel.Current;
+                var settingsVm = CadHost.Settings;
                 if (settingsVm != null)
                 {
                     _config.Scale = settingsVm.Scale;
@@ -254,7 +255,7 @@ namespace HyCADTool.Features.BaseRein.ViewModels
             }
             catch (System.Exception ex)
             {
-                SettingsPanelViewModel.ClearPendingCommand();
+                CadHost.Commands.ClearPendingCommand();
                 try
                 {
                     AcApp.DocumentManager.MdiActiveDocument?.Editor

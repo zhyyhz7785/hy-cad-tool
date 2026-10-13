@@ -3,9 +3,9 @@ using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.Reinforcement.Services;
-using HyCADTool.Shell.ViewModels;
 using HyCAD.Geometry.Interfaces;
 using System;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -25,8 +25,8 @@ namespace HyCADTool.Features.Reinforcement
                 return;
             }
 
-            var vm = SettingsPanelViewModel.Current;
-            var reinParams = vm != null ? vm.CreateReinParameters() : ReinParameters.CreateDefault();
+            var vm = CadHost.Settings;
+            var reinParams = CadHost.CreateOrDefault(CadHost.NewReinParameters, ReinParameters.CreateDefault());
             var compParams = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
 
             if (!reinParams.IsValid(out string paramError))

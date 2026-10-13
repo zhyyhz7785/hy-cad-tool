@@ -1,8 +1,8 @@
-using HyCADTool.Shell;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -28,7 +28,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             if (!RoadAlignmentPiPipeline.PickAlignment(doc, out var alignment, out var elements, out _))
                 return;
 
-            var panels = ServiceLocator.Resolve<PanelManager>();
+            var panels = CadHost.Panels;
             // 默认定位到第一个内部 PI（端点不可编辑）；若只有 2 点则让工作台自行处理。
             int? initialPi = elements != null && elements.Count >= 3 ? 1 : (int?)null;
             panels.ShowAlignmentWorkbench(alignment.Id, initialPi);

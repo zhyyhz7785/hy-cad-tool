@@ -17,14 +17,14 @@ using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.Commands;
 using HyCADTool.Features.Road;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Features.Road.PlanAlignment.Commands;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
 {
     /// <summary>
@@ -693,7 +693,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
         private void DeleteAlignmentPickOnCanvas()
         {
             if (AcApp.DocumentManager.MdiActiveDocument == null) return;
-            SettingsPanelViewModel.EnqueuePendingCommand(() => new RoadAlignmentDeletePickCommand().Execute(), "hyRoadAlnDeletePick");
+            CadHost.Commands.EnqueuePendingCommand(() => new RoadAlignmentDeletePickCommand().Execute(), "hyRoadAlnDeletePick");
             AcApp.DocumentManager.MdiActiveDocument.SendStringToExecute("_HyExec\n", true, false, false);
             StatusText = "请先选择或框选要删除的 HY_ROAD 平面线位（可多选，与 CAD 选择一致）…";
         }

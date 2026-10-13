@@ -5,16 +5,17 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Pile.ViewModels
 {
     /// <summary>
     /// 桩基布置面板 ViewModel（自含式，不依赖旧项目服务）
     /// 参数自管理 + JSON 持久化，DrawPiles 通过 SendCommand → _HyExec 路由到 AutoCAD 命令线程
-    /// 参照 SettingsPanelViewModel 的持久化模式
+    /// 参照 IHostSettings 的持久化模式
     /// </summary>
     public class PilePanelViewModel : INotifyPropertyChanged
     {
@@ -75,7 +76,7 @@ namespace HyCADTool.Features.Pile.ViewModels
         /// <summary>
         /// 当前比例（只读，从设置面板读取，供面板显示用）
         /// </summary>
-        public double CurrentScale => SettingsPanelViewModel.Current?.Scale ?? 40.0;
+        public double CurrentScale => CadHost.Settings?.Scale ?? 40.0;
 
         #endregion
 
@@ -279,15 +280,15 @@ namespace HyCADTool.Features.Pile.ViewModels
 
         /// <summary>
         /// 通过 _HyExec 路由到 AutoCAD 命令线程（Refactored 命令用）
-        /// 复用 SettingsPanelViewModel 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
+        /// 复用 IHostSettings 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
         /// 执行前自动确保样式已应用
         /// </summary>
         private void SendCommand(Action commandAction, string commandKey)
         {
             SaveSettings();
-            SettingsPanelViewModel.EnqueuePendingCommand(() =>
+            CadHost.Commands.EnqueuePendingCommand(() =>
             {
-                var settingsVm = SettingsPanelViewModel.Current;
+                var settingsVm = CadHost.Settings;
                 settingsVm?.EnsureStylesApplied();
                 commandAction();
             }, commandKey);
@@ -297,7 +298,7 @@ namespace HyCADTool.Features.Pile.ViewModels
                 if (doc == null)
                 {
                     StatusMessage = "无活动文档";
-                    SettingsPanelViewModel.ClearPendingCommand();
+                    CadHost.Commands.ClearPendingCommand();
                     return;
                 }
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
@@ -305,7 +306,7 @@ namespace HyCADTool.Features.Pile.ViewModels
             catch (System.Exception ex)
             {
                 StatusMessage = $"发送命令失败: {ex.Message}";
-                SettingsPanelViewModel.ClearPendingCommand();
+                CadHost.Commands.ClearPendingCommand();
             }
         }
 

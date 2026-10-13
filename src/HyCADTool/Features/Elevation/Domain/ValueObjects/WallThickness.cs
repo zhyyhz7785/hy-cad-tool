@@ -1,4 +1,5 @@
 using System;
+using HyCADTool.Shared.Geometry;
 
 namespace HyCADTool.Features.Elevation.Domain.ValueObjects
 {

@@ -5,11 +5,11 @@ using System.Diagnostics;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Shared.Drawing.Models;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Road.CrossSection.Services
 {
@@ -31,7 +31,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
 
         public CrossSectionAnnotationStyle Build(
             Document doc,
-            SettingsPanelViewModel? settings)
+            IHostSettings settings)
         {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
 
@@ -60,7 +60,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             return ResolveFromSettings(settings);
         }
 
-        private static CrossSectionAnnotationStyle ResolveFromSettings(SettingsPanelViewModel settings)
+        private static CrossSectionAnnotationStyle ResolveFromSettings(IHostSettings settings)
         {
             var textName = string.IsNullOrWhiteSpace(settings.TextStyleName) ? "0-hy-说明-S" : settings.TextStyleName.Trim();
             // 不解析设置里的 DimStyleName：不写入标注样式表，尺寸文字以几何为准；外观用当前图 Database.Dimstyle（只读）
@@ -95,21 +95,21 @@ namespace HyCADTool.Features.Road.CrossSection.Services
         private static double PaperMmToModelHeight(ScaleContext ctx, double paperMm) =>
             paperMm * ctx.UnitFactor * ctx.MainScale;
 
-        private static string ResolveCommonTextLayerName(SettingsPanelViewModel? settings = null)
+        private static string ResolveCommonTextLayerName(IHostSettings settings = null)
         {
             if (settings != null)
                 return settings.TryResolveLayerName(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
             return UserLayerNameResolver.Get(LayerSemanticIds.CommonMLeader, LayerBuiltinDefaults.CommonMLeader);
         }
 
-        private static string ResolveCommonDimensionLayerName(SettingsPanelViewModel? settings = null)
+        private static string ResolveCommonDimensionLayerName(IHostSettings settings = null)
         {
             if (settings != null)
                 return settings.TryResolveLayerName(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
             return UserLayerNameResolver.Get(LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
         }
 
-        private static double GetActualMLeaderLandingOr(SettingsPanelViewModel s, double fallback)
+        private static double GetActualMLeaderLandingOr(IHostSettings s, double fallback)
         {
             try
             {
@@ -122,7 +122,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             return fallback;
         }
 
-        private static double GetActualMLeaderArrowOr(SettingsPanelViewModel s, double fallback)
+        private static double GetActualMLeaderArrowOr(IHostSettings s, double fallback)
         {
             try
             {

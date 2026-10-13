@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using HyCADTool.Features.Settlement;
 using HyCADTool.Features.Settlement.Domain.Services;
+using HyCADTool.Shared.Domain;
 using Xunit;
 
 namespace HyCADTool.LinuxTests

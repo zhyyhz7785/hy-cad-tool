@@ -1,10 +1,10 @@
 #nullable enable
 
 using HyCADTool.Shared.Drawing.ValueObjects;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.TitleBlock.Services
 {
@@ -15,7 +15,7 @@ namespace HyCADTool.Features.TitleBlock.Services
     {
         private const string ScaleFormat = "1:{0}";
 
-        public static DrawingSheetTitleSpec FromSettings(SettingsPanelViewModel? settings)
+        public static DrawingSheetTitleSpec FromSettings(IHostSettings settings)
         {
             if (settings == null)
                 return WithDefaults(
@@ -82,14 +82,14 @@ namespace HyCADTool.Features.TitleBlock.Services
                 crosshairCenterLiftFactor: 0.06);
         }
 
-        private static string ResolveTitleTextLayerName(SettingsPanelViewModel? settings = null)
+        private static string ResolveTitleTextLayerName(IHostSettings settings = null)
         {
             if (settings != null)
                 return settings.TryResolveLayerName(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
             return UserLayerNameResolver.Get(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);
         }
 
-        private static string ResolveTitleDecorationLayerName(SettingsPanelViewModel? settings = null)
+        private static string ResolveTitleDecorationLayerName(IHostSettings settings = null)
         {
             if (settings != null)
                 return settings.TryResolveLayerName(LayerSemanticIds.RoadCrossSectionTitle, LayerBuiltinDefaults.RoadCrossSectionTitle);

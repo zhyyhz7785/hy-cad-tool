@@ -1,4 +1,4 @@
-namespace HyCADTool.Features.Settlement
+namespace HyCADTool.Shared.Domain
 {
     /// <summary>
     /// 单层土数据模型（从 Markdown 表格解析，支持多表合并）

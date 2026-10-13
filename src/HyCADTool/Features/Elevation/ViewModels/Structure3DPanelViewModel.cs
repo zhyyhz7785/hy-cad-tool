@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using HyCADTool.Features.Misc;
 using HyCADTool.Shared.AutoCAD.Session;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Elevation.ViewModels
 {
@@ -20,7 +20,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
     ///    （含剖切符号与「N-N 剖面图」标签）。
     ///
     /// 注意：各步都涉及 AutoCAD 选集 / 写库，必须经
-    /// <see cref="SettingsPanelViewModel.PendingCommand"/> + _HyExec 路由到命令上下文执行
+    /// <see cref="IHostSettings.PendingCommand"/> + _HyExec 路由到命令上下文执行
     /// （modeless 面板直接写库会 eLockViolation，参照 G101PanelViewModel 同款做法）。
     /// </summary>
     public class Structure3DPanelViewModel : INotifyPropertyChanged
@@ -94,7 +94,11 @@ namespace HyCADTool.Features.Elevation.ViewModels
         private void ExecuteStepOne()
         {
             StatusMessage = "整理底图：请按命令行提示选择曲线…";
-            SendCommand("整理底图", () => new DCELCommand().Execute(), "HYDCEL");
+            SendCommand("整理底图", () =>
+            {
+                var active = AcApp.DocumentManager.MdiActiveDocument;
+                active?.SendStringToExecute("HYDCEL\n", true, false, false);
+            }, "HYDCEL");
         }
 
         private void ExecuteStepTwo()
@@ -125,7 +129,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
             }
 
             // 剖切符号 / 标签比例取设置面板出图比例，无则 50
-            double scale = SettingsPanelViewModel.Current?.Scale ?? 50;
+            double scale = CadHost.Settings?.Scale ?? 50;
             if (scale <= 0) scale = 50;
 
             StatusMessage = $"生成剖面：位移 {displacement:F0}mm，比例 {scale:F0}…";
@@ -154,7 +158,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
                 return;
             }
 
-            SettingsPanelViewModel.EnqueuePendingCommand(() =>
+            CadHost.Commands.EnqueuePendingCommand(() =>
             {
                 try
                 {
@@ -173,7 +177,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
             }
             catch (System.Exception ex)
             {
-                SettingsPanelViewModel.ClearPendingCommand();
+                CadHost.Commands.ClearPendingCommand();
                 StatusMessage = "发送命令失败：" + ex.Message;
             }
         }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using HyCADTool.Features.Settlement;
+using HyCADTool.Shared.Domain;
 
 namespace HyCADTool.Features.DesignSpec.Domain
 {

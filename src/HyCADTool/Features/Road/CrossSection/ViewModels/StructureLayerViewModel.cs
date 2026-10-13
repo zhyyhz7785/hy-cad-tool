@@ -8,8 +8,9 @@ using System.Windows.Input;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Road.CrossSection.ViewModels
 {
@@ -418,7 +419,7 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
 
         private static void PersistFillMaterialPresetChanges()
         {
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             if (settings == null) return;
             settings.SetRoadMaterialFillSettings(RoadMaterialFillPresets.ExportUserSettings(), saveImmediately: true);
         }

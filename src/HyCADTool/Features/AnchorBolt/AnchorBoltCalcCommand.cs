@@ -5,7 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Shell.Configuration;
+using HyCADTool.Shared.Configuration;
 
 namespace HyCADTool.Features.AnchorBolt
 {

@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shared.Configuration.Global;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Export.Services;
-using HyCADTool.Shell.ViewModels;
 using Newtonsoft.Json;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Export
 {
@@ -81,7 +81,7 @@ namespace HyCADTool.Features.Export
                         Names = items.Select(i => i.Name).ToList()
                     };
 
-                    var settings = SettingsPanelViewModel.Current;
+                    var settings = CadHost.Settings;
                     if (settings != null)
                         settings.SetLinetypeCatalogSnapshot(snapshot);
                     else

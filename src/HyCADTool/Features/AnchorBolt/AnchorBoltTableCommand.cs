@@ -3,12 +3,12 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using Newtonsoft.Json;
 using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
 using System.Collections.Generic;
 using System.Linq;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.AnchorBolt
 {
@@ -66,7 +66,7 @@ namespace HyCADTool.Features.AnchorBolt
                 var ppr = ed.GetPoint("\n指定表格插入点: ");
                 if (ppr.Status != PromptStatus.OK) return;
 
-                var vm = SettingsPanelViewModel.Current;
+                var vm = CadHost.Settings;
                 double scale = vm != null ? vm.Scale : 40.0;
                 double textHeight = (vm != null ? vm.TextSize : 2.5) * scale;
 

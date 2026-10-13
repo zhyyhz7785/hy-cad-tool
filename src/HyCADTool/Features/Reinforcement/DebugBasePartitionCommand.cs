@@ -6,10 +6,10 @@ using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
 using HyCADTool.Features.Reinforcement.Services;
 using HyCADTool.Shared.AutoCAD.Converters;
-using HyCADTool.Shell.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -24,8 +24,8 @@ namespace HyCADTool.Features.Reinforcement
             var db = doc.Database;
             var ed = doc.Editor;
 
-            SettingsPanelViewModel.CommitFocusedTextBoxValue();
-            var vm = SettingsPanelViewModel.Current;
+            CadHost.Commands.CommitFocusedTextBoxValue();
+            var vm = CadHost.Settings;
             var parameters = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
             vm?.SaveSettings();
 

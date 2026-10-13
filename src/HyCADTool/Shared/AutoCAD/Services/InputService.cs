@@ -2,7 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Windows;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;

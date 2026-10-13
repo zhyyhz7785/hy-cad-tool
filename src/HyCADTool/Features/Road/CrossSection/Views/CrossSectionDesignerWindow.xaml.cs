@@ -5,12 +5,11 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Controls;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.CrossSection.Services;
-using HyCADTool.Shell;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.CrossSection.Views
 {
     /// <summary>
@@ -67,15 +66,15 @@ namespace HyCADTool.Features.Road.CrossSection.Views
             Loaded += (_, __) =>
             {
                 _currentFigure = viewModel.LastFigure;
-                if (SettingsPanelViewModel.Current != null)
-                    SettingsPanelViewModel.Current.PropertyChanged += OnSettingsPropertyChanged;
+                if (CadHost.Settings != null)
+                    CadHost.Settings.PropertyChanged += OnSettingsPropertyChanged;
                 RedrawPreview();
             };
 
             Closed += (_, __) =>
             {
-                if (SettingsPanelViewModel.Current != null)
-                    SettingsPanelViewModel.Current.PropertyChanged -= OnSettingsPropertyChanged;
+                if (CadHost.Settings != null)
+                    CadHost.Settings.PropertyChanged -= OnSettingsPropertyChanged;
                 viewModel.PreviewRequested -= OnPreviewRequested;
                 viewModel.CloseRequested -= OnCloseRequested;
                 CloseClicked -= OnCloseClicked;
@@ -184,11 +183,11 @@ namespace HyCADTool.Features.Road.CrossSection.Views
 
         private void OnSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(SettingsPanelViewModel.RoadCrossSectionPlanStripVerticalOffsetM))
+            if (e.PropertyName == nameof(IHostSettings.RoadCrossSectionPlanStripVerticalOffsetM))
             {
                 RedrawPreview();
             }
-            else if (e.PropertyName == nameof(SettingsPanelViewModel.RoadCrossSectionOrientationUseWestEast))
+            else if (e.PropertyName == nameof(IHostSettings.RoadCrossSectionOrientationUseWestEast))
             {
                 _vm?.Recalculate();
             }
@@ -196,9 +195,9 @@ namespace HyCADTool.Features.Road.CrossSection.Views
 
         private void RedrawPreview()
         {
-            double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
+            double planOff = CadHost.Settings?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
             CrossSectionPreviewRenderer.Render(PreviewCanvas, _currentFigure, _vm?.ScaleDenominator, null,
-                SettingsPanelViewModel.Current?.CreateDrawingSheetTitleSpec(),
+                CadHost.Settings?.CreateDrawingSheetTitleSpec(),
                 layout: _vm?.LastLayout,
                 planStripVerticalOffsetM: planOff,
                 onOrientationToggle: OnOrientationLabelClicked);
@@ -207,7 +206,7 @@ namespace HyCADTool.Features.Road.CrossSection.Views
         /// <summary>预览中点击"北/南"或"西/东"时切换方位字组（持久化进 Settings 并广播给 VM）。</summary>
         private static void OnOrientationLabelClicked()
         {
-            var sp = SettingsPanelViewModel.Current;
+            var sp = CadHost.Settings;
             if (sp == null) return;
             sp.RoadCrossSectionOrientationUseWestEast = !sp.RoadCrossSectionOrientationUseWestEast;
         }

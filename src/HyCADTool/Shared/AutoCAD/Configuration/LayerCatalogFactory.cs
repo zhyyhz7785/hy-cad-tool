@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using HyCADTool.Shell.Configuration.Global;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.Global;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Xdata;
 
 namespace HyCADTool.Shared.AutoCAD.Configuration

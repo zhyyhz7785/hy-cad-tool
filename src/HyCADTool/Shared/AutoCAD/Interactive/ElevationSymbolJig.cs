@@ -2,13 +2,14 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Elevation.Domain.Enums;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Features.Elevation.Services;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Shared.AutoCAD.Interactive
 {
@@ -115,7 +116,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 new Point3d(_currentPoint.X + (4 - sqrt2 / 2) * paperToModelScale, _currentPoint.Y + sqrt2 * paperToModelScale, 0),
                 _currentPoint, _angleRadians);
 
-            var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             double textSize = (vm != null ? vm.TextSize : 2.5) * paperToModelScale;
             double widthFactor = vm != null ? vm.TextXScale : 0.7;
 
@@ -264,7 +265,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
         private void AdjustTextByState(double sqrt2, double paperToModelScale)
         {
-            var vm = HyCADTool.Shell.ViewModels.SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             double textSize = (vm != null ? vm.TextSize : 2.5);
             Point3d textPos = Label.Position;
 

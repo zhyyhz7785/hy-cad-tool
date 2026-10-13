@@ -4,12 +4,11 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
-using HyCADTool.Shell;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
@@ -147,7 +146,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                     // ?? hyRoadAlnByPi ???????????????????????? hy-settings ???
                     if (outcome.WasNew)
                     {
-                        var defaults = SettingsPanelViewModel.Current?.CreateAlignmentDefaults();
+                        var defaults = CadHost.Create<HyCADTool.Domain.ValueObjects.Road.AlignmentDefaults>(CadHost.NewAlignmentDefaults);
                         if (defaults != null)
                             outcome.Alignment.StartStation = defaults.DefaultStartStation;
                     }
@@ -277,7 +276,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
 
             try
             {
-                var panels = ServiceLocator.Resolve<PanelManager>();
+                var panels = CadHost.Panels;
                 panels?.ShowAlignmentWorkbench(firstBad.Alignment.Id, piIndex: null);
             }
             catch

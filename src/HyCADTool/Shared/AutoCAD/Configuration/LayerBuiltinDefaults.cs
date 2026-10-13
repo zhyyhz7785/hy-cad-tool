@@ -1,4 +1,4 @@
-using HyCADTool.Shell.Configuration.Global;
+using HyCADTool.Shared.Configuration.Global;
 
 namespace HyCADTool.Shared.AutoCAD.Configuration
 {

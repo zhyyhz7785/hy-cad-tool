@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace HyCADTool.Shell.Configuration.User
+namespace HyCADTool.Shared.Configuration.User
 {
     public class UserLayerSettings
     {

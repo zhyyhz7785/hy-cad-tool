@@ -20,6 +20,7 @@ using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Hygeom;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Merge;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.Pack;
 using HyCADTool.Features.DataExchange.Hyob.Infrastructure.RoundTrip;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
 {
@@ -2273,7 +2274,7 @@ namespace HyCADTool.Features.DataExchange.Hyob.Presentation.Commands
     {
         public void Execute()
         {
-            HyCADTool.Shell.Commands.ShowPanelCommand.ShowHyobHistoryPanel();
+            CadHost.Panels.ShowHyobHistoryPanel();
         }
     }
 

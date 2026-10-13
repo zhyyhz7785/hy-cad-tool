@@ -4,7 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Configuration;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Services;
 using System.Collections.Generic;
 

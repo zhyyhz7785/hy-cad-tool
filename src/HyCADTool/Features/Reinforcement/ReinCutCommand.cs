@@ -4,10 +4,10 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Interaction;
-using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shell.Configuration;
+using HyCADTool.Shared.Configuration;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -25,7 +25,7 @@ namespace HyCADTool.Features.Reinforcement
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             var db = doc.Database;
             var ed = doc.Editor;
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             double scale = ScaleResolver.GetScale();
             double panelWidth = (vm?.PolylineWidth ?? 0.4) * scale;
 

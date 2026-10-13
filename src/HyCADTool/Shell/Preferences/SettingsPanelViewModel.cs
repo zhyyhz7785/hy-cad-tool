@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Theming;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Shell.Licensing;
 using HyCADTool.Shared.Drawing.Models;
 using HyCADTool.Domain.Services.Road;
@@ -19,8 +19,8 @@ using HyCADTool.Features.Road.Plan.ViewModels;
 using HyCADTool.Features.Road.PlanAlignment.Services;
 using HyCADTool.Features.Reinforcement.Domain;
 using HyCADTool.Features.Reinforcement.Domain.Components;
-using HyCADTool.Shell.Configuration.Global;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.Global;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
@@ -28,8 +28,11 @@ using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.TitleBlock.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.Core;
+using HyCADTool.Shared.Host;
 using HyCADTool.Shared.UI.Helpers;
+using HyCADTool.Shell;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Shell.ViewModels
 {
@@ -41,7 +44,7 @@ namespace HyCADTool.Shell.ViewModels
     /// 
     /// 全局单实例（hy-settings.json 单文件）；样式同步状态按 Database 分键。
     /// </summary>
-    public class SettingsPanelViewModel : INotifyPropertyChanged
+    public class SettingsPanelViewModel : INotifyPropertyChanged, IHostSettings, ICommandChannel
     {
         private IStyleService _styleService;
 
@@ -89,6 +92,7 @@ namespace HyCADTool.Shell.ViewModels
                     if (container != null && container.IsRegistered<SettingsPanelViewModel>())
                     {
                         _instance = container.Resolve<SettingsPanelViewModel>();
+                        BindHost(_instance);
                         return _instance;
                     }
 
@@ -102,12 +106,14 @@ namespace HyCADTool.Shell.ViewModels
                     _instance = styleService != null
                         ? new SettingsPanelViewModel(styleService)
                         : new SettingsPanelViewModel();
+                    BindHost(_instance);
                     return _instance;
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Trace.WriteLine("[HyCAD] SettingsPanelViewModel.Current: " + ex.Message);
                     _instance = new SettingsPanelViewModel();
+                    BindHost(_instance);
                     return _instance;
                 }
             }
@@ -119,6 +125,38 @@ namespace HyCADTool.Shell.ViewModels
             var vm = Current;
             vm.EnsureStyleService(styleService);
             return vm;
+        }
+
+        void ICommandChannel.EnqueuePendingCommand(System.Action command, string commandKey)
+            => EnqueuePendingCommand(command, commandKey);
+
+        void ICommandChannel.ClearPendingCommand()
+            => ClearPendingCommand();
+
+        void ICommandChannel.CommitFocusedTextBoxValue()
+            => CommitFocusedTextBoxValue();
+
+        /// <summary>把本实例登记到 <see cref="CadHost"/>，供 Features 经宿主接口读取。</summary>
+        internal static void BindHost(SettingsPanelViewModel vm)
+        {
+            if (vm == null) return;
+            CadHost.Bind(
+                vm,
+                vm,
+                CadHost.Panels ?? new HostPanelAdapter(),
+                () => vm.CreateReinParameters(),
+                () => vm.CreateAlignmentDefaults(),
+                () => vm.CreateStationLabelOptions(),
+                o =>
+                {
+                    if (o is Domain.ValueObjects.Road.AlignmentDefaults d)
+                        vm.ApplyAlignmentDefaults(d);
+                },
+                o =>
+                {
+                    if (o is Features.Road.PlanAlignment.Services.RoadStationLabelOptions opt)
+                        vm.ApplyStationLabelOptions(opt);
+                });
         }
 
         /// <summary>文档关闭时清除该 Database 的样式同步状态（不销毁全局 VM）。</summary>

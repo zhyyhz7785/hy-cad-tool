@@ -3,11 +3,10 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using FontDescriptor = Autodesk.AutoCAD.GraphicsInterface.FontDescriptor;
 using HyCADTool.Features.DesignSpec.Domain.Models;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Xdata;
-using HyCADTool.Shell.ViewModels;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -19,6 +18,7 @@ using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
 using SharedMarkdownBlockParser = HyCADTool.TextLayout.MarkdownBlockParser;
 using SharedDocumentBlock = HyCADTool.TextLayout.DocumentBlock;
 using SharedDocumentBlockType = HyCADTool.TextLayout.DocumentBlockType;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.DesignSpec.Services
 {
@@ -2668,7 +2668,7 @@ namespace HyCADTool.Features.DesignSpec.Services
                 ? config.TextStyleName.Trim()
                 : $"0_Hy_{config.Scale}";
 
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             if (string.IsNullOrWhiteSpace(styleName) && vm != null) styleName = vm.TextStyleName;
 
             var tst = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);

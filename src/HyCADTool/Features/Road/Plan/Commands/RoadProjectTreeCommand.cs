@@ -1,4 +1,3 @@
-using HyCADTool.Shell;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -6,6 +5,7 @@ using HyCADTool.Features.Road.PlanAlignment.Services;
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.PlanAlignment.Commands;
 using HyCADTool.Features.Road.CrossSection.Commands;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road
 {
     /// <summary>
@@ -26,7 +26,7 @@ namespace HyCADTool.Features.Road
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
 
-            var panels = ServiceLocator.Resolve<PanelManager>();
+            var panels = CadHost.Panels;
             if (panels == null)
             {
                 doc.Editor.WriteMessage("\n[道路] 面板服务未注册，无法打开项目树。");

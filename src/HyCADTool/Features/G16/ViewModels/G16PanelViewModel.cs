@@ -11,10 +11,11 @@ using HyCADTool.Features.G101.Domain.Tables;
 using HyCADTool.Features.G16.Domain.Catalog;
 using HyCADTool.Features.G16.Domain.Tables;
 using HyCADTool.Features.G16.Services;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.G16.ViewModels
 {
@@ -290,7 +291,7 @@ namespace HyCADTool.Features.G16.ViewModels
                 return;
             }
 
-            SettingsPanelViewModel.EnqueuePendingCommand(ExecuteDrawInCommandContext, "hyG16");
+            CadHost.Commands.EnqueuePendingCommand(ExecuteDrawInCommandContext, "hyG16");
             try
             {
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
@@ -298,7 +299,7 @@ namespace HyCADTool.Features.G16.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = "发送命令失败：" + ex.Message;
-                SettingsPanelViewModel.ClearPendingCommand();
+                CadHost.Commands.ClearPendingCommand();
             }
         }
 

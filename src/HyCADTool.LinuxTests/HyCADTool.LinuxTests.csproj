@@ -35,7 +35,7 @@
   <ItemGroup>
     <Compile Include="..\HyCADTool\Features\Settlement\Gb50007SettlementDepth.cs" Link="Settlement\Gb50007SettlementDepth.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\FoundationType.cs" Link="Settlement\FoundationType.cs" />
-    <Compile Include="..\HyCADTool\Features\Settlement\SoilLayer.cs" Link="Settlement\SoilLayer.cs" />
+    <Compile Include="..\HyCADTool\Shared\Domain\SoilLayer.cs" Link="Settlement\SoilLayer.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementInput.cs" Link="Settlement\SettlementInput.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementResult.cs" Link="Settlement\SettlementResult.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\SettlementLayerResult.cs" Link="Settlement\SettlementLayerResult.cs" />

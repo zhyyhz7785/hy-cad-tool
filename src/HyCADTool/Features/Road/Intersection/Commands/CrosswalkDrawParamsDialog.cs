@@ -1,17 +1,17 @@
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Features.Road.Intersections.ViewModels;
 using HyCADTool.Features.Road.Intersections.Views;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.PlanAlignment.Commands;
 using HyCADTool.Features.Road.CrossSection.Commands;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road
 {
     /// <summary>
-    /// 人行横道参数模态窗：先编辑再落图；确定时写回 <see cref="SettingsPanelViewModel"/> 道路横道四项。
+    /// 人行横道参数模态窗：先编辑再落图；确定时写回 <see cref="IHostSettings"/> 道路横道四项。
     /// </summary>
     public static class CrosswalkDrawParamsDialog
     {
@@ -19,7 +19,7 @@ namespace HyCADTool.Features.Road
         {
             gap = width = stop = spacing = 0;
 
-            var settings = SettingsPanelViewModel.Current;
+            var settings = CadHost.Settings;
             var vm = new CrosswalkDrawParamsViewModel(
                 settings?.RoadGapWidth ?? Crosswalk.DefaultGapWidth,
                 settings?.RoadCrosswalkWidth ?? Crosswalk.DefaultWidth,

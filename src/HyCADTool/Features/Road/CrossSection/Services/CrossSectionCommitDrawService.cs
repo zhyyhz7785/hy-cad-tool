@@ -5,9 +5,9 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.Drawing.ValueObjects;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Road.CrossSection.Services
 {
@@ -44,8 +44,8 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             if (doc == null) throw new ArgumentNullException(nameof(doc));
             if (result == null) throw new ArgumentNullException(nameof(result));
 
-            DrawingSheetTitleSpec titleSpec = SettingsPanelViewModel.Current != null
-                ? SettingsPanelViewModel.Current.CreateDrawingSheetTitleSpec()
+            DrawingSheetTitleSpec titleSpec = CadHost.Settings != null
+                ? CadHost.Settings.CreateDrawingSheetTitleSpec()
                 : DrawingSheetTitleSpec.RoadCrossSectionDefault;
 
             var design = _registry.GetOrCreate(doc.Name);
@@ -73,7 +73,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services
             using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
                 erased = _drawService.Clear(tr, doc.Database, template.Id);
-                double planOff = SettingsPanelViewModel.Current?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
+                double planOff = CadHost.Settings?.RoadCrossSectionPlanStripVerticalOffsetM ?? 5.0;
                 created = _drawService.Draw(tr, doc.Database, result.Figure, template, origin,
                     modelUnitPerMeter: 1.0, mode: drawMode, layout: result.Layout, annotationStyle: null,
                     sheetTitleSpec: titleSpec, planStripVerticalOffsetMeters: planOff,

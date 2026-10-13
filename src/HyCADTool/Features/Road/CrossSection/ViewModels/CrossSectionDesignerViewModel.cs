@@ -9,9 +9,10 @@ using System.Windows.Input;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Domain.ValueObjects.Road;
-using HyCADTool.Shell.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.PlanAlignment.Domain;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
 namespace HyCADTool.Features.Road.CrossSection.ViewModels
 {
@@ -682,10 +683,10 @@ namespace HyCADTool.Features.Road.CrossSection.ViewModels
             try
             {
                 _lastLayout = BuildLayout();
-                // SettingsPanelViewModel.Current 在非 AutoCAD 宿主 / 单测环境下访问 DocumentManager
+                // CadHost.Settings 在非 AutoCAD 宿主 / 单测环境下访问 DocumentManager
                 // 会抛 InvalidProgramException；此处做一次性保护，非核心信号降级为 false。
                 bool useWE = false;
-                try { useWE = SettingsPanelViewModel.Current?.RoadCrossSectionOrientationUseWestEast == true; }
+                try { useWE = CadHost.Settings?.RoadCrossSectionOrientationUseWestEast == true; }
                 catch { useWE = false; }
                 _lastFigure = CrossSectionLayoutBuilder.ToFigure(
                     _lastLayout,

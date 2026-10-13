@@ -16,7 +16,7 @@ namespace GenerateCommandTiers
         {
             if (args.Length < 2)
             {
-                Console.Error.WriteLine("用法: GenerateCommandTiers <commands.json> <CommandTiers.g.cs> [CommandRoutes.g.cs] [stamp]");
+                Console.Error.WriteLine("用法: GenerateCommandTiers <commands.json> <CommandTiers.g.cs> [CommandRoutes.g.cs] [stamp] [facade-methods.json] [CommandFacade.cs] [ProductionCommandFacade.cs]");
                 return 1;
             }
 
@@ -24,6 +24,9 @@ namespace GenerateCommandTiers
             var tiersPath = args[1];
             var routesPath = args.Length >= 3 ? args[2] : null;
             var stampPath = args.Length >= 4 ? args[3] : null;
+            var facadeSpecPath = args.Length >= 5 ? args[4] : null;
+            var devFacadePath = args.Length >= 6 ? args[5] : null;
+            var prodFacadePath = args.Length >= 7 ? args[6] : null;
 
             if (!File.Exists(jsonPath))
             {
@@ -70,6 +73,36 @@ namespace GenerateCommandTiers
                     if (!WriteIfChanged(routesPath, RenderRoutes(rows)))
                         return 1;
                     Console.WriteLine("已写入 " + routesPath);
+                }
+
+                if (!string.IsNullOrWhiteSpace(facadeSpecPath)
+                    && !string.IsNullOrWhiteSpace(devFacadePath)
+                    && !string.IsNullOrWhiteSpace(prodFacadePath))
+                {
+                    if (!File.Exists(facadeSpecPath))
+                    {
+                        Console.Error.WriteLine("找不到 " + facadeSpecPath);
+                        return 1;
+                    }
+
+                    FacadeSpec spec;
+                    try
+                    {
+                        spec = ReadFacadeSpec(facadeSpecPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine("解析 " + facadeSpecPath + " 失败: " + ex.Message);
+                        return 1;
+                    }
+
+                    if (!WriteIfChanged(devFacadePath, RenderDevFacade(spec)))
+                        return 1;
+                    Console.WriteLine("已写入 " + devFacadePath);
+
+                    if (!WriteIfChanged(prodFacadePath, RenderProdFacade(spec)))
+                        return 1;
+                    Console.WriteLine("已写入 " + prodFacadePath);
                 }
 
                 if (!string.IsNullOrWhiteSpace(stampPath) && !TouchStamp(stampPath))
@@ -384,6 +417,157 @@ namespace GenerateCommandTiers
                 Console.Error.WriteLine("写入 stamp " + path + " 失败: " + ex.Message);
                 return false;
             }
+        }
+
+        private static FacadeSpec ReadFacadeSpec(string path)
+        {
+            using (var doc = JsonDocument.Parse(File.ReadAllText(path, Encoding.UTF8)))
+            {
+                var root = doc.RootElement;
+                var methods = ReadFacadeMethods(root, "methods");
+                var productionOnly = ReadFacadeMethods(root, "productionOnly");
+                return new FacadeSpec(methods, productionOnly);
+            }
+        }
+
+        private static List<FacadeMethod> ReadFacadeMethods(JsonElement root, string property)
+        {
+            var list = new List<FacadeMethod>();
+            if (!root.TryGetProperty(property, out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return list;
+            foreach (var item in arr.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                    continue;
+                var invoke = item.TryGetProperty("invoke", out var inv) && inv.ValueKind == JsonValueKind.String
+                    ? inv.GetString()
+                    : null;
+                var method = item.TryGetProperty("method", out var meth) && meth.ValueKind == JsonValueKind.String
+                    ? meth.GetString()
+                    : null;
+                if (string.IsNullOrWhiteSpace(invoke) || string.IsNullOrWhiteSpace(method))
+                    continue;
+                var names = new List<string>();
+                if (item.TryGetProperty("names", out var namesEl) && namesEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var n in namesEl.EnumerateArray())
+                    {
+                        if (n.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(n.GetString()))
+                            names.Add(n.GetString());
+                    }
+                }
+                if (names.Count == 0)
+                    names.Add(invoke);
+                string flags = null;
+                if (item.TryGetProperty("flags", out var flagsEl) && flagsEl.ValueKind == JsonValueKind.String)
+                    flags = flagsEl.GetString();
+                list.Add(new FacadeMethod(invoke, method, names, flags));
+            }
+            return list;
+        }
+
+        private static string RenderDevFacade(FacadeSpec spec)
+        {
+            var sb = new StringBuilder();
+            sb.Append("using Autodesk.AutoCAD.Runtime;\n");
+            sb.Append("\n");
+            sb.Append("[assembly: CommandClass(typeof(HyCADTool.ReCall.CommandFacade))]\n");
+            sb.Append("\n");
+            sb.Append("namespace HyCADTool.ReCall\n");
+            sb.Append("{\n");
+            sb.Append("    /// <summary>\n");
+            sb.Append("    /// AutoCAD 命令总入口。由 build/tools/GenerateCommandTiers 从 facade-methods.json 生成，不要手改。\n");
+            sb.Append("    /// hySeg3 挂在 ReCallClass 上（与 C2 同程序集），不进本门面，避免 eDuplicateKey。\n");
+            sb.Append("    /// </summary>\n");
+            sb.Append("    public class CommandFacade\n");
+            sb.Append("    {\n");
+            foreach (var method in spec.Methods)
+                sb.Append(RenderDevMethod(method));
+            sb.Append("    }\n");
+            sb.Append("}\n");
+            return sb.ToString();
+        }
+
+        private static string RenderProdFacade(FacadeSpec spec)
+        {
+            var sb = new StringBuilder();
+            sb.Append("#if HYCAD_PRODUCTION\n");
+            sb.Append("\n");
+            sb.Append("using Autodesk.AutoCAD.Runtime;\n");
+            sb.Append("using HyCADTool.Shell.Licensing;\n");
+            sb.Append("\n");
+            sb.Append("namespace HyCADTool.App.Production\n");
+            sb.Append("{\n");
+            sb.Append("    /// <summary>生产模式 AutoCAD 命令总入口。由 GenerateCommandTiers 从 facade-methods.json 生成，不要手改。</summary>\n");
+            sb.Append("    public class ProductionCommandFacade\n");
+            sb.Append("    {\n");
+            foreach (var method in spec.Methods)
+                sb.Append(RenderProdMethod(method));
+            foreach (var method in spec.ProductionOnly)
+                sb.Append(RenderProdMethod(method));
+            sb.Append("    }\n");
+            sb.Append("}\n");
+            sb.Append("\n");
+            sb.Append("#endif\n");
+            return sb.ToString();
+        }
+
+        private static string RenderDevMethod(FacadeMethod method)
+        {
+            var sb = new StringBuilder();
+            sb.Append("        ");
+            foreach (var name in method.Names)
+                sb.Append(RenderCommandAttribute(name, method.Flags));
+            sb.Append("public void ").Append(method.Method)
+                .Append("() => ReCallClass.Invoke(\"").Append(Cs(method.Invoke)).Append("\");\n");
+            return sb.ToString();
+        }
+
+        private static string RenderProdMethod(FacadeMethod method)
+        {
+            var sb = new StringBuilder();
+            sb.Append("        ");
+            foreach (var name in method.Names)
+                sb.Append(RenderCommandAttribute(name, method.Flags));
+            sb.Append("public void ").Append(method.Method)
+                .Append("() => LicenseGate.RunGated(\"").Append(Cs(method.Invoke))
+                .Append("\", () => ProductionDispatcher.Invoke(\"").Append(Cs(method.Invoke)).Append("\"));\n");
+            return sb.ToString();
+        }
+
+        private static string RenderCommandAttribute(string name, string flags)
+        {
+            if (string.IsNullOrWhiteSpace(flags))
+                return "[CommandMethod(\"" + Cs(name) + "\")] ";
+            return "[CommandMethod(\"" + Cs(name) + "\", " + flags + ")] ";
+        }
+
+        private sealed class FacadeSpec
+        {
+            public FacadeSpec(List<FacadeMethod> methods, List<FacadeMethod> productionOnly)
+            {
+                Methods = methods;
+                ProductionOnly = productionOnly;
+            }
+
+            public List<FacadeMethod> Methods { get; }
+            public List<FacadeMethod> ProductionOnly { get; }
+        }
+
+        private sealed class FacadeMethod
+        {
+            public FacadeMethod(string invoke, string method, List<string> names, string flags)
+            {
+                Invoke = invoke;
+                Method = method;
+                Names = names;
+                Flags = flags;
+            }
+
+            public string Invoke { get; }
+            public string Method { get; }
+            public List<string> Names { get; }
+            public string Flags { get; }
         }
 
         private sealed class CommandRow

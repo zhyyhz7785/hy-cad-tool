@@ -1,8 +1,8 @@
-using HyCADTool.Shell;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
+using HyCADTool.Shared.Host;
 namespace HyCADTool.Features.Road.PlanAlignment.Commands
 {
     /// <summary>
@@ -28,7 +28,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
 
-            var panels = ServiceLocator.Resolve<PanelManager>();
+            var panels = CadHost.Panels;
             if (panels == null)
             {
                 doc.Editor.WriteMessage("\n[道路] 面板服务未注册，无法打开路线工作台。");

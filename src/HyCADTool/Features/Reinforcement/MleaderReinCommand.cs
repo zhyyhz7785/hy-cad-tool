@@ -1,20 +1,20 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.Shared.AutoCAD.Extensions;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shell.Configuration;
+using HyCADTool.Shared.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement
 {
@@ -59,7 +59,7 @@ namespace HyCADTool.Features.Reinforcement
             var ed = doc.Editor;
 
             // 从面板读取最新参数（样式已在 ReCall.Invoke 前置钩子里同步，无需重复调用）
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
 
             double scale = ScaleResolver.GetScale();
             double pointOffset = PointOffsetAtScale40 * scale;

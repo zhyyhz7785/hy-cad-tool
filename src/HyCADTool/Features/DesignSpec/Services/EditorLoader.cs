@@ -1,5 +1,4 @@
 using HyCADTool.Features.DesignSpec.Domain.Models;
-using HyCADTool.Shell.ViewModels;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -11,6 +10,7 @@ using LayoutResultModel = HyCADTool.TextLayout.LayoutResult;
 using LayoutSpecConfig = HyCADTool.TextLayout.DesignSpecConfig;
 using SharedBlockParser = HyCADTool.TextLayout.MarkdownBlockParser;
 using SharedLayoutEngine = HyCADTool.TextLayout.LayoutEngine;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.DesignSpec.Services
 {
@@ -717,7 +717,7 @@ namespace HyCADTool.Features.DesignSpec.Services
             catch { }
 
             // 参数来源优先级：编辑器结果 > 已存配置；仅缺失字段才回退 Settings
-            var vm = SettingsPanelViewModel.Current;
+            var vm = CadHost.Settings;
             if (vm != null)
             {
                 if (string.IsNullOrWhiteSpace(config.FontFileName))

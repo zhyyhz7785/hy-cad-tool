@@ -9,12 +9,12 @@ using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell;
 using HyCADTool.Features.Road.CrossSection.ViewModels;
 using HyCADTool.Features.Road.CrossSection.Domain;
 using HyCADTool.Features.Road.CrossSection.Services;
 using HyCADTool.Features.Road.CrossSection.Views;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Road.CrossSection.Commands
 {
@@ -78,7 +78,7 @@ namespace HyCADTool.Features.Road.CrossSection.Commands
 
         private static void ExecuteNew(Document _)
         {
-            var panels = ServiceLocator.Resolve<PanelManager>();
+            var panels = CadHost.Panels;
             panels.ShowCrossSectionPanel(null, null);
         }
 
@@ -109,7 +109,7 @@ namespace HyCADTool.Features.Road.CrossSection.Commands
                 existing = CrossSectionPresets.CreateCjj37UrbanArterial();
             }
 
-            var panels = ServiceLocator.Resolve<PanelManager>();
+            var panels = CadHost.Panels;
             panels.ShowCrossSectionPanel(existing, pick.Id);
         }
 

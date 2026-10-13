@@ -1,6 +1,6 @@
 using HyCADTool.Features.DesignSpec.Services;
-using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Export
 {
@@ -26,7 +26,7 @@ namespace HyCADTool.Features.Export
             string styleName = "0-hy-说明-T";
             try
             {
-                var vm = SettingsPanelViewModel.Current;
+                var vm = CadHost.Settings;
                 if (vm != null && !string.IsNullOrWhiteSpace(vm.StyleTName))
                     styleName = vm.StyleTName;
             }

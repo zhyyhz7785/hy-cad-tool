@@ -1,10 +1,10 @@
-using HyCADTool.Shell.Configuration.User;
-using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.Configuration.User;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Shared.AutoCAD.Services
 {
     /// <summary>
-    /// 按图层语义 ID 从 <see cref="SettingsPanelViewModel"/> 的层表解析用户可改名后的实际图层名；无设置或无匹配时回退为默认名。
+    /// 按图层语义 ID 从 <see cref="IHostSettings"/> 的层表解析用户可改名后的实际图层名；无设置或无匹配时回退为默认名。
     /// </summary>
     public static class UserLayerNameResolver
     {
@@ -13,7 +13,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
             if (string.IsNullOrWhiteSpace(semanticId)) return defaultName ?? string.Empty;
             try
             {
-                var vm = SettingsPanelViewModel.Current;
+                var vm = CadHost.Settings;
                 if (vm == null) return defaultName ?? string.Empty;
                 return vm.TryResolveLayerName(semanticId, defaultName);
             }

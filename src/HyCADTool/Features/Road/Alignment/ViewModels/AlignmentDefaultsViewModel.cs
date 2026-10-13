@@ -3,8 +3,9 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Shared.Host;
+using HyCADTool.Shared.UI;
 
-using HyCADTool.Shell.ViewModels;
 namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
 {
     /// <summary>
@@ -12,7 +13,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
     ///
     /// 承担：把 <see cref="AlignmentDefaults"/> 暴露给 BlenderWindow 做 4 个 NumericSlider 双绑，
     /// 并通过 <see cref="CloseRequested"/> 通知窗口关闭；窗口关闭后由命令层根据 DialogResult
-    /// 决定是否写回 <see cref="SettingsPanelViewModel.ApplyAlignmentDefaults"/> 并持久化。
+    /// 决定是否写回 <see cref="IHostSettings.ApplyAlignmentDefaults"/> 并持久化。
     /// </summary>
     public sealed class AlignmentDefaultsViewModel : INotifyPropertyChanged
     {

@@ -1,4 +1,4 @@
-namespace HyCADTool.Shell.Contracts
+namespace HyCADTool.Shared.Contracts
 {
     /// <summary>
     /// 样式服务接口（平台无关）

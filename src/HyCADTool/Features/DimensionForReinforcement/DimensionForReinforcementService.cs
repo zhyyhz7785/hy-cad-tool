@@ -2,20 +2,20 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain.Enums;
-using HyCADTool.Shell.Configuration.User;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Services;
-using HyCADTool.Shell.Contracts;
+using HyCADTool.Shared.Contracts;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shell.Configuration;
+using HyCADTool.Shared.Configuration;
 using Autodesk.AutoCAD.EditorInput;
 using NetTopologySuite.Geometries;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.DimensionForReinforcement
 {
@@ -167,8 +167,8 @@ namespace HyCADTool.Features.DimensionForReinforcement
             if (boundary == null) return false;
             _boundary = boundary;
 
-            // 从 SettingsPanelViewModel 读取参数（面板值 × Scale = 实际 mm）
-            var vm = SettingsPanelViewModel.Current;
+            // 从 IHostSettings 读取参数（面板值 × Scale = 实际 mm）
+            var vm = CadHost.Settings;
             double scale = ScaleResolver.GetScale();
 
             _dimensionDistanceOutside = (vm?.DimensionDistanceOutside ?? 14.0) * scale;
