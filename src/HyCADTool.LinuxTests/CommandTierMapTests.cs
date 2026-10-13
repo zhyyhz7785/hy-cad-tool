@@ -149,7 +149,7 @@ namespace HyCADTool.LinuxTests
         [Fact]
         public void Confirmed_g_series_and_hydcel_are_professional_temporary_n_stay_standard()
         {
-            foreach (var key in new[] { "gj", "gg", "g1", "g2", "ge", "ge1", "gd", "gb", "gb1", "gb2", "HYDCEL" })
+            foreach (var key in new[] { "gj", "gg", "ggj", "g1", "g2", "ge", "ge1", "gd", "gb", "gb1", "gb2", "HYDCEL" })
             {
                 Assert.Equal("professional", CommandTiers.GetRaw(key));
                 Assert.Equal(LicenseProductTier.Professional, LicenseCommandTierMap.GetRequiredTier(key));

@@ -33,7 +33,7 @@ namespace HyCADTool.Shell.Licensing
                 { "ge", "professional" },
                 { "ge1", "professional" },
                 { "gg", "professional" },
-                { "ggj", "standard" },
+                { "ggj", "professional" },
                 { "gj", "professional" },
                 { "Hy", "freemium" },
                 { "HY3", "professional" },

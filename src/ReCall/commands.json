@@ -12,7 +12,7 @@
 
         "gj":  { "tier": "professional", "type": "HyCADTool.Features.Reinforcement.DrawReinforcementCommand", "method": "Execute", "category": "钢筋", "displayName": "绘制钢筋",     "tooltip": "绘制双线钢筋（gj）",     "order": 10 },
         "gg":  { "tier": "professional", "type": "HyCADTool.Features.Reinforcement.DrawOffsetPolylineCommand", "method": "Execute", "category": "钢筋", "displayName": "偏移多段线",   "tooltip": "沿已有多段线偏移绘制（gg）", "order": 20 },
-        "ggj": { "type": "HyCADTool.Features.Reinforcement.ReinOutsideCommand",        "method": "Execute", "category": "钢筋", "displayName": "外侧钢筋",     "tooltip": "外侧钢筋（ggj）",         "order": 30 },
+        "ggj": { "tier": "professional", "type": "HyCADTool.Features.Reinforcement.ReinOutsideCommand",        "method": "Execute", "category": "钢筋", "displayName": "外侧钢筋",     "tooltip": "外侧钢筋（ggj）",         "order": 30 },
 
         "g1":  { "tier": "professional", "type": "HyCADTool.Features.Reinforcement.ReinAddAnchorCommand", "method": "Execute", "ctor": [false], "category": "钢筋", "displayName": "加弯钩",     "tooltip": "为钢筋添加水平弯钩（g1）", "order": 40 },
         "g2":  { "tier": "professional", "type": "HyCADTool.Features.Reinforcement.ReinAddAnchorCommand", "method": "Execute", "ctor": [true],  "category": "钢筋", "displayName": "加竖弯",     "tooltip": "为钢筋添加竖向弯钩（g2）", "order": 50 },

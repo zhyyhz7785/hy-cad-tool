@@ -52,7 +52,7 @@ namespace HyCADTool.Shell.Licensing
                 { "ge", new CommandRoute("ge", "HyCADTool.Features.Reinforcement.ReinExtendCommand", "Execute", null, null, "professional") },
                 { "ge1", new CommandRoute("ge1", "HyCADTool.Features.Reinforcement.ReinQuickExtendCommand", "Execute", null, null, "professional") },
                 { "gg", new CommandRoute("gg", "HyCADTool.Features.Reinforcement.DrawOffsetPolylineCommand", "Execute", null, null, "professional") },
-                { "ggj", new CommandRoute("ggj", "HyCADTool.Features.Reinforcement.ReinOutsideCommand", "Execute", null, null, "standard") },
+                { "ggj", new CommandRoute("ggj", "HyCADTool.Features.Reinforcement.ReinOutsideCommand", "Execute", null, null, "professional") },
                 { "gj", new CommandRoute("gj", "HyCADTool.Features.Reinforcement.DrawReinforcementCommand", "Execute", null, null, "professional") },
                 { "Hy", new CommandRoute("Hy", "HyCADTool.Shell.Commands.ShowPanelCommand", "ShowHyToolPanel", null, null, "freemium") },
                 { "HY3", new CommandRoute("HY3", "HyCADTool.Features.Elevation.Elevation3DCommand", "Execute", null, null, "professional") },
