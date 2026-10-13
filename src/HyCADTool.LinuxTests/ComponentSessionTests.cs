@@ -72,7 +72,6 @@ namespace HyCADTool.LinuxTests
                 ComponentSession.Clear();
             }
         }
-    }
 
         [Fact]
         public void No_active_document_does_not_write_a_shared_slot()
