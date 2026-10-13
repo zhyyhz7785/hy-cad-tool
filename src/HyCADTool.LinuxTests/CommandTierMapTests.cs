@@ -44,7 +44,7 @@ namespace HyCADTool.LinuxTests
         {
             Assert.Equal(LicenseProductTier.Freemium, LicenseCommandTierMap.GetRequiredTier("Hy"));
             Assert.Equal(LicenseProductTier.Freemium, LicenseCommandTierMap.GetRequiredTier("hyLicense"));
-            Assert.Equal(LicenseProductTier.Standard, LicenseCommandTierMap.GetRequiredTier("gj"));
+            Assert.Equal(LicenseProductTier.Professional, LicenseCommandTierMap.GetRequiredTier("gj"));
             Assert.Equal(LicenseProductTier.Professional, LicenseCommandTierMap.GetRequiredTier("HY3"));
             Assert.Equal(LicenseProductTier.Standard, LicenseCommandTierMap.GetRequiredTier("definitely-not-a-command"));
             Assert.Equal(LicenseProductTier.Standard, LicenseCommandTierMap.GetRequiredTier(null));
@@ -119,6 +119,46 @@ namespace HyCADTool.LinuxTests
                 Assert.Equal(type, route.Type);
                 Assert.Equal(method, route.Method);
                 AssertCtorMatches(prop.Value, route);
+            }
+        }
+
+        [Fact]
+        public void Confirmed_panel_keys_are_professional_and_standard_is_insufficient()
+        {
+            foreach (var key in new[] { "hyG101", "hyG16", "hyBaseRein" })
+            {
+                var route = CommandRoutes.Get(key);
+                Assert.NotNull(route);
+                Assert.False(string.IsNullOrWhiteSpace(route.Type));
+                Assert.Equal("professional", route.Tier);
+                Assert.Equal("professional", CommandTiers.GetRaw(key));
+
+                var required = LicenseCommandTierMap.GetRequiredTier(key);
+                Assert.Equal(LicenseProductTier.Professional, required);
+                Assert.True(
+                    (int)LicenseProductTier.Standard < (int)required,
+                    key + " 在 Standard 许可下应被拒绝");
+            }
+
+            Assert.Equal("HyCADTool.Shell.Commands.ShowPanelCommand", CommandRoutes.Get("hyG101").Type);
+            Assert.Equal("ShowG101Panel", CommandRoutes.Get("hyG101").Method);
+            Assert.Equal("ShowG16Panel", CommandRoutes.Get("hyG16").Method);
+            Assert.Equal("ShowBaseReinPanel", CommandRoutes.Get("hyBaseRein").Method);
+        }
+
+        [Fact]
+        public void Confirmed_g_series_and_hydcel_are_professional_temporary_n_stay_standard()
+        {
+            foreach (var key in new[] { "gj", "gg", "g1", "g2", "ge", "ge1", "gd", "gb", "gb1", "gb2", "HYDCEL" })
+            {
+                Assert.Equal("professional", CommandTiers.GetRaw(key));
+                Assert.Equal(LicenseProductTier.Professional, LicenseCommandTierMap.GetRequiredTier(key));
+            }
+
+            foreach (var key in new[] { "N8", "N9", "N10", "N14", "N37" })
+            {
+                Assert.Equal("standard", CommandTiers.GetRaw(key));
+                Assert.Equal(LicenseProductTier.Standard, LicenseCommandTierMap.GetRequiredTier(key));
             }
         }
 

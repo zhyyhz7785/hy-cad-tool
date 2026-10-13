@@ -30,6 +30,9 @@ namespace HyCADTool.ReCall
         [CommandMethod("HyB")]     public void Cmd_HyB()      => ReCallClass.Invoke("HyB");
         [CommandMethod("_HyExec")] public void Cmd__HyExec()  => ReCallClass.Invoke("_HyExec");
         [CommandMethod("hyLicense")] public void Cmd_hyLicense() => ReCallClass.Invoke("hyLicense");
+        [CommandMethod("hyG101")] public void Cmd_hyG101() => ReCallClass.Invoke("hyG101");
+        [CommandMethod("hyG16")] public void Cmd_hyG16() => ReCallClass.Invoke("hyG16");
+        [CommandMethod("hyBaseRein")] public void Cmd_hyBaseRein() => ReCallClass.Invoke("hyBaseRein");
         #endregion
 
         #region 海绵城市 (Sponge City)
