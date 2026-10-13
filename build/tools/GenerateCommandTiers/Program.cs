@@ -8,7 +8,7 @@ namespace GenerateCommandTiers
 {
     /// <summary>
     /// 从 commands.json 生成 CommandTiers.g.cs，可选再生成 CommandRoutes.g.cs。
-    /// 用法: GenerateCommandTiers &lt;commands.json&gt; &lt;CommandTiers.g.cs&gt; [CommandRoutes.g.cs]
+    /// 用法: GenerateCommandTiers &lt;commands.json&gt; &lt;CommandTiers.g.cs&gt; [CommandRoutes.g.cs] [stamp]
     /// </summary>
     internal static class Program
     {
@@ -16,13 +16,14 @@ namespace GenerateCommandTiers
         {
             if (args.Length < 2)
             {
-                Console.Error.WriteLine("用法: GenerateCommandTiers <commands.json> <CommandTiers.g.cs> [CommandRoutes.g.cs]");
+                Console.Error.WriteLine("用法: GenerateCommandTiers <commands.json> <CommandTiers.g.cs> [CommandRoutes.g.cs] [stamp]");
                 return 1;
             }
 
             var jsonPath = args[0];
             var tiersPath = args[1];
             var routesPath = args.Length >= 3 ? args[2] : null;
+            var stampPath = args.Length >= 4 ? args[3] : null;
 
             if (!File.Exists(jsonPath))
             {
@@ -70,6 +71,9 @@ namespace GenerateCommandTiers
                         return 1;
                     Console.WriteLine("已写入 " + routesPath);
                 }
+
+                if (!string.IsNullOrWhiteSpace(stampPath) && !TouchStamp(stampPath))
+                    return 1;
             }
 
             return 0;
@@ -361,6 +365,23 @@ namespace GenerateCommandTiers
             catch (Exception ex)
             {
                 Console.Error.WriteLine("写入 " + path + " 失败: " + ex.Message);
+                return false;
+            }
+        }
+
+        private static bool TouchStamp(string path)
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+                File.WriteAllBytes(path, Array.Empty<byte>());
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("写入 stamp " + path + " 失败: " + ex.Message);
                 return false;
             }
         }
