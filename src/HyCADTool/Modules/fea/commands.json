@@ -1,0 +1,15 @@
+{
+    "version": 2,
+    "module": "fea",
+    "_description": "HyCADTool 模块 fea 的命令清单。档位与 ReCall/commands.json 一致，拆分后由 GenerateCommandTiers 汇总。",
+    "commands": {
+        "N7": {
+            "type": "HyCADTool.Features.Fem.Commands.HyFeaBeamMvpCommand",
+            "method": "Execute",
+            "category": "测试",
+            "displayName": "HYFEA 梁元 MVP",
+            "tooltip": "选线 + 均布 + 求解 + 回写（N7 占位）",
+            "order": 1
+        }
+    }
+}

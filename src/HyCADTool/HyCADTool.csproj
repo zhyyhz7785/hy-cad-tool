@@ -447,14 +447,16 @@
     <_CommandRoutesGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandRoutes.g.cs</_CommandRoutesGenerated>
     <_DevFacadeGenerated>$(MSBuildThisFileDirectory)..\ReCall\CommandFacade.cs</_DevFacadeGenerated>
     <_ProdFacadeGenerated>$(MSBuildThisFileDirectory)App\Production\ProductionCommandFacade.cs</_ProdFacadeGenerated>
+    <_ModulesDir>$(MSBuildThisFileDirectory)Modules</_ModulesDir>
+    <_CommandModulesGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandModules.g.cs</_CommandModulesGenerated>
     <_CommandTiersStamp>$(IntermediateOutputPath)GenerateCommandTiers.stamp</_CommandTiersStamp>
   </PropertyGroup>
   <Target Name="GenerateCommandTiers"
           BeforeTargets="CoreCompile"
-          Inputs="$(_CommandsJson);$(_FacadeMethodsJson);$(_GenerateCommandTiersProj);$(_GenerateCommandTiersProgram)"
-          Outputs="$(_CommandTiersStamp);$(_CommandTiersGenerated);$(_CommandRoutesGenerated);$(_DevFacadeGenerated);$(_ProdFacadeGenerated)"
+          Inputs="$(_CommandsJson);$(_FacadeMethodsJson);$(_GenerateCommandTiersProj);$(_GenerateCommandTiersProgram);$(_ModulesDir)\base\commands.json;$(_ModulesDir)\road\commands.json;$(_ModulesDir)\sponge-city\commands.json;$(_ModulesDir)\structure\commands.json;$(_ModulesDir)\fea\commands.json;$(_ModulesDir)\design-spec\commands.json;$(_ModulesDir)\hyob\commands.json"
+          Outputs="$(_CommandTiersStamp);$(_CommandTiersGenerated);$(_CommandRoutesGenerated);$(_DevFacadeGenerated);$(_ProdFacadeGenerated);$(_CommandModulesGenerated)"
           Condition="Exists('$(_GenerateCommandTiersProj)') And Exists('$(_CommandsJson)')">
-    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot; &quot;$(_CommandRoutesGenerated)&quot; &quot;$(_CommandTiersStamp)&quot; &quot;$(_FacadeMethodsJson)&quot; &quot;$(_DevFacadeGenerated)&quot; &quot;$(_ProdFacadeGenerated)&quot;"
+    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot; &quot;$(_CommandRoutesGenerated)&quot; &quot;$(_CommandTiersStamp)&quot; &quot;$(_FacadeMethodsJson)&quot; &quot;$(_DevFacadeGenerated)&quot; &quot;$(_ProdFacadeGenerated)&quot; &quot;$(_ModulesDir)&quot; &quot;$(_CommandModulesGenerated)&quot;"
           IgnoreExitCode="true"
           ConsoleToMSBuild="true">
       <Output TaskParameter="ExitCode" PropertyName="_GenerateCommandTiersExit" />

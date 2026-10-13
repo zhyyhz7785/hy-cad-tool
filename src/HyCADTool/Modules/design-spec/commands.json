@@ -1,0 +1,55 @@
+{
+    "version": 2,
+    "module": "design-spec",
+    "_description": "HyCADTool 模块 design-spec 的命令清单。档位与 ReCall/commands.json 一致，拆分后由 GenerateCommandTiers 汇总。",
+    "commands": {
+        "hymd": {
+            "type": "HyCADTool.Features.Export.DesignSpecCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "设计说明",
+            "tooltip": "连接/绑定 HyMd，再在编辑器中贴到图纸（hymd）",
+            "order": 10
+        },
+        "hymdE": {
+            "type": "HyCADTool.Features.Export.DesignSpecEditCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "编辑设计说明",
+            "tooltip": "点选贴图文字，导入 HyMd 编辑（hymdE）",
+            "order": 20
+        },
+        "hymdc": {
+            "type": "HyCADTool.Features.Export.DesignSpecCaptureCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "捕捉文字表格",
+            "tooltip": "循环选择文字/表格，转换成 Markdown 追加到 HyMd（hymdc）",
+            "order": 21
+        },
+        "HYMDCOMPARE": {
+            "type": "HyCADTool.Features.Export.HymdCadCompareCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "HyMd文字对照",
+            "tooltip": "测 MText 字宽/折行/行距并叠 HyMd 块框（HYMDCOMPARE）",
+            "order": 25
+        },
+        "HYMDPLANCHECK": {
+            "type": "HyCADTool.Features.Export.HymdCadPlanCheckCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "HyMd贴图清单对照",
+            "tooltip": "同一 dump 用插件公式编 plan，对照 HyMd TS plan（HYMDPLANCHECK）",
+            "order": 27
+        },
+        "N40": {
+            "type": "HyCADTool.Features.Export.DesignSpecCaptureCommand",
+            "method": "Execute",
+            "category": "导出说明",
+            "displayName": "捕捉文字表格(N40)",
+            "tooltip": "同 hymdc：循环选择文字/表格，转换成 Markdown 追加到 HyMd。真名 hymdc 需关 CAD 重 NETLOAD ReCall",
+            "order": 21
+        }
+    }
+}

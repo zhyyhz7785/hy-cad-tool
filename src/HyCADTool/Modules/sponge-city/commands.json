@@ -1,0 +1,63 @@
+{
+    "version": 2,
+    "module": "sponge-city",
+    "_description": "HyCADTool 模块 sponge-city 的命令清单。档位与 ReCall/commands.json 一致，拆分后由 GenerateCommandTiers 汇总。",
+    "commands": {
+        "HYSpongeCity": {
+            "type": "HyCADTool.Shell.Commands.ShowPanelCommand",
+            "method": "ShowSpongeCityPanel",
+            "category": "海绵命令",
+            "displayName": "海绵城市面板",
+            "tooltip": "打开 HyB 海绵城市伪分类 Tab（参数 + CAD 联动 + 输出）（HYSpongeCity）",
+            "order": 1
+        },
+        "hyscDL": {
+            "type": "HyCADTool.Features.SpongeCity.Commands.DrawSurfaceLayerLinesCommand",
+            "method": "Execute",
+            "category": "海绵命令",
+            "displayName": "画下垫面样线",
+            "tooltip": "拾取基点为 10 类下垫面图层画样线 + 标尺线 a（hyscDL）",
+            "order": 10
+        },
+        "hyscRA": {
+            "type": "HyCADTool.Features.SpongeCity.Commands.ReadSurfaceAreaCommand",
+            "method": "Execute",
+            "category": "海绵命令",
+            "displayName": "读下垫面面积",
+            "tooltip": "扫描 10 类下垫面图层闭合 Polyline 汇总面积回填面板（hyscRA）",
+            "order": 20
+        },
+        "hyscWA": {
+            "type": "HyCADTool.Features.SpongeCity.Commands.WriteSurfaceAreaCommand",
+            "method": "Execute",
+            "category": "海绵命令",
+            "displayName": "写下垫面面积",
+            "tooltip": "在每条 Polyline 形心写面积 + 在样线 a 旁写合计（hyscWA）",
+            "order": 30
+        },
+        "hyscExC": {
+            "type": "HyCADTool.Features.SpongeCity.Commands.ExportCalcExcelCommand",
+            "method": "Execute",
+            "category": "海绵命令",
+            "displayName": "导出计算 Excel",
+            "tooltip": "导出 7 Sheet 海绵城市计算表 .xlsx（hyscExC）",
+            "order": 40
+        },
+        "hyscExB": {
+            "type": "HyCADTool.Features.SpongeCity.Commands.ExportBudgetExcelCommand",
+            "method": "Execute",
+            "category": "海绵命令",
+            "displayName": "导出预算 Excel",
+            "tooltip": "导出海绵城市概算+预算 .xlsx（hyscExB）",
+            "order": 50
+        },
+        "hyscExM": {
+            "type": "HyCADTool.Features.SpongeCity.Commands.ExportReportMdCommand",
+            "method": "Execute",
+            "category": "海绵命令",
+            "displayName": "导出计算书 md",
+            "tooltip": "导出海绵城市 md 计算书（hyscExM）",
+            "order": 60
+        }
+    }
+}

@@ -325,17 +325,23 @@ namespace HyCADTool.LinuxTests
 
         private static Dictionary<string, string> ReadJsonTiers()
         {
-            var path = Path.Combine(RepoRoot(), "src", "ReCall", "commands.json");
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var prop in doc.RootElement.GetProperty("commands").EnumerateObject())
+            var modulesDir = Path.Combine(RepoRoot(), "src", "HyCADTool", "Modules");
+            foreach (var path in Directory.GetFiles(modulesDir, "commands.json", SearchOption.AllDirectories))
             {
-                if (prop.Value.ValueKind != JsonValueKind.Object)
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                if (!doc.RootElement.TryGetProperty("commands", out var commands)
+                    || commands.ValueKind != JsonValueKind.Object)
                     continue;
-                var raw = prop.Value.TryGetProperty("tier", out var tier) && tier.ValueKind == JsonValueKind.String
-                    ? tier.GetString()
-                    : null;
-                result[prop.Name] = Normalize(raw);
+                foreach (var prop in commands.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.Object)
+                        continue;
+                    var raw = prop.Value.TryGetProperty("tier", out var tier) && tier.ValueKind == JsonValueKind.String
+                        ? tier.GetString()
+                        : null;
+                    result[prop.Name] = Normalize(raw);
+                }
             }
             return result;
         }

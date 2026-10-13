@@ -60,6 +60,8 @@
     <Compile Include="..\HyCADTool\Shared\Office\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandTiers.g.cs" Link="Licensing\CommandTiers.g.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandRoutes.g.cs" Link="Licensing\CommandRoutes.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandModules.g.cs" Link="Licensing\CommandModules.g.cs" />
+    <Compile Include="..\HyCADTool\Shell\Licensing\CommandModuleRegistry.cs" Link="Licensing\CommandModuleRegistry.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandRouteResolver.cs" Link="Licensing\CommandRouteResolver.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\LicenseCommandTierMap.cs" Link="Licensing\LicenseCommandTierMap.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\LicensingStub.cs" Link="Licensing\LicensingStub.cs" />
