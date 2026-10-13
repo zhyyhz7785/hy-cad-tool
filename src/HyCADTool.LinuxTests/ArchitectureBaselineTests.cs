@@ -22,9 +22,10 @@ namespace HyCADTool.LinuxTests
         [Fact]
         public void Features_must_not_gain_new_shell_references()
         {
-            AssertNoNewViolations(
-                "whitelist-features-shell.txt",
-                ScanFeatureCounts(CountShellRefs));
+            var hits = new SortedSet<string>(ScanFeatureCounts(CountShellRefs), StringComparer.Ordinal);
+            foreach (var row in ScanXamlShellRefs())
+                hits.Add(row);
+            AssertNoNewViolations("whitelist-features-shell.txt", hits);
         }
 
         [Fact]
@@ -65,6 +66,14 @@ namespace HyCADTool.LinuxTests
             AssertNoNewViolations(
                 "whitelist-module-deps.txt",
                 ScanForbiddenModuleDeps());
+        }
+
+        [Fact]
+        public void Xaml_shell_xmlns_is_counted_and_features_xaml_is_clean()
+        {
+            Assert.Equal(1, CountXamlShellRefs("xmlns:behaviors=\"clr-namespace:HyCADTool.Shell.Behaviors\""));
+            Assert.Equal(0, CountXamlShellRefs("clr-namespace:HyCADTool.Features.Road.CrossSection.Behaviors"));
+            Assert.Empty(ScanXamlShellRefs());
         }
 
         [Fact]
@@ -187,6 +196,50 @@ namespace HyCADTool.LinuxTests
                     hits.Add(rel + "::" + n);
             }
             return hits;
+        }
+
+        /// <summary>
+        /// Features / Shared 等非宿主 XAML 里的 <c>clr-namespace:HyCADTool.Shell</c> 计数。
+        /// </summary>
+        internal static IReadOnlyCollection<string> ScanXamlShellRefs()
+        {
+            var hits = new SortedSet<string>(StringComparer.Ordinal);
+            var src = Path.Combine(RepoRoot(), "src", "HyCADTool");
+            if (!Directory.Exists(src))
+                return hits;
+            foreach (var path in Directory.GetFiles(src, "*.xaml", SearchOption.AllDirectories))
+            {
+                if (IsBinOrObj(path))
+                    continue;
+                var rel = ToRepoRelative(path);
+                if (IsHostXaml(rel))
+                    continue;
+                var n = CountXamlShellRefs(File.ReadAllText(path));
+                if (n > 0)
+                    hits.Add(rel + "::" + n);
+            }
+            return hits;
+        }
+
+        internal static int CountXamlShellRefs(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+            const string needle = "clr-namespace:HyCADTool.Shell";
+            var n = 0;
+            var i = 0;
+            while ((i = text.IndexOf(needle, i, StringComparison.Ordinal)) >= 0)
+            {
+                n++;
+                i += needle.Length;
+            }
+            return n;
+        }
+
+        private static bool IsHostXaml(string repoRelative)
+        {
+            return repoRelative.StartsWith("src/HyCADTool/Shell/", StringComparison.Ordinal)
+                || repoRelative.StartsWith("src/HyCADTool/App/", StringComparison.Ordinal);
         }
 
         /// <summary>
