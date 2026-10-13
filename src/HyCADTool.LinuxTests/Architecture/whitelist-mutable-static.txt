@@ -70,5 +70,4 @@ src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_resolveHandler
 src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_showMethod
 src/HyCADTool/Features/Tables/Services/UniverEditorLoader.cs::_warmupMethod
 src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::NativeTextEditCommands
-src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_installed
 src/HyCADTool/Features/TitleBlock/Services/TitleBlockService.cs::Configs
