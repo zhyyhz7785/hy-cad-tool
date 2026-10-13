@@ -3,9 +3,9 @@ using System;
 namespace HyCADTool.Licensing
 {
     /// <summary>
-    /// 许可 SDK 不在本仓库时的编译桩。仅当 csproj 判定 SDK 文件不存在、且不是 Production 时编入。
+    /// 许可 SDK 不在本仓库时的编译桩。仅当 csproj 判定 SDK 文件不存在、且 Configuration 为 Debug 时编入。
     /// 不验签、不写 license 文件；<see cref="LicenseService.LastStatus"/> 固定为 Enterprise，让本机命令能跑。
-    /// Production 在 SDK 缺失时由 MSBuild Error 中止，本文件不会进入发行包。
+    /// Release / Production 在 SDK 缺失时由 MSBuild Error 中止，本文件不会进入非 Debug 包。
     /// </summary>
     public enum LicenseProductTier
     {
