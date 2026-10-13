@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using Clipper2Lib;
 using System;
 using System.Linq;
@@ -43,7 +44,9 @@ namespace HyCADTool.Features.Pad
                 using (doc.LockDocument())
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
-                    var pline1 = tr.GetObject(res1.ObjectId, OpenMode.ForWrite) as Polyline;
+                    Polyline pline1;
+                    if (!LockedLayerErase.TryOpenForWrite(tr, res1.ObjectId, out pline1, ed))
+                        return;
                     var pline2 = tr.GetObject(res2.ObjectId, OpenMode.ForRead) as Polyline;
 
                     if (pline1 == null || pline2 == null || !pline1.Closed || !pline2.Closed)
@@ -86,7 +89,7 @@ namespace HyCADTool.Features.Pad
                 return;
             }
 
-            pline1.Erase();
+            LockedLayerErase.TryErase(tr, pline1, ed);
             var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
 
             if (intersectArea >= AreaThreshold * area2)

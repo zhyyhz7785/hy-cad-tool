@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,8 +101,8 @@ namespace HyCADTool.Features.Misc
                         }
 
                         // 删除原线
-                        var orig = tr.GetObject(kv.Key, OpenMode.ForWrite) as Entity;
-                        orig?.Erase();
+                        var orig = tr.GetObject(kv.Key, OpenMode.ForRead) as Entity;
+                        LockedLayerErase.TryErase(tr, orig, ed);
                     }
 
                     tr.Commit();

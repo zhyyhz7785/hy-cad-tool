@@ -1,5 +1,6 @@
 using System;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -90,18 +91,28 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
     /// </summary>
     internal static class RoadAlignmentCommitSession
     {
-        private static Guid? _pendingCommit;
-
         internal static void RequestCommit(Guid alignmentId)
         {
-            _pendingCommit = alignmentId;
+            var slot = ActiveDocumentSession.GetOrNull<RoadAlignmentCommitPending>();
+            if (slot == null)
+                return;
+            slot.PendingCommit = alignmentId;
         }
 
         internal static Guid? ConsumePendingCommit()
         {
-            var v = _pendingCommit;
-            _pendingCommit = null;
+            var slot = ActiveDocumentSession.GetOrNull<RoadAlignmentCommitPending>();
+            if (slot == null)
+                return null;
+            var v = slot.PendingCommit;
+            slot.PendingCommit = null;
             return v;
         }
+    }
+
+    /// <summary>单张图上的路线提交待办，由 <see cref="DocumentSessionStore"/> 按 Database 持有。</summary>
+    public sealed class RoadAlignmentCommitPending
+    {
+        public Guid? PendingCommit;
     }
 }

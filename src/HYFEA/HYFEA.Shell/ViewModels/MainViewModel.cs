@@ -18,9 +18,14 @@ namespace HYFEA.Shell.ViewModels;
 public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 {
     private readonly BeamSolveSession _session = new();
+    private readonly RelayCommand _solveCommand;
+    private readonly RelayCommand _cancelSolveCommand;
     private readonly RelayCommand _exportVtuCommand;
+    private CancellationTokenSource? _solveCts;
+    private bool _isSolving;
     private FemProblem? _lastProblem;
     private FemResult? _lastResult;
+    private ResultMesh? _lastMesh;
     private string? _lastMeshJson;
     private double _youngsModulus = 2.06e5;
     private double _area = 8e4;
@@ -37,9 +42,25 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 
     public MainViewModel()
     {
-        SolveCommand = new RelayCommand(ExecuteSolve);
+        _solveCommand = new RelayCommand(ExecuteSolve, () => !IsSolving);
+        SolveCommand = _solveCommand;
+        _cancelSolveCommand = new RelayCommand(CancelSolve, () => IsSolving);
+        CancelSolveCommand = _cancelSolveCommand;
         _exportVtuCommand = new RelayCommand(ExecuteExportVtu, () => _lastProblem != null && _lastResult is { Success: true });
         ExportVtuCommand = _exportVtuCommand;
+    }
+
+    public bool IsSolving
+    {
+        get => _isSolving;
+        private set
+        {
+            if (Set(ref _isSolving, value))
+            {
+                _solveCommand.RaiseCanExecuteChanged();
+                _cancelSolveCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public IReadOnlyList<BeamSupportKind> SupportOptions { get; } =
@@ -136,10 +157,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 
     public ICommand SolveCommand { get; }
 
+    public ICommand CancelSolveCommand { get; }
+
     public ICommand ExportVtuCommand { get; }
 
     private void ExecuteSolve()
     {
+        if (IsSolving)
+            return;
+
         int seg = Segments < 1 ? 4 : Math.Min(Segments, 10000);
         if (seg != Segments) Segments = seg;
 
@@ -159,45 +185,99 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
             Units = UseSiUnits ? UnitSystem.SI : UnitSystem.MmN,
         };
 
+        _solveCts?.Dispose();
+        _solveCts = new CancellationTokenSource();
+        var token = _solveCts.Token;
         int serial = Interlocked.Increment(ref _solveSerial);
+        IsSolving = true;
         Status = "求解中…";
         var sw = Stopwatch.StartNew();
-        Task.Run(() => _session.Compute(geom, request))
+        Task.Run(() =>
+            {
+                var output = _session.Compute(geom, request, token);
+                token.ThrowIfCancellationRequested();
+                ResultPresentation? presentation = null;
+                string? meshError = null;
+                if (output.Result.Success)
+                {
+                    try
+                    {
+                        presentation = ResultPresentation.Build(output.Problem, output.Result);
+                    }
+                    catch (Exception ex)
+                    {
+                        meshError = ex.Message;
+                    }
+                }
+
+                token.ThrowIfCancellationRequested();
+                return (output, presentation, meshError);
+            }, token)
             .ContinueWith(
                 t => Dispatcher.UIThread.Post(() => FinishSolve(serial, sw, t)),
+                CancellationToken.None,
+                TaskContinuationOptions.None,
                 TaskScheduler.Default);
     }
 
-    private void FinishSolve(int serial, Stopwatch sw, Task<BeamSolveOutput> task)
+    private void CancelSolve()
+    {
+        _solveCts?.Cancel();
+    }
+
+    private void FinishSolve(
+        int serial,
+        Stopwatch sw,
+        Task<(BeamSolveOutput output, ResultPresentation? presentation, string? meshError)> task)
     {
         if (serial != Volatile.Read(ref _solveSerial))
             return;
 
-        sw.Stop();
-        if (task.IsFaulted)
+        try
         {
-            _lastProblem = null;
-            _lastResult = null;
-            LastMeshJson = null;
-            RaiseExportCommandsChanged();
-            Status = "异常：" + task.Exception.GetBaseException().Message;
-            return;
-        }
+            sw.Stop();
+            if (task.IsCanceled || IsCanceledFault(task))
+            {
+                Status = "已取消";
+                return;
+            }
 
-        var output = task.Result;
-        string statusBeforePresent = Status;
-        Present(output.Result, output.Problem);
+            if (task.IsFaulted)
+            {
+                ClearLastSolve();
+                Status = "异常：" + task.Exception.GetBaseException().Message;
+                return;
+            }
 
-        if (!output.Result.Success)
-        {
-            Status = "求解失败：" + (output.Result.Error?.Message ?? "未知");
-            return;
-        }
+            var (output, presentation, meshError) = task.Result;
+            Bind(output.Result, output.Problem, presentation);
 
-        if (Status == statusBeforePresent)
-        {
+            if (!output.Result.Success)
+            {
+                Status = "求解失败：" + (output.Result.Error?.Message ?? "未知");
+                return;
+            }
+
+            if (meshError != null)
+            {
+                Status = "结果网格构建失败：" + meshError;
+                return;
+            }
+
             Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
         }
+        finally
+        {
+            if (serial == Volatile.Read(ref _solveSerial))
+                IsSolving = false;
+        }
+    }
+
+    private static bool IsCanceledFault(Task task)
+    {
+        if (!task.IsFaulted || task.Exception == null)
+            return false;
+        return task.Exception.GetBaseException() is OperationCanceledException;
     }
 
     private void ExecuteExportVtu()
@@ -222,39 +302,47 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
             return null;
         }
 
-        var mesh = BeamResultMeshBuilder.From(_lastProblem, _lastResult);
-        var path = Path.Combine(Path.GetTempPath(), "hyfea-last.vtu");
+        var path = ResultPresentation.DefaultVtuPath;
+        var mesh = _lastMesh ?? BeamResultMeshBuilder.From(_lastProblem, _lastResult);
+        _lastMesh = mesh;
         VtuWriter.Write(mesh, path);
         return path;
     }
 
     public void Present(FemResult result, FemProblem problem)
     {
+        ResultPresentation? presentation = null;
+        string? meshError = null;
+        if (result.Success && result.Displacements != null && result.Layout != null)
+        {
+            try
+            {
+                presentation = ResultPresentation.Build(problem, result);
+            }
+            catch (Exception ex)
+            {
+                meshError = ex.Message;
+            }
+        }
+
+        Bind(result, problem, presentation);
+        if (meshError != null)
+            Status = "结果网格构建失败：" + meshError;
+    }
+
+    private void Bind(FemResult result, FemProblem problem, ResultPresentation? presentation)
+    {
         NodalResults.Clear();
         BeamForces.Clear();
 
         _lastProblem = problem;
         _lastResult = result;
+        _lastMesh = presentation?.Mesh;
+        LastMeshJson = presentation?.MeshJson;
         RaiseExportCommandsChanged();
 
         if (!result.Success || result.Displacements == null || result.Layout == null)
-        {
-            LastMeshJson = null;
             return;
-        }
-
-        try
-        {
-            var mesh = BeamResultMeshBuilder.From(problem, result);
-            LastMeshJson = ResultMeshJson.ToJson(mesh);
-            // 边车 / ParaView 旁路共用固定路径
-            VtuWriter.Write(mesh, Path.Combine(Path.GetTempPath(), "hyfea-last.vtu"));
-        }
-        catch (Exception ex)
-        {
-            LastMeshJson = null;
-            Status = "结果网格构建失败：" + ex.Message;
-        }
 
         foreach (var node in problem.Nodes)
         {
@@ -286,6 +374,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
                 });
             }
         }
+    }
+
+    private void ClearLastSolve()
+    {
+        _lastProblem = null;
+        _lastResult = null;
+        _lastMesh = null;
+        LastMeshJson = null;
+        RaiseExportCommandsChanged();
     }
 
     private void RaiseExportCommandsChanged() =>

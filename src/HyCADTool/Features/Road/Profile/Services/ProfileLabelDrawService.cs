@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 
 using HyCADTool.Features.Road.PlanProfile.Domain;
@@ -142,8 +143,8 @@ namespace HyCADTool.Features.Road.PlanProfile.Services
             }
             foreach (var id in toErase)
             {
-                var ent = tr.GetObject(id, OpenMode.ForWrite);
-                if (ent != null && !ent.IsErased) ent.Erase();
+                var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
+                LockedLayerErase.TryErase(tr, ent, null);
             }
             return toErase.Count;
         }

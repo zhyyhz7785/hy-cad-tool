@@ -14,16 +14,19 @@ public sealed class LinearStaticAnalysis
 {
     private readonly ILinearSystemSolver _solver;
     private readonly SolverRegistry? _registry;
+    private readonly ElementContributionRegistry _elements;
 
     /// <summary>
     /// 创建线性静力分析 (P2.v0.2 支持求解器注册表)。
     /// </summary>
     /// <param name="solver">指定求解器(优先级最高)</param>
     /// <param name="registry">求解器注册表(使用 registry.Default)</param>
-    public LinearStaticAnalysis(ILinearSystemSolver? solver = null, SolverRegistry? registry = null)
+    /// <param name="elements">单元贡献注册表；null 则用内置默认</param>
+    public LinearStaticAnalysis(ILinearSystemSolver? solver = null, SolverRegistry? registry = null, ElementContributionRegistry? elements = null)
     {
         _registry = registry;
         _solver = solver ?? registry?.Default ?? new DenseSystemSolver();
+        _elements = elements ?? new ElementContributionRegistry();
     }
 
     /// <summary>
@@ -37,7 +40,7 @@ public sealed class LinearStaticAnalysis
 
     public FemResult Run(FemProblem problem)
     {
-        var layout = DofLayout.Build(problem);
+        var layout = DofLayout.Build(problem, _elements);
         if (layout.FreeDofCount <= 0)
         {
             return new FemResult(
@@ -52,7 +55,7 @@ public sealed class LinearStaticAnalysis
                 null);
         }
 
-        var sys = Assembler.Assemble(problem, layout);
+        var sys = Assembler.Assemble(problem, layout, _elements);
         var red = Assembler.Reduce(sys);
         var sol = _solver.SolveDense(red.Stiffness, red.Force);
         if (!sol.Success || sol.Solution is null)
@@ -73,8 +76,8 @@ public sealed class LinearStaticAnalysis
         var disp = ToDisplacementField(layout, uFull);
         var rVec = ComputeReactions(sys.Stiffness, sys.Force, uFull);
         var reacField = ToReactionField(layout, rVec);
-        var axial = ComputeAxialForces(problem, layout, uFull);
-        var beams = ComputeBeamEndForces(problem, layout, uFull);
+        var axial = ComputeAxialForces(problem, layout, uFull, _elements);
+        var beams = ComputeBeamEndForces(problem, layout, uFull, _elements);
 
         return new FemResult(
             true,
@@ -137,10 +140,9 @@ public sealed class LinearStaticAnalysis
         return f;
     }
 
-    private static ElementAxialForceMap ComputeAxialForces(FemProblem problem, DofLayout layout, DenseVector uFull)
+    private static ElementAxialForceMap ComputeAxialForces(FemProblem problem, DofLayout layout, DenseVector uFull, ElementContributionRegistry registry)
     {
         var map = new ElementAxialForceMap();
-        var registry = new ElementContributionRegistry();
 
         foreach (var el in problem.Elements)
         {
@@ -161,10 +163,9 @@ public sealed class LinearStaticAnalysis
         return map;
     }
 
-    private static ElementBeamEndForceMap ComputeBeamEndForces(FemProblem problem, DofLayout layout, DenseVector uFull)
+    private static ElementBeamEndForceMap ComputeBeamEndForces(FemProblem problem, DofLayout layout, DenseVector uFull, ElementContributionRegistry registry)
     {
         var map = new ElementBeamEndForceMap();
-        var registry = new ElementContributionRegistry();
 
         foreach (var el in problem.Elements)
         {

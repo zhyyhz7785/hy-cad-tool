@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Domain.ValueObjects.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 
 namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
@@ -57,7 +58,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             catch
             {
                 hatch.Dispose();
-                EraseIfAdded(addedBoundary, boundary);
+                EraseIfAdded(tr, addedBoundary, boundary);
                 return 0;
             }
             try
@@ -81,7 +82,7 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             catch
             {
                 hatch.Dispose();
-                EraseIfAdded(addedBoundary, boundary);
+                EraseIfAdded(tr, addedBoundary, boundary);
                 return 0;
             }
 
@@ -96,8 +97,8 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             {
                 // 任一步失败（图案不识别 / 边界拓扑问题 / 关联建立失败）都把 hatch 擦掉。
                 // 调用方自己的轮廓留下；本方法临时补进库的边界一起擦掉。
-                try { hatch.Erase(); } catch { /* 吞 */ }
-                EraseIfAdded(addedBoundary, boundary);
+                LockedLayerErase.TryErase(tr, hatch, null);
+                EraseIfAdded(tr, addedBoundary, boundary);
                 return 0;
             }
 
@@ -105,11 +106,11 @@ namespace HyCADTool.Features.Road.CrossSection.Services.FillRendering
             return 1;
         }
 
-        private static void EraseIfAdded(bool added, Polyline boundary)
+        private static void EraseIfAdded(Transaction tr, bool added, Polyline boundary)
         {
             if (!added || boundary == null)
                 return;
-            try { boundary.Erase(); } catch { /* 已不在库中 */ }
+            LockedLayerErase.TryErase(tr, boundary, null);
         }
 
         public static int ApplyBlock(

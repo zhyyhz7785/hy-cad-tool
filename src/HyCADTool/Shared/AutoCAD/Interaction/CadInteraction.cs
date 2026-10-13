@@ -67,7 +67,38 @@ namespace HyCADTool.Shared.AutoCAD.Interaction
 
         public bool SafeErase(Transaction transaction, Entity entity)
         {
-            return LockedLayerErase.TryErase(transaction, entity, ActiveEditor());
+            return LockedLayerErase.TryErase(transaction, entity, EditorFor(entity));
+        }
+
+        public bool TryOpenForWrite(Transaction transaction, ObjectId id, out Entity entity)
+        {
+            Editor editor = null;
+            try
+            {
+                var db = id.Database;
+                var doc = db == null ? null : CadTx.TryGetDocument(db);
+                editor = doc?.Editor ?? ActiveEditor();
+            }
+            catch
+            {
+                editor = ActiveEditor();
+            }
+
+            return LockedLayerErase.TryOpenForWrite(transaction, id, out entity, editor);
+        }
+
+        private static Editor EditorFor(Entity entity)
+        {
+            try
+            {
+                var db = entity?.Database;
+                var doc = db == null ? null : CadTx.TryGetDocument(db);
+                return doc?.Editor ?? ActiveEditor();
+            }
+            catch
+            {
+                return ActiveEditor();
+            }
         }
 
         public IDisposable WithTemporaryLayer(Database db, string layerName)

@@ -12,6 +12,7 @@ using HyCADTool.Features.G101.Domain.Geometry;
 using HyCADTool.Features.G101.Domain.Tables;
 using HyCADTool.Features.G101.Services;
 using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -73,22 +74,9 @@ namespace HyCADTool.Features.G101.ViewModels
 
     public class G101PanelViewModel : INotifyPropertyChanged
     {
-        private static readonly Dictionary<string, G101PanelViewModel> _byDoc = new Dictionary<string, G101PanelViewModel>();
-
         public static G101PanelViewModel Current
         {
-            get
-            {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc == null) return null;
-                var key = doc.Name;
-                if (!_byDoc.TryGetValue(key, out var vm))
-                {
-                    vm = new G101PanelViewModel();
-                    _byDoc[key] = vm;
-                }
-                return vm;
-            }
+            get { return ActiveDocumentSession.GetOrNull<G101PanelViewModel>(); }
         }
 
         public G101GlobalSettings Global { get; } = new G101GlobalSettings();

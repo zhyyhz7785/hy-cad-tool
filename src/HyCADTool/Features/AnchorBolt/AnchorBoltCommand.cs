@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using Newtonsoft.Json;
 using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
@@ -79,8 +80,7 @@ namespace HyCADTool.Features.AnchorBolt
                         // 写入螺栓数据到扩展字典
                         HyCADTool.Shared.AutoCAD.Xdata.ExtensionDictionaryService.WriteAnchorBolt(tr, newCircle, bolt);
 
-                        oldCircle.UpgradeOpen();
-                        oldCircle.Erase();
+                        LockedLayerErase.TryErase(tr, oldCircle, ed);
                     }
                     tr.Commit();
                 }

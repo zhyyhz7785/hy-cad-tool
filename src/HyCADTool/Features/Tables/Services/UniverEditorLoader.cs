@@ -30,7 +30,6 @@ namespace HyCADTool.Features.Tables.Services
         private static MethodInfo _warmupMethod;
         private static string _net8Dir;
         private static ResolveEventHandler _resolveHandler;
-        private static UniverTableEditorHostBridge _pendingHostBridge;
 
         public static string LastError { get; private set; }
 
@@ -39,20 +38,14 @@ namespace HyCADTool.Features.Tables.Services
             LastError = null;
             error = null;
 
-            if (hostBridge != null)
-                _pendingHostBridge = hostBridge;
-
             if (!EnsureLoaded())
             {
                 error = LastError ?? "Univer 编辑器加载失败。";
                 return false;
             }
 
-            if (_pendingHostBridge != null)
-            {
-                ConfigureHostContext(_pendingHostBridge);
-                _pendingHostBridge = null;
-            }
+            if (hostBridge != null)
+                ConfigureHostContext(hostBridge);
 
             if (TryInvokeShow(ownerHandle, out error))
                 return true;

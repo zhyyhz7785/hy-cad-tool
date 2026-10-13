@@ -52,6 +52,13 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void ProcessWide_usages_must_match_snapshot()
+        {
+            var actual = ScanProcessWideUsages(FeaturesRoot(), SharedRoot());
+            AssertNoNewViolations("processwide-usages.txt", actual);
+        }
+
+        [Fact]
         public void Neutral_assemblies_must_not_reference_host_ui()
         {
             var prefixes = new[]
@@ -184,10 +191,10 @@ namespace HyCADTool.LinuxTests
                         continue;
                     if (field.Modifiers.Any(SyntaxKind.ConstKeyword))
                         continue;
-                    if (HasProcessWide(field))
+                    if (HasValidProcessWide(field, field.Declaration.Type))
                         continue;
                     var readonlyField = field.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
-                    if (readonlyField && !IsMutableCollectionType(field.Declaration.Type))
+                    if (readonlyField && IsAllowedImmutableReadonlyType(field.Declaration.Type))
                         continue;
                     foreach (var variable in field.Declaration.Variables)
                         hits.Add(rel + "::" + variable.Identifier.Text);
@@ -197,7 +204,7 @@ namespace HyCADTool.LinuxTests
                 {
                     if (!prop.Modifiers.Any(SyntaxKind.StaticKeyword))
                         continue;
-                    if (HasProcessWide(prop))
+                    if (HasValidProcessWide(prop, prop.Type))
                         continue;
                     if (!HasWritableAccessor(prop))
                         continue;
@@ -208,7 +215,7 @@ namespace HyCADTool.LinuxTests
                 {
                     if (!ev.Modifiers.Any(SyntaxKind.StaticKeyword))
                         continue;
-                    if (HasProcessWide(ev))
+                    if (HasValidProcessWide(ev, ev.Declaration.Type))
                         continue;
                     foreach (var variable in ev.Declaration.Variables)
                         hits.Add(rel + "::event " + variable.Identifier.Text);
@@ -229,39 +236,205 @@ namespace HyCADTool.LinuxTests
             return false;
         }
 
-        private static bool IsMutableCollectionType(TypeSyntax type)
+        private static bool IsAllowedImmutableReadonlyType(TypeSyntax type)
         {
+            if (type == null)
+                return false;
+
+            if (type is GenericNameSyntax generic
+                && generic.Identifier.Text == "Lazy"
+                && generic.TypeArgumentList.Arguments.Count == 1)
+                return IsAllowedImmutableReadonlyType(generic.TypeArgumentList.Arguments[0]);
+
             var text = type.ToString();
             if (text.IndexOf("IReadOnly", StringComparison.Ordinal) >= 0)
-                return false;
+                return true;
             if (text.IndexOf("Immutable", StringComparison.Ordinal) >= 0)
-                return false;
+                return true;
+            if (text.IndexOf("Frozen", StringComparison.Ordinal) >= 0)
+                return true;
             if (text.IndexOf("ReadOnlySpan", StringComparison.Ordinal) >= 0
-                || text.IndexOf("ReadOnlyMemory", StringComparison.Ordinal) >= 0)
-                return false;
+                || text.IndexOf("ReadOnlyMemory", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyCollection", StringComparison.Ordinal) >= 0
+                || text.IndexOf("ReadOnlyObservableCollection", StringComparison.Ordinal) >= 0)
+                return true;
 
-            return text.IndexOf("List<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Dictionary<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("HashSet<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Queue<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Stack<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Collection<", StringComparison.Ordinal) >= 0
-                || text.IndexOf("Concurrent", StringComparison.Ordinal) >= 0
-                || text.EndsWith("[]", StringComparison.Ordinal);
+            var name = LastTypeName(type);
+            switch (name)
+            {
+                case "bool":
+                case "byte":
+                case "sbyte":
+                case "short":
+                case "ushort":
+                case "int":
+                case "uint":
+                case "long":
+                case "ulong":
+                case "float":
+                case "double":
+                case "decimal":
+                case "char":
+                case "string":
+                case "String":
+                case "object":
+                case "Object":
+                case "Boolean":
+                case "Byte":
+                case "SByte":
+                case "Int16":
+                case "UInt16":
+                case "Int32":
+                case "UInt32":
+                case "Int64":
+                case "UInt64":
+                case "Single":
+                case "Double":
+                case "Decimal":
+                case "Char":
+                case "Regex":
+                case "Type":
+                case "CultureInfo":
+                case "TimeSpan":
+                case "DateTime":
+                case "DateTimeOffset":
+                case "Guid":
+                case "Uri":
+                case "IntPtr":
+                case "UIntPtr":
+                case "DependencyProperty":
+                case "XNamespace":
+                case "Brush":
+                case "SolidColorBrush":
+                case "MarkdownPipeline":
+                case "AtlasRef":
+                case "Vector2D":
+                case "ElevationValue":
+                case "WallThickness":
+                case "SlabThickness":
+                case "ToleranceSettings":
+                case "StyleInfo":
+                case "DataShortcutResolveResult":
+                case "ConditionalWeakTable":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
-        private static bool HasProcessWide(MemberDeclarationSyntax member)
+        private static string LastTypeName(TypeSyntax type)
         {
+            if (type is IdentifierNameSyntax id)
+                return id.Identifier.Text;
+            if (type is QualifiedNameSyntax q)
+                return LastTypeName(q.Right);
+            if (type is AliasQualifiedNameSyntax a)
+                return LastTypeName(a.Name);
+            if (type is GenericNameSyntax g)
+                return g.Identifier.Text;
+            if (type is PredefinedTypeSyntax p)
+                return p.Keyword.Text;
+            if (type is NullableTypeSyntax n)
+                return LastTypeName(n.ElementType);
+            if (type is ArrayTypeSyntax)
+                return "[]";
+            return type.ToString();
+        }
+
+        private static readonly HashSet<string> ForbiddenProcessWideTypes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Document", "Database", "ObjectId", "Window", "Editor",
+        };
+
+        private static IReadOnlyCollection<string> ScanProcessWideUsages(params string[] roots)
+        {
+            var hits = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var root in roots)
+            {
+                if (!Directory.Exists(root))
+                    continue;
+                foreach (var path in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+                {
+                    var rel = ToRepoRelative(path);
+                    var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path);
+                    var rootNode = tree.GetCompilationUnitRoot();
+                    foreach (var field in rootNode.DescendantNodes().OfType<FieldDeclarationSyntax>())
+                    {
+                        string reason;
+                        if (!TryGetValidProcessWideReason(field, field.Declaration.Type, out reason))
+                            continue;
+                        foreach (var variable in field.Declaration.Variables)
+                            hits.Add(rel + "::" + variable.Identifier.Text + "::" + reason);
+                    }
+
+                    foreach (var prop in rootNode.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                    {
+                        string reason;
+                        if (!TryGetValidProcessWideReason(prop, prop.Type, out reason))
+                            continue;
+                        hits.Add(rel + "::" + prop.Identifier.Text + "::" + reason);
+                    }
+
+                    foreach (var ev in rootNode.DescendantNodes().OfType<EventFieldDeclarationSyntax>())
+                    {
+                        string reason;
+                        if (!TryGetValidProcessWideReason(ev, ev.Declaration.Type, out reason))
+                            continue;
+                        foreach (var variable in ev.Declaration.Variables)
+                            hits.Add(rel + "::event " + variable.Identifier.Text + "::" + reason);
+                    }
+                }
+            }
+
+            return hits;
+        }
+
+        private static bool HasValidProcessWide(MemberDeclarationSyntax member, TypeSyntax type)
+        {
+            string reason;
+            return TryGetValidProcessWideReason(member, type, out reason);
+        }
+
+        private static bool TryGetValidProcessWideReason(MemberDeclarationSyntax member, TypeSyntax type, out string reason)
+        {
+            reason = null;
             foreach (var list in member.AttributeLists)
             {
                 foreach (var attr in list.Attributes)
                 {
                     var name = attr.Name.ToString();
-                    if (name == "ProcessWide" || name.EndsWith(".ProcessWide", StringComparison.Ordinal)
-                        || name == "ProcessWideAttribute" || name.EndsWith(".ProcessWideAttribute", StringComparison.Ordinal))
-                        return true;
+                    if (name != "ProcessWide" && !name.EndsWith(".ProcessWide", StringComparison.Ordinal)
+                        && name != "ProcessWideAttribute" && !name.EndsWith(".ProcessWideAttribute", StringComparison.Ordinal))
+                        continue;
+
+                    if (attr.ArgumentList == null || attr.ArgumentList.Arguments.Count == 0)
+                        return false;
+                    var expr = attr.ArgumentList.Arguments[0].Expression as LiteralExpressionSyntax;
+                    if (expr == null || !expr.IsKind(SyntaxKind.StringLiteralExpression))
+                        return false;
+                    var text = expr.Token.ValueText;
+                    if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < 8)
+                        return false;
+                    if (TypeHasForbiddenHostToken(type))
+                        return false;
+                    reason = text.Trim();
+                    return true;
                 }
             }
+
+            return false;
+        }
+
+        private static bool TypeHasForbiddenHostToken(TypeSyntax type)
+        {
+            if (type == null)
+                return false;
+            foreach (var ident in type.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
+            {
+                if (ForbiddenProcessWideTypes.Contains(ident.Identifier.Text))
+                    return true;
+            }
+
             return false;
         }
 

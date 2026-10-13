@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using HyCAD.Tables;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCAD.Tables.Data;
 using HyCAD.Tables.Layout;
 using HyCAD.Tables.Operations;
@@ -50,12 +50,8 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                 throw new ArgumentNullException(nameof(grid));
 
             var layout = TableLayout.Create(grid, insertionPoint.X, insertionPoint.Y, GrowDirection.Down, _scale);
-            var doc = Application.DocumentManager.MdiActiveDocument;
-            if (doc == null)
-                throw new InvalidOperationException("无活动文档。");
-
-            using (doc.LockDocument())
-            using (var tr = _database.TransactionManager.StartTransaction())
+            TableCadHandle handle = null;
+            CadTx.Write(_database, tr =>
             {
                 var layerManager = new LayerManager(_database);
                 layerManager.EnsureLayer(tr, _options.GridLayerName, _options.GridLayerColor);
@@ -74,10 +70,9 @@ namespace HyCADTool.Features.Tables.Infrastructure.AutoCad
                 foreach (var cell in layout.EnumerateVisibleCells())
                     RenderCellContent(grid, cell, ms, tr, members);
 
-                var handle = AcadTableStore.Attach(tr, _database, grid, carrier.ObjectId, members);
-                tr.Commit();
-                return handle;
-            }
+                handle = AcadTableStore.Attach(tr, _database, grid, carrier.ObjectId, members);
+            });
+            return handle;
         }
 
         /// <summary>

@@ -1,0 +1,2 @@
+# [ProcessWide] 用法快照（文件::成员::理由）。理由须非空且不少于 8 字；类型含 Document/Database/ObjectId/Window/Editor 禁止使用。次数只减不增。
+src/HyCADTool/Features/TextEdit/Services/HyEdDoubleClickInterceptor.cs::_installed::双击拦截只挂一次进程级事件

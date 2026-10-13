@@ -10,9 +10,14 @@ public sealed class ElementContributionRegistry
 {
     private readonly Dictionary<Type, IElementContribution> _map = new();
 
-    public ElementContributionRegistry()
+    public ElementContributionRegistry() : this(registerBuiltins: true)
     {
-        // P1: register built-in contributions
+    }
+
+    public ElementContributionRegistry(bool registerBuiltins)
+    {
+        if (!registerBuiltins)
+            return;
         Register(new Spring1DContribution());
         Register(new Truss2DContribution());
         Register(new EulerBeam2DContribution());

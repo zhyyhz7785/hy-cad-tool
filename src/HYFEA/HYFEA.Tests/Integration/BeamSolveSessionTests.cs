@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using FluentAssertions;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Loads;
@@ -44,5 +46,27 @@ public sealed class BeamSolveSessionTests
 
         double uyAnalytical = -q * Math.Pow(L, 4) / (8.0 * E * Iz);
         uy.Should().BeApproximately(uyAnalytical, Math.Abs(uyAnalytical) * 0.05);
+    }
+
+    [Fact]
+    public void Compute_throws_when_token_already_cancelled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var geom = InMemoryAxisGeometry.Horizontal(10000.0, segments: 4);
+        var request = new BeamSolveRequest
+        {
+            YoungsModulus = 2.06e5,
+            Area = 8e4,
+            InertiaZ = 1.067e9,
+            Q = 10.0,
+            LoadDirection = BeamLoadDirection.GlobalNegY,
+            EndA = BeamSupportKind.Fixed,
+            EndB = BeamSupportKind.Free,
+            Units = UnitSystem.MmN,
+        };
+
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            new BeamSolveSession().Compute(geom, request, cts.Token));
     }
 }

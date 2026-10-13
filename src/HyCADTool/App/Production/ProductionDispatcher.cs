@@ -20,6 +20,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.Shell.Commands;
 using HyCADTool.Shell.Licensing;
+using HyCADTool.Shell.ViewModels;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -32,8 +33,6 @@ namespace HyCADTool.App.Production
     /// </summary>
     public static class ProductionDispatcher
     {
-        private const string VmType = "HyCADTool.Shell.ViewModels.SettingsPanelViewModel";
-
         // 反射结果缓存：避免每次命令都 asm.GetType / type.GetMethod
         private static readonly ConcurrentDictionary<string, Type> _typeCache = new ConcurrentDictionary<string, Type>(StringComparer.Ordinal);
         private static readonly ConcurrentDictionary<string, MethodInfo> _methodCache = new ConcurrentDictionary<string, MethodInfo>(StringComparer.Ordinal);
@@ -117,42 +116,21 @@ namespace HyCADTool.App.Production
         /// </summary>
         private static void InvokePreHooks()
         {
-            try
-            {
-                var asm = typeof(ProductionDispatcher).Assembly;
-                var vmType = _typeCache.GetOrAdd(VmType, t => asm.GetType(t));
-                if (vmType == null) return;
-
-                var currentProp = vmType.GetProperty("Current", BindingFlags.Public | BindingFlags.Static);
-                var current = currentProp?.GetValue(null);
-                if (current == null) return;
-
-                vmType.GetMethod("CommitFocusedTextBoxValue", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
-                vmType.GetMethod("EnsureStylesApplied", BindingFlags.Public | BindingFlags.Instance)?.Invoke(current, null);
-            }
-            catch
-            {
-                /* 钩子失败不阻塞业务命令 */
-            }
+            var vm = SettingsPanelViewModel.Current;
+            if (vm == null)
+                return;
+            SettingsPanelViewModel.CommitFocusedTextBoxValue();
+            vm.EnsureStylesApplied();
         }
 
         private static void InvokePanelPendingCommand(Autodesk.AutoCAD.EditorInput.Editor ed)
         {
             try
             {
-                var asm = typeof(ProductionDispatcher).Assembly;
-                var vmType = _typeCache.GetOrAdd(VmType, t => asm.GetType(t));
-                if (vmType == null)
-                {
-                    ed?.WriteMessage("\n✗ 未找到 " + VmType);
-                    return;
-                }
-                var consume = vmType.GetMethod("ConsumePendingCommand", BindingFlags.Public | BindingFlags.Static);
-                var action = consume?.Invoke(null, null) as Delegate;
-                var keyProp = vmType.GetProperty("LastCommandKey", BindingFlags.Public | BindingFlags.Static);
-                var pendingKey = keyProp != null ? keyProp.GetValue(null) as string : null;
+                var action = SettingsPanelViewModel.ConsumePendingCommand();
+                var pendingKey = SettingsPanelViewModel.LastCommandKey;
                 var licenseKey = CommandRouteResolver.ResolvePendingLicenseKey(pendingKey);
-                LicenseGate.RunGated(licenseKey, () => { action?.DynamicInvoke(); });
+                LicenseGate.RunGated(licenseKey, () => { action?.Invoke(); });
             }
             catch (TargetInvocationException tie)
             {
@@ -179,7 +157,7 @@ namespace HyCADTool.App.Production
                 string enumTypeName = (ctorEnumTypes != null && i < ctorEnumTypes.Length) ? ctorEnumTypes[i] : null;
                 if (!string.IsNullOrEmpty(enumTypeName) && raw is string enumValueName)
                 {
-                    var enumType = refactored.GetType(enumTypeName) ?? Type.GetType(enumTypeName);
+                    var enumType = refactored.GetType(enumTypeName);
                     if (enumType != null)
                     {
                         args[i] = Enum.Parse(enumType, enumValueName, ignoreCase: true);

@@ -4,6 +4,7 @@ using System.Linq;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.Features.AcadDimension.Domain.Results;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -127,8 +128,8 @@ namespace HyCADTool.Features.AcadDimension.Services
 
                 foreach (var pair in bucket)
                 {
-                    var dimEntity = tr.GetObject(pair.DimensionId, OpenMode.ForWrite) as Entity;
-                    dimEntity?.Erase();
+                    var dimEntity = tr.GetObject(pair.DimensionId, OpenMode.ForRead) as Entity;
+                    LockedLayerErase.TryErase(tr, dimEntity, null);
                 }
 
                 NewDdsRunOutcome run;

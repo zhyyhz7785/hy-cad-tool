@@ -15,7 +15,7 @@ public static class SparseAssembler
     /// <summary>
     /// 装配全局刚度矩阵(三元组)和荷载向量。
     /// </summary>
-    public static SparseAssembledLinearSystem Assemble(FemProblem problem, DofLayout layout)
+    public static SparseAssembledLinearSystem Assemble(FemProblem problem, DofLayout layout, ElementContributionRegistry? registry = null)
     {
         int n = layout.TotalDofCount;
         var triplets = new List<SparseTriplet>(capacity: EstimateTripletCount(problem, layout));
@@ -29,7 +29,7 @@ public static class SparseAssembler
         }
 
         // 直接累加到三元组。不分配 n×n 稠密阵，也不用绝对阈值丢掉很小的刚度项。
-        var registry = new ElementContributionRegistry();
+        registry ??= new ElementContributionRegistry();
         var sink = new TripletAccumulator();
         foreach (var el in problem.Elements)
         {

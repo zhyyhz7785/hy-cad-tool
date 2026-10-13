@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HyCAD.BlenderUI.Theming;
 using HyCADTool.Shell.Contracts;
+using HyCADTool.Shell.Licensing;
 using HyCADTool.Shared.Drawing.Models;
 using HyCADTool.Domain.Services.Road;
 using HyCADTool.Features.Road.CrossSection.Domain;
@@ -26,6 +27,7 @@ using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.TitleBlock.Services;
 using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.Core;
 using HyCADTool.Shared.UI.Helpers;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -81,19 +83,38 @@ namespace HyCADTool.Shell.ViewModels
             {
                 if (_instance != null) return _instance;
 
-                IStyleService styleService = null;
-                try { styleService = ServiceLocator.Container?.Resolve<IStyleService>(); }
-                catch { }
+                try
+                {
+                    var container = ServiceLocator.Container;
+                    if (container != null && container.IsRegistered<SettingsPanelViewModel>())
+                    {
+                        _instance = container.Resolve<SettingsPanelViewModel>();
+                        return _instance;
+                    }
 
-                _instance = styleService != null
-                    ? new SettingsPanelViewModel(styleService)
-                    : new SettingsPanelViewModel();
-                return _instance;
+                    IStyleService styleService = null;
+                    try { styleService = container?.Resolve<IStyleService>(); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Trace.WriteLine("[HyCAD] 解析 IStyleService 失败: " + ex.Message);
+                    }
+
+                    _instance = styleService != null
+                        ? new SettingsPanelViewModel(styleService)
+                        : new SettingsPanelViewModel();
+                    return _instance;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine("[HyCAD] SettingsPanelViewModel.Current: " + ex.Message);
+                    _instance = new SettingsPanelViewModel();
+                    return _instance;
+                }
             }
         }
 
         /// <summary>获取或创建全局单例；若实例缺 IStyleService 则补挂。</summary>
-        public static SettingsPanelViewModel GetOrCreate(string documentName, IStyleService styleService)
+        public static SettingsPanelViewModel GetOrCreate(IStyleService styleService)
         {
             var vm = Current;
             vm.EnsureStyleService(styleService);
@@ -134,6 +155,8 @@ namespace HyCADTool.Shell.ViewModels
 
         public SettingsPanelViewModel(IStyleService styleService)
         {
+            if (_instance == null)
+                _instance = this;
             _styleService = styleService;
 
             ApplyStyleCommand = new RelayCommand(SaveAsDefault);
@@ -1256,6 +1279,7 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>面板入队：委托 + 真实命令键。漏传键时 _HyExec 按 Standard 处理。</summary>
         public static void EnqueuePendingCommand(System.Action command, string commandKey)
         {
+            LicenseCommandTierMap.RejectAlwaysFreemiumEnqueue(commandKey);
             PendingCommand = command;
             PendingCommandKey = commandKey;
         }
@@ -1696,8 +1720,19 @@ namespace HyCADTool.Shell.ViewModels
         /// 保存当前面板参数到 JSON 文件。
         /// 当 <paramref name="explicitPath"/> 为 null 时写入默认路径 <see cref="GetSettingsFilePath"/>。
         /// </summary>
+        /// <summary>最近一次 hy-settings 读取失败的提示（已备份路径）。</summary>
+        public static string LastLoadWarning { get; private set; }
+
         public void SaveSettings(string explicitPath = null)
         {
+            SaveSettingsCore(explicitPath, force: explicitPath != null);
+        }
+
+        /// <param name="force">用户显式保存时为 true，读取失败后仍允许覆盖已备份的原文件。</param>
+        private void SaveSettingsCore(string explicitPath, bool force)
+        {
+            if (_settingsLoadFailed && !force && explicitPath == null)
+                return;
             try
             {
                 var data = new SettingsData
@@ -1827,7 +1862,7 @@ namespace HyCADTool.Shell.ViewModels
                 };
 
                 var json = JsonConvert.SerializeObject(data, Formatting.Indented);
-                File.WriteAllText(explicitPath ?? GetSettingsFilePath(), json);
+                AtomicFile.WriteAllText(explicitPath ?? GetSettingsFilePath(), json);
             }
             catch (Exception ex)
             {
@@ -1854,11 +1889,13 @@ namespace HyCADTool.Shell.ViewModels
         public void LoadSettings(string explicitPath = null)
         {
             _isLoading = true;
+            _settingsLoadFailed = false;
+            LastLoadWarning = null;
             _layerCatalogSchemaVersionBeforeLoad = int.MinValue;
+            var path = explicitPath ?? GetSettingsFilePath();
             try
             {
                 string beforeStyleSignature = BuildStyleSignature();
-                var path = explicitPath ?? GetSettingsFilePath();
                 if (!File.Exists(path))
                 {
                     _isLoading = false;
@@ -1875,6 +1912,7 @@ namespace HyCADTool.Shell.ViewModels
                 if (data == null)
                 {
                     _isLoading = false;
+                    MarkSettingsLoadFailed(path, "反序列化结果为空");
                     _layerCatalogSchemaVersionBeforeLoad = 0;
                     LoadLayerCatalogFromSettingsData(null);
                     SetRoadMaterialFillSettings(null);
@@ -2026,10 +2064,14 @@ namespace HyCADTool.Shell.ViewModels
                 string afterStyleSignature = BuildStyleSignature();
                 if (!string.Equals(beforeStyleSignature, afterStyleSignature, StringComparison.Ordinal))
                     MarkStylesDirty();
+
+                _settingsLoadFailed = false;
+                _autoSaveEnabled = true;
+                LastLoadWarning = null;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"加载设置失败: {ex.Message}（使用默认值）");
+                MarkSettingsLoadFailed(path, ex.Message);
                 SetRoadMaterialFillSettings(null);
                 _linetypeCatalogSnapshot = null;
             }
@@ -2048,7 +2090,8 @@ namespace HyCADTool.Shell.ViewModels
 
                 OnPropertyChanged(nameof(AppliedDimStyleName));
 
-                if (_layerCatalogSchemaVersionBeforeLoad != int.MinValue
+                if (!_settingsLoadFailed
+                    && _layerCatalogSchemaVersionBeforeLoad != int.MinValue
                     && _layerCatalogSchemaVersionBeforeLoad < LayerCatalogFactory.CurrentCatalogVersion)
                 {
                     try { SaveSettings(); }
@@ -2062,7 +2105,36 @@ namespace HyCADTool.Shell.ViewModels
         /// 显式保存当前参数到 hy-settings.json（用于「保存用户设置」按钮）。
         /// 即便 AutoSaveEnabled=false 也会强制写入一次。
         /// </summary>
-        public void SavePublic() => SaveSettings();
+        public void SavePublic() => SaveSettingsCore(null, force: true);
+
+        private void MarkSettingsLoadFailed(string path, string detail)
+        {
+            _settingsLoadFailed = true;
+            _autoSaveEnabled = false;
+            string backup = null;
+            try
+            {
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    backup = CorruptFileBackup.Copy(path);
+            }
+            catch (Exception bex)
+            {
+                System.Diagnostics.Trace.WriteLine("[HyCAD] hy-settings 备份失败: " + bex.Message);
+            }
+
+            LastLoadWarning = backup != null
+                ? "[HyCAD] hy-settings 读取失败，已备份到 " + backup + "。自动保存已停；点「保存用户设置」可覆盖原文件。"
+                : "[HyCAD] hy-settings 读取失败：" + detail + "。自动保存已停；点「保存用户设置」可覆盖原文件。";
+            System.Diagnostics.Trace.WriteLine(LastLoadWarning);
+            try
+            {
+                var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
+                ed?.WriteMessage("\n" + LastLoadWarning);
+            }
+            catch
+            {
+            }
+        }
 
         /// <summary>从指定路径加载（「选择文件恢复」按钮）。</summary>
         public void LoadSettingsFromFile(string path)
@@ -2274,6 +2346,7 @@ namespace HyCADTool.Shell.ViewModels
         /// 加载中标记：防止 LoadSettings → 属性 setter → SaveSettings 循环
         /// </summary>
         private bool _isLoading;
+        private bool _settingsLoadFailed;
 
         protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string propertyName = null)
         {

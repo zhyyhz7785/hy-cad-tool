@@ -6,6 +6,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.Features.Elevation.Domain.Entities;
 using HyCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Elevation.Services
 {
@@ -98,14 +99,14 @@ namespace HyCADTool.Features.Elevation.Services
                 tr.AddNewlyCreatedDBObject(solid, true);
                 
                 // 5. 删除临时 Polyline
-                polyline.Erase();
+                LockedLayerErase.TryErase(tr, polyline, null);
                 
                 return solid;
             }
             catch (Exception ex)
             {
                 solid.Dispose();
-                polyline.Erase(); // 清理临时 Polyline
+                LockedLayerErase.TryErase(tr, polyline, null);
                 throw new InvalidOperationException($"拉伸多边形失败：{ex.Message}", ex);
             }
         }

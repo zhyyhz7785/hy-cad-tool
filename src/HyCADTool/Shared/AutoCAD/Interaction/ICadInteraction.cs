@@ -14,6 +14,7 @@ namespace HyCADTool.Shared.AutoCAD.Interaction
         PromptStatus GetWcsPoint(string prompt, Point3d basePointWcs, out Point3d wcs);
         PromptStatus GetWcsEntity(PromptEntityOptions options, out PromptEntityResult result, out Point3d wcsPicked);
         bool SafeErase(Transaction transaction, Entity entity);
+        bool TryOpenForWrite(Transaction transaction, ObjectId id, out Entity entity);
         IDisposable WithTemporaryLayer(Database db, string layerName);
     }
 }

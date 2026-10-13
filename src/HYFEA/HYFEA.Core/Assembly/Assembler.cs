@@ -8,7 +8,7 @@ namespace HYFEA.Core.Assembly;
 
 public static class Assembler
 {
-    public static AssembledLinearSystem Assemble(FemProblem problem, DofLayout layout)
+    public static AssembledLinearSystem Assemble(FemProblem problem, DofLayout layout, ElementContributionRegistry? registry = null)
     {
         int n = layout.TotalDofCount;
         var K = new DenseMatrix(n, n);
@@ -20,8 +20,7 @@ public static class Assembler
             F[g] += load.Value;
         }
 
-        // P1.v0.1b: registry-based polymorphic dispatch
-        var registry = new ElementContributionRegistry();
+        registry ??= new ElementContributionRegistry();
 
         foreach (var el in problem.Elements)
         {

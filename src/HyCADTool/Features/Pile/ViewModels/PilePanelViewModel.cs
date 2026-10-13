@@ -6,7 +6,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using HyCADTool.Shell.ViewModels;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Pile.ViewModels
@@ -20,9 +20,6 @@ namespace HyCADTool.Features.Pile.ViewModels
     {
         #region 多文档支持
 
-        private static readonly Dictionary<string, PilePanelViewModel> _documentViewModels
-            = new Dictionary<string, PilePanelViewModel>();
-
         /// <summary>
         /// 当前活动文档的 ViewModel（供外部读取参数）
         /// </summary>
@@ -30,43 +27,22 @@ namespace HyCADTool.Features.Pile.ViewModels
         {
             get
             {
-                try
-                {
-                    var doc = AcApp.DocumentManager.MdiActiveDocument;
-                    if (doc == null) return null;
-
-                    var docKey = DocumentKeys.GetKey(doc);
-                    if (!_documentViewModels.ContainsKey(docKey))
-                    {
-                        _documentViewModels[docKey] = new PilePanelViewModel();
-                    }
-                    return _documentViewModels[docKey];
-                }
-                catch
-                {
-                    return null;
-                }
+                try { return ActiveDocumentSession.GetOrNull<PilePanelViewModel>(); }
+                catch { return null; }
             }
         }
 
-        /// <summary>
-        /// 获取或创建指定文档的 ViewModel
-        /// </summary>
-        public static PilePanelViewModel GetOrCreate(string documentName)
+        /// <summary>按 Database 取槽；没有键时返回新实例（不写共享槽）。</summary>
+        public static PilePanelViewModel GetOrCreate(object documentKey)
         {
-            if (!_documentViewModels.ContainsKey(documentName))
-            {
-                _documentViewModels[documentName] = new PilePanelViewModel();
-            }
-            return _documentViewModels[documentName];
+            if (documentKey == null)
+                return new PilePanelViewModel();
+            return DocumentSessionStore.Get<PilePanelViewModel>(documentKey);
         }
 
-        /// <summary>
-        /// 清理已关闭文档的 ViewModel
-        /// </summary>
-        public static void RemoveDocument(string documentName)
+        /// <summary>文档关闭时由 <see cref="DocumentSessionStore.Forget"/> 统一释放。</summary>
+        public static void RemoveDocument(object documentKey)
         {
-            _documentViewModels.Remove(documentName);
         }
 
         #endregion

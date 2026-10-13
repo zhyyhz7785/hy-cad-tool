@@ -283,9 +283,8 @@ namespace HyCADTool.Features.BaseRein.Services
                     {
                         if (!usedPolyIds.Contains(kvp.Key) && kvp.Value is Polyline poly && poly.Layer == "板元")
                         {
-                            poly.UpgradeOpen();
-                            poly.Erase();
-                            deletedCount++;
+                            if (LockedLayerErase.TryErase(tr, poly, ed))
+                                deletedCount++;
                         }
                     }
                 }
@@ -304,8 +303,9 @@ namespace HyCADTool.Features.BaseRein.Services
                 var textToEnvelopeMap = new Dictionary<ObjectId, ObjectId>();
                 foreach (var kvp in textToPolyMap)
                 {
-                    var oldPoly = tr.GetObject(kvp.Value, OpenMode.ForWrite) as Polyline;
-                    if (oldPoly == null) continue;
+                    Polyline oldPoly;
+                    if (!LockedLayerErase.TryOpenForWrite(tr, kvp.Value, out oldPoly, ed))
+                        continue;
 
                     var ext = oldPoly.GeometricExtents;
                     var envelope = CreateBoundingBoxPolyline(ext.MinPoint, ext.MaxPoint);
@@ -315,7 +315,7 @@ namespace HyCADTool.Features.BaseRein.Services
 
                     textToEnvelopeMap[kvp.Key] = envelope.ObjectId;
 
-                    oldPoly.Erase(); // 删除原始网格多段线
+                    LockedLayerErase.TryErase(tr, oldPoly, ed);
                 }
 
                 ed.WriteMessage($"\n[BaseRein] 包络线生成完成：{textToEnvelopeMap.Count} 个。");

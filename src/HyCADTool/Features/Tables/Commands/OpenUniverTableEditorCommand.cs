@@ -1,6 +1,7 @@
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Features.Tables.Services;
 using HyCADTool.Features.Tables.ViewModels;
+using HyCADTool.Shared.AutoCAD.Session;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Tables.Commands
@@ -10,8 +11,6 @@ namespace HyCADTool.Features.Tables.Commands
     /// </summary>
     public sealed class OpenUniverTableEditorCommand
     {
-        private static UniverTableEditorHostBridge _hostBridge;
-
         public void Execute()
         {
             if (AcApp.DocumentManager.MdiActiveDocument == null)
@@ -27,22 +26,28 @@ namespace HyCADTool.Features.Tables.Commands
                 // ignore
             }
 
-            EnsureHostBridge();
-            if (!UniverEditorLoader.TryShow(ownerHandle, _hostBridge, out string error))
+            var session = ActiveDocumentSession.GetOrNull<UniverTableHostSession>();
+            if (session == null)
+                return;
+
+            if (session.HostBridge == null)
+            {
+                var viewModel = ServiceLocator.TryResolve<TableEditorViewModel>()
+                    ?? new TableEditorViewModel();
+                session.HostBridge = new UniverTableEditorHostBridge(viewModel);
+            }
+
+            if (!UniverEditorLoader.TryShow(ownerHandle, session.HostBridge, out string error))
             {
                 AcApp.DocumentManager.MdiActiveDocument?.Editor
                     ?.WriteMessage($"\n[HyTable Univer] 打开失败: {error}");
             }
         }
+    }
 
-        private static void EnsureHostBridge()
-        {
-            if (_hostBridge != null)
-                return;
-
-            var viewModel = ServiceLocator.TryResolve<TableEditorViewModel>()
-                ?? new TableEditorViewModel();
-            _hostBridge = new UniverTableEditorHostBridge(viewModel);
-        }
+    /// <summary>单张图上的 Univer 桥接槽，由 <see cref="DocumentSessionStore"/> 按 Database 持有。</summary>
+    public sealed class UniverTableHostSession
+    {
+        public UniverTableEditorHostBridge HostBridge;
     }
 }

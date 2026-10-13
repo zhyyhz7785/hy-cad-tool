@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.Configuration.User;
 using System.Text.RegularExpressions;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -50,7 +51,7 @@ namespace HyCADTool.Features.Reinforcement
                     foreach (SelectedObject selObj in psr.Value)
                     {
                         if (selObj == null) continue;
-                        var ent = tr.GetObject(selObj.ObjectId, OpenMode.ForWrite) as Entity;
+                        var ent = tr.GetObject(selObj.ObjectId, OpenMode.ForRead) as Entity;
                         if (ent == null) continue;
 
                         if (!TryExtractTextInfo(ent, out string textContent, out Point3d position,
@@ -85,7 +86,8 @@ namespace HyCADTool.Features.Reinforcement
                             }
                         }
 
-                        ent.Erase();
+                        if (!LockedLayerErase.TryErase(tr, ent, ed))
+                            continue;
                         var newText = new DBText
                         {
                             TextString = textContent,

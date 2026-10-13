@@ -4,6 +4,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Session;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell;
@@ -110,12 +112,9 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                         {
                             try
                             {
-                                var we = tr.GetObject(per.ObjectId, OpenMode.ForWrite);
-                                if (we != null && !we.IsErased)
-                                {
-                                    we.Erase();
+                                var we = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Entity;
+                                if (LockedLayerErase.TryErase(tr, we, ed))
                                     erasedOriginal = true;
-                                }
                             }
                             catch
                             {
@@ -216,18 +215,28 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
     /// </summary>
     internal static class RoadAlignmentUserPickRegistrationSession
     {
-        private static Guid? _lastRegistered;
-
         internal static void SetLastRegistered(Guid alignmentId)
         {
-            _lastRegistered = alignmentId;
+            var slot = ActiveDocumentSession.GetOrNull<RoadAlignmentRegisterPending>();
+            if (slot == null)
+                return;
+            slot.LastRegistered = alignmentId;
         }
 
         internal static Guid? ConsumeLastRegistered()
         {
-            var v = _lastRegistered;
-            _lastRegistered = null;
+            var slot = ActiveDocumentSession.GetOrNull<RoadAlignmentRegisterPending>();
+            if (slot == null)
+                return null;
+            var v = slot.LastRegistered;
+            slot.LastRegistered = null;
             return v;
         }
+    }
+
+    /// <summary>单张图上新登记的线位 Id，由 <see cref="DocumentSessionStore"/> 按 Database 持有。</summary>
+    public sealed class RoadAlignmentRegisterPending
+    {
+        public Guid? LastRegistered;
     }
 }

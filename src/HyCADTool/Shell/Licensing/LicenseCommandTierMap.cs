@@ -20,6 +20,17 @@ namespace HyCADTool.Shell.Licensing
             "hy", "HyB", "_HyExec", "hyLicense",
         };
 
+        public static bool IsAlwaysFreemium(string commandKey)
+        {
+            return !string.IsNullOrWhiteSpace(commandKey) && AlwaysFreemium.Contains(commandKey.Trim());
+        }
+
+        public static void RejectAlwaysFreemiumEnqueue(string commandKey)
+        {
+            if (IsAlwaysFreemium(commandKey))
+                throw new ArgumentException("面板入队禁止使用永远免费的键（_HyExec/hy/hyLicense/HyB）：" + commandKey, nameof(commandKey));
+        }
+
         /// <summary>
         /// 档位不一致时的日志出口。测试可替换；默认写 <see cref="System.Diagnostics.Trace"/>。
         /// </summary>

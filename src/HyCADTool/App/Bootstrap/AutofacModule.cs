@@ -122,7 +122,7 @@ namespace HyCADTool.App.Bootstrap
             // ViewModel 注册
             builder.RegisterType<HyCADTool.Shell.ViewModels.SettingsPanelViewModel>()
                 .AsSelf()
-                .InstancePerDependency();
+                .SingleInstance();
             builder.RegisterType<HyCADTool.Shell.ViewModels.FilterPanelViewModel>()
                 .AsSelf()
                 .InstancePerDependency();

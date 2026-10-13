@@ -58,6 +58,17 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void RejectAlwaysFreemiumEnqueue_blocks_free_keys()
+        {
+            Assert.True(LicenseCommandTierMap.IsAlwaysFreemium("_HyExec"));
+            Assert.True(LicenseCommandTierMap.IsAlwaysFreemium("hy"));
+            Assert.True(LicenseCommandTierMap.IsAlwaysFreemium("hyLicense"));
+            Assert.Throws<ArgumentException>(() => LicenseCommandTierMap.RejectAlwaysFreemiumEnqueue("_HyExec"));
+            Assert.Throws<ArgumentException>(() => LicenseCommandTierMap.RejectAlwaysFreemiumEnqueue("hy"));
+            LicenseCommandTierMap.RejectAlwaysFreemiumEnqueue("hyG101");
+        }
+
+        [Fact]
         public void Mismatch_description_uses_builtin_as_source_of_truth()
         {
             Assert.True(LicenseCommandTierMap.TryDescribeMismatch(

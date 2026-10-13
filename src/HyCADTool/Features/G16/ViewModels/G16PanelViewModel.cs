@@ -12,6 +12,7 @@ using HyCADTool.Features.G16.Domain.Catalog;
 using HyCADTool.Features.G16.Domain.Tables;
 using HyCADTool.Features.G16.Services;
 using HyCADTool.Shell.ViewModels;
+using HyCADTool.Shared.AutoCAD.Session;
 using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -72,22 +73,9 @@ namespace HyCADTool.Features.G16.ViewModels
 
     public class G16PanelViewModel : INotifyPropertyChanged
     {
-        private static readonly Dictionary<string, G16PanelViewModel> _byDoc = new Dictionary<string, G16PanelViewModel>();
-
         public static G16PanelViewModel Current
         {
-            get
-            {
-                var doc = AcApp.DocumentManager.MdiActiveDocument;
-                if (doc == null) return null;
-                var key = doc.Name;
-                if (!_byDoc.TryGetValue(key, out var vm))
-                {
-                    vm = new G16PanelViewModel();
-                    _byDoc[key] = vm;
-                }
-                return vm;
-            }
+            get { return ActiveDocumentSession.GetOrNull<G16PanelViewModel>(); }
         }
 
         public G16GlobalSettings Global { get; } = new G16GlobalSettings();

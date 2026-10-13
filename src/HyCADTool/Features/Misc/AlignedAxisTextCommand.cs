@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -49,7 +50,9 @@ namespace HyCADTool.Features.Misc
 
                     foreach (ObjectId objId in selResult.Value.GetObjectIds())
                     {
-                        var ent = tr.GetObject(objId, OpenMode.ForWrite) as Entity;
+                        Entity ent;
+                        if (!LockedLayerErase.TryOpenForWrite(tr, objId, out ent, ed))
+                            continue;
                         if (ent is Line line)
                             lines.Add(line);
                         else if (ent is DBText dbText)
@@ -60,7 +63,7 @@ namespace HyCADTool.Features.Misc
                             if (converted != null)
                             {
                                 texts.Add(converted);
-                                mText.Erase();
+                                LockedLayerErase.TryErase(tr, mText, ed);
                             }
                         }
                     }

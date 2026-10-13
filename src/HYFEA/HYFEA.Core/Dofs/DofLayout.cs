@@ -41,12 +41,11 @@ public sealed class DofLayout
         return g;
     }
 
-    public static DofLayout Build(FemProblem problem)
+    public static DofLayout Build(FemProblem problem, ElementContributionRegistry? registry = null)
     {
         var required = new Dictionary<NodeId, HashSet<DofType>>();
 
-        // P1.v0.1b: registry-based polymorphic dispatch
-        var registry = new ElementContributionRegistry();
+        registry ??= new ElementContributionRegistry();
 
         foreach (var el in problem.Elements)
         {

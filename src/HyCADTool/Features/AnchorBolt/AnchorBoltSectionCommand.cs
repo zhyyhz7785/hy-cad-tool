@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.AnchorBolt;
 
@@ -40,8 +41,9 @@ namespace HyCADTool.Features.AnchorBolt
                     int count = 0;
                     foreach (ObjectId objId in selRes.Value.GetObjectIds())
                     {
-                        var ent = tr.GetObject(objId, OpenMode.ForWrite) as Entity;
-                        if (ent == null) continue;
+                        Entity ent;
+                        if (!LockedLayerErase.TryOpenForWrite(tr, objId, out ent, ed))
+                            continue;
 
                         AnchorBoltEntity bolt = null;
                         Point3d center = Point3d.Origin;
@@ -73,7 +75,7 @@ namespace HyCADTool.Features.AnchorBolt
                         btr.AppendEntity(rect);
                         tr.AddNewlyCreatedDBObject(rect, true);
 
-                        ent.Erase();
+                        LockedLayerErase.TryErase(tr, ent, ed);
                         count++;
                     }
                     tr.Commit();

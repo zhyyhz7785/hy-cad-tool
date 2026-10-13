@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Reinforcement.Domain.Enums;
 using HyCADTool.Shell.Configuration.User;
 using HyCADTool.Shared.AutoCAD.Configuration;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.App.Bootstrap;
@@ -70,16 +71,17 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 if (!TryCollectDimensions(boundary, ed, output))
                     return false;
 
-                TrySetCurrentDimensionLayer(ed);
-
-                var btr = (BlockTableRecord)tr.GetObject(doc.Database.CurrentSpaceId, OpenMode.ForWrite);
-                foreach (var dim in output)
+                using (TryBeginTemporaryDimensionLayer(doc.Database, ed))
                 {
-                    btr.AppendEntity(dim);
-                    tr.AddNewlyCreatedDBObject(dim, true);
-                }
+                    var btr = (BlockTableRecord)tr.GetObject(doc.Database.CurrentSpaceId, OpenMode.ForWrite);
+                    foreach (var dim in output)
+                    {
+                        btr.AppendEntity(dim);
+                        tr.AddNewlyCreatedDBObject(dim, true);
+                    }
 
-                tr.Commit();
+                    tr.Commit();
+                }
                 if (writeSummary && output.Count > 0)
                     ed.WriteMessage($"\n标注完成：{output.Count} 个尺寸。");
                 return output.Count > 0;
@@ -100,16 +102,17 @@ namespace HyCADTool.Features.DimensionForReinforcement
                 if (!TryCollectDimensions(boundary, ed, output))
                     return false;
 
-                TrySetCurrentDimensionLayer(ed);
-
-                var btr = (BlockTableRecord)tr.GetObject(doc.Database.CurrentSpaceId, OpenMode.ForWrite);
-                foreach (var dim in output)
+                using (TryBeginTemporaryDimensionLayer(doc.Database, ed))
                 {
-                    btr.AppendEntity(dim);
-                    tr.AddNewlyCreatedDBObject(dim, true);
-                }
+                    var btr = (BlockTableRecord)tr.GetObject(doc.Database.CurrentSpaceId, OpenMode.ForWrite);
+                    foreach (var dim in output)
+                    {
+                        btr.AppendEntity(dim);
+                        tr.AddNewlyCreatedDBObject(dim, true);
+                    }
 
-                tr.Commit();
+                    tr.Commit();
+                }
                 if (output.Count > 0)
                     ed.WriteMessage($"\n标注完成：{output.Count} 个尺寸。");
                 return output.Count > 0;
@@ -208,20 +211,18 @@ namespace HyCADTool.Features.DimensionForReinforcement
             return true;
         }
 
-        private static bool TrySetCurrentDimensionLayer(Editor ed)
+        private static IDisposable TryBeginTemporaryDimensionLayer(Database db, Editor ed)
         {
             try
             {
                 var layerName = UserLayerNameResolver.Get(
                     LayerSemanticIds.CommonDimOuter, LayerBuiltinDefaults.CommonDimOuter);
-                var layerService = ServiceLocator.Resolve<ILayerService>();
-                layerService.SetCurrentLayer(layerName);
-                return true;
+                return new CadInteraction().WithTemporaryLayer(db, layerName);
             }
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n警告：标注图层设置失败（{ex.Message}），将使用当前图层。");
-                return false;
+                return null;
             }
         }
 
