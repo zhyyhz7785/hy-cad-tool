@@ -102,7 +102,7 @@ public sealed class CSparseSystemSolver : ILinearSystemSolver
             for (int j = 0; j < K.Cols; j++)
             {
                 double val = K[i, j];
-                if (Math.Abs(val) > 1e-20)
+                if (val != 0.0)
                     triplets.Add(new SparseTriplet(i, j, val));
             }
         }

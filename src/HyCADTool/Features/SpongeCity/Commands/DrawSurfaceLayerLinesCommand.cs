@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Infrastructure;
 using HyCADTool.Features.SpongeCity.ViewModels;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -33,8 +34,9 @@ namespace HyCADTool.Features.SpongeCity.Commands
             double rowGap = 250 * scale;  // 行距按 scale 缩放（避免不同图纸尺寸太挤）
             double textHeight = 5 * scale;
 
-            double startX = ptResult.Value.X;
-            double startY = ptResult.Value.Y;
+            var origin = EditorWcs.ToWcs(ed, ptResult.Value);
+            double startX = origin.X;
+            double startY = origin.Y;
 
             var vm = SpongeCityPanelViewModel.Current;
             if (vm != null) vm.AnchorPoints.Clear();

@@ -4,6 +4,7 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -79,8 +80,10 @@ namespace HyCADTool.Features.Road
                 $"[道路] 箭身主长度 (默认 {ArrowMarking.DefaultLength:F1} m，GB 3/6/9 三档)",
                 ArrowMarking.DefaultLength);
 
-            var anchor = new Point2D(pa.Value.X, pa.Value.Y);
-            var dir = new Vector2D(pd.Value.X - pa.Value.X, pd.Value.Y - pa.Value.Y);
+            var anchorWcs = EditorWcs.ToWcs(ed, pa.Value);
+            var dirWcs = EditorWcs.ToWcs(ed, pd.Value);
+            var anchor = new Point2D(anchorWcs.X, anchorWcs.Y);
+            var dir = new Vector2D(dirWcs.X - anchorWcs.X, dirWcs.Y - anchorWcs.Y);
 
             ArrowMarking arrow;
             try

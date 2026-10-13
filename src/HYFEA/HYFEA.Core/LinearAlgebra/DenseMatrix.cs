@@ -1,6 +1,6 @@
 namespace HYFEA.Core.LinearAlgebra;
 
-public sealed class DenseMatrix
+public sealed class DenseMatrix : IMatrixAccumulator
 {
     public DenseMatrix(int nRows, int nCols)
     {

@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.Reinforcement.Domain.Components;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using System;
 
@@ -33,7 +34,14 @@ namespace HyCADTool.Features.Reinforcement
             using (doc.LockDocument())
             using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
-                var ent = tr.GetObject(per.ObjectId, OpenMode.ForWrite) as Entity;
+                var ent = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Entity;
+                if (ent != null && LockedLayerErase.IsLocked(tr, ent))
+                {
+                    ed.WriteMessage("\n图层 " + ent.Layer + " 已锁定，未切换构件类型。");
+                    return;
+                }
+                if (ent != null && !ent.IsWriteEnabled)
+                    ent.UpgradeOpen();
                 if (ent == null || !HyComponentXdata.TryReadPreview(ent, out _, out Guid regionId, out ComponentType oldType))
                 {
                     ed.WriteMessage("\n所选实体不是构件预览。");
@@ -52,11 +60,15 @@ namespace HyCADTool.Features.Reinforcement
             var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForRead);
             foreach (ObjectId id in btr)
             {
-                var ent = tr.GetObject(id, OpenMode.ForWrite) as Entity;
+                var ent = tr.GetObject(id, OpenMode.ForRead) as Entity;
                 if (ent == null) continue;
                 if (!HyComponentXdata.TryReadPreview(ent, out _, out Guid rid, out _))
                     continue;
                 if (rid != regionId) continue;
+                if (LockedLayerErase.IsLocked(tr, ent))
+                    continue;
+                if (!ent.IsWriteEnabled)
+                    ent.UpgradeOpen();
 
                 HyComponentXdata.UpdateType(ent, newType);
                 ent.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(

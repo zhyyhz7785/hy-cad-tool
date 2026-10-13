@@ -28,28 +28,16 @@ public static class SparseAssembler
             F[g] += load.Value;
         }
 
-        // P1.v0.1b: registry-based polymorphic dispatch
+        // 直接累加到三元组。不分配 n×n 稠密阵，也不用绝对阈值丢掉很小的刚度项。
         var registry = new ElementContributionRegistry();
-
-        // 装配刚度矩阵 (使用临时稠密矩阵累加,最后转三元组)
-        // 注意:Contribution 接口当前要求 DenseMatrix,需适配
-        var K_temp = new DenseMatrix(n, n);
+        var sink = new TripletAccumulator();
         foreach (var el in problem.Elements)
         {
             var contrib = registry.Resolve(el);
-            contrib.ApplyStiffness(problem, el, layout, K_temp);
+            contrib.ApplyStiffness(problem, el, layout, sink);
         }
 
-        // 转换为三元组 (只存非零元)
-        for (int i = 0; i < n; i++)
-        {
-            for (int j = 0; j < n; j++)
-            {
-                double val = K_temp[i, j];
-                if (Math.Abs(val) > 1e-20)  // 过滤数值零
-                    triplets.Add(new SparseTriplet(i, j, val));
-            }
-        }
+        triplets.AddRange(sink.ToTriplets());
 
         // 单元荷载 (等效节点荷载)
         foreach (var el in problem.Elements)
@@ -98,5 +86,33 @@ public static class SparseAssembler
     {
         // 保守估计:每单元 50 项(含对称项)
         return problem.Elements.Count * 50;
+    }
+
+    /// <summary>按 (row,col) 求和，保留单元写入的全部非零项。</summary>
+    private sealed class TripletAccumulator : IMatrixAccumulator
+    {
+        private readonly Dictionary<(int Row, int Col), double> _entries = new();
+
+        public void Add(int row, int col, double value)
+        {
+            if (value == 0.0)
+                return;
+
+            var key = (row, col);
+            _entries.TryGetValue(key, out double current);
+            double sum = current + value;
+            if (sum == 0.0)
+                _entries.Remove(key);
+            else
+                _entries[key] = sum;
+        }
+
+        public List<SparseTriplet> ToTriplets()
+        {
+            var list = new List<SparseTriplet>(_entries.Count);
+            foreach (var entry in _entries)
+                list.Add(new SparseTriplet(entry.Key.Row, entry.Key.Col, entry.Value));
+            return list;
+        }
     }
 }

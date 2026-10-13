@@ -9,6 +9,7 @@ using HyCADTool.Features.BaseRein.Domain;
 using HyCADTool.Shared.AutoCAD.Configuration;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shell.Configuration.User;
 
 using System;
@@ -87,9 +88,8 @@ namespace HyCADTool.Features.BaseRein.Services
 
                     if (!targetLayers.Contains(ent.Layer))
                     {
-                        ent.UpgradeOpen();
-                        ent.Erase();
-                        deletedCount++;
+                        if (LockedLayerErase.TryErase(tr, ent, ed))
+                            deletedCount++;
                     }
                 }
                 tr.Commit();

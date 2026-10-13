@@ -18,7 +18,7 @@ public interface IElementContribution
     IReadOnlyList<DofType> ActiveDofsForNode(FemElementDefinition element, NodeId node);
 
     /// <summary>Assembles element stiffness into global <paramref name="K"/>.</summary>
-    void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K);
+    void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, IMatrixAccumulator K);
 
     /// <summary>Converts element loads (e.g. uniform beam load) to equivalent nodal forces and adds to <paramref name="F"/>.</summary>
     void ApplyEquivalentLoads(

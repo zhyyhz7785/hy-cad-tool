@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 
 using HyCADTool.Features.Tables.Infrastructure.AutoCad;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 
 
@@ -44,7 +45,7 @@ namespace HyCADTool.Features.Tables.Commands
 
 
 
-            InsertPersonnelTable(doc, ppr.Value);
+            InsertPersonnelTable(doc, EditorWcs.ToWcs(ed, ppr.Value));
 
         }
 

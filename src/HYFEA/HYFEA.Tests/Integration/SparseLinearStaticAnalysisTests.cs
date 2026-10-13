@@ -1,4 +1,5 @@
 using HYFEA.Core.Analysis;
+using HYFEA.Core.Assembly;
 using HYFEA.Core.Boundary;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Loads;
@@ -102,5 +103,23 @@ public class SparseLinearStaticAnalysisTests
         // 预期竖向位移 < 0
         Assert.True(uY < 0);
         Assert.True(Math.Abs(uY) > 1e-6);  // 有实际变形
+    }
+
+    [Fact]
+    public void Tiny_spring_stiffness_is_not_dropped()
+    {
+        const double stiffness = 1e-30;
+        var problem = new FemProblemBuilder()
+            .WithUnits(UnitSystem.SI)
+            .AddMaterial(new LinearElasticMaterial(new MaterialId(1), stiffness, 0))
+            .AddSection(new AxialSection(new SectionId(1), 1))
+            .AddNode(new NodeId(0), 0, 0)
+            .AddNode(new NodeId(1), 1, 0)
+            .AddSpring1D(new ElementId(1), new NodeId(0), new NodeId(1), new MaterialId(1), new SectionId(1))
+            .Build();
+
+        var system = SparseAssembler.Assemble(problem, DofLayout.Build(problem));
+
+        Assert.Contains(system.StiffnessTriplets, triplet => Math.Abs(triplet.Value - stiffness) < stiffness * 1e-6);
     }
 }

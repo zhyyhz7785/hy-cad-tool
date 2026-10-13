@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 using HyCADTool.Features.Road.PlanAlignment.Services;
@@ -72,15 +73,16 @@ namespace HyCADTool.Features.Road
                     SymbolUtilityServices.GetBlockModelSpaceId(db),
                     OpenMode.ForWrite);
 
-                AppendColoredLine(tr, ms, aStart, aEnd, colorIndex: 1); // red   : a
-                AppendColoredLine(tr, ms, bStart, bEnd, colorIndex: 2); // yellow: b
-                AppendColoredLine(tr, ms, cStart, cEnd, colorIndex: 3); // green : c
+                Point3d W(Point3d p) => EditorWcs.ToWcs(ed, p);
+                AppendColoredLine(tr, ms, W(aStart), W(aEnd), colorIndex: 1); // red   : a
+                AppendColoredLine(tr, ms, W(bStart), W(bEnd), colorIndex: 2); // yellow: b
+                AppendColoredLine(tr, ms, W(cStart), W(cEnd), colorIndex: 3); // green : c
                 // 立面里同 X、不同 Y 的跳变：显式画出竖向连线
                 const double eps = 1e-9;
                 if (aEnd.DistanceTo(bStart) > eps)
-                    AppendColoredLine(tr, ms, aEnd, bStart, colorIndex: 5); // blue: a终→b起
+                    AppendColoredLine(tr, ms, W(aEnd), W(bStart), colorIndex: 5); // blue: a终→b起
                 if (bEnd.DistanceTo(cStart) > eps)
-                    AppendColoredLine(tr, ms, bEnd, cStart, colorIndex: 5); // blue: b终→c起
+                    AppendColoredLine(tr, ms, W(bEnd), W(cStart), colorIndex: 5); // blue: b终→c起
 
                 tr.Commit();
             }

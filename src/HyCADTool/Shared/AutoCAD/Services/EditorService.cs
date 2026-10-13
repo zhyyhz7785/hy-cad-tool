@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Shell.Contracts;
 using HyCADTool.Shared.AutoCAD.Interfaces;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -59,9 +60,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
             var result = ed.GetPoint(options);
 
             if (result.Status == PromptStatus.OK)
-            {
-                return result.Value;
-            }
+                return EditorWcs.ToWcs(ed, result.Value);
 
             return null;
         }
@@ -84,9 +83,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
             var result = ed.GetPoint(options);
 
             if (result.Status == PromptStatus.OK)
-            {
-                return result.Value;
-            }
+                return EditorWcs.ToWcs(ed, result.Value);
 
             return null;
         }
@@ -110,9 +107,7 @@ namespace HyCADTool.Shared.AutoCAD.Services
             var result = ed.GetPoint(options);
 
             if (result.Status == PromptStatus.OK)
-            {
-                return result.Value;
-            }
+                return EditorWcs.ToWcs(ed, result.Value);
 
             return null;
         }

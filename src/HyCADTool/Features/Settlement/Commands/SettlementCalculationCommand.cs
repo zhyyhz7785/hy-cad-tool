@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.Settlement;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Features.Settlement.ViewModels;
 using HyCADTool.Features.Settlement.Views;
 using HyCADTool.Shell.ViewModels;
@@ -75,7 +76,7 @@ namespace HyCADTool.Features.Settlement.Commands
                     var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
                     var table = SettlementTableService.CreateResultTable(vm.LastResult, db, scale);
-                    table.Position = ptResult.Value;
+                    table.Position = EditorWcs.ToWcs(ed, ptResult.Value);
 
                     ms.AppendEntity(table);
                     tr.AddNewlyCreatedDBObject(table, true);

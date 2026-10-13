@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using Autodesk.AutoCAD.EditorInput;
 using Microsoft.Win32.SafeHandles;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -419,11 +420,12 @@ namespace HyCADTool.Features.DesignSpec.Services
             }
 
             var service = new DesignSpecService();
+            var insertAt = EditorWcs.ToWcs(ed, ptRes.Value);
             if (req.Dump != null)
             {
                 service.InsertFromHyMdDump(
                     req.Dump,
-                    ptRes.Value,
+                    insertAt,
                     HyMdCadBridge.LastScale,
                     HyMdCadBridge.LastStyleName);
                 ReportPlanDiff(ed, req);
@@ -431,7 +433,7 @@ namespace HyCADTool.Features.DesignSpec.Services
             }
             if (req.Plan != null && req.Plan.Pages != null)
             {
-                service.AppendFromCadStampPlan(req.Plan, ptRes.Value);
+                service.AppendFromCadStampPlan(req.Plan, insertAt);
                 return;
             }
             ed.WriteMessage("\n贴图清单与 dump 都为空，本次未贴图。");

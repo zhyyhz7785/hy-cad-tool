@@ -88,6 +88,44 @@ namespace HyCADTool.LinuxTests
             }
         }
 
+        [Fact]
+        public void Production_commands_go_through_license_gate()
+        {
+            var root = RepoRoot();
+            var text = File.ReadAllText(Path.Combine(root, "src", "HyCADTool", "App", "Production", "ProductionCommandFacade.cs"));
+            var method = new Regex(
+                @"(\[CommandMethod\((?:.|\n)*?\)\]\s*)+public void \w+\(\)\s*=>\s*([^;]+);",
+                RegexOptions.Compiled);
+            var matches = method.Matches(text);
+
+            Assert.True(matches.Count >= 100, "生产门面方法数异常: " + matches.Count);
+            foreach (Match match in matches)
+            {
+                Assert.Contains("LicenseGate.RunGated", match.Groups[2].Value);
+            }
+
+            Assert.Equal(CommandMethodName.Matches(text).Count, CountCommandAttributes(matches));
+        }
+
+        [Fact]
+        public void License_gate_wrap_script_points_at_the_production_facade()
+        {
+            var root = RepoRoot();
+            var script = File.ReadAllText(Path.Combine(
+                root, "build", "scripts", "Wrap-LicenseGate-ProductionCommandFacade.ps1"));
+            Assert.Contains("src\\HyCADTool\\App\\Production\\ProductionCommandFacade.cs", script);
+            Assert.True(File.Exists(Path.Combine(
+                root, "src", "HyCADTool", "App", "Production", "ProductionCommandFacade.cs")));
+        }
+
+        private static int CountCommandAttributes(MatchCollection methods)
+        {
+            int count = 0;
+            foreach (Match match in methods)
+                count += Regex.Matches(match.Value, @"\[CommandMethod\(").Count;
+            return count;
+        }
+
         private static HashSet<string> ReadCommandNames(string path)
         {
             var text = File.ReadAllText(path);

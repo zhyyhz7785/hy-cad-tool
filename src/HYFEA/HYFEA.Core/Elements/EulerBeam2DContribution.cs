@@ -25,7 +25,7 @@ internal sealed class EulerBeam2DContribution : IElementContribution
         return Array.Empty<DofType>();
     }
 
-    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K)
+    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, IMatrixAccumulator K)
     {
         var e = (EulerBeam2DElementDef)element;
         GetBeamData(problem, e, out double L, out double c, out double s, out double E, out double A, out double I);

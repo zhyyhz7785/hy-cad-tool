@@ -1,6 +1,7 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.Tables.TableApp;
+using HyCADTool.Shared.AutoCAD.Utilities;
 
 namespace HyCADTool.Features.Tables.Commands
 {
@@ -51,7 +52,7 @@ namespace HyCADTool.Features.Tables.Commands
             if (ppr.Status != PromptStatus.OK)
                 return;
 
-            var handle = pickService.RerenderAt(result.Grid, ppr.Value);
+            var handle = pickService.RerenderAt(result.Grid, EditorWcs.ToWcs(ed, ppr.Value));
             ed.WriteMessage(
                 $"\n[HyTable] 已再渲染 {handle.EntityCount} 个实体 @ ({ppr.Value.X:F1}, {ppr.Value.Y:F1})；" +
                 $"新 TableId={handle.TableId:D}");

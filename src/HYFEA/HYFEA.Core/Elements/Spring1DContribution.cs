@@ -20,7 +20,7 @@ internal sealed class Spring1DContribution : IElementContribution
         return Array.Empty<DofType>();
     }
 
-    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseMatrix K)
+    public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, IMatrixAccumulator K)
     {
         var e = (Spring1DElementDef)element;
         var na = GetNode(problem, e.NodeA);

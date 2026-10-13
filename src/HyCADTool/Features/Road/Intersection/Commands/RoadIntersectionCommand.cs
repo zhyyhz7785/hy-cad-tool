@@ -9,6 +9,7 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
@@ -67,7 +68,8 @@ namespace HyCADTool.Features.Road
             var optCenter = new PromptPointOptions("\n[道路] 指定交叉口大致中心点：") { AllowNone = false };
             var rCenter = ed.GetPoint(optCenter);
             if (rCenter.Status != PromptStatus.OK) { ed.WriteMessage("\n[道路] 已取消。"); return; }
-            var aroundPoint = new Point2D(rCenter.Value.X, rCenter.Value.Y);
+            var center = EditorWcs.ToWcs(ed, rCenter.Value);
+            var aroundPoint = new Point2D(center.X, center.Y);
 
             var optR = new PromptDoubleOptions(
                 $"\n[道路] 转角半径 R (默认 {Intersection.DefaultCornerRadiusValue:F1} m)：")
