@@ -115,9 +115,8 @@ namespace HyCADTool.Features.Pile
                         double tolerance = radius / 2.0;
                         if (uniquePiles.Any(u => u.Anchor.DistanceTo(pile.Anchor) < tolerance))
                         {
-                            pile.Entity.UpgradeOpen();
-                            pile.Entity.Erase();
-                            removedCount++;
+                            if (LockedLayerErase.TryErase(tr, pile.Entity, ed))
+                                removedCount++;
                         }
                         else
                         {

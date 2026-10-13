@@ -104,8 +104,7 @@ namespace HyCADTool.Features.Misc
                             btr.AppendEntity(pline);
                             tr.AddNewlyCreatedDBObject(pline, true);
 
-                            line.UpgradeOpen();
-                            line.Erase();
+                            LockedLayerErase.TryErase(tr, line, ed);
 
                             polylines.Add(pline);
                         }
@@ -238,8 +237,7 @@ namespace HyCADTool.Features.Misc
             // 删除已合并的多段线
             foreach (AcDbPolyline pline in toRemove)
             {
-                pline.UpgradeOpen();
-                pline.Erase();
+                LockedLayerErase.TryErase(tr, pline, null);
             }
 
             return mergedCount;

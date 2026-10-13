@@ -8,6 +8,7 @@ using HyCAD.Geometry;
 using HyCADTool.Features.OverKill.Views;
 using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using System.Collections.Generic;
 using System.Linq;
@@ -233,8 +234,8 @@ namespace HyCADTool.Features.OverKill.Commands
             // 删除原有线段
             foreach (var (id, _, _) in originalLineData)
             {
-                var ent = trans.GetObject(id, OpenMode.ForWrite) as Entity;
-                ent?.Erase();
+                var ent = trans.GetObject(id, OpenMode.ForRead) as Entity;
+                LockedLayerErase.TryErase(trans, ent, null);
             }
 
             // 创建新线段（保留原图层）

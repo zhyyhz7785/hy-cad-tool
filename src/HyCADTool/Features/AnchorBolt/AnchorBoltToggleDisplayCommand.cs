@@ -4,6 +4,7 @@ using AnchorBoltEntity = HyCADTool.Features.EquipmentFoundation.Domain.Entities.
 using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Features.EquipmentFoundation.Domain.Entities;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 
 namespace HyCADTool.Features.AnchorBolt
@@ -58,8 +59,7 @@ namespace HyCADTool.Features.AnchorBolt
                             tr.AddNewlyCreatedDBObject(br, true);
                             ExtensionDictionaryService.Write(tr, br, bolt, dataKey);
 
-                            circle.UpgradeOpen();
-                            circle.Erase();
+                            LockedLayerErase.TryErase(tr, circle, ed);
                             count++;
                         }
                         else if (ent is BlockReference br)
@@ -77,8 +77,7 @@ namespace HyCADTool.Features.AnchorBolt
                             tr.AddNewlyCreatedDBObject(newCircle, true);
                             ExtensionDictionaryService.Write(tr, newCircle, bolt, dataKey);
 
-                            br.UpgradeOpen();
-                            br.Erase();
+                            LockedLayerErase.TryErase(tr, br, ed);
                             count++;
                         }
                     }

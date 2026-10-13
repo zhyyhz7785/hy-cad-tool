@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using HyCAD.Geometry.Algorithms;
 using HyCADTool.Shared.AutoCAD.Services;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.App.Bootstrap;
 using System;
 using System.Collections.Generic;
@@ -86,8 +87,8 @@ namespace HyCADTool.Features.Misc
 
                     foreach (var id in objectsToDelete)
                     {
-                        var ent = trans.GetObject(id, OpenMode.ForWrite) as Entity;
-                        ent?.Erase();
+                        var ent = trans.GetObject(id, OpenMode.ForRead) as Entity;
+                        LockedLayerErase.TryErase(trans, ent, null);
                     }
 
                     trans.Commit();
