@@ -1098,7 +1098,7 @@ namespace HyCADTool.Features.Settlement.ViewModels
                 StatusMessage = "请先执行计算";
                 return;
             }
-            SendCommand(() => new SettlementCalculationCommand().Execute());
+            SendCommand(() => new SettlementCalculationCommand().Execute(), "HYJC");
         }
 
         private void ExecuteReset()
@@ -1414,22 +1414,22 @@ namespace HyCADTool.Features.Settlement.ViewModels
 
         #region 命令路由
 
-        private void SendCommand(Action commandAction)
+        private void SendCommand(Action commandAction, string commandKey)
         {
             SaveSettings();
-            SettingsPanelViewModel.PendingCommand = () =>
+            SettingsPanelViewModel.EnqueuePendingCommand(() =>
             {
                 var settingsVm = SettingsPanelViewModel.Current;
                 settingsVm?.EnsureStylesApplied();
                 commandAction();
-            };
+            }, commandKey);
             try
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
                 if (doc == null)
                 {
                     StatusMessage = "无活动文档";
-                    SettingsPanelViewModel.PendingCommand = null;
+                    SettingsPanelViewModel.ClearPendingCommand();
                     return;
                 }
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
@@ -1437,7 +1437,7 @@ namespace HyCADTool.Features.Settlement.ViewModels
             catch (System.Exception ex)
             {
                 StatusMessage = $"发送命令失败: {ex.Message}";
-                SettingsPanelViewModel.PendingCommand = null;
+                SettingsPanelViewModel.ClearPendingCommand();
             }
         }
 

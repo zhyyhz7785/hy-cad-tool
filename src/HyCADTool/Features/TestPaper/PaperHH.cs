@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using System;
 
 namespace HyCADTool.Features.TestPaper
@@ -26,7 +27,7 @@ namespace HyCADTool.Features.TestPaper
             // 获取视图中心点
             var ptPrompt = ed.GetPoint("\n请选择视图中心点: ");
             if (ptPrompt.Status != PromptStatus.OK) return;
-            Point3d centerPt = ptPrompt.Value;
+            Point3d centerPt = EditorWcs.ToWcs(ed, ptPrompt.Value);
 
             // 获取当前UCS
             Matrix3d ucsMatrix = ed.CurrentUserCoordinateSystem;
@@ -72,9 +73,8 @@ namespace HyCADTool.Features.TestPaper
                     // 继承视图旋转角度（关键：这是PLAN视图的旋转）
                     vp.TwistAngle = viewTwist;
                     
-                    // 设置视图中心（用户选择的点）
-                    Point3d wcsCenter = centerPt.TransformBy(ucsMatrix);
-                    vp.ViewCenter = new Point2d(wcsCenter.X, wcsCenter.Y);
+                    // 设置视图中心（用户选择的点，已转到世界坐标）
+                    vp.ViewCenter = new Point2d(centerPt.X, centerPt.Y);
 
                     ps.AppendEntity(vp);
                     tr.AddNewlyCreatedDBObject(vp, true);

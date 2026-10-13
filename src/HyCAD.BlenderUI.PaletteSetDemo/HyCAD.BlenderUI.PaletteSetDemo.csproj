@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoCAD.NET" Version="24.3.0" />
+    <PackageReference Include="AutoCAD.NET" />
   </ItemGroup>
 
   <ItemGroup>

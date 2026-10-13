@@ -66,7 +66,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             JigPromptPointOptions jigOpts = new JigPromptPointOptions("\n移动光标以选择弯钩方向，点击确认: ");
-            jigOpts.BasePoint = ToUcs(_lastVertex);
+            jigOpts.BasePoint = _lastVertex;
             jigOpts.UseBasePoint = true;
             jigOpts.UserInputControls = UserInputControls.Accept3dCoordinates | UserInputControls.NoNegativeResponseAccepted;
 
@@ -74,7 +74,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
             if (ppr.Status == PromptStatus.OK)
             {
-                var wcs = ToWcs(ppr.Value);
+                var wcs = ppr.Value;
                 if (_jigPoint.DistanceTo(wcs) < Tolerance.Global.EqualPoint)
                     return SamplerStatus.NoChange;
 
@@ -132,16 +132,9 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             return true; // 实体已更新，需要重绘
         }
 
-        private static Point3d ToWcs(Point3d ucsPoint)
+        private static Editor ActiveEditor()
         {
-            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-            return ed == null ? ucsPoint : EditorWcs.ToWcs(ed, ucsPoint);
-        }
-
-        private static Point3d ToUcs(Point3d wcsPoint)
-        {
-            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-            return ed == null ? wcsPoint : EditorWcs.ToUcs(ed, wcsPoint);
+            return AcApp.DocumentManager.MdiActiveDocument?.Editor;
         }
 
         internal static double ResolveHookSegmentWidth(AcDbPolyline polyline, int sourceSegmentIndex)

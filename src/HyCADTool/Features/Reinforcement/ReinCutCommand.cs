@@ -1,8 +1,9 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.App.Bootstrap;
 using HyCADTool.Shared.AutoCAD.Extensions;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shell.ViewModels;
 using HyCADTool.Shell.Configuration;
 using System;
@@ -30,12 +31,14 @@ namespace HyCADTool.Features.Reinforcement
 
             try
             {
+                var cad = ServiceLocator.TryResolve<ICadInteraction>() ?? new CadInteraction();
                 var peo = new PromptEntityOptions("\n请选择一个多段线：");
                 peo.SetRejectMessage("\n请选择一个多段线对象。");
                 peo.AddAllowedClass(typeof(Polyline), true);
 
-                var per = ed.GetEntity(peo);
-                if (per.Status != PromptStatus.OK) return;
+                PromptEntityResult per;
+                Point3d pickedWcs;
+                if (cad.GetWcsEntity(peo, out per, out pickedWcs) != PromptStatus.OK) return;
 
                 using (var trans = db.TransactionManager.StartTransaction())
                 {
@@ -46,7 +49,7 @@ namespace HyCADTool.Features.Reinforcement
                     double sourceWidth = ReinforcementWidthExtensions.ResolveEffectiveWidth(originalPl);
                     double targetWidth = sourceWidth > 0 ? sourceWidth : panelWidth;
 
-                    Point3d closestPt = originalPl.GetClosestPointTo(EditorWcs.ToWcs(ed, per.PickedPoint), false);
+                    Point3d closestPt = originalPl.GetClosestPointTo(pickedWcs, false);
                     int segIndex = GetSegmentIndex(originalPl, closestPt);
                     if (segIndex < 0 || segIndex >= originalPl.NumberOfVertices - 1) return;
 
@@ -54,67 +57,60 @@ namespace HyCADTool.Features.Reinforcement
                     Point3d pt2 = originalPl.GetPoint3dAt(segIndex + 1);
                     int splitIdx = pt1.Y < pt2.Y ? segIndex : segIndex + 1;
 
-                    var lowerPl = ExtractSubPolyline(originalPl, 0, splitIdx);
-                    var upperPl = ExtractSubPolyline(originalPl, splitIdx, originalPl.NumberOfVertices - 1);
-
-                    if (upperPl.NumberOfVertices >= 2)
-                        ShortenStart(upperPl, SpliceGap);
-
-                    if (lowerPl.NumberOfVertices < 2 && upperPl.NumberOfVertices < 2)
+                    using (var bag = new DisposableBag())
                     {
-                        lowerPl.Dispose();
-                        upperPl.Dispose();
-                        ed.WriteMessage("\n截断后无有效线段，操作已取消。");
-                        trans.Abort();
-                        return;
-                    }
+                        var lowerPl = bag.Add(ExtractSubPolyline(originalPl, 0, splitIdx));
+                        var upperPl = bag.Add(ExtractSubPolyline(originalPl, splitIdx, originalPl.NumberOfVertices - 1));
 
-                    if (!LockedLayerErase.TryErase(trans, originalPl, ed))
-                    {
-                        lowerPl.Dispose();
-                        upperPl.Dispose();
-                        trans.Abort();
-                        return;
-                    }
+                        if (upperPl.NumberOfVertices >= 2)
+                            ShortenStart(upperPl, SpliceGap);
 
-                    var btr = (BlockTableRecord)trans.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
+                        if (lowerPl.NumberOfVertices < 2 && upperPl.NumberOfVertices < 2)
+                        {
+                            ed.WriteMessage("\n截断后无有效线段，操作已取消。");
+                            trans.Abort();
+                            return;
+                        }
 
-                    int written = 0;
-                    if (lowerPl.NumberOfVertices >= 2)
-                    {
-                        lowerPl.Layer = sourceLayer;
-                        lowerPl.ApplyReinforcementWidth(targetWidth);
-                        btr.AppendEntity(lowerPl);
-                        trans.AddNewlyCreatedDBObject(lowerPl, true);
-                        written++;
-                    }
-                    else
-                    {
-                        lowerPl.Dispose();
-                    }
+                        if (!cad.SafeErase(trans, originalPl))
+                        {
+                            trans.Abort();
+                            return;
+                        }
 
-                    if (upperPl.NumberOfVertices >= 2)
-                    {
-                        upperPl.Layer = sourceLayer;
-                        upperPl.ApplyReinforcementWidth(targetWidth);
-                        btr.AppendEntity(upperPl);
-                        trans.AddNewlyCreatedDBObject(upperPl, true);
-                        written++;
-                    }
-                    else
-                    {
-                        upperPl.Dispose();
-                    }
+                        var btr = (BlockTableRecord)trans.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
 
-                    if (written == 0)
-                    {
-                        ed.WriteMessage("\n截断后无有效线段，操作已取消。");
-                        trans.Abort();
-                        return;
-                    }
+                        int written = 0;
+                        if (lowerPl.NumberOfVertices >= 2)
+                        {
+                            lowerPl.Layer = sourceLayer;
+                            lowerPl.ApplyReinforcementWidth(targetWidth);
+                            btr.AppendEntity(lowerPl);
+                            trans.AddNewlyCreatedDBObject(lowerPl, true);
+                            bag.Detach(lowerPl);
+                            written++;
+                        }
 
-                    trans.Commit();
-                    ed.WriteMessage($"\n截断完成：生成 {written} 段钢筋。");
+                        if (upperPl.NumberOfVertices >= 2)
+                        {
+                            upperPl.Layer = sourceLayer;
+                            upperPl.ApplyReinforcementWidth(targetWidth);
+                            btr.AppendEntity(upperPl);
+                            trans.AddNewlyCreatedDBObject(upperPl, true);
+                            bag.Detach(upperPl);
+                            written++;
+                        }
+
+                        if (written == 0)
+                        {
+                            ed.WriteMessage("\n截断后无有效线段，操作已取消。");
+                            trans.Abort();
+                            return;
+                        }
+
+                        trans.Commit();
+                        ed.WriteMessage($"\n截断完成：生成 {written} 段钢筋。");
+                    }
                 }
             }
             catch (System.Exception ex)

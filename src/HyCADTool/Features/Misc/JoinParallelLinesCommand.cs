@@ -74,7 +74,8 @@ namespace HyCADTool.Features.Misc
                 SelectionFilter filter = new SelectionFilter(filterList);
                 
                 // 使用交叉窗口选择（Crossing Window）- 选择与窗口相交或完全在窗口内的对象
-                PromptSelectionResult psr = ed.SelectCrossingPolygon(SelectionWindowJig.ToWcsPolygon(ed, pt1, pt2), filter);
+                // Editor 选择方法把传入点当 UCS（_gile：SelectCrossingPolygon 要当前 UCS）。
+                PromptSelectionResult psr = ed.SelectCrossingPolygon(SelectionWindowJig.ToUcsPolygon(pt1, pt2), filter);
 
                 if (psr.Status != PromptStatus.OK || psr.Value == null || psr.Value.Count == 0)
                 {
@@ -431,21 +432,25 @@ namespace HyCADTool.Features.Misc
     /// </summary>
     public class SelectionWindowJig : DrawJig
     {
-        private Point3d _firstPoint;
-        private Point3d _secondPoint;
+        private readonly Point3d _firstPointUcs;
+        private Point3d _secondPointUcs;
+        private readonly Point3d _firstPointWcs;
         private Editor _editor;
 
-        public SelectionWindowJig(Point3d firstPoint)
+        /// <param name="firstPointUcs">来自 <see cref="Editor.GetPoint"/> 的 UCS 角点。</param>
+        public SelectionWindowJig(Point3d firstPointUcs)
         {
-            _firstPoint = firstPoint;
-            _secondPoint = firstPoint;
             _editor = Application.DocumentManager.MdiActiveDocument.Editor;
+            _firstPointUcs = firstPointUcs;
+            _secondPointUcs = firstPointUcs;
+            _firstPointWcs = EditorWcs.ToWcs(_editor, firstPointUcs);
         }
 
-        public Point3d SecondPoint => _secondPoint;
+        /// <summary>第二个角点（UCS），与第一个 GetPoint 角点一起交给 <see cref="ToWcsPolygon"/>。</summary>
+        public Point3d SecondPoint => _secondPointUcs;
 
-        /// <summary>把 UCS 轴对齐矩形的四个角变到世界坐标，供交叉多边形选择和预览。</summary>
-        public static Point3dCollection ToWcsPolygon(Editor ed, Point3d aUcs, Point3d bUcs)
+        /// <summary>UCS 轴对齐矩形四角（仍是 UCS）。给 <see cref="Editor.SelectCrossingPolygon"/> 用。</summary>
+        public static Point3dCollection ToUcsPolygon(Point3d aUcs, Point3d bUcs)
         {
             double minX = Math.Min(aUcs.X, bUcs.X);
             double maxX = Math.Max(aUcs.X, bUcs.X);
@@ -453,10 +458,20 @@ namespace HyCADTool.Features.Misc
             double maxY = Math.Max(aUcs.Y, bUcs.Y);
             double z = (aUcs.Z + bUcs.Z) * 0.5;
             var polygon = new Point3dCollection();
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(minX, minY, z)));
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(maxX, minY, z)));
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(maxX, maxY, z)));
-            polygon.Add(EditorWcs.ToWcs(ed, new Point3d(minX, maxY, z)));
+            polygon.Add(new Point3d(minX, minY, z));
+            polygon.Add(new Point3d(maxX, minY, z));
+            polygon.Add(new Point3d(maxX, maxY, z));
+            polygon.Add(new Point3d(minX, maxY, z));
+            return polygon;
+        }
+
+        /// <summary>把 UCS 轴对齐矩形的四个角变到世界坐标，只给 WorldDraw 预览用。</summary>
+        public static Point3dCollection ToWcsPolygon(Editor ed, Point3d aUcs, Point3d bUcs)
+        {
+            var ucs = ToUcsPolygon(aUcs, bUcs);
+            var polygon = new Point3dCollection();
+            foreach (Point3d p in ucs)
+                polygon.Add(EditorWcs.ToWcs(ed, p));
             return polygon;
         }
 
@@ -471,18 +486,19 @@ namespace HyCADTool.Features.Misc
         protected override SamplerStatus Sampler(JigPrompts prompts)
         {
             JigPromptPointOptions opts = new JigPromptPointOptions("\n指定第二个角点：");
-            opts.BasePoint = _firstPoint;
+            opts.BasePoint = _firstPointWcs;
             opts.UseBasePoint = true;
             opts.Cursor = CursorType.RubberBand;
 
             PromptPointResult result = prompts.AcquirePoint(opts);
             if (result.Status == PromptStatus.OK)
             {
-                if (_secondPoint.DistanceTo(result.Value) < Tolerance.Global.EqualPoint)
+                var secondUcs = EditorWcs.ToUcs(_editor, result.Value);
+                if (_secondPointUcs.DistanceTo(secondUcs) < Tolerance.Global.EqualPoint)
                 {
                     return SamplerStatus.NoChange;
                 }
-                _secondPoint = result.Value;
+                _secondPointUcs = secondUcs;
                 return SamplerStatus.OK;
             }
             return SamplerStatus.Cancel;
@@ -493,7 +509,7 @@ namespace HyCADTool.Features.Misc
             if (draw == null || _editor == null)
                 return false;
 
-            var corners = ToWcsPolygon(_editor, _firstPoint, _secondPoint);
+            var corners = ToWcsPolygon(_editor, _firstPointUcs, _secondPointUcs);
             Point3d pt1 = corners[0];
             Point3d pt2 = corners[1];
             Point3d pt3 = corners[2];

@@ -1,0 +1,7 @@
+# Shared 可变静态成员（字段/readonly 集合/可写属性/事件）。新增须改代码或标 [ProcessWide]。
+src/HyCADTool/Shared/AutoCAD/Extensions/TypeNameConverter.cs::ChineseToDxf
+src/HyCADTool/Shared/AutoCAD/Extensions/TypeNameConverter.cs::TypeToChinese
+src/HyCADTool/Shared/AutoCAD/Services/ActiveScaleContextProvider.cs::_current
+src/HyCADTool/Shared/AutoCAD/Services/Road/DwgBlockNameProvider.cs::_names
+src/HyCADTool/Shared/AutoCAD/Services/Road/DwgBlockNameProvider.cs::_namesView
+src/HyCADTool/Shared/UI/Helpers/TextBoxHelper.cs::_lastFocusedTextBox

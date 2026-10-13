@@ -77,16 +77,16 @@ namespace HyCADTool.Features.Pile.ViewModels
         {
             ResetCommand = new RelayCommand(ResetToDefaults);
             DrawPilesCommand = new RelayCommand(
-                () => SendCommand(() => new Features.Pile.DrawPilesCommand().Execute()));
+                () => SendCommand(() => new Features.Pile.DrawPilesCommand().Execute(), "HYpile"));
 
             GroupCirclesByElevationCommand = new RelayCommand(
-                () => SendCommand(() => new Features.Pile.GroupCirclesByElevationCommand().Execute()));
+                () => SendCommand(() => new Features.Pile.GroupCirclesByElevationCommand().Execute(), "HYpileG"));
             MarkElevationAtCentroidsCommand = new RelayCommand(
-                () => SendCommand(() => new Features.Pile.GroupCirclesByElevationCommand().ExecutePlaceElevationTextAtCentroids()));
+                () => SendCommand(() => new Features.Pile.GroupCirclesByElevationCommand().ExecutePlaceElevationTextAtCentroids(), "HYpileGT"));
             PileVoronoiOptimizationCommand = new RelayCommand(
-                () => SendCommand(() => new Features.Pile.PileVoronoiOptimizationCommand().Execute()));
+                () => SendCommand(() => new Features.Pile.PileVoronoiOptimizationCommand().Execute(), "HYpileV"));
             PileVoronoiFromCirclesCommand = new RelayCommand(
-                () => SendCommand(() => new Features.Pile.PileVoronoiOptimizationCommand().ExecuteWithExistingCircles()));
+                () => SendCommand(() => new Features.Pile.PileVoronoiOptimizationCommand().ExecuteWithExistingCircles(), "HYpileV"));
 
             // 从持久化文件加载上次保存的设置
             LoadSettings();
@@ -306,23 +306,22 @@ namespace HyCADTool.Features.Pile.ViewModels
         /// 复用 SettingsPanelViewModel 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
         /// 执行前自动确保样式已应用
         /// </summary>
-        private void SendCommand(Action commandAction)
+        private void SendCommand(Action commandAction, string commandKey)
         {
             SaveSettings();
-            SettingsPanelViewModel.PendingCommand = () =>
+            SettingsPanelViewModel.EnqueuePendingCommand(() =>
             {
-                // 确保设置面板样式已应用
                 var settingsVm = SettingsPanelViewModel.Current;
                 settingsVm?.EnsureStylesApplied();
                 commandAction();
-            };
+            }, commandKey);
             try
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
                 if (doc == null)
                 {
                     StatusMessage = "无活动文档";
-                    SettingsPanelViewModel.PendingCommand = null;
+                    SettingsPanelViewModel.ClearPendingCommand();
                     return;
                 }
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
@@ -330,7 +329,7 @@ namespace HyCADTool.Features.Pile.ViewModels
             catch (System.Exception ex)
             {
                 StatusMessage = $"发送命令失败: {ex.Message}";
-                SettingsPanelViewModel.PendingCommand = null;
+                SettingsPanelViewModel.ClearPendingCommand();
             }
         }
 

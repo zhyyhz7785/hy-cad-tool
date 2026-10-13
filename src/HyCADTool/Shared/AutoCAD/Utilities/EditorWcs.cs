@@ -5,9 +5,11 @@ using System;
 namespace HyCADTool.Shared.AutoCAD.Utilities
 {
     /// <summary>
-    /// Editor.GetPoint / GetEntity.PickedPoint / Jig 采样点都在 UCS（用户坐标系）。
-    /// 写入模型或拿去和实体几何比较之前用 <see cref="ToWcs"/>。
-    /// 橡皮筋 BasePoint 用 <see cref="ToUcs"/> 从已存的世界点变回来，不要把 <see cref="ToWcs"/> 的结果再喂回去。
+    /// <see cref="Editor.GetPoint"/> / <c>GetEntity.PickedPoint</c> 返回 UCS（用户坐标系）；
+    /// <c>JigPrompts.AcquirePoint</c>（ObjectARX <c>AcEdJig::acquirePoint</c>）返回 WCS（世界坐标系）。
+    /// GetPoint 写入模型前用 <see cref="ToWcs"/>；AcquirePoint 结果不要再 ToWcs。
+    /// GetPoint 的橡皮筋 BasePoint 要 UCS（用 <see cref="ToUcs"/>）；
+    /// AcquirePoint 的 BasePoint / UseBasePoint 要 WCS，不要先 ToUcs。
     /// </summary>
     public static class EditorWcs
     {
@@ -25,6 +27,22 @@ namespace HyCADTool.Shared.AutoCAD.Utilities
                 throw new ArgumentNullException(nameof(editor));
 
             return wcsPoint.TransformBy(editor.CurrentUserCoordinateSystem.Inverse());
+        }
+
+        /// <summary>
+        /// 没有 Editor 时原样返回，避免 Jig 在文档关闭瞬间抛空引用。
+        /// </summary>
+        public static Point3d ToWcsOrSame(Editor editor, Point3d ucsPoint)
+        {
+            return editor == null ? ucsPoint : ToWcs(editor, ucsPoint);
+        }
+
+        /// <summary>
+        /// 没有 Editor 时原样返回，避免 Jig 在文档关闭瞬间抛空引用。
+        /// </summary>
+        public static Point3d ToUcsOrSame(Editor editor, Point3d wcsPoint)
+        {
+            return editor == null ? wcsPoint : ToUcs(editor, wcsPoint);
         }
     }
 }

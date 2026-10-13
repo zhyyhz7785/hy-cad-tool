@@ -60,21 +60,21 @@
 
   <!-- AutoCAD 和其他 NuGet 包引用 -->
   <ItemGroup>
-    <PackageReference Include="Fluent.Ribbon" Version="11.0.2" />
-    <PackageReference Include="QRCoder" Version="1.4.3" />
-    <PackageReference Include="AutoCAD.NET" Version="24.3.0">
+    <PackageReference Include="Fluent.Ribbon" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="AutoCAD.NET">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Autofac" Version="7.1.0" />
-    <PackageReference Include="Clipper2" Version="1.4.0" />
+    <PackageReference Include="Autofac" />
+    <PackageReference Include="Clipper2" />
     <!-- 必须与 AutoCAD 2025 进程自带的 DocumentFormat.OpenXml 2.16.0.0 同版本：
          AutoCAD 会用自带 AssemblyResolve 抢先返回它的 2.16，若我们引用 3.x（拆成 OpenXml + OpenXml.Framework 两程序集），
          运行时会出现 Sheet=2.16 / OpenXmlElement=3.5 的类型割裂 → 泛型约束失败。详见 OpenXmlAssemblyBootstrap 注释。 -->
-    <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
-    <PackageReference Include="NetTopologySuite" Version="2.5.0" />
-    <PackageReference Include="Markdig" Version="0.37.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="unvell.ReoGridWPF.dll" Version="3.3.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="NetTopologySuite" />
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="unvell.ReoGridWPF.dll" />
   </ItemGroup>
 
   <!-- 引用 Blender WPF 控件库（主题 + NumericSlider / PropertyRow / IconTabBar 等） -->
@@ -100,14 +100,14 @@
     <ProjectReference Include="$(HyCadLicensingProject)" />
     <Compile Remove="Shell\Licensing\LicensingStub.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' == 'Production'">
+  <ItemGroup Condition="'$(HyCadLicensingPresent)' != 'true' And ('$(Configuration)' == 'Production' Or '$(Configuration)' == 'Release')">
     <Compile Remove="Shell\Licensing\LicensingStub.cs" />
   </ItemGroup>
-  <Target Name="WarnLicensingStub" BeforeTargets="Restore;CollectPackageReferences;ResolveProjectReferences;BeforeBuild" Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' != 'Production'">
-    <Warning Text="未找到许可 SDK：$(HyCadLicensingProject)。本次 $(Configuration) 编译 Shell/Licensing/LicensingStub.cs（不验签，授予 Enterprise，仅供本机开发）。Production 在 SDK 缺失时会失败，不能用本桩发行。" />
+  <Target Name="WarnLicensingStub" BeforeTargets="Restore;CollectPackageReferences;ResolveProjectReferences;BeforeBuild" Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' == 'Debug'">
+    <Warning Text="未找到许可 SDK：$(HyCadLicensingProject)。本次 Debug 编译 Shell/Licensing/LicensingStub.cs（不验签，授予 Enterprise，仅供本机开发）。Release/Production 在 SDK 缺失时会失败，不能用本桩发行。" />
   </Target>
-  <Target Name="RequireLicensingSdkForProduction" BeforeTargets="Restore;CollectPackageReferences;ResolveProjectReferences;BeforeBuild" Condition="'$(HyCadLicensingPresent)' != 'true' And '$(Configuration)' == 'Production'">
-    <Error Text="Production 构建需要许可 SDK，未找到：$(HyCadLicensingProject)。请把「注册机/sdk/dotnet/HyCADTool.Licensing/HyCADTool.Licensing.csproj」放到该路径后再执行 dotnet build -c Production。Debug/Release 在文件缺失时使用不验签的开发桩，不能代替发行包。" />
+  <Target Name="RequireLicensingSdkForProduction" BeforeTargets="Restore;CollectPackageReferences;ResolveProjectReferences;BeforeBuild" Condition="'$(HyCadLicensingPresent)' != 'true' And ('$(Configuration)' == 'Production' Or '$(Configuration)' == 'Release')">
+    <Error Text="$(Configuration) 构建需要许可 SDK，未找到：$(HyCadLicensingProject)。请把「注册机/sdk/dotnet/HyCADTool.Licensing/HyCADTool.Licensing.csproj」放到该路径后再构建。只有 Debug 在文件缺失时使用不验签的开发桩，不能代替发行包。" />
   </Target>
   <ItemGroup>
     <ProjectReference Include="..\HyCAD.BlenderUI\HyCAD.BlenderUI.csproj">
@@ -436,5 +436,30 @@
        ==================================================================== -->
 
   <!-- 已删除的废弃文件：ReinPanel.xaml/.cs、ReinPanelViewModel.cs、ShowMainPanelCommand.cs（2026-02-10 第三轮清理） -->
+
+  <!-- S-01：用 net8 控制台生成编译期许可档位表。失败时 Production 直接 Error，其它配置 Warning。 -->
+  <PropertyGroup>
+    <_GenerateCommandTiersProj>$(MSBuildThisFileDirectory)..\..\build\tools\GenerateCommandTiers\GenerateCommandTiers.csproj</_GenerateCommandTiersProj>
+    <_GenerateCommandTiersProgram>$(MSBuildThisFileDirectory)..\..\build\tools\GenerateCommandTiers\Program.cs</_GenerateCommandTiersProgram>
+    <_CommandsJson>$(MSBuildThisFileDirectory)..\ReCall\commands.json</_CommandsJson>
+    <_CommandTiersGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandTiers.g.cs</_CommandTiersGenerated>
+    <_CommandRoutesGenerated>$(MSBuildThisFileDirectory)Shell\Licensing\CommandRoutes.g.cs</_CommandRoutesGenerated>
+    <_CommandTiersStamp>$(IntermediateOutputPath)GenerateCommandTiers.stamp</_CommandTiersStamp>
+  </PropertyGroup>
+  <Target Name="GenerateCommandTiers"
+          BeforeTargets="CoreCompile"
+          Inputs="$(_CommandsJson);$(_GenerateCommandTiersProj);$(_GenerateCommandTiersProgram)"
+          Outputs="$(_CommandTiersStamp)"
+          Condition="Exists('$(_GenerateCommandTiersProj)') And Exists('$(_CommandsJson)')">
+    <Exec Command="dotnet run --project &quot;$(_GenerateCommandTiersProj)&quot; -- &quot;$(_CommandsJson)&quot; &quot;$(_CommandTiersGenerated)&quot; &quot;$(_CommandRoutesGenerated)&quot; &quot;$(_CommandTiersStamp)&quot;"
+          IgnoreExitCode="true"
+          ConsoleToMSBuild="true">
+      <Output TaskParameter="ExitCode" PropertyName="_GenerateCommandTiersExit" />
+    </Exec>
+    <Error Condition="'$(Configuration)'=='Production' And '$(_GenerateCommandTiersExit)' != '0'"
+           Text="Production 生成 CommandTiers/CommandRoutes 失败（exit $(_GenerateCommandTiersExit)）。请确认已安装 .NET SDK 8，并能执行 dotnet run --project build/tools/GenerateCommandTiers。" />
+    <Warning Condition="'$(Configuration)'!='Production' And '$(_GenerateCommandTiersExit)' != '0'"
+             Text="生成 CommandTiers/CommandRoutes 失败（exit $(_GenerateCommandTiersExit)），沿用已提交文件。Production 构建会因此失败。" />
+  </Target>
 
 </Project>

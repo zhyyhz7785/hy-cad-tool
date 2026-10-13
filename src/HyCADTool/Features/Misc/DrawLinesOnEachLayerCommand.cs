@@ -1,7 +1,8 @@
 using Autodesk.AutoCAD.DatabaseServices;
-using HyCADTool.Shared.AutoCAD.Utilities;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
+using HyCADTool.App.Bootstrap;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.Misc
@@ -17,11 +18,10 @@ namespace HyCADTool.Features.Misc
             var db = doc.Database;
             var ed = doc.Editor;
 
-            // 让用户点击插入点
-            var ptResult = ed.GetPoint("\n选择插入基点: ");
-            if (ptResult.Status != PromptStatus.OK) return;
+            var cad = ServiceLocator.TryResolve<ICadInteraction>() ?? new CadInteraction();
+            Point3d origin;
+            if (cad.GetWcsPoint("\n选择插入基点: ", out origin) != PromptStatus.OK) return;
 
-            var origin = EditorWcs.ToWcs(ed, ptResult.Value);
             double startX = origin.X;
             double startY = origin.Y;
             double lineLength = 200;
@@ -31,8 +31,7 @@ namespace HyCADTool.Features.Misc
 
             try
             {
-                using (doc.LockDocument())
-                using (var tr = db.TransactionManager.StartTransaction())
+                CadTx.Write(db, tr =>
                 {
                     var layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
@@ -70,9 +69,7 @@ namespace HyCADTool.Features.Misc
 
                         startY += offsetY;
                     }
-
-                    tr.Commit();
-                }
+                });
 
                 ed.WriteMessage("\n图层示例线绘制完成");
             }

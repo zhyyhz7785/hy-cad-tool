@@ -110,7 +110,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
         private void ExecuteStepOne()
         {
             StatusMessage = "整理底图：请按命令行提示选择曲线…";
-            SendCommand("整理底图", () => new DCELCommand().Execute());
+            SendCommand("整理底图", () => new DCELCommand().Execute(), "HYDCEL");
         }
 
         private void ExecuteStepTwo()
@@ -129,7 +129,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
             }
 
             StatusMessage = $"生成 3D：墙厚 {wall:F0}mm，筏板厚 {raft:F0}mm…";
-            SendCommand("生成 3D", () => new Elevation3DCommand(wall, raft).Execute());
+            SendCommand("生成 3D", () => new Elevation3DCommand(wall, raft).Execute(), "HY3");
         }
 
         private void ExecuteStepThree()
@@ -145,7 +145,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
             if (scale <= 0) scale = 50;
 
             StatusMessage = $"生成剖面：位移 {displacement:F0}mm，比例 {scale:F0}…";
-            SendCommand("生成剖面", () => new CreateSectionCommand(displacement, scale).Execute());
+            SendCommand("生成剖面", () => new CreateSectionCommand(displacement, scale).Execute(), "N14");
         }
 
         private static bool TryParsePositive(string text, out double value)
@@ -161,7 +161,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
         /// 通过 PendingCommand → _HyExec 路由到 AutoCAD 命令上下文执行；
         /// 命令上下文在 UI 线程，完成 / 失败后直接回写 <see cref="StatusMessage"/>。
         /// </summary>
-        private void SendCommand(string stepName, Action commandAction)
+        private void SendCommand(string stepName, Action commandAction, string commandKey)
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
@@ -170,7 +170,7 @@ namespace HyCADTool.Features.Elevation.ViewModels
                 return;
             }
 
-            SettingsPanelViewModel.PendingCommand = () =>
+            SettingsPanelViewModel.EnqueuePendingCommand(() =>
             {
                 try
                 {
@@ -182,14 +182,14 @@ namespace HyCADTool.Features.Elevation.ViewModels
                     StatusMessage = stepName + " 失败：" + ex.Message;
                     throw;
                 }
-            };
+            }, commandKey);
             try
             {
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
             }
             catch (System.Exception ex)
             {
-                SettingsPanelViewModel.PendingCommand = null;
+                SettingsPanelViewModel.ClearPendingCommand();
                 StatusMessage = "发送命令失败：" + ex.Message;
             }
         }

@@ -10,6 +10,8 @@ namespace HYFEA.Core.Solvers;
 /// </summary>
 public sealed class CSparseSystemSolver : ILinearSystemSolver
 {
+    private const double RelativeResidualTol = 1e-8;
+
     public string Name => "CSparse.NET Cholesky";
 
     public bool SupportsSparse => true;
@@ -57,8 +59,31 @@ public sealed class CSparseSystemSolver : ILinearSystemSolver
 
         sw.Stop();
 
-        // 残差计算 (使用三元组格式)
         double residual = ComputeResidualNorm(triplets, n, solution, F);
+        double xNorm = solution.Norm2();
+        double scale = MaxAbsTriplets(triplets);
+        if (!(scale > 0) || double.IsInfinity(scale))
+        {
+            return new LinearSolveResult(
+                false,
+                null,
+                new FemError(FemErrorKind.SingularMatrix, "Matrix has no finite nonzero entry."),
+                new SolveDiagnostics(n, rhsNorm, residual, sw.Elapsed));
+        }
+
+        double denom = scale * xNorm + rhsNorm;
+        double rel = denom > 0 ? residual / denom : residual;
+        if (double.IsNaN(xNorm) || double.IsInfinity(xNorm)
+            || double.IsNaN(residual) || double.IsInfinity(residual)
+            || double.IsNaN(rel) || double.IsInfinity(rel)
+            || rel > RelativeResidualTol)
+        {
+            return new LinearSolveResult(
+                false,
+                null,
+                new FemError(FemErrorKind.SingularMatrix, "Relative residual exceeds tolerance."),
+                new SolveDiagnostics(n, rhsNorm, residual, sw.Elapsed));
+        }
 
         return new LinearSolveResult(
             true,
@@ -75,6 +100,18 @@ public sealed class CSparseSystemSolver : ILinearSystemSolver
     {
         var triplets = ConvertDenseToTriplets(K);
         return SolveSparse(triplets, K.Rows, F);
+    }
+
+    private static double MaxAbsTriplets(IReadOnlyList<SparseTriplet> triplets)
+    {
+        double m = 0;
+        foreach (var (row, col, value) in triplets)
+        {
+            double a = Math.Abs(value);
+            if (a > m)
+                m = a;
+        }
+        return m;
     }
 
     private static double ComputeResidualNorm(IReadOnlyList<SparseTriplet> triplets, int n, DenseVector x, DenseVector f)

@@ -31,14 +31,14 @@ namespace HyCADTool.Features.Road.Plan.ViewModels
     {
         public RoadDesignViewModel()
         {
-            CmdAlignment = new RelayCommand(() => SendCommand(() => new RoadAlignmentCommand().Execute()));
-            CmdProfile = new RelayCommand(() => SendCommand(() => new RoadProfileCommand().Execute()));
+            CmdAlignment = new RelayCommand(() => SendCommand(() => new RoadAlignmentCommand().Execute(), "hyRoadA"));
+            CmdProfile = new RelayCommand(() => SendCommand(() => new RoadProfileCommand().Execute(), "hyRoadP"));
             // hyRoadCs（v2 横断面绘制）替换 hyRoadT；统一面板的 "横断面" 按钮直接走新命令，避免触发 [Obsolete] 转发壳。
-            CmdTemplate = new RelayCommand(() => SendCommand(() => new RoadCrossSectionDrawCommand().Execute()));
-            CmdCorridor = new RelayCommand(() => SendCommand(() => new RoadCorridorCommand().Execute()));
-            CmdExportGltf = new RelayCommand(() => SendCommand(() => new Road3dExportGltfCommand().Execute()));
-            CmdOpenJson = new RelayCommand(() => SendCommand(() => new RoadOpenJsonCommand().Execute()));
-            CmdImportJson = new RelayCommand(() => SendCommand(() => new RoadImportJsonCommand().Execute()));
+            CmdTemplate = new RelayCommand(() => SendCommand(() => new RoadCrossSectionDrawCommand().Execute(), "hyRoadCs"));
+            CmdCorridor = new RelayCommand(() => SendCommand(() => new RoadCorridorCommand().Execute(), "hyRoadC"));
+            CmdExportGltf = new RelayCommand(() => SendCommand(() => new Road3dExportGltfCommand().Execute(), "hyRoad3dExportGltf"));
+            CmdOpenJson = new RelayCommand(() => SendCommand(() => new RoadOpenJsonCommand().Execute(), "hyRoadSave"));
+            CmdImportJson = new RelayCommand(() => SendCommand(() => new RoadImportJsonCommand().Execute(), "hyRoadLoad"));
             CmdRefreshCounts = new RelayCommand(RefreshCounts);
 
             RefreshCounts();
@@ -115,9 +115,9 @@ namespace HyCADTool.Features.Road.Plan.ViewModels
 
         // ===== 命令路由（与 SettingsPanelViewModel 一致：PendingCommand → _HyExec）=====
 
-        private static void SendCommand(Action command)
+        private static void SendCommand(Action command, string commandKey)
         {
-            SettingsPanelViewModel.PendingCommand = command;
+            SettingsPanelViewModel.EnqueuePendingCommand(command, commandKey);
             AcApp.DocumentManager.MdiActiveDocument?.SendStringToExecute("_HyExec\n", true, false, false);
         }
 

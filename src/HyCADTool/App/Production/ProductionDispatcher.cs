@@ -4,8 +4,8 @@
 //
 // 这是 ReCallClass.Invoke 的"零依赖"等价实现：
 //   - 不依赖 ReCall.dll（生产包不包含 ReCall）
-//   - 复用 HyCADTool.Shell.Commands.CommandCatalog 解析 commands.json
-//     （与 Blender 面板 / Ribbon / CUIX 共用同一份命令目录，避免双解析）
+//   - Type/Method/Ctor 只读编译进程序集的 CommandRoutes；运行时 json 仅作
+//     比对：type/method 与内置不一致即拒绝（防止改免费键指向专业版类）
 //   - 反射目标程序集 = Assembly.GetExecutingAssembly() = HyCADTool.dll 自己
 //   - 前置钩子（CommitFocusedTextBoxValue / LoadSettings / EnsureStylesApplied）逻辑与 ReCall 一致
 //
@@ -19,6 +19,7 @@
 
 using Autodesk.AutoCAD.ApplicationServices;
 using HyCADTool.Shell.Commands;
+using HyCADTool.Shell.Licensing;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -59,39 +60,34 @@ namespace HyCADTool.App.Production
                     return;
                 }
 
-                if (!CommandCatalog.Contains(key))
+                CommandRoute route;
+                string prepareError;
+                if (!CommandRouteResolver.TryPrepareDispatch(key, CommandCatalog.Get(key), out route, out prepareError))
                 {
-                    ed.WriteMessage("\n✗ 命令表中未定义键 \"" + key + "\"。请检查 " + GetCommandsJsonPath() + "。");
-                    return;
-                }
-
-                var entry = CommandCatalog.Get(key);
-                if (entry == null)
-                {
-                    ed.WriteMessage("\n✗ 占位符 \"" + key + "\" 尚未分配。请在 " + GetCommandsJsonPath() + " 中把它指向实际的 type/method。");
+                    ed.WriteMessage("\n✗ " + prepareError);
                     return;
                 }
 
                 InvokePreHooks();
 
                 var asm = typeof(ProductionDispatcher).Assembly;
-                var targetType = _typeCache.GetOrAdd(entry.Type, t => asm.GetType(t));
+                var targetType = _typeCache.GetOrAdd(route.Type, t => asm.GetType(t));
                 if (targetType == null)
                 {
-                    ed.WriteMessage("\n✗ 类型未找到: " + entry.Type);
+                    ed.WriteMessage("\n✗ 类型未找到: " + route.Type);
                     return;
                 }
 
                 object instance = null;
                 if (!(targetType.IsAbstract && targetType.IsSealed))
                 {
-                    var ctorArgs = ResolveCtorArgs(entry.Ctor, entry.CtorEnumTypes, targetType, asm);
+                    var ctorArgs = ResolveCtorArgs(route.Ctor, route.CtorEnumTypes, targetType, asm);
                     instance = Activator.CreateInstance(targetType, ctorArgs);
                 }
 
-                var methodKey = entry.Type + "." + entry.Method;
+                var methodKey = route.Type + "." + route.Method;
                 var method = _methodCache.GetOrAdd(methodKey, _ =>
-                    targetType.GetMethod(entry.Method, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
+                    targetType.GetMethod(route.Method, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
                 if (method == null)
                 {
                     ed.WriteMessage("\n✗ 方法未找到: " + methodKey);
@@ -153,7 +149,10 @@ namespace HyCADTool.App.Production
                 }
                 var consume = vmType.GetMethod("ConsumePendingCommand", BindingFlags.Public | BindingFlags.Static);
                 var action = consume?.Invoke(null, null) as Delegate;
-                action?.DynamicInvoke();
+                var keyProp = vmType.GetProperty("LastCommandKey", BindingFlags.Public | BindingFlags.Static);
+                var pendingKey = keyProp != null ? keyProp.GetValue(null) as string : null;
+                var licenseKey = CommandRouteResolver.ResolvePendingLicenseKey(pendingKey);
+                LicenseGate.RunGated(licenseKey, () => { action?.DynamicInvoke(); });
             }
             catch (TargetInvocationException tie)
             {

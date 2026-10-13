@@ -161,7 +161,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             PromptPointResult res = prompts.AcquirePoint(opts);
             if (res.Status == PromptStatus.OK)
             {
-                var wcs = EditorWcs.ToWcs(_editor, res.Value);
+                var wcs = res.Value;
                 if (_currentPoint == wcs) return SamplerStatus.NoChange;
                 _currentPoint = wcs;
                 double elevation = ElevationService.ToElevationMeters(_currentPoint.Y - BasePoint.Y);

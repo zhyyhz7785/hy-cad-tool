@@ -138,30 +138,30 @@ namespace HyCADTool.Shell.ViewModels
 
             ApplyStyleCommand = new RelayCommand(SaveAsDefault);
             ResetCommand = new RelayCommand(ResetToDefaults);
-            DrawCommand = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.DrawReinforcementCommand().Execute()));
+            DrawCommand = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.DrawReinforcementCommand().Execute(), "gj"));
 
             // 钢筋绘制
-            CmdGj = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.DrawReinforcementCommand().Execute()));
-            CmdGg = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.DrawOffsetPolylineCommand().Execute()));
+            CmdGj = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.DrawReinforcementCommand().Execute(), "gj"));
+            CmdGg = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.DrawOffsetPolylineCommand().Execute(), "gg"));
 
             // 钢筋修改
-            CmdG1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinAddAnchorCommand(isVertical: false).Execute()));
-            CmdG2 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinAddAnchorCommand(isVertical: true).Execute()));
-            CmdGe = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinExtendCommand().Execute()));
-            CmdGe1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinQuickExtendCommand().Execute()));
-            CmdGd = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinCutCommand().Execute()));
+            CmdG1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinAddAnchorCommand(isVertical: false).Execute(), "g1"));
+            CmdG2 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinAddAnchorCommand(isVertical: true).Execute(), "g2"));
+            CmdGe = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinExtendCommand().Execute(), "ge"));
+            CmdGe1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinQuickExtendCommand().Execute(), "ge1"));
+            CmdGd = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.ReinCutCommand().Execute(), "gd"));
 
             // 钢筋标注
-            CmdGb = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Standard).Execute()));
-            CmdGb1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Single).Execute()));
-            CmdGb2 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Six).Execute()));
+            CmdGb = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Standard).Execute(), "gb"));
+            CmdGb1 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Single).Execute(), "gb1"));
+            CmdGb2 = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.MleaderReinCommand(Features.Reinforcement.MleaderReinCommand.Mode.Six).Execute(), "gb2"));
 
-            CmdCompRecognize = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.RecognizeComponentsCommand().Execute()));
-            CmdCompSwitch = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.SwitchComponentTypeCommand().Execute()));
-            CmdCompGenerate = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.GenerateByComponentsCommand().Execute()));
+            CmdCompRecognize = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.RecognizeComponentsCommand().Execute(), "N8"));
+            CmdCompSwitch = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.SwitchComponentTypeCommand().Execute(), "N9"));
+            CmdCompGenerate = new RelayCommand(() => SendCommand(() => new Features.Reinforcement.GenerateByComponentsCommand().Execute(), "N10"));
 
             // 道路
-            CmdRoad = new RelayCommand(() => SendCommand(() => new Features.Road.DrawCrosswalkCommand().Execute()));
+            CmdRoad = new RelayCommand(() => SendCommand(() => new Features.Road.DrawCrosswalkCommand().Execute(), "hyRoad"));
 
             // P0：市政道路设计 ViewModel（Domain 驱动，独立 RoadDesignViewModel）
             RoadDesign = new RoadDesignViewModel();
@@ -1238,26 +1238,47 @@ namespace HyCADTool.Shell.ViewModels
         /// <summary>
         /// 待执行命令：面板按钮设置后通过 _HyExec 在 AutoCAD 命令线程执行
         /// </summary>
-        public static System.Action PendingCommand { get; set; }
+        public static System.Action PendingCommand { get; private set; }
+
+        /// <summary>
+        /// 与 <see cref="PendingCommand"/> 成对的真实命令键，供 _HyExec 内层 LicenseGate 使用。
+        /// </summary>
+        public static string PendingCommandKey { get; private set; }
 
         /// <summary>
         /// 最后一次执行的命令（用于 _HyExec 重复执行）
         /// </summary>
         public static System.Action LastCommand { get; private set; }
 
+        /// <summary>与 <see cref="LastCommand"/> 成对的许可键；空键按 Standard 拦。</summary>
+        public static string LastCommandKey { get; private set; }
+
+        /// <summary>面板入队：委托 + 真实命令键。漏传键时 _HyExec 按 Standard 处理。</summary>
+        public static void EnqueuePendingCommand(System.Action command, string commandKey)
+        {
+            PendingCommand = command;
+            PendingCommandKey = commandKey;
+        }
+
+        public static void ClearPendingCommand()
+        {
+            PendingCommand = null;
+            PendingCommandKey = null;
+        }
+
         /// <summary>
-        /// 取出待执行命令（不清除，保留用于重复）
+        /// 取出待执行命令（不清除 LastCommand，保留用于重复）
         /// </summary>
         public static System.Action ConsumePendingCommand()
         {
             var cmd = PendingCommand;
             if (cmd != null)
             {
-                // 有新命令 → 保存为最后命令，清除待执行标记
                 LastCommand = cmd;
+                LastCommandKey = PendingCommandKey;
                 PendingCommand = null;
+                PendingCommandKey = null;
             }
-            // 返回最后命令（新命令或重复命令）
             return LastCommand;
         }
 
@@ -1265,16 +1286,13 @@ namespace HyCADTool.Shell.ViewModels
         /// 从面板按钮发起命令：设置 PendingCommand，然后通过 _HyExec 在正确线程执行
         /// 面板按钮点击时先按需同步样式（仅 dirty 时），再执行命令
         /// </summary>
-        private void SendCommand(System.Action commandAction)
+        private void SendCommand(System.Action commandAction, string commandKey)
         {
             CommitFocusedTextBoxValue();
             SaveSettings();
             if (IsStylesDirtyForActiveDoc()) EnsureStylesApplied();
 
-            PendingCommand = () =>
-            {
-                commandAction();
-            };
+            EnqueuePendingCommand(() => { commandAction(); }, commandKey);
             try
             {
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
@@ -1283,7 +1301,7 @@ namespace HyCADTool.Shell.ViewModels
             catch (System.Exception ex)
             {
                 StatusMessage = $"发送命令失败: {ex.Message}";
-                PendingCommand = null;
+                ClearPendingCommand();
             }
         }
 

@@ -13,8 +13,8 @@ namespace HyCADTool.Shell.Licensing
 
         public static void RunGated(string commandKey, Action action)
         {
-#if !HYCAD_PRODUCTION
-            // 开发调试用旁路：仅 Debug 构建编译进来，生产包（Configuration=Production）不存在此后门。
+#if DEBUG
+            // 仅 Debug 编译此后门。Release / Production 都不存在 HYCAD_BYPASS_LICENSE。
             if (string.Equals(Environment.GetEnvironmentVariable("HYCAD_BYPASS_LICENSE"), "1", StringComparison.OrdinalIgnoreCase))
             {
                 action();

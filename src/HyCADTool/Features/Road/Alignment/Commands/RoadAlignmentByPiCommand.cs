@@ -12,6 +12,7 @@ using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Interactive;
 using HyCADTool.Shared.AutoCAD.Services.Road;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell;
@@ -214,7 +215,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                 ed.WriteMessage("\n[道路] 已取消。");
                 return null;
             }
-            var jig = new AlignmentPiPickJig(ed, firstRes.Value);
+            var jig = new AlignmentPiPickJig(ed, EditorWcs.ToWcs(ed, firstRes.Value));
             var jigRes = jig.Run(ed);
             if (jigRes == PromptStatus.Cancel)
             {

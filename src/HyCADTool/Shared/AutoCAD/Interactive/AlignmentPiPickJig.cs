@@ -19,20 +19,17 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
         private readonly Editor _editor;
         private readonly List<Point3d> _points;
         private Point3d _cursor;
-        private Point3d _cursorUcs;
         private bool _hasCursorSample;
 
-        /// <param name="firstPointUcs">已通过 <see cref="Editor.GetPoint"/> 取得的 PI 起点（UCS）。</param>
-        public AlignmentPiPickJig(Editor editor, Point3d firstPointUcs)
+        /// <param name="firstPointWcs">已转到世界坐标的 PI 起点。调用方对 <see cref="Editor.GetPoint"/> 的结果先做 <see cref="EditorWcs.ToWcs"/>。</param>
+        public AlignmentPiPickJig(Editor editor, Point3d firstPointWcs)
         {
             if (editor == null)
                 throw new ArgumentNullException(nameof(editor));
 
             _editor = editor;
-            var first = EditorWcs.ToWcs(editor, firstPointUcs);
-            _points = new List<Point3d> { first };
-            _cursor = first;
-            _cursorUcs = firstPointUcs;
+            _points = new List<Point3d> { firstPointWcs };
+            _cursor = firstPointWcs;
             _hasCursorSample = false;
         }
 
@@ -98,7 +95,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 $"\n[道路] 指定下一 PI 点（已 {_points.Count} 个，回车结束）[撤销(Z)]：")
             {
                 UseBasePoint = true,
-                BasePoint = EditorWcs.ToUcs(_editor, _points[_points.Count - 1]),
+                BasePoint = _points[_points.Count - 1],
             };
             opts.Keywords.Add("撤销");
             opts.Keywords.Add("Z");
@@ -111,11 +108,10 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             if (result.Status == PromptStatus.OK)
             {
                 if (_hasCursorSample &&
-                    result.Value.IsEqualTo(_cursorUcs, new Tolerance(1e-10, 1e-10)))
+                    result.Value.IsEqualTo(_cursor, new Tolerance(1e-10, 1e-10)))
                     return SamplerStatus.NoChange;
 
-                _cursorUcs = result.Value;
-                _cursor = EditorWcs.ToWcs(_editor, result.Value);
+                _cursor = result.Value;
                 _hasCursorSample = true;
                 return SamplerStatus.OK;
             }

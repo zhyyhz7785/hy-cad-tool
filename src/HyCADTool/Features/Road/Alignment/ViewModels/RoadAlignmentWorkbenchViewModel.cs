@@ -693,7 +693,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
         private void DeleteAlignmentPickOnCanvas()
         {
             if (AcApp.DocumentManager.MdiActiveDocument == null) return;
-            SettingsPanelViewModel.PendingCommand = () => new RoadAlignmentDeletePickCommand().Execute();
+            SettingsPanelViewModel.EnqueuePendingCommand(() => new RoadAlignmentDeletePickCommand().Execute(), "hyRoadAlnDeletePick");
             AcApp.DocumentManager.MdiActiveDocument.SendStringToExecute("_HyExec\n", true, false, false);
             StatusText = "请先选择或框选要删除的 HY_ROAD 平面线位（可多选，与 CAD 选择一致）…";
         }

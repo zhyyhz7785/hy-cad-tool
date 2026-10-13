@@ -302,7 +302,7 @@ namespace HyCADTool.Features.G16.ViewModels
                 return;
             }
 
-            SettingsPanelViewModel.PendingCommand = ExecuteDrawInCommandContext;
+            SettingsPanelViewModel.EnqueuePendingCommand(ExecuteDrawInCommandContext, "hyG16");
             try
             {
                 doc.SendStringToExecute("_HyExec\n", true, false, false);
@@ -310,7 +310,7 @@ namespace HyCADTool.Features.G16.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = "发送命令失败：" + ex.Message;
-                SettingsPanelViewModel.PendingCommand = null;
+                SettingsPanelViewModel.ClearPendingCommand();
             }
         }
 

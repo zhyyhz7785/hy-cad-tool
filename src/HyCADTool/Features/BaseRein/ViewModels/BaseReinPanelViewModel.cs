@@ -33,7 +33,7 @@ namespace HyCADTool.Features.BaseRein.ViewModels
             _config = _reinforcementService.GetCurrentConfig();
 
             // 步骤命令涉及 AutoCAD 交互，必须路由到命令线程
-            StepOneCommand = new RelayCommand(() => SendCommand(() => _reinforcementService.OptimizeBasemap()));
+            StepOneCommand = new RelayCommand(() => SendCommand(() => _reinforcementService.OptimizeBasemap(), "hyBaseRein"));
             StepTwoCommand = new RelayCommand(() => SendCommand(() =>
             {
                 char[] delimiters = new char[] { ' ', ',', '，' };
@@ -41,22 +41,22 @@ namespace HyCADTool.Features.BaseRein.ViewModels
                     .Split(delimiters, StringSplitOptions.RemoveEmptyEntries)
                     .ToList();
                 _reinforcementService.SelectAndDeleteUnusedText(fixedValues);
-            }));
+            }, "hyBaseRein"));
             StepFourCommand = new RelayCommand(() => SendCommand(() =>
             {
                 SaveConfigToService();
                 _reinforcementService.GenerateReinforcementArea(_config);
-            }));
+            }, "hyBaseRein"));
             StepFiveCommand = new RelayCommand(() => SendCommand(() =>
             {
                 SaveConfigToService();
                 _reinforcementService.DrawReinforcement(_config, DimAll);
-            }));
+            }, "hyBaseRein"));
             StepSixCommand = new RelayCommand(() => SendCommand(() =>
             {
                 SaveConfigToService();
                 _reinforcementService.DimensionReinforcementArea(SelectedDimDirection);
-            }));
+            }, "hyBaseRein"));
         }
 
         #endregion
@@ -230,11 +230,10 @@ namespace HyCADTool.Features.BaseRein.ViewModels
         /// 复用 SettingsPanelViewModel 的 PendingCommand 机制（_HyExec → ConsumePendingCommand）
         /// 执行前自动从设置面板同步 Scale 并确保样式已应用
         /// </summary>
-        private void SendCommand(Action commandAction)
+        private void SendCommand(Action commandAction, string commandKey)
         {
-            SettingsPanelViewModel.PendingCommand = () =>
+            SettingsPanelViewModel.EnqueuePendingCommand(() =>
             {
-                // 从 gj 面板（SettingsPanelViewModel）同步基础钢筋参数，确保样式已应用
                 var settingsVm = SettingsPanelViewModel.Current;
                 if (settingsVm != null)
                 {
@@ -247,7 +246,7 @@ namespace HyCADTool.Features.BaseRein.ViewModels
                     settingsVm.EnsureStylesApplied();
                 }
                 commandAction();
-            };
+            }, commandKey);
             try
             {
                 var doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -255,7 +254,7 @@ namespace HyCADTool.Features.BaseRein.ViewModels
             }
             catch (System.Exception ex)
             {
-                SettingsPanelViewModel.PendingCommand = null;
+                SettingsPanelViewModel.ClearPendingCommand();
                 try
                 {
                     AcApp.DocumentManager.MdiActiveDocument?.Editor
