@@ -40,6 +40,7 @@
     <Compile Include="..\HyCADTool\Features\Settlement\Domain\Services\BearingCapacityService.cs" Link="Settlement\BearingCapacityService.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\Domain\Services\PileStructuralService.cs" Link="Settlement\PileStructuralService.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\EvenlySpacedLayout.cs" Link="Reinforcement\EvenlySpacedLayout.cs" />
+    <Compile Include="..\HyCADTool\Shared\AutoCAD\Interaction\DisposableBag.cs" Link="Interaction\DisposableBag.cs" />
     <Compile Include="..\HyCADTool\Shared\AutoCAD\Session\DocumentSession.cs" Link="Session\DocumentSession.cs" />
     <Compile Include="..\HyCADTool\Shared\AutoCAD\Session\DocumentSessionStore.cs" Link="Session\DocumentSessionStore.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentSession.cs" Link="Reinforcement\ComponentSession.cs" />

@@ -5,7 +5,8 @@ using Autodesk.AutoCAD.Geometry;
 using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Infrastructure;
 using HyCADTool.Features.SpongeCity.ViewModels;
-using HyCADTool.Shared.AutoCAD.Utilities;
+using HyCADTool.App.Bootstrap;
+using HyCADTool.Shared.AutoCAD.Interaction;
 using HyCADTool.Shell.ViewModels;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
@@ -25,16 +26,16 @@ namespace HyCADTool.Features.SpongeCity.Commands
             var db = doc.Database;
             var ed = doc.Editor;
 
-            var ptResult = ed.GetPoint("\n[hyscDL] 选择基点（10 类下垫面图层的样线起点）: ");
-            if (ptResult.Status != PromptStatus.OK) return;
+            var cad = ServiceLocator.TryResolve<ICadInteraction>() ?? new CadInteraction();
+            Point3d origin;
+            if (cad.GetWcsPoint("\n[hyscDL] 选择基点（10 类下垫面图层的样线起点）: ", out origin) != PromptStatus.OK)
+                return;
 
             double scale = ReadScale();
             double lineLength = 2000;     // 实际 mm（不乘 scale）
             double rulerLength = 200;     // 标尺线 a
             double rowGap = 250 * scale;  // 行距按 scale 缩放（避免不同图纸尺寸太挤）
             double textHeight = 5 * scale;
-
-            var origin = EditorWcs.ToWcs(ed, ptResult.Value);
             double startX = origin.X;
             double startY = origin.Y;
 
@@ -44,8 +45,7 @@ namespace HyCADTool.Features.SpongeCity.Commands
             int created = 0;
             try
             {
-                using (doc.LockDocument())
-                using (var tr = db.TransactionManager.StartTransaction())
+                CadTx.Write(db, tr =>
                 {
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
@@ -97,11 +97,9 @@ namespace HyCADTool.Features.SpongeCity.Commands
                         startY += rowGap;
                         created++;
                     }
+                });
 
-                    tr.Commit();
-                }
-
-                ed.WriteMessage($"\n[hyscDL] 已在 {created} 个下垫面图层绘制样线（基点 ({ptResult.Value.X:F0},{ptResult.Value.Y:F0})，行距 {rowGap:F0}）。");
+                ed.WriteMessage($"\n[hyscDL] 已在 {created} 个下垫面图层绘制样线（基点 ({origin.X:F0},{origin.Y:F0})，行距 {rowGap:F0}）。");
                 if (vm != null) vm.StatusMessage = $"已画样线：{created} 类，行距 {rowGap:F0}。";
             }
             catch (System.Exception ex)

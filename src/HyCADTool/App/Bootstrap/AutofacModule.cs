@@ -87,6 +87,10 @@ namespace HyCADTool.App.Bootstrap
                 .As<IEditorService>()
                 .SingleInstance();
 
+            builder.RegisterType<HyCADTool.Shared.AutoCAD.Interaction.CadInteraction>()
+                .As<HyCADTool.Shared.AutoCAD.Interaction.ICadInteraction>()
+                .SingleInstance();
+
             // 数据库服务（单例）
             builder.RegisterType<DatabaseService>()
                 .As<IDatabaseService>()
