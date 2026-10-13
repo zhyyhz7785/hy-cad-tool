@@ -51,8 +51,8 @@ public sealed class BeamSolveFlightTests
             Area = 8e4,
             InertiaZ = 1.067e9,
             Q = 10,
-            EndA = HYFEA.Core.Model.BeamSupportKind.Fixed,
-            EndB = HYFEA.Core.Model.BeamSupportKind.Free,
+            EndA = BeamSupportKind.Fixed,
+            EndB = BeamSupportKind.Free,
         };
 
         Assert.ThrowsAny<OperationCanceledException>(() =>
