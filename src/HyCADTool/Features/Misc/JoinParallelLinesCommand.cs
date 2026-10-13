@@ -91,25 +91,26 @@ namespace HyCADTool.Features.Misc
                     // 步骤3: 将所有直线转换为多段线
                     foreach (SelectedObject selObj in psr.Value)
                     {
-                        Entity ent = tr.GetObject(selObj.ObjectId, OpenMode.ForRead) as Entity;
+                        Entity writable;
+                        if (!LockedLayerErase.TryOpenForWrite(tr, selObj.ObjectId, out writable, ed))
+                            continue;
 
-                        if (ent is Line line)
+                        if (writable is Line line)
                         {
-                            if (LockedLayerErase.IsLocked(tr, line))
-                            {
-                                ed.WriteMessage("\n图层 " + line.Layer + " 已锁定，跳过。");
-                                continue;
-                            }
-
                             AcDbPolyline pline = ConvertLineToPolyline(line);
                             btr.AppendEntity(pline);
                             tr.AddNewlyCreatedDBObject(pline, true);
 
-                            LockedLayerErase.TryErase(tr, line, ed);
+                            if (!LockedLayerErase.TryErase(tr, line, ed))
+                            {
+                                pline.Erase();
+                                ed.WriteMessage("\n图层 " + line.Layer + " 已锁定，拒绝把直线转成多段线。");
+                                continue;
+                            }
 
                             polylines.Add(pline);
                         }
-                        else if (ent is AcDbPolyline pline)
+                        else if (writable is AcDbPolyline pline)
                         {
                             polylines.Add(pline);
                         }
@@ -120,7 +121,7 @@ namespace HyCADTool.Features.Misc
                     List<EndpointInfo> endpointsInBounds = FilterEndpointsInUcsRect(ed, allEndpoints, pt1, pt2);
                     
                     // 步骤5: 连接共线的多段线
-                    int mergedCount = MergeCollinearPolylines(polylines, endpointsInBounds, tr);
+                    int mergedCount = MergeCollinearPolylines(polylines, endpointsInBounds, tr, ed);
 
                     tr.Commit();
 
@@ -203,7 +204,7 @@ namespace HyCADTool.Features.Misc
 
 
         // 合并共线的多段线
-        private int MergeCollinearPolylines(List<AcDbPolyline> polylines, List<EndpointInfo> allEndpoints, Transaction tr)
+        private int MergeCollinearPolylines(List<AcDbPolyline> polylines, List<EndpointInfo> allEndpoints, Transaction tr, Editor ed)
         {
             int mergedCount = 0;
             List<AcDbPolyline> toRemove = new List<AcDbPolyline>();
@@ -223,7 +224,7 @@ namespace HyCADTool.Features.Misc
                     if (AreSegmentsCollinear(ep1, ep2))
                     {
                         // 合并多段线
-                        if (MergePolylines(ep1, ep2, tr))
+                        if (MergePolylines(ep1, ep2, tr, ed))
                         {
                             mergedCount++;
 
@@ -235,10 +236,10 @@ namespace HyCADTool.Features.Misc
                 }
             }
 
-            // 删除已合并的多段线
             foreach (AcDbPolyline pline in toRemove)
             {
-                LockedLayerErase.TryErase(tr, pline, null);
+                if (!LockedLayerErase.TryErase(tr, pline, ed))
+                    throw new InvalidOperationException("图层已锁定，无法删除被合并的线，已中止以免留下重复几何。");
             }
 
             return mergedCount;
@@ -354,13 +355,24 @@ namespace HyCADTool.Features.Misc
         }
 
         // 合并两条多段线
-        private bool MergePolylines(EndpointInfo ep1, EndpointInfo ep2, Transaction tr)
+        private bool MergePolylines(EndpointInfo ep1, EndpointInfo ep2, Transaction tr, Editor ed)
         {
             try
             {
-                AcDbPolyline pline1 = ep1.Polyline;
-                AcDbPolyline pline2 = ep2.Polyline;
-                pline1.UpgradeOpen();
+                Entity w1;
+                Entity w2;
+                if (!LockedLayerErase.TryOpenForWrite(tr, ep1.Polyline.ObjectId, out w1, ed)
+                    || !LockedLayerErase.TryOpenForWrite(tr, ep2.Polyline.ObjectId, out w2, ed))
+                {
+                    return false;
+                }
+
+                AcDbPolyline pline1 = w1 as AcDbPolyline;
+                AcDbPolyline pline2 = w2 as AcDbPolyline;
+                if (pline1 == null || pline2 == null)
+                    return false;
+                ep1.Polyline = pline1;
+                ep2.Polyline = pline2;
 
                 // 根据端点位置决定如何连接
                 if (ep1.IsEndPoint && ep2.IsStartPoint)
