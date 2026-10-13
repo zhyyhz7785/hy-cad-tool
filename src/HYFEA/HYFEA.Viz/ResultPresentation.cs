@@ -29,7 +29,7 @@ public sealed class ResultPresentation
     {
         var mesh = BeamResultMeshBuilder.From(problem, result);
         var json = ResultMeshJson.ToJson(mesh);
-        var path = string.IsNullOrWhiteSpace(vtuPath) ? DefaultVtuPath : vtuPath;
+        var path = string.IsNullOrWhiteSpace(vtuPath) ? DefaultVtuPath : vtuPath!;
         VtuWriter.Write(mesh, path);
         return new ResultPresentation(mesh, json, path);
     }

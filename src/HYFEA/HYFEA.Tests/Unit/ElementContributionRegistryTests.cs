@@ -7,6 +7,7 @@ using HYFEA.Core.Assembly;
 using HYFEA.Core.Boundary;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Elements;
+using HYFEA.Core.LinearAlgebra;
 using HYFEA.Core.Loads;
 using HYFEA.Core.Materials;
 using HYFEA.Core.Model;
@@ -29,21 +30,39 @@ public sealed class ElementContributionRegistryTests
     }
 
     [Fact]
-    public void Injected_registry_is_used_for_assemble_and_recover()
+    public void Injected_registry_is_resolved_instead_of_builtins()
     {
         var problem = BuildSpring();
         var registry = new ElementContributionRegistry(registerBuiltins: false);
-        registry.Register(new Spring1DContribution());
+        registry.Register(new MarkerContribution());
 
-        var dense = new LinearStaticAnalysis(elements: registry).Run(problem);
-        Assert.True(dense.Success, dense.Error?.Message);
+        var dense = Assert.Throws<InvalidOperationException>(() => new LinearStaticAnalysis(elements: registry).Run(problem));
+        Assert.Equal("injected-registry", dense.Message);
 
-        var sparse = new SparseLinearStaticAnalysis(elements: registry).Run(problem);
-        Assert.True(sparse.Success, sparse.Error?.Message);
+        var sparse = Assert.Throws<InvalidOperationException>(() => new SparseLinearStaticAnalysis(elements: registry).Run(problem));
+        Assert.Equal("injected-registry", sparse.Message);
+    }
 
-        var layout = DofLayout.Build(problem, registry);
-        var assembled = Assembler.Assemble(problem, layout, registry);
-        Assert.Equal(layout.TotalDofCount, assembled.Stiffness.Rows);
+    private sealed class MarkerContribution : IElementContribution
+    {
+        public Type ElementDefinitionType => typeof(Spring1DElementDef);
+
+        public IReadOnlyList<DofType> ActiveDofsForNode(FemElementDefinition element, NodeId node) =>
+            new[] { DofType.UX };
+
+        public void ApplyStiffness(FemProblem problem, FemElementDefinition element, DofLayout layout, IMatrixAccumulator K) =>
+            throw new InvalidOperationException("injected-registry");
+
+        public void ApplyEquivalentLoads(
+            FemProblem problem,
+            FemElementDefinition element,
+            IReadOnlyList<IElementLoad> elementLoads,
+            DofLayout layout,
+            DenseVector F)
+        {
+        }
+
+        public object Recover(FemProblem problem, FemElementDefinition element, DofLayout layout, DenseVector uFull) => 0.0;
     }
 
     [Fact]
