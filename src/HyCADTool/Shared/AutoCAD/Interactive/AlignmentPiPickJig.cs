@@ -22,17 +22,16 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
         private Point3d _cursorUcs;
         private bool _hasCursorSample;
 
-        /// <param name="firstPointUcs">已通过 <see cref="Editor.GetPoint"/> 取得的 PI 起点（UCS）。</param>
-        public AlignmentPiPickJig(Editor editor, Point3d firstPointUcs)
+        /// <param name="firstPointWcs">已转到世界坐标的 PI 起点。调用方对 <see cref="Editor.GetPoint"/> 的结果先做 <see cref="EditorWcs.ToWcs"/>。</param>
+        public AlignmentPiPickJig(Editor editor, Point3d firstPointWcs)
         {
             if (editor == null)
                 throw new ArgumentNullException(nameof(editor));
 
             _editor = editor;
-            var first = EditorWcs.ToWcs(editor, firstPointUcs);
-            _points = new List<Point3d> { first };
-            _cursor = first;
-            _cursorUcs = firstPointUcs;
+            _points = new List<Point3d> { firstPointWcs };
+            _cursor = firstPointWcs;
+            _cursorUcs = EditorWcs.ToUcs(editor, firstPointWcs);
             _hasCursorSample = false;
         }
 

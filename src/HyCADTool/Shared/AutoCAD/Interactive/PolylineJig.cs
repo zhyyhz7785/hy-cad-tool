@@ -115,7 +115,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                     return SamplerStatus.NoChange;
 
                 _currentUcs = result.Value;
-                _currentPoint = ToWcs(result.Value);
+                _currentPoint = EditorWcs.ToWcsOrSame(AcApp.DocumentManager.MdiActiveDocument?.Editor, result.Value);
                 return SamplerStatus.OK;
             }
             else if (result.Status == PromptStatus.Keyword)
@@ -184,12 +184,6 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             return PromptStatus.OK;
-        }
-
-        private static Point3d ToWcs(Point3d ucsPoint)
-        {
-            var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-            return ed == null ? ucsPoint : EditorWcs.ToWcs(ed, ucsPoint);
         }
 
         public void Dispose()

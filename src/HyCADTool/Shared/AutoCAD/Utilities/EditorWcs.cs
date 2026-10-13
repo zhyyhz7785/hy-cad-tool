@@ -26,5 +26,21 @@ namespace HyCADTool.Shared.AutoCAD.Utilities
 
             return wcsPoint.TransformBy(editor.CurrentUserCoordinateSystem.Inverse());
         }
+
+        /// <summary>
+        /// 没有 Editor 时原样返回，避免 Jig 在文档关闭瞬间抛空引用。
+        /// </summary>
+        public static Point3d ToWcsOrSame(Editor editor, Point3d ucsPoint)
+        {
+            return editor == null ? ucsPoint : ToWcs(editor, ucsPoint);
+        }
+
+        /// <summary>
+        /// 没有 Editor 时原样返回，避免 Jig 在文档关闭瞬间抛空引用。
+        /// </summary>
+        public static Point3d ToUcsOrSame(Editor editor, Point3d wcsPoint)
+        {
+            return editor == null ? wcsPoint : ToUcs(editor, wcsPoint);
+        }
     }
 }
