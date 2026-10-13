@@ -62,7 +62,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             }
 
             JigPromptPointOptions jigOpts = new JigPromptPointOptions("\n移动光标以选择弯钩方向，点击确认: ");
-            jigOpts.BasePoint = EditorWcs.ToUcsOrSame(ActiveEditor(), _lastVertex);
+            jigOpts.BasePoint = _lastVertex;
             jigOpts.UseBasePoint = true;
             jigOpts.UserInputControls = UserInputControls.Accept3dCoordinates | UserInputControls.NoNegativeResponseAccepted;
 
@@ -70,7 +70,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
 
             if (ppr.Status == PromptStatus.OK)
             {
-                var wcs = EditorWcs.ToWcsOrSame(ActiveEditor(), ppr.Value);
+                var wcs = ppr.Value;
                 if (_jigPoint.DistanceTo(wcs) < Tolerance.Global.EqualPoint)
                     return SamplerStatus.NoChange;
 

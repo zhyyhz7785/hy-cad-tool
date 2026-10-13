@@ -51,7 +51,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
                 return SamplerStatus.Cancel;
 
             var jigOpts = new JigPromptPointOptions("\n移动光标选择弯钩方向（沿相交钢筋，点击确认）：");
-            jigOpts.BasePoint = EditorWcs.ToUcsOrSame(ActiveEditor(), _basePoint);
+            jigOpts.BasePoint = _basePoint;
             jigOpts.UseBasePoint = true;
             jigOpts.UserInputControls =
                 UserInputControls.Accept3dCoordinates | UserInputControls.NoNegativeResponseAccepted;
@@ -59,7 +59,7 @@ namespace HyCADTool.Shared.AutoCAD.Interactive
             PromptPointResult ppr = prompts.AcquirePoint(jigOpts);
             if (ppr.Status == PromptStatus.OK)
             {
-                var wcs = EditorWcs.ToWcsOrSame(ActiveEditor(), ppr.Value);
+                var wcs = ppr.Value;
                 if (_jigPoint.DistanceTo(wcs) < Tolerance.Global.EqualPoint)
                     return SamplerStatus.NoChange;
                 _jigPoint = wcs;
