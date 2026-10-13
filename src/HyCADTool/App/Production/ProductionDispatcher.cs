@@ -157,7 +157,7 @@ namespace HyCADTool.App.Production
                 string enumTypeName = (ctorEnumTypes != null && i < ctorEnumTypes.Length) ? ctorEnumTypes[i] : null;
                 if (!string.IsNullOrEmpty(enumTypeName) && raw is string enumValueName)
                 {
-                    var enumType = refactored.GetType(enumTypeName) ?? Type.GetType(enumTypeName);
+                    var enumType = refactored.GetType(enumTypeName);
                     if (enumType != null)
                     {
                         args[i] = Enum.Parse(enumType, enumValueName, ignoreCase: true);
