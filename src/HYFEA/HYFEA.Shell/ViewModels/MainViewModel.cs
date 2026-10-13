@@ -21,6 +21,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
     private readonly RelayCommand _exportVtuCommand;
     private FemProblem? _lastProblem;
     private FemResult? _lastResult;
+    private ResultMesh? _lastMesh;
     private string? _lastMeshJson;
     private double _youngsModulus = 2.06e5;
     private double _area = 8e4;
@@ -162,13 +163,34 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
         int serial = Interlocked.Increment(ref _solveSerial);
         Status = "求解中…";
         var sw = Stopwatch.StartNew();
-        Task.Run(() => _session.Compute(geom, request))
+        Task.Run(() =>
+            {
+                var output = _session.Compute(geom, request);
+                ResultPresentation? presentation = null;
+                string? meshError = null;
+                if (output.Result.Success)
+                {
+                    try
+                    {
+                        presentation = ResultPresentation.Build(output.Problem, output.Result);
+                    }
+                    catch (Exception ex)
+                    {
+                        meshError = ex.Message;
+                    }
+                }
+
+                return (output, presentation, meshError);
+            })
             .ContinueWith(
                 t => Dispatcher.UIThread.Post(() => FinishSolve(serial, sw, t)),
                 TaskScheduler.Default);
     }
 
-    private void FinishSolve(int serial, Stopwatch sw, Task<BeamSolveOutput> task)
+    private void FinishSolve(
+        int serial,
+        Stopwatch sw,
+        Task<(BeamSolveOutput output, ResultPresentation? presentation, string? meshError)> task)
     {
         if (serial != Volatile.Read(ref _solveSerial))
             return;
@@ -176,17 +198,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
         sw.Stop();
         if (task.IsFaulted)
         {
-            _lastProblem = null;
-            _lastResult = null;
-            LastMeshJson = null;
-            RaiseExportCommandsChanged();
+            ClearLastSolve();
             Status = "异常：" + task.Exception.GetBaseException().Message;
             return;
         }
 
-        var output = task.Result;
-        string statusBeforePresent = Status;
-        Present(output.Result, output.Problem);
+        var (output, presentation, meshError) = task.Result;
+        Bind(output.Result, output.Problem, presentation);
 
         if (!output.Result.Success)
         {
@@ -194,10 +212,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
             return;
         }
 
-        if (Status == statusBeforePresent)
+        if (meshError != null)
         {
-            Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
+            Status = "结果网格构建失败：" + meshError;
+            return;
         }
+
+        Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
     }
 
     private void ExecuteExportVtu()
@@ -222,39 +243,47 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
             return null;
         }
 
-        var mesh = BeamResultMeshBuilder.From(_lastProblem, _lastResult);
-        var path = Path.Combine(Path.GetTempPath(), "hyfea-last.vtu");
+        var path = ResultPresentation.DefaultVtuPath;
+        var mesh = _lastMesh ?? BeamResultMeshBuilder.From(_lastProblem, _lastResult);
+        _lastMesh = mesh;
         VtuWriter.Write(mesh, path);
         return path;
     }
 
     public void Present(FemResult result, FemProblem problem)
     {
+        ResultPresentation? presentation = null;
+        string? meshError = null;
+        if (result.Success && result.Displacements != null && result.Layout != null)
+        {
+            try
+            {
+                presentation = ResultPresentation.Build(problem, result);
+            }
+            catch (Exception ex)
+            {
+                meshError = ex.Message;
+            }
+        }
+
+        Bind(result, problem, presentation);
+        if (meshError != null)
+            Status = "结果网格构建失败：" + meshError;
+    }
+
+    private void Bind(FemResult result, FemProblem problem, ResultPresentation? presentation)
+    {
         NodalResults.Clear();
         BeamForces.Clear();
 
         _lastProblem = problem;
         _lastResult = result;
+        _lastMesh = presentation?.Mesh;
+        LastMeshJson = presentation?.MeshJson;
         RaiseExportCommandsChanged();
 
         if (!result.Success || result.Displacements == null || result.Layout == null)
-        {
-            LastMeshJson = null;
             return;
-        }
-
-        try
-        {
-            var mesh = BeamResultMeshBuilder.From(problem, result);
-            LastMeshJson = ResultMeshJson.ToJson(mesh);
-            // 边车 / ParaView 旁路共用固定路径
-            VtuWriter.Write(mesh, Path.Combine(Path.GetTempPath(), "hyfea-last.vtu"));
-        }
-        catch (Exception ex)
-        {
-            LastMeshJson = null;
-            Status = "结果网格构建失败：" + ex.Message;
-        }
 
         foreach (var node in problem.Nodes)
         {
@@ -286,6 +315,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
                 });
             }
         }
+    }
+
+    private void ClearLastSolve()
+    {
+        _lastProblem = null;
+        _lastResult = null;
+        _lastMesh = null;
+        LastMeshJson = null;
+        RaiseExportCommandsChanged();
     }
 
     private void RaiseExportCommandsChanged() =>
