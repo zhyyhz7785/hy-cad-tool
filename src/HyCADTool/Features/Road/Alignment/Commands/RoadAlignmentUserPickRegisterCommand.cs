@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.EditorInput;
 using HyCADTool.Domain.Models.Road;
 using HyCADTool.Shared.AutoCAD.Services.Road;
 using HyCADTool.Shared.AutoCAD.Session;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 using HyCADTool.App.Bootstrap;
 using HyCADTool.Shell;
@@ -111,12 +112,9 @@ namespace HyCADTool.Features.Road.PlanAlignment.Commands
                         {
                             try
                             {
-                                var we = tr.GetObject(per.ObjectId, OpenMode.ForWrite);
-                                if (we != null && !we.IsErased)
-                                {
-                                    we.Erase();
+                                var we = tr.GetObject(per.ObjectId, OpenMode.ForRead) as Entity;
+                                if (LockedLayerErase.TryErase(tr, we, ed))
                                     erasedOriginal = true;
-                                }
                             }
                             catch
                             {

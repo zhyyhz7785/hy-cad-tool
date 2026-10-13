@@ -11,6 +11,7 @@ using HyCADTool.Shared.AutoCAD.Extensions;
 using HyCADTool.Features.TitleBlock.Services;
 using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Features.Road.CrossSection.Services.FillRendering;
+using HyCADTool.Shared.AutoCAD.Utilities;
 using HyCADTool.Shared.AutoCAD.Xdata;
 
 namespace HyCADTool.Features.Road.CrossSection.Services
@@ -538,8 +539,8 @@ namespace HyCADTool.Features.Road.CrossSection.Services
 
             foreach (var id in toErase)
             {
-                var ent = (Entity)transaction.GetObject(id, OpenMode.ForWrite);
-                ent.Erase();
+                var ent = transaction.GetObject(id, OpenMode.ForRead) as Entity;
+                LockedLayerErase.TryErase(transaction, ent, null);
             }
             return toErase.Count;
         }
