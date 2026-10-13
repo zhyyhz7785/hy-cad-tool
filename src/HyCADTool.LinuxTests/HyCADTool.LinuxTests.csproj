@@ -57,7 +57,7 @@
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentType.cs" Link="Reinforcement\ComponentType.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\ReinRegion.cs" Link="Reinforcement\ReinRegion.cs" />
     <Compile Include="..\HyCADTool\Features\Tables\Presentation\TableGridXlsxAdapter.cs" Link="Tables\TableGridXlsxAdapter.cs" />
-    <Compile Include="..\HyCADTool\Features\SpongeCity\Infrastructure\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
+    <Compile Include="..\HyCADTool\Shared\Office\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandTiers.g.cs" Link="Licensing\CommandTiers.g.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandRoutes.g.cs" Link="Licensing\CommandRoutes.g.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandRouteResolver.cs" Link="Licensing\CommandRouteResolver.cs" />

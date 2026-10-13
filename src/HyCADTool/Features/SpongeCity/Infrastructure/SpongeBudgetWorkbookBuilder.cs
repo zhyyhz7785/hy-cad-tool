@@ -3,7 +3,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using HyCADTool.Features.SpongeCity.Domain.Models;
-using static HyCADTool.Features.SpongeCity.Infrastructure.OpenXmlSheetHelper;
+using static HyCADTool.Shared.Office.OpenXmlSheetHelper;
 
 namespace HyCADTool.Features.SpongeCity.Infrastructure
 {

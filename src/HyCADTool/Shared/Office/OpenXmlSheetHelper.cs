@@ -4,16 +4,15 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 
-namespace HyCADTool.Features.SpongeCity.Infrastructure
+namespace HyCADTool.Shared.Office
 {
     /// <summary>
-    /// 轻量 OpenXml Spreadsheet 写入助手。
-    /// 用 inline string / number / formula 写单元格；样式按预置 7 槽（见 BuildStylesheet）。
+    /// 轻量 OpenXml Spreadsheet 写入助手。Tables 与 SpongeCity 共用，不归属任何业务模块。
+    /// 用 inline string / number / formula 写单元格；样式按预置槽（见 BuildStylesheet）。
     /// 公式与值并存：写公式时同时设置 CachedResultValue=0（让 Excel 打开后自动重算）。
     /// </summary>
     public static class OpenXmlSheetHelper
     {
-        // ── 样式槽位（与 BuildStylesheet 顺序一致）──
         public const uint S_NORMAL = 0;
         public const uint S_TITLE = 1;
         public const uint S_SUBTITLE = 2;
@@ -84,7 +83,6 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                 cell.InlineString = new InlineString(new Text(value.ToString()) { Space = SpaceProcessingModeValues.Preserve });
             }
 
-            // 按 CellReference 顺序插入（OpenXml 要求列升序）
             Cell after = null;
             foreach (var c in row.Elements<Cell>())
             {
@@ -147,7 +145,6 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
                     CustomWidth = true,
                 });
             }
-            // Columns 必须在 SheetData 之前
             var data = ws.GetFirstChild<SheetData>();
             if (data != null) ws.InsertBefore(cols, data);
             else ws.AppendChild(cols);
@@ -157,22 +154,22 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
         public static Stylesheet BuildStylesheet()
         {
             var fonts = new Fonts(
-                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }),                                        // 0 NORMAL
-                new Font(new FontSize { Val = 14 }, new FontName { Val = "微软雅黑" }, new Bold()),                            // 1 TITLE
-                new Font(new FontSize { Val = 11 }, new FontName { Val = "微软雅黑" }, new Bold()),                            // 2 SUBTITLE
-                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }, new Bold(), new Color { Rgb = "FFFFFFFF" }), // 3 HEADER WHITE
-                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }, new Bold(), new Color { Rgb = "FF1F4E79" }), // 4 INPUT BLUE
-                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }, new Bold(), new Color { Rgb = "FFC00000" }), // 5 RESULT RED
-                new Font(new FontSize { Val = 9 }, new FontName { Val = "微软雅黑" }, new Color { Rgb = "FF666666" })           // 6 SMALL GRAY
+                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }),
+                new Font(new FontSize { Val = 14 }, new FontName { Val = "微软雅黑" }, new Bold()),
+                new Font(new FontSize { Val = 11 }, new FontName { Val = "微软雅黑" }, new Bold()),
+                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }, new Bold(), new Color { Rgb = "FFFFFFFF" }),
+                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }, new Bold(), new Color { Rgb = "FF1F4E79" }),
+                new Font(new FontSize { Val = 10 }, new FontName { Val = "微软雅黑" }, new Bold(), new Color { Rgb = "FFC00000" }),
+                new Font(new FontSize { Val = 9 }, new FontName { Val = "微软雅黑" }, new Color { Rgb = "FF666666" })
             ) { Count = 7 };
 
             var fills = new Fills(
-                new Fill(new PatternFill { PatternType = PatternValues.None }),                                                 // 0
-                new Fill(new PatternFill { PatternType = PatternValues.Gray125 }),                                              // 1
-                new Fill(new PatternFill(new ForegroundColor { Rgb = "FF4472C4" }) { PatternType = PatternValues.Solid }),     // 2 HEADER (blue)
-                new Fill(new PatternFill(new ForegroundColor { Rgb = "FFDAEEF3" }) { PatternType = PatternValues.Solid }),     // 3 INPUT
-                new Fill(new PatternFill(new ForegroundColor { Rgb = "FFF2F2F2" }) { PatternType = PatternValues.Solid }),     // 4 CALC
-                new Fill(new PatternFill(new ForegroundColor { Rgb = "FFFFF2CC" }) { PatternType = PatternValues.Solid })      // 5 RESULT
+                new Fill(new PatternFill { PatternType = PatternValues.None }),
+                new Fill(new PatternFill { PatternType = PatternValues.Gray125 }),
+                new Fill(new PatternFill(new ForegroundColor { Rgb = "FF4472C4" }) { PatternType = PatternValues.Solid }),
+                new Fill(new PatternFill(new ForegroundColor { Rgb = "FFDAEEF3" }) { PatternType = PatternValues.Solid }),
+                new Fill(new PatternFill(new ForegroundColor { Rgb = "FFF2F2F2" }) { PatternType = PatternValues.Solid }),
+                new Fill(new PatternFill(new ForegroundColor { Rgb = "FFFFF2CC" }) { PatternType = PatternValues.Solid })
             ) { Count = 6 };
 
             Border MakeBorder()
@@ -218,21 +215,21 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
             }
 
             var cellFormats = new CellFormats(
-                CF(0, 0, 0, 0),                                  // 0 NORMAL
-                CF(1, 0, 0, 0, center: true),                    // 1 TITLE
-                CF(2, 0, 0, 0),                                  // 2 SUBTITLE
-                CF(3, 2, 1, 0, center: true),                    // 3 HEADER
-                CF(4, 3, 1, 0, right: true),                     // 4 INPUT
-                CF(0, 4, 1, 0, right: true),                     // 5 CALC
-                CF(5, 5, 1, 0, right: true),                     // 6 RESULT
-                CF(6, 0, 0, 0),                                  // 7 SMALL
-                CF(0, 0, 1, 0),                                  // 8 BOLD/border-plain
-                CF(4, 3, 1, 164, right: true),                   // 9 PERCENT INPUT
-                CF(0, 4, 1, 164, right: true),                   // 10 PERCENT CALC
-                CF(0, 4, 1, 165, right: true),                   // 11 DEC2 CALC
-                CF(5, 5, 1, 165, right: true),                   // 12 DEC2 RESULT
-                CF(4, 3, 1, 166, right: true),                   // 13 INT INPUT
-                CF(0, 4, 1, 166, right: true)                    // 14 INT CALC
+                CF(0, 0, 0, 0),
+                CF(1, 0, 0, 0, center: true),
+                CF(2, 0, 0, 0),
+                CF(3, 2, 1, 0, center: true),
+                CF(4, 3, 1, 0, right: true),
+                CF(0, 4, 1, 0, right: true),
+                CF(5, 5, 1, 0, right: true),
+                CF(6, 0, 0, 0),
+                CF(0, 0, 1, 0),
+                CF(4, 3, 1, 164, right: true),
+                CF(0, 4, 1, 164, right: true),
+                CF(0, 4, 1, 165, right: true),
+                CF(5, 5, 1, 165, right: true),
+                CF(4, 3, 1, 166, right: true),
+                CF(0, 4, 1, 166, right: true)
             ) { Count = 15 };
 
             return new Stylesheet(numFmts, fonts, fills, borders, cellFormats);
@@ -240,10 +237,8 @@ namespace HyCADTool.Features.SpongeCity.Infrastructure
 
         private static int CompareCellRef(StringValue a, StringValue b)
         {
-            // 简化：按列字母 + 行号比较（A1 < B1 < AA1 < A2）
             string aRef = a?.Value ?? "";
             string bRef = b?.Value ?? "";
-            // 提取列字母与行号
             void Split(string r, out int col, out int row)
             {
                 int i = 0;
