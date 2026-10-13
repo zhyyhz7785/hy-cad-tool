@@ -17,6 +17,7 @@ using HyCADTool.Shared.AutoCAD.Services;
 using HyCADTool.Shared.Configuration.User;
 using HYFEA.Core.Dofs;
 using HYFEA.Core.Loads;
+using HYFEA.Core.Model;
 using HYFEA.Core.Results;
 using HYFEA.Hosting;
 
@@ -168,8 +169,8 @@ namespace HyCADTool.Features.Fem.Views
                     InertiaZ = izUse,
                     Q = qUse,
                     LoadDirection = dir,
-                    EndA = (HYFEA.Core.Model.BeamSupportKind)EndA,
-                    EndB = (HYFEA.Core.Model.BeamSupportKind)EndB,
+                    EndA = (BeamSupportKind)EndA,
+                    EndB = (BeamSupportKind)EndB,
                     Units = Units,
                 };
                 var ticket = _flight.Begin();
@@ -193,15 +194,14 @@ namespace HyCADTool.Features.Fem.Views
             if (!_flight.IsCurrent(ticket.Serial))
                 return;
 
-            IsSolving = false;
-            if (ticket.Token.IsCancellationRequested || task.IsCanceled)
-            {
-                ed.WriteMessage("\n[HYFEA] 求解已取消。");
-                return;
-            }
-
             try
             {
+                if (ticket.Token.IsCancellationRequested || task.IsCanceled)
+                {
+                    ed.WriteMessage("\n[HYFEA] 求解已取消。");
+                    return;
+                }
+
                 if (!_flight.ShouldPresent(ticket.Serial, doc, Application.DocumentManager.MdiActiveDocument))
                 {
                     ed.WriteMessage("\n[HYFEA] 活动文档已切换，已丢弃本次结果。");
@@ -233,8 +233,7 @@ namespace HyCADTool.Features.Fem.Views
                     Units);
 
                 IFemResultSink sink = new BeamResultRenderer(doc, axis, opt);
-                using (doc.LockDocument())
-                    sink.Present(task.Result.Result, task.Result.Problem);
+                sink.Present(task.Result.Result, task.Result.Problem);
 
                 double du = MaxTranslationalDispFromUFull(sol);
                 double mMax = MaxMomentMagnitude(sol);
@@ -245,6 +244,11 @@ namespace HyCADTool.Features.Fem.Views
             catch (Exception ex)
             {
                 ed.WriteMessage($"\n[HYFEA] 异常：{ex.Message}");
+            }
+            finally
+            {
+                if (_flight.IsCurrent(ticket.Serial))
+                    IsSolving = false;
             }
         }
 

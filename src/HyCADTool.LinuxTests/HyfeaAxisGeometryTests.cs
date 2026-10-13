@@ -67,6 +67,8 @@ namespace HyCADTool.LinuxTests
             Assert.Contains("IFemResultSink", renderer);
             Assert.Contains("void Present(", renderer);
             Assert.DoesNotContain("new LinearStaticAnalysis()", panel);
+            Assert.DoesNotContain("HYFEA.Core.Model.BeamSupportKind", panel);
+            Assert.Contains("(BeamSupportKind)EndA", panel);
             Assert.Contains("BeamSolveSession", panel);
             Assert.Contains("_session.Compute", panel);
         }
