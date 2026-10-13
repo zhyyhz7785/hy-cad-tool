@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""按命名空间扫描 Features/Shared 现状，写出架构白名单（仅生成基线，测试以 C# 扫描为准）。"""
+"""按命名空间扫描 Features/Shared 现状。
+
+写出 shell/getpoint 为「文件::次数」，与 C# ScanFeatureCounts 对齐。
+可变静态仍以 C# Roslyn 扫描为准，本脚本不再覆盖 whitelist-mutable-static.txt。
+"""
 from __future__ import annotations
 
 import re
@@ -83,10 +87,12 @@ def scan() -> tuple[list[str], list[str], list[str]]:
             continue
         rel = path.relative_to(REPO).as_posix()
         text = strip_comments(raw)
-        if SHELL_RE.search(text):
-            shell.append(rel)
-        if GETPOINT_RE.search(text):
-            getpoint.append(rel)
+        shell_n = len(SHELL_RE.findall(text))
+        if shell_n > 0:
+            shell.append(f"{rel}::{shell_n}")
+        getpoint_n = len(GETPOINT_RE.findall(text))
+        if getpoint_n > 0:
+            getpoint.append(f"{rel}::{getpoint_n}")
 
         prev: list[str] = []
         for line in text.splitlines():
@@ -111,8 +117,7 @@ def main() -> int:
     shell, getpoint, statics = scan()
     write_list("whitelist-features-shell.txt", shell)
     write_list("whitelist-editor-getpoint.txt", getpoint)
-    write_list("whitelist-mutable-static.txt", statics)
-    print(f"shell={len(shell)} getpoint={len(getpoint)} static={len(statics)}")
+    print(f"shell={len(shell)} getpoint={len(getpoint)} static={len(statics)} (static 不写文件，以 C# 为准)")
     return 0
 
 

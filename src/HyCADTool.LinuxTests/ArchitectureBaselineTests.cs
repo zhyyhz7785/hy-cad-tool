@@ -69,6 +69,16 @@ namespace HyCADTool.LinuxTests
         }
 
         [Fact]
+        public void Global_alias_feature_namespace_is_detected()
+        {
+            var tree = CSharpSyntaxTree.ParseText(
+                "class C { void M() { var x = global::HyCADTool.Features.Road.Plan.Foo.Bar; } }");
+            var found = ReferencedHyCadNamespaces(tree.GetCompilationUnitRoot())
+                .Any(s => s.StartsWith("HyCADTool.Features.Road", StringComparison.Ordinal));
+            Assert.True(found, "global::HyCADTool.Features.Road 应被模块依赖扫描计入");
+        }
+
+        [Fact]
         public void Xaml_shell_xmlns_is_counted_and_features_xaml_is_clean()
         {
             Assert.Equal(1, CountXamlShellRefs("xmlns:behaviors=\"clr-namespace:HyCADTool.Shell.Behaviors\""));
@@ -680,32 +690,50 @@ namespace HyCADTool.LinuxTests
             }
         }
 
-        private static IEnumerable<string> ReferencedHyCadNamespaces(CompilationUnitSyntax root)
+        internal static IEnumerable<string> ReferencedHyCadNamespaces(CompilationUnitSyntax root)
         {
             foreach (var u in root.Usings)
             {
-                var name = u.Name != null ? u.Name.ToString() : null;
-                if (name != null && name.StartsWith("HyCADTool.", StringComparison.Ordinal))
+                var name = StripGlobalPrefix(u.Name != null ? u.Name.ToString() : null);
+                if (IsHyCadTrackedNamespace(name))
                     yield return name;
+            }
+
+            foreach (var alias in root.DescendantNodes().OfType<AliasQualifiedNameSyntax>())
+            {
+                var text = StripGlobalPrefix(alias.Name != null ? alias.Name.ToString() : null);
+                if (IsHyCadTrackedNamespace(text))
+                    yield return text;
             }
 
             foreach (var name in root.DescendantNodes().OfType<QualifiedNameSyntax>())
             {
-                var text = name.ToString();
-                if (text.StartsWith("HyCADTool.Features.", StringComparison.Ordinal)
-                    || text.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal)
-                    || text.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal))
+                var text = StripGlobalPrefix(name.ToString());
+                if (IsHyCadTrackedNamespace(text))
                     yield return text;
             }
 
             foreach (var access in root.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
             {
-                var text = access.ToString();
-                if (text.StartsWith("HyCADTool.Features.", StringComparison.Ordinal)
-                    || text.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal)
-                    || text.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal))
+                var text = StripGlobalPrefix(access.ToString());
+                if (IsHyCadTrackedNamespace(text))
                     yield return text;
             }
+        }
+
+        private static string StripGlobalPrefix(string text)
+        {
+            if (text != null && text.StartsWith("global::", StringComparison.Ordinal))
+                return text.Substring("global::".Length);
+            return text;
+        }
+
+        private static bool IsHyCadTrackedNamespace(string text)
+        {
+            return text != null
+                && (text.StartsWith("HyCADTool.Features.", StringComparison.Ordinal)
+                    || text.StartsWith("HyCADTool.Shared.", StringComparison.Ordinal)
+                    || text.StartsWith("HyCADTool.Domain.", StringComparison.Ordinal));
         }
 
         private static bool HasValidProcessWide(MemberDeclarationSyntax member, TypeSyntax type)
