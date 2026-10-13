@@ -18,7 +18,11 @@ namespace HYFEA.Shell.ViewModels;
 public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 {
     private readonly BeamSolveSession _session = new();
+    private readonly RelayCommand _solveCommand;
+    private readonly RelayCommand _cancelSolveCommand;
     private readonly RelayCommand _exportVtuCommand;
+    private CancellationTokenSource? _solveCts;
+    private bool _isSolving;
     private FemProblem? _lastProblem;
     private FemResult? _lastResult;
     private ResultMesh? _lastMesh;
@@ -38,9 +42,25 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 
     public MainViewModel()
     {
-        SolveCommand = new RelayCommand(ExecuteSolve);
+        _solveCommand = new RelayCommand(ExecuteSolve, () => !IsSolving);
+        SolveCommand = _solveCommand;
+        _cancelSolveCommand = new RelayCommand(CancelSolve, () => IsSolving);
+        CancelSolveCommand = _cancelSolveCommand;
         _exportVtuCommand = new RelayCommand(ExecuteExportVtu, () => _lastProblem != null && _lastResult is { Success: true });
         ExportVtuCommand = _exportVtuCommand;
+    }
+
+    public bool IsSolving
+    {
+        get => _isSolving;
+        private set
+        {
+            if (Set(ref _isSolving, value))
+            {
+                _solveCommand.RaiseCanExecuteChanged();
+                _cancelSolveCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public IReadOnlyList<BeamSupportKind> SupportOptions { get; } =
@@ -137,10 +157,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
 
     public ICommand SolveCommand { get; }
 
+    public ICommand CancelSolveCommand { get; }
+
     public ICommand ExportVtuCommand { get; }
 
     private void ExecuteSolve()
     {
+        if (IsSolving)
+            return;
+
         int seg = Segments < 1 ? 4 : Math.Min(Segments, 10000);
         if (seg != Segments) Segments = seg;
 
@@ -160,12 +185,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
             Units = UseSiUnits ? UnitSystem.SI : UnitSystem.MmN,
         };
 
+        _solveCts?.Dispose();
+        _solveCts = new CancellationTokenSource();
+        var token = _solveCts.Token;
         int serial = Interlocked.Increment(ref _solveSerial);
+        IsSolving = true;
         Status = "求解中…";
         var sw = Stopwatch.StartNew();
         Task.Run(() =>
             {
-                var output = _session.Compute(geom, request);
+                var output = _session.Compute(geom, request, token);
+                token.ThrowIfCancellationRequested();
                 ResultPresentation? presentation = null;
                 string? meshError = null;
                 if (output.Result.Success)
@@ -180,11 +210,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
                     }
                 }
 
+                token.ThrowIfCancellationRequested();
                 return (output, presentation, meshError);
-            })
+            }, token)
             .ContinueWith(
                 t => Dispatcher.UIThread.Post(() => FinishSolve(serial, sw, t)),
+                CancellationToken.None,
+                TaskContinuationOptions.None,
                 TaskScheduler.Default);
+    }
+
+    private void CancelSolve()
+    {
+        _solveCts?.Cancel();
     }
 
     private void FinishSolve(
@@ -195,30 +233,51 @@ public sealed class MainViewModel : INotifyPropertyChanged, IFemResultSink
         if (serial != Volatile.Read(ref _solveSerial))
             return;
 
-        sw.Stop();
-        if (task.IsFaulted)
+        try
         {
-            ClearLastSolve();
-            Status = "异常：" + task.Exception.GetBaseException().Message;
-            return;
+            sw.Stop();
+            if (task.IsCanceled || IsCanceledFault(task))
+            {
+                Status = "已取消";
+                return;
+            }
+
+            if (task.IsFaulted)
+            {
+                ClearLastSolve();
+                Status = "异常：" + task.Exception.GetBaseException().Message;
+                return;
+            }
+
+            var (output, presentation, meshError) = task.Result;
+            Bind(output.Result, output.Problem, presentation);
+
+            if (!output.Result.Success)
+            {
+                Status = "求解失败：" + (output.Result.Error?.Message ?? "未知");
+                return;
+            }
+
+            if (meshError != null)
+            {
+                Status = "结果网格构建失败：" + meshError;
+                return;
+            }
+
+            Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
         }
-
-        var (output, presentation, meshError) = task.Result;
-        Bind(output.Result, output.Problem, presentation);
-
-        if (!output.Result.Success)
+        finally
         {
-            Status = "求解失败：" + (output.Result.Error?.Message ?? "未知");
-            return;
+            if (serial == Volatile.Read(ref _solveSerial))
+                IsSolving = false;
         }
+    }
 
-        if (meshError != null)
-        {
-            Status = "结果网格构建失败：" + meshError;
-            return;
-        }
-
-        Status = $"求解成功 — {sw.ElapsedMilliseconds} ms — 节点 {NodalResults.Count}，单元 {BeamForces.Count}";
+    private static bool IsCanceledFault(Task task)
+    {
+        if (!task.IsFaulted || task.Exception == null)
+            return false;
+        return task.Exception.GetBaseException() is OperationCanceledException;
     }
 
     private void ExecuteExportVtu()

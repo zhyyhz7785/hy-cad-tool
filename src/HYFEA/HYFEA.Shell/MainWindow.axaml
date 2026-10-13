@@ -60,6 +60,11 @@
                   HorizontalAlignment="Stretch"
                   Classes="accent" />
 
+          <Button Content="取消求解"
+                  Command="{Binding CancelSolveCommand}"
+                  Margin="0 8 0 0"
+                  HorizontalAlignment="Stretch" />
+
           <Button Content="导出 VTU"
                   Command="{Binding ExportVtuCommand}"
                   Margin="0 8 0 0"

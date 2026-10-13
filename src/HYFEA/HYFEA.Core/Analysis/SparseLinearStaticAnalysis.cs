@@ -1,3 +1,4 @@
+using System.Threading;
 using HYFEA.Core.Assembly;
 using HYFEA.Core.Diagnostics;
 using HYFEA.Core.Dofs;
@@ -33,8 +34,9 @@ public sealed class SparseLinearStaticAnalysis
                 nameof(solver));
     }
 
-    public FemResult Run(FemProblem problem)
+    public FemResult Run(FemProblem problem, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var layout = DofLayout.Build(problem, _elements);
         if (layout.FreeDofCount <= 0)
         {
@@ -50,10 +52,12 @@ public sealed class SparseLinearStaticAnalysis
                 null);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         // 使用稀疏装配器
         var sys = SparseAssembler.Assemble(problem, layout, _elements);
         var red = SparseAssembler.Reduce(sys);
 
+        cancellationToken.ThrowIfCancellationRequested();
         // 稀疏求解
         var sol = _solver.SolveSparse(red.StiffnessTriplets, red.Size, red.Force);
         if (!sol.Success || sol.Solution is null)
@@ -70,6 +74,7 @@ public sealed class SparseLinearStaticAnalysis
                 sol.Diagnostics);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         var uFull = Expand(layout, sol.Solution);
         var disp = ToDisplacementField(layout, uFull);
         var rVec = ComputeReactions(sys.StiffnessTriplets, sys.Layout.TotalDofCount, sys.Force, uFull);
