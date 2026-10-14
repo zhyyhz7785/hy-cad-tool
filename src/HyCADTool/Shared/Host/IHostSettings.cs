@@ -131,7 +131,7 @@ namespace HyCADTool.Shared.Host
         double UiDensityScale { get; }
         double UiFontScale { get; }
         double UiInputWidthScale { get; }
-        string Unit { get; set; }
+        DrawingUnit Unit { get; set; }
         DrawingUnit[] UnitOptions { get; }
         bool UseSubScale { get; }
 
