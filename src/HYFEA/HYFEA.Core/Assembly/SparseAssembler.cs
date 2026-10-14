@@ -29,7 +29,7 @@ public static class SparseAssembler
         }
 
         // 直接累加到三元组。不分配 n×n 稠密阵，也不用绝对阈值丢掉很小的刚度项。
-        registry ??= new ElementContributionRegistry();
+        registry ??= ElementContributionRegistry.CreateDefault();
         var sink = new TripletAccumulator();
         foreach (var el in problem.Elements)
         {

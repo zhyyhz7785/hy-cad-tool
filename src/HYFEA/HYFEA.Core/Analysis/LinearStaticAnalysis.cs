@@ -23,10 +23,25 @@ public sealed class LinearStaticAnalysis
     /// <param name="registry">求解器注册表(使用 registry.Default)</param>
     /// <param name="elements">单元贡献注册表；null 则用内置默认</param>
     public LinearStaticAnalysis(ILinearSystemSolver? solver = null, SolverRegistry? registry = null, ElementContributionRegistry? elements = null)
+        : this(new FemContext(elements, registry), solver, useRegistryDefault: registry != null)
     {
-        _registry = registry;
-        _solver = solver ?? registry?.Default ?? new DenseSystemSolver();
-        _elements = elements ?? new ElementContributionRegistry();
+    }
+
+    /// <summary>用同一 <see cref="FemContext"/> 建布局、装配与恢复，便于外部注入贡献。</summary>
+    public LinearStaticAnalysis(FemContext context, ILinearSystemSolver? solver = null)
+        : this(context, solver, useRegistryDefault: false)
+    {
+    }
+
+    private LinearStaticAnalysis(FemContext context, ILinearSystemSolver? solver, bool useRegistryDefault)
+    {
+        if (context == null)
+            throw new ArgumentNullException(nameof(context));
+        _registry = context.Solvers;
+        _elements = context.Elements;
+        _solver = solver
+            ?? (useRegistryDefault ? context.Solvers.Default : null)
+            ?? new DenseSystemSolver();
     }
 
     /// <summary>

@@ -8,7 +8,7 @@
             "method": "Execute",
             "category": "测试",
             "displayName": "HYFEA 梁元 MVP",
-            "tooltip": "选线 + 均布 + 求解 + 回写（N7 占位）",
+            "tooltip": "选直线/多段线，均布荷载稀疏求解，回写变形与弯矩/剪力（N7）",
             "order": 1
         }
     }

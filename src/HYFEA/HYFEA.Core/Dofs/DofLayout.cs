@@ -45,7 +45,7 @@ public sealed class DofLayout
     {
         var required = new Dictionary<NodeId, HashSet<DofType>>();
 
-        registry ??= new ElementContributionRegistry();
+        registry ??= ElementContributionRegistry.CreateDefault();
 
         foreach (var el in problem.Elements)
         {

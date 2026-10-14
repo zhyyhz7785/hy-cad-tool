@@ -14,6 +14,9 @@ public sealed class ElementContributionRegistry
     {
     }
 
+    /// <summary>内置 Spring1D / Truss2D / EulerBeam2D。外部可再 <see cref="Register"/>。</summary>
+    public static ElementContributionRegistry CreateDefault() => new();
+
     public ElementContributionRegistry(bool registerBuiltins)
     {
         if (!registerBuiltins)

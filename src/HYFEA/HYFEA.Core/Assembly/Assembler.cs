@@ -20,7 +20,7 @@ public static class Assembler
             F[g] += load.Value;
         }
 
-        registry ??= new ElementContributionRegistry();
+        registry ??= ElementContributionRegistry.CreateDefault();
 
         foreach (var el in problem.Elements)
         {

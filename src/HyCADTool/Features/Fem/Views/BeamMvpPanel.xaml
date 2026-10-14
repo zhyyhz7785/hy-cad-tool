@@ -20,7 +20,7 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="8">
-            <TextBlock Margin="0 0 0 8" Text="HYFEA 梁元 MVP（N7 / 开发）" FontWeight="Bold" />
+            <TextBlock Margin="0 0 0 8" Text="HYFEA 梁元 MVP（N7）" FontWeight="Bold" />
 
             <TextBlock Margin="0 4 0 2" Text="E (MPa)" />
             <TextBox Style="{StaticResource BlenderTextBox}"
