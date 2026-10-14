@@ -1,7 +1,7 @@
-namespace HyCADTool.Features.Reinforcement.Domain.Enums
+namespace HyCADTool.Shared.Drawing.Models
 {
     /// <summary>
-    /// 标注方位
+    /// 标注方位。Cluster 与 DimensionForReinforcement 共用；放 Shared，避免 base → structure。
     /// </summary>
     public enum DimensionFor
     {
