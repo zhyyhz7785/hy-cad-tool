@@ -11,5 +11,7 @@ namespace HyCADTool.Shared.Host
         void EnqueuePendingCommand(Action command, string commandKey);
         void ClearPendingCommand();
         void CommitFocusedTextBoxValue();
+        /// <summary>把命令 key 送到 AutoCAD 命令行（SendStringToExecute）。</summary>
+        void Send(string key);
     }
 }

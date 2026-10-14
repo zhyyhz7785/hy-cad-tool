@@ -214,8 +214,8 @@ namespace HyCADTool.Features.Tables.Presentation
                     cells[new CellAddr(excelRow - 1, excelCol - 1)] = new TableCellValue(text);
                 }
 
-                var grid = TableGrid.CreateEmpty(maxRow, maxCol, defaultRowHeightMm, defaultColWidthMm);
-                grid = grid with { Data = new HyCAD.Tables.Data.GridData(cells) };
+                var empty = TableGrid.CreateEmpty(maxRow, maxCol, defaultRowHeightMm, defaultColWidthMm);
+                var grid = TableGrid.FromStructure(empty.Structure, new HyCAD.Tables.Data.GridData(cells));
 
                 foreach (var (r1, c1, r2, c2) in mergeSpecs)
                 {

@@ -1,7 +1,7 @@
 using System;
 using Autodesk.AutoCAD.DatabaseServices;
 using HyCADTool.App.Bootstrap;
-using HyCADTool.Features.Road.CrossSection.Domain;
+using HyCADTool.Domain.ValueObjects.Road;
 using HyCADTool.Shell.Commands;
 using HyCADTool.Shared.Host;
 

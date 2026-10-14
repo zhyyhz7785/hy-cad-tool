@@ -1,4 +1,5 @@
 using System;
+using HyCADTool.Shared.Host;
 
 namespace HyCADTool.Features.Reinforcement.Domain.Components
 {
@@ -68,6 +69,51 @@ namespace HyCADTool.Features.Reinforcement.Domain.Components
         public double BumpRebarSpacing { get; set; } = 200.0;
 
         public double Scale { get; set; } = 40.0;
+
+        /// <summary>从宿主设置面组装构件参数；<paramref name="settings"/> 为空时返回默认值。</summary>
+        public static ComponentParameters FromHost(IHostSettings settings)
+        {
+            if (settings == null)
+                return new ComponentParameters();
+
+            return new ComponentParameters
+            {
+                Scale = settings.Scale,
+                ParallelAngleThresholdDeg = settings.CompParallelAngleThreshold,
+                SlabMaxThicknessMm = settings.CompSlabMaxThickness,
+                WallMaxThicknessMm = settings.CompWallMaxThickness,
+                StripMinAspectRatio = settings.CompStripMinAspectRatio,
+                BottomSlabMaxThicknessMm = settings.CompBottomSlabMaxThickness,
+                BottomSlabMarchStepMm = settings.CompBottomSlabMarchStep,
+                MergeBumpsIntoBottomSlab = settings.CompMergeBumpsIntoBottomSlab,
+                MassConcreteMinSizeMm = settings.CompMassMinSize,
+                LocalConcreteMaxHeightMm = settings.CompLocalConcreteMaxHeight,
+                LocalBumpMaxHeightMm = settings.CompLocalBumpMaxHeight,
+                RegionGroupDistanceMm = settings.CompGroupClusterDistance,
+                FoundationBottomElevationMm = settings.CompFoundationBottomElevation,
+                EmbedmentDepthMm = settings.CompEmbedmentDepth,
+                BeamMaxWidthMm = settings.CompBeamMaxWidth,
+                BeamMaxHeightMm = settings.CompBeamMaxHeight,
+                BeamSkipReinforcement = settings.CompBeamSkipRein,
+                AnchorageLengthMm = settings.AnchorageLength,
+                ParallelLineRatioMin = settings.CompParallelLineRatio,
+                SlabRebarDiameter = settings.CompSlabRebarDiameter,
+                SlabRebarSpacing = settings.CompSlabRebarSpacing,
+                WallRebarDiameter = settings.CompWallRebarDiameter,
+                WallRebarSpacing = settings.CompWallRebarSpacing,
+                BottomSlabRebarDiameter = settings.CompBottomRebarDiameter,
+                BottomSlabRebarSpacing = settings.CompBottomRebarSpacing,
+                MassRebarDiameter = settings.CompMassRebarDiameter,
+                MassRebarSpacing = settings.CompMassRebarSpacing,
+                BeamRebarDiameter = settings.CompBeamRebarDiameter,
+                BeamRebarSpacing = settings.CompBeamRebarSpacing,
+                MassConstructRebarDiameter = settings.CompMassConstructDiameter,
+                MassConstructRebarMaxSpacing = settings.CompMassConstructMaxSpacing,
+                BumpMaxHeightMm = settings.CompBumpMaxHeight,
+                BumpRebarDiameter = settings.CompBumpRebarDiameter,
+                BumpRebarSpacing = settings.CompBumpRebarSpacing
+            };
+        }
 
         public double GetRebarDiameter(ComponentType type)
         {

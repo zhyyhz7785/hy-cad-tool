@@ -27,7 +27,7 @@ namespace HyCADTool.Features.Reinforcement
 
             CadHost.Commands.CommitFocusedTextBoxValue();
             var vm = CadHost.Settings;
-            var parameters = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
+            var parameters = ComponentParameters.FromHost(vm);
             vm?.SaveSettings();
 
             double groupDistanceMm = parameters.RegionGroupDistanceMm;

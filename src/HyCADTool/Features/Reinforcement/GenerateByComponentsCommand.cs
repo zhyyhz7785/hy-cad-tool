@@ -27,7 +27,7 @@ namespace HyCADTool.Features.Reinforcement
 
             var vm = CadHost.Settings;
             var reinParams = CadHost.CreateOrDefault(CadHost.NewReinParameters, ReinParameters.CreateDefault());
-            var compParams = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
+            var compParams = ComponentParameters.FromHost(vm);
 
             if (!reinParams.IsValid(out string paramError))
             {

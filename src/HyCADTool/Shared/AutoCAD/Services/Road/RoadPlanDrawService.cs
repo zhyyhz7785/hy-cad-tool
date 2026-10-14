@@ -5,6 +5,7 @@ using HyCADTool.Domain.Services.Road;
 using HyCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Geometry;
 using HyCADTool.Shared.AutoCAD.Xdata;
+using HyCADTool.Domain.Models.Road;
 using HyCADTool.Features.Road.CrossSection.Services;
 
 namespace HyCADTool.Shared.AutoCAD.Services.Road
@@ -96,7 +97,7 @@ namespace HyCADTool.Shared.AutoCAD.Services.Road
             ms.AppendEntity(acPoly);
             tr.AddNewlyCreatedDBObject(acPoly, true);
 
-            HyRoadXdata.Write(tr, db, acPoly, alignmentId, PlanKind, Domain.Models.Road.SchemaVersion.Current);
+            HyRoadXdata.Write(tr, db, acPoly, alignmentId, PlanKind, SchemaVersion.Current);
             return 1;
         }
     }

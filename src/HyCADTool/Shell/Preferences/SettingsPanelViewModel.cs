@@ -136,6 +136,9 @@ namespace HyCADTool.Shell.ViewModels
         void ICommandChannel.CommitFocusedTextBoxValue()
             => CommitFocusedTextBoxValue();
 
+        void ICommandChannel.Send(string key)
+            => HyCADTool.Shell.Commands.CommandDispatcher.Send(key);
+
         /// <summary>把本实例登记到 <see cref="CadHost"/>，供 Features 经宿主接口读取。</summary>
         internal static void BindHost(SettingsPanelViewModel vm)
         {
@@ -1689,45 +1692,7 @@ namespace HyCADTool.Shell.ViewModels
         }
 
         public ComponentParameters CreateComponentParameters()
-        {
-            return new ComponentParameters
-            {
-                Scale = Scale,
-                ParallelAngleThresholdDeg = CompParallelAngleThreshold,
-                SlabMaxThicknessMm = CompSlabMaxThickness,
-                WallMaxThicknessMm = CompWallMaxThickness,
-                StripMinAspectRatio = CompStripMinAspectRatio,
-                BottomSlabMaxThicknessMm = CompBottomSlabMaxThickness,
-                BottomSlabMarchStepMm = CompBottomSlabMarchStep,
-                MergeBumpsIntoBottomSlab = CompMergeBumpsIntoBottomSlab,
-                MassConcreteMinSizeMm = CompMassMinSize,
-                LocalConcreteMaxHeightMm = CompLocalConcreteMaxHeight,
-                LocalBumpMaxHeightMm = CompLocalBumpMaxHeight,
-                RegionGroupDistanceMm = CompGroupClusterDistance,
-                FoundationBottomElevationMm = CompFoundationBottomElevation,
-                EmbedmentDepthMm = CompEmbedmentDepth,
-                BeamMaxWidthMm = CompBeamMaxWidth,
-                BeamMaxHeightMm = CompBeamMaxHeight,
-                BeamSkipReinforcement = CompBeamSkipRein,
-                AnchorageLengthMm = AnchorageLength,
-                ParallelLineRatioMin = CompParallelLineRatio,
-                SlabRebarDiameter = CompSlabRebarDiameter,
-                SlabRebarSpacing = CompSlabRebarSpacing,
-                WallRebarDiameter = CompWallRebarDiameter,
-                WallRebarSpacing = CompWallRebarSpacing,
-                BottomSlabRebarDiameter = CompBottomRebarDiameter,
-                BottomSlabRebarSpacing = CompBottomRebarSpacing,
-                MassRebarDiameter = CompMassRebarDiameter,
-                MassRebarSpacing = CompMassRebarSpacing,
-                BeamRebarDiameter = CompBeamRebarDiameter,
-                BeamRebarSpacing = CompBeamRebarSpacing,
-                MassConstructRebarDiameter = CompMassConstructDiameter,
-                MassConstructRebarMaxSpacing = CompMassConstructMaxSpacing,
-                BumpMaxHeightMm = CompBumpMaxHeight,
-                BumpRebarDiameter = CompBumpRebarDiameter,
-                BumpRebarSpacing = CompBumpRebarSpacing
-            };
-        }
+            => ComponentParameters.FromHost(this);
 
         #endregion
 
