@@ -193,7 +193,7 @@ namespace HyCADTool.LinuxTests
             var text = File.ReadAllText(Path.Combine(
                 RepoFile.Root(), "src", "HyCADTool", "Features", "SpongeCity", "ViewModels", "SpongeCityPanelViewModel.cs"));
 
-            Assert.Contains("CommandDispatcher.Send", text);
+            Assert.Contains("CadHost.Commands.Send", text);
             Assert.Contains("\"hyscDL\"", text);
             Assert.DoesNotContain("mi.Invoke", text);
             Assert.DoesNotContain("Activator.CreateInstance", text);

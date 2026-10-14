@@ -8,6 +8,7 @@ using HyCADTool.Features.SpongeCity.Domain.Models;
 using HyCADTool.Features.SpongeCity.Domain.Services;
 using HyCADTool.Shared.UI;
 using HyCADTool.Shared.AutoCAD.Session;
+using HyCADTool.Shared.Host;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace HyCADTool.Features.SpongeCity.ViewModels
@@ -295,7 +296,7 @@ namespace HyCADTool.Features.SpongeCity.ViewModels
                 return;
             }
             StatusMessage = "已投递命令 " + key;
-            CommandDispatcher.Send(key);
+            CadHost.Commands.Send(key);
         }
 
         #endregion

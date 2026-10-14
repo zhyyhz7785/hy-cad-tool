@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using HyCADTool.Shared.Configuration.Global;
+using HyCADTool.Shared.Configuration.User;
 using HyCADTool.Shared.Drawing.Models;
 using HyCADTool.Shared.Drawing.ValueObjects;
 
@@ -82,7 +84,7 @@ namespace HyCADTool.Shared.Host
         int MLeaderTextColorIndex { get; set; }
         double MleaderDistance { get; set; }
         double PolylineWidth { get; set; }
-        int Precision { get; }
+        int Precision { get; set; }
         double ProtectionThickness { get; set; }
         double RebarDiameter { get; set; }
         double RebarSpacing { get; set; }
@@ -93,7 +95,7 @@ namespace HyCADTool.Shared.Host
         double RoadGapWidth { get; set; }
         double RoadStopLineDistance { get; set; }
         double RoadStripeSpacing { get; set; }
-        double Scale { get; }
+        double Scale { get; set; }
         double SheetTitleBottomLineWidthFactor { get; set; }
         double SheetTitleDoubleLineSpacingFactor { get; set; }
         double SheetTitleMainTextHeight { get; set; }
@@ -140,5 +142,9 @@ namespace HyCADTool.Shared.Host
         void EnsureStylesApplied();
         string TryResolveLayerName(string semanticId, string defaultName);
         void CommitTextAndMLeaderStylesToActiveDocument();
+        void SaveSettings(string explicitPath = null);
+        void SetLinetypeCatalogSnapshot(LinetypeCatalogSnapshot snapshot);
+        RoadMaterialFillSettings GetRoadMaterialFillSettings();
+        void SetRoadMaterialFillSettings(RoadMaterialFillSettings settings, bool saveImmediately = false);
     }
 }

@@ -32,7 +32,7 @@ namespace HyCADTool.Features.Reinforcement
             var ed = doc.Editor;
 
             var vm = CadHost.Settings;
-            var parameters = vm != null ? vm.CreateComponentParameters() : new ComponentParameters();
+            var parameters = ComponentParameters.FromHost(vm);
             double groupDistanceMm = parameters.RegionGroupDistanceMm;
 
             var filter = new SelectionFilter(new[]

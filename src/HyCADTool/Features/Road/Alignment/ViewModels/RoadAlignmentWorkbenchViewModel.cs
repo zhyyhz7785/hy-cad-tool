@@ -685,7 +685,7 @@ namespace HyCADTool.Features.Road.PlanAlignment.ViewModels
             if (AcApp.DocumentManager.MdiActiveDocument == null) return;
             // 非模态 WPF 线程禁止直接 LockDocument / 走 PromptEntity → 排队到命令线程的 hyRoadAlnUserPickRegister。
             // 命令收尾会发布 AlignmentChangedEvent（Added / Updated），由 OnAlignmentChangedFromBus 自动刷新 + 选中。
-            CommandDispatcher.Send("hyRoadAlnUserPickRegister");
+            CadHost.Commands.Send("hyRoadAlnUserPickRegister");
             StatusText = "请在命令行拾取一条 Polyline（任意图层）…";
         }
 
