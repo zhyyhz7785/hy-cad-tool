@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hy UI 模板工作台</title>
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+<div id="app">
+  <!-- 左侧栏：唯一入口，只有「模板」「模块」两个按钮 -->
+  <aside id="left">
+    <nav id="rail">
+      <button id="btnTpl" class="rail-btn on" title="模板：按源文件位置分组，切换模板或从空白建立"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg><span>模板</span></button>
+      <button id="btnMod" class="rail-btn" title="模块：当前模板的模块目录，只用于展示与选择"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span>模块</span></button>
+    </nav>
+    <section id="dir">
+      <div id="dirTpl" class="dir-view">
+        <button id="btnBlank" class="blank-btn">＋ 从空白建立</button>
+        <div id="tplTree"></div>
+      </div>
+      <div id="dirMod" class="dir-view" hidden>
+        <div id="modTree"></div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- 中间：顶栏 + 上预览 / 下候选 -->
+  <main id="center">
+    <header id="midbar">
+      <span id="curName" class="cur-name">—</span>
+      <span class="sp"></span>
+      <div class="pop-wrap">
+        <button id="btnColor" class="mb-btn" title="整体颜色：唯一的控色入口">调整颜色</button>
+        <div id="colorPop" class="pop" hidden></div>
+      </div>
+      <button id="btnCompact" class="mb-btn" title="紧凑 / 舒适密度">紧凑</button>
+      <div class="seg" id="tbSeg" title="选中工具栏的放置方向">
+        <span class="seg-lab" id="tbLab">工具栏</span>
+        <button data-dir="h">水平</button>
+        <button data-dir="v">竖向</button>
+      </div>
+    </header>
+    <section id="preview">
+      <div id="stage">
+        <div id="scaler">
+          <iframe id="frame" title="模板预览"></iframe>
+          <div id="ovLayer"><div id="ovHover" class="ov"></div><div id="ovSel" class="ov"></div></div>
+        </div>
+        <div id="banner" hidden></div>
+      </div>
+    </section>
+    <div id="splitC" title="拖动调整预览与候选的高度"></div>
+    <section id="cands">
+      <header class="pane-h"><span id="candTitle">候选</span><span class="sp"></span><span id="candInfo" class="dim"></span></header>
+      <div id="candBody"></div>
+    </section>
+  </main>
+
+  <!-- 右侧：顶栏（整体） + 上半（模块信息） + 下半（模块操作） -->
+  <aside id="right">
+    <header id="rbar">
+      <button id="btnDir" class="mb-btn" title="选择写入目录（整体模型 / 模块模型 两个子目录）">写入目录</button>
+      <span id="dirName" class="dim">未选择 · 将下载文件</span>
+      <span class="sp"></span>
+      <button id="btnSaveWhole" class="mb-btn pri" title="保存整个预览结果：整体模型 JSON + 静态快照 HTML">保存整体模型</button>
+    </header>
+    <section id="info">
+      <header class="pane-h"><span>当前模块</span><span class="sp"></span><span id="infoTag" class="dim"></span></header>
+      <div id="infoBody"></div>
+    </section>
+    <section id="ops">
+      <header class="pane-h"><span>模块操作</span><span class="sp"></span><span id="opsTag" class="dim"></span></header>
+      <div id="opsBody"></div>
+    </section>
+  </aside>
+</div>
+<div id="toast" hidden></div>
+<script src="adapters.js"></script>
+<script src="studio.js"></script>
+</body>
+</html>
