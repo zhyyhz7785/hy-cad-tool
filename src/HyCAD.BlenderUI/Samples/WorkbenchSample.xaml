@@ -28,6 +28,10 @@
         </ResourceDictionary>
     </bui:BlenderWindow.Resources>
 
+    <bui:BlenderWindow.HeaderRightContent>
+        <bui:ToolbarPositionSwitch/>
+    </bui:BlenderWindow.HeaderRightContent>
+
     <bui:BlenderWindow.FooterRightContent>
         <Button Width="80" Content="关闭" Style="{StaticResource BlenderButton}"/>
     </bui:BlenderWindow.FooterRightContent>
@@ -177,50 +181,52 @@
                 </bui:PropertyEditor>
             </Grid>
 
-            <!-- Layout 2：Sculpting 全功能 -->
+            <!-- Layout 2：Sculpting 全功能（ToolbarHost：上侧横向 / 侧面左 T） -->
             <Grid Visibility="{Binding SelectedIndex, ElementName=WsTabs, Converter={StaticResource IndexToVisibility}, ConverterParameter=2}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="4"/>
                     <ColumnDefinition Width="280"/>
                 </Grid.ColumnDefinitions>
-                <bui:Toolbar Grid.Column="0">
-                    <ToggleButton IsChecked="True" Style="{StaticResource BlenderToolbarIconButton}" ToolTip="抓取">
-                        <Path Width="16" Height="16"
-                              Data="M 4,2 L 4,9 L 6,11 L 6,5 L 7,5 L 7,12 L 9,12 L 9,5 L 10,5 L 10,12 L 12,12 L 12,7 L 13,7 L 13,12 L 13,15 L 4,15 L 2,11 L 2,5 Z"
-                              Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
-                    </ToggleButton>
-                    <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="平滑">
-                        <Ellipse Width="14" Height="14"
-                                 Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="1.6"
-                                 Fill="Transparent"/>
-                    </ToggleButton>
-                    <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="刻线">
-                        <Path Width="16" Height="16"
-                              Data="M 1,15 L 15,1 M 12,1 L 15,1 L 15,4"
-                              Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="1.6"
-                              Fill="Transparent" Stretch="Uniform"/>
-                    </ToggleButton>
-                </bui:Toolbar>
-                <Border Grid.Column="1"
-                        Background="{DynamicResource Brush_RegionBack}">
-                    <Canvas>
-                        <Path Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"
-                              Data="M 200,200 A 100,100 0 1 1 200,201 Z M 150,180 A 12,12 0 1 1 150,181 M 250,180 A 12,12 0 1 1 250,181 M 170,240 Q 200,260 230,240"
-                              Fill="Transparent"/>
-                        <TextBlock Canvas.Left="20" Canvas.Top="20"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   Text="Sculpting Workspace · 左 Toolbar + 中 Viewport + 右 Brush"/>
-                    </Canvas>
-                </Border>
-                <GridSplitter Grid.Column="2"
+                <bui:ToolbarHost Grid.Column="0">
+                    <bui:ToolbarHost.Toolbar>
+                        <bui:Toolbar>
+                            <ToggleButton IsChecked="True" Style="{StaticResource BlenderToolbarIconButton}" ToolTip="抓取">
+                                <Path Width="16" Height="16"
+                                      Data="M 4,2 L 4,9 L 6,11 L 6,5 L 7,5 L 7,12 L 9,12 L 9,5 L 10,5 L 10,12 L 12,12 L 12,7 L 13,7 L 13,12 L 13,15 L 4,15 L 2,11 L 2,5 Z"
+                                      Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="平滑">
+                                <Ellipse Width="14" Height="14"
+                                         Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="1.6"
+                                         Fill="Transparent"/>
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="刻线">
+                                <Path Width="16" Height="16"
+                                      Data="M 1,15 L 15,1 M 12,1 L 15,1 L 15,4"
+                                      Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="1.6"
+                                      Fill="Transparent" Stretch="Uniform"/>
+                            </ToggleButton>
+                        </bui:Toolbar>
+                    </bui:ToolbarHost.Toolbar>
+                    <Border Background="{DynamicResource Brush_RegionBack}">
+                        <Canvas>
+                            <Path Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"
+                                  Data="M 200,200 A 100,100 0 1 1 200,201 Z M 150,180 A 12,12 0 1 1 150,181 M 250,180 A 12,12 0 1 1 250,181 M 170,240 Q 200,260 230,240"
+                                  Fill="Transparent"/>
+                            <TextBlock Canvas.Left="20" Canvas.Top="20"
+                                       Foreground="{DynamicResource Brush_TextSecondary}"
+                                       Text="Sculpting Workspace · ToolbarHost 上侧/侧面 + 中 Viewport + 右 Brush"/>
+                        </Canvas>
+                    </Border>
+                </bui:ToolbarHost>
+                <GridSplitter Grid.Column="1"
                               Width="4"
                               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                               Cursor="SizeWE"
                               ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
                               Style="{StaticResource BlenderSplitter}"/>
-                <bui:PropertyEditor Grid.Column="3"
+                <bui:PropertyEditor Grid.Column="2"
                                     Title="Brush"
                                     ShowIconBar="False"
                                     ShowSearch="False">

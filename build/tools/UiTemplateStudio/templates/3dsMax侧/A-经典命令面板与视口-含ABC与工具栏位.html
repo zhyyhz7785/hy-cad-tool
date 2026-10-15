@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-scheme="A" data-tbpos="top">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3ds Max 侧 · UI 模板 · A/B/C · 工具栏上侧/侧面</title>
+<script>
+(function(){
+  try{
+    var t=localStorage.getItem('hytpl.max3ds.theme');
+    if(t) document.documentElement.dataset.theme=JSON.parse(t);
+    else document.documentElement.dataset.theme='dark';
+    var s=localStorage.getItem('hytpl.max3ds.scheme');
+    if(s) document.documentElement.dataset.scheme=JSON.parse(s);
+    var tp=localStorage.getItem('hymax.toolbarPos');
+    if(tp==='top'||tp==='side') document.documentElement.dataset.tbpos=tp;
+    else if(tp){try{var p=JSON.parse(tp);if(p==='top'||p==='side')document.documentElement.dataset.tbpos=p}catch(e2){}}
+  }catch(e){}
+})();
+</script>
+<style>
+:root{
+  --font-ui:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+  --font-mono:"Cascadia Mono","JetBrains Mono",Consolas,monospace;
+  --fs-cap:11px;--fs-ui:12px;--fs-body:13px;
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;
+  --r-xs:2px;--r-sm:4px;--r-md:6px;--r-lg:8px;
+  --h-row:22px;--h-ctl:24px;--h-menu:22px;--h-tool:28px;--h-tab:26px;
+  --sash-size:4px;--sb-size:10px;--dur:120ms;
+  --vp-active:#E8A317;--vp-active-anim:#E53935;
+  --bg-window:#181818;--bg-panel:#1F1F1F;--bg-raised:#2A2A2A;--bg-input:#141414;--bg-canvas:#2B2B2B;--bg-header:#1A1A1A;
+  --bg-hover:rgba(255,255,255,.06);--bg-active:rgba(255,255,255,.10);
+  --border:#2B2B2B;--border-strong:#3C3C3C;--sash:#2B2B2B;
+  --text:#E6E6E6;--text-2:#A6A6A6;--text-3:#7A7A7A;--text-on-accent:#FFFFFF;
+  --accent:#0A84FF;--accent-hover:#409CFF;--accent-press:#0070E0;--accent-soft:rgba(10,132,255,.20);
+  --danger:#FF453A;--warning:#FFB340;--success:#30D158;
+  --sb-thumb:rgba(160,160,160,.30);--shadow-2:0 4px 14px rgba(0,0,0,.45);--shadow-3:0 14px 36px rgba(0,0,0,.6);
+  --scrim:rgba(0,0,0,.5);--bg-ctl:#2B2B2B;--code-bg:#252526;
+  color-scheme:dark;
+}
+html[data-theme="light"]{
+  --bg-window:#F5F5F7;--bg-panel:#FFFFFF;--bg-raised:#FFFFFF;--bg-input:#FFFFFF;--bg-canvas:#3A3A3A;--bg-header:#F0F0F2;
+  --bg-hover:rgba(0,0,0,.05);--bg-active:rgba(0,0,0,.09);
+  --border:#E5E5E5;--border-strong:#D2D2D7;--sash:#E5E5E5;
+  --text:#1D1D1F;--text-2:#6E6E73;--text-3:#86868B;
+  --accent:#0071E3;--accent-hover:#0077ED;--accent-press:#0062C4;--accent-soft:rgba(0,113,227,.12);
+  --danger:#FF3B30;--warning:#C77C02;--success:#248A3D;
+  --sb-thumb:rgba(100,100,100,.35);--shadow-2:0 4px 12px rgba(0,0,0,.14);--shadow-3:0 12px 32px rgba(0,0,0,.22);
+  --scrim:rgba(0,0,0,.32);--bg-ctl:#FFFFFF;--code-bg:#F2F2F5;
+  color-scheme:light;
+}
+*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:var(--sb-thumb) transparent}
+*::-webkit-scrollbar{width:var(--sb-size);height:var(--sb-size)}
+*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:5px;border:2px solid transparent;background-clip:padding-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:var(--font-ui);font-size:var(--fs-ui);color:var(--text);background:var(--bg-window);display:flex;flex-direction:column;user-select:none}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+kbd{display:inline-block;min-width:16px;padding:0 4px;line-height:16px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:3px;background:var(--bg-panel);font-family:var(--font-mono);font-size:10px;color:var(--text-2)}
+.banner{display:none!important;flex:none;display:flex;align-items:center;gap:10px;padding:6px 12px;background:linear-gradient(90deg,#5B2C06,#7A3E0B 40%,#3D2508);border-bottom:1px solid #A65C14;color:#FFE8C8;font-size:12px;z-index:100}
+.banner .tag{background:#E8A317;color:#1A1000;font-weight:700;padding:1px 8px;border-radius:3px;letter-spacing:.5px}
+.banner .path{color:#C9A06A;font-size:11px;font-family:var(--font-mono)}
+.banner .sp{flex:1}
+.banner button{height:24px;padding:0 10px;border:1px solid #C97A2A;background:rgba(0,0,0,.25);color:#FFE8C8;border-radius:4px;font-size:11px}
+.banner button:hover{background:rgba(255,200,80,.15)}
+.banner button.pri{background:#E8A317;color:#1A1000;border-color:#E8A317;font-weight:600}
+.schemes{flex:none;display:flex;align-items:center;gap:6px;padding:2px 8px;height:28px;max-height:28px;background:var(--bg-header);border-bottom:1px solid var(--border);z-index:90;position:sticky;top:0;box-sizing:border-box}
+.schemes .lbl{font-size:10px;color:var(--text-3);font-weight:600;flex:none}
+.schemes .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:4px;overflow:hidden;background:var(--bg-ctl);flex:none}
+.schemes .seg button{height:22px;padding:0 10px;border:0;border-right:1px solid var(--border);background:transparent;color:var(--text-2);font-size:11px}
+.schemes .seg button:last-child{border-right:0}
+.schemes .seg button:hover{background:var(--bg-hover);color:var(--text)}
+.schemes .seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.schemes .hint{font-size:10px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+.schemes .sp{flex:1;min-width:4px}
+.schemes .acts{display:flex;gap:4px;align-items:center;flex:none}
+.schemes .acts button{height:22px;padding:0 7px;border:1px solid var(--border-strong);background:var(--bg-panel);border-radius:3px;color:var(--text);font-size:10px}
+.schemes .acts button:hover{background:var(--bg-hover)}
+.schemes .chipinfo{height:18px;line-height:18px;padding:0 6px;border-radius:3px;background:var(--accent-soft);color:var(--accent);font-size:10px;flex:none;white-space:nowrap}
+
+.app{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg-window)}
+.titlebar{flex:none;height:28px;display:flex;align-items:center;gap:6px;padding:0 6px 0 8px;background:var(--bg-header);border-bottom:1px solid var(--border)}
+.titlebar .appico{width:18px;height:18px;border-radius:3px;background:linear-gradient(135deg,#4A90D9,#1A5FA8);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
+.titlebar .ttl{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titlebar .sp{flex:1}
+.titlebar .searchchip{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);color:var(--text-3);font-size:10px;cursor:pointer;min-width:160px}
+.titlebar .searchchip:hover{border-color:var(--accent);color:var(--text-2)}
+.titlebar .winctl{display:flex}
+.titlebar .winctl button{width:32px;height:26px;border:0;background:transparent;color:var(--text-2);display:flex;align-items:center;justify-content:center}
+.titlebar .winctl button:hover{background:var(--bg-hover);color:var(--text)}
+.titlebar .winctl button.x:hover{background:var(--danger);color:#fff}
+.menubar{flex:none;height:var(--h-menu);display:flex;align-items:stretch;padding:0 4px;background:var(--bg-panel);border-bottom:1px solid var(--border);position:relative;z-index:50}
+.menubar .mb{padding:0 8px;display:flex;align-items:center;font-size:12px;color:var(--text);border:0;background:transparent;border-radius:3px;margin:1px 0}
+.menubar .mb:hover,.menubar .mb.open{background:var(--bg-hover)}
+.menubar .mb.open{background:var(--accent-soft);color:var(--accent)}
+.toolbar{flex:none;height:var(--h-tool);display:flex;align-items:center;gap:2px;padding:0 6px;background:var(--bg-panel);border-bottom:1px solid var(--border);overflow-x:auto}
+.toolbar .tbtn{width:26px;height:24px;border:1px solid transparent;border-radius:3px;background:transparent;color:var(--text-2);display:inline-flex;align-items:center;justify-content:center;padding:0;white-space:nowrap}
+.toolbar .tbtn:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border)}
+.toolbar .tbtn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.toolbar .tsep{width:1px;height:18px;background:var(--border);margin:0 4px}
+.toolbar .tlabel{font-size:11px;color:var(--text-3);margin:0 4px}
+.toolbar select{height:22px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);padding:0 4px;font-size:11px;max-width:100px}
+.toolbar .sp{flex:1}
+.ribbon{flex:none;background:var(--bg-panel);border-bottom:1px solid var(--border);display:none;flex-direction:column}
+.ribbon-tabs{display:flex;height:24px;padding:0 4px;gap:0;border-bottom:1px solid var(--border);background:var(--bg-window)}
+.ribbon-tabs button{padding:0 12px;border:0;background:transparent;color:var(--text-2);font-size:11px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ribbon-tabs button:hover{color:var(--text);background:var(--bg-hover)}
+.ribbon-tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.ribbon-body{display:flex;gap:0;padding:4px 6px;height:72px;overflow-x:auto}
+.ribbon-col{display:flex;flex-direction:column;align-items:center;padding:0 8px;border-right:1px solid var(--border);min-width:60px}
+.ribbon-col:last-child{border-right:0}
+.ribbon-col .rg{display:flex;gap:2px;flex:1;align-items:center}
+.ribbon-col .rbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:48px;height:48px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text);font-size:10px;padding:2px}
+.ribbon-col .rbtn:hover{background:var(--bg-hover);border-color:var(--border)}
+.ribbon-col .rbtn .ico{font-size:18px;line-height:1}
+.ribbon-col .cap{font-size:10px;color:var(--text-3);margin-top:2px}
+.ribbon-mini{display:none;height:22px;align-items:center;padding:0 8px;font-size:11px;color:var(--text-3);gap:8px;cursor:pointer}
+.ribbon-mini:hover{background:var(--bg-hover);color:var(--text)}
+.ws{flex:1;min-height:0;display:flex;overflow:hidden}
+.dock{display:flex;flex-direction:column;background:var(--bg-panel);border-right:1px solid var(--border);min-width:0}
+.dock.right{border-right:0;border-left:1px solid var(--border)}
+.dock-h{flex:none;height:24px;display:flex;align-items:center;padding:0 6px;background:var(--bg-window);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;gap:4px}
+.dock-h .sp{flex:1}
+.dock-h button{width:18px;height:18px;border:0;background:transparent;color:var(--text-3);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0}
+.dock-h button:hover{background:var(--bg-hover);color:var(--text)}
+.dock-body{flex:1;min-height:0;overflow:auto}
+.sash-v{flex:none;width:var(--sash-size);background:var(--sash);cursor:col-resize;position:relative}
+.sash-v:hover,.sash-v.drag{background:var(--accent)}
+.tree{font-size:11px;padding:2px 0}
+.tree .n{height:20px;display:flex;align-items:center;gap:3px;padding:0 6px 0 4px;cursor:default;border-radius:2px;margin:0 2px}
+.tree .n:hover{background:var(--bg-hover)}
+.tree .n.sel{background:var(--accent-soft);color:var(--accent)}
+.tree .n .tw{width:14px;text-align:center;color:var(--text-3);font-size:9px}
+.tree .n .ic{width:14px;text-align:center;font-size:11px}
+.tree .n .lb{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree .n .eye{opacity:.4;font-size:10px;cursor:pointer}
+.tree .n:hover .eye{opacity:1}
+.tree .ch{padding-left:12px}
+.tree .flt{display:flex;gap:4px;padding:4px 6px;border-bottom:1px solid var(--border)}
+.tree .flt input{flex:1;height:20px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);padding:0 6px;font-size:11px}
+.tree .flt input:focus{outline:none;border-color:var(--accent)}
+
+.vparea{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:#1A1A1A;position:relative}
+.vpgrid{flex:1;min-height:0;display:grid;gap:1px;background:#0A0A0A;padding:1px}
+.vpgrid.g2x2{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.vp{position:relative;background:var(--bg-canvas);overflow:hidden;outline:1px solid transparent;cursor:crosshair}
+.vp.active{outline:2px solid var(--vp-active);outline-offset:-1px;z-index:1}
+.vp.anim{outline-color:var(--vp-active-anim)}
+.vp-labels{position:absolute;top:2px;left:2px;display:flex;gap:1px;z-index:2}
+.vp-labels button{height:18px;padding:0 6px;border:0;background:rgba(0,0,0,.55);color:#ddd;font-size:10px;border-radius:2px}
+.vp-labels button:hover{background:rgba(40,40,40,.9);color:#fff}
+.vp-canvas{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.vp-canvas svg{width:100%;height:100%}
+.vp-hud{position:absolute;bottom:4px;right:6px;font-size:10px;color:rgba(255,255,255,.45);font-family:var(--font-mono);pointer-events:none}
+.vp-tb{display:none;position:absolute;top:2px;right:2px;gap:2px;z-index:2}
+.vp-tb button{height:20px;width:22px;border:0;background:rgba(0,0,0,.5);color:#ccc;border-radius:2px;font-size:11px}
+.vp-tb button:hover{background:rgba(60,60,60,.9);color:#fff}
+.cmdpanel{width:220px;flex:none;display:flex;flex-direction:column;background:var(--bg-panel)}
+.cp-tabs{display:flex;flex:none;border-bottom:1px solid var(--border);background:var(--bg-window)}
+.cp-tabs button{flex:1;height:28px;border:0;background:transparent;color:var(--text-3);font-size:10px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.1}
+.cp-tabs button:hover{background:var(--bg-hover);color:var(--text)}
+.cp-tabs button.on{background:var(--bg-panel);color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.cp-tabs button .ico{font-size:12px}
+.cp-body{flex:1;min-height:0;overflow:auto;padding:0}
+.rollout{border-bottom:1px solid var(--border)}
+.rollout > .rh{height:22px;display:flex;align-items:center;gap:4px;padding:0 6px;background:linear-gradient(180deg,var(--bg-raised),var(--bg-panel));cursor:pointer;font-size:11px;font-weight:600;user-select:none}
+.rollout > .rh:hover{background:var(--bg-hover)}
+.rollout > .rh .ch{width:12px;font-size:9px;color:var(--text-3)}
+.rollout.closed > .rb{display:none}
+.rollout.closed > .rh .ch{transform:rotate(-90deg)}
+.rollout > .rb{padding:4px 6px 8px}
+.prow{display:flex;align-items:center;gap:4px;margin:2px 0;min-height:22px}
+.prow .pl{flex:0 0 72px;font-size:11px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .pv{flex:1;min-width:0;display:flex;align-items:center}
+.spinner{display:flex;align-items:center;height:20px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);overflow:hidden;flex:1}
+.spinner input{flex:1;min-width:0;border:0;background:transparent;text-align:right;padding:0 4px;font-size:11px;font-variant-numeric:tabular-nums;outline:none}
+.spinner .arrows{display:flex;flex-direction:column;width:14px;border-left:1px solid var(--border)}
+.spinner .arrows button{flex:1;border:0;background:transparent;color:var(--text-3);font-size:7px;line-height:1;padding:0;height:10px}
+.spinner .arrows button:hover{background:var(--bg-hover);color:var(--text)}
+.chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer}
+.chk input{accent-color:var(--accent)}
+.select{width:100%;height:20px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);padding:0 4px;font-size:11px}
+.objname{display:flex;align-items:center;gap:4px;padding:4px 6px;border-bottom:1px solid var(--border);background:var(--bg-window)}
+.objname input{flex:1;height:20px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);padding:0 6px;font-size:11px}
+.modstack{border:1px solid var(--border);margin:4px 0;border-radius:3px;overflow:hidden}
+.modstack .ms-item{height:20px;display:flex;align-items:center;gap:4px;padding:0 6px;font-size:11px;border-bottom:1px solid var(--border);cursor:pointer}
+.modstack .ms-item:last-child{border-bottom:0}
+.modstack .ms-item:hover{background:var(--bg-hover)}
+.modstack .ms-item.on{background:var(--accent-soft);color:var(--accent)}
+.modstack .ms-item .bulb{width:12px;text-align:center;font-size:10px}
+.createtype{display:flex;flex-wrap:wrap;gap:2px;padding:4px 0}
+.createtype button{height:22px;padding:0 8px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-ctl);font-size:10px;color:var(--text-2)}
+.createtype button:hover{background:var(--bg-hover);color:var(--text)}
+.createtype button.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.createbtns{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px}
+.createbtns button{height:20px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-ctl);font-size:11px;line-height:1;padding:0 4px;color:var(--text)}
+.createbtns button:hover{background:var(--bg-hover);border-color:var(--accent)}
+.status{flex:none;height:26px;display:flex;align-items:center;gap:6px;padding:0 6px;background:var(--bg-panel);border-top:1px solid var(--border);font-size:11px}
+.status .sb{display:inline-flex;align-items:center;gap:4px;padding:0 6px;height:20px;border-radius:3px;color:var(--text-2);cursor:pointer}
+.status .sb:hover{background:var(--bg-hover);color:var(--text)}
+.status .sb.msg{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;color:var(--text-3)}
+.status .sb.msg:hover{background:transparent}
+.status .timebar{display:flex;align-items:center;gap:4px}
+.status .timebar .slider{width:120px;height:4px;background:var(--border-strong);border-radius:2px;position:relative;cursor:pointer}
+.status .timebar .slider i{position:absolute;left:0;top:0;bottom:0;width:30%;background:var(--accent);border-radius:2px;pointer-events:none}
+.status .timebar .slider i::after{content:"";position:absolute;right:-4px;top:-3px;width:10px;height:10px;border-radius:50%;background:#fff;border:1px solid var(--accent)}
+.status .autokey{padding:0 6px;height:18px;border-radius:2px;border:1px solid var(--border-strong);background:var(--bg-ctl);font-size:10px;color:var(--text-2)}
+.status .autokey.on{background:#8B1A1A;border-color:#E53935;color:#FFCDD2}
+
+html[data-scheme="A"] .ribbon{display:none}
+html[data-scheme="A"] .ribbon-mini{display:flex}
+html[data-scheme="A"] .vpgrid{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+html[data-scheme="A"] .dock-left{width:200px}
+html[data-scheme="A"] .cmdpanel{width:220px;display:flex}
+html[data-scheme="A"] .vp-tb{display:none}
+html[data-scheme="A"] .eng-extra{display:none}
+html[data-scheme="A"] .simp-tb{display:none}
+html[data-scheme="A"] .full-tb{display:flex}
+html[data-scheme="B"] .ribbon{display:flex}
+html[data-scheme="B"] .ribbon-mini{display:none}
+html[data-scheme="B"] .vpgrid{grid-template-columns:1fr;grid-template-rows:1fr}
+html[data-scheme="B"] .vpgrid .vp:not(:first-child){display:none}
+html[data-scheme="B"] .dock-left{width:0;overflow:hidden;border:0;min-width:0}
+html[data-scheme="B"] .sash-left{display:none}
+html[data-scheme="B"] .cmdpanel{width:180px}
+html[data-scheme="B"] .vp-tb{display:flex}
+html[data-scheme="B"] .eng-extra{display:none}
+html[data-scheme="B"] .dock-tabs-b{display:flex}
+html[data-scheme="B"] .simp-tb{display:none}
+html[data-scheme="B"] .full-tb{display:flex}
+html[data-scheme="C"] .ribbon{display:none}
+html[data-scheme="C"] .ribbon-mini{display:none}
+html[data-scheme="C"] .menubar{display:none}
+html[data-scheme="C"] .vpgrid{grid-template-columns:1fr;grid-template-rows:1fr}
+html[data-scheme="C"] .vpgrid .vp:not(:first-child){display:none}
+html[data-scheme="C"] .dock-left{width:260px}
+html[data-scheme="C"] .cmdpanel{width:240px}
+html[data-scheme="C"] .eng-extra{display:block}
+html[data-scheme="C"] .full-tb{display:none}
+html[data-scheme="C"] .simp-tb{display:flex}
+html[data-scheme="C"] .vp-tb{display:flex}
+.dock-tabs-b{display:none;flex:none;height:22px;border-top:1px solid var(--border);background:var(--bg-window)}
+.dock-tabs-b button{height:100%;padding:0 10px;border:0;background:transparent;color:var(--text-3);font-size:10px;border-right:1px solid var(--border)}
+.dock-tabs-b button.on{background:var(--bg-panel);color:var(--text)}
+.menu{position:fixed;z-index:800;min-width:180px;max-width:280px;padding:3px 0;background:var(--bg-raised);border:1px solid var(--border-strong);border-radius:6px;box-shadow:var(--shadow-3);font-size:12px}
+.menu .mi{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 8px;height:24px;cursor:default;color:var(--text)}
+.menu .mi:hover,.menu .mi.hov{background:var(--accent);color:#fff}
+.menu .mi .ic{width:16px;text-align:center;font-size:12px;flex:none}
+.menu .mi .lb{flex:1}
+.menu .mi .k{color:var(--text-3);font-size:10px;font-family:var(--font-mono)}
+.menu .mi:hover .k,.menu .mi.hov .k{color:rgba(255,255,255,.7)}
+.menu .sep{height:1px;background:var(--border);margin:3px 6px}
+.quad{position:fixed;z-index:850;width:320px;height:220px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;background:var(--border-strong);box-shadow:var(--shadow-3);border-radius:4px;overflow:hidden}
+.quad .q{background:var(--bg-raised);padding:4px 0;overflow:auto;font-size:11px}
+.quad .q .qh{padding:2px 8px;font-size:10px;font-weight:700;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:2px;cursor:pointer}
+.quad .q .qh:hover{background:var(--accent-soft)}
+.quad .q .qi{padding:2px 8px;height:20px;display:flex;align-items:center;cursor:default}
+.quad .q .qi:hover{background:var(--accent);color:#fff}
+.quad .cross{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--vp-active);border:2px solid #fff;z-index:2;pointer-events:none}
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:900;display:flex;align-items:center;justify-content:center}
+.dlg{background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-3);display:flex;flex-direction:column;max-height:85vh;min-width:360px}
+.dlg-h{flex:none;height:36px;display:flex;align-items:center;padding:0 12px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;gap:8px}
+.dlg-h .sp{flex:1}
+.dlg-h button{width:24px;height:24px;border:0;background:transparent;color:var(--text-3);border-radius:4px}
+.dlg-h button:hover{background:var(--bg-hover);color:var(--text)}
+.dlg-b{flex:1;overflow:auto;padding:12px 14px}
+.dlg-f{flex:none;display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
+.btn{height:28px;padding:0 14px;border:1px solid var(--border-strong);border-radius:5px;background:var(--bg-ctl);color:var(--text);font-size:12px}
+.btn:hover{background:var(--bg-hover)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.pri:hover{background:var(--accent-hover)}
+.ptabs{display:flex;gap:12px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.ptabs button{height:28px;padding:0 2px;border:0;background:transparent;color:var(--text-2);border-bottom:2px solid transparent;margin-bottom:-1px;font-size:12px}
+.ptabs button.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.psec{display:none!important}.psec.on{display:block!important}
+.psec h4{margin:0 0 8px;font-size:12px}
+.psec .prow .pl{flex:0 0 120px}
+.palette-scrim{position:fixed;inset:0;z-index:880;background:transparent}
+.palette{position:fixed;top:80px;left:50%;transform:translateX(-50%);width:min(560px,92vw);z-index:881;background:var(--bg-raised);border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow-3);overflow:hidden}
+.palette input{width:100%;height:36px;border:0;border-bottom:1px solid var(--border);background:transparent;padding:0 14px;outline:none;font-size:13px}
+.palette .pl-list{max-height:320px;overflow:auto}
+.palette .pl-item{display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:default;font-size:12px}
+.palette .pl-item:hover,.palette .pl-item.on{background:var(--accent-soft);color:var(--accent)}
+.palette .pl-item .cat{margin-left:auto;font-size:10px;color:var(--text-3)}
+.palette .pl-hint{padding:6px 14px;font-size:10px;color:var(--text-3);border-top:1px solid var(--border)}
+.info-drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);z-index:870;background:var(--bg-panel);border-left:1px solid var(--border-strong);box-shadow:var(--shadow-3);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .2s}
+.info-drawer.open{transform:translateX(0)}
+.info-drawer .ih{flex:none;height:40px;display:flex;align-items:center;padding:0 12px;border-bottom:1px solid var(--border);font-weight:600;gap:8px}
+.info-drawer .ih .sp{flex:1}
+.info-drawer .ib{flex:1;overflow:auto;padding:12px 14px;font-size:12px;line-height:1.55}
+.info-drawer .ib h3{margin:14px 0 6px;font-size:13px}
+.info-drawer .ib h3:first-child{margin-top:0}
+.info-drawer .ib ul{margin:4px 0;padding-left:18px}
+.info-drawer .ib li{margin:2px 0}
+.info-drawer .ib .card{border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin:8px 0;background:var(--bg-window)}
+.info-drawer .ib .card.on{border-color:var(--accent);background:var(--accent-soft)}
+.info-drawer .ib .pros{color:var(--success)}.info-drawer .ib .cons{color:var(--warning)}
+.info-drawer .if{flex:none;padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.toasts{position:fixed;right:16px;bottom:40px;z-index:950;display:flex;flex-direction:column;gap:8px;width:340px;pointer-events:none}
+.toast{pointer-events:auto;display:flex;gap:10px;padding:10px 12px;background:var(--bg-raised);border:1px solid var(--border-strong);border-left:3px solid var(--accent);border-radius:6px;box-shadow:var(--shadow-2);font-size:12px;animation:tin .18s ease-out}
+.toast.ok{border-left-color:var(--success)}.toast.warn{border-left-color:var(--warning)}
+.toast .tt{font-weight:600}.toast .tm{color:var(--text-2);margin-top:2px}
+.toast .tx{cursor:pointer;color:var(--text-3);margin-left:auto}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.layers{font-size:11px}
+.layers .lh{display:flex;align-items:center;gap:4px;padding:4px 6px;border-bottom:1px solid var(--border);background:var(--bg-window);font-weight:600}
+.layers .lr{display:flex;align-items:center;gap:4px;height:22px;padding:0 6px;cursor:pointer}
+.layers .lr:hover{background:var(--bg-hover)}
+.layers .lr.sel{background:var(--accent-soft);color:var(--accent)}
+.layers .lr .sw{width:12px;height:12px;border-radius:2px;border:1px solid rgba(128,128,128,.4)}
+.layers .lr .nm{flex:1}
+.hidden{display:none!important}
+
+/* ===== Toolbar position: top | side ===== */
+.tb-mount-top{flex:none;display:flex;flex-direction:column}
+.tb-mount-side{flex:none;display:none;flex-direction:column;align-self:stretch;width:30px;background:var(--bg-panel);border-right:1px solid var(--border);z-index:5}
+html[data-tbpos="side"] .tb-mount-top{display:none}
+html[data-tbpos="side"] .tb-mount-side{display:flex;width:30px}
+.toolbar.tb-vert{flex-direction:column;width:30px;height:100%;min-height:0;align-items:center;border-bottom:0;border-right:0;overflow-x:hidden;overflow-y:auto;padding:4px 2px;gap:2px}
+.toolbar.tb-vert .tsep{width:100%;height:1px;margin:4px 0}
+.toolbar.tb-vert .sp{flex:1;min-height:4px;width:100%}
+.toolbar.tb-vert .tlabel{display:none}
+/* native select hidden on side; .tb-vsel takes over */
+.toolbar.tb-vert > select,.toolbar.tb-vert select.tb-native{display:none!important}
+.toolbar.tb-vert .tbtn{width:26px;height:24px;min-height:24px;flex:none;flex-direction:row;align-items:center;justify-content:center;gap:0;padding:0;font-size:14px;line-height:1;white-space:nowrap;overflow:hidden;text-align:center}
+.toolbar.tb-vert .tbtn.tb-wide{width:26px!important;padding:0!important;font-size:14px;overflow:hidden;white-space:nowrap}
+.toolbar.tb-vert .tbtn .tb-ico{display:block;font-size:14px;line-height:1}
+.toolbar.tb-vert .tbtn .tb-cap{display:none!important}
+.toolbar.tb-vert .tb-pos-btn{width:26px;margin-left:0;padding:0;height:24px;min-height:24px;font-size:12px;writing-mode:horizontal-tb;white-space:nowrap;overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+.toolbar:not(.tb-vert) .tbtn .tb-ico{display:inline}.toolbar:not(.tb-vert) .tbtn .tb-cap{display:inline;margin-left:2px}
+.toolbar:not(.tb-vert) .tbtn.tb-wide{width:auto;padding:0 8px;height:24px;flex-direction:row;gap:0}
+/* full + simp on side: same 26x24 icon-only column */
+.toolbar.full-tb.tb-vert .tbtn,.toolbar.simp-tb.tb-vert .tbtn{width:26px;height:24px;padding:0;font-size:14px}
+.toolbar.full-tb.tb-vert .tbtn .tb-cap,.toolbar.simp-tb.tb-vert .tbtn .tb-cap{display:none!important}
+.toolbar.full-tb.tb-vert .tb-pos-btn,.toolbar.simp-tb.tb-vert .tb-pos-btn{width:26px;font-size:12px}
+.tb-pos-btn{margin-left:4px;height:24px;padding:0 8px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-ctl);color:var(--text-2);font-size:10px;flex:none}
+.tb-pos-btn:hover,.tb-pos-btn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+/* vertical select widget (side toolbar only) */
+.tb-vsel{display:none;position:relative;flex:none;width:26px}
+.toolbar.tb-vert .tb-vsel{display:block}
+.toolbar:not(.tb-vert) .tb-vsel{display:none}
+.tb-vsel .tb-vsel-btn{width:26px;height:24px;padding:0 1px;border:1px solid var(--border-strong);border-radius:3px;background:var(--bg-input);color:var(--text-2);font-size:9px;line-height:1;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;cursor:pointer}
+.tb-vsel .tb-vsel-btn:hover{background:var(--bg-hover);color:var(--text);border-color:var(--accent)}
+.tb-vsel .tb-vsel-menu{display:none;position:absolute;left:100%;top:0;margin-left:2px;z-index:80;min-width:92px;background:var(--bg-raised);border:1px solid var(--border-strong);border-radius:4px;box-shadow:var(--shadow-2);padding:2px 0}
+.tb-vsel.open .tb-vsel-menu{display:block}
+.tb-vsel .tb-vsel-menu button{display:block;width:100%;text-align:left;height:22px;padding:0 10px;border:0;background:transparent;color:var(--text);font-size:11px;cursor:pointer}
+.tb-vsel .tb-vsel-menu button:hover,.tb-vsel .tb-vsel-menu button.on{background:var(--accent-soft);color:var(--accent)}
+.schemes .tbpos-seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:4px;overflow:hidden;background:var(--bg-ctl);margin-left:2px;flex:none}
+.schemes .tbpos-seg button{height:22px;padding:0 8px;border:0;border-right:1px solid var(--border);background:transparent;color:var(--text-2);font-size:10px}
+.schemes .tbpos-seg button:last-child{border-right:0}
+.schemes .tbpos-seg button:hover{background:var(--bg-hover);color:var(--text)}
+.schemes .tbpos-seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.status .sb.tbpos{border:1px solid var(--border-strong)}
+.status .sb.tbpos:hover{border-color:var(--accent)}
+/* prefs dialog: fixed width, grow downward only */
+.scrim.prefs-scrim{align-items:flex-start;justify-content:center;padding-top:10vh}
+.dlg.prefs-dlg{width:520px;min-width:520px;max-width:520px;align-self:flex-start}
+.dlg.prefs-dlg .dlg-b{min-height:300px}
+.prow.vert{flex-direction:column;align-items:stretch;gap:4px;min-height:0;margin:6px 0}
+.prow.vert .pl{flex:none;width:auto;max-width:none;white-space:normal}
+.prow.vert .pv{width:100%}
+.prow.vert .select{width:100%}
+.seg-vert{display:flex;flex-direction:column;gap:0;border:1px solid var(--border-strong);border-radius:4px;overflow:hidden;background:var(--bg-ctl);width:100%}
+.seg-vert button{height:26px;padding:0 10px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text-2);font-size:11px;text-align:left;cursor:pointer}
+.seg-vert button:last-child{border-bottom:0}
+.seg-vert button:hover{background:var(--bg-hover);color:var(--text)}
+.seg-vert button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+</style>
+</head>
+<body>
+
+<div class="schemes" id="chromeBar">
+  <span class="chipinfo" title="落地模板 · 已批">3ds Max 侧 · A/B/C · 工具栏上侧/侧面</span>
+  <span class="lbl">方案</span>
+  <div class="seg" id="schemeSeg">
+    <button type="button" data-s="A" class="on" title="经典命令面板+视口">A 经典</button>
+    <button type="button" data-s="B" title="Ribbon/现代">B Ribbon</button>
+    <button type="button" data-s="C" title="工程/结构向简化">C 工程简化</button>
+  </div>
+  <span class="lbl">工具栏</span>
+  <div class="tbpos-seg" id="tbposSeg" title="工具栏位置（与方案 A/B/C 独立）">
+    <button type="button" data-tp="top" class="on">上侧</button>
+    <button type="button" data-tp="side">侧面</button>
+  </div>
+  <span class="hint" id="schemeHint">经典：菜单+工具栏+左场景资源管理器+2×2视口+右命令面板+四元菜单</span>
+  <span class="sp"></span>
+  <div class="acts">
+    <button type="button" id="btnInfo" title="方案说明 F1">说明</button>
+    <button type="button" id="btnTheme" title="切换深色/浅色">☾</button>
+    <button type="button" id="btnPalette" title="命令搜索 X / Ctrl+Shift+P">⌕</button>
+    <button type="button" id="btnPrefs" title="首选项">⚙</button>
+  </div>
+</div>
+<div class="app" id="app">
+  <div class="titlebar">
+    <div class="appico">M</div>
+    <span class="ttl">Autodesk 3ds Max 2026　场景01.max *</span>
+    <span class="sp"></span>
+    <div class="searchchip" id="searchChip" title="按 X 或 Ctrl+Shift+P">⌕ 搜索工具 / 命令… <kbd>X</kbd></div>
+    <span class="sp"></span>
+    <div class="winctl">
+      <button type="button" title="最小化">─</button>
+      <button type="button" title="最大化">□</button>
+      <button type="button" class="x" title="关闭">×</button>
+    </div>
+  </div>
+  <div class="menubar" id="menubar">
+    <button type="button" class="mb" data-m="file">文件</button>
+    <button type="button" class="mb" data-m="edit">编辑</button>
+    <button type="button" class="mb" data-m="tools">工具</button>
+    <button type="button" class="mb" data-m="group">组</button>
+    <button type="button" class="mb" data-m="views">视图</button>
+    <button type="button" class="mb" data-m="create">创建</button>
+    <button type="button" class="mb" data-m="modifiers">修改器</button>
+    <button type="button" class="mb" data-m="animation">动画</button>
+    <button type="button" class="mb" data-m="graph">图形编辑器</button>
+    <button type="button" class="mb" data-m="rendering">渲染</button>
+    <button type="button" class="mb" data-m="customize">自定义</button>
+    <button type="button" class="mb" data-m="scripting">MAXScript</button>
+    <button type="button" class="mb" data-m="help">帮助</button>
+  </div>
+  <div class="tb-mount-top" id="tbMountTop">
+  <div class="toolbar full-tb" id="toolbarFull">
+    <button class="tbtn" data-tip="撤销" data-cmd="undo">↶</button>
+    <button class="tbtn" data-tip="重做" data-cmd="redo">↷</button>
+    <span class="tsep"></span>
+    <button class="tbtn" data-tip="选择并链接">⛓</button>
+    <button class="tbtn" data-tip="断开链接">✂</button>
+    <span class="tsep"></span>
+    <select class="tb-native" title="选择过滤器" data-vsel-short="滤"><option>全部</option><option>几何体</option><option>形状</option><option>灯光</option><option>摄像机</option></select>
+    <button class="tbtn on" data-tip="选择对象" data-tool="select">▸</button>
+    <button class="tbtn" data-tip="按名称选择">≡</button>
+    <span class="tsep"></span>
+    <button class="tbtn" data-tip="选择并移动 W" data-tool="move">✥</button>
+    <button class="tbtn" data-tip="选择并旋转 E" data-tool="rotate">↻</button>
+    <button class="tbtn" data-tip="选择并缩放 R" data-tool="scale">⤢</button>
+    <span class="tsep"></span>
+    <select class="tb-native" title="参考坐标系" data-vsel-short="系"><option>视图</option><option>局部</option><option>世界</option><option>父对象</option></select>
+    <button class="tbtn" data-tip="轴心点居中">⊕</button>
+    <span class="tsep"></span>
+    <button class="tbtn" data-tip="捕捉开关 S" data-cmd="snap">⊓</button>
+    <button class="tbtn" data-tip="角度捕捉">∠</button>
+    <span class="tsep"></span>
+    <button class="tbtn" data-tip="镜像">⇔</button>
+    <button class="tbtn" data-tip="对齐">⊞</button>
+    <span class="tsep"></span>
+    <button class="tbtn" data-tip="材质编辑器 M" data-cmd="matedit">🎨</button>
+    <button class="tbtn" data-tip="渲染设置" data-cmd="renderset">⚙</button>
+    <button class="tbtn" data-tip="渲染产品" data-cmd="render">▶</button>
+    <span class="sp"></span>
+    <span class="tlabel">工作区</span>
+    <select class="tb-native" id="wsSelect" title="工作区" data-vsel-short="区"><option>默认</option><option>设计</option><option>建模</option><option>动画</option></select>
+    <button type="button" class="tb-pos-btn" data-tbpos-toggle title="切换工具栏上侧/侧面">⇄ 上侧</button>
+  </div>
+  <div class="toolbar simp-tb" id="toolbarSimp">
+    <button class="tbtn tb-wide on" data-tip="选择" data-tool="select"><span class="tb-ico">▸</span><span class="tb-cap">选择</span></button>
+    <button class="tbtn tb-wide" data-tip="移动 W" data-tool="move"><span class="tb-ico">✥</span><span class="tb-cap">移动</span></button>
+    <button class="tbtn tb-wide" data-tip="旋转 E" data-tool="rotate"><span class="tb-ico">↻</span><span class="tb-cap">旋转</span></button>
+    <button class="tbtn tb-wide" data-tip="缩放 R" data-tool="scale"><span class="tb-ico">⤢</span><span class="tb-cap">缩放</span></button>
+    <span class="tsep"></span>
+    <button class="tbtn tb-wide" data-tip="捕捉" data-cmd="snap"><span class="tb-ico">⊓</span><span class="tb-cap">捕捉</span></button>
+    <span class="tsep"></span>
+    <button class="tbtn" data-cmd="undo" data-tip="撤销"><span class="tb-ico">↶</span><span class="tb-cap">撤销</span></button>
+    <button class="tbtn" data-cmd="redo" data-tip="重做"><span class="tb-ico">↷</span><span class="tb-cap">重做</span></button>
+    <span class="sp"></span>
+    <button class="tbtn tb-wide" data-cmd="render" data-tip="渲染"><span class="tb-ico">▶</span><span class="tb-cap">渲染</span></button>
+    <button type="button" class="tb-pos-btn" data-tbpos-toggle title="切换工具栏上侧/侧面">⇄ 位置</button>
+  </div>
+  </div><!-- /tbMountTop -->
+  <div class="ribbon-mini" id="ribbonMini" title="点击展开 Ribbon">▾ Ribbon：建模 · 自由形式 · 选择 · 对象绘制 · 填充（已折叠，点击展开）</div>
+  <div class="ribbon" id="ribbon">
+    <div class="ribbon-tabs" id="ribbonTabs">
+      <button type="button" class="on" data-rt="建模">建模</button>
+      <button type="button" data-rt="自由形式">自由形式</button>
+      <button type="button" data-rt="选择">选择</button>
+      <button type="button" data-rt="对象绘制">对象绘制</button>
+      <button type="button" data-rt="填充">填充</button>
+    </div>
+    <div class="ribbon-body" id="ribbonBody">
+      <div class="ribbon-col"><div class="rg">
+        <button class="rbtn" data-cmd="poly.extrude"><span class="ico">⬆</span>挤出</button>
+        <button class="rbtn" data-cmd="poly.bevel"><span class="ico">◢</span>倒角</button>
+        <button class="rbtn" data-cmd="poly.inset"><span class="ico">▣</span>插入</button>
+      </div><span class="cap">多边形</span></div>
+      <div class="ribbon-col"><div class="rg">
+        <button class="rbtn" data-cmd="poly.bridge"><span class="ico">⟷</span>桥接</button>
+        <button class="rbtn" data-cmd="poly.connect"><span class="ico">⬡</span>连接</button>
+        <button class="rbtn" data-cmd="poly.cut"><span class="ico">✂</span>切割</button>
+      </div><span class="cap">边/面</span></div>
+      <div class="ribbon-col"><div class="rg">
+        <button class="rbtn" data-cmd="sub.vert"><span class="ico">·</span>顶点</button>
+        <button class="rbtn" data-cmd="sub.edge"><span class="ico">—</span>边</button>
+        <button class="rbtn" data-cmd="sub.face"><span class="ico">▢</span>面</button>
+        <button class="rbtn" data-cmd="sub.elem"><span class="ico">■</span>元素</button>
+      </div><span class="cap">子对象</span></div>
+      <div class="ribbon-col"><div class="rg">
+        <button class="rbtn" data-cmd="mod.turbosmooth"><span class="ico">◎</span>涡轮平滑</button>
+        <button class="rbtn" data-cmd="mod.sym"><span class="ico">⇔</span>对称</button>
+      </div><span class="cap">修改器</span></div>
+    </div>
+  </div>
+
+  <div class="ws" id="ws">
+    <div class="tb-mount-side" id="tbMountSide" title="侧面工具栏"></div>
+    <div class="dock dock-left" id="dockLeft">
+      <div class="dock-h">
+        <span id="leftTitle">场景资源管理器</span>
+        <span class="sp"></span>
+        <button type="button" title="刷新" data-cmd="se.refresh">↻</button>
+        <button type="button" title="关闭" id="btnCloseLeft">×</button>
+      </div>
+      <div class="dock-body">
+        <div class="tree" id="sceneTree">
+          <div class="flt"><input id="seFilter" placeholder="筛选对象…"></div>
+          <div class="n sel" data-obj="Box001"><span class="tw">▾</span><span class="ic">▢</span><span class="lb">Box001</span><span class="eye">👁</span></div>
+          <div class="ch">
+            <div class="n" data-obj="Box001_Detail"><span class="tw">·</span><span class="ic">▢</span><span class="lb">Box001_Detail</span><span class="eye">👁</span></div>
+          </div>
+          <div class="n" data-obj="Cylinder001"><span class="tw">·</span><span class="ic">⬭</span><span class="lb">Cylinder001</span><span class="eye">👁</span></div>
+          <div class="n" data-obj="Teapot001"><span class="tw">·</span><span class="ic">☕</span><span class="lb">Teapot001</span><span class="eye">👁</span></div>
+          <div class="n" data-obj="Omni001"><span class="tw">·</span><span class="ic">💡</span><span class="lb">Omni001</span><span class="eye">👁</span></div>
+          <div class="n" data-obj="Camera001"><span class="tw">·</span><span class="ic">📷</span><span class="lb">Camera001</span><span class="eye">👁</span></div>
+          <div class="n" data-obj="GridHelper"><span class="tw">·</span><span class="ic">⊞</span><span class="lb">GridHelper</span><span class="eye">👁</span></div>
+        </div>
+        <div class="eng-extra layers" id="layersPanel">
+          <div class="lh">图层 / 结构</div>
+          <div class="lr sel"><span class="sw" style="background:#4A90D9"></span><span class="nm">0 (默认)</span><span class="eye">👁</span></div>
+          <div class="lr"><span class="sw" style="background:#70B070"></span><span class="nm">结构-梁柱</span><span class="eye">👁</span></div>
+          <div class="lr"><span class="sw" style="background:#D9A54A"></span><span class="nm">幕墙-玻璃</span><span class="eye">👁</span></div>
+          <div class="lr"><span class="sw" style="background:#C07070"></span><span class="nm">家具-道具</span><span class="eye">👁</span></div>
+          <div class="lr"><span class="sw" style="background:#9090C0"></span><span class="nm">灯光-摄像机</span><span class="eye">👁</span></div>
+        </div>
+      </div>
+      <div class="dock-tabs-b" id="leftDockTabs">
+        <button type="button" class="on">场景</button>
+        <button type="button">图层</button>
+        <button type="button">材质</button>
+      </div>
+    </div>
+    <div class="sash-v sash-left" id="sashLeft"></div>
+    <div class="vparea" id="vparea">
+      <div class="vpgrid g2x2" id="vpgrid">
+        <div class="vp" data-vp="0" data-view="顶" data-shade="线框">
+          <div class="vp-labels">
+            <button type="button" data-vl="plus">[+]</button>
+            <button type="button" data-vl="view">顶</button>
+            <button type="button" data-vl="shade">线框</button>
+          </div>
+          <div class="vp-tb"><button type="button" title="透视">⌀</button><button type="button" title="着色">◼</button><button type="button" title="最大化">⛶</button></div>
+          <div class="vp-canvas" id="vpc0"></div>
+          <div class="vp-hud">顶 · 线框</div>
+        </div>
+        <div class="vp" data-vp="1" data-view="前" data-shade="线框">
+          <div class="vp-labels">
+            <button type="button" data-vl="plus">[+]</button>
+            <button type="button" data-vl="view">前</button>
+            <button type="button" data-vl="shade">线框</button>
+          </div>
+          <div class="vp-tb"><button type="button">⌀</button><button type="button">◼</button><button type="button">⛶</button></div>
+          <div class="vp-canvas" id="vpc1"></div>
+          <div class="vp-hud">前 · 线框</div>
+        </div>
+        <div class="vp" data-vp="2" data-view="左" data-shade="线框">
+          <div class="vp-labels">
+            <button type="button" data-vl="plus">[+]</button>
+            <button type="button" data-vl="view">左</button>
+            <button type="button" data-vl="shade">线框</button>
+          </div>
+          <div class="vp-tb"><button type="button">⌀</button><button type="button">◼</button><button type="button">⛶</button></div>
+          <div class="vp-canvas" id="vpc2"></div>
+          <div class="vp-hud">左 · 线框</div>
+        </div>
+        <div class="vp active" data-vp="3" data-view="透视" data-shade="实体">
+          <div class="vp-labels">
+            <button type="button" data-vl="plus">[+]</button>
+            <button type="button" data-vl="view">透视</button>
+            <button type="button" data-vl="shade">实体</button>
+          </div>
+          <div class="vp-tb"><button type="button">⌀</button><button type="button">◼</button><button type="button">⛶</button></div>
+          <div class="vp-canvas" id="vpc3"></div>
+          <div class="vp-hud">透视 · 实体</div>
+        </div>
+      </div>
+    </div>
+    <div class="sash-v" id="sashRight"></div>
+    <div class="cmdpanel" id="cmdpanel">
+      <div class="cp-tabs" id="cpTabs">
+        <button type="button" class="on" data-cp="create" title="创建"><span class="ico">◇</span>创建</button>
+        <button type="button" data-cp="modify" title="修改"><span class="ico">✎</span>修改</button>
+        <button type="button" data-cp="hierarchy" title="层次"><span class="ico">⧉</span>层次</button>
+        <button type="button" data-cp="motion" title="运动"><span class="ico">↝</span>运动</button>
+        <button type="button" data-cp="display" title="显示"><span class="ico">◎</span>显示</button>
+        <button type="button" data-cp="utilities" title="实用程序"><span class="ico">⚒</span>实用</button>
+      </div>
+      <div class="cp-body" id="cpBody"></div>
+    </div>
+  </div>
+  <div class="status" id="status">
+    <span class="sb" id="sbPrompt">就绪</span>
+    <span class="sb msg" id="sbMsg">选择对象或工具开始。右键视口打开四元菜单 · X 搜索命令</span>
+    <span class="sp"></span>
+    <button type="button" class="autokey" id="autoKey" title="自动关键">Auto Key</button>
+    <div class="timebar">
+      <span class="sb" style="cursor:default">0/100</span>
+      <div class="slider" id="timeSlider"><i></i></div>
+      <span class="sb" style="cursor:default">▶</span>
+    </div>
+    <span class="sb" id="sbCoords">X:0.0 Y:0.0 Z:0.0</span>
+    <span class="sb tbpos" id="sbTbPos" title="点击切换工具栏上侧/侧面">工具栏·上侧</span>
+    <span class="sb" title="视口导航">🧭</span>
+  </div>
+</div>
+<div class="info-drawer" id="infoDrawer">
+  <div class="ih"><span>方案说明 · 3ds Max 侧</span><span class="sp"></span><button type="button" id="infoClose">×</button></div>
+  <div class="ib" id="infoBody"></div>
+  <div class="if">
+    <button type="button" class="btn pri" id="btnSetPick">设当前方案为首选</button>
+    <button type="button" class="btn" id="btnClearPick">取消首选</button>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+<script>
+
+(function(){
+'use strict';
+var $ = function(s,r){return (r||document).querySelector(s)};
+var $$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var LS = {
+  get: function(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set: function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+var SCHEME_HINTS = {
+  A: '经典：菜单+工具栏+左场景资源管理器+2×2视口+右命令面板+四元菜单',
+  B: 'Ribbon：大功能区页签+单大视口+窄命令面板+场景作停靠标签',
+  C: '工程简化：精简工具栏+强对象树/图层+单视口+线性右键（可切四元）'
+};
+var SCHEME_INFO = {
+  A: {title:'A · 经典命令面板+视口', pros:['完整还原 Max 习惯：命令面板六页签+卷展栏','2×2 视口与四元菜单，老用户零学习成本','场景资源管理器在左，结构清晰'], cons:['界面元素多，小屏拥挤','新手对四元菜单不友好','Ribbon 默认折叠，现代工具入口弱']},
+  B: {title:'B · Ribbon / 现代', pros:['建模工具集中在 Ribbon，多边形工作流高效','默认单大视口，沉浸感强','场景探索器作底部标签，少占横向空间'], cons:['命令面板变窄，参数操作略挤','偏离经典 Max 布局，老用户需适应','四元菜单仍保留，与 Ribbon 入口重叠']},
+  C: {title:'C · 工程 / 结构向简化', pros:['强调图层与对象树，适合工程/BIM 向场景','工具栏极简（选择/变换/捕捉），认知负荷低','线性右键为主，可选紧凑四元'], cons:['隐藏菜单栏，功能发现性下降','单视口默认，多角度对照需手动拆分','弱化动画/时间相关 chrome']}
+};
+var state = {
+  scheme: document.documentElement.dataset.scheme || 'A',
+  theme: document.documentElement.dataset.theme || 'dark',
+  cpTab: 'create', tool: 'select', activeVp: 3, selObj: 'Box001',
+  autoKey: false, createCat: '标准基本体', modSel: 0, showLeft: true, showCmd: true,
+  tbPos: document.documentElement.dataset.tbpos || 'top'
+};
+function toast(title, opt){
+  opt = opt || {};
+  var el = document.createElement('div');
+  el.className = 'toast ' + (opt.type||'');
+  el.innerHTML = '<div><div class="tt"></div><div class="tm"></div></div><span class="tx">×</span>';
+  el.querySelector('.tt').textContent = title;
+  el.querySelector('.tm').textContent = opt.msg || '';
+  if(!opt.msg) el.querySelector('.tm').style.display='none';
+  $('#toasts').appendChild(el);
+  while($('#toasts').children.length>3) $('#toasts').firstChild.remove();
+  el.querySelector('.tx').onclick = function(){el.remove()};
+  setTimeout(function(){if(el.parentNode)el.remove()}, opt.ms||4000);
+}
+function status(msg, prompt){
+  if(msg!=null) $('#sbMsg').textContent = msg;
+  if(prompt!=null) $('#sbPrompt').textContent = prompt;
+}
+function applyTheme(){
+  document.documentElement.dataset.theme = state.theme;
+  LS.set('hytpl.max3ds.theme', state.theme);
+  $('#btnTheme').textContent = state.theme==='dark' ? '☀ 浅色' : '☾ 深色';
+}
+$('#btnTheme').onclick = function(){
+  state.theme = state.theme==='dark'?'light':'dark';
+  applyTheme(); refreshVps();
+  toast('已切换主题', {msg: state.theme==='dark'?'深色（DCC 默认）':'浅色', type:'ok'});
+};
+function applyScheme(s, toastIt){
+  state.scheme = s;
+  document.documentElement.dataset.scheme = s;
+  LS.set('hytpl.max3ds.scheme', s);
+  $$('#schemeSeg button').forEach(function(b){b.classList.toggle('on', b.dataset.s===s)});
+  $('#schemeHint').textContent = SCHEME_HINTS[s];
+  $('#leftTitle').textContent = s==='C' ? '对象树 / 图层' : '场景资源管理器';
+  if(typeof applyTbPos==='function') applyTbPos(state.tbPos, false);
+  renderInfo(); updPickBtns();
+  if(toastIt) toast('已切换方案 '+s, {msg: SCHEME_INFO[s].title, type:'ok'});
+  status('方案 '+s+' · '+SCHEME_INFO[s].title.split('·')[1].trim());
+}
+$$('#schemeSeg button').forEach(function(b){
+  b.onclick = function(){applyScheme(b.dataset.s, true)};
+});
+
+function syncTbPosUI(){
+  var pos = state.tbPos;
+  $$('#tbposSeg button').forEach(function(b){b.classList.toggle('on', b.dataset.tp===pos)});
+  $$('[data-tbpos-toggle]').forEach(function(b){
+    var onSide = !!b.closest('.toolbar.tb-vert') || pos==='side';
+    b.textContent = onSide ? '⇄' : (pos==='top' ? '⇄ 侧面' : '⇄ 上侧');
+    b.title = pos==='top' ? '切到侧面工具栏' : '切到上侧工具栏';
+    b.classList.toggle('on', pos==='side');
+  });
+  var sb=$('#sbTbPos');
+  if(sb) sb.textContent = '工具栏·'+(pos==='top'?'上侧':'侧面');
+}
+function applyTbPos(pos, toastIt){
+  if(pos!=='top' && pos!=='side') pos='top';
+  state.tbPos = pos;
+  document.documentElement.dataset.tbpos = pos;
+  try{ localStorage.setItem('hymax.toolbarPos', pos); }catch(e){}
+  var topM = $('#tbMountTop'), sideM = $('#tbMountSide');
+  var full = $('#toolbarFull'), simp = $('#toolbarSimp');
+  if(!topM || !sideM || !full || !simp) return;
+  var host = (pos==='side') ? sideM : topM;
+  // move both toolbars into active mount (scheme CSS still shows one of them)
+  host.appendChild(full);
+  host.appendChild(simp);
+  full.classList.toggle('tb-vert', pos==='side');
+  simp.classList.toggle('tb-vert', pos==='side');
+  syncTbPosUI();
+  if(toastIt) toast('工具栏位置：'+(pos==='top'?'上侧':'侧面'), {msg: pos==='top'?'水平条在视口上方（HyMd 式）':'垂直条在工作区左侧（旁场景资源管理器）', type:'ok'});
+  status('工具栏 · '+(pos==='top'?'上侧':'侧面'));
+}
+$$('#tbposSeg button').forEach(function(b){
+  b.onclick = function(){ applyTbPos(b.dataset.tp, true); };
+});
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-tbpos-toggle]');
+  if(t){ applyTbPos(state.tbPos==='top'?'side':'top', true); }
+});
+var _sbTp = $('#sbTbPos');
+if(_sbTp) _sbTp.onclick = function(){ applyTbPos(state.tbPos==='top'?'side':'top', true); };
+
+function shortLabel(txt, n){
+  txt = (txt||'').trim();
+  if(txt.length<=n) return txt;
+  return txt.slice(0,n);
+}
+function syncTbVsel(wrap){
+  var sel = wrap._sel; if(!sel) return;
+  var btn = wrap.querySelector('.tb-vsel-btn');
+  var cur = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
+  btn.textContent = shortLabel(cur, 2);
+  btn.title = (sel.title||'') + (cur?(' · '+cur):'');
+  $$('button', wrap.querySelector('.tb-vsel-menu')).forEach(function(b){
+    b.classList.toggle('on', parseInt(b.dataset.i,10)===sel.selectedIndex);
+  });
+}
+function initTbVsel(){
+  $$('.toolbar select.tb-native, .toolbar select').forEach(function(sel){
+    if(sel._vselBuilt) return;
+    sel._vselBuilt = true;
+    sel.classList.add('tb-native');
+    var wrap = document.createElement('div');
+    wrap.className = 'tb-vsel';
+    wrap._sel = sel;
+    var tip = sel.title || sel.id || '选项';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tb-vsel-btn';
+    btn.setAttribute('data-tip', tip);
+    var menu = document.createElement('div');
+    menu.className = 'tb-vsel-menu';
+    Array.prototype.forEach.call(sel.options, function(opt, i){
+      var ob = document.createElement('button');
+      ob.type = 'button';
+      ob.textContent = opt.text;
+      ob.dataset.i = String(i);
+      ob.onclick = function(e){
+        e.stopPropagation();
+        sel.selectedIndex = i;
+        sel.dispatchEvent(new Event('change', {bubbles:true}));
+        syncTbVsel(wrap);
+        wrap.classList.remove('open');
+        status(tip+' · '+opt.text);
+      };
+      menu.appendChild(ob);
+    });
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var was = wrap.classList.contains('open');
+      $$('.tb-vsel.open').forEach(function(w){w.classList.remove('open')});
+      if(!was) wrap.classList.add('open');
+    };
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+    sel.parentNode.insertBefore(wrap, sel.nextSibling);
+    sel.addEventListener('change', function(){ syncTbVsel(wrap); });
+    syncTbVsel(wrap);
+  });
+}
+document.addEventListener('click', function(){
+  $$('.tb-vsel.open').forEach(function(w){w.classList.remove('open')});
+});
+
+var MENUS = {
+  file: [{l:'新建',k:'Ctrl+N'},{l:'重置…'},{l:'打开…',k:'Ctrl+O'},{l:'保存',k:'Ctrl+S'},{l:'另存为…',k:'Ctrl+Shift+S'},'-',{l:'导入…'},{l:'导出…'},'-',{l:'摘要信息'},{l:'退出'}],
+  edit: [{l:'撤销',k:'Ctrl+Z',cmd:'undo'},{l:'重做',k:'Ctrl+Y',cmd:'redo'},'-',{l:'暂存',k:'Ctrl+H'},{l:'取回'},'-',{l:'删除',k:'Del'},{l:'克隆',k:'Ctrl+V'},'-',{l:'变换…'},{l:'对象属性…'}],
+  tools: [{l:'选择并操作'},{l:'显示选择浮动框'},'-',{l:'镜像…'},{l:'阵列…'},{l:'对齐…',k:'Alt+A'},'-',{l:'容器'}],
+  group: [{l:'成组…'},{l:'解组'},{l:'打开'},{l:'关闭'},{l:'附加'},{l:'分离'},{l:'炸开'}],
+  views: [{l:'撤销视图',k:'Shift+Z'},{l:'重做视图'},'-',{l:'工具栏 · 上侧',cmd:'tbTop'},{l:'工具栏 · 侧面',cmd:'tbSide'},{l:'切换工具栏位置',cmd:'tbToggle'},'-',{l:'视口配置…'},{l:'栅格与捕捉设置…'},'-',{l:'创建摄像机自视图'},{l:'保存活动视图'}],
+  create: [{l:'标准基本体'},{l:'扩展基本体'},{l:'图形'},{l:'灯光'},{l:'摄像机'},{l:'辅助对象'},{l:'空间扭曲'},{l:'系统'}],
+  modifiers: [{l:'选择修改器'},{l:'面片/样条线编辑'},{l:'网格编辑'},{l:'自由形式变形'},{l:'参数化修改器'},'-',{l:'涡轮平滑'},{l:'对称'},{l:'挤出'}],
+  animation: [{l:'骨骼工具'},{l:'约束'},{l:'IK 解算器'},'-',{l:'运动混合器…'},{l:'参数曲线输出…'}],
+  graph: [{l:'轨迹视图 - 曲线编辑器'},{l:'轨迹视图 - 摄影表'},{l:'图解视图…'}],
+  rendering: [{l:'渲染…',k:'F9',cmd:'render'},{l:'渲染设置…',k:'F10',cmd:'renderset'},{l:'渲染帧窗口'},'-',{l:'材质编辑器…',k:'M',cmd:'matedit'},{l:'环境…'},{l:'效果…'}],
+  customize: [{l:'自定义用户界面…'},{l:'首选项…',cmd:'prefs'},{l:'加载自定义 UI 方案…'},{l:'保存自定义 UI 方案…'},'-',{l:'显示 UI'}],
+  scripting: [{l:'MAXScript 侦听器…'},{l:'新建脚本'},{l:'打开脚本…'},{l:'运行脚本…'},{l:'宏录制器'}],
+  help: [{l:'方案说明',k:'F1',cmd:'info'},{l:'Autodesk 帮助'},{l:'关于 3ds Max'}]
+};
+var openMenuEl = null;
+function closeMenus(){
+  if(openMenuEl){openMenuEl.remove();openMenuEl=null}
+  $$('.mb.open').forEach(function(x){x.classList.remove('open')});
+  $$('.menu').forEach(function(m){m.remove()});
+}
+function runMenuItem(it){
+  if(it.cmd==='prefs') openPrefs();
+  else if(it.cmd==='info') toggleInfo(true);
+  else if(it.cmd==='tbTop') applyTbPos('top', true);
+  else if(it.cmd==='tbSide') applyTbPos('side', true);
+  else if(it.cmd==='tbToggle') applyTbPos(state.tbPos==='top'?'side':'top', true);
+  else if(it.cmd==='undo'){status('已撤销','撤销');toast('撤销',{msg:'（演示）'})}
+  else if(it.cmd==='redo'){status('已重做','重做');toast('重做',{msg:'（演示）'})}
+  else if(it.cmd==='render'){toast('开始渲染',{msg:'（演示）F9 渲染产品',type:'ok'});status('渲染中…','渲染')}
+  else if(it.cmd==='renderset') openPrefs('视口');
+  else if(it.cmd==='matedit') toast('材质编辑器',{msg:'（演示）打开精简材质编辑器'});
+  else if(/…$/.test(it.l)){toast(it.l.replace(/…$/,''),{msg:'（演示）对话框已打开'});status('执行：'+it.l)}
+  else {toast(it.l,{msg:'（演示）菜单命令已执行'});status('执行：'+it.l)}
+}
+function showMenu(items, x, y, anchorBtn){
+  closeMenus();
+  var m = document.createElement('div');
+  m.className = 'menu';
+  items.forEach(function(it){
+    if(it==='-'){var s=document.createElement('div');s.className='sep';m.appendChild(s);return}
+    var d=document.createElement('div');
+    d.className='mi';
+    d.innerHTML='<span class="ic"></span><span class="lb"></span><span class="k"></span>';
+    d.querySelector('.lb').textContent=it.l;
+    d.querySelector('.k').textContent=it.k||'';
+    d.onmouseenter=function(){$$('.mi',m).forEach(function(x){x.classList.remove('hov')});d.classList.add('hov')};
+    d.onclick=function(e){e.stopPropagation();closeMenus();runMenuItem(it)};
+    m.appendChild(d);
+  });
+  document.body.appendChild(m);
+  var rw=m.offsetWidth, rh=m.offsetHeight;
+  if(x+rw>innerWidth) x=innerWidth-rw-4;
+  if(y+rh>innerHeight) y=innerHeight-rh-4;
+  m.style.left=x+'px'; m.style.top=y+'px';
+  openMenuEl=m;
+  if(anchorBtn) anchorBtn.classList.add('open');
+  return m;
+}
+$$('#menubar .mb').forEach(function(b){
+  b.addEventListener('click', function(e){
+    e.stopPropagation();
+    if(b.classList.contains('open')){closeMenus();return}
+    var r=b.getBoundingClientRect();
+    showMenu(MENUS[b.dataset.m]||[{l:'（空）'}], r.left, r.bottom+1, b);
+  });
+  b.addEventListener('mouseenter', function(){
+    if($$('.mb.open').length && !b.classList.contains('open')){
+      var r=b.getBoundingClientRect();
+      showMenu(MENUS[b.dataset.m]||[], r.left, r.bottom+1, b);
+    }
+  });
+});
+function setTool(t){
+  state.tool=t;
+  $$('[data-tool]').forEach(function(b){b.classList.toggle('on', b.dataset.tool===t)});
+  var names={select:'选择',move:'移动',rotate:'旋转',scale:'缩放'};
+  status('工具：'+names[t],'工具');
+  toast('工具：'+names[t],{msg:'（演示）'});
+}
+$$('[data-tool]').forEach(function(b){b.onclick=function(){setTool(b.dataset.tool)}});
+$$('[data-cmd]').forEach(function(b){
+  if(b.dataset.tool) return;
+  b.addEventListener('click', function(){
+    var c=b.dataset.cmd;
+    if(c==='undo'){toast('撤销');status('已撤销')}
+    else if(c==='redo'){toast('重做')}
+    else if(c==='snap'){b.classList.toggle('on');toast(b.classList.contains('on')?'捕捉：开':'捕捉：关')}
+    else if(c==='render'){toast('渲染',{type:'ok',msg:'（演示）'})}
+    else if(c==='matedit'){toast('材质编辑器')}
+    else if(c==='renderset'){openPrefs('视口')}
+    else if(c==='se.refresh'){toast('已刷新场景资源管理器')}
+    else if(c.indexOf('poly.')===0||c.indexOf('sub.')===0||c.indexOf('mod.')===0){
+      toast((b.textContent||c).trim(),{msg:'Ribbon 命令（演示）'}); status('执行：'+c);
+    } else toast(c);
+  });
+});
+$('#ribbonMini').onclick=function(){applyScheme('B', true); toast('已展开 Ribbon',{msg:'切换到方案 B'})};
+$$('#ribbonTabs button').forEach(function(b){
+  b.onclick=function(){
+    $$('#ribbonTabs button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); status('Ribbon：'+b.dataset.rt); toast('Ribbon 页签：'+b.dataset.rt);
+  };
+});
+$$('#sceneTree .n[data-obj]').forEach(function(n){
+  n.onclick=function(){
+    $$('#sceneTree .n').forEach(function(x){x.classList.remove('sel')});
+    n.classList.add('sel'); state.selObj=n.dataset.obj;
+    status('已选择 '+state.selObj,'选择');
+    if(state.cpTab==='modify') renderCp();
+  };
+});
+$$('#layersPanel .lr').forEach(function(lr){
+  lr.onclick=function(){
+    $$('#layersPanel .lr').forEach(function(x){x.classList.remove('sel')});
+    lr.classList.add('sel'); status('图层：'+lr.querySelector('.nm').textContent);
+  };
+});
+$('#seFilter').oninput=function(){
+  var q=this.value.trim().toLowerCase();
+  $$('#sceneTree .n[data-obj]').forEach(function(n){
+    n.style.display = !q || n.dataset.obj.toLowerCase().indexOf(q)>=0 ? '' : 'none';
+  });
+};
+
+function drawVp(i){
+  var vp = $$('.vp')[i];
+  var canvas = vp.querySelector('.vp-canvas');
+  var view = vp.dataset.view;
+  var shade = vp.dataset.shade;
+  var solid = shade==='实体'||shade==='真实'||shade==='明暗处理';
+  var stroke = solid ? 'rgba(120,180,255,0.9)' : 'rgba(180,200,220,0.7)';
+  var fill = solid ? 'rgba(60,100,160,0.55)' : 'none';
+  var grid = 'rgba(255,255,255,0.06)';
+  var bg = document.documentElement.dataset.theme==='light'?'#4A4A4A':'#2B2B2B';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">';
+  svg += '<rect width="400" height="300" fill="'+bg+'"/>';
+  for(var g=0;g<=10;g++){var p=g*40;svg+='<line x1="'+p+'" y1="0" x2="'+p+'" y2="300" stroke="'+grid+'"/><line x1="0" y1="'+p+'" x2="400" y2="'+p+'" stroke="'+grid+'"/>';}
+  if(view==='透视'){
+    svg+='<polygon points="200,60 320,140 280,230 120,230 80,140" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5"/>';
+    svg+='<line x1="200" y1="60" x2="200" y2="230" stroke="'+stroke+'" stroke-width="1" opacity=".5"/>';
+    svg+='<ellipse cx="200" cy="200" rx="70" ry="18" fill="none" stroke="rgba(255,200,80,.4)" stroke-dasharray="4 3"/>';
+    svg+='<circle cx="300" cy="100" r="22" fill="'+fill+'" stroke="'+stroke+'"/>';
+    svg+='<path d="M318 95 Q340 90 335 110 Q330 120 318 112" fill="none" stroke="'+stroke+'"/>';
+  } else if(view==='顶'){
+    svg+='<rect x="140" y="100" width="120" height="100" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5"/>';
+    svg+='<circle cx="280" cy="90" r="28" fill="'+fill+'" stroke="'+stroke+'"/>';
+    svg+='<circle cx="100" cy="200" r="16" fill="none" stroke="rgba(255,220,100,.7)"/>';
+  } else if(view==='前'){
+    svg+='<rect x="140" y="80" width="120" height="140" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5"/>';
+    svg+='<ellipse cx="280" cy="160" rx="28" ry="40" fill="'+fill+'" stroke="'+stroke+'"/>';
+    svg+='<line x1="50" y1="220" x2="350" y2="220" stroke="rgba(255,255,255,.15)"/>';
+  } else {
+    svg+='<rect x="160" y="80" width="80" height="140" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.5"/>';
+    svg+='<ellipse cx="200" cy="70" rx="40" ry="12" fill="'+fill+'" stroke="'+stroke+'"/>';
+  }
+  if(vp.classList.contains('active')){
+    svg+='<g transform="translate(60,240)" stroke-width="2">';
+    svg+='<line x1="0" y1="0" x2="28" y2="0" stroke="#E53935"/><polygon points="28,-4 36,0 28,4" fill="#E53935"/>';
+    svg+='<line x1="0" y1="0" x2="0" y2="-28" stroke="#43A047"/><polygon points="-4,-28 0,-36 4,-28" fill="#43A047"/>';
+    svg+='<line x1="0" y1="0" x2="16" y2="16" stroke="#1E88E5"/><circle cx="18" cy="18" r="3" fill="#1E88E5"/>';
+    svg+='</g>';
+  }
+  svg+='</svg>';
+  canvas.innerHTML = svg;
+  vp.querySelector('.vp-hud').textContent = view+' · '+shade;
+}
+function refreshVps(){$$('.vp').forEach(function(_,i){drawVp(i)})}
+$$('.vp').forEach(function(vp){
+  vp.addEventListener('mousedown', function(e){
+    if(e.button!==0) return;
+    if(e.target.closest('.vp-labels')||e.target.closest('.vp-tb')) return;
+    $$('.vp').forEach(function(x){x.classList.remove('active')});
+    vp.classList.add('active');
+    if(state.autoKey) vp.classList.add('anim'); else vp.classList.remove('anim');
+    state.activeVp = +vp.dataset.vp;
+    status('活动视口：'+vp.dataset.view,'视口');
+    refreshVps();
+  });
+  vp.addEventListener('contextmenu', function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(e.target.closest('.vp-labels')) return;
+    $$('.vp').forEach(function(x){x.classList.remove('active')});
+    vp.classList.add('active'); state.activeVp=+vp.dataset.vp; refreshVps();
+    if(state.scheme==='C' && !e.shiftKey) showLinearCtx(e.clientX, e.clientY);
+    else showQuad(e.clientX, e.clientY);
+  });
+});
+$$('[data-vl]').forEach(function(btn){
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var vp = btn.closest('.vp');
+    var kind = btn.dataset.vl;
+    var r = btn.getBoundingClientRect();
+    var items;
+    if(kind==='view') items=['透视','正交','顶','底','前','后','左','右','-','摄像机','用户'];
+    else if(kind==='shade') items=['线框','实体','明暗处理','真实','边面','包围盒'];
+    else items=['撤销视图','重做视图','-','最大化视口切换','配置视口…','-','显示栅格','显示统计','显示安全框'];
+    showMenu(items.map(function(s){return s==='-'?'-':{l:s}}), r.left, r.bottom+2);
+    setTimeout(function(){
+      $$('.menu .mi').forEach(function(mi){
+        mi.onclick=function(ev){
+          ev.stopPropagation();
+          var s=mi.querySelector('.lb').textContent;
+          closeMenus();
+          if(kind==='view' && ['透视','顶','前','左','底','后','右','用户'].indexOf(s)>=0){
+            vp.dataset.view=s; btn.textContent=s; drawVp(+vp.dataset.vp); status('视口 → '+s);
+          } else if(kind==='shade'){
+            vp.dataset.shade=s; btn.textContent=s; drawVp(+vp.dataset.vp); status('着色：'+s);
+          } else toast(s,{msg:'视口标签菜单（演示）'});
+        };
+      });
+    },0);
+  });
+});
+function showQuad(cx, cy){
+  closeMenus();
+  $$('.quad').forEach(function(q){q.remove()});
+  var q=document.createElement('div'); q.className='quad';
+  var contents=[
+    {h:'多边形（上下文）', items:['挤出','倒角','插入','桥接','切割','转换为可编辑多边形']},
+    {h:'变换（通用）', items:['移动','旋转','缩放','放置高亮','对象属性…']},
+    {h:'显示（上下文）', items:['孤立当前选择','隐藏未选定对象','取消隐藏全部','冻结当前选择','冻结未选定对象']},
+    {h:'工具（通用）', items:['克隆…','删除','对齐…','镜像…','选择相似','曲线编辑器']}
+  ];
+  contents.forEach(function(c){
+    var cell=document.createElement('div'); cell.className='q';
+    var h=document.createElement('div'); h.className='qh'; h.textContent=c.h;
+    h.onclick=function(){toast('重复：'+c.h,{msg:c.items[0]});cleanup();status('重复 '+c.items[0])};
+    cell.appendChild(h);
+    c.items.forEach(function(name){
+      var it=document.createElement('div'); it.className='qi'; it.textContent=name;
+      it.onclick=function(){
+        toast(name,{msg:'四元菜单 · '+c.h}); status(name,'四元');
+        if(name==='移动')setTool('move'); if(name==='旋转')setTool('rotate'); if(name==='缩放')setTool('scale');
+        cleanup();
+      };
+      cell.appendChild(it);
+    });
+    q.appendChild(cell);
+  });
+  var cross=document.createElement('div'); cross.className='cross'; q.appendChild(cross);
+  document.body.appendChild(q);
+  var qw=320,qh=220;
+  q.style.left=Math.max(4, Math.min(cx-qw/2, innerWidth-qw-4))+'px';
+  q.style.top=Math.max(4, Math.min(cy-qh/2, innerHeight-qh-4))+'px';
+  function cleanup(){q.remove();document.removeEventListener('mousedown',onDoc,true)}
+  function onDoc(e){if(!q.contains(e.target))cleanup()}
+  setTimeout(function(){document.addEventListener('mousedown',onDoc,true)},0);
+}
+function showLinearCtx(cx, cy){
+  closeMenus();
+  var items=[{l:'移动',k:'W'},{l:'旋转',k:'E'},{l:'缩放',k:'R'},'-',{l:'孤立当前选择'},{l:'隐藏当前选择'},{l:'取消隐藏全部'},'-',{l:'转换为可编辑多边形'},{l:'对象属性…'},'-',{l:'四元菜单（紧凑）…'}];
+  var m=showMenu(items, cx, cy);
+  $$('.mi',m).forEach(function(mi){
+    var lb=mi.querySelector('.lb'); if(!lb)return;
+    var name=lb.textContent;
+    mi.onclick=function(e){
+      e.stopPropagation(); closeMenus();
+      if(name.indexOf('四元')>=0) showQuad(cx,cy);
+      else if(name==='移动')setTool('move');
+      else if(name==='旋转')setTool('rotate');
+      else if(name==='缩放')setTool('scale');
+      else {toast(name,{msg:'线性右键（方案 C）'});status(name)}
+    };
+  });
+}
+function onToolbarCtx(e){
+  if(e.target.closest('button,select,input')) return;
+  e.preventDefault();
+  showMenu([
+    {l:(state.showLeft?'隐藏':'显示')+'场景资源管理器'},
+    {l:(state.showCmd?'隐藏':'显示')+'命令面板'},
+    {l:($('#menubar').style.display==='none'?'显示':'隐藏')+'菜单栏'},
+    {l:'显示主工具栏'},'-',
+    {l:'工具栏位置 · 上侧',cmd:'tbTop'},{l:'工具栏位置 · 侧面',cmd:'tbSide'},'-',
+    {l:'功能区'},{l:'状态栏'},{l:'视口导航控件'}
+  ], e.clientX, e.clientY);
+  setTimeout(function(){
+    $$('.menu .mi').forEach(function(mi){
+      mi.onclick=function(ev){
+        ev.stopPropagation();
+        var t=mi.querySelector('.lb').textContent; closeMenus();
+        if(t.indexOf('场景')>=0){
+          state.showLeft=!state.showLeft;
+          $('#dockLeft').style.display=state.showLeft?'':'none';
+          $('#sashLeft').style.display=state.showLeft?'':'none';
+          toast(state.showLeft?'已显示场景资源管理器':'已隐藏场景资源管理器');
+        } else if(t.indexOf('命令面板')>=0){
+          state.showCmd=!state.showCmd;
+          $('#cmdpanel').style.display=state.showCmd?'':'none';
+          $('#sashRight').style.display=state.showCmd?'':'none';
+          toast(state.showCmd?'已显示命令面板':'已隐藏命令面板');
+        } else if(t.indexOf('菜单栏')>=0){
+          var mb=$('#menubar'); mb.style.display = mb.style.display==='none' ? '' : 'none';
+          toast('菜单栏已切换');
+        } else if(t.indexOf('上侧')>=0){ applyTbPos('top', true); }
+        else if(t.indexOf('侧面')>=0){ applyTbPos('side', true); }
+        else toast(t,{msg:'自定义显示菜单（演示）'});
+      };
+    });
+  },0);
+}
+$('#toolbarFull').addEventListener('contextmenu', onToolbarCtx);
+$('#toolbarSimp').addEventListener('contextmenu', onToolbarCtx);
+
+function spinnerHTML(id, val){
+  return '<div class="spinner" data-spin="'+id+'"><input value="'+val+'" /><div class="arrows"><button type="button" data-d="1">▴</button><button type="button" data-d="-1">▾</button></div></div>';
+}
+function rollout(title, body, open){
+  return '<div class="rollout'+(open===false?' closed':'')+'"><div class="rh"><span class="ch">▾</span>'+title+'</div><div class="rb">'+body+'</div></div>';
+}
+function renderCp(){
+  var b=$('#cpBody'); var tab=state.cpTab; var html='';
+  if(tab==='create'){
+    html+='<div class="createtype" id="createCats">';
+    ['标准基本体','扩展基本体','图形','灯光','摄像机','辅助对象'].forEach(function(c){
+      html+='<button type="button" class="'+(c===state.createCat?'on':'')+'" data-cat="'+c+'">'+c+'</button>';
+    });
+    html+='</div>';
+    html+=rollout('对象类型','<div class="createbtns">'+['长方体','圆锥体','球体','几何球体','圆柱体','管状体','圆环','四棱锥','茶壶','平面'].map(function(n){return '<button type="button" data-create="'+n+'">'+n+'</button>'}).join('')+'</div>', true);
+    html+=rollout('名称和颜色','<div class="prow"><span class="pl">名称</span><div class="pv"><input class="select" id="createName" value="Box002" style="height:20px"></div></div><div class="prow"><span class="pl">颜色</span><div class="pv"><input type="color" value="#6A9FDB" style="width:100%;height:20px;border:1px solid var(--border-strong);border-radius:3px;background:transparent;padding:0"></div></div>', true);
+    html+=rollout('创建方法','<label class="chk"><input type="radio" name="cm" checked> 矩形</label><br><label class="chk"><input type="radio" name="cm"> 立方体</label>', true);
+    html+=rollout('键盘输入','<div class="prow"><span class="pl">长度</span><div class="pv">'+spinnerHTML('kl','50.0')+'</div></div><div class="prow"><span class="pl">宽度</span><div class="pv">'+spinnerHTML('kw','50.0')+'</div></div><div class="prow"><span class="pl">高度</span><div class="pv">'+spinnerHTML('kh','50.0')+'</div></div><button type="button" class="btn" style="width:100%;margin-top:4px;height:24px" data-cmd-create>创建</button>', false);
+  } else if(tab==='modify'){
+    html+='<div class="objname"><span style="font-size:10px;color:var(--text-3)">对象</span><input id="modName" value="'+state.selObj+'"></div>';
+    html+=rollout('修改器堆栈','<div class="modstack" id="modstack">'+
+      '<div class="ms-item'+(state.modSel===0?' on':'')+'" data-mi="0"><span class="bulb">💡</span>涡轮平滑</div>'+
+      '<div class="ms-item'+(state.modSel===1?' on':'')+'" data-mi="1"><span class="bulb">💡</span>对称</div>'+
+      '<div class="ms-item'+(state.modSel===2?' on':'')+'" data-mi="2"><span class="bulb">💡</span>可编辑多边形</div>'+
+      '<div class="ms-item'+(state.modSel===3?' on':'')+'" data-mi="3"><span class="bulb">💡</span>'+state.selObj+' <span style="color:var(--text-3)">(长方体)</span></div></div>'+
+      '<div style="display:flex;gap:4px;margin-top:4px"><button type="button" class="btn" style="flex:1;height:22px;font-size:10px;padding:0" id="btnAddMod">添加修改器</button><button type="button" class="btn" style="height:22px;font-size:10px;padding:0 6px" id="btnDelMod">删除</button></div>', true);
+    if(state.modSel===0){
+      html+=rollout('涡轮平滑参数','<div class="prow"><span class="pl">迭代次数</span><div class="pv">'+spinnerHTML('ts_iter','2')+'</div></div><div class="prow"><span class="pl">渲染迭代</span><div class="pv">'+spinnerHTML('ts_rit','3')+'</div></div><label class="chk"><input type="checkbox" data-param="ts_iso" checked> 隔离平滑</label><br><label class="chk"><input type="checkbox" data-param="ts_exp"> 明确法线</label>', true);
+    } else if(state.modSel===1){
+      html+=rollout('对称参数','<div class="prow"><span class="pl">镜像轴</span><div class="pv"><select class="select" data-param="sym_axis"><option>X</option><option>Y</option><option>Z</option></select></div></div><div class="prow"><span class="pl">偏移</span><div class="pv">'+spinnerHTML('sym_off','0.0')+'</div></div><label class="chk"><input type="checkbox" data-param="sym_flip"> 翻转</label><br><label class="chk"><input type="checkbox" data-param="sym_weld" checked> 焊接缝</label>', true);
+    } else if(state.modSel===2){
+      html+=rollout('选择','<div class="createtype">'+['顶点','边','边界','多边形','元素'].map(function(s,i){return '<button type="button" class="'+(i===3?'on':'')+'" data-sub="'+s+'">'+s+'</button>'}).join('')+'</div>', true);
+      html+=rollout('编辑多边形','<div class="createbtns">'+['挤出','倒角','轮廓','插入','桥接','连接'].map(function(n){return '<button type="button" data-poly="'+n+'">'+n+'</button>'}).join('')+'</div>', true);
+    } else {
+      html+=rollout('参数','<div class="prow"><span class="pl">长度</span><div class="pv">'+spinnerHTML('box_l','50.0')+'</div></div><div class="prow"><span class="pl">宽度</span><div class="pv">'+spinnerHTML('box_w','50.0')+'</div></div><div class="prow"><span class="pl">高度</span><div class="pv">'+spinnerHTML('box_h','50.0')+'</div></div><div class="prow"><span class="pl">长度分段</span><div class="pv">'+spinnerHTML('box_ls','1')+'</div></div><label class="chk"><input type="checkbox" data-param="box_gen"> 生成贴图坐标</label>', true);
+    }
+  } else if(tab==='hierarchy'){
+    html+=rollout('轴','<button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-act="pivot">仅影响轴</button><button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-act="pivot">仅影响对象</button><button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-act="pivot">影响层次</button>', true);
+    html+=rollout('轴心点','<button type="button" class="btn" style="width:100%;height:22px;margin:2px 0;font-size:11px" data-act="pivot">居中到对象</button><button type="button" class="btn" style="width:100%;height:22px;margin:2px 0;font-size:11px" data-act="pivot">对齐到世界</button>', true);
+  } else if(tab==='motion'){
+    html+=rollout('指定控制','<div class="prow"><span class="pl">位置</span><div class="pv"><select class="select"><option>位置 XYZ</option><option>路径约束</option></select></div></div><div class="prow"><span class="pl">旋转</span><div class="pv"><select class="select"><option>欧拉 XYZ</option><option>注视约束</option></select></div></div>', true);
+    html+=rollout('PRS 参数','<div class="prow"><span class="pl">X</span><div class="pv">'+spinnerHTML('mot_x','0.0')+'</div></div><div class="prow"><span class="pl">Y</span><div class="pv">'+spinnerHTML('mot_y','0.0')+'</div></div><div class="prow"><span class="pl">Z</span><div class="pv">'+spinnerHTML('mot_z','0.0')+'</div></div>', true);
+  } else if(tab==='display'){
+    html+=rollout('显示属性','<label class="chk"><input type="checkbox" data-param="disp_bone"> 显示为方框</label><br><label class="chk"><input type="checkbox" data-param="disp_back"> 背面消隐</label><br><label class="chk"><input type="checkbox" data-param="disp_edge" checked> 边仅面向</label>', true);
+    html+=rollout('隐藏','<button type="button" class="btn" style="width:100%;height:22px;margin:2px 0;font-size:11px" data-act="hide">隐藏选定对象</button><button type="button" class="btn" style="width:100%;height:22px;margin:2px 0;font-size:11px" data-act="hide">全部取消隐藏</button>', true);
+  } else {
+    html+=rollout('实用程序','<button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-util="资源管理器">资源管理器</button><button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-util="测量">测量</button><button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-util="重置 XForm">重置 XForm</button><button type="button" class="btn" style="width:100%;height:24px;margin:2px 0" data-util="颜色剪贴板">颜色剪贴板</button>', true);
+  }
+  b.innerHTML=html; bindCp();
+}
+function bindCp(){
+  $$('.rollout > .rh', $('#cpBody')).forEach(function(rh){rh.onclick=function(){rh.parentNode.classList.toggle('closed')}});
+  $$('[data-cat]', $('#cpBody')).forEach(function(btn){btn.onclick=function(){state.createCat=btn.dataset.cat;renderCp();status('创建类别：'+state.createCat)}});
+  $$('[data-create]', $('#cpBody')).forEach(function(btn){
+    btn.onclick=function(){toast('创建：'+btn.dataset.create,{msg:'在视口拖拽以放置（演示）',type:'ok'});status('创建 '+btn.dataset.create+'：在视口中拖出','创建');$$('[data-create]',$('#cpBody')).forEach(function(x){x.style.outline=''});btn.style.outline='1px solid var(--accent)'};
+  });
+  $$('[data-mi]', $('#cpBody')).forEach(function(it){it.onclick=function(){state.modSel=+it.dataset.mi;renderCp();status('修改器堆栈：'+it.textContent.trim())}});
+  var addMod=$('#btnAddMod');
+  if(addMod) addMod.onclick=function(){
+    showMenu([{l:'涡轮平滑'},{l:'对称'},{l:'挤出'},{l:'弯曲'},{l:'扭曲'},{l:'噪波'},{l:'FFD 4×4×4'}], addMod.getBoundingClientRect().left, addMod.getBoundingClientRect().bottom+2);
+    setTimeout(function(){$$('.menu .mi').forEach(function(mi){mi.onclick=function(e){e.stopPropagation();closeMenus();toast('已添加修改器：'+mi.querySelector('.lb').textContent,{type:'ok'})}})},0);
+  };
+  var delMod=$('#btnDelMod'); if(delMod) delMod.onclick=function(){toast('删除修改器',{msg:'（演示）',type:'warn'})};
+  $$('[data-sub]', $('#cpBody')).forEach(function(btn){btn.onclick=function(){$$('[data-sub]',$('#cpBody')).forEach(function(x){x.classList.remove('on')});btn.classList.add('on');status('子对象：'+btn.dataset.sub,'子对象');toast('子对象层级：'+btn.dataset.sub)}});
+  $$('[data-poly]', $('#cpBody')).forEach(function(btn){btn.onclick=function(){toast(btn.dataset.poly,{msg:'编辑多边形'});status(btn.dataset.poly)}});
+  $$('[data-util]', $('#cpBody')).forEach(function(btn){btn.onclick=function(){toast(btn.dataset.util);status(btn.dataset.util)}});
+  $$('[data-act]', $('#cpBody')).forEach(function(btn){btn.onclick=function(){toast(btn.textContent.trim());status(btn.textContent.trim())}});
+  $$('.spinner', $('#cpBody')).forEach(function(sp){
+    var inp=sp.querySelector('input');
+    sp.querySelectorAll('button').forEach(function(ab){
+      ab.onclick=function(){var v=parseFloat(inp.value)||0;var step=(inp.value.indexOf('.')>=0)?0.1:1;v+=parseFloat(ab.dataset.d)*step;inp.value=(step<1)?v.toFixed(1):String(Math.round(v));status(sp.dataset.spin+' = '+inp.value,'参数');$('#sbCoords').textContent='参数 '+sp.dataset.spin+': '+inp.value};
+    });
+    inp.onchange=function(){status(sp.dataset.spin+' = '+inp.value,'参数')};
+  });
+  $$('[data-param]', $('#cpBody')).forEach(function(el){el.addEventListener('change', function(){var v=el.type==='checkbox'?(el.checked?'开':'关'):el.value;status(el.dataset.param+' = '+v,'参数');toast('参数已更新',{msg:el.dataset.param+' → '+v})})});
+  var mn=$('#modName'); if(mn) mn.onchange=function(){state.selObj=mn.value;status('重命名 → '+mn.value);toast('已重命名',{type:'ok'})};
+  var cc=$('[data-cmd-create]', $('#cpBody')); if(cc) cc.onclick=function(){toast('已从键盘输入创建',{type:'ok'})};
+}
+$$('#cpTabs button').forEach(function(btn){
+  btn.onclick=function(){$$('#cpTabs button').forEach(function(x){x.classList.remove('on')});btn.classList.add('on');state.cpTab=btn.dataset.cp;renderCp();status('命令面板：'+(btn.title||btn.textContent))};
+});
+
+function openPrefs(tab){
+  closeMenus();
+  var scrim=document.createElement('div');scrim.className='scrim prefs-scrim';
+  var tabs=['常规','视口','UI'];
+  var cur=tab&&tabs.indexOf(tab)>=0?tab:'常规';
+  scrim.innerHTML='<div class="dlg prefs-dlg" role="dialog"><div class="dlg-h"><span>首选项设置</span><span class="sp"></span><button type="button" data-x>×</button></div><div class="dlg-b">'+
+    '<div class="ptabs" id="prefTabs">'+tabs.map(function(t){return '<button type="button" class="'+(t===cur?'on':'')+'" data-pt="'+t+'">'+t+'</button>'}).join('')+'</div>'+
+    '<div class="psec'+(cur==='常规'?' on':'')+'" data-ps="常规"><h4>场景选择</h4><label class="chk"><input type="checkbox" checked> 自动窗口/交叉切换</label><br><label class="chk"><input type="checkbox"> 单击拖动选择</label><h4 style="margin-top:12px">微调器</h4><div class="prow"><span class="pl">精度</span><div class="pv">'+spinnerHTML('pref_prec','3')+'</div></div><div class="prow"><span class="pl">吸附值</span><div class="pv">'+spinnerHTML('pref_snap','1.0')+'</div></div><h4 style="margin-top:12px">命令面板</h4><div class="prow"><span class="pl">卷展栏宽度</span><div class="pv">'+spinnerHTML('pref_roll','32')+'</div></div></div>'+
+    '<div class="psec'+(cur==='视口'?' on':'')+'" data-ps="视口"><h4>显示</h4><label class="chk"><input type="checkbox" checked> 显示视口提示</label><br><label class="chk"><input type="checkbox" checked> Show Safe Frames</label><br><label class="chk"><input type="checkbox"> 默认灯光</label><h4 style="margin-top:12px">驱动</h4><div class="prow vert"><span class="pl">视口驱动</span><div class="pv"><select class="select"><option>Nitrous</option><option>Legacy Direct3D</option></select></div></div><div class="prow vert"><span class="pl">抗锯齿</span><div class="pv"><select class="select"><option>4x</option><option>2x</option><option>关</option></select></div></div></div>'+
+    '<div class="psec'+(cur==='UI'?' on':'')+'" data-ps="UI"><h4>UI 显示</h4><label class="chk"><input type="checkbox"> 大工具栏按钮</label><br><label class="chk"><input type="checkbox" checked> 竖向工具栏横排文字</label><br><label class="chk"><input type="checkbox" checked> Caddy 控件</label><h4 style="margin-top:12px">工具栏位置</h4><div class="prow vert"><span class="pl">位置</span><div class="pv"><div class="seg-vert" id="prefTbPosSeg"><button type="button" data-tp="top">上侧（水平）</button><button type="button" data-tp="side">侧面（垂直）</button></div><select class="select hidden" id="prefTbPos"><option value="top">上侧（水平）</option><option value="side">侧面（垂直）</option></select></div></div><p style="font-size:11px;color:var(--text-3);margin:4px 0 0">与方案 A/B/C 独立；写入 localStorage <code>hymax.toolbarPos</code>。</p><h4 style="margin-top:12px">主题</h4><div class="prow vert"><span class="pl">颜色主题</span><div class="pv"><select class="select" id="prefTheme"><option value="dark">深色</option><option value="light">浅色</option></select></div></div><div class="prow vert"><span class="pl">默认方案</span><div class="pv"><select class="select" id="prefScheme"><option value="A">A 经典</option><option value="B">B Ribbon</option><option value="C">C 工程简化</option></select></div></div></div>'+
+    '</div><div class="dlg-f"><button type="button" class="btn" data-x>取消</button><button type="button" class="btn pri" data-ok>确定</button></div></div>';
+  document.body.appendChild(scrim);
+  $('#prefTheme',scrim).value=state.theme; $('#prefScheme',scrim).value=state.scheme; $('#prefTbPos',scrim).value=state.tbPos;
+  function syncPrefTbSeg(){
+    var tp=$('#prefTbPos',scrim).value;
+    $$('#prefTbPosSeg button',scrim).forEach(function(b){b.classList.toggle('on', b.getAttribute('data-tp')===tp)});
+  }
+  syncPrefTbSeg();
+  $$('#prefTbPosSeg button',scrim).forEach(function(b){
+    b.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      $('#prefTbPos',scrim).value=b.getAttribute('data-tp');
+      syncPrefTbSeg();
+    });
+  });
+  function close(){scrim.remove()}
+  $$('[data-x]',scrim).forEach(function(b){b.onclick=close});
+  scrim.addEventListener('click', function(e){if(e.target===scrim)close()});
+  function showPrefTab(name){
+    $$('#prefTabs button',scrim).forEach(function(x){x.classList.toggle('on', x.getAttribute('data-pt')===name)});
+    $$('.psec',scrim).forEach(function(s){
+      var on = s.getAttribute('data-ps')===name;
+      s.classList.toggle('on', on);
+      s.style.display = on ? 'block' : 'none';
+    });
+  }
+  showPrefTab(cur);
+  $$('#prefTabs button',scrim).forEach(function(b){
+    b.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      showPrefTab(b.getAttribute('data-pt'));
+    });
+  });
+  $('[data-ok]',scrim).onclick=function(){
+    var th=$('#prefTheme',scrim).value, sc=$('#prefScheme',scrim).value, tp=$('#prefTbPos',scrim).value;
+    if(th!==state.theme){state.theme=th;applyTheme();refreshVps()}
+    if(sc!==state.scheme) applyScheme(sc,false);
+    if(tp!==state.tbPos) applyTbPos(tp,false);
+    toast('首选项已应用',{type:'ok'}); close();
+  };
+  $$('.spinner',scrim).forEach(function(sp){var inp=sp.querySelector('input');sp.querySelectorAll('button').forEach(function(ab){ab.onclick=function(){var v=parseFloat(inp.value)||0;var step=(String(inp.value).indexOf('.')>=0)?0.1:1;v+=parseFloat(ab.dataset.d)*step;inp.value=step<1?v.toFixed(1):String(Math.round(v))}})});
+}
+var COMMANDS=[
+  {id:'box',l:'创建长方体',cat:'创建',run:function(){state.cpTab='create';$$('#cpTabs button').forEach(function(b){b.classList.toggle('on',b.dataset.cp==='create')});renderCp();toast('创建长方体')}},
+  {id:'move',l:'选择并移动',cat:'工具',k:'W',run:function(){setTool('move')}},
+  {id:'rotate',l:'选择并旋转',cat:'工具',k:'E',run:function(){setTool('rotate')}},
+  {id:'scale',l:'选择并缩放',cat:'工具',k:'R',run:function(){setTool('scale')}},
+  {id:'select',l:'选择对象',cat:'工具',k:'Q',run:function(){setTool('select')}},
+  {id:'render',l:'渲染产品',cat:'渲染',k:'F9',run:function(){toast('渲染',{type:'ok'})}},
+  {id:'renderset',l:'渲染设置',cat:'渲染',k:'F10',run:function(){openPrefs('视口')}},
+  {id:'matedit',l:'材质编辑器',cat:'渲染',k:'M',run:function(){toast('材质编辑器')}},
+  {id:'prefs',l:'首选项',cat:'自定义',run:function(){openPrefs()}},
+  {id:'turbo',l:'添加涡轮平滑',cat:'修改器',run:function(){state.cpTab='modify';state.modSel=0;$$('#cpTabs button').forEach(function(b){b.classList.toggle('on',b.dataset.cp==='modify')});renderCp();toast('涡轮平滑',{type:'ok'})}},
+  {id:'epoly',l:'转换为可编辑多边形',cat:'修改器',run:function(){toast('已转换',{type:'ok'})}},
+  {id:'isolate',l:'孤立当前选择',cat:'显示',run:function(){toast('已孤立',{msg:'其余对象隐藏'})}},
+  {id:'schemeA',l:'切换方案 A · 经典',cat:'UI',run:function(){applyScheme('A',true)}},
+  {id:'schemeB',l:'切换方案 B · Ribbon',cat:'UI',run:function(){applyScheme('B',true)}},
+  {id:'schemeC',l:'切换方案 C · 工程简化',cat:'UI',run:function(){applyScheme('C',true)}},
+  {id:'tbTop',l:'工具栏位置 · 上侧',cat:'UI',run:function(){applyTbPos('top',true)}},
+  {id:'tbSide',l:'工具栏位置 · 侧面',cat:'UI',run:function(){applyTbPos('side',true)}},
+  {id:'tbToggle',l:'切换工具栏上侧/侧面',cat:'UI',run:function(){applyTbPos(state.tbPos==='top'?'side':'top',true)}},
+  {id:'theme',l:'切换深色/浅色主题',cat:'UI',run:function(){$('#btnTheme').click()}},
+  {id:'info',l:'方案说明',cat:'帮助',k:'F1',run:function(){toggleInfo(true)}}
+];
+var palEl=null;
+function openPalette(){
+  if(palEl){closePalette();return}
+  closeMenus();
+  var scrim=document.createElement('div');scrim.className='palette-scrim';
+  var pal=document.createElement('div');pal.className='palette';
+  pal.innerHTML='<input placeholder="输入命令名称、别名或快捷键…" id="palInput"><div class="pl-list" id="palList"></div><div class="pl-hint">↑↓ 选择 · Enter 执行 · Esc 关闭 · 共 '+COMMANDS.length+' 条 · 也可按 X</div>';
+  document.body.appendChild(scrim); document.body.appendChild(pal);
+  palEl={scrim:scrim,pal:pal};
+  var idx=0, filtered=COMMANDS.slice();
+  function render(){
+    var q=$('#palInput').value.trim().toLowerCase();
+    filtered=COMMANDS.filter(function(c){return !q || c.l.toLowerCase().indexOf(q)>=0 || (c.k&&c.k.toLowerCase().indexOf(q)>=0) || c.cat.indexOf(q)>=0 || c.id.indexOf(q)>=0});
+    if(idx>=filtered.length) idx=Math.max(0,filtered.length-1);
+    $('#palList').innerHTML=filtered.map(function(c,i){return '<div class="pl-item'+(i===idx?' on':'')+'" data-i="'+i+'"><span>'+c.l+'</span>'+(c.k?'<kbd>'+c.k+'</kbd>':'')+'<span class="cat">'+c.cat+'</span></div>'}).join('') || '<div class="pl-item" style="color:var(--text-3)">无匹配</div>';
+    $$('#palList .pl-item[data-i]').forEach(function(it){it.onmouseenter=function(){idx=+it.dataset.i;$$('#palList .pl-item').forEach(function(x,j){x.classList.toggle('on',j===idx)})};it.onclick=function(){exec(filtered[+it.dataset.i])}});
+  }
+  function exec(c){if(!c)return;closePalette();c.run()}
+  function closePalette(){if(!palEl)return;palEl.scrim.remove();palEl.pal.remove();palEl=null}
+  $('#palInput').oninput=function(){idx=0;render()};
+  $('#palInput').onkeydown=function(e){
+    if(e.key==='ArrowDown'){e.preventDefault();idx=Math.min(idx+1,filtered.length-1);render()}
+    else if(e.key==='ArrowUp'){e.preventDefault();idx=Math.max(idx-1,0);render()}
+    else if(e.key==='Enter'){e.preventDefault();exec(filtered[idx])}
+    else if(e.key==='Escape'){e.preventDefault();closePalette()}
+  };
+  scrim.onclick=closePalette; render(); setTimeout(function(){$('#palInput').focus()},10);
+  palEl.close=closePalette;
+}
+$('#btnPalette').onclick=openPalette; $('#searchChip').onclick=openPalette; $('#btnPrefs').onclick=function(){openPrefs()};
+
+function getPicks(){return LS.get('hytpl.picks',{})||{}}
+function setPick(id){var p=getPicks(); if(id==null) delete p.max3ds; else p.max3ds=id; LS.set('hytpl.picks', p); updPickBtns()}
+function updPickBtns(){
+  var p=getPicks(); var cur=p.max3ds;
+  var bb=$('#btnPickBanner');
+  if(bb) bb.textContent = (cur===state.scheme) ? ('★ 首选 '+cur+'（点击取消）') : '设当前为首选';
+  var bs=$('#btnSetPick');
+  if(bs) bs.textContent = (cur===state.scheme) ? '取消首选 '+state.scheme : '设方案 '+state.scheme+' 为首选';
+}
+function renderInfo(){
+  var p=getPicks();
+  var html='<p style="color:var(--text-2);margin:0 0 8px">在顶部切换 A/B/C 体验体验再点「设为首选」。首选写入 <code>localStorage.hytpl.picks</code>，键 <code>max3ds</code>。</p>';
+  ['A','B','C'].forEach(function(id){
+    var inf=SCHEME_INFO[id]; var isPick=p.max3ds===id; var isCur=state.scheme===id;
+    html+='<div class="card'+(isCur?' on':'')+'"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>'+inf.title+'</b>'+(isPick?'<span style="background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:3px">★ 首选</span>':'')+(isCur?'<span style="font-size:10px;color:var(--accent)">当前预览</span>':'')+'</div>';
+    html+='<div class="pros">优点</div><ul>'+inf.pros.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>';
+    html+='<div class="cons">缺点</div><ul>'+inf.cons.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>';
+    html+='<button type="button" class="btn'+(isCur?' pri':'')+'" style="height:24px;font-size:11px;margin-top:4px" data-goto="'+id+'">'+(isCur?'（当前）':'切换预览 ')+id+'</button> ';
+    html+='<button type="button" class="btn" style="height:24px;font-size:11px;margin-top:4px" data-pick="'+id+'">'+(isPick?'取消首选':'设为首选')+'</button></div>';
+  });
+  html+='<h3>工具栏位置（本版硬需求）</h3><p>默认 <b>上侧</b>。可随时切 <b>侧面</b>。入口：顶栏「工具栏」段、工具栏内「⇄」、视图菜单、状态栏「工具栏·」、首选项 UI、命令搜索。写入 <code>hymax.toolbarPos</code> = <code>top</code>|<code>side</code>。与方案 A/B/C 独立。</p>';
+html+='<h3>试一试</h3><ul><li>切换方案 A/B/C，观察 chrome 重排</li><li><b>切换工具栏上侧 ↔ 侧面</b>（各方案均可用）</li><li>右键视口：A/B 四元菜单；C 线性菜单（Shift+右键仍可出四元）</li><li>命令面板六页签 + 卷展栏折叠 + 微调器</li><li>修改页：修改器堆栈与参数</li><li>视口标签 [+] / 视角 / 着色</li><li>X 或 Ctrl+Shift+P 命令搜索</li></ul>';
+html+='<h3>落地说明</h3><p>已批 v2 · 落地至 <code>13-软件模板/04-3dsMax侧</code>。工具栏默认上侧；可用顶栏切换。下一步：对照 12-工具图标换图标，交整理组汇总。</p>';
+  $('#infoBody').innerHTML=html;
+  $$('[data-goto]',$('#infoBody')).forEach(function(b){b.onclick=function(){applyScheme(b.dataset.goto,true)}});
+  $$('[data-pick]',$('#infoBody')).forEach(function(b){
+    b.onclick=function(){var id=b.dataset.pick; var p=getPicks();
+      if(p.max3ds===id){setPick(null);toast('已取消首选',{type:'ok'})}
+      else {setPick(id);toast('已设首选方案 '+id,{type:'ok',msg:'hytpl.picks.max3ds = \"'+id+'\"'})}
+      renderInfo()};
+  });
+}
+function toggleInfo(forceOpen){
+  var d=$('#infoDrawer');
+  var open=forceOpen===true ? true : forceOpen===false ? false : !d.classList.contains('open');
+  d.classList.toggle('open', open);
+  if(open){renderInfo();updPickBtns()}
+}
+$('#btnInfo').onclick=function(){toggleInfo()};
+$('#infoClose').onclick=function(){toggleInfo(false)};
+$('#btnSetPick').onclick=function(){
+  var p=getPicks();
+  if(p.max3ds===state.scheme){setPick(null);toast('已取消首选',{type:'ok'})}
+  else {setPick(state.scheme);toast('已设首选方案 '+state.scheme,{type:'ok',msg:'hytpl.picks.max3ds = \"'+state.scheme+'\"'})}
+  renderInfo();
+};
+$('#btnClearPick').onclick=function(){setPick(null);toast('已清除 max3ds 首选');renderInfo()};
+var _bpb=$('#btnPickBanner');
+if(_bpb) _bpb.onclick=function(){
+  var p=getPicks();
+  if(p.max3ds===state.scheme){setPick(null);toast('已取消首选')}
+  else {setPick(state.scheme);toast('已设首选 '+state.scheme,{type:'ok'})}
+};
+$('#autoKey').onclick=function(){
+  state.autoKey=!state.autoKey;
+  $('#autoKey').classList.toggle('on', state.autoKey);
+  $$('.vp.active').forEach(function(vp){vp.classList.toggle('anim', state.autoKey)});
+  toast(state.autoKey?'自动关键：开（红色模式）':'自动关键：关',{type:state.autoKey?'warn':'ok'});
+  status(state.autoKey?'动画模式':'就绪', state.autoKey?'Auto Key':'');
+};
+$('#timeSlider').onclick=function(e){
+  var r=this.getBoundingClientRect();
+  var p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  this.querySelector('i').style.width=(p*100)+'%';
+  status('帧 '+Math.round(p*100)+'/100','时间');
+};
+document.addEventListener('keydown', function(e){
+  var tag=(e.target.tagName||'').toLowerCase();
+  var inText=tag==='input'||tag==='textarea'||tag==='select'||e.target.isContentEditable;
+  if(e.key==='Escape'){
+    closeMenus(); $$('.quad').forEach(function(q){q.remove()});
+    if(palEl) palEl.close(); toggleInfo(false); $$('.scrim').forEach(function(s){s.remove()}); return;
+  }
+  if(inText) return;
+  if(e.key==='F1'){e.preventDefault();toggleInfo()}
+  if(e.key==='x'||e.key==='X'||(e.ctrlKey&&e.shiftKey&&(e.key==='P'||e.key==='p'))){e.preventDefault();openPalette()}
+  if((e.key==='w'||e.key==='W')&&!e.ctrlKey) setTool('move');
+  if((e.key==='e'||e.key==='E')&&!e.ctrlKey) setTool('rotate');
+  if((e.key==='r'||e.key==='R')&&!e.ctrlKey) setTool('scale');
+  if((e.key==='q'||e.key==='Q')&&!e.ctrlKey) setTool('select');
+});
+document.addEventListener('mousedown', function(e){
+  if(!e.target.closest('.menu') && !e.target.closest('.mb')) closeMenus();
+});
+(function(){
+  var dragging=null;
+  $('#sashLeft').addEventListener('mousedown', function(e){dragging={side:'left', x:e.clientX, w:$('#dockLeft').offsetWidth};e.preventDefault()});
+  $('#sashRight').addEventListener('mousedown', function(e){dragging={side:'right', x:e.clientX, w:$('#cmdpanel').offsetWidth};e.preventDefault()});
+  window.addEventListener('mousemove', function(e){
+    if(!dragging) return;
+    if(dragging.side==='left'){var nw=Math.max(120, Math.min(400, dragging.w + (e.clientX-dragging.x))); $('#dockLeft').style.width=nw+'px'}
+    else {var nw=Math.max(140, Math.min(360, dragging.w - (e.clientX-dragging.x))); $('#cmdpanel').style.width=nw+'px'}
+  });
+  window.addEventListener('mouseup', function(){dragging=null});
+})();
+$('#btnCloseLeft').onclick=function(){state.showLeft=false;$('#dockLeft').style.display='none';$('#sashLeft').style.display='none';toast('已隐藏场景资源管理器',{msg:'工具栏空白处右键可再打开'})};
+applyTheme(); applyScheme(state.scheme, false); applyTbPos(state.tbPos, false); initTbVsel(); renderCp(); refreshVps(); updPickBtns();
+status('就绪 · 方案 '+state.scheme+' · 工具栏'+(state.tbPos==='top'?'上侧':'侧面'),'就绪');
+setTimeout(function(){toast('3ds Max 侧 UI 模板',{msg:'A/B/C 与工具栏上侧/侧面可切换（默认上侧）。顶栏已压缩。',ms:4500})},400);
+})();
+</script>
+</body>
+</html>
