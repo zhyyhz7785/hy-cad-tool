@@ -23,3 +23,4 @@ using System.Windows.Markup;
 [assembly: XmlnsPrefix("https://hycad.io/blender-ui", "bui")]
 [assembly: XmlnsDefinition("https://hycad.io/blender-ui", "HyCAD.BlenderUI.Controls")]
 [assembly: XmlnsDefinition("https://hycad.io/blender-ui", "HyCAD.BlenderUI.Controls.Primitives")]
+[assembly: XmlnsDefinition("https://hycad.io/blender-ui", "HyCAD.BlenderUI.Preferences")]

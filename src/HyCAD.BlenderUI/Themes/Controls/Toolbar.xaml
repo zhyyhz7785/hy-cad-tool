@@ -13,38 +13,65 @@
 
     <!--
       Toolbar 默认样式（自定义 TargetType 无 x:Key 安全）：
-        左侧竖直图标按钮列。Width=Metric_ToolbarWidth，背景 Brush_RegionBack。
-        ItemsPanel = 垂直 StackPanel；右侧 1px 细线分隔正文区。
-        子项典型为 <Button Style="BlenderToolbarIconButton"> 或自定义图标按钮。
+        Position=Top（默认）：视口上方横向图标条，高=Metric_ToolbarWidth，底部分隔线。
+        Position=Side：左侧纵向图标条（经典 T），宽=Metric_ToolbarWidth，右侧分隔线。
+        子项典型为 <ToggleButton Style="BlenderToolbarIconButton"> 或自定义图标按钮。
     -->
     <Style TargetType="{x:Type ctrl:Toolbar}">
         <Setter Property="Background" Value="{DynamicResource Brush_RegionBack}"/>
-        <Setter Property="Width"      Value="{DynamicResource Metric_ToolbarWidth}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderDark}"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Height" Value="{DynamicResource Metric_ToolbarWidth}"/>
         <Setter Property="ItemsPanel">
             <Setter.Value>
                 <ItemsPanelTemplate>
-                    <StackPanel Orientation="Vertical" IsItemsHost="True"/>
+                    <StackPanel Orientation="Horizontal" IsItemsHost="True"/>
                 </ItemsPanelTemplate>
             </Setter.Value>
         </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ctrl:Toolbar}">
-                    <Border Background="{TemplateBinding Background}"
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="0,0,1,0"
+                            BorderThickness="0,0,0,1"
                             SnapsToDevicePixels="True">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      Padding="2,4">
+                        <ScrollViewer x:Name="Sv"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      Padding="4,2">
                             <ItemsPresenter/>
                         </ScrollViewer>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Position" Value="Side">
+                            <Setter TargetName="Bd" Property="BorderThickness" Value="0,0,1,0"/>
+                            <Setter TargetName="Sv" Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                            <Setter TargetName="Sv" Property="VerticalScrollBarVisibility" Value="Auto"/>
+                            <Setter TargetName="Sv" Property="Padding" Value="2,4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="Position" Value="Side">
+                <Setter Property="Width" Value="{DynamicResource Metric_ToolbarWidth}"/>
+                <Setter Property="Height" Value="Auto"/>
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                <Setter Property="ItemsPanel">
+                    <Setter.Value>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical" IsItemsHost="True"/>
+                        </ItemsPanelTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!--
@@ -81,6 +108,94 @@
                             <Setter Property="Foreground" Value="{DynamicResource Brush_TextOnAccent}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type ctrl:ToolbarHost}">
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:ToolbarHost}">
+                    <DockPanel LastChildFill="True">
+                        <ContentPresenter x:Name="PART_ToolbarSlot"
+                                          DockPanel.Dock="Top"
+                                          Content="{TemplateBinding Toolbar}"/>
+                        <ContentPresenter Content="{TemplateBinding Content}"/>
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Toolbar" Value="{x:Null}">
+                            <Setter TargetName="PART_ToolbarSlot" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="BlenderToolbarPosToggle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="MinWidth" Value="44"/>
+        <Setter Property="Height" Value="20"/>
+        <Setter Property="Margin" Value="0,0,2,0"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Font_Main}"/>
+        <Setter Property="FontSize" Value="{DynamicResource Metric_FontCaption}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush_TextSecondary}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush_BorderMid}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Metric_CornerRadiusSmall}"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_ItemHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush_AccentBlue}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush_AccentBlue}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Brush_TextOnAccent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type ctrl:ToolbarPositionSwitch}">
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ctrl:ToolbarPositionSwitch}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center"
+                                   Margin="0,0,6,0"
+                                   FontSize="{DynamicResource Metric_FontCaption}"
+                                   Foreground="{DynamicResource Brush_TextSecondary}"
+                                   Text="工具栏"/>
+                        <ToggleButton x:Name="PART_Top"
+                                      Content="上侧"
+                                      ToolTip="上侧：视口上方横向图标条（HyMd）"
+                                      Style="{StaticResource BlenderToolbarPosToggle}"/>
+                        <ToggleButton x:Name="PART_Side"
+                                      Content="侧面"
+                                      ToolTip="侧面：视口左侧纵向图标条（经典 Blender T）"
+                                      Style="{StaticResource BlenderToolbarPosToggle}"/>
+                    </StackPanel>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

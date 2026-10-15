@@ -107,7 +107,7 @@
                             ShowIconBar="False">
             <DockPanel LastChildFill="True">
                 <!-- 顶部横向工具条（PVI 增删 / 调序） -->
-                <bui:Toolbar DockPanel.Dock="Top">
+                <bui:Toolbar DockPanel.Dock="Top" Position="Top">
                     <Button Content="＋ PVI" ToolTip="在末段中点追加一个 PVI"
                             Command="{Binding AddPviCommand}"
                             Style="{StaticResource BlenderButtonFlat}"

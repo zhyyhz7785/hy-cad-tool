@@ -20,10 +20,9 @@
       FullDesignerSample：完整 Editor 体系示范。
         UseCustomChrome=False → 系统标题栏（原生最小化/最大化/关闭）；菜单在内容区 EditorHeader。
         主体竖向：[EditorHeader] [中部业务 *] [StatusBar]
-        中部业务横向：[Toolbar 40] [ViewportArea *] [V-splitter 4] [NPanelArea 280]
-        ViewportArea 竖向：[Editor mini header 24] [Viewport Canvas *] [H-splitter 4] [Inline Properties 100]
-        NPanelArea     竖向：[Editor mini header 24] [Tabs *] [H-splitter 4] [Detail 200]
-      共 3 个 BlenderSplitter。
+        中部业务横向：[ViewportArea *] [V-splitter 4] [NPanelArea 280]
+        ViewportArea 竖向：[Editor mini header 24] [ToolbarHost：上侧横向条 / 侧面左 T] [Viewport Canvas *] [H-splitter 4] [Inline Properties]
+        工具栏位置默认上侧，Header 内「上侧 / 侧面」可运行时切换并持久化。
     -->
 
     <bui:BlenderWindow.Resources>
@@ -68,6 +67,7 @@
             </bui:EditorHeader.LeftContent>
             <bui:EditorHeader.RightContent>
                 <StackPanel Orientation="Horizontal">
+                    <bui:ToolbarPositionSwitch Margin="0,0,8,0"/>
                     <ComboBox Width="120" Margin="0,0,4,0" SelectedIndex="0" Style="{StaticResource BlenderComboBox}">
                         <ComboBoxItem Content="Layout"/>
                         <ComboBoxItem Content="Modeling"/>
@@ -77,52 +77,19 @@
             </bui:EditorHeader.RightContent>
         </bui:EditorHeader>
 
-        <!-- 中部业务 -->
+        <!-- 中部业务：视口（含可切换 T） | N 侧栏。工具栏不覆盖 Header / N。 -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="4"/>
                 <ColumnDefinition Width="280" MinWidth="220"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 左 Toolbar -->
-            <bui:Toolbar Grid.Column="0">
-                <ToggleButton IsChecked="True" Style="{StaticResource BlenderToolbarIconButton}" ToolTip="选择">
-                    <Path Width="16" Height="16"
-                          Data="M 2,1 L 2,11 L 5,8 L 7,12 L 9,11 L 7,7 L 11,7 Z"
-                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="移动">
-                    <Path Width="16" Height="16"
-                          Data="M 8,1 L 6,3 L 7,3 L 7,7 L 3,7 L 3,6 L 1,8 L 3,10 L 3,9 L 7,9 L 7,13 L 6,13 L 8,15 L 10,13 L 9,13 L 9,9 L 13,9 L 13,10 L 15,8 L 13,6 L 13,7 L 9,7 L 9,3 L 10,3 Z"
-                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="旋转">
-                    <Path Width="16" Height="16"
-                          Data="M 8,2 A 6,6 0 1 1 2,8 L 0,8 L 3,11 L 6,8 L 4,8 A 4,4 0 1 0 8,4 Z"
-                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="缩放">
-                    <Path Width="16" Height="16"
-                          Data="M 1,1 L 7,1 L 7,3 L 3,3 L 3,7 L 1,7 Z M 9,9 L 13,9 L 13,13 L 9,13 Z"
-                          Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="标注">
-                    <Path Width="16" Height="16"
-                          Data="M 2,12 L 6,8 L 10,12 M 6,8 L 6,2"
-                          Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="2"
-                          Fill="Transparent" Stretch="Uniform"/>
-                </ToggleButton>
-            </bui:Toolbar>
-
             <!-- ViewportArea -->
-            <Grid Grid.Column="1">
+            <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="4"/>
-                    <RowDefinition Height="120" MinHeight="80"/>
                 </Grid.RowDefinitions>
 
                 <bui:EditorHeader Grid.Row="0">
@@ -150,52 +117,93 @@
                     </bui:EditorHeader.RightContent>
                 </bui:EditorHeader>
 
-                <Border Grid.Row="1"
-                        Background="{DynamicResource Brush_RegionBack}"
-                        SnapsToDevicePixels="True">
-                    <Canvas>
-                        <Path Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"
-                              Data="M 100,200 L 300,200 L 300,400 L 100,400 Z M 100,200 L 200,100 L 400,100 L 300,200 M 300,400 L 400,300 L 400,100 M 300,200 L 400,100"
-                              Fill="Transparent"/>
-                        <TextBlock Canvas.Left="20" Canvas.Top="20"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   Text="Viewport (3D 视区占位)"/>
-                    </Canvas>
-                </Border>
+                <bui:ToolbarHost Grid.Row="1">
+                    <bui:ToolbarHost.Toolbar>
+                        <bui:Toolbar>
+                            <ToggleButton IsChecked="True" Style="{StaticResource BlenderToolbarIconButton}" ToolTip="选择">
+                                <Path Width="16" Height="16"
+                                      Data="M 2,1 L 2,11 L 5,8 L 7,12 L 9,11 L 7,7 L 11,7 Z"
+                                      Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="移动">
+                                <Path Width="16" Height="16"
+                                      Data="M 8,1 L 6,3 L 7,3 L 7,7 L 3,7 L 3,6 L 1,8 L 3,10 L 3,9 L 7,9 L 7,13 L 6,13 L 8,15 L 10,13 L 9,13 L 9,9 L 13,9 L 13,10 L 15,8 L 13,6 L 13,7 L 9,7 L 9,3 L 10,3 Z"
+                                      Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="旋转">
+                                <Path Width="16" Height="16"
+                                      Data="M 8,2 A 6,6 0 1 1 2,8 L 0,8 L 3,11 L 6,8 L 4,8 A 4,4 0 1 0 8,4 Z"
+                                      Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="缩放">
+                                <Path Width="16" Height="16"
+                                      Data="M 1,1 L 7,1 L 7,3 L 3,3 L 3,7 L 1,7 Z M 9,9 L 13,9 L 13,13 L 9,13 Z"
+                                      Fill="{DynamicResource Brush_TextPrimary}" Stretch="Uniform"/>
+                            </ToggleButton>
+                            <ToggleButton Style="{StaticResource BlenderToolbarIconButton}" ToolTip="标注">
+                                <Path Width="16" Height="16"
+                                      Data="M 2,12 L 6,8 L 10,12 M 6,8 L 6,2"
+                                      Stroke="{DynamicResource Brush_TextPrimary}" StrokeThickness="2"
+                                      Fill="Transparent" Stretch="Uniform"/>
+                            </ToggleButton>
+                        </bui:Toolbar>
+                    </bui:ToolbarHost.Toolbar>
 
-                <GridSplitter Grid.Row="2"
-                              Height="4"
-                              HorizontalAlignment="Stretch"
-                              VerticalAlignment="Stretch"
-                              Cursor="SizeNS"
-                              ResizeBehavior="PreviousAndNext"
-                              ResizeDirection="Rows"
-                              Style="{StaticResource BlenderSplitter}"/>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="4"/>
+                            <RowDefinition Height="120" MinHeight="80"/>
+                        </Grid.RowDefinitions>
 
-                <Border Grid.Row="3"
-                        Background="{DynamicResource Brush_PanelBack}"
-                        BorderBrush="{DynamicResource Brush_BorderDark}"
-                        BorderThickness="0,1,0,0"
-                        Padding="8">
-                    <StackPanel>
-                        <TextBlock Margin="0,0,0,4"
-                                   Foreground="{DynamicResource Brush_TextSecondary}"
-                                   Text="Inline Properties (Cube)"/>
-                        <bui:PropertyRow Label="Location X">
-                            <bui:NumericSlider Decimals="3"
-                                               Maximum="100" Minimum="-100" Step="0.1"
-                                               Unit="m" Value="0"/>
-                        </bui:PropertyRow>
-                        <bui:PropertyRow Label="Location Y">
-                            <bui:NumericSlider Decimals="3"
-                                               Maximum="100" Minimum="-100" Step="0.1"
-                                               Unit="m" Value="0"/>
-                        </bui:PropertyRow>
-                    </StackPanel>
-                </Border>
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource Brush_RegionBack}"
+                                SnapsToDevicePixels="True">
+                            <Canvas>
+                                <Path Stroke="{DynamicResource Brush_AccentBlue}" StrokeThickness="2"
+                                      Data="M 100,200 L 300,200 L 300,400 L 100,400 Z M 100,200 L 200,100 L 400,100 L 300,200 M 300,400 L 400,300 L 400,100 M 300,200 L 400,100"
+                                      Fill="Transparent"/>
+                                <TextBlock Canvas.Left="20" Canvas.Top="20"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           Text="Viewport (3D 视区占位)"/>
+                            </Canvas>
+                        </Border>
+
+                        <GridSplitter Grid.Row="1"
+                                      Height="4"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Stretch"
+                                      Cursor="SizeNS"
+                                      ResizeBehavior="PreviousAndNext"
+                                      ResizeDirection="Rows"
+                                      Style="{StaticResource BlenderSplitter}"/>
+
+                        <Border Grid.Row="2"
+                                Background="{DynamicResource Brush_PanelBack}"
+                                BorderBrush="{DynamicResource Brush_BorderDark}"
+                                BorderThickness="0,1,0,0"
+                                Padding="8">
+                            <StackPanel>
+                                <TextBlock Margin="0,0,0,4"
+                                           Foreground="{DynamicResource Brush_TextSecondary}"
+                                           Text="Inline Properties (Cube)"/>
+                                <bui:PropertyRow Label="Location X">
+                                    <bui:NumericSlider Decimals="3"
+                                                       Maximum="100" Minimum="-100" Step="0.1"
+                                                       Unit="m" Value="0"/>
+                                </bui:PropertyRow>
+                                <bui:PropertyRow Label="Location Y">
+                                    <bui:NumericSlider Decimals="3"
+                                                       Maximum="100" Minimum="-100" Step="0.1"
+                                                       Unit="m" Value="0"/>
+                                </bui:PropertyRow>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </bui:ToolbarHost>
             </Grid>
 
-            <GridSplitter Grid.Column="2"
+            <GridSplitter Grid.Column="1"
                           Width="4"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
@@ -205,7 +213,7 @@
                           Style="{StaticResource BlenderSplitter}"/>
 
             <!-- NPanelArea -->
-            <Grid Grid.Column="3">
+            <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>

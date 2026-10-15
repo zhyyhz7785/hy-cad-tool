@@ -87,7 +87,7 @@
                             ShowPin="False"
                             ShowIconBar="False">
             <DockPanel LastChildFill="True">
-                <bui:Toolbar DockPanel.Dock="Top">
+                <bui:Toolbar DockPanel.Dock="Top" Position="Top">
                     <Button Content="＋左"
                             ToolTip="在左侧末尾追加一个机动车道板块"
                             Command="{Binding AddLeftBandCommand}"
