@@ -126,6 +126,7 @@
       分隔列宽（GridLength）在 Sample 中仍用字面量 Width="4"，不引入 GridLength DR（B4）。
     -->
     <sys:Double x:Key="Metric_EditorHeaderHeight">24</sys:Double>
+    <!-- 工具栏条带厚度：上侧=高度，侧面=宽度（Toolbar.Position） -->
     <sys:Double x:Key="Metric_ToolbarWidth">40</sys:Double>
     <sys:Double x:Key="Metric_NPanelMinWidth">240</sys:Double>
     <sys:Double x:Key="Metric_OutlinerMinWidth">220</sys:Double>

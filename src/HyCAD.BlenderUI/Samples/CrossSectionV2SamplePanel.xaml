@@ -99,7 +99,7 @@
                             ShowIconBar="False">
             <DockPanel LastChildFill="True">
                 <!-- 顶部横向工具条（增删 / 调整顺序） -->
-                <bui:Toolbar DockPanel.Dock="Top">
+                <bui:Toolbar DockPanel.Dock="Top" Position="Top">
                     <Button Content="＋左" ToolTip="左侧末尾追加条带"
                             Command="{Binding AddLeftBandCommand}"
                             Style="{StaticResource BlenderButtonFlat}"

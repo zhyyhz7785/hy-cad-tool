@@ -24,7 +24,8 @@
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Margin="8">
             <Button Content="水平拆分" Click="OnSplitH" Style="{StaticResource BlenderButton}" Margin="0,0,8,0"/>
-            <Button Content="垂直拆分" Click="OnSplitV" Style="{StaticResource BlenderButton}"/>
+            <Button Content="垂直拆分" Click="OnSplitV" Style="{StaticResource BlenderButton}" Margin="0,0,12,0"/>
+            <bui:ToolbarPositionSwitch VerticalAlignment="Center"/>
         </StackPanel>
         <sv:BlenderScreen x:Name="ScreenHost" Grid.Row="1" Margin="8"/>
     </Grid>

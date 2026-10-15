@@ -1,5 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
+using System.Windows.Shapes;
 using Blend = HyCAD.BlenderUI.Controls;
 
 namespace HyCAD.BlenderUI.Controls.Spaces
@@ -41,6 +44,7 @@ namespace HyCAD.BlenderUI.Controls.Spaces
             var title = new TextBlock { Text = "View3D" };
             title.SetResourceReference(TextBlock.ForegroundProperty, "Brush_TextPrimary");
             eh.LeftContent = title;
+            eh.RightContent = new Blend.ToolbarPositionSwitch();
             DockPanel.SetDock(eh, Dock.Top);
             dock.Children.Add(eh);
 
@@ -56,7 +60,10 @@ namespace HyCAD.BlenderUI.Controls.Spaces
             Canvas.SetLeft(hint, 8);
             Canvas.SetTop(hint, 8);
             canvas.Children.Add(hint);
-            dock.Children.Add(canvas);
+
+            var host = new Blend.ToolbarHost { Toolbar = View3DToolbarFactory.Create() };
+            host.Content = canvas;
+            dock.Children.Add(host);
             Content = dock;
         }
     }
@@ -258,7 +265,26 @@ namespace HyCAD.BlenderUI.Controls.Spaces
         public PreferencesSpace()
         {
             SpaceShellTheme.MergeDefault(this);
-            Content = SpaceShellChrome.Placeholder("Preferences", "偏好设置壳（MVP）。");
+            var dock = new DockPanel();
+            var eh = new Blend.EditorHeader();
+            var title = new TextBlock { Text = "Preferences" };
+            title.SetResourceReference(TextBlock.ForegroundProperty, "Brush_TextPrimary");
+            eh.LeftContent = title;
+            DockPanel.SetDock(eh, Dock.Top);
+            dock.Children.Add(eh);
+
+            var body = new StackPanel { Margin = new Thickness(8) };
+            var label = new TextBlock
+            {
+                Text = "视口工具栏位置（默认上侧；写入 hy.blender.toolbarPos）",
+                Margin = new Thickness(0, 0, 0, 8),
+                TextWrapping = TextWrapping.Wrap
+            };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "Brush_TextSecondary");
+            body.Children.Add(label);
+            body.Children.Add(new Blend.ToolbarPositionSwitch());
+            dock.Children.Add(body);
+            Content = dock;
         }
     }
 
@@ -301,6 +327,49 @@ namespace HyCAD.BlenderUI.Controls.Spaces
         {
             SpaceShellTheme.MergeDefault(this);
             Content = SpaceShellChrome.Placeholder("Timeline", "时间线壳（MVP）。");
+        }
+    }
+
+    internal static class View3DToolbarFactory
+    {
+        internal static Blend.Toolbar Create()
+        {
+            var tb = new Blend.Toolbar();
+            tb.Items.Add(IconToggle("选择",
+                "M 2,1 L 2,11 L 5,8 L 7,12 L 9,11 L 7,7 L 11,7 Z", isFill: true, isChecked: true));
+            tb.Items.Add(IconToggle("移动",
+                "M 8,1 L 6,3 L 7,3 L 7,7 L 3,7 L 3,6 L 1,8 L 3,10 L 3,9 L 7,9 L 7,13 L 6,13 L 8,15 L 10,13 L 9,13 L 9,9 L 13,9 L 13,10 L 15,8 L 13,6 L 13,7 L 9,7 L 9,3 L 10,3 Z",
+                isFill: true));
+            tb.Items.Add(IconToggle("旋转",
+                "M 8,2 A 6,6 0 1 1 2,8 L 0,8 L 3,11 L 6,8 L 4,8 A 4,4 0 1 0 8,4 Z",
+                isFill: true));
+            tb.Items.Add(IconToggle("缩放",
+                "M 1,1 L 7,1 L 7,3 L 3,3 L 3,7 L 1,7 Z M 9,9 L 13,9 L 13,13 L 9,13 Z",
+                isFill: true));
+            return tb;
+        }
+
+        private static ToggleButton IconToggle(string tip, string data, bool isFill, bool isChecked = false)
+        {
+            var path = new Path
+            {
+                Width = 16,
+                Height = 16,
+                Data = Geometry.Parse(data),
+                Stretch = Stretch.Uniform
+            };
+            if (isFill)
+                path.SetResourceReference(Shape.FillProperty, "Brush_TextPrimary");
+            else
+            {
+                path.Fill = Brushes.Transparent;
+                path.StrokeThickness = 1.6;
+                path.SetResourceReference(Shape.StrokeProperty, "Brush_TextPrimary");
+            }
+
+            var btn = new ToggleButton { ToolTip = tip, IsChecked = isChecked, Content = path };
+            btn.SetResourceReference(FrameworkElement.StyleProperty, "BlenderToolbarIconButton");
+            return btn;
         }
     }
 }
