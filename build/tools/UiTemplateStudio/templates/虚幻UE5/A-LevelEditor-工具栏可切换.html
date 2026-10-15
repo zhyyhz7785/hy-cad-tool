@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>【待 hy】UE5 方案A · 默认 Level Editor · 工具栏可切换</title>
+<meta name="hy-review" content="待 hy">
+<meta name="hy-scheme" content="方案 A — 默认 Level Editor">
+<meta name="hy-group" content="虚幻">
+<style>
+:root{
+  --bg-title:#151515;--bg-input:#0F0F0F;--bg-recessed:#1A1A1A;
+  --bg-panel:#242424;--bg-header:#2F2F2F;--bg-dropdown:#383838;
+  --bg-hover:#575757;--bg-hover2:#808080;
+  --fg:#C0C0C0;--fg-hover:#FFFFFF;--fg-header:#C8C8C8;
+  --primary:#0070E0;--primary-hover:#0E86FF;--primary-press:#0050A0;
+  --select-inactive:#40576F;--select-parent:#2C323A;
+  --accent-blue:#26BBFF;--accent-green:#8BC24A;--accent-red:#FF4040;
+  --accent-orange:#FE9B07;--accent-yellow:#FFDC1A;
+  --warning:#FFB800;--error:#EF3535;--success:#1FE44B;
+  --border:#0F0F0F;--border-soft:#383838;--border-mid:#4C4C4C;
+  --font-ui:"Segoe UI","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+  --font-mono:"Cascadia Mono","Consolas",monospace;
+  --r:4px;--r2:2px;
+  --h-review:34px;--h-menu:24px;--h-tool:36px;--h-tab:24px;--h-status:22px;
+}
+*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#575757 transparent}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-thumb{background:#575757;border-radius:4px}
+html,body{margin:0;height:100%;overflow:hidden;font-family:var(--font-ui);font-size:12px;color:var(--fg);background:var(--bg-title);user-select:none}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;color:inherit}
+.app{display:flex;flex-direction:column;height:100%}
+.review{
+  height:var(--h-review);flex:none;display:flex;align-items:center;gap:10px;
+  padding:0 12px;background:#1a2740;border-bottom:1px solid #2a4a7a;color:#d0e4ff;
+}
+.review .tag{background:var(--primary);color:#fff;padding:2px 8px;border-radius:var(--r);font-weight:650;font-size:11px;letter-spacing:.02em}
+.review .scheme{font-weight:650;color:#fff}
+.review .intent{color:#9ab4d4;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.review .meta{color:#6a84a4;font-size:11px}
+.menubar{height:var(--h-menu);flex:none;display:flex;align-items:center;padding:0 4px;background:var(--bg-title);border-bottom:1px solid var(--border)}
+.mb{position:relative}
+.mb>button{height:20px;padding:0 8px;border-radius:var(--r2);color:var(--fg)}
+.mb>button:hover,.mb.open>button{background:var(--bg-hover);color:var(--fg-hover)}
+.dd{
+  display:none;position:absolute;top:100%;left:0;min-width:180px;z-index:50;
+  background:var(--bg-dropdown);border:1px solid var(--border-mid);border-radius:var(--r);
+  box-shadow:0 8px 24px rgba(0,0,0,.55);padding:4px 0;
+}
+.mb.open .dd{display:block}
+.dd button,.dd .item{
+  display:flex;width:100%;align-items:center;justify-content:space-between;
+  padding:4px 12px;text-align:left;color:var(--fg);font-size:12px;
+}
+.dd button:hover,.dd .item:hover{background:var(--primary);color:#fff}
+.dd .sep{height:1px;background:var(--border-soft);margin:4px 0}
+.dd kbd{color:#888;font-family:var(--font-mono);font-size:10px}
+.toolbar{height:var(--h-tool);flex:none;display:flex;align-items:center;gap:2px;padding:0 6px;background:var(--bg-header);border-bottom:1px solid var(--border)}
+.tbtn{height:28px;min-width:28px;padding:0 6px;border-radius:var(--r);display:inline-flex;align-items:center;justify-content:center;gap:4px;color:var(--fg)}
+.tbtn:hover{background:rgba(255,255,255,.08);color:var(--fg-hover)}
+.tbtn.on{background:rgba(0,112,224,.28);color:#fff;box-shadow:inset 0 0 0 1px rgba(0,112,224,.55)}
+.tbtn.play{background:#1a5a28;color:#b8ffc8;padding:0 10px;font-weight:600}
+.tbtn.play:hover{background:#227033}
+.tsep{width:1px;height:18px;background:var(--border-soft);margin:0 6px}
+.tlabel{color:#888;font-size:11px;margin:0 4px}
+.tsel{height:24px;background:var(--bg-input);border:1px solid var(--border-soft);border-radius:var(--r2);padding:0 6px;color:var(--fg)}
+.workspace{flex:1;min-height:0;display:flex}
+.col{display:flex;flex-direction:column;min-width:0;min-height:0}
+.row{display:flex;flex-direction:row;min-width:0;min-height:0}
+.grow{flex:1;min-width:0;min-height:0}
+.panel{background:var(--bg-panel);display:flex;flex-direction:column;min-height:0;border:1px solid var(--border)}
+.ptabs{height:var(--h-tab);flex:none;display:flex;align-items:stretch;background:var(--bg-header);border-bottom:1px solid var(--border)}
+.ptab{padding:0 10px;display:flex;align-items:center;color:#9a9a9a;border-right:1px solid var(--border);cursor:pointer;font-size:11px}
+.ptab:hover{color:var(--fg-hover);background:rgba(255,255,255,.04)}
+.ptab.on{background:var(--bg-panel);color:var(--fg-hover);box-shadow:inset 0 -2px 0 var(--primary)}
+.pbody{flex:1;min-height:0;overflow:auto;padding:4px}
+.ph{display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--bg-header);border-bottom:1px solid var(--border);flex:none}
+.ph input{flex:1;height:20px;background:var(--bg-input);border:1px solid var(--border-soft);border-radius:var(--r2);padding:0 6px;color:var(--fg)}
+.ph input:focus{outline:1px solid var(--primary);border-color:var(--primary)}
+.tree-item{display:flex;align-items:center;gap:4px;height:20px;padding:0 4px 0 2px;border-radius:var(--r2);cursor:pointer;white-space:nowrap}
+.tree-item:hover{background:rgba(255,255,255,.06)}
+.tree-item.sel{background:var(--primary);color:#fff}
+.tree-item.sel-dim{background:var(--select-inactive);color:#fff}
+.tree-item .eye{width:14px;text-align:center;color:#777;font-size:10px}
+.tree-item .eye.off{opacity:.35}
+.tree-item .ico{width:14px;color:var(--accent-blue);font-size:11px}
+.tree-item.folder .ico{color:var(--accent-orange)}
+.tree-kids{padding-left:14px}
+.vp-wrap{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg-recessed);border:1px solid var(--border)}
+.vp-bar{height:26px;flex:none;display:flex;align-items:center;gap:2px;padding:0 4px;background:var(--bg-header);border-bottom:1px solid var(--border)}
+.vbtn{height:20px;padding:0 7px;border-radius:var(--r2);font-size:11px;color:#aaa}
+.vbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+.vbtn.on{background:rgba(0,112,224,.35);color:#fff}
+.viewport{
+  flex:1;min-height:0;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%, #2a3340 0%, #141820 55%, #0c0e12 100%);
+}
+.viewport.wire{background:#121212}
+.viewport.wire .grid-lines{opacity:.85}
+.viewport.lit{background:radial-gradient(ellipse at 45% 35%, #3a4a2a 0%, #1a2018 60%, #0c100c 100%)}
+.viewport.unlit{background:radial-gradient(ellipse at 50% 40%, #3a3a3a 0%, #1a1a1a 100%)}
+.grid-lines{position:absolute;inset:0;opacity:.35;
+  background-image:linear-gradient(rgba(120,160,200,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(120,160,200,.12) 1px,transparent 1px);
+  background-size:40px 40px;background-position:center}
+.axis-x,.axis-y{position:absolute;background:rgba(255,80,80,.55)}
+.axis-x{left:0;right:0;top:50%;height:1px}
+.axis-y{top:0;bottom:0;left:50%;width:1px;background:rgba(80,200,120,.45)}
+.gizmo{position:absolute;left:52%;top:42%;width:72px;height:72px;pointer-events:none}
+.gizmo svg{width:100%;height:100%;overflow:visible}
+.vp-label{position:absolute;left:8px;top:8px;font-size:11px;color:#9ab;background:rgba(0,0,0,.35);padding:2px 6px;border-radius:var(--r2)}
+.vp-hint{position:absolute;right:8px;bottom:8px;font-size:10px;color:#678;background:rgba(0,0,0,.3);padding:2px 6px;border-radius:var(--r2)}
+.cube{position:absolute;right:12px;top:12px;width:56px;height:56px;perspective:120px}
+.cube-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transform:rotateX(-28deg) rotateY(38deg)}
+.face{position:absolute;width:28px;height:28px;left:14px;top:14px;border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:9px;color:#ccc;background:rgba(40,60,90,.55)}
+.face.f{transform:translateZ(14px)}.face.b{transform:rotateY(180deg) translateZ(14px)}
+.face.r{transform:rotateY(90deg) translateZ(14px)}.face.l{transform:rotateY(-90deg) translateZ(14px)}
+.face.u{transform:rotateX(90deg) translateZ(14px);background:rgba(60,90,50,.55)}.face.d{transform:rotateX(-90deg) translateZ(14px)}
+.details .cat{margin:2px 0 6px}
+.details .cat-h{display:flex;align-items:center;gap:4px;height:20px;padding:0 4px;background:var(--bg-header);border-radius:var(--r2);cursor:pointer;font-weight:600;font-size:11px;color:var(--fg-header)}
+.details .cat-h:hover{background:var(--bg-dropdown)}
+.details .rowf{display:grid;grid-template-columns:38% 1fr;gap:4px;align-items:center;min-height:22px;padding:1px 4px}
+.details .rowf:hover{background:rgba(255,255,255,.04)}
+.details .lbl{color:#9a9a9a;font-size:11px;overflow:hidden;text-overflow:ellipsis}
+.details .val{height:20px;background:var(--bg-input);border:1px solid var(--border-soft);border-radius:var(--r2);padding:0 5px;display:flex;align-items:center;font-size:11px}
+.details .val.mod{border-left:2px solid var(--accent-orange)}
+.details .chk{display:flex;align-items:center;gap:6px}
+.cb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;padding:6px}
+.asset{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border-radius:var(--r);cursor:pointer;border:1px solid transparent}
+.asset:hover{background:rgba(255,255,255,.06)}
+.asset.sel{background:rgba(0,112,224,.25);border-color:var(--primary)}
+.asset .thumb{width:56px;height:56px;border-radius:var(--r2);background:linear-gradient(145deg,#2a3544,#1a2030);border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:18px}
+.asset .name{font-size:10px;color:#bbb;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.folder-list{padding:2px 0}
+.folder-list .fi{display:flex;align-items:center;gap:6px;height:20px;padding:0 8px;cursor:pointer;border-radius:var(--r2)}
+.folder-list .fi:hover{background:rgba(255,255,255,.06)}
+.folder-list .fi.sel{background:var(--primary);color:#fff}
+.status{height:var(--h-status);flex:none;display:flex;align-items:center;gap:10px;padding:0 8px;background:var(--bg-title);border-top:1px solid var(--border);font-size:11px;color:#888}
+.status b{color:#aaa;font-weight:500}
+.status .ok{color:var(--success)}
+.status .warn{color:var(--warning)}
+.drawer-btn{height:18px;padding:0 8px;border-radius:var(--r2);background:var(--bg-dropdown);color:#ccc}
+.drawer-btn:hover,.drawer-btn.on{background:var(--primary);color:#fff}
+.overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;
+  align-items:center;justify-content:center;
+}
+.overlay.show{display:flex}
+.settings{
+  width:min(720px,92vw);height:min(520px,86vh);background:var(--bg-panel);border:1px solid var(--border-mid);
+  border-radius:6px;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+.settings .sh{height:32px;display:flex;align-items:center;padding:0 12px;background:var(--bg-header);border-bottom:1px solid var(--border);font-weight:600}
+.settings .sh .x{margin-left:auto;width:24px;height:24px;border-radius:var(--r2)}
+.settings .sh .x:hover{background:var(--accent-red);color:#fff}
+.settings .sb{flex:1;min-height:0;display:flex}
+.settings .nav{width:180px;background:var(--bg-recessed);border-right:1px solid var(--border);overflow:auto;padding:6px}
+.settings .nav button{display:block;width:100%;text-align:left;padding:6px 10px;border-radius:var(--r2);color:#aaa;margin:1px 0}
+.settings .nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.settings .nav button.on{background:rgba(0,112,224,.3);color:#fff}
+.settings .main{flex:1;overflow:auto;padding:12px 16px}
+.settings .main h3{margin:0 0 8px;font-size:14px}
+.settings .main p{margin:0 0 10px;color:#999;font-size:11px;line-height:1.5}
+.mode-rail{width:40px;flex:none;background:var(--bg-header);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:4px 0;gap:2px}
+.mode-rail button{width:34px;height:34px;border-radius:var(--r);color:#999;font-size:14px}
+.mode-rail button:hover{background:rgba(255,255,255,.08);color:#fff}
+.mode-rail button.on{background:rgba(0,112,224,.35);color:#fff}
+.tool-rail{width:48px;flex:none;background:var(--bg-header);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:4px 0;gap:3px}
+.tool-rail button{width:40px;height:40px;border-radius:var(--r);color:#aaa;font-size:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.tool-rail button small{font-size:9px;color:#777}
+.tool-rail button:hover{background:rgba(255,255,255,.08);color:#fff}
+.tool-rail button.on{background:rgba(0,112,224,.35);color:#fff}
+.tool-rail button.on small{color:#bcd}
+.vis-bar{height:28px;flex:none;display:flex;align-items:center;gap:4px;padding:0 8px;background:#1e2836;border-bottom:1px solid #2a3a50}
+.chip{height:20px;padding:0 8px;border-radius:10px;background:#2a3548;color:#9ab;font-size:11px}
+.chip.on{background:var(--primary);color:#fff}
+.chip:hover{filter:brightness(1.1)}
+.anal-panel .metric{display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #2a2a2a;font-size:11px}
+.anal-panel .metric .n{color:var(--accent-blue);font-family:var(--font-mono)}
+.heat{height:8px;border-radius:4px;background:linear-gradient(90deg,#0070E0,#26BBFF,#8BC24A,#FE9B07,#FF4040);margin:6px 4px}
+.toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);background:#2a2a2a;border:1px solid #4a4a4a;color:#eee;padding:6px 14px;border-radius:var(--r);z-index:200;display:none;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.show{display:block}
+.sp{flex:1}
+.left-modes{width:220px;flex:none}
+.right-details{width:300px;flex:none}
+.bottom-cb{height:200px;flex:none}
+.sash-v{width:3px;flex:none;background:var(--border);cursor:col-resize}
+.sash-h{height:3px;flex:none;background:var(--border);cursor:row-resize}
+.comp-list{padding:2px 0 6px}
+.comp-list .ci{display:flex;align-items:center;gap:4px;height:18px;padding:0 6px;font-size:11px;cursor:pointer}
+.comp-list .ci:hover{background:rgba(255,255,255,.06)}
+.comp-list .ci.sel{background:var(--select-parent);color:#fff}
+
+/* --- toolbar position: 上侧 / 侧面 (hy hard req) --- */
+.pos-seg{
+  display:inline-flex;align-items:center;gap:0;height:24px;
+  background:rgba(0,0,0,.28);border:1px solid #3a5a8a;border-radius:var(--r);overflow:hidden;flex:none;
+}
+.pos-seg span.lab{padding:0 8px;font-size:11px;color:#8ab;border-right:1px solid #3a5a8a}
+.pos-seg button{
+  height:22px;padding:0 10px;font-size:11px;color:#9ab;border-radius:0;
+  border-right:1px solid #2a4a7a;
+}
+.pos-seg button:last-child{border-right:0}
+.pos-seg button:hover{color:#fff;background:rgba(255,255,255,.06)}
+.pos-seg button.on{background:var(--primary);color:#fff;font-weight:650}
+.stage{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.app[data-toolbar-pos="top"] .stage{flex-direction:column}
+.app[data-toolbar-pos="top"] .toolbar{
+  height:var(--h-tool);width:auto;flex:none;flex-direction:row;align-items:center;
+  padding:0 6px;border-bottom:1px solid var(--border);border-right:0;
+}
+.app[data-toolbar-pos="top"] .toolbar .tsep{width:1px;height:18px;margin:0 6px}
+.app[data-toolbar-pos="top"] .toolbar .sp{flex:1;min-height:0;width:auto}
+.app[data-toolbar-pos="top"] .toolbar .tbtn.lbl .t-ico{display:none}
+.app[data-toolbar-pos="side"] .stage{flex-direction:row}
+.app[data-toolbar-pos="side"] .toolbar{
+  width:48px;height:auto;align-self:stretch;flex:none;flex-direction:column;
+  align-items:center;justify-content:flex-start;gap:3px;padding:6px 4px;
+  border-bottom:0;border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;
+}
+.app[data-toolbar-pos="side"] .toolbar .tsep{width:28px;height:1px;margin:4px 0}
+.app[data-toolbar-pos="side"] .toolbar .sp{flex:1;min-width:0;width:auto;height:auto}
+.app[data-toolbar-pos="side"] .toolbar .tbtn{
+  width:40px;min-width:40px;height:40px;padding:0;flex-direction:column;gap:1px;
+}
+.app[data-toolbar-pos="side"] .toolbar .tbtn.play{padding:0;width:40px}
+.app[data-toolbar-pos="side"] .toolbar .tbtn.lbl{font-size:0;line-height:0}
+.app[data-toolbar-pos="side"] .toolbar .tbtn.lbl .t-ico{display:block;font-size:14px;line-height:1}
+.app[data-toolbar-pos="side"] .toolbar .tbtn.lbl::after{
+  content:attr(data-short);font-size:9px;line-height:1;color:#888;margin-top:2px
+}
+.app[data-toolbar-pos="side"] .toolbar .tbtn.lbl.on::after{color:#bcd}
+.app[data-toolbar-pos="side"] .toolbar .tlabel{display:none}
+.app[data-toolbar-pos="side"] .toolbar .tsel{
+  width:40px;height:22px;padding:0 2px;font-size:9px;writing-mode:horizontal-tb
+}
+.app[data-toolbar-pos="side"] .toolbar [data-tg]{flex-direction:column;display:flex !important}
+
+</style>
+</head>
+<body>
+<div class="app" data-toolbar-pos="top">
+  <div class="review">
+    <span class="tag">待 hy</span>
+    <span class="scheme">方案 A — 默认 Level Editor</span>
+    <span class="intent">经典 UE5 布局：菜单+工具栏，左 Outliner/Place，中视口，右 Details，底 Content Browser。请 hy 批交互与信息密度；工具栏可切换上侧/侧面（默认上侧）。</span>
+    
+        <div class="pos-seg" id="toolbar-pos-seg" title="工具栏位置（hy 硬性要求：可切换）">
+      <span class="lab">工具栏</span>
+      <button type="button" data-pos="top" class="on">上侧</button>
+      <button type="button" data-pos="side">侧面</button>
+    </div>
+
+    <span class="meta">07-Unreal · 虚幻-干活 · 20261015-1021 · 工具栏可切换</span>
+  </div>
+  
+
+<div class="menubar">
+  <div class="mb"><button>File</button><div class="dd">
+    <button data-act="New Level">New Level… <kbd>Ctrl+N</kbd></button>
+    <button data-act="Open Level">Open Level… <kbd>Ctrl+O</kbd></button>
+    <button data-act="Save">Save Current <kbd>Ctrl+S</kbd></button>
+    <div class="sep"></div>
+    <button data-open-settings data-act="Editor Preferences">Editor Preferences…</button>
+    <button data-act="Project Settings">Project Settings…</button>
+  </div></div>
+  <div class="mb"><button>Edit</button><div class="dd">
+    <button data-act="Undo">Undo <kbd>Ctrl+Z</kbd></button>
+    <button data-act="Redo">Redo <kbd>Ctrl+Y</kbd></button>
+    <div class="sep"></div>
+    <button data-act="Delete">Delete <kbd>Del</kbd></button>
+  </div></div>
+  <div class="mb"><button>Window</button><div class="dd">
+    <button data-toggle-cb data-act="Content Browser">Content Browser</button>
+    <button data-act="Outliner">Outliner</button>
+    <button data-act="Details">Details</button>
+    <div class="sep"></div>
+    <button data-act="Load Layout">Load Layout › Default</button>
+  </div></div>
+  <div class="mb"><button>Tools</button><div class="dd">
+    <button data-act="Merge Actors">Merge Actors</button>
+    <button data-act="Replace Actors">Replace Actors</button>
+  </div></div>
+  <div class="mb"><button>Build</button><div class="dd">
+    <button data-act="Build Lighting">Build Lighting Only</button>
+    <button data-act="Build All">Build All Levels</button>
+  </div></div>
+  <div class="mb"><button>Select</button><div class="dd">
+    <button data-act="Select All">Select All <kbd>Ctrl+A</kbd></button>
+    <button data-act="Deselect">Deselect All</button>
+  </div></div>
+  <div class="mb"><button>Actor</button><div class="dd">
+    <button data-act="Add Actor">Place Actor</button>
+    <button data-act="Attach">Attach To</button>
+  </div></div>
+  <div class="mb"><button>Help</button><div class="dd">
+    <button data-act="Docs">Documentation</button>
+    <button data-act="About">About Unreal Editor</button>
+  </div></div>
+  <div class="sp"></div>
+  <span style="font-size:11px;color:#666;padding-right:8px">UE5 Level Editor · mock</span>
+</div>
+
+<div class="stage">
+
+<div class="toolbar">
+  <button class="tbtn" data-act="Save" title="Save">💾</button>
+  <button class="tbtn" title="Browse">📂</button>
+  <div class="tsep"></div>
+  <div data-tg="editor-mode" style="display:flex;gap:2px">
+    <button class="tbtn on lbl" data-name="Select Mode" data-short="Sel"><span class="t-ico">↖</span>Selection</button>
+    <button class="tbtn lbl" data-name="Landscape" data-short="Land"><span class="t-ico">⛰</span>Landscape</button>
+    <button class="tbtn lbl" data-name="Foliage" data-short="Fol"><span class="t-ico">☘</span>Foliage</button>
+    <button class="tbtn lbl" data-name="Mesh Paint" data-short="Paint"><span class="t-ico">🖌</span>Mesh Paint</button>
+  </div>
+  <div class="tsep"></div>
+  <button class="tbtn lbl" data-name="Create" data-short="BP"><span class="t-ico">＋</span>＋ Blueprints</button>
+  <button class="tbtn lbl" data-name="Cinematics" data-short="Cine"><span class="t-ico">🎬</span>Cinematics</button>
+  <div class="sp"></div>
+  <button class="tbtn play" data-name="Play">▶ Play</button>
+  <button class="tbtn" data-name="Pause">❚❚</button>
+  <button class="tbtn" data-name="Stop">■</button>
+  <div class="tsep"></div>
+  <span class="tlabel">Platforms</span>
+  <select class="tsel"><option>Windows</option><option>Linux</option></select>
+  <div class="tsep"></div>
+  <button class="tbtn" data-open-settings data-name="Settings" title="Editor Preferences">⚙</button>
+</div>
+<div class="workspace">
+  <div class="col left-modes">
+    <div class="panel grow" data-tabs style="border-right:0">
+      <div class="ptabs">
+        <div class="ptab on" data-tab="ol">Outliner</div>
+        <div class="ptab" data-tab="place">Place Actors</div>
+      </div>
+      <div data-pane="ol" class="grow col" style="min-height:0">
+<div class="ph"><input placeholder="Search Outliner" /><button data-toggle title="Filter" style="padding:0 4px">☰</button></div>
+<div class="pbody">
+  <div class="tree-item folder" data-id="Folder_Geo" data-name="Geometry"><span class="eye">👁</span><span class="ico">📁</span> Geometry</div>
+  <div class="tree-kids">
+    <div class="tree-item sel" data-id="Floor_SM" data-name="Floor_SM"><span class="eye">👁</span><span class="ico">▣</span> Floor_SM</div>
+    <div class="tree-item" data-id="Wall_A" data-name="Wall_A"><span class="eye">👁</span><span class="ico">▣</span> Wall_A</div>
+    <div class="tree-item" data-id="Wall_B" data-name="Wall_B"><span class="eye">👁</span><span class="ico">▣</span> Wall_B</div>
+  </div>
+  <div class="tree-item folder" data-id="Folder_Lights" data-name="Lights"><span class="eye">👁</span><span class="ico">📁</span> Lights</div>
+  <div class="tree-kids">
+    <div class="tree-item" data-id="DirLight" data-name="DirectionalLight"><span class="eye">👁</span><span class="ico">☀</span> DirectionalLight</div>
+    <div class="tree-item" data-id="SkyAtmos" data-name="SkyAtmosphere"><span class="eye">👁</span><span class="ico">☁</span> SkyAtmosphere</div>
+  </div>
+  <div class="tree-item" data-id="PlayerStart" data-name="PlayerStart"><span class="eye">👁</span><span class="ico">▶</span> PlayerStart</div>
+  <div class="tree-item" data-id="BP_Door" data-name="BP_Door_A"><span class="eye">👁</span><span class="ico">◆</span> BP_Door_A</div>
+  <div class="tree-item" data-id="Cam_Main" data-name="CameraActor"><span class="eye">👁</span><span class="ico">◎</span> CameraActor</div>
+  <div class="tree-item" data-id="Vol_Post" data-name="PostProcessVolume"><span class="eye">👁</span><span class="ico">▢</span> PostProcessVolume</div>
+</div>
+</div>
+      <div data-pane="place" class="pbody" style="display:none">
+        <div class="tree-item"><span class="ico">▣</span> Basic › Cube</div>
+        <div class="tree-item"><span class="ico">⬤</span> Basic › Sphere</div>
+        <div class="tree-item"><span class="ico">☀</span> Lights › Point</div>
+        <div class="tree-item"><span class="ico">▶</span> Basic › Player Start</div>
+        <p style="color:#666;padding:8px;font-size:11px">Drag into viewport (stub)</p>
+      </div>
+    </div>
+  </div>
+  <div class="sash-v"></div>
+  <div class="col grow">
+    
+<div class="vp-wrap grow">
+  <div class="vp-bar">
+    <div data-tg="transform" style="display:flex;gap:2px">
+      <button class="vbtn on" data-name="Select">Select</button>
+      <button class="vbtn" data-name="Translate">Move</button>
+      <button class="vbtn" data-name="Rotate">Rotate</button>
+      <button class="vbtn" data-name="Scale">Scale</button>
+    </div>
+    <div class="tsep"></div>
+    <button class="vbtn" data-toggle data-name="Snap">Grid</button>
+    <button class="vbtn" data-toggle data-name="Rotation Snap">Angle</button>
+    <div class="tsep"></div>
+    <div data-tg="viewport-mode" style="display:flex;gap:2px">
+      <button class="vbtn on" data-mode="lit" data-name="Lit">Lit</button>
+      <button class="vbtn" data-mode="unlit" data-name="Unlit">Unlit</button>
+      <button class="vbtn" data-mode="wire" data-name="Wireframe">Wireframe</button>
+      
+    </div>
+    <div class="sp"></div>
+    <button class="vbtn" data-toggle data-name="Realtime">Realtime</button>
+    <button class="vbtn" data-toggle data-name="Show Stats">Stats</button>
+  </div>
+  <div class="viewport lit" id="viewport">
+    <div class="grid-lines"></div>
+    <div class="axis-x"></div><div class="axis-y"></div>
+    <div class="gizmo"><svg viewBox="0 0 72 72"><line x1="36" y1="36" x2="36" y2="8" stroke="#EF3535" stroke-width="2"/><line x1="36" y1="36" x2="64" y2="36" stroke="#1FE44B" stroke-width="2"/><line x1="36" y1="36" x2="20" y2="56" stroke="#0070E0" stroke-width="2"/><circle cx="36" cy="36" r="4" fill="#fff"/></svg></div>
+    <div class="vp-label"><span id="vp-mode-label">Lit</span> · Perspective</div>
+    <div class="vp-hint">RMB+WASD fly · W/E/R gizmo · mock</div>
+    <div class="cube"><div class="cube-inner">
+      <div class="face f">F</div><div class="face b">B</div><div class="face r">R</div>
+      <div class="face l">L</div><div class="face u">U</div><div class="face d">D</div>
+    </div></div>
+  </div>
+</div>
+
+  </div>
+  <div class="sash-v"></div>
+  <div class="col right-details">
+    <div class="panel grow" style="border-left:0">
+      <div class="ptabs"><div class="ptab on">Details</div></div>
+      
+<div class="ph"><strong id="details-title" style="font-size:11px;color:#ddd">Floor_SM</strong><div class="sp"></div>
+  <button data-toggle data-name="Lock Details" title="Lock" style="padding:0 4px">🔒</button>
+  <input placeholder="Search" style="width:90px;flex:none" />
+</div>
+<div class="pbody details" id="details-body"></div>
+
+    </div>
+  </div>
+</div>
+<div class="sash-h"></div>
+<div class="bottom-cb row">
+<div class="panel grow" id="content-browser" data-tabs>
+  <div class="ptabs">
+    <div class="ptab on" data-tab="cb1">Content Browser</div>
+    <div class="ptab" data-tab="cb2">Output Log</div>
+    <div class="sp"></div>
+    <button class="drawer-btn" data-toggle-cb style="margin:2px 6px">Hide</button>
+  </div>
+  <div class="row grow" data-pane="cb1" style="min-height:0">
+    <div style="width:160px;border-right:1px solid #0F0F0F;overflow:auto" class="folder-list">
+      <div class="fi sel">📁 Content</div>
+      <div class="fi">　📁 Maps</div>
+      <div class="fi">　📁 Geometry</div>
+      <div class="fi">　📁 Materials</div>
+      <div class="fi">　📁 Blueprints</div>
+      <div class="fi">　📁 Textures</div>
+      <div class="fi">　📁 Audio</div>
+    </div>
+    <div class="grow" style="overflow:auto">
+      <div class="ph" style="border:0;border-bottom:1px solid #0F0F0F"><input placeholder="Search Assets" /><span style="color:#666;font-size:10px">Filters</span></div>
+      <div class="cb-grid">
+        <div class="asset sel" data-name="SM_Floor"><div class="thumb">▣</div><div class="name">SM_Floor</div></div>
+        <div class="asset" data-name="SM_Wall"><div class="thumb">▤</div><div class="name">SM_Wall</div></div>
+        <div class="asset" data-name="M_Concrete"><div class="thumb" style="background:linear-gradient(#666,#444)">⬤</div><div class="name">M_Concrete</div></div>
+        <div class="asset" data-name="M_Brick"><div class="thumb" style="background:linear-gradient(#8B4513,#5a2d0c)">⬤</div><div class="name">M_Brick</div></div>
+        <div class="asset" data-name="BP_Door"><div class="thumb" style="color:#26BBFF">◆</div><div class="name">BP_Door</div></div>
+        <div class="asset" data-name="T_Noise"><div class="thumb" style="background:#333">▨</div><div class="name">T_Noise</div></div>
+        <div class="asset" data-name="Level_Main"><div class="thumb" style="color:#FE9B07">地図</div><div class="name">Level_Main</div></div>
+        <div class="asset" data-name="MI_Glass"><div class="thumb" style="background:linear-gradient(135deg,#8cf8,#2484)">◯</div><div class="name">MI_Glass</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="pbody" data-pane="cb2" style="display:none;font-family:var(--font-mono);font-size:11px;color:#8BC24A;background:#0F0F0F">
+    <div>LogTemp: Display: Level loaded · Untitled</div>
+    <div>LogRenderer: Display: Shader maps compiled (stub)</div>
+    <div style="color:#FE9B07">LogStaticMesh: Warning: LODs missing on SM_Wall (mock)</div>
+    <div>Cmd: </div>
+  </div>
+</div>
+</div>
+
+</div><!-- /.stage -->
+
+<div class="status">
+  <button class="drawer-btn on" data-toggle-cb>Content Drawer</button>
+  <span>Cmd</span>
+  <span class="ok">● Live Coding</span>
+  <span>DDC Ready</span>
+  <div class="sp"></div>
+  <span class="warn">2 unsaved</span>
+  <span>Source Control: <b>None</b></span>
+  <span>UE5.4 mock</span>
+</div>
+
+
+</div>
+
+<div class="overlay" id="settings-ov">
+  <div class="settings" role="dialog" aria-label="Editor Preferences">
+    <div class="sh">Editor Preferences <button class="x" data-close-settings title="Close">✕</button></div>
+    <div class="sb">
+      <div class="nav">
+        <button class="on">General</button>
+        <button>Level Editor</button>
+        <button>Content Editors</button>
+        <button>Loading &amp; Saving</button>
+        <button>Keyboard Shortcuts</button>
+        <button>Plugins</button>
+      </div>
+      <div class="main" id="settings-main">
+        <h3>General</h3>
+        <p>User-local preferences (not project settings). Stub panel for hy to review interaction.</p>
+        <div class="rowf"><div class="lbl" style="color:#9a9a9a">Application Scale</div></div>
+        <div class="val" style="background:#0F0F0F;border:1px solid #383838;border-radius:2px;padding:4px 8px;margin:4px 0 10px">1.0</div>
+        <div class="rowf"><div class="lbl" style="color:#9a9a9a">Show Friendly Option Names</div></div>
+        <div class="val chk" style="background:#0F0F0F;border:1px solid #383838;border-radius:2px;padding:4px 8px;margin:4px 0"><input type="checkbox" checked> true</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const toastEl=document.getElementById('toast');
+  function toast(msg){if(!toastEl)return;toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastEl._t);toastEl._t=setTimeout(()=>toastEl.classList.remove('show'),1400)}
+  window.ueToast=toast;
+
+  // menus
+  document.querySelectorAll('.mb').forEach(mb=>{
+    const btn=mb.querySelector(':scope > button');
+    if(!btn)return;
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const was=mb.classList.contains('open');
+      document.querySelectorAll('.mb.open').forEach(x=>x.classList.remove('open'));
+      if(!was)mb.classList.add('open');
+    });
+  });
+  document.addEventListener('click',()=>document.querySelectorAll('.mb.open').forEach(x=>x.classList.remove('open')));
+  document.querySelectorAll('.dd button,.dd .item').forEach(b=>{
+    b.addEventListener('click',()=>{toast(b.dataset.act||b.textContent.trim().split('\\n')[0]);document.querySelectorAll('.mb.open').forEach(x=>x.classList.remove('open'))});
+  });
+
+  // toolbar toggles
+  document.querySelectorAll('[data-tg]').forEach(g=>{
+    const name=g.dataset.tg;
+    g.querySelectorAll('.tbtn,.vbtn,.chip,button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        g.querySelectorAll('.on').forEach(x=>x.classList.remove('on'));
+        btn.classList.add('on');
+        toast((btn.dataset.name||btn.textContent.trim())+' · '+name);
+        if(name==='viewport-mode'){
+          const vp=document.getElementById('viewport');
+          if(vp){vp.classList.remove('wire','lit','unlit');const m=btn.dataset.mode;if(m&&m!=='lit')vp.classList.add(m);else if(m==='lit')vp.classList.add('lit');
+            const lab=document.getElementById('vp-mode-label');if(lab)lab.textContent=btn.dataset.name||btn.textContent.trim()}
+        }
+        if(name==='transform'){/* visual only */}
+      });
+    });
+  });
+
+  // standalone toggle buttons
+  document.querySelectorAll('[data-toggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{btn.classList.toggle('on');toast((btn.dataset.name||btn.textContent.trim())+(btn.classList.contains('on')?' ON':' OFF'))});
+  });
+
+  // panel tabs
+  document.querySelectorAll('[data-tabs]').forEach(box=>{
+    const tabs=box.querySelectorAll('.ptab');
+    const panes=box.querySelectorAll('[data-pane]');
+    tabs.forEach(tab=>{
+      tab.addEventListener('click',()=>{
+        tabs.forEach(t=>t.classList.remove('on'));
+        tab.classList.add('on');
+        const id=tab.dataset.tab;
+        panes.forEach(p=>p.style.display=p.dataset.pane===id?'':'none');
+      });
+    });
+  });
+
+  // outliner selection -> details
+  const detailsTitle=document.getElementById('details-title');
+  const detailsBody=document.getElementById('details-body');
+  const DETAIL_DB={
+    'Floor_SM':{type:'Static Mesh Actor',loc:'0, 0, 0',rot:'0, 0, 0',scale:'1, 1, 1',mesh:'SM_Floor',mat:'M_Concrete',mobility:'Static',tags:'Geometry'},
+    'Wall_A':{type:'Static Mesh Actor',loc:'-400, 0, 150',rot:'0, 0, 0',scale:'1, 1, 1',mesh:'SM_Wall',mat:'M_Brick',mobility:'Static',tags:'Geometry'},
+    'Wall_B':{type:'Static Mesh Actor',loc:'400, 0, 150',rot:'0, 90, 0',scale:'1, 1, 1',mesh:'SM_Wall',mat:'M_Brick',mobility:'Static',tags:'Geometry'},
+    'DirLight':{type:'Directional Light',loc:'0, 0, 500',rot:'-45, 30, 0',scale:'1, 1, 1',mesh:'—',mat:'—',mobility:'Stationary',tags:'Lighting',intensity:'10 lux',color:'FFF4E5'},
+    'SkyAtmos':{type:'Sky Atmosphere',loc:'0, 0, 0',rot:'0, 0, 0',scale:'1, 1, 1',mesh:'—',mat:'—',mobility:'Static',tags:'Environment'},
+    'PlayerStart':{type:'Player Start',loc:'100, -200, 92',rot:'0, 90, 0',scale:'1, 1, 1',mesh:'—',mat:'—',mobility:'Static',tags:'Game'},
+    'BP_Door':{type:'Blueprint',loc:'0, 320, 0',rot:'0, 0, 0',scale:'1, 1, 1',mesh:'SM_Door',mat:'M_Wood',mobility:'Movable',tags:'Interactive'},
+    'Cam_Main':{type:'Camera Actor',loc:'-200, -600, 180',rot:'-10, 25, 0',scale:'1, 1, 1',mesh:'—',mat:'—',mobility:'Movable',tags:'Cine',fov:'75'},
+    'Vol_Post':{type:'Post Process Volume',loc:'0, 0, 0',rot:'0, 0, 0',scale:'20, 20, 10',mesh:'—',mat:'—',mobility:'Static',tags:'Rendering',unbound:'true'},
+    'Folder_Lights':{type:'Folder',loc:'—',rot:'—',scale:'—',mesh:'—',mat:'—',mobility:'—',tags:'Organization',note:'Contains 2 actors'},
+    'Folder_Geo':{type:'Folder',loc:'—',rot:'—',scale:'—',mesh:'—',mat:'—',mobility:'—',tags:'Organization',note:'Contains 3 actors'}
+  };
+  function renderDetails(id,name){
+    const d=DETAIL_DB[id]||{type:'Actor',loc:'0, 0, 0',rot:'0, 0, 0',scale:'1, 1, 1',mesh:'—',mat:'—',mobility:'Static',tags:''};
+    if(detailsTitle)detailsTitle.textContent=name||id;
+    if(!detailsBody)return;
+    const rows=[
+      ['Type',d.type,''],['Location',d.loc,'mod'],['Rotation',d.rot,''],['Scale',d.scale,''],
+      ['Static Mesh',d.mesh,d.mesh!=='—'?'mod':''],['Material',d.mat,''],['Mobility',d.mobility,''],['Tags',d.tags||'—','']
+    ];
+    if(d.intensity)rows.push(['Intensity',d.intensity,'mod']);
+    if(d.color)rows.push(['Light Color',d.color,'']);
+    if(d.fov)rows.push(['FOV',d.fov,'mod']);
+    if(d.unbound)rows.push(['Infinite Extent',d.unbound,'']);
+    if(d.note)rows.push(['Note',d.note,'']);
+    detailsBody.innerHTML=`
+      <div class="comp-list">
+        <div class="ci sel">● Root</div>
+        <div class="ci">　├ StaticMesh / Component</div>
+        <div class="ci">　└ Billboard</div>
+      </div>
+      <div class="cat"><div class="cat-h">▼ Transform</div>
+        ${rows.slice(1,4).map(([l,v,m])=>`<div class="rowf"><div class="lbl">${l}</div><div class="val ${m}">${v}</div></div>`).join('')}
+      </div>
+      <div class="cat"><div class="cat-h">▼ ${d.type}</div>
+        ${rows.filter((_,i)=>i===0||i>=4).map(([l,v,m])=>`<div class="rowf"><div class="lbl">${l}</div><div class="val ${m}">${v}</div></div>`).join('')}
+      </div>
+      <div class="cat"><div class="cat-h">▼ Rendering</div>
+        <div class="rowf"><div class="lbl">Visible</div><div class="val chk"><input type="checkbox" checked> true</div></div>
+        <div class="rowf"><div class="lbl">Cast Shadow</div><div class="val chk"><input type="checkbox" checked> true</div></div>
+      </div>`;
+  }
+  document.querySelectorAll('.tree-item[data-id]').forEach(item=>{
+    item.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.tree-item.sel').forEach(x=>x.classList.remove('sel'));
+      item.classList.add('sel');
+      renderDetails(item.dataset.id,item.dataset.name||item.textContent.trim());
+      toast('Selected · '+(item.dataset.name||item.dataset.id));
+    });
+  });
+  document.querySelectorAll('.tree-item .eye').forEach(eye=>{
+    eye.addEventListener('click',e=>{
+      e.stopPropagation();
+      eye.classList.toggle('off');
+      eye.textContent=eye.classList.contains('off')?'－':'👁';
+      toast('Visibility toggled');
+    });
+  });
+
+  // content browser assets
+  document.querySelectorAll('.asset').forEach(a=>{
+    a.addEventListener('click',()=>{
+      document.querySelectorAll('.asset.sel').forEach(x=>x.classList.remove('sel'));
+      a.classList.add('sel');
+      toast('Asset · '+a.dataset.name);
+    });
+  });
+  document.querySelectorAll('.folder-list .fi').forEach(fi=>{
+    fi.addEventListener('click',()=>{
+      document.querySelectorAll('.folder-list .fi.sel').forEach(x=>x.classList.remove('sel'));
+      fi.classList.add('sel');
+      toast('Folder · '+fi.textContent.trim());
+    });
+  });
+
+  // settings overlay
+  const ov=document.getElementById('settings-ov');
+  document.querySelectorAll('[data-open-settings]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();if(ov)ov.classList.add('show')}));
+  document.querySelectorAll('[data-close-settings]').forEach(b=>b.addEventListener('click',()=>ov&&ov.classList.remove('show')));
+  if(ov)ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('show')});
+  document.querySelectorAll('.settings .nav button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.settings .nav button').forEach(x=>x.classList.remove('on'));
+      btn.classList.add('on');
+      const m=document.getElementById('settings-main');
+      if(m){m.innerHTML=`<h3>${btn.textContent}</h3><p>Editor Preferences · stub for hy review. Values here are mock-only.</p>
+        <div class="rowf"><div class="lbl" style="color:#9a9a9a">Application Scale</div><div class="val" style="background:#0F0F0F;border:1px solid #383838;border-radius:2px;padding:4px 8px;margin-top:6px">1.0</div></div>
+        <div class="rowf" style="margin-top:8px"><div class="lbl" style="color:#9a9a9a">Color Vision Deficiency</div><div class="val" style="background:#0F0F0F;border:1px solid #383838;border-radius:2px;padding:4px 8px;margin-top:6px">Off</div></div>
+        <div class="rowf" style="margin-top:8px"><div class="lbl" style="color:#9a9a9a">Use Small Toolbar Icons</div><div class="val chk" style="background:#0F0F0F;border:1px solid #383838;border-radius:2px;padding:4px 8px;margin-top:6px"><input type="checkbox"> false</div></div>`}
+    });
+  });
+
+  // content drawer toggle
+  const cb=document.getElementById('content-browser');
+  document.querySelectorAll('[data-toggle-cb]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      if(!cb)return;
+      const hide=cb.style.display==='none';
+      cb.style.display=hide?'':'none';
+      b.classList.toggle('on',hide);
+      toast(hide?'Content Browser docked':'Content Browser hidden');
+    });
+  });
+
+  // init details
+  const first=document.querySelector('.tree-item.sel[data-id]');
+  if(first)renderDetails(first.dataset.id,first.dataset.name);
+  else renderDetails('Floor_SM','Floor_SM');
+
+  // toolbar position 上侧/侧面 (persist ue-toolbar-pos)
+  (function(){
+    const KEY='ue-toolbar-pos';
+    const app=document.querySelector('.app');
+    const seg=document.getElementById('toolbar-pos-seg');
+    function apply(pos){
+      if(pos!=='side')pos='top';
+      if(app)app.setAttribute('data-toolbar-pos',pos);
+      if(seg){
+        seg.querySelectorAll('button[data-pos]').forEach(b=>{
+          b.classList.toggle('on', b.dataset.pos===pos);
+        });
+      }
+      try{localStorage.setItem(KEY,pos)}catch(e){}
+      if(window.ueToast)window.ueToast('工具栏 · '+(pos==='side'?'侧面':'上侧'));
+    }
+    let saved='top';
+    try{saved=localStorage.getItem(KEY)||'top'}catch(e){}
+    if(saved!=='side')saved='top';
+    apply(saved);
+    const toastEl=document.getElementById('toast');
+    if(toastEl){toastEl.classList.remove('show');toastEl.textContent=''}
+    if(seg){
+      seg.querySelectorAll('button[data-pos]').forEach(b=>{
+        b.addEventListener('click',e=>{e.stopPropagation();apply(b.dataset.pos)});
+      });
+    }
+  })();
+
+})();
+</script>
+</body>
+</html>

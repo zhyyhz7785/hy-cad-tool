@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "AutoCAD侧",
+      "name": "AutoCAD侧",
+      "items": [
+        {
+          "id": "cad-a",
+          "file": "A-独立窗口-Blender式深色.html",
+          "title": "AutoCAD 侧 · 方案 A · 独立窗口 Blender 式深色 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "d7e2bc9063446362ab8752ce14007bb0d170fc443188098f3499b50d84ab5ea6",
+          "bytes": 308868
+        },
+        {
+          "id": "cad-b",
+          "file": "B-Ribbon-AutoCAD原生风格.html",
+          "title": "AutoCAD 侧 · 方案 B · Ribbon / AutoCAD 原生风格 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "09a9439acf62cd67d1ce61b0e1451a0742e47beb82dd283e20b92c006cfe9a03",
+          "bytes": 288267
+        },
+        {
+          "id": "cad-c",
+          "file": "C-工程分析工作台-SAP2000式.html",
+          "title": "AutoCAD 侧 · 方案 C · SAP2000 / Midas 式工程分析工作台 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "f60a617fcc4e65e5ffb9bec9515e259e729d959a95dd06d9c9baedb337fe5df8",
+          "bytes": 311743
+        },
+        {
+          "id": "cad-d",
+          "file": "D-独立窗口-A式B色白系列.html",
+          "title": "AutoCAD 侧 · 方案 D · A式布局 + B色 + 白系列 · 待 hy · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "8f1735e55fa4408bfbcf5b131042851679e1cbf167a56eb6675364abeb95b097",
+          "bytes": 316826
+        },
+        {
+          "id": "cad-d-bak",
+          "file": "D-独立窗口-A式B色白系列.html.bak-cmdline",
+          "title": "AutoCAD 侧 · 方案 D · A式布局 + B色 + 白系列 · 待 hy · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "6b9204a885a1e772cbfeeef3ca264d5aab0734d50cf4522ec1a7ce4000a5e3ee",
+          "bytes": 313886
+        },
+        {
+          "id": "cad-e",
+          "file": "E-独立窗口-A式B色深色系.html",
+          "title": "AutoCAD 侧 · 方案 E · A式布局 + B色 + 深色系 · 待 hy · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "b181636e673194827db26d88307db4e94b748bfea51d78f671f8642c245a7475",
+          "bytes": 317928
+        }
+      ]
+    },
+    {
+      "id": "HyMd侧",
+      "name": "HyMd侧",
+      "items": [
+        {
+          "id": "md-a",
+          "file": "A-VSCode式工作台.html",
+          "title": "HyMd 侧 · 方案 A · VS Code / Cursor 式工作台 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "cbaa2966f6157d68eb0bb806950033f765bca7164e60d7e4609872191ea0fa7d",
+          "bytes": 247733
+        },
+        {
+          "id": "md-b",
+          "file": "B-Apple-Notion式简洁文档.html",
+          "title": "HyMd 侧 · 方案 B · Apple / Notion 式简洁文档 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "fc53ff78cc9ed900d7b2be17c5cf16f6b8157d26e91ce81135f22d49b34735e8",
+          "bytes": 239156
+        },
+        {
+          "id": "md-c",
+          "file": "C-Obsidian式多窗格研究台.html",
+          "title": "HyMd 侧 · 方案 C · Obsidian 式多窗格研究台 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "d514179a42f3a04fa519b9fcf1dc8569235553bd2b3dd56f8c9c10802c1324b4",
+          "bytes": 240418
+        }
+      ]
+    },
+    {
+      "id": "通用桌面工具",
+      "name": "通用桌面工具",
+      "items": [
+        {
+          "id": "gen-a",
+          "file": "A-Blender-Unreal式三维编辑器.html",
+          "title": "通用桌面工具 · 方案 A · Blender / Unreal 式三维编辑器 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "e23ceabc4f7b5cba62a81c2faa6b992ca52ead57aca362065d76a016b10556a5",
+          "bytes": 191752
+        },
+        {
+          "id": "gen-b",
+          "file": "B-Fluent-Win11小工具.html",
+          "title": "通用桌面工具 · 方案 B · Fluent / Win11 小工具 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "d253c3ddeb5a41d0eb2f3dd01b5addc7251f1aead915cc631a8ebfedb47ff389",
+          "bytes": 203041
+        },
+        {
+          "id": "gen-c",
+          "file": "C-Apple-macOS式.html",
+          "title": "通用桌面工具 · 方案 C · Apple macOS 式 · hy 软件模板",
+          "family": "hy",
+          "toolbar": "none",
+          "sha256": "d8197e1654599a05cb4b79899e1fa63865ded4c04547416f954d5d5196ea40ba",
+          "bytes": 198267
+        }
+      ]
+    },
+    {
+      "id": "3dsMax侧",
+      "name": "3dsMax侧",
+      "items": [
+        {
+          "id": "max-a",
+          "file": "A-经典命令面板与视口-含ABC与工具栏位.html",
+          "title": "3ds Max 侧 · UI 模板 · A/B/C · 工具栏上侧/侧面",
+          "family": "hy",
+          "toolbar": "max3ds",
+          "sha256": "3e9c9e810c68a4193d1cb1b58124752b0998c905caabad107a1809e56f0a232b",
+          "bytes": 102176
+        }
+      ]
+    },
+    {
+      "id": "Blender-干活",
+      "name": "Blender-干活",
+      "items": [
+        {
+          "id": "blender-a",
+          "file": "A-默认工作区深色.html",
+          "title": "Blender 方案 A · 默认工作区深色 · Blender-干活",
+          "family": "hy",
+          "toolbar": "blender",
+          "sha256": "ebfbfede7f7b2c681f12c8e91434fb970165c26f2760227edd7e1feb0ac47093",
+          "bytes": 222362
+        },
+        {
+          "id": "blender-b",
+          "file": "B-建模专注布局.html",
+          "title": "Blender 方案 B · 建模专注布局 · Blender-干活",
+          "family": "hy",
+          "toolbar": "blender",
+          "sha256": "e17e1ffee503092bfd34203a392ca8d66c998a9e9a11df3152637b67a6eb977a",
+          "bytes": 223352
+        },
+        {
+          "id": "blender-c",
+          "file": "C-CAD工程混合.html",
+          "title": "Blender 方案 C · CAD工程混合 · Blender-干活",
+          "family": "hy",
+          "toolbar": "blender",
+          "sha256": "2dceed4adb537a07f1deddc9abd929ac67a2465777e7447c5b6374b70f397364",
+          "bytes": 222812
+        }
+      ]
+    },
+    {
+      "id": "虚幻UE5",
+      "name": "虚幻UE5",
+      "items": [
+        {
+          "id": "ue-a",
+          "file": "A-LevelEditor-工具栏可切换.html",
+          "title": "【待 hy】UE5 方案A · 默认 Level Editor · 工具栏可切换",
+          "family": "ue5",
+          "toolbar": "ue5",
+          "sha256": "ee4b0892944953051b66b5ba61cfd17eb7e60599f7d6ab26b5d88f89e0a3d3be",
+          "bytes": 41688
+        },
+        {
+          "id": "ue-b",
+          "file": "B-精简工具-工具栏可切换.html",
+          "title": "【待 hy】UE5 方案B · 精简工具向 · 工具栏可切换",
+          "family": "ue5",
+          "toolbar": "ue5",
+          "sha256": "ebbe83183007c349b1632f13301ee8bfc08ab7fe0d31d81075b687a8588a977c",
+          "bytes": 41225
+        },
+        {
+          "id": "ue-c",
+          "file": "C-结构分析-工具栏可切换.html",
+          "title": "【待 hy】UE5 方案C · 偏结构/可视化分析 · 工具栏可切换",
+          "family": "ue5",
+          "toolbar": "ue5",
+          "sha256": "2f56d39c4cb632d9a145f0d4519a2bde03612c978eb597f7ba057f95e7fca5c4",
+          "bytes": 42170
+        }
+      ]
+    }
+  ]
+}
