@@ -66,8 +66,8 @@ namespace HyCADTool.Features.Settlement.Views
                 Height = 600,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
-                Background = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2e3440")),
+                Background = FindThemeBrush("Brush_WindowBack"),
+                Foreground = FindThemeBrush("Brush_TextPrimary"),
             };
 
             var dp = new DockPanel { Margin = new Thickness(8) };
@@ -75,7 +75,12 @@ namespace HyCADTool.Features.Settlement.Views
             var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
             DockPanel.SetDock(btnPanel, Dock.Top);
 
-            var btnCopy = new Button { Content = "复制到剪贴板", Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(0, 0, 4, 0) };
+            var btnCopy = new Button
+            {
+                Content = "复制到剪贴板",
+                Padding = new Thickness(12, 4, 12, 4),
+                Margin = new Thickness(0, 0, 4, 0),
+            };
             btnCopy.Click += (s, _) =>
             {
                 Clipboard.SetText(vm.ReportText);
@@ -92,13 +97,10 @@ namespace HyCADTool.Features.Settlement.Views
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
                 FontFamily = new System.Windows.Media.FontFamily("Consolas"),
-                FontSize = 12,
-                Background = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2e3440")),
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#d8dee9")),
-                BorderBrush = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4c566a")),
+                FontSize = FindThemeDouble("Metric_FontHeader", 12),
+                Background = FindThemeBrush("Brush_InputBack"),
+                Foreground = FindThemeBrush("Brush_TextPrimary"),
+                BorderBrush = FindThemeBrush("Brush_InputBorder"),
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(8),
                 TextWrapping = TextWrapping.NoWrap,
@@ -148,6 +150,17 @@ namespace HyCADTool.Features.Settlement.Views
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private System.Windows.Media.Brush FindThemeBrush(string key)
+        {
+            return TryFindResource(key) as System.Windows.Media.Brush
+                ?? System.Windows.Media.Brushes.Transparent;
+        }
+
+        private double FindThemeDouble(string key, double fallback)
+        {
+            return TryFindResource(key) is double value ? value : fallback;
         }
     }
 }

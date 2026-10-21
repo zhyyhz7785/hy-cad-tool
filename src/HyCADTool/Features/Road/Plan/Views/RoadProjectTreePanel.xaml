@@ -109,20 +109,42 @@
                 Padding="{DynamicResource Metric_ButtonPaddingSmall}">
             <StackPanel>
                 <UniformGrid Rows="1" Columns="4" Margin="0,0,0,4">
-                    <Button Content="新建路线" Command="{Binding NewAlignmentCommand}" ToolTip="hyRoadAName：拾取线位并命名" Margin="0,0,2,0" FontSize="{DynamicResource Metric_FontSmall}"/>
-                    <Button Content="配置横断面" Command="{Binding AssignCrossSectionCommand}" ToolTip="hyRoadAlnAssign：桩号区段挂模板" Margin="2,0" FontSize="{DynamicResource Metric_FontSmall}"/>
-                    <Button Content="生成平面图" Command="{Binding GeneratePlanCommand}" ToolTip="hyRoadAlnPlan：按区段出平面" Margin="2,0" FontSize="{DynamicResource Metric_FontSmall}"/>
-                    <Button Content="检测相交" Command="{Binding DetectIntersectionsCommand}" ToolTip="hyRoadAutoIntersection" Margin="2,0,0,0" FontSize="{DynamicResource Metric_FontSmall}"/>
+                    <Button Content="新建路线"
+                            Command="{Binding NewAlignmentCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="hyRoadAName：拾取线位并命名"
+                            Margin="0,0,2,0"/>
+                    <Button Content="配置横断面"
+                            Command="{Binding AssignCrossSectionCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="hyRoadAlnAssign：桩号区段挂模板"
+                            Margin="2,0"/>
+                    <Button Content="生成平面图"
+                            Command="{Binding GeneratePlanCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="hyRoadAlnPlan：按区段出平面"
+                            Margin="2,0"/>
+                    <Button Content="检测相交"
+                            Command="{Binding DetectIntersectionsCommand}"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="hyRoadAutoIntersection"
+                            Margin="2,0,0,0"/>
                 </UniformGrid>
                 <DockPanel LastChildFill="True">
                     <Button DockPanel.Dock="Right"
                             Content="刷新"
+                            Style="{StaticResource BlenderButtonFlat}"
+                            HorizontalContentAlignment="Center"
                             Margin="4,0,0,0"
                             MinWidth="48"
                             Click="OnRefreshClick"
                             ToolTip="从当前 AutoCAD 文档重新加载项目数据"/>
                     <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
-                             VerticalContentAlignment="Center"
+                             Style="{StaticResource BlenderTextBox}"
                              ToolTip="按节点名搜索（Ctrl+F）"/>
                 </DockPanel>
             </StackPanel>
