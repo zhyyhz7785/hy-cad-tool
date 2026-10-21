@@ -19,7 +19,6 @@ namespace HyCADTool.LinuxTests
         [InlineData(4, PartitionEdgeClass.HorizontalA)]
         [InlineData(6, PartitionEdgeClass.SlabCa)]
         [InlineData(44, PartitionEdgeClass.SlabCa)]
-        [InlineData(45, PartitionEdgeClass.WallCb)]
         [InlineData(84, PartitionEdgeClass.WallCb)]
         [InlineData(86, PartitionEdgeClass.VerticalB)]
         [InlineData(90, PartitionEdgeClass.VerticalB)]
@@ -27,6 +26,14 @@ namespace HyCADTool.LinuxTests
         public void Edge_class_follows_angle_bands(double degrees, PartitionEdgeClass expected)
         {
             Assert.Equal(expected, RegionPartitioner.ClassifyEdge(LineAt(degrees)));
+        }
+
+        [Fact]
+        public void Exact_45_degree_diagonal_is_a_wall_edge()
+        {
+            // 分界是 angle < 45° 归板。dx=dy 时 Atan2 得到 45°，归斜墙。
+            var seg = new Line2D(new Point2D(0, 0), new Point2D(100, 100));
+            Assert.Equal(PartitionEdgeClass.WallCb, RegionPartitioner.ClassifyEdge(seg));
         }
 
         [Fact]
@@ -79,11 +86,15 @@ namespace HyCADTool.LinuxTests
         [InlineData(0, ComponentType.BottomSlab)]
         [InlineData(1500, ComponentType.BottomSlab)]
         [InlineData(1600, ComponentType.Slab)]
-        public void Ground_gate_uses_bottom_slab_max_height(double groundY, ComponentType expected)
+        public void Ground_gate_compares_region_bottom_with_ground_plus_1500(double bottomY, ComponentType expected)
         {
-            // 区域底在 y=0。groundY + 1500 盖住 0 则落地，否则整块当悬空薄板。
-            var region = Region((0, 0), (2000, 0), (2000, 200), (0, 200));
-            var parts = RegionPartitioner.Partition(region, groundY: groundY);
+            // 落地：区域最低 Y ≤ groundY + 底板厚度上限。groundY=0 时，底在 1500 仍落地，1600 起悬空。
+            var region = Region(
+                (0, bottomY),
+                (2000, bottomY),
+                (2000, bottomY + 200),
+                (0, bottomY + 200));
+            var parts = RegionPartitioner.Partition(region, groundY: 0);
 
             AssertTypes(parts, expected);
         }
@@ -205,7 +216,8 @@ namespace HyCADTool.LinuxTests
             AssertNear(Find(parts, ComponentType.Slab).Polygon.GetArea(), 6000 * 300, 1);
 
             AssertBox(Find(parts, ComponentType.Beam), 2500, 1800, 3300, 3000);
-            AssertNear(Find(parts, ComponentType.Beam).ThicknessMm, 1200);
+            // 梁的 ThicknessMm 记 X 向宽度，不记梁高 1200。
+            AssertNear(Find(parts, ComponentType.Beam).ThicknessMm, 800);
             AssertNear(Find(parts, ComponentType.Beam).Polygon.GetArea(), 800 * 1200, 1);
 
             AssertBox(Find(parts, ComponentType.BottomSlab), 0, 0, 6000, 400);
