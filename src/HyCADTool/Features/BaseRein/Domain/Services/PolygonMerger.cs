@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Clipper2Lib;
 using HyCAD.Geometry;
 using HyCADTool.Shared.Geometry;
 
@@ -21,10 +22,10 @@ namespace HyCADTool.Features.BaseRein.Domain.Services
         }
         
         /// <summary>
-        /// 合并多个多边形为一个（并集）
-        /// 优先使用 Weiler-Atherton 算法，失败时回退到 Clipper2
+        /// 合并多个多边形（并集）。
+        /// 优先使用 Weiler-Atherton 算法；该路径抛错时改用 Clipper2，保留孔洞和不相交的块。
         /// </summary>
-        public Polygon2D UnionPolygons(IEnumerable<Polygon2D> polygons)
+        public PolygonUnionResult UnionPolygons(IEnumerable<Polygon2D> polygons)
         {
             var polygonList = polygons.ToList();
             
@@ -32,12 +33,12 @@ namespace HyCADTool.Features.BaseRein.Domain.Services
                 throw new ArgumentException("多边形列表为空", nameof(polygons));
             
             if (polygonList.Count == 1)
-                return polygonList[0];
+                return PolygonUnionResult.FromOuter(polygonList[0]);
             
             try
             {
                 // 优先使用 Weiler-Atherton 算法
-                return UnionUsingWeilerAtherton(polygonList);
+                return PolygonUnionResult.FromOuter(UnionUsingWeilerAtherton(polygonList));
             }
             catch (Exception)
             {
@@ -245,9 +246,15 @@ namespace HyCADTool.Features.BaseRein.Domain.Services
             var current = startVertex;
             var currentChain = subjectChain;
             bool onSubject = true;
+            int steps = 0;
+            // 跟踪不回到起点时会一直追加顶点。步数超过两条链就放弃，交给 Clipper2。
+            int stepLimit = subjectChain.Count + clipChain.Count;
             
             do
             {
+                if (++steps > stepLimit)
+                    throw new InvalidOperationException("Weiler-Atherton 并集跟踪未闭合");
+
                 result.Add(current.Point);
                 
                 // 如果是交点，切换到另一条链
@@ -273,31 +280,171 @@ namespace HyCADTool.Features.BaseRein.Domain.Services
         }
         
         /// <summary>
-        /// 使用 Clipper2 合并多边形（备用方案）
+        /// Clipper2 的小数位数。与距离容差同一量级，上限受库限制。
         /// </summary>
-        private Polygon2D UnionUsingClipper2(List<Polygon2D> polygons)
+        private const int ClipperPrecision = 3;
+
+        /// <summary>
+        /// 使用 Clipper2 做并集（备用方案）。
+        /// 外环逆时针，孔洞顺时针；不相交的块分成多个区域。
+        /// </summary>
+        private PolygonUnionResult UnionUsingClipper2(List<Polygon2D> polygons)
         {
-            // TODO: 集成 Clipper2 库
-            // 这里使用简化的实现作为占位符
-            
-            // 找到包含所有多边形的最大边界
-            var allVertices = polygons.SelectMany(p => p.Vertices).ToList();
-            
-            double minX = allVertices.Min(v => v.X);
-            double maxX = allVertices.Max(v => v.X);
-            double minY = allVertices.Min(v => v.Y);
-            double maxY = allVertices.Max(v => v.Y);
-            
-            // 返回边界矩形（临时实现）
-            var boundingBox = new List<Point2D>
+            var paths = new PathsD();
+            for (int i = 0; i < polygons.Count; i++)
             {
-                new Point2D(minX, minY),
-                new Point2D(maxX, minY),
-                new Point2D(maxX, maxY),
-                new Point2D(minX, maxY)
-            };
-            
-            return new Polygon2D(boundingBox, isClosed: true);
+                var poly = polygons[i];
+                if (poly == null || poly.VertexCount < 3)
+                    continue;
+                paths.Add(ToPath(poly));
+            }
+
+            if (paths.Count == 0)
+                throw new InvalidOperationException("Clipper2 并集没有有效多边形");
+
+            var tree = new PolyTreeD();
+            Clipper.BooleanOp(ClipType.Union, paths, null, tree, FillRule.NonZero, ClipperPrecision);
+
+            var regions = new List<PolygonUnionRegion>();
+            CollectRegions(tree, regions);
+            if (regions.Count == 0)
+                throw new InvalidOperationException("Clipper2 并集为空");
+
+            regions.Sort(CompareRegions);
+            return new PolygonUnionResult(regions);
+        }
+
+        private void CollectRegions(PolyPathD node, List<PolygonUnionRegion> regions)
+        {
+            for (int i = 0; i < node.Count; i++)
+            {
+                var child = node[i];
+                if (child.IsHole)
+                {
+                    if (child.Count > 0)
+                        CollectRegions(child, regions);
+                    continue;
+                }
+
+                var holes = new List<Polygon2D>();
+                for (int h = 0; h < child.Count; h++)
+                {
+                    var holeNode = child[h];
+                    if (!holeNode.IsHole)
+                        continue;
+
+                    var hole = ToPolygon(holeNode.Polygon, counterClockwise: false);
+                    if (hole != null)
+                        holes.Add(hole);
+
+                    if (holeNode.Count > 0)
+                        CollectRegions(holeNode, regions);
+                }
+
+                holes.Sort(ComparePolygons);
+                var outer = ToPolygon(child.Polygon, counterClockwise: true);
+                if (outer != null)
+                    regions.Add(new PolygonUnionRegion(outer, holes));
+            }
+        }
+
+        private static int CompareRegions(PolygonUnionRegion a, PolygonUnionRegion b)
+        {
+            return ComparePolygons(a.Outer, b.Outer);
+        }
+
+        private static int ComparePolygons(Polygon2D a, Polygon2D b)
+        {
+            var pa = a.Vertices[0];
+            var pb = b.Vertices[0];
+            int cmp = pa.X.CompareTo(pb.X);
+            if (cmp != 0)
+                return cmp;
+            return pa.Y.CompareTo(pb.Y);
+        }
+
+        private Polygon2D ToPolygon(PathD path, bool counterClockwise)
+        {
+            if (path == null || path.Count < 3)
+                return null;
+
+            var verts = new List<Point2D>(path.Count);
+            foreach (var p in path)
+                verts.Add(new Point2D(p.x, p.y));
+
+            verts = DropClosingDuplicate(verts);
+            verts = DropCollinear(verts);
+            if (verts.Count < 3)
+                return null;
+
+            var polygon = new Polygon2D(verts, isClosed: true);
+            if (polygon.IsCounterClockwise() != counterClockwise)
+                polygon = polygon.Reverse();
+
+            return RotateToBottomLeft(polygon);
+        }
+
+        private List<Point2D> DropClosingDuplicate(List<Point2D> verts)
+        {
+            if (verts.Count >= 2 && verts[0].DistanceTo(verts[verts.Count - 1]) <= _tolerance)
+                verts.RemoveAt(verts.Count - 1);
+            return verts;
+        }
+
+        private List<Point2D> DropCollinear(List<Point2D> verts)
+        {
+            if (verts.Count < 4)
+                return verts;
+
+            var kept = new List<Point2D>(verts.Count);
+            int n = verts.Count;
+            for (int i = 0; i < n; i++)
+            {
+                var prev = verts[(i - 1 + n) % n];
+                var cur = verts[i];
+                var next = verts[(i + 1) % n];
+                if (cur.DistanceTo(prev) <= _tolerance)
+                    continue;
+
+                double cross = (cur.X - prev.X) * (next.Y - cur.Y) - (cur.Y - prev.Y) * (next.X - cur.X);
+                double scale = prev.DistanceTo(next);
+                if (scale < 1)
+                    scale = 1;
+                if (Math.Abs(cross) <= _tolerance * scale)
+                    continue;
+
+                kept.Add(cur);
+            }
+
+            return kept.Count >= 3 ? kept : verts;
+        }
+
+        private static Polygon2D RotateToBottomLeft(Polygon2D polygon)
+        {
+            var verts = polygon.Vertices;
+            int start = 0;
+            for (int i = 1; i < verts.Count; i++)
+            {
+                if (verts[i].Y < verts[start].Y
+                    || (verts[i].Y == verts[start].Y && verts[i].X < verts[start].X))
+                    start = i;
+            }
+
+            if (start == 0)
+                return polygon;
+
+            var rotated = new List<Point2D>(verts.Count);
+            for (int i = 0; i < verts.Count; i++)
+                rotated.Add(verts[(start + i) % verts.Count]);
+            return new Polygon2D(rotated, polygon.IsClosed);
+        }
+
+        private static PathD ToPath(Polygon2D polygon)
+        {
+            var path = new PathD();
+            foreach (var v in polygon.Vertices)
+                path.Add(new PointD(v.X, v.Y));
+            return path;
         }
     }
     

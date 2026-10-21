@@ -34,6 +34,9 @@
 
   <!-- 只编入纯算法文件，不引用 HyCADTool（net48 + WPF，Linux 上编不过）。 -->
   <ItemGroup>
+    <Compile Include="..\HyCADTool\Features\BaseRein\Domain\Services\PolygonMerger.cs" Link="BaseRein\PolygonMerger.cs" />
+    <Compile Include="..\HyCADTool\Features\BaseRein\Domain\Services\PolygonUnionResult.cs" Link="BaseRein\PolygonUnionResult.cs" />
+    <Compile Include="..\HyCADTool\Features\Elevation\Domain\ValueObjects\ToleranceSettings.cs" Link="Elevation\ToleranceSettings.cs" />
     <Compile Include="..\HyCADTool\Features\Fem\Integration\HyfeaAxisGeometry.cs" Link="Fem\HyfeaAxisGeometry.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\Gb50007SettlementDepth.cs" Link="Settlement\Gb50007SettlementDepth.cs" />
     <Compile Include="..\HyCADTool\Features\Settlement\FoundationType.cs" Link="Settlement\FoundationType.cs" />
