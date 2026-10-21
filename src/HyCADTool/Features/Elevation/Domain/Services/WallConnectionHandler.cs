@@ -235,12 +235,20 @@ namespace HyCADTool.Features.Elevation.Domain.Services
         }
         
         /// <summary>
-        /// 合并两个多边形（使用 PolygonMerger）
+        /// 合并两个多边形（使用 PolygonMerger）。
+        /// 墙缓冲只消费面积最大的外环。
         /// </summary>
         private Polygon2D UnionPolygons(Polygon2D poly1, Polygon2D poly2)
         {
             var merger = new PolygonMerger();
-            return merger.UnionPolygons(new[] { poly1, poly2 });
+            var union = merger.UnionPolygons(new[] { poly1, poly2 });
+            PolygonUnionRegion best = union.Regions[0];
+            for (int i = 1; i < union.Regions.Count; i++)
+            {
+                if (union.Regions[i].Outer.GetArea() > best.Outer.GetArea())
+                    best = union.Regions[i];
+            }
+            return best.Outer;
         }
     }
 }
