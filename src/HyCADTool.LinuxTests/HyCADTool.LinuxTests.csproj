@@ -58,6 +58,21 @@
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentRegion.cs" Link="Reinforcement\ComponentRegion.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\ComponentType.cs" Link="Reinforcement\ComponentType.cs" />
     <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\ReinRegion.cs" Link="Reinforcement\ReinRegion.cs" />
+    <!-- RegionPartitioner / G101 目录与查表：纯域源码，不引用 AutoCAD。 -->
+    <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\RecognizeOptions.cs" Link="Reinforcement\RecognizeOptions.cs" />
+    <Compile Include="..\HyCADTool\Features\Reinforcement\Domain\Components\RegionPartitioner.cs" Link="Reinforcement\RegionPartitioner.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Geometry\DetailSketch.cs" Link="G101\DetailSketch.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Tables\AtlasRef.cs" Link="G101\AtlasRef.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Tables\G101Enums.cs" Link="G101\G101Enums.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Tables\G101GlobalSettings.cs" Link="G101\G101GlobalSettings.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Tables\G101TableLookup.cs" Link="G101\G101TableLookup.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Catalog\G101Catalog.cs" Link="G101\G101Catalog.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Components\Foundation\ColumnDowelBuilder.cs" Link="G101\ColumnDowelBuilder.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Components\Foundation\DjFoundationBuilder.cs" Link="G101\DjFoundationBuilder.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Components\Foundation\DoubleColumnDjBuilder.cs" Link="G101\DoubleColumnDjBuilder.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Components\Foundation\TjbFoundationBuilder.cs" Link="G101\TjbFoundationBuilder.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Components\Stair\AtStairBuilder.cs" Link="G101\AtStairBuilder.cs" />
+    <Compile Include="..\HyCADTool\Features\G101\Domain\Components\Stair\BtStairBuilder.cs" Link="G101\BtStairBuilder.cs" />
     <Compile Include="..\HyCADTool\Features\Tables\Presentation\TableGridXlsxAdapter.cs" Link="Tables\TableGridXlsxAdapter.cs" />
     <Compile Include="..\HyCADTool\Shared\Office\OpenXmlSheetHelper.cs" Link="Tables\OpenXmlSheetHelper.cs" />
     <Compile Include="..\HyCADTool\Shell\Licensing\CommandTiers.g.cs" Link="Licensing\CommandTiers.g.cs" />
